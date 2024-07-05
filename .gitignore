@@ -1,0 +1,45 @@
+**/target/
+**/target-*/
+**/target-embedded/
+**/target-31/
+**/.bsp/
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+*.iml
+.idea/
+.eclipse
+**/.vscode/
+**/__pycache__/
+**/.DS_Store/
+api/py/ai/chronon/api/
+api/py/test/sample/production/group_bys/quickstart/
+api/py/test/sample/production/joins/quickstart/
+api/py/.coverage
+api/py/htmlcov/
+**/derby.log
+cs
+
+# Documentation builds
+docs/build/
+
+# Python distribution and packaging
+api/py/dist/
+api/py/eggs/
+api/py/sdist/
+api/py/build/
+api/py/ai/chronon/thrift/
+api/py/*.egg-info/
+*.egg
+
+# spark test scratch area
+**/spark-warehouse/
+**/metastore_db/
+mvn_settings.xml
+/.run/spark Clean.run.xml
+
+# Release folder
+releases
+
