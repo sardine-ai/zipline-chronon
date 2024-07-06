@@ -1,2 +1,2 @@
 click
-thrift<0.14
+thrift==0.20.0
