@@ -48,13 +48,13 @@ RUN curl -sSL "http://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THR
 	&& cd / \
 	&& rm -rf /usr/src/thrift
 
-# Install Scala
-ENV SCALA_VERSION 2.11.7
-ENV SCALA_DEB http://www.scala-lang.org/files/archive/scala-$SCALA_VERSION.deb
-
-RUN wget --quiet --output-document=scala.deb $SCALA_DEB && \
-    dpkg -i scala.deb && \
-    rm -f *.deb
+# # Install Scala
+# ENV SCALA_VERSION 2.12.18
+# ENV SCALA_DEB http://www.scala-lang.org/files/archive/scala-$SCALA_VERSION.deb
+#
+# RUN wget --quiet --output-document=scala.deb $SCALA_DEB && \
+#     dpkg -i scala.deb && \
+#     rm -f *.deb
 
 # Install sbt
 RUN apt-get update && apt-get -y -q install \
