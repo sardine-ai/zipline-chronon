@@ -1,0 +1,62 @@
+name: Build, Test, and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-ci
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --workdir /chronon
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ScalafmtCheck
+        run: |
+          conda activate chronon_py
+          sbt +scalafmtCheck
+
+      - name: Run Chronon Python lint
+        run: |
+          conda activate chronon_py
+          cd /chronon/api/py/ai/chronon
+          pip install importlib-metadata==4.11.4
+          flake8 --extend-ignore=W605,Q000,F631
+
+      - name: Run scala tests
+        run: |
+          export SBT_OPTS="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=4G -Xmx8G -Xms2G"
+          sbt "++ 2.12.18 test"
+
+      - name: Run Chronon Python tests
+        run: |
+          conda activate chronon_py
+          pushd /chronon/api/
+          thrift --gen py -out /chronon/api/py/ai/chronon /chronon/api/thrift/api.thrift
+          cd /chronon/api/py
+          pip install -r requirements/dev.txt
+          tox
+          popd
+
+      - uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: spark-warehouse
+          path: /tmp/chronon/spark-warehouse
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: htmlcov
+          path: /chronon/api/py/htmlcov
