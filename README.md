@@ -1,3 +1,7 @@
+
+[![Docker build](https://github.com/zipline-ai/chronon/actions/workflows/build_and_push_docker.yaml/badge.svg)](https://github.com/zipline-ai/chronon/actions/workflows/build_and_push_docker.yaml)
+ [![Tests](https://github.com/zipline-ai/chronon/actions/workflows/test_scala_and_python.yaml/badge.svg)](https://github.com/zipline-ai/chronon/actions/workflows/test_scala_and_python.yaml)
+
 # Chronon: A Data Platform for AI/ML
 
 Chronon is a platform that abstracts away the complexity of data computation and serving for AI/ML applications. Users define features as transformation of raw data, then Chronon can perform batch and streaming computation, scalable backfills, low-latency serving, guaranteed correctness and consistency, as well as a host of observability and monitoring tools.
