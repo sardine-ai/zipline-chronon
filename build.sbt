@@ -87,17 +87,13 @@ lazy val api = project
     libraryDependencies ++= spark_sql_provided,
 
     libraryDependencies ++= Seq(
-      "org.apache.thrift" % "libthrift" % "0.13.0",
-      "javax.annotation" % "javax.annotation-api" % "1.3.2",
+      "org.apache.thrift" % "libthrift" % "0.13.0", // cannot upgrade this without breaking compatibility
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
       "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test"
-    ),
-    shadedModules += "org.apache.thrift" % "libthrift",
-    shadingRules += ShadingRule.moveUnder("libthrift", "chronon_shaded.shaded"),
-    validNamespaces += "chronon_shaded"
+    )
 )
 
 lazy val aggregator = project
