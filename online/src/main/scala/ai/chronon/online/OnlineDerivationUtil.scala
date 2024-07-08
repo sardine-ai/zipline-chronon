@@ -32,7 +32,8 @@ object OnlineDerivationUtil {
     {
       case (_: Map[String, Any], values: Any) =>
         reintroduceExceptions(derivationsScala.applyRenameOnlyDerivation(
-          Option(values).getOrElse(Map.empty[String, Any]).asInstanceOf[Map[String, Any]]), values)
+                                Option(values).getOrElse(Map.empty[String, Any]).asInstanceOf[Map[String, Any]]),
+                              values)
     }
   }
 
