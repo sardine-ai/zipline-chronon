@@ -11,13 +11,17 @@ import java.nio.file.{Files, Paths}
 import scala.reflect.ClassTag
 
 class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
+  // ignore files ending with extensions below
+  private val ignoreExtensions = List(".class", ".csv", ".java", ".scala", ".py")
   @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
   private def listFiles(base: File, recursive: Boolean = true): Seq[File] = {
     if (base.isFile) {
       Seq(base)
     } else {
       val files = base.listFiles
-      val result = files.filter(_.isFile)
+      val result = files.filter(_.isFile).filterNot { file =>
+        ignoreExtensions.exists(file.getName.endsWith)
+      }
       result ++
         files
           .filter(_.isDirectory)
