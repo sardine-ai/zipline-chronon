@@ -67,7 +67,7 @@ jobs:
 
       - name: Run scala tests
         run: |
-          export SBT_OPTS="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=4G -Xmx8G -Xms2G"
+          export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 test"
 
       - uses: actions/upload-artifact@v2
