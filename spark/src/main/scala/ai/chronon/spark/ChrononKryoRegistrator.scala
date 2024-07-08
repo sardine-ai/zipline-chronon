@@ -75,6 +75,12 @@ class ChrononKryoRegistrator extends KryoRegistrator {
     val names = Seq(
       "org.apache.hadoop.fs.Path",
       "org.apache.hadoop.fs.FileStatus",
+      "org.apache.hadoop.fs.LocatedFileStatus",
+      "org.apache.hadoop.fs.BlockLocation",
+      "org.apache.hadoop.fs.FileUtil$CopyMapper",
+      "org.apache.hadoop.fs.FileUtil$CopyReducer",
+      "org.apache.hadoop.fs.FileUtil$CopyFiles",
+      "org.apache.hadoop.fs.FileUtil$CopyListingFileStatus",
       "org.apache.spark.sql.execution.joins.UnsafeHashedRelation",
       "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage",
       "org.apache.spark.sql.execution.datasources.ExecutedWriteSummary",

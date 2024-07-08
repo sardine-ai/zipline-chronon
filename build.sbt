@@ -36,13 +36,6 @@ lazy val root = (project in file("."))
   .aggregate(api, aggregator, online, spark_embedded, flink)
   .settings(name := "chronon")
 
-/**
-  * Versions are look up from mvn central - so we are fitting for three configurations
-  * scala 11 + spark 2.4: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.11/2.4.0
-  * scala 12 + spark 3.1.1: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.12/3.1.1
-  * scala 13 + spark 3.2.1: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.13/3.2.1
-  */
-
 val spark_sql = Seq(
   "org.apache.spark" %% "spark-sql",
   "org.apache.spark" %% "spark-core"
@@ -118,8 +111,6 @@ lazy val online = project
     libraryDependencies ++= spark_all,
   )
 
-// TODO: see if we can unify online shaded & un shaded
-// in theory only flink needs the online package,
 lazy val online_unshaded = (project in file("online"))
   .dependsOn(aggregator.%("compile->compile;test->test"))
   .enablePlugins(BuildInfoPlugin)
