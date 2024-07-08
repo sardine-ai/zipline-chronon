@@ -29,8 +29,6 @@ lazy val avro_1_11 = "1.11.2"
 // ThisBuild / assembly / test := {}
 
 ThisBuild / scalaVersion := scala_2_12
-ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
-ThisBuild / Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
