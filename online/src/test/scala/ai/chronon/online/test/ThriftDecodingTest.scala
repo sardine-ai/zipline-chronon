@@ -30,7 +30,7 @@ import java.util
 class ThriftDecodingTest {
 
   @Test
-  def testJitneyDecoding(): Unit = {
+  def testDecoding(): Unit = {
     val tokens = new util.HashSet[String]()
     Seq("left", "source", "events", "derivations", "name", "expression")
       .foreach(tokens.add)

@@ -21,7 +21,7 @@ lazy val scala_2_12 = "2.12.18"
 lazy val spark_3_5 = "3.5.1"
 // flink deps: https://mvnrepository.com/artifact/org.apache.flink/flink-java/1.17.1
 // jackson is shaded 2.13-2.16, no avro dependency
-lazy val flink_1_18 = "1.18.1"
+lazy val flink_1_17 = "1.17.0"
 lazy val jackson_2_15 = "2.15.2"
 lazy val avro_1_11 = "1.11.2"
 
@@ -29,11 +29,13 @@ lazy val avro_1_11 = "1.11.2"
 // ThisBuild / assembly / test := {}
 
 ThisBuild / scalaVersion := scala_2_12
+ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+ThisBuild / Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark_uber, flink)
+  .aggregate(api, aggregator, online, spark_embedded, flink)
   .settings(name := "chronon")
 
 /**
@@ -69,11 +71,12 @@ val flink_all = Seq(
   "org.apache.flink" % "flink-metrics-dropwizard",
   "org.apache.flink" % "flink-clients",
   "org.apache.flink" % "flink-test-utils"
-).map(_ % flink_1_18)
+).map(_ % flink_1_17)
 
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
 
 lazy val api = project
+  .enablePlugins(ShadingPlugin)
   .settings(
     Compile / sourceGenerators += Def.task {
       val inputThrift = baseDirectory.value / "thrift" / "api.thrift"
@@ -82,16 +85,20 @@ lazy val api = project
     }.taskValue,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_sql_provided,
+
     libraryDependencies ++= Seq(
-      "org.apache.thrift" % "libthrift" % "0.20.0",
+      "org.apache.thrift" % "libthrift" % "0.13.0",
       "javax.annotation" % "javax.annotation-api" % "1.3.2",
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
       "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test"
-    )
-  )
+    ),
+    shadedModules += "org.apache.thrift" % "libthrift",
+    shadingRules += ShadingRule.moveUnder("libthrift", "chronon_shaded.shaded"),
+    validNamespaces += "chronon_shaded"
+)
 
 lazy val aggregator = project
   .dependsOn(api.%("compile->compile;test->test"))
@@ -155,7 +162,9 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
   cleanFiles ++= Seq(file(tmp_warehouse)),
   Test / testOptions += Tests.Setup(() => cleanSparkMeta()),
   // compatibility for m1 chip laptop
-  libraryDependencies += "org.xerial.snappy" % "snappy-java" % "1.1.10.4" % Test
+  libraryDependencies += "org.xerial.snappy" % "snappy-java" % "1.1.10.4" % Test,
+  Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary,
+  Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 ) ++ addArtifact(assembly / artifact, assembly)
 
 lazy val spark_uber = (project in file("spark"))
@@ -166,7 +175,16 @@ lazy val spark_uber = (project in file("spark"))
     libraryDependencies ++= spark_all_provided,
   )
 
-lazy val flink = (project in file("flink"))
+lazy val spark_embedded = (project in file("spark"))
+  .dependsOn(aggregator.%("compile->compile;test->test"), online_unshaded)
+  .settings(
+    sparkBaseSettings,
+    crossScalaVersions := supportedVersions,
+    libraryDependencies ++= spark_all,
+    target := target.value.toPath.resolveSibling("target-embedded").toFile
+  )
+
+lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
     libraryDependencies ++= spark_all,
