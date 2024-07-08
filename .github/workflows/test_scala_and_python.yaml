@@ -14,6 +14,9 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
 
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +29,7 @@ jobs:
       - name: Run Chronon Python lint
         run: |
           source chronon_py_env/bin/activate
-          cd /chronon/api/py/ai/chronon
+          cd api/py/ai/chronon
           pip install importlib-metadata==4.11.4
           pip install flake8
           flake8 --extend-ignore=W605,Q000,F631
@@ -34,8 +37,8 @@ jobs:
       - name: Run Chronon Python tests
         run: |
           source chronon_py_env/bin/activate
-          thrift --gen py -out /chronon/api/py/ai/chronon /chronon/api/thrift/api.thrift
-          cd /chronon/api/py
+          thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
+          cd api/py
           pip install -r requirements/dev.txt
           pip install tox
           tox
@@ -43,7 +46,7 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: htmlcov
-          path: /chronon/api/py/htmlcov
+          path: api/py/htmlcov
 
   scala_tests:
     runs-on: ubuntu-latest
@@ -52,21 +55,23 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Run ScalafmtCheck
-        run: |
-          sbt +scalafmtCheck
+        run: sbt +scalafmtCheck
 
       - name: Run scala tests
         run: |
-          export SBT_OPTS="-XX:MaxPermSize=4G -Xmx8G -Xms2G"
+          export SBT_OPTS="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=4G -Xmx8G -Xms2G"
           sbt "++ 2.12.18 test"
 
       - uses: actions/upload-artifact@v2
         if: failure()
         with:
           name: spark-warehouse
-          path: /tmp/chronon/spark-warehouse
+          path: tmp/chronon/spark-warehouse
