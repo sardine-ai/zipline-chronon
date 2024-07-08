@@ -73,6 +73,8 @@ class ChrononKryoRegistrator extends KryoRegistrator {
   override def registerClasses(kryo: Kryo) {
     //kryo.setWarnUnregisteredClasses(true)
     val names = Seq(
+      "org.apache.hadoop.fs.Path",
+      "org.apache.hadoop.fs.FileStatus",
       "org.apache.spark.sql.execution.joins.UnsafeHashedRelation",
       "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage",
       "org.apache.spark.sql.execution.datasources.ExecutedWriteSummary",
