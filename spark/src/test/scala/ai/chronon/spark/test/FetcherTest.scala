@@ -62,6 +62,7 @@ class FetcherTest extends TestCase {
 
     val joinPath = "joins/team/example_join.v1"
     val confResource = getClass.getResource(s"/$joinPath")
+    println(s"conf resource path for dir walker: ${confResource.getPath}")
     val src = Source.fromFile(confResource.getPath)
 
     val expected = {

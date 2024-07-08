@@ -129,7 +129,7 @@ class GroupBy(inputStream: DataFrame,
         Seq(mutation.after, mutation.before)
           .filter(_ != null)
           .map(SparkConversions.toSparkRow(_, streamDecoder.schema, GenericRowHandler.func).asInstanceOf[Row])
-      }(RowEncoder.encoderFor(streamSchema))
+      }(Encoders.row(streamSchema))
 
     des.createOrReplaceTempView(streamingTable)
 
