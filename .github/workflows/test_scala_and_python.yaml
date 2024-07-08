@@ -26,22 +26,19 @@ jobs:
       - name: Run Chronon Python lint
         run: |
           source chronon_py_env/bin/activate
-          pushd /chronon/api/py/ai/chronon
+          cd /chronon/api/py/ai/chronon
           pip install importlib-metadata==4.11.4
           pip install flake8
           flake8 --extend-ignore=W605,Q000,F631
-          popd
 
       - name: Run Chronon Python tests
         run: |
           source chronon_py_env/bin/activate
-          pushd /chronon/api/
           thrift --gen py -out /chronon/api/py/ai/chronon /chronon/api/thrift/api.thrift
           cd /chronon/api/py
           pip install -r requirements/dev.txt
           pip install tox
           tox
-          popd
 
       - uses: actions/upload-artifact@v2
         with:
@@ -65,7 +62,7 @@ jobs:
 
       - name: Run scala tests
         run: |
-          export SBT_OPTS="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=4G -Xmx8G -Xms2G"
+          export SBT_OPTS="-XX:MaxPermSize=4G -Xmx8G -Xms2G"
           sbt "++ 2.12.18 test"
 
       - uses: actions/upload-artifact@v2
