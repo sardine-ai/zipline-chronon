@@ -156,9 +156,7 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
   cleanFiles ++= Seq(file(tmp_warehouse)),
   Test / testOptions += Tests.Setup(() => cleanSparkMeta()),
   // compatibility for m1 chip laptop
-  libraryDependencies += "org.xerial.snappy" % "snappy-java" % "1.1.10.4" % Test,
-  Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary,
-  Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+  libraryDependencies += "org.xerial.snappy" % "snappy-java" % "1.1.10.4" % Test
 ) ++ addArtifact(assembly / artifact, assembly)
 
 lazy val spark_uber = (project in file("spark"))
