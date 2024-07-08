@@ -59,6 +59,9 @@ RUN apk add --no-cache \
 RUN python3 -m pip install --break-system-packages --upgrade pip && \
     pip3 install --break-system-packages pytest tox flake8
 
+# spark uses snappy to write files, snappy needs gcompat
+RUN apk add gcompat
+
 # Verify installations
 RUN java -version && \
     thrift -version && \
