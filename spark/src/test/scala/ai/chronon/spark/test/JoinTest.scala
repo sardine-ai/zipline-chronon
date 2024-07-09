@@ -1295,7 +1295,10 @@ class JoinTest {
     val thrown3 = intercept[AnalysisException] {
       spark.sql(s"SELECT * FROM $partTable3")
     }
+    val notFoundString35 = "TABLE_OR_VIEW_NOT_FOUND" // spark 3.5
+    val notFoundStringOld = "Table or view not found" // spark old versions
     assert(
-      thrown2.getMessage.contains("Table or view not found") && thrown3.getMessage.contains("Table or view not found"))
+      thrown2.getMessage.contains(notFoundString35) && thrown3.getMessage.contains(notFoundString35) ||
+        thrown2.getMessage.contains(notFoundStringOld) && thrown3.getMessage.contains(notFoundStringOld))
   }
 }

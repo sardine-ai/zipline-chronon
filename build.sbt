@@ -33,7 +33,7 @@ ThisBuild / scalaVersion := scala_2_12
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark_embedded, flink)
+  .aggregate(api, aggregator, online, spark_uber, flink)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -156,15 +156,7 @@ lazy val spark_uber = (project in file("spark"))
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
-  )
-
-lazy val spark_embedded = (project in file("spark"))
-  .dependsOn(aggregator.%("compile->compile;test->test"), online_unshaded)
-  .settings(
-    sparkBaseSettings,
-    crossScalaVersions := supportedVersions,
-    libraryDependencies ++= spark_all,
-    target := target.value.toPath.resolveSibling("target-embedded").toFile
+    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3"
   )
 
 lazy val flink = project
