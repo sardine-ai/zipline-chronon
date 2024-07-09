@@ -1,4 +1,4 @@
-package ai.chronon.online
+package ai.chronon.online.test
 
 import org.junit.Test
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}

@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.test
 
 import ai.chronon.aggregator.windowing.FinalBatchIr
 import ai.chronon.api.Extensions.GroupByOps
@@ -22,7 +22,8 @@ import ai.chronon.api.{Builders, GroupBy, MetaData}
 import ai.chronon.online.Fetcher.{ColumnSpec, Request, Response}
 import ai.chronon.online.FetcherCache.BatchResponses
 import ai.chronon.online.KVStore.TimedValue
-import org.junit.Assert.{assertFalse, assertTrue, fail}
+import ai.chronon.online._
+import org.junit.Assert.{assertFalse, assertTrue}
 import org.junit.{Before, Test}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
@@ -34,8 +35,7 @@ import org.scalatestplus.mockito.MockitoSugar
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
   val GroupBy = "relevance.short_term_user_features"
