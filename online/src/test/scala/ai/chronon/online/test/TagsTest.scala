@@ -14,10 +14,11 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.test
 
 import ai.chronon.api.Builders
 import ai.chronon.online.Metrics.{Context, Environment}
+import ai.chronon.online.{Metrics, TTLCache}
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
