@@ -43,7 +43,7 @@ jobs:
           pip install tox
           tox
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: htmlcov
           path: api/py/htmlcov
@@ -70,7 +70,7 @@ jobs:
           export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 test"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: spark-warehouse
