@@ -30,8 +30,10 @@ object OnlineDerivationUtil {
 
   def buildRenameOnlyDerivationFunction(derivationsScala: List[Derivation]): DerivationFunc = {
     {
-      case (_: Map[String, Any], values: Map[String, Any]) =>
-        reintroduceExceptions(derivationsScala.applyRenameOnlyDerivation(values), values)
+      case (_: Map[String, Any], values: Any) =>
+        reintroduceExceptions(derivationsScala.applyRenameOnlyDerivation(
+                                Option(values).getOrElse(Map.empty[String, Any]).asInstanceOf[Map[String, Any]]),
+                              values)
     }
   }
 
@@ -70,7 +72,7 @@ object OnlineDerivationUtil {
     val tsDsMap: Map[String, AnyRef] = {
       Map("ts" -> (requestTs).asInstanceOf[AnyRef], "ds" -> (requestDs).asInstanceOf[AnyRef])
     }
-    val derivedMap: Map[String, AnyRef] = deriveFunc(request.keys, baseMap ++ tsDsMap)
+    val derivedMap: Map[String, AnyRef] = deriveFunc(request.keys, Option(baseMap).getOrElse(Map.empty) ++ tsDsMap)
       .mapValues(_.asInstanceOf[AnyRef])
       .toMap
     val derivedMapCleaned = derivedMap -- tsDsMap.keys

@@ -21,7 +21,7 @@ lazy val scala_2_12 = "2.12.18"
 lazy val spark_3_5 = "3.5.1"
 // flink deps: https://mvnrepository.com/artifact/org.apache.flink/flink-java/1.17.1
 // jackson is shaded 2.13-2.16, no avro dependency
-lazy val flink_1_18 = "1.18.1"
+lazy val flink_1_17 = "1.17.0"
 lazy val jackson_2_15 = "2.15.2"
 lazy val avro_1_11 = "1.11.2"
 
@@ -35,13 +35,6 @@ lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala2
 lazy val root = (project in file("."))
   .aggregate(api, aggregator, online, spark_uber, flink)
   .settings(name := "chronon")
-
-/**
-  * Versions are look up from mvn central - so we are fitting for three configurations
-  * scala 11 + spark 2.4: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.11/2.4.0
-  * scala 12 + spark 3.1.1: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.12/3.1.1
-  * scala 13 + spark 3.2.1: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.13/3.2.1
-  */
 
 val spark_sql = Seq(
   "org.apache.spark" %% "spark-sql",
@@ -69,11 +62,12 @@ val flink_all = Seq(
   "org.apache.flink" % "flink-metrics-dropwizard",
   "org.apache.flink" % "flink-clients",
   "org.apache.flink" % "flink-test-utils"
-).map(_ % flink_1_18)
+).map(_ % flink_1_17)
 
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
 
 lazy val api = project
+  .enablePlugins(ShadingPlugin)
   .settings(
     Compile / sourceGenerators += Def.task {
       val inputThrift = baseDirectory.value / "thrift" / "api.thrift"
@@ -82,16 +76,16 @@ lazy val api = project
     }.taskValue,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_sql_provided,
+
     libraryDependencies ++= Seq(
-      "org.apache.thrift" % "libthrift" % "0.20.0",
-      "javax.annotation" % "javax.annotation-api" % "1.3.2",
+      "org.apache.thrift" % "libthrift" % "0.13.0", // cannot upgrade this without breaking compatibility
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
       "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test"
     )
-  )
+)
 
 lazy val aggregator = project
   .dependsOn(api.%("compile->compile;test->test"))
@@ -117,8 +111,6 @@ lazy val online = project
     libraryDependencies ++= spark_all,
   )
 
-// TODO: see if we can unify online shaded & un shaded
-// in theory only flink needs the online package,
 lazy val online_unshaded = (project in file("online"))
   .dependsOn(aggregator.%("compile->compile;test->test"))
   .enablePlugins(BuildInfoPlugin)
@@ -164,9 +156,10 @@ lazy val spark_uber = (project in file("spark"))
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
+    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3"
   )
 
-lazy val flink = (project in file("flink"))
+lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
     libraryDependencies ++= spark_all,
