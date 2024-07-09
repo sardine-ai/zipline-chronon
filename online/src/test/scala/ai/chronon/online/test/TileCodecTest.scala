@@ -14,24 +14,13 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.test
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.{
-  Aggregation,
-  Builders,
-  FloatType,
-  IntType,
-  ListType,
-  LongType,
-  Operation,
-  Row,
-  StringType,
-  TimeUnit,
-  Window
-}
+import ai.chronon.api._
+import ai.chronon.online.{ArrayRow, TileCodec}
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
