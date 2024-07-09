@@ -168,10 +168,10 @@ lazy val flink = project
 
 ThisBuild / assemblyMergeStrategy := {
   case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
-  case PathList("META-INF", _ @_*)         => MergeStrategy.filterDistinctLines
+  case PathList("META-INF", _*)         => MergeStrategy.filterDistinctLines
   case "plugin.xml"                        => MergeStrategy.last
-  case PathList("com", "fasterxml", _ @_*) => MergeStrategy.last
-  case PathList("com", "google", _ @_*)    => MergeStrategy.last
+  case PathList("com", "fasterxml", _*) => MergeStrategy.last
+  case PathList("com", "google", _*)    => MergeStrategy.last
   case _                                   => MergeStrategy.first
 }
 exportJars := true
