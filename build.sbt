@@ -1,6 +1,7 @@
 import sbt.Keys.{libraryDependencies, *}
 import sbt.Test
 import sbt.*
+import sbt.Tests.{Group, SubProcess}
 
 // Notes about a few dependencies - and how we land on versions
 // Our approach is to use the latest stable versions of deps as of today (July 24) and pin to them for a few years
@@ -150,25 +151,6 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
   libraryDependencies += "org.xerial.snappy" % "snappy-java" % "1.1.10.4" % Test
 ) ++ addArtifact(assembly / artifact, assembly)
 
-val javaSecurityOptions = Seq(
-  "--add-opens=java.base/java.lang=ALL-UNNAMED",
-  "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
-  "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
-  "--add-opens=java.base/java.io=ALL-UNNAMED",
-  "--add-opens=java.base/java.net=ALL-UNNAMED",
-  "--add-opens=java.base/java.nio=ALL-UNNAMED",
-  "--add-opens=java.base/java.util=ALL-UNNAMED",
-  "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
-  "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
-  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
-  "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
-  "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
-  "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
-  "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED",
-  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-)
-
-
 lazy val spark_uber = (project in file("spark"))
   .dependsOn(aggregator.%("compile->compile;test->test"), online_unshaded)
   .settings(
@@ -176,6 +158,8 @@ lazy val spark_uber = (project in file("spark"))
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
+    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDT"),
+    Test / logBuffered := false
   )
 
 lazy val flink = project
