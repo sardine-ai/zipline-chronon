@@ -48,7 +48,7 @@ jobs:
           name: htmlcov
           path: api/py/htmlcov
 
-  spark_scala_tests:
+  other_spark_tests:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -61,10 +61,68 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Run spark tests
+
+      - name: Run other spark tests
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt spark_uber/test
+          sbt "spark_uber/testOnly -- -l ai.chronon.spark.JoinTest -l ai.chronon.spark.test.MutationsTest -l ai.chronon.spark.test.FetcherTest"
+
+  join_spark_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run other spark tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+          sbt "spark_uber/testOnly ai.chronon.spark.JoinTest"
+
+  mutation_spark_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run other spark tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+          sbt "spark_uber/testOnly ai.chronon.spark.test.MutationsTest"
+
+  fetcher_spark_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run other spark tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+          sbt "spark_uber/testOnly ai.chronon.spark.test.FetcherTest"
 
   other_scala_tests:
     runs-on: ubuntu-latest
