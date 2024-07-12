@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run scala tests
         run: |
-          export SBT_OPTS="-Xmx8G -Xms2G -J--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt spark_uber/test
 
 
