@@ -158,12 +158,6 @@ lazy val spark_uber = (project in file("spark"))
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
-    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oDT"),
-    Test / logBuffered := false,
-    Test / parallelExecution := true,
-    Test / fork := true,
-    Test / testForkedParallel := true,
-    Global / concurrentRestrictions  += Tags.limit(Tags.Test, 4)
   )
 
 lazy val flink = project
