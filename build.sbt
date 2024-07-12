@@ -157,7 +157,7 @@ lazy val spark_uber = (project in file("spark"))
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
-    javaOptions ++= Seq(
+    Test / javaOptions ++= Seq(
       "--add-opens=java.base/java.lang=ALL-UNNAMED",
       "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
       "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
