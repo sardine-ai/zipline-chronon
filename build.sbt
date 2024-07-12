@@ -179,7 +179,6 @@ lazy val spark_uber = (project in file("spark"))
     Test / fork := true,
     Test / javaOptions ++= javaSecurityOptions,
     javaOptions ++= javaSecurityOptions,
-    scalacOptions ++= javaSecurityOptions,
     Test / testGrouping := {
       val tests = (Test / definedTests).value
       val groupSize = 5 // Adjust this number based on your needs
