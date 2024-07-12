@@ -168,6 +168,7 @@ val javaSecurityOptions = Seq(
   "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
 )
 
+
 lazy val spark_uber = (project in file("spark"))
   .dependsOn(aggregator.%("compile->compile;test->test"), online_unshaded)
   .settings(
@@ -175,6 +176,7 @@ lazy val spark_uber = (project in file("spark"))
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
+    Test / fork := true,
     Test / javaOptions ++= javaSecurityOptions,
     javaOptions ++= javaSecurityOptions,
     scalacOptions ++= javaSecurityOptions,
