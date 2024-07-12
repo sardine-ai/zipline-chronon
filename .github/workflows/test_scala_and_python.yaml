@@ -63,6 +63,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run scala tests
+        env:
+          JAVA_OPTS: "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED"
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 spark_uber/test"
