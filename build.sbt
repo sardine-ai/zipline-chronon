@@ -156,7 +156,18 @@ lazy val spark_uber = (project in file("spark"))
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
-    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3"
+    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
+    Test / testGrouping := {
+      val tests = (Test / definedTests).value
+      val groupSize = 5 // Adjust this number based on your needs
+      tests.grouped(groupSize).zipWithIndex.map { case (group, i) =>
+        Tests.Group(
+          name = s"Group${i + 1}",
+          tests = group,
+          runPolicy = Tests.SubProcess(ForkOptions())
+        )
+      }.toSeq
+    }
   )
 
 lazy val flink = project
