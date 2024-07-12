@@ -1,6 +1,7 @@
 import sbt.Keys.{libraryDependencies, *}
 import sbt.Test
 import sbt.*
+import sbt.Tests.{Group, SubProcess}
 
 // Notes about a few dependencies - and how we land on versions
 // Our approach is to use the latest stable versions of deps as of today (July 24) and pin to them for a few years
@@ -156,7 +157,7 @@ lazy val spark_uber = (project in file("spark"))
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
-    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3"
+    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
   )
 
 lazy val flink = project
