@@ -32,6 +32,3 @@ abstract class Catalog(kvStore: KVStore) {
   private val WaitTime = Duration.Inf
   private val thriftKvUtil = new ThriftKvUtil(kvStore, CatalogKvTableName, WaitTime)
 }
-
-
-

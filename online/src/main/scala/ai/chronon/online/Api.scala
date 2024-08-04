@@ -125,12 +125,12 @@ object StringArrayConverter {
   *      In case of an update - one must produce both before and after values
   *      In case of a delete - only before is populated & after is left as null
   *      In case of a insert - only after is populated & before is left as null
- *
- *       ==== TIME ASSUMPTIONS ====
+  *
+  *       ==== TIME ASSUMPTIONS ====
   *      The schema needs to contain a `ts`(milliseconds as a java Long)
   *      For the entities case, `mutation_ts` when absent will use `ts` as a replacement
- *
- *       ==== TYPE CONVERSIONS ====
+  *
+  *       ==== TYPE CONVERSIONS ====
   *      Java types corresponding to the schema types. [[Serde]] should produce mutations that comply.
   *      NOTE: everything is nullable (hence boxed)
   *      IntType        java.lang.Integer
@@ -186,8 +186,6 @@ abstract class ExternalSourceHandler extends Serializable {
   def fetch(requests: Seq[Fetcher.Request]): Future[Seq[Fetcher.Response]]
 }
 
-
-
 // the implementer of this class should take a single argument, a scala map of string to string
 // chronon framework will construct this object with user conf supplied via CLI
 abstract class Api(userConf: Map[String, String]) extends Serializable {
@@ -214,7 +212,6 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
 
   // kafka has built-in support - but one can add support to other types using this method.
   def generateStreamBuilder(streamType: String): StreamBuilder = null
-
 
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
   def setupLogging(): Unit = {}

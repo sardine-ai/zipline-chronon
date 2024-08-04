@@ -15,7 +15,8 @@ class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore
   @transient override lazy val logger = LoggerFactory.getLogger(getClass)
 
   private val dataClient: BigtableDataClient = {
-    val settings = BigtableDataSettings.newBuilder()
+    val settings = BigtableDataSettings
+      .newBuilder()
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .build()
@@ -27,38 +28,40 @@ class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore
     // Implementation would depend on how you want to handle table creation
   }
 
-  override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = Future {
-    logger.info(s"Performing multi-get for ${requests.size} requests")
-    requests.map { request =>
-      val rowKey = ByteString.copyFrom(request.keyBytes)
-      val query = Query.create(BTTableId.of(request.dataset))
-        .rowKey(rowKey)
-        .filter(Filters.FILTERS.family().exactMatch(columnFamilyString))
-        .filter(Filters.FILTERS.qualifier().exactMatch(columnFamilyQualifierString))
+  override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] =
+    Future {
+      logger.info(s"Performing multi-get for ${requests.size} requests")
+      requests.map { request =>
+        val rowKey = ByteString.copyFrom(request.keyBytes)
+        val query = Query
+          .create(BTTableId.of(request.dataset))
+          .rowKey(rowKey)
+          .filter(Filters.FILTERS.family().exactMatch(columnFamilyString))
+          .filter(Filters.FILTERS.qualifier().exactMatch(columnFamilyQualifierString))
 
-      val queryTime = System.currentTimeMillis()
-      // scan from afterTsMillis to now - skip events with future timestamps
-      request.afterTsMillis.foreach { ts =>
-        // Bigtable uses microseconds
-        query.filter(Filters.FILTERS.timestamp().range().startOpen(ts * 1000).endClosed(queryTime))
-      }
-
-      try {
-        val rows = dataClient.readRows(query).iterator().asScala.toSeq
-        val timedValues = rows.flatMap { row =>
-          row.getCells(columnFamilyString, columnFamilyQualifier).asScala.map { cell =>
-            // Convert back to milliseconds
-            KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
-          }
+        val queryTime = System.currentTimeMillis()
+        // scan from afterTsMillis to now - skip events with future timestamps
+        request.afterTsMillis.foreach { ts =>
+          // Bigtable uses microseconds
+          query.filter(Filters.FILTERS.timestamp().range().startOpen(ts * 1000).endClosed(queryTime))
         }
-        KVStore.GetResponse(request, Success(timedValues))
-      } catch {
-        case e: Exception =>
-          logger.error(s"Error getting values: ${e.getMessage}")
-          KVStore.GetResponse(request, Failure(e))
+
+        try {
+          val rows = dataClient.readRows(query).iterator().asScala.toSeq
+          val timedValues = rows.flatMap { row =>
+            row.getCells(columnFamilyString, columnFamilyQualifier).asScala.map { cell =>
+              // Convert back to milliseconds
+              KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
+            }
+          }
+          KVStore.GetResponse(request, Success(timedValues))
+        } catch {
+          case e: Exception =>
+            logger.error(s"Error getting values: ${e.getMessage}")
+            KVStore.GetResponse(request, Failure(e))
+        }
       }
     }
-  }
 
   private val columnFamilyString: String = "cf"
   private val columnFamilyQualifierString: String = "value"
@@ -66,30 +69,32 @@ class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore
   // TODO figure out if we are actually writing partitioned data (I think we are not but we should)
   private val partitionColumn: String = "ds"
 
-  override def multiPut(requests: Seq[KVStore.PutRequest]): Future[Seq[Boolean]] = Future {
-    logger.info(s"Performing multi-put for ${requests.size} requests")
-    requests.map { request =>
-      val tableId = BTTableId.of(request.dataset)
-      val mutation = RowMutation.create(tableId, ByteString.copyFrom(request.keyBytes))
-      val timestamp = request.tsMillis.getOrElse(System.currentTimeMillis())
-      val cellValue = ByteString.copyFrom(request.valueBytes)
-      mutation.setCell(columnFamilyString, columnFamilyQualifier, timestamp * 1000, cellValue)
+  override def multiPut(requests: Seq[KVStore.PutRequest]): Future[Seq[Boolean]] =
+    Future {
+      logger.info(s"Performing multi-put for ${requests.size} requests")
+      requests.map { request =>
+        val tableId = BTTableId.of(request.dataset)
+        val mutation = RowMutation.create(tableId, ByteString.copyFrom(request.keyBytes))
+        val timestamp = request.tsMillis.getOrElse(System.currentTimeMillis())
+        val cellValue = ByteString.copyFrom(request.valueBytes)
+        mutation.setCell(columnFamilyString, columnFamilyQualifier, timestamp * 1000, cellValue)
 
-      try {
-        dataClient.mutateRow(mutation)
-        true
-      } catch {
-        case e: Exception =>
-          logger.error(s"Error putting key-value pair: ${e.getMessage}")
-          false
+        try {
+          dataClient.mutateRow(mutation)
+          true
+        } catch {
+          case e: Exception =>
+            logger.error(s"Error putting key-value pair: ${e.getMessage}")
+            false
+        }
       }
     }
-  }
 
   private val bigquery: BigQuery = BigQueryOptions.getDefaultInstance.getService
 
   override def bulkPut(sourceOfflineTable: String, destinationOnlineDataSet: String, partition: String): Unit = {
-    logger.info(s"Performing bulk put from BigQuery table $sourceOfflineTable to Bigtable dataset $destinationOnlineDataSet for partition $partition")
+    logger.info(
+      s"Performing bulk put from BigQuery table $sourceOfflineTable to Bigtable dataset $destinationOnlineDataSet for partition $partition")
 
     val exportQuery = s"""
       EXPORT DATA OPTIONS(
@@ -118,7 +123,8 @@ class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore
       WHERE $partitionColumn='$partition'
     """
 
-    val queryConfig = QueryJobConfiguration.newBuilder(exportQuery)
+    val queryConfig = QueryJobConfiguration
+      .newBuilder(exportQuery)
       .setUseLegacySql(false)
       .build()
 
@@ -137,4 +143,3 @@ class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore
     }
   }
 }
-
