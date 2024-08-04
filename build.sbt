@@ -34,7 +34,7 @@ ThisBuild / scalaVersion := scala_2_12
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark_uber, flink)
+  .aggregate(api, aggregator, online, spark_uber, flink, cloud_gcp)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -164,15 +164,11 @@ lazy val spark_uber = (project in file("spark"))
 
 lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
-  .settings(
-    libraryDependencies ++= spark_all,
-    libraryDependencies ++= flink_all,
-  )
 
 lazy val cloud_gcp = project
   .dependsOn(api.%("compile->compile;test->test"), online)
   .settings(
-    libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.40.1",
+    libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
   )
