@@ -3,7 +3,6 @@ package ai.chronon.online
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala.{DataStream => FlinkStream}
 
-
 // TODO deprecate this in favor of Api.readTopic + Api.streamDecoder
 abstract class FlinkSource[T] extends Serializable {
 
