@@ -110,9 +110,10 @@ lazy val online = project
       "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8"
     ),
     libraryDependencies ++= spark_all,
+    libraryDependencies ++= flink_all
   )
 
-lazy val online_unshaded = (project in file("online"))
+lazy val online_provided = (project in file("online"))
   .dependsOn(aggregator.%("compile->compile;test->test"))
   .enablePlugins(BuildInfoPlugin)
   .settings(
@@ -127,6 +128,7 @@ lazy val online_unshaded = (project in file("online"))
     ),
     libraryDependencies ++= jackson,
     libraryDependencies ++= spark_all.map(_ % "provided"),
+    libraryDependencies ++= flink_all.map(_ % "provided")
   )
 
 
@@ -152,7 +154,7 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
 ) ++ addArtifact(assembly / artifact, assembly)
 
 lazy val spark_uber = (project in file("spark"))
-  .dependsOn(aggregator.%("compile->compile;test->test"), online_unshaded)
+  .dependsOn(aggregator.%("compile->compile;test->test"), online_provided)
   .settings(
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
@@ -165,6 +167,14 @@ lazy val flink = project
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
+  )
+
+lazy val cloud_gcp = project
+  .dependsOn(api.%("compile->compile;test->test"), online)
+  .settings(
+    libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.40.1",
+    libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
+    libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
   )
 
 ThisBuild / assemblyMergeStrategy := {

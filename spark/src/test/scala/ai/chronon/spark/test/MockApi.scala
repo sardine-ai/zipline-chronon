@@ -20,6 +20,7 @@ import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.api.{Constants, StructType}
 import ai.chronon.online.Fetcher.Response
 import ai.chronon.online._
+import ai.chronon.online.Serde
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.avro.Schema
@@ -37,7 +38,7 @@ import scala.concurrent.Future
 import scala.util.ScalaJavaConversions.{IteratorOps, JListOps, JMapOps}
 import scala.util.Success
 
-class MockDecoder(inputSchema: StructType) extends StreamDecoder {
+class MockDecoder(inputSchema: StructType) extends Serde {
 
   private def byteArrayToAvro(avro: Array[Byte], schema: Schema): GenericRecord = {
     val reader = new SpecificDatumReader[GenericRecord](schema)
