@@ -414,3 +414,10 @@ struct TDataType {
     2: optional list<DataField> params
     3: optional string name // required only for struct types
 }
+
+struct DataSpec {
+    1: optional TDataType schema
+    2: optional list<string> partitionColumns
+    3: optional i32 retentionDays
+    4: optional map<string, string> props
+}
