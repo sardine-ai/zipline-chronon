@@ -230,7 +230,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
         ingressContext.increment(Metrics.Name.RowCount)
         ingressContext.count(Metrics.Name.Bytes, arr.length)
         try {
-          streamDecoder.decode(arr)
+          streamDecoder.fromBytes(arr)
         } catch {
           case ex: Throwable =>
             logger.info(s"Error while decoding streaming events from stream: ${dataStream.topicInfo.name}")
