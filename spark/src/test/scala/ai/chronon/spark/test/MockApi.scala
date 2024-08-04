@@ -47,7 +47,7 @@ class MockDecoder(inputSchema: StructType) extends Serde {
     reader.read(null, decoder)
   }
 
-  override def decode(bytes: Array[Byte]): Mutation = {
+  override def fromBytes(bytes: Array[Byte]): Mutation = {
     val avroSchema = AvroConversions.fromChrononSchema(inputSchema)
     val avroRecord = byteArrayToAvro(bytes, avroSchema)
 
@@ -132,7 +132,7 @@ class MockApi(kvStore: () => KVStore, val namespace: String) extends Api(null) {
   val loggedResponseList: ConcurrentLinkedQueue[LoggableResponseBase64] =
     new ConcurrentLinkedQueue[LoggableResponseBase64]
 
-  override def streamDecoder(parsedInfo: GroupByServingInfoParsed): StreamDecoder = {
+  override def streamDecoder(parsedInfo: GroupByServingInfoParsed): Serde = {
     println(
       s"decoding stream ${parsedInfo.groupBy.streamingSource.get.topic} with " +
         s"schema: ${SparkConversions.fromChrononSchema(parsedInfo.streamChrononSchema).catalogString}")

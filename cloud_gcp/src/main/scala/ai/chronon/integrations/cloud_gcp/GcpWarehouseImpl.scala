@@ -1,42 +1,33 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.api.StructType
+import ai.chronon.api.{DataSpec, DataType}
 import ai.chronon.online.connectors
-import ai.chronon.online.connectors.{Catalog, DataSpec, Topic, Warehouse}
-import com.google.cloud.bigquery._
+import ai.chronon.online.connectors.{Catalog, Topic, Warehouse}
+import com.google.cloud.bigquery.{
+  BigQuery,
+  BigQueryException,
+  BigQueryOptions,
+  DatasetInfo,
+  Field,
+  StandardSQLTypeName,
+  StandardTableDefinition,
+  TableId,
+  TableInfo,
+  TimePartitioning
+}
 import com.google.cloud.pubsub.v1.{SubscriptionAdminClient, TopicAdminClient}
 import com.google.pubsub.v1.{ProjectSubscriptionName, PushConfig, Subscription, TopicName}
-import org.apache.flink.streaming.api.scala.DataStream
 import org.slf4j.LoggerFactory
 
 import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
-
-class PubSubMessageBusImpl(projectId: String, catalog: Catalog) extends connectors.MessageBus(catalog) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
-
-  override protected def createTopicInternal(topic: Topic, spec: DataSpec): Unit = {
-    try {
-      val topicName = TopicName.of(projectId, topic.name)
-      TopicAdminClient.create().createTopic(topicName)
-      logger.info(s"Topic ${topicName.getTopic} created.")
-    } catch {
-      case e: Exception => logger.error(s"Error creating topic: ${e.getMessage}")
-    }
-  }
-
-  override protected def writeBytes(topic: Topic, data: Array[Byte], key: Array[Byte]): Unit = ???
-
-  override protected def readBytes(topic: Topic): DataStream[Array[Byte]] = ???
-}
-
 class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(catalog) {
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
   private val bigquery: BigQuery = BigQueryOptions.getDefaultInstance.getService
-  override def createTopic(topic: Topic, spec: DataSpec): Unit = {
+  def createTopic(topic: Topic, spec: DataSpec): Unit = {
     try {
-      val topicName = TopicName.of(projectId, topicName)
+      val topicName = TopicName.of(projectId, topic.name)
       TopicAdminClient.create().createTopic(topicName)
       logger.info(s"Topic ${topicName.getTopic} created.")
     } catch {
@@ -51,7 +42,7 @@ class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(ca
   }
 
   override def createTableInternal(table: connectors.Table, spec: DataSpec): Unit = {
-    val schema = BigQuerySchemaConverter.convertToBigQuerySchema(spec.schema)
+    val schema = BigQuerySchemaConverter.convertToBigQuerySchema(DataType.fromTDataType(spec.schema))
 
     val tableId = TableId.of(projectId, table.databaseName, table.tableName)
 
@@ -60,15 +51,17 @@ class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(ca
       .newBuilder()
       .setSchema(schema)
 
-    // Add partitioning if specified
-    if (spec.partitionColumns.nonEmpty) {
-      val partitioning = spec.partitionColumns.map { columnName =>
-        schema.getFields.asScala.find(_.getName == columnName) match {
-          case Some(field) => createTimePartitioning(field, spec.retentionDays)
-          case None        => throw new IllegalArgumentException(s"Partition column $columnName not found in schema")
-        }
-      }.head // BigQuery supports only one partition column, so we take the first one
-
+    val retentionDays = if (spec.isSetRetentionDays) { Option(spec.getRetentionDays) }
+    else { None }
+    Option(spec.partitionColumns).foreach { cols =>
+      assert(!cols.isEmpty, "Partition columns must be a non-empty list or null")
+      assert(cols.size == 1, "BigQuery supports only one partition column")
+      val col = cols.get(0)
+      val field = schema.getFields.asScala.find(_.getName == col)
+      lazy val fieldNames = schema.getFields.asScala.map(_.getName).mkString(", ")
+      assert(field.nonEmpty, s"Partition column $col not found in schema. Available columns: $fieldNames")
+      val partitioning = createTimePartitioning(field.get, return
+      )
       tableDefinitionBuilder.setTimePartitioning(partitioning)
     }
 
@@ -83,7 +76,7 @@ class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(ca
       println(s"Table ${createdTable.getTableId.getTable} created successfully.")
 
       // Log retention period if set
-      spec.retentionDays.foreach { days =>
+      retentionDays.foreach { days =>
         println(s"Table will expire after $days days.")
       }
     } catch {
@@ -135,8 +128,6 @@ class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(ca
       case e: Exception => logger.error(s"Error creating subscription: ${e.getMessage}")
     }
   }
-
-
 
   override def appendQueryOutput(query: String, table: connectors.Table): Unit = ???
 }
