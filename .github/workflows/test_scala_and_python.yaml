@@ -124,7 +124,7 @@ jobs:
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt "spark_uber/testOnly ai.chronon.spark.test.FetcherTest"
 
-  other_scala_tests:
+  scala_compile_and_fmt:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -138,8 +138,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Scala compile
+        run: sbt "++ 2.12.18 compile"
+
       - name: Run ScalafmtCheck
         run: sbt +scalafmtCheck
+
+
+  other_scala_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Run Flink tests
         run: |
