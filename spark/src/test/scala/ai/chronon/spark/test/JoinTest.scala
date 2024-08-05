@@ -21,7 +21,6 @@ import ai.chronon.api
 import ai.chronon.api.{Accuracy, Builders, Constants, LongType, Operation, StringType, TimeUnit, Window}
 import ai.chronon.api.Extensions._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.GroupBy.renderDataSourceQuery
 import ai.chronon.spark._
 import ai.chronon.spark.stats.SummaryJob
 import org.apache.spark.rdd.RDD
@@ -41,7 +40,7 @@ import scala.util.ScalaJavaConversions.ListOps
 class JoinTest {
 
   val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
-  private val tableUtils = TableUtils(spark)
+  private implicit val tableUtils = TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
@@ -676,37 +675,6 @@ class JoinTest {
       accuracy = Accuracy.TEMPORAL
     )
 
-  }
-
-  @Test
-  def testSourceQueryRender(): Unit = {
-    // Test cumulative
-    val viewsGroupByCumulative = getViewsGroupBy(suffix = "render", makeCumulative = true)
-    val renderedCumulative = renderDataSourceQuery(
-      viewsGroupByCumulative,
-      viewsGroupByCumulative.sources.asScala.head,
-      Seq("item"),
-      PartitionRange("2021-02-23", "2021-05-03")(tableUtils),
-      tableUtils,
-      None,
-      viewsGroupByCumulative.inferredAccuracy
-    )
-    // Only checking that the date logic is correct in the query
-    assert(renderedCumulative.contains(s"(ds >= '${today}') AND (ds <= '${today}')"))
-
-    // Test incremental
-    val viewsGroupByIncremental = getGroupByForIncrementalSourceTest()
-    val renderedIncremental = renderDataSourceQuery(
-      viewsGroupByCumulative,
-      viewsGroupByIncremental.sources.asScala.head,
-      Seq("item"),
-      PartitionRange("2021-01-01", "2021-01-01")(tableUtils),
-      tableUtils,
-      None,
-      viewsGroupByCumulative.inferredAccuracy
-    )
-    println(renderedIncremental)
-    assert(renderedIncremental.contains(s"(ds >= '2021-01-01') AND (ds <= '2021-01-01')"))
   }
 
   @Test

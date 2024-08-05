@@ -3,12 +3,16 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.api.{DataSpec, DataType}
 import ai.chronon.online.connectors
 import ai.chronon.online.connectors.{Catalog, Topic, Warehouse}
+import com.google.cloud.bigquery.JobStatistics.QueryStatistics
 import com.google.cloud.bigquery.{
   BigQuery,
   BigQueryException,
   BigQueryOptions,
   DatasetInfo,
   Field,
+  JobId,
+  JobInfo,
+  QueryJobConfiguration,
   StandardSQLTypeName,
   StandardTableDefinition,
   TableId,
@@ -129,5 +133,65 @@ class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(ca
     }
   }
 
-  override def appendQueryOutput(query: String, table: connectors.Table): Unit = ???
+  // write the output of the bigquery query to the table
+  // first time this is called table will be created
+  // other times the data will be appended
+  override def nativeQuery(query: String, table: connectors.Table): Unit = {
+    val datasetId = table.databaseName
+    val tableId = table.tableName
+
+    // Step 1: Prepare the destination dataset
+    val dataset = bigquery.getDataset(datasetId)
+    if (dataset == null) {
+      bigquery.create(DatasetInfo.newBuilder(datasetId).build())
+    }
+
+    // Step 2: Check if the destination table exists
+    val existingTable = bigquery.getTable(datasetId, tableId)
+
+    // Step 3: Prepare the query
+    val finalQuery = if (existingTable != null) {
+      // Construct INSERT statement for existing table
+      val columnNames =
+        existingTable.getDefinition[StandardTableDefinition].getSchema.getFields.asScala.map(_.getName).mkString(", ")
+      s"""
+      INSERT INTO `$projectId.$datasetId.$tableId` ($columnNames)
+      $query
+      """
+    } else {
+      // Construct CREATE TABLE AS SELECT (CTAS) for new table
+      s"""
+      CREATE TABLE `$projectId.$datasetId.$tableId` AS
+      $query
+      """
+    }
+
+    // Step 4: Execute the query
+    val queryConfig = QueryJobConfiguration
+      .newBuilder(finalQuery)
+      .setUseLegacySql(false)
+      .build()
+
+    val jobId = JobId.of(java.util.UUID.randomUUID().toString)
+    val job = bigquery.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build())
+
+    // Wait for the job to complete
+    job.waitFor()
+
+    if (job.getStatus.getError != null) {
+      throw new RuntimeException(s"Query failed: ${job.getStatus.getError}")
+    }
+
+    // Step 5: Get job statistics
+    val queryStatistics = job.getStatistics.asInstanceOf[QueryStatistics]
+    val rowsWritten = queryStatistics.getNumDmlAffectedRows
+    val slotsSeconds = queryStatistics.getTotalSlotMs / 1000
+    val timeTaken = (queryStatistics.getEndTime - queryStatistics.getStartTime) / 1000
+    println(s"""
+         |Wrote $rowsWritten rows to $datasetId.$tableId
+         |  time taken: $timeTaken seconds
+         |  slots consumed: $slotsSeconds slot seconds
+         |  processed bytes: ${queryStatistics.getTotalBytesProcessed}
+         |""".stripMargin)
+  }
 }

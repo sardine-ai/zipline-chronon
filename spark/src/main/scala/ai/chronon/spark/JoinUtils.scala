@@ -16,8 +16,7 @@
 
 package ai.chronon.spark
 
-import java.util
-import org.slf4j.LoggerFactory
+import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions.{JoinOps, _}
@@ -27,14 +26,38 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.{coalesce, col, udf}
 import org.apache.spark.util.sketch.BloomFilter
+import org.slf4j.LoggerFactory
 
-import scala.collection.compat._
+import java.util
 import scala.jdk.CollectionConverters._
-import scala.util.ScalaJavaConversions.{JIteratorOps, JMapOps, MapOps}
-import ai.chronon.api
+import scala.util.ScalaJavaConversions.MapOps
 
 object JoinUtils {
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  val set_add: UserDefinedFunction =
+    udf((set: Seq[String], item: String) => {
+      if (set == null && item == null) {
+        null
+      } else if (set == null) {
+        Seq(item)
+      } else if (item == null) {
+        set
+      } else {
+        (set :+ item).distinct
+      }
+    })
+  // if either array or query is null or empty, return false
+  // if query has an item that exists in array, return true; otherwise, return false
+  val contains_any: UserDefinedFunction =
+    udf((array: Seq[String], query: Seq[String]) => {
+      if (query == null) {
+        None
+      } else if (array == null) {
+        Some(false)
+      } else {
+        Some(query.exists(q => array.contains(q)))
+      }
+    })
 
   /***
     * Util methods for join computation
@@ -50,11 +73,10 @@ object JoinUtils {
     } else {
       Seq()
     }
-    val scanQuery = range.genScanQuery(joinConf.left.query,
-                                       joinConf.left.table,
-                                       fillIfAbsent = Map(tableUtils.partitionColumn -> null) ++ timeProjection) +
-      limit.map(num => s" LIMIT $num").getOrElse("")
-    val df = tableUtils.sql(scanQuery)
+    var df = range.scanDf(joinConf.left.query,
+                          joinConf.left.table,
+                          fillIfAbsent = Map(tableUtils.partitionColumn -> null) ++ timeProjection)(tableUtils)
+    limit.foreach(l => df = df.limit(l))
     val skewFilter = joinConf.skewFilter()
     val result = skewFilter
       .map(sf => {
@@ -63,39 +85,13 @@ object JoinUtils {
       })
       .getOrElse(df)
     if (result.isEmpty) {
-      logger.info(s"Left side query below produced 0 rows in range $range. Query:\n$scanQuery")
+      logger.info(s"Left side query below produced 0 rows in range $range.")
       if (!allowEmpty) {
         return None
       }
     }
     Some(result)
   }
-
-  val set_add: UserDefinedFunction =
-    udf((set: Seq[String], item: String) => {
-      if (set == null && item == null) {
-        null
-      } else if (set == null) {
-        Seq(item)
-      } else if (item == null) {
-        set
-      } else {
-        (set :+ item).distinct
-      }
-    })
-
-  // if either array or query is null or empty, return false
-  // if query has an item that exists in array, return true; otherwise, return false
-  val contains_any: UserDefinedFunction =
-    udf((array: Seq[String], query: Seq[String]) => {
-      if (query == null) {
-        None
-      } else if (array == null) {
-        Some(false)
-      } else {
-        Some(query.exists(q => array.contains(q)))
-      }
-    })
 
   /***
     * Compute partition range to be filled for given join conf
