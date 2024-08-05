@@ -20,6 +20,7 @@ import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.api.{Constants, StructType}
 import ai.chronon.online.Fetcher.Response
 import ai.chronon.online._
+import ai.chronon.online.Serde
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.avro.Schema
@@ -37,7 +38,7 @@ import scala.concurrent.Future
 import scala.util.ScalaJavaConversions.{IteratorOps, JListOps, JMapOps}
 import scala.util.Success
 
-class MockDecoder(inputSchema: StructType) extends StreamDecoder {
+class MockDecoder(inputSchema: StructType) extends Serde {
 
   private def byteArrayToAvro(avro: Array[Byte], schema: Schema): GenericRecord = {
     val reader = new SpecificDatumReader[GenericRecord](schema)
@@ -46,7 +47,7 @@ class MockDecoder(inputSchema: StructType) extends StreamDecoder {
     reader.read(null, decoder)
   }
 
-  override def decode(bytes: Array[Byte]): Mutation = {
+  override def fromBytes(bytes: Array[Byte]): Mutation = {
     val avroSchema = AvroConversions.fromChrononSchema(inputSchema)
     val avroRecord = byteArrayToAvro(bytes, avroSchema)
 
@@ -131,7 +132,7 @@ class MockApi(kvStore: () => KVStore, val namespace: String) extends Api(null) {
   val loggedResponseList: ConcurrentLinkedQueue[LoggableResponseBase64] =
     new ConcurrentLinkedQueue[LoggableResponseBase64]
 
-  override def streamDecoder(parsedInfo: GroupByServingInfoParsed): StreamDecoder = {
+  override def streamDecoder(parsedInfo: GroupByServingInfoParsed): Serde = {
     println(
       s"decoding stream ${parsedInfo.groupBy.streamingSource.get.topic} with " +
         s"schema: ${SparkConversions.fromChrononSchema(parsedInfo.streamChrononSchema).catalogString}")

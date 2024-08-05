@@ -31,10 +31,15 @@ import scala.util.ScalaJavaConversions.ListOps
 object ThriftJsonCodec {
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
 
-  def serializer = new TSerializer(new TSimpleJSONProtocol.Factory())
+  @transient
+  private lazy val serializerThreaded: ThreadLocal[TSerializer] = new ThreadLocal[TSerializer] {
+    override def initialValue(): TSerializer = new TSerializer(new TSimpleJSONProtocol.Factory())
+  }
+
+  def serializer = serializerThreaded.get()
 
   def toJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
-    new String(serializer.serialize(obj))
+    new String(serializer.serialize(obj), Constants.UTF8)
   }
 
   def toJsonList[T <: TBase[_, _]: Manifest](obj: util.List[T]): String = {
