@@ -19,7 +19,7 @@ package ai.chronon.spark
 import java.io.{PrintWriter, StringWriter}
 import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.{Constants, PartitionSpec}
+import ai.chronon.api.{Constants, ParsedTable, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.Extensions._
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import ai.chronon.spark.Extensions.{DfStats, DfWithStats}
@@ -39,6 +39,7 @@ import java.util.concurrent.{ExecutorService, Executors}
 import scala.collection.{Seq, mutable}
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.util.ScalaJavaConversions.{ListOps, MapOps}
 import scala.util.{Failure, Success, Try}
 
 case class TableUtils(sparkSession: SparkSession) {
@@ -806,6 +807,33 @@ case class TableUtils(sparkSession: SparkSession) {
       // set a flag in table props to indicate that this is a dynamic table
       sql(alterTablePropertiesSql(tableName, Map(Constants.ChrononDynamicTable -> true.toString)))
     }
+  }
+
+  def scanDfBase(selectMap: Map[String, String],
+             table: String,
+             wheres: scala.collection.Seq[String],
+             fallbackSelects: Map[String, String] = Map.empty): DataFrame = {
+    val parsedTable = ParsedTable(table)
+    var reader = sparkSession.read
+    parsedTable.format.foreach { fmt => reader = reader.format(fmt) }
+    parsedTable.options.foreach { case (k, v) => reader = reader.option(k, v) }
+    val dataFrame = reader.load(parsedTable.table)
+    val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
+    dataFrame
+      .select(selects.head, selects.tail: _*)
+      .where(wheres.map(w => s"($w)").mkString(" AND "))
+  }
+
+  def scanDf(query: Query,
+             table: String,
+             fallbackSelects: Map[String, String] = Map.empty,
+             partitionColumn: String = partitionColumn,
+             range: Option[PartitionRange] = None): DataFrame = {
+    val rangeWheres = range.map(_.whereClauses(partitionColumn)).getOrElse(Seq.empty)
+    val queryWheres = Option(query.wheres).map(_.toScala).getOrElse(Seq.empty)
+    val wheres: Seq[String] = rangeWheres ++ queryWheres
+
+    scanDfBase(query.selects.toScala, table, wheres, fallbackSelects)
   }
 }
 

@@ -9,7 +9,9 @@ abstract class Warehouse(catalog: Catalog) {
   def enableIngestion(topic: Topic, table: Table): Unit
 
   // for staging queries
-  def appendQueryOutput(query: String, table: Table): Unit
+  // runs the query and appends the data to the table
+  // the first time this is called, the table will be created
+  def nativeQuery(query: String, table: Table): Unit
 
   def createTable(table: Table, spec: DataSpec): Unit = {
     createTableInternal(table, spec)

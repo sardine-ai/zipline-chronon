@@ -42,6 +42,7 @@ abstract class JoinBase(joinConf: api.Join,
                         showDf: Boolean = false,
                         selectedJoinParts: Option[Seq[String]] = None) {
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  private implicit val tu = tableUtils
   assert(Option(joinConf.metaData.outputNamespace).nonEmpty, s"output namespace could not be empty or null")
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinOffline, joinConf)
   val outputTable = joinConf.metaData.outputTable
@@ -204,7 +205,7 @@ abstract class JoinBase(joinConf: api.Join,
         throw e
     }
     if (tableUtils.tableExists(partTable)) {
-      Some(tableUtils.sql(rightRange.genScanQuery(query = null, partTable)))
+      Some(rightRange.scanDf(query = null, partTable))
     } else {
       // Happens when everything is handled by bootstrap
       None
@@ -466,7 +467,7 @@ abstract class JoinBase(joinConf: api.Join,
       .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConf.left.table)), skipFirstHole = skipFirstHole)
       .getOrElse(Seq.empty)
 
-    def finalResult: DataFrame = tableUtils.sql(rangeToFill.genScanQuery(null, outputTable))
+    def finalResult: DataFrame = rangeToFill.scanDf(null, outputTable)
     if (unfilledRanges.isEmpty) {
       logger.info(s"\nThere is no data to compute based on end partition of ${rangeToFill.end}.\n\n Exiting..")
       return Some(finalResult)
