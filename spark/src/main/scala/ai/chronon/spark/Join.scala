@@ -68,6 +68,7 @@ class Join(joinConf: api.Join,
            selectedJoinParts: Option[List[String]] = None)
     extends JoinBase(joinConf, endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
 
+  private implicit val tu: TableUtils = tableUtils
   private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
     structType.foldLeft(df) {
       case (df, field) =>
@@ -209,14 +210,12 @@ class Join(joinConf: api.Join,
       val wheres = Seq(s"ds >= '${effectiveRange.start}'", s"ds <= '${effectiveRange.end}'")
       val sql = QueryUtils.build(null, partTable, wheres)
       logger.info(s"Pulling data from joinPart table with: $sql")
-      val df = tableUtils.sparkSession.sql(sql)
-      (joinPart, df)
+      (joinPart, tableUtils.scanDfBase(null, partTable, wheres))
     }
   }
 
   override def computeFinalJoin(leftDf: DataFrame, leftRange: PartitionRange, bootstrapInfo: BootstrapInfo): Unit = {
-    val bootstrapDf =
-      tableUtils.sql(leftRange.genScanQuery(query = null, table = bootstrapTable)).addTimebasedColIfExists()
+    val bootstrapDf = leftRange.scanDf(query = null, table = bootstrapTable).addTimebasedColIfExists()
     val rightPartsData = getRightPartsData(leftRange)
     val joinedDfTry =
       try {
@@ -511,9 +510,8 @@ class Join(joinConf: api.Join,
               logger.info(s"partition range of bootstrap table ${part.table} is beyond unfilled range")
               partialDf
             } else {
-              var bootstrapDf = tableUtils.sql(
-                bootstrapRange.genScanQuery(part.query, part.table, Map(tableUtils.partitionColumn -> null))
-              )
+              var bootstrapDf =
+                bootstrapRange.scanDf(part.query, part.table, Map(tableUtils.partitionColumn -> null))
 
               // attach semantic_hash for either log or regular table bootstrap
               validateReservedColumns(bootstrapDf, part.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
@@ -556,7 +554,7 @@ class Join(joinConf: api.Join,
     val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
     logger.info(s"Finished computing bootstrap table ${joinConf.metaData.bootstrapTable} in ${elapsedMins} minutes")
 
-    tableUtils.sql(range.genScanQuery(query = null, table = bootstrapTable))
+    range.scanDf(query = null, table = bootstrapTable)
   }
 
   /*

@@ -18,14 +18,11 @@ package ai.chronon.api
 
 // utilized by both streaming and batch
 object QueryUtils {
-  // when the value in fillIfAbsent for a key is null, we expect the column with the same name as the key
-  // to be present in the table that the generated query runs on.
-  def build(selects: Map[String, String],
-            from: String,
-            wheres: scala.collection.Seq[String],
-            fillIfAbsent: Map[String, String] = null): String = {
 
-    def toProjections(m: Map[String, String]) =
+  def buildSelects(selects: Map[String, String],
+            fillIfAbsent: Map[String, String] = null): Seq[String] = {
+
+    def toProjections(m: Map[String, String]): Seq[String] =
       m.map {
         case (col, expr) =>
           if (expr == null) {
@@ -33,13 +30,23 @@ object QueryUtils {
           } else {
             s"$expr as `$col`"
           }
-      }
+      }.toSeq
 
-    val finalSelects = (Option(selects), Option(fillIfAbsent)) match {
+    (Option(selects), Option(fillIfAbsent)) match {
       case (Some(sels), Some(fills)) => toProjections(fills ++ sels)
-      case (Some(sels), None)        => toProjections(sels)
-      case (None, _)                 => Seq("*")
+      case (Some(sels), None) => toProjections(sels)
+      case (None, _) => Seq("*")
     }
+  }
+
+  // when the value in fillIfAbsent for a key is null, we expect the column with the same name as the key
+  // to be present in the table that the generated query runs on.
+  def build(selects: Map[String, String],
+            from: String,
+            wheres: scala.collection.Seq[String],
+            fillIfAbsent: Map[String, String] = null): String = {
+
+    val finalSelects = buildSelects(selects, fillIfAbsent)
 
     val whereClause = Option(wheres)
       .filter(_.nonEmpty)

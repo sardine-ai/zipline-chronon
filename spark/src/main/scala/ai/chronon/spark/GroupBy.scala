@@ -467,7 +467,7 @@ object GroupBy {
     val groupByConf = replaceJoinSource(groupByConfOld, queryRange, tableUtils, computeDependency, showDf)
     val inputDf = groupByConf.sources.toScala
       .map { source =>
-        renderDataSourceQuery(groupByConf,
+        sourceDf(groupByConf,
                               source,
                               groupByConf.getKeyColumns.toScala,
                               queryRange,
@@ -475,9 +475,6 @@ object GroupBy {
                               groupByConf.maxWindow,
                               groupByConf.inferredAccuracy)
 
-      }
-      .map {
-        tableUtils.sql
       }
       .reduce { (df1, df2) =>
         // align the columns by name - when one source has select * the ordering might not be aligned
@@ -523,7 +520,7 @@ object GroupBy {
       val df: DataFrame = if (groupByConf.inferredAccuracy == api.Accuracy.TEMPORAL && mutationSources.nonEmpty) {
         val mutationDf = mutationSources
           .map(ms =>
-            renderDataSourceQuery(groupByConf,
+            sourceDf(groupByConf,
                                   ms,
                                   groupByConf.getKeyColumns.toScala,
                                   queryRange.shift(1),
@@ -531,7 +528,6 @@ object GroupBy {
                                   groupByConf.maxWindow,
                                   groupByConf.inferredAccuracy,
                                   mutations = true))
-          .map { tableUtils.sql }
           .reduce { (df1, df2) =>
             val columns1 = df1.schema.fields.map(_.name)
             df1.union(df2.selectExpr(columns1: _*))
@@ -598,14 +594,14 @@ object GroupBy {
     intersectedRange
   }
 
-  def renderDataSourceQuery(groupByConf: api.GroupBy,
-                            source: api.Source,
-                            keys: Seq[String],
-                            queryRange: PartitionRange,
-                            tableUtils: TableUtils,
-                            window: Option[api.Window],
-                            accuracy: api.Accuracy,
-                            mutations: Boolean = false): String = {
+  private def sourceDf(groupByConf: api.GroupBy,
+               source: api.Source,
+               keys: Seq[String],
+               queryRange: PartitionRange,
+               tableUtils: TableUtils,
+               window: Option[api.Window],
+               accuracy: api.Accuracy,
+               mutations: Boolean = false): DataFrame = {
 
     val sourceTableIsPartitioned = tableUtils.isPartitioned(source.table)
 
@@ -662,13 +658,13 @@ object GroupBy {
         }
       }))
       .orNull
-    val query = api.QueryUtils.build(
+
+    tableUtils.scanDfBase(
       selects,
       if (mutations) source.getEntities.mutationTable.cleanSpec else source.table,
       Option(source.query.wheres).map(_.toScala).getOrElse(Seq.empty[String]) ++ partitionConditions,
       metaColumns ++ keys.map(_ -> null)
     )
-    query
   }
 
   def computeBackfill(groupByConf: api.GroupBy,

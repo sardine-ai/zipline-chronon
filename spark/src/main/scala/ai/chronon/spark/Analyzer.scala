@@ -69,6 +69,8 @@ class Analyzer(tableUtils: TableUtils,
                sample: Double = 0.1,
                enableHitter: Boolean = false,
                silenceMode: Boolean = false) {
+  private implicit val tu: TableUtils = tableUtils
+
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
   // include ts into heavy hitter analysis - useful to surface timestamps that have wrong units
   // include total approx row count - so it is easy to understand the percentage of skewed data
@@ -264,10 +266,9 @@ class Analyzer(tableUtils: TableUtils,
       (analysis, leftDf)
     } else {
       val analysis = ""
-      val scanQuery = range.genScanQuery(joinConf.left.query,
+      val leftDf = range.scanDf(joinConf.left.query,
                                          joinConf.left.table,
                                          fillIfAbsent = Map(tableUtils.partitionColumn -> null))
-      val leftDf: DataFrame = tableUtils.sql(scanQuery)
       (analysis, leftDf)
     }
 
