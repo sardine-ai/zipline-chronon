@@ -19,10 +19,10 @@ package ai.chronon.spark
 import java.io.{PrintWriter, StringWriter}
 import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.{Constants, ParsedTable, PartitionSpec, Query, QueryUtils}
+import ai.chronon.api.{Constants, DataPointer, ParsedTable, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.Extensions._
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
-import ai.chronon.spark.Extensions.{DfStats, DfWithStats}
+import ai.chronon.spark.Extensions.{DataPointerOps, DfStats, DfWithStats}
 import jnr.ffi.annotations.Synchronized
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.SparkException
@@ -112,7 +112,7 @@ case class TableUtils(sparkSession: SparkSession) {
 
   def tableExists(tableName: String): Boolean = sparkSession.catalog.tableExists(tableName)
 
-  def loadEntireTable(tableName: String): DataFrame = sparkSession.table(tableName)
+  def loadTable(tableName: String): DataFrame = sparkSession.table(tableName)
 
   def isPartitioned(tableName: String): Boolean = {
     // TODO: use proper way to detect if a table is partitioned or not
@@ -350,14 +350,23 @@ case class TableUtils(sparkSession: SparkSession) {
     val pw = new PrintWriter(sw)
     new Throwable().printStackTrace(pw)
     val stackTraceString = sw.toString
-    val stackTraceStringPretty = stackTraceString
+    val stackTraceStringPretty = "    " + stackTraceString
       .split("\n")
       .filter(_.contains("chronon"))
-      .map(_.replace("at ai.chronon.spark.", ""))
-      .mkString("\n")
+      .map(_.replace("at ai.chronon.spark.test.", "").replace("at ai.chronon.spark.", "").stripLeading())
+      .mkString("\n    ")
 
-    logger.info(
-      s"\n----[Running query coalesced into at most $partitionCount partitions]----\n$query\n----[End of Query]----\n\n Query call path (not an error stack trace): \n$stackTraceStringPretty \n\n --------")
+    println(
+      s"""  ---- running query ----
+         |
+         |${"  " + query.trim.replace("\n", "\n  ")}
+         |
+         |  ---- call path ----
+         |
+         |$stackTraceStringPretty
+         |
+         |  ---- end ----
+         |""".stripMargin)
     try {
       // Run the query
       val df = sparkSession.sql(query).coalesce(partitionCount)
@@ -810,16 +819,19 @@ case class TableUtils(sparkSession: SparkSession) {
   }
 
   def scanDfBase(selectMap: Map[String, String],
-             table: String,
-             wheres: scala.collection.Seq[String],
-             fallbackSelects: Map[String, String] = Map.empty): DataFrame = {
-    val parsedTable = ParsedTable(table)
-    var reader = sparkSession.read
-    parsedTable.format.foreach { fmt => reader = reader.format(fmt) }
-    parsedTable.options.foreach { case (k, v) => reader = reader.option(k, v) }
-    val dataFrame = reader.load(parsedTable.table)
+                 table: String,
+                 wheres: scala.collection.Seq[String],
+                 fallbackSelects: Map[String, String] = Map.empty): DataFrame = {
+    val dp = DataPointer(table)
+    val df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
-    dataFrame
+    println(
+      s"""Scanning ${dp.tableOrPath}
+         |with options: ${dp.options}
+         |with format: ${dp.format}
+         |with selects: ${selects.mkString(", ")}
+         |and wheres: ${wheres.mkString(", ")}""".stripMargin)
+    df
       .select(selects.head, selects.tail: _*)
       .where(wheres.map(w => s"($w)").mkString(" AND "))
   }

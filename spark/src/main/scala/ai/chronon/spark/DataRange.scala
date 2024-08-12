@@ -17,10 +17,8 @@
 package ai.chronon.spark
 
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.{Constants, ParsedTable, Query, QueryUtils}
+import ai.chronon.api.{Constants, Query}
 import org.apache.spark.sql.DataFrame
-
-import scala.collection.JavaConverters._
 
 sealed trait DataRange {
   def toTimePoints: Array[Long]

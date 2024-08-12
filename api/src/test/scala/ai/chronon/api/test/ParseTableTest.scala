@@ -34,7 +34,13 @@ class ParseTableTest {
        "should parse format, table, and single property"),
       ("project.dataset.table/singleProp=value",
        ParsedTable(None, "project.dataset.table", Map("singleProp" -> "value")),
-       "should parse table and single property without format")
+       "should parse table and single property without format"),
+      ("dataset.table/singleProp=value",
+        ParsedTable(None, "dataset.table", Map("singleProp" -> "value")),
+        "simple dataset & table with single prop"),
+      ("dataset.table",
+        ParsedTable(None, "dataset.table", Map()),
+        "simple dataset & table without props")
     )
 
     testCases.foreach {

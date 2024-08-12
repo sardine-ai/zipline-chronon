@@ -468,12 +468,12 @@ object GroupBy {
     val inputDf = groupByConf.sources.toScala
       .map { source =>
         sourceDf(groupByConf,
-                              source,
-                              groupByConf.getKeyColumns.toScala,
-                              queryRange,
-                              tableUtils,
-                              groupByConf.maxWindow,
-                              groupByConf.inferredAccuracy)
+                 source,
+                 groupByConf.getKeyColumns.toScala,
+                 queryRange,
+                 tableUtils,
+                 groupByConf.maxWindow,
+                 groupByConf.inferredAccuracy)
 
       }
       .reduce { (df1, df2) =>
@@ -521,13 +521,13 @@ object GroupBy {
         val mutationDf = mutationSources
           .map(ms =>
             sourceDf(groupByConf,
-                                  ms,
-                                  groupByConf.getKeyColumns.toScala,
-                                  queryRange.shift(1),
-                                  tableUtils,
-                                  groupByConf.maxWindow,
-                                  groupByConf.inferredAccuracy,
-                                  mutations = true))
+                     ms,
+                     groupByConf.getKeyColumns.toScala,
+                     queryRange.shift(1),
+                     tableUtils,
+                     groupByConf.maxWindow,
+                     groupByConf.inferredAccuracy,
+                     mutations = true))
           .reduce { (df1, df2) =>
             val columns1 = df1.schema.fields.map(_.name)
             df1.union(df2.selectExpr(columns1: _*))
@@ -595,13 +595,13 @@ object GroupBy {
   }
 
   private def sourceDf(groupByConf: api.GroupBy,
-               source: api.Source,
-               keys: Seq[String],
-               queryRange: PartitionRange,
-               tableUtils: TableUtils,
-               window: Option[api.Window],
-               accuracy: api.Accuracy,
-               mutations: Boolean = false): DataFrame = {
+                       source: api.Source,
+                       keys: Seq[String],
+                       queryRange: PartitionRange,
+                       tableUtils: TableUtils,
+                       window: Option[api.Window],
+                       accuracy: api.Accuracy,
+                       mutations: Boolean = false): DataFrame = {
 
     val sourceTableIsPartitioned = tableUtils.isPartitioned(source.table)
 

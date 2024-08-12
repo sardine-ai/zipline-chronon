@@ -18,10 +18,10 @@ package ai.chronon.spark
 
 import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.Constants
+import ai.chronon.api.{Constants, DataPointer}
 import ai.chronon.online.{AvroCodec, AvroConversions, SparkConversions}
 import org.apache.avro.Schema
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
@@ -335,6 +335,53 @@ object Extensions {
       val map = new util.HashMap[K, V]()
       tuples.foreach { case (k, v) => map.put(k, v) }
       map
+    }
+  }
+
+  implicit class DataPointerOps(dataPointer: DataPointer) {
+    def toDf(implicit sparkSession: SparkSession): DataFrame = {
+      val tableOrPath = dataPointer.tableOrPath
+      val format = dataPointer.format.getOrElse("parquet")
+      dataPointer.catalog.map(_.toLowerCase) match {
+        case Some("bigquery") | Some("bq") =>
+          // https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file#reading-data-from-a-bigquery-table
+          sparkSession.read.format("bigquery")
+            .options(dataPointer.options)
+            .load(tableOrPath)
+
+        case Some("snowflake") | Some("sf")=>
+          // https://docs.snowflake.com/en/user-guide/spark-connector-use#moving-data-from-snowflake-to-spark
+          val sfOptions = dataPointer.options
+          sparkSession.read.format("net.snowflake.spark.snowflake")
+            .options(sfOptions)
+            .option("dbtable", tableOrPath)
+            .load()
+
+        case Some("s3") | Some("s3a") | Some("s3n") =>
+          // https://sites.google.com/site/hellobenchen/home/wiki/big-data/spark/read-data-files-from-multiple-sub-folders
+          // "To get spark to read through all subfolders and subsubfolders, etc. simply use the wildcard *"
+          // "df= spark.read.parquet('/datafolder/*/*')"
+          //
+          // https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-plan-file-systems.html
+          // "Previously, Amazon EMR used the s3n and s3a file systems. While both still work, "
+          // "we recommend that you use the s3 URI scheme for the best performance, security, and reliability."
+          // TODO: figure out how to scan subfolders in a date range without reading the entire folder
+          sparkSession.read
+            .format(format)
+            .options(dataPointer.options).load("ș3://" + tableOrPath)
+
+        case Some("file") =>
+          sparkSession.read
+            .format(format)
+            .options(dataPointer.options)
+            .load(tableOrPath)
+
+        case Some("hive") | None =>
+          sparkSession.table(tableOrPath)
+
+        case _ =>
+          throw new RuntimeException(s"Unsupported catalog: ${dataPointer.catalog}")
+      }
     }
   }
 }

@@ -217,7 +217,7 @@ object Driver {
     def shouldPerformValidate(): Boolean = expectedResultTable.isDefined
 
     def validateResult(df: DataFrame, keys: Seq[String], tableUtils: TableUtils): Boolean = {
-      val expectedDf = tableUtils.loadEntireTable(expectedResultTable())
+      val expectedDf = tableUtils.loadTable(expectedResultTable())
       val (_, _, metrics) = CompareBaseJob.compare(df, expectedDf, keys, tableUtils)
       val result = CompareJob.getConsolidatedData(metrics, tableUtils.partitionSpec)
 
@@ -359,7 +359,7 @@ object Driver {
       }
 
       if (args.shouldPerformValidate()) {
-        val df = tableUtils.loadEntireTable(args.groupByConf.metaData.outputTable)
+        val df = tableUtils.loadTable(args.groupByConf.metaData.outputTable)
         args.validateResult(df, args.groupByConf.keys(tableUtils.partitionColumn).toSeq, tableUtils)
       }
     }
