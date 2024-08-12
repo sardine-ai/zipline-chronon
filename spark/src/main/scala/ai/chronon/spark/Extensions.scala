@@ -345,14 +345,16 @@ object Extensions {
       dataPointer.catalog.map(_.toLowerCase) match {
         case Some("bigquery") | Some("bq") =>
           // https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file#reading-data-from-a-bigquery-table
-          sparkSession.read.format("bigquery")
+          sparkSession.read
+            .format("bigquery")
             .options(dataPointer.options)
             .load(tableOrPath)
 
-        case Some("snowflake") | Some("sf")=>
+        case Some("snowflake") | Some("sf") =>
           // https://docs.snowflake.com/en/user-guide/spark-connector-use#moving-data-from-snowflake-to-spark
           val sfOptions = dataPointer.options
-          sparkSession.read.format("net.snowflake.spark.snowflake")
+          sparkSession.read
+            .format("net.snowflake.spark.snowflake")
             .options(sfOptions)
             .option("dbtable", tableOrPath)
             .load()
@@ -368,7 +370,8 @@ object Extensions {
           // TODO: figure out how to scan subfolders in a date range without reading the entire folder
           sparkSession.read
             .format(format)
-            .options(dataPointer.options).load("ș3://" + tableOrPath)
+            .options(dataPointer.options)
+            .load("ș3://" + tableOrPath)
 
         case Some("file") =>
           sparkSession.read
