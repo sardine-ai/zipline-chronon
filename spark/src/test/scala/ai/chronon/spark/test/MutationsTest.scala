@@ -35,16 +35,17 @@ import org.junit.Test
 class MutationsTest {
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
 
-  lazy val spark: SparkSession = SparkSessionBuilder.build(
+  val spark: SparkSession = SparkSessionBuilder.build(
     "MutationsTest",
-    local = true,
-    additionalConfig = Some(Map("spark.chronon.backfill.validation.enabled" -> "false")))
+    local = true)
+    //, additionalConfig = Some(Map("spark.chronon.backfill.validation.enabled" -> "false")))
+  private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private def namespace(suffix: String) = s"test_mutations_$suffix"
   private val groupByName = s"group_by_test.v0"
   private val joinName = s"join_test.v0"
 
-  private implicit val tableUtils: TableUtils = TableUtils(spark)
+
 
   // {listing_id (key), ts (timestamp of property), rating (property: rated value), ds (partition ds)}
   private val snapshotSchema = StructType(
@@ -148,7 +149,7 @@ class MutationsTest {
                               windows: Seq[Window] = null,
                               operation: Operation = Operation.AVERAGE): DataFrame = {
     val testNamespace = namespace(suffix)
-    spark.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
+    tableUtils.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
     spark.createDataFrame(spark.sparkContext.parallelize(eventData), leftSchema).save(s"$testNamespace.$eventTable")
     spark
       .createDataFrame(spark.sparkContext.parallelize(snapshotData), snapshotSchema)
@@ -217,7 +218,7 @@ class MutationsTest {
   def computeSimpleAverageThroughSql(testNamespace: String): DataFrame = {
     val excludeCondition = "mutations.is_before AND mutations.ts <= queries.ts AND mutations.mutation_ts < queries.ts"
     val includeCondition = s"NOT $excludeCondition"
-    val expected = spark.sql(s"""
+    val expected = tableUtils.sql(s"""
          |WITH
          |queries AS (
          |  SELECT
@@ -303,7 +304,7 @@ class MutationsTest {
   def computeLastThroughSql(testNamespace: String): DataFrame = {
     val excludeCondition = "mutations.is_before AND mutations.ts <= queries.ts AND mutations.mutation_ts < queries.ts"
     val includeCondition = s"NOT $excludeCondition"
-    val expected = spark.sql(s"""
+    val expected = tableUtils.sql(s"""
          |WITH
          |queries AS (
          |  SELECT
@@ -984,7 +985,7 @@ class MutationsTest {
       .drop()
       .withShiftedPartition(tableUtils.partitionColumn, -1)
     val testNamespace = namespace(suffix)
-    spark.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
+    tableUtils.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
     snapshotDf.save(s"$testNamespace.$snapshotTable")
     mutationsDf.save(s"$testNamespace.$mutationTable")
     leftDf.save(s"$testNamespace.$eventTable")

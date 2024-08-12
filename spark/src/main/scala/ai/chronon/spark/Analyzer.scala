@@ -266,9 +266,8 @@ class Analyzer(tableUtils: TableUtils,
       (analysis, leftDf)
     } else {
       val analysis = ""
-      val leftDf = range.scanDf(joinConf.left.query,
-                                         joinConf.left.table,
-                                         fillIfAbsent = Map(tableUtils.partitionColumn -> null))
+      val leftDf =
+        range.scanDf(joinConf.left.query, joinConf.left.table, fillIfAbsent = Map(tableUtils.partitionColumn -> null))
       (analysis, leftDf)
     }
 
