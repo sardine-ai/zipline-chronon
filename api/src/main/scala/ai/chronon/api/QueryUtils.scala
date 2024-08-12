@@ -19,8 +19,7 @@ package ai.chronon.api
 // utilized by both streaming and batch
 object QueryUtils {
 
-  def buildSelects(selects: Map[String, String],
-            fillIfAbsent: Map[String, String] = null): Seq[String] = {
+  def buildSelects(selects: Map[String, String], fillIfAbsent: Map[String, String] = null): Seq[String] = {
 
     def toProjections(m: Map[String, String]): Seq[String] =
       m.map {
@@ -34,8 +33,8 @@ object QueryUtils {
 
     (Option(selects), Option(fillIfAbsent)) match {
       case (Some(sels), Some(fills)) => toProjections(fills ++ sels)
-      case (Some(sels), None) => toProjections(sels)
-      case (None, _) => Seq("*")
+      case (Some(sels), None)        => toProjections(sels)
+      case (None, _)                 => Seq("*")
     }
   }
 
