@@ -1,8 +1,10 @@
 package ai.chronon.api
 import scala.util.parsing.combinator._
 
-case class DataPointer(catalog: Option[String], tableOrPath: String, format: Option[String], options: Map[String, String])
-
+case class DataPointer(catalog: Option[String],
+                       tableOrPath: String,
+                       format: Option[String],
+                       options: Map[String, String])
 
 // parses string representations of data pointers
 // ex: namespace.table
@@ -14,8 +16,8 @@ object DataPointer extends RegexParsers {
   def apply(str: String): DataPointer = {
     parse(dataPointer, str) match {
       case Success(result, _) => result
-      case Failure(msg, _) => throw new IllegalArgumentException(s"Invalid DataPointer string: $str. Error: $msg")
-      case Error(msg, _) => throw new IllegalArgumentException(s"Invalid DataPointer string: $str. Error: $msg")
+      case Failure(msg, _)    => throw new IllegalArgumentException(s"Invalid DataPointer string: $str. Error: $msg")
+      case Error(msg, _)      => throw new IllegalArgumentException(s"Invalid DataPointer string: $str. Error: $msg")
     }
   }
 
@@ -47,17 +49,17 @@ object DataPointer extends RegexParsers {
 
   private def options: Parser[Map[String, String]] = "(" ~> repsep(option, ",") <~ ")" ^^ (_.toMap)
 
-  private def option: Parser[(String, String)] = ("""[^=,]+""".r <~ "=") ~ """[^,)]+""".r ^^ {
-    case key ~ value => (key.trim, value.trim)
-  }
+  private def option: Parser[(String, String)] =
+    ("""[^=,]+""".r <~ "=") ~ """[^,)]+""".r ^^ {
+      case key ~ value => (key.trim, value.trim)
+    }
 
   private def tableOrPath: Parser[String] = """[^:]+""".r
 
-
-  private def extractFormatFromPath(path: String,
-                                    catalog: String,
-                                    fileCatalogs: Seq[String] = Seq("s3" , "gcs" , "hdfs" , "file")
-                                   ): (String, Option[String]) = {
+  private def extractFormatFromPath(
+      path: String,
+      catalog: String,
+      fileCatalogs: Seq[String] = Seq("s3", "gcs", "hdfs", "file")): (String, Option[String]) = {
     catalog.toLowerCase match {
       // direct file case - extract string after the last dot as format
       case ctl if fileCatalogs.contains(ctl) =>

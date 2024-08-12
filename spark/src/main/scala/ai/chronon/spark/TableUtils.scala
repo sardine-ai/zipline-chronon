@@ -356,8 +356,7 @@ case class TableUtils(sparkSession: SparkSession) {
       .map(_.replace("at ai.chronon.spark.test.", "").replace("at ai.chronon.spark.", "").stripLeading())
       .mkString("\n    ")
 
-    println(
-      s"""  ---- running query ----
+    println(s"""  ---- running query ----
          |
          |${"  " + query.trim.replace("\n", "\n  ")}
          |
@@ -825,14 +824,12 @@ case class TableUtils(sparkSession: SparkSession) {
     val dp = DataPointer(table)
     val df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
-    println(
-      s"""Scanning ${dp.tableOrPath}
+    println(s"""Scanning ${dp.tableOrPath}
          |with options: ${dp.options}
          |with format: ${dp.format}
          |with selects: ${selects.mkString(", ")}
          |and wheres: ${wheres.mkString(", ")}""".stripMargin)
-    df
-      .select(selects.head, selects.tail: _*)
+    df.select(selects.head, selects.tail: _*)
       .where(wheres.map(w => s"($w)").mkString(" AND "))
   }
 
