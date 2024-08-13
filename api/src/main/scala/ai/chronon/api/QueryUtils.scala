@@ -23,12 +23,7 @@ object QueryUtils {
 
     def toProjections(m: Map[String, String]): Seq[String] =
       m.map {
-        case (col, expr) =>
-          if (expr == null) {
-            s"`$col`"
-          } else {
-            s"$expr as `$col`"
-          }
+        case (col, expr) => if ((expr == col) || (expr == null)) col else s"$expr as $col"
       }.toSeq
 
     (Option(selects), Option(fillIfAbsent)) match {
