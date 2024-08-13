@@ -822,15 +822,20 @@ case class TableUtils(sparkSession: SparkSession) {
                  wheres: scala.collection.Seq[String],
                  fallbackSelects: Map[String, String] = Map.empty): DataFrame = {
     val dp = DataPointer(table)
-    val df = dp.toDf(sparkSession)
+    var df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
     println(s"""Scanning ${dp.tableOrPath}
          |with options: ${dp.options}
          |with format: ${dp.format}
          |with selects: ${selects.mkString(", ")}
          |and wheres: ${wheres.mkString(", ")}""".stripMargin)
-    df.select(selects.head, selects.tail: _*)
-      .where(wheres.map(w => s"($w)").mkString(" AND "))
+    if(selects.nonEmpty) {
+      df = df.select(selects.head, selects.tail: _*)
+    }
+    if(wheres.nonEmpty) {
+      df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
+    }
+    df
   }
 
   def scanDf(query: Query,
@@ -839,10 +844,12 @@ case class TableUtils(sparkSession: SparkSession) {
              partitionColumn: String = partitionColumn,
              range: Option[PartitionRange] = None): DataFrame = {
     val rangeWheres = range.map(_.whereClauses(partitionColumn)).getOrElse(Seq.empty)
-    val queryWheres = Option(query.wheres).map(_.toScala).getOrElse(Seq.empty)
+    val queryWheres = Option(query).flatMap(q => Option(q.wheres)).map(_.toScala).getOrElse(Seq.empty)
     val wheres: Seq[String] = rangeWheres ++ queryWheres
 
-    scanDfBase(query.selects.toScala, table, wheres, fallbackSelects)
+    val selects = Option(query).flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
+
+    scanDfBase(selects, table, wheres, fallbackSelects)
   }
 }
 
