@@ -19,6 +19,7 @@ package ai.chronon.spark
 import java.io.{PrintWriter, StringWriter}
 import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
+import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.{Constants, DataPointer, ParsedTable, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.Extensions._
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
@@ -824,17 +825,17 @@ case class TableUtils(sparkSession: SparkSession) {
     val dp = DataPointer(table)
     var df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
-    println(s"""Scanning ${dp.tableOrPath}
-         |with options: ${dp.options}
-         |with format: ${dp.format}
-         |with selects: ${selects.mkString(", ")}
-         |and wheres: ${wheres.mkString(", ")}""".stripMargin)
-    if (selects.nonEmpty) {
-      df = df.select(selects.head, selects.tail: _*)
-    }
-    if (wheres.nonEmpty) {
-      df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
-    }
+    println(s"""Scanning data:
+         |  table: ${dp.tableOrPath}
+         |  options: ${dp.options}
+         |  format: ${dp.format}
+         |  selects:
+         |    ${selects.mkString("\n    ")}
+         |  wheres:
+         |    ${wheres.mkString(",\n    ")}
+         |""".stripMargin.yellow)
+    if (selects.nonEmpty) df = df.select(selects.head, selects.tail: _*)
+    if (wheres.nonEmpty) df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
     df
   }
 

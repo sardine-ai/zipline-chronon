@@ -18,6 +18,7 @@ package ai.chronon.spark
 
 import org.slf4j.LoggerFactory
 import ai.chronon.api
+import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType, TimeUnit, Window}
 import ai.chronon.api.Extensions._
 import ai.chronon.online.SparkConversions
@@ -192,7 +193,7 @@ class Analyzer(tableUtils: TableUtils,
     groupByConf.setups.foreach(tableUtils.sql)
     val groupBy = GroupBy.from(groupByConf, range, tableUtils, computeDependency = enableHitter, finalize = true)
     val name = "group_by/" + prefix + groupByConf.metaData.name
-    logger.info(s"""|Running GroupBy analysis for $name ...""".stripMargin)
+    println(s"""|Running GroupBy analysis for $name ...""".stripMargin)
     val analysis =
       if (enableHitter)
         analyze(groupBy.inputDf,
@@ -218,20 +219,20 @@ class Analyzer(tableUtils: TableUtils,
       groupBy.outputSchema
     }
     if (silenceMode) {
-      logger.info(s"""ANALYSIS completed for group_by/${name}.""".stripMargin)
+      println(s"""ANALYSIS completed for group_by/${name}.""".stripMargin)
     } else {
-      logger.info(s"""
+      println(s"""
            |ANALYSIS for $name:
            |$analysis
                """.stripMargin)
       if (includeOutputTableName)
-        logger.info(s"""
+        println(s"""
              |----- OUTPUT TABLE NAME -----
              |${groupByConf.metaData.outputTable}
                """.stripMargin)
       val keySchema = groupBy.keySchema.fields.map { field => s"  ${field.name} => ${field.dataType}" }
       schema.fields.map { field => s"  ${field.name} => ${field.fieldType}" }
-      logger.info(s"""
+      println(s"""
            |----- KEY SCHEMA -----
            |${keySchema.mkString("\n")}
            |----- OUTPUT SCHEMA -----
@@ -256,7 +257,7 @@ class Analyzer(tableUtils: TableUtils,
                   validateTablePermission: Boolean = true,
                   validationAssert: Boolean = false): (Map[String, DataType], ListBuffer[AggregationMetadata]) = {
     val name = "joins/" + joinConf.metaData.name
-    logger.info(s"""|Running join analysis for $name ...""".stripMargin)
+    println(s"""|Running join analysis for $name ...""".stripMargin)
     // run SQL environment setups such as UDFs and JARs
     joinConf.setups.foreach(tableUtils.sql)
 
@@ -283,7 +284,7 @@ class Analyzer(tableUtils: TableUtils,
 
     val rangeToFill =
       JoinUtils.getRangesToFill(joinConf.left, tableUtils, endDate, historicalBackfill = joinConf.historicalBackfill)
-    logger.info(s"Join range to fill $rangeToFill")
+    println(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
       .unfilledRanges(joinConf.metaData.outputTable, rangeToFill, Some(Seq(joinConf.left.table)))
       .getOrElse(Seq.empty)
@@ -317,42 +318,50 @@ class Analyzer(tableUtils: TableUtils,
     val rightSchema: Map[String, DataType] =
       aggregationsMetadata.map(aggregation => (aggregation.name, aggregation.columnType)).toMap
     if (silenceMode) {
-      logger.info(s"""ANALYSIS completed for join/${joinConf.metaData.cleanName}.""".stripMargin)
+      println(s"""-- ANALYSIS completed for join/${joinConf.metaData.cleanName}. --""".stripMargin.blue)
     } else {
-      logger.info(s"""
+      println(s"""
            |ANALYSIS for join/${joinConf.metaData.cleanName}:
            |$analysis
-           |----- OUTPUT TABLE NAME -----
+           |-- OUTPUT TABLE NAME --
            |${joinConf.metaData.outputTable}
-           |------ LEFT SIDE SCHEMA -------
+           |-- LEFT SIDE SCHEMA --
            |${leftSchema.mkString("\n")}
-           |------ RIGHT SIDE SCHEMA ----
+           |-- RIGHT SIDE SCHEMA --
            |${rightSchema.mkString("\n")}
-           |------ END ------------------
+           |-- END --
            |""".stripMargin)
     }
 
-    logger.info(s"----- Validations for join/${joinConf.metaData.cleanName} -----")
+    println(s"-- Validations for join/${joinConf.metaData.cleanName} --")
     if (gbStartPartitions.nonEmpty) {
-      logger.info(
-        "----- Following Group_Bys contains a startPartition. Please check if any startPartition will conflict with your backfill. -----")
+      println(
+        "-- Following Group_Bys contains a startPartition. Please check if any startPartition will conflict with your backfill. --")
       gbStartPartitions.foreach {
         case (gbName, startPartitions) =>
-          logger.info(s"$gbName : ${startPartitions.mkString(",")}")
+          println(s"    $gbName : ${startPartitions.mkString(",")}".yellow)
       }
     }
-    if (keysWithError.isEmpty && noAccessTables.isEmpty && dataAvailabilityErrors.isEmpty) {
-      logger.info("----- Backfill validation completed. No errors found. -----")
-    } else {
-      logger.info(s"----- Schema validation completed. Found ${keysWithError.size} errors")
+
+    if (keysWithError.nonEmpty) {
+      println(s"-- Schema validation completed. Found ${keysWithError.size} errors".red)
       val keyErrorSet: Set[(String, String)] = keysWithError.toSet
-      logger.info(keyErrorSet.map { case (key, errorMsg) => s"$key => $errorMsg" }.mkString("\n"))
-      logger.info(
-        s"---- Table permission check completed. Found permission errors in ${noAccessTables.size} tables ----")
-      logger.info(noAccessTables.mkString("\n"))
-      logger.info(s"---- Data availability check completed. Found issue in ${dataAvailabilityErrors.size} tables ----")
+      println(keyErrorSet.map { case (key, errorMsg) => s"$key => $errorMsg" }.mkString("\n    ").yellow)
+    }
+
+    if (noAccessTables.nonEmpty) {
+      println(s"-- Table permission check completed. Found permission errors in ${noAccessTables.size} tables --".red)
+      println(noAccessTables.mkString("\n    ").yellow)
+    }
+
+    if (dataAvailabilityErrors.nonEmpty) {
+      println(s"-- Data availability check completed. Found issue in ${dataAvailabilityErrors.size} tables --".red)
       dataAvailabilityErrors.foreach(error =>
-        logger.info(s"Group_By ${error._2} : Source Tables ${error._1} : Expected start ${error._3}"))
+        println(s"    Group_By ${error._2} : Source Tables ${error._1} : Expected start ${error._3}".yellow))
+    }
+
+    if (keysWithError.isEmpty && noAccessTables.isEmpty && dataAvailabilityErrors.isEmpty) {
+      println("-- Backfill validation completed. No errors found. --".green)
     }
 
     if (validationAssert) {
@@ -400,7 +409,7 @@ class Analyzer(tableUtils: TableUtils,
   // validate the table permissions for given list of tables
   // return a list of tables that the user doesn't have access to
   def runTablePermissionValidation(sources: Set[String]): Set[String] = {
-    logger.info(s"Validating ${sources.size} tables permissions ...")
+    println(s"Validating ${sources.size} tables permissions ...")
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     //todo: handle offset-by-1 depending on temporal vs snapshot accuracy
     val partitionFilter = tableUtils.partitionSpec.minus(today, new Window(2, TimeUnit.DAYS))
@@ -417,7 +426,7 @@ class Analyzer(tableUtils: TableUtils,
                                        groupBy: api.GroupBy,
                                        unfilledRanges: Seq[PartitionRange]): List[(String, String, String)] = {
     if (unfilledRanges.isEmpty) {
-      logger.info("No unfilled ranges found.")
+      println("No unfilled ranges found.")
       List.empty
     } else {
       val firstUnfilledPartition = unfilledRanges.min.start
@@ -435,18 +444,16 @@ class Analyzer(tableUtils: TableUtils,
               tableUtils.partitionSpec.minus(leftShiftedPartitionRangeStart, window)
             case (Events, Events, Accuracy.TEMPORAL) =>
               tableUtils.partitionSpec.minus(firstUnfilledPartition, window)
-            case (Events, Entities, Accuracy.SNAPSHOT) => leftShiftedPartitionRangeStart
-            case (Events, Entities, Accuracy.TEMPORAL) =>
-              tableUtils.partitionSpec.minus(leftShiftedPartitionRangeStart, window)
+            case (Events, Entities, _) => leftShiftedPartitionRangeStart
           }
-          logger.info(
+          println(
             s"Checking data availability for group_by ${groupBy.metaData.name} ... Expected start partition: $expectedStart")
           if (groupBy.sources.toScala.exists(s => s.isCumulative)) {
             List.empty
           } else {
             val tableToPartitions = groupBy.sources.toScala.map { source =>
               val table = source.table
-              logger.info(s"Checking table $table for data availability ...")
+              println(s"Checking table $table for data availability ...")
               val partitions = tableUtils.partitions(table)
               val startOpt = if (partitions.isEmpty) None else Some(partitions.min)
               val endOpt = if (partitions.isEmpty) None else Some(partitions.max)
@@ -456,13 +463,15 @@ class Analyzer(tableUtils: TableUtils,
             val minPartition = if (allPartitions.isEmpty) None else Some(allPartitions.min)
 
             if (minPartition.isEmpty || minPartition.get > expectedStart) {
-              logger.info(s"""
+              println(s"""
                          |Join needs data older than what is available for GroupBy: ${groupBy.metaData.name}
-                         |left-$leftDataModel, right-${groupBy.dataModel}, accuracy-${groupBy.inferredAccuracy}
-                         |expected earliest available data partition: $expectedStart""".stripMargin)
+                         |left-${leftDataModel.toString.low.yellow},
+                         |right-${groupBy.dataModel.toString.low.yellow},
+                         |accuracy-${groupBy.inferredAccuracy.toString.low.yellow}
+                         |expected earliest available data partition: $expectedStart\n""".stripMargin.red)
               tableToPartitions.foreach {
                 case (table, _, startOpt, endOpt) =>
-                  logger.info(
+                  println(
                     s"Table $table startPartition ${startOpt.getOrElse("empty")} endPartition ${endOpt.getOrElse("empty")}")
               }
               val tables = tableToPartitions.map(_._1)
