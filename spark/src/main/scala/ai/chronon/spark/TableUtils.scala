@@ -834,7 +834,7 @@ case class TableUtils(sparkSession: SparkSession) {
          |  wheres:
          |    ${wheres.mkString(",\n    ")}
          |""".stripMargin.yellow)
-    if (selects.nonEmpty) df = df.select(selects.head, selects.tail: _*)
+    if (selects.nonEmpty) df = df.selectExpr(selects: _*)
     if (wheres.nonEmpty) df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
     df
   }
