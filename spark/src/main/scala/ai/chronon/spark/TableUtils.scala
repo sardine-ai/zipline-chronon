@@ -20,7 +20,7 @@ import java.io.{PrintWriter, StringWriter}
 import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.{Constants, DataPointer, ParsedTable, PartitionSpec, Query, QueryUtils}
+import ai.chronon.api.{Constants, DataPointer, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.Extensions._
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import ai.chronon.spark.Extensions.{DataPointerOps, DfStats, DfWithStats}
