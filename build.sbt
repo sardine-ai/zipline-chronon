@@ -150,7 +150,8 @@ lazy val spark = project
 lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
-    libraryDependencies ++= spark_all
+    libraryDependencies ++= spark_all,
+    libraryDependencies ++= flink_all
   )
 
 lazy val cloud_gcp = project
