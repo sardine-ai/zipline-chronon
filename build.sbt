@@ -160,6 +160,7 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
+    libraryDependencies ++= spark_all
   )
 
 ThisBuild / assemblyMergeStrategy := {
