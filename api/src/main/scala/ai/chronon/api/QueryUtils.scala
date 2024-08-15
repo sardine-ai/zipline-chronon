@@ -28,7 +28,7 @@ object QueryUtils {
 
     (Option(selects), Option(fillIfAbsent)) match {
       // pick only aliases with valid expression from the fills
-      // eg., select *, ts from x -- is not valid, ts will 
+      // eg., select *, ts from x -- is not valid, ts will be ambiguous & double selected with same name
       // but select *, unixtime(ds) as `ts` from x -- is valid
       case (Some(sels), Some(fills)) if sels.isEmpty => Seq("*") ++ toProjections(fills.filter(_._2 != null))
       case (Some(sels), Some(fills)) => toProjections(fills ++ sels)
