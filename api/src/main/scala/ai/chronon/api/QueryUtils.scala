@@ -18,28 +18,33 @@ package ai.chronon.api
 
 // utilized by both streaming and batch
 object QueryUtils {
+
+  def buildSelects(selects: Map[String, String], fillIfAbsent: Option[Map[String, String]] = None): Seq[String] = {
+
+    def toProjections(m: Map[String, String]): Seq[String] =
+      m.map {
+        case (col, expr) => if ((expr == col) || (expr == null)) s"`$col`" else s"$expr as `$col`"
+      }.toSeq
+
+    (Option(selects), fillIfAbsent) match {
+      // pick only aliases with valid expression from the fills
+      // eg., select *, ts from x -- is not valid, ts will be ambiguous & double selected with same name
+      // but select *, unixtime(ds) as `ts` from x -- is valid
+      case (Some(sels), Some(fills)) if sels.isEmpty => Seq("*") ++ toProjections(fills.filter(_._2 != null))
+      case (Some(sels), Some(fills))                 => toProjections(fills ++ sels)
+      case (Some(sels), None)                        => toProjections(sels)
+      case (None, _)                                 => Seq("*")
+    }
+  }
+
   // when the value in fillIfAbsent for a key is null, we expect the column with the same name as the key
   // to be present in the table that the generated query runs on.
   def build(selects: Map[String, String],
             from: String,
             wheres: scala.collection.Seq[String],
-            fillIfAbsent: Map[String, String] = null): String = {
+            fillIfAbsent: Option[Map[String, String]] = None): String = {
 
-    def toProjections(m: Map[String, String]) =
-      m.map {
-        case (col, expr) =>
-          if (expr == null) {
-            s"`$col`"
-          } else {
-            s"$expr as `$col`"
-          }
-      }
-
-    val finalSelects = (Option(selects), Option(fillIfAbsent)) match {
-      case (Some(sels), Some(fills)) => toProjections(fills ++ sels)
-      case (Some(sels), None)        => toProjections(sels)
-      case (None, _)                 => Seq("*")
-    }
+    val finalSelects = buildSelects(selects, fillIfAbsent)
 
     val whereClause = Option(wheres)
       .filter(_.nonEmpty)

@@ -44,6 +44,8 @@ object SparkSessionBuilder {
     }
     val userName = Properties.userName
     val warehouseDir = localWarehouseLocation.map(expandUser).getOrElse(DefaultWarehouseDir.getAbsolutePath)
+    println(s"Using warehouse dir: $warehouseDir")
+
     var baseBuilder = SparkSession
       .builder()
       .appName(name)

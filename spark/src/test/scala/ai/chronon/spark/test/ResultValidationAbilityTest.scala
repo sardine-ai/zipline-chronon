@@ -67,7 +67,7 @@ class ResultValidationAbilityTest {
     val rdd = args.sparkSession.sparkContext.parallelize(leftData)
     val df = args.sparkSession.createDataFrame(rdd).toDF(columns: _*)
 
-    when(mockTableUtils.loadEntireTable(any())).thenReturn(df)
+    when(mockTableUtils.loadTable(any())).thenReturn(df)
 
     assertTrue(args.validateResult(df, Seq("keyId", "ds"), mockTableUtils))
   }
@@ -84,7 +84,7 @@ class ResultValidationAbilityTest {
     val rightRdd = args.sparkSession.sparkContext.parallelize(rightData)
     val rightDf = args.sparkSession.createDataFrame(rightRdd).toDF(columns: _*)
 
-    when(mockTableUtils.loadEntireTable(any())).thenReturn(rightDf)
+    when(mockTableUtils.loadTable(any())).thenReturn(rightDf)
 
     assertFalse(args.validateResult(leftDf, Seq("keyId", "ds"), mockTableUtils))
   }

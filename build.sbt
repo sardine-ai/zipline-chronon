@@ -34,7 +34,7 @@ ThisBuild / scalaVersion := scala_2_12
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark_uber, flink, cloud_gcp)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -98,27 +98,11 @@ lazy val aggregator = project
     libraryDependencies ++= spark_sql_provided,
   )
 
+// todo add a service module with spark as a hard dependency
 lazy val online = project
   .dependsOn(aggregator.%("compile->compile;test->test"))
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-      "com.datadoghq" % "java-dogstatsd-client" % "4.4.1",
-      "org.rogach" %% "scallop" % "5.1.0",
-      "net.jodah" % "typetools" % "0.6.3",
-      "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8"
-    ),
-    libraryDependencies ++= spark_all,
-    libraryDependencies ++= flink_all
-  )
-
-lazy val online_provided = (project in file("online"))
-  .dependsOn(aggregator.%("compile->compile;test->test"))
-  .enablePlugins(BuildInfoPlugin)
-  .settings(
-    target := target.value.toPath.resolveSibling("target-no-assembly").toFile,
-    crossScalaVersions := supportedVersions,
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
       "com.datadoghq" % "java-dogstatsd-client" % "4.4.1",
@@ -153,17 +137,22 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
   libraryDependencies += "org.xerial.snappy" % "snappy-java" % "1.1.10.4" % Test
 ) ++ addArtifact(assembly / artifact, assembly)
 
-lazy val spark_uber = (project in file("spark"))
-  .dependsOn(aggregator.%("compile->compile;test->test"), online_provided)
+lazy val spark = project
+  .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
+    libraryDependencies ++= spark_all.map(_ % "test"),
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
   )
 
 lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
+  .settings(
+    libraryDependencies ++= spark_all,
+    libraryDependencies ++= flink_all
+  )
 
 lazy val cloud_gcp = project
   .dependsOn(api.%("compile->compile;test->test"), online)
@@ -171,6 +160,7 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
+    libraryDependencies ++= spark_all
   )
 
 ThisBuild / assemblyMergeStrategy := {

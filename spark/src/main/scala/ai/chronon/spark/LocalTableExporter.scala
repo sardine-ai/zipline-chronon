@@ -39,7 +39,7 @@ class LocalTableExporter(tableUtils: TableUtils, exportDir: String, formatParam:
       val outputFile = new File(buildOutputFilePath(namespaceAndTable))
 
       val writer = tableUtils
-        .loadEntireTable(namespaceAndTable)
+        .loadTable(namespaceAndTable)
         .coalesce(1)
         .write
         .format(format)
