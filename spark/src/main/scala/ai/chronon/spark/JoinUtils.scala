@@ -75,7 +75,7 @@ object JoinUtils {
     }
     var df = range.scanDf(joinConf.left.query,
                           joinConf.left.table,
-                          fillIfAbsent = Map(tableUtils.partitionColumn -> null) ++ timeProjection)(tableUtils)
+                          fillIfAbsent = Some(Map(tableUtils.partitionColumn -> null) ++ timeProjection))(tableUtils)
     limit.foreach(l => df = df.limit(l))
     val skewFilter = joinConf.skewFilter()
     val result = skewFilter

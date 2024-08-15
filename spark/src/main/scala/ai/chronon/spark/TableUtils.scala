@@ -821,7 +821,7 @@ case class TableUtils(sparkSession: SparkSession) {
   def scanDfBase(selectMap: Map[String, String],
                  table: String,
                  wheres: scala.collection.Seq[String],
-                 fallbackSelects: Map[String, String] = Map.empty): DataFrame = {
+                 fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
     val dp = DataPointer(table)
     var df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
@@ -841,7 +841,7 @@ case class TableUtils(sparkSession: SparkSession) {
 
   def scanDf(query: Query,
              table: String,
-             fallbackSelects: Map[String, String] = Map.empty,
+             fallbackSelects: Option[Map[String, String]] = None,
              partitionColumn: String = partitionColumn,
              range: Option[PartitionRange] = None): DataFrame = {
     val rangeWheres = range.map(_.whereClauses(partitionColumn)).getOrElse(Seq.empty)

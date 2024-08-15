@@ -179,6 +179,7 @@ class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(ca
     job.waitFor()
 
     if (job.getStatus.getError != null) {
+      logger.error(s"Query failed: ${job.getStatus.getError}. Query: $finalQuery, Job ID: $jobId")
       throw new RuntimeException(s"Query failed: ${job.getStatus.getError}")
     }
 
