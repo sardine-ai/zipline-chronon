@@ -17,9 +17,8 @@
 package ai.chronon.spark
 
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.{Constants, Query, QueryUtils}
-
-import scala.collection.JavaConverters._
+import ai.chronon.api.{Constants, Query}
+import org.apache.spark.sql.DataFrame
 
 sealed trait DataRange {
   def toTimePoints: Array[Long]
@@ -76,12 +75,6 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
       .toArray
   }
 
-  def whereClauses(partitionColumn: String = tableUtils.partitionColumn): Seq[String] = {
-    val startClause = Option(start).map(s"${partitionColumn} >= '" + _ + "'")
-    val endClause = Option(end).map(s"${partitionColumn} <= '" + _ + "'")
-    (startClause ++ endClause).toSeq
-  }
-
   def betweenClauses: String = {
     s"${tableUtils.partitionColumn} BETWEEN '" + start + "' AND '" + end + "'"
   }
@@ -94,19 +87,17 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
     }
   }
 
-  def genScanQuery(query: Query,
-                   table: String,
-                   fillIfAbsent: Map[String, String] = Map.empty,
-                   partitionColumn: String = tableUtils.partitionColumn): String = {
-    val queryOpt = Option(query)
-    val wheres =
-      whereClauses(partitionColumn) ++ queryOpt
-        .flatMap(q => Option(q.wheres).map(_.asScala))
-        .getOrElse(Seq.empty[String])
-    QueryUtils.build(selects = queryOpt.map { query => Option(query.selects).map(_.asScala.toMap).orNull }.orNull,
-                     from = table,
-                     wheres = wheres,
-                     fillIfAbsent = fillIfAbsent)
+  def scanDf(query: Query,
+             table: String,
+             fillIfAbsent: Option[Map[String, String]] = None,
+             partitionColumn: String = tableUtils.partitionColumn)(implicit tableUtils: TableUtils): DataFrame = {
+    tableUtils.scanDf(query, table, fillIfAbsent, partitionColumn, Some(this))
+  }
+
+  def whereClauses(partitionColumn: String = tableUtils.partitionColumn): Seq[String] = {
+    val startClause = Option(start).map(s"${partitionColumn} >= '" + _ + "'")
+    val endClause = Option(end).map(s"${partitionColumn} <= '" + _ + "'")
+    (startClause ++ endClause).toSeq
   }
 
   def steps(days: Int): Seq[PartitionRange] = {
@@ -116,14 +107,15 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
       .toSeq
   }
 
-  // no nulls in start or end and start <= end - used as a pre-check before the `partitions` function
-  def wellDefined: Boolean = start != null && end != null && start <= end
   def partitions: Seq[String] = {
     assert(wellDefined, s"Invalid partition range ${this}")
     Stream
       .iterate(start)(tableUtils.partitionSpec.after)
       .takeWhile(_ <= end)
   }
+
+  // no nulls in start or end and start <= end - used as a pre-check before the `partitions` function
+  def wellDefined: Boolean = start != null && end != null && start <= end
 
   def shift(days: Int): PartitionRange = {
     if (days == 0) {

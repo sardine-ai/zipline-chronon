@@ -50,8 +50,11 @@ class GroupBy(inputStream: DataFrame,
     val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
     val fillIfAbsent = groupByConf.dataModel match {
       case DataModel.Entities =>
-        Map(Constants.TimeColumn -> timeColumn, Constants.ReversalColumn -> null, Constants.MutationTimeColumn -> null)
-      case chronon.api.DataModel.Events => Map(Constants.TimeColumn -> timeColumn)
+        Some(
+          Map(Constants.TimeColumn -> timeColumn,
+              Constants.ReversalColumn -> null,
+              Constants.MutationTimeColumn -> null))
+      case chronon.api.DataModel.Events => Some(Map(Constants.TimeColumn -> timeColumn))
     }
     val keys = groupByConf.getKeyColumns.asScala
 
@@ -70,7 +73,7 @@ class GroupBy(inputStream: DataFrame,
       selects,
       inputTable,
       baseWheres ++ timeWheres :+ s"($keyWhereOption)",
-      fillIfAbsent = if (selects == null) null else fillIfAbsent
+      fillIfAbsent = if (selects == null) None else fillIfAbsent
     )
   }
 

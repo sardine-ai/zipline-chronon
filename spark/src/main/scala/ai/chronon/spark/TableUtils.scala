@@ -19,10 +19,11 @@ package ai.chronon.spark
 import java.io.{PrintWriter, StringWriter}
 import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.{Constants, PartitionSpec}
+import ai.chronon.api.ColorPrinter.ColorString
+import ai.chronon.api.{Constants, DataPointer, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.Extensions._
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
-import ai.chronon.spark.Extensions.{DfStats, DfWithStats}
+import ai.chronon.spark.Extensions.{DataPointerOps, DfStats, DfWithStats}
 import jnr.ffi.annotations.Synchronized
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.SparkException
@@ -39,6 +40,7 @@ import java.util.concurrent.{ExecutorService, Executors}
 import scala.collection.{Seq, mutable}
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.util.ScalaJavaConversions.{ListOps, MapOps}
 import scala.util.{Failure, Success, Try}
 
 case class TableUtils(sparkSession: SparkSession) {
@@ -111,7 +113,7 @@ case class TableUtils(sparkSession: SparkSession) {
 
   def tableExists(tableName: String): Boolean = sparkSession.catalog.tableExists(tableName)
 
-  def loadEntireTable(tableName: String): DataFrame = sparkSession.table(tableName)
+  def loadTable(tableName: String): DataFrame = sparkSession.table(tableName)
 
   def isPartitioned(tableName: String): Boolean = {
     // TODO: use proper way to detect if a table is partitioned or not
@@ -349,14 +351,22 @@ case class TableUtils(sparkSession: SparkSession) {
     val pw = new PrintWriter(sw)
     new Throwable().printStackTrace(pw)
     val stackTraceString = sw.toString
-    val stackTraceStringPretty = stackTraceString
+    val stackTraceStringPretty = "    " + stackTraceString
       .split("\n")
       .filter(_.contains("chronon"))
-      .map(_.replace("at ai.chronon.spark.", ""))
-      .mkString("\n")
+      .map(_.replace("at ai.chronon.spark.test.", "").replace("at ai.chronon.spark.", "").stripLeading())
+      .mkString("\n    ")
 
-    logger.info(
-      s"\n----[Running query coalesced into at most $partitionCount partitions]----\n$query\n----[End of Query]----\n\n Query call path (not an error stack trace): \n$stackTraceStringPretty \n\n --------")
+    println(s"""  ---- running query ----
+         |
+         |${"  " + query.trim.replace("\n", "\n  ")}
+         |
+         |  ---- call path ----
+         |
+         |$stackTraceStringPretty
+         |
+         |  ---- end ----
+         |""".stripMargin)
     try {
       // Run the query
       val df = sparkSession.sql(query).coalesce(partitionCount)
@@ -806,6 +816,41 @@ case class TableUtils(sparkSession: SparkSession) {
       // set a flag in table props to indicate that this is a dynamic table
       sql(alterTablePropertiesSql(tableName, Map(Constants.ChrononDynamicTable -> true.toString)))
     }
+  }
+
+  def scanDfBase(selectMap: Map[String, String],
+                 table: String,
+                 wheres: scala.collection.Seq[String],
+                 fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
+    val dp = DataPointer(table)
+    var df = dp.toDf(sparkSession)
+    val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
+    println(s"""Scanning data:
+         |  table: ${dp.tableOrPath}
+         |  options: ${dp.options}
+         |  format: ${dp.format}
+         |  selects:
+         |    ${selects.mkString("\n    ")}
+         |  wheres:
+         |    ${wheres.mkString(",\n    ")}
+         |""".stripMargin.yellow)
+    if (selects.nonEmpty) df = df.selectExpr(selects: _*)
+    if (wheres.nonEmpty) df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
+    df
+  }
+
+  def scanDf(query: Query,
+             table: String,
+             fallbackSelects: Option[Map[String, String]] = None,
+             partitionColumn: String = partitionColumn,
+             range: Option[PartitionRange] = None): DataFrame = {
+    val rangeWheres = range.map(_.whereClauses(partitionColumn)).getOrElse(Seq.empty)
+    val queryWheres = Option(query).flatMap(q => Option(q.wheres)).map(_.toScala).getOrElse(Seq.empty)
+    val wheres: Seq[String] = rangeWheres ++ queryWheres
+
+    val selects = Option(query).flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
+
+    scanDfBase(selects, table, wheres, fallbackSelects)
   }
 }
 
