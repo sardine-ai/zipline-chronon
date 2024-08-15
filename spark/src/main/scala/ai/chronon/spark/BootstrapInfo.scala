@@ -77,6 +77,7 @@ object BootstrapInfo {
            tableUtils: TableUtils,
            leftSchema: Option[StructType]): BootstrapInfo = {
 
+    implicit val tu = tableUtils
     // Enrich each join part with the expected output schema
     logger.info(s"\nCreating BootstrapInfo for GroupBys for Join ${joinConf.metaData.name}")
     var joinParts: Seq[JoinPartMetadata] = Option(joinConf.joinParts.toScala)
@@ -193,9 +194,8 @@ object BootstrapInfo {
     // Verify that join keys are valid columns on the bootstrap source table
     val tableHashes = tableBootstrapParts
       .map(part => {
-        val range = PartitionRange(part.startPartition, part.endPartition)(tableUtils)
-        val bootstrapQuery = range.genScanQuery(part.query, part.table, Map(tableUtils.partitionColumn -> null))
-        val bootstrapDf = tableUtils.sql(bootstrapQuery)
+        val range = PartitionRange(part.startPartition, part.endPartition)
+        val bootstrapDf = range.scanDf(part.query, part.table, Some(Map(tableUtils.partitionColumn -> null)))
         val schema = bootstrapDf.schema
         val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)
         collectException(
@@ -217,7 +217,7 @@ object BootstrapInfo {
           }
           .map(field => StructField(field._1, field._2))
 
-        part.semanticHash -> (valueFields, part.table, bootstrapQuery)
+        part.semanticHash -> (valueFields, part.table)
       })
       .toMap
 
@@ -262,7 +262,7 @@ object BootstrapInfo {
     // validate that all selected fields except keys from (non-log) bootstrap tables match with
     // one of defined fields in join parts or external parts
     for (
-      (fields, table, query) <- tableHashes.values;
+      (fields, table) <- tableHashes.values;
       field <- fields
     ) yield {
 
@@ -270,8 +270,6 @@ object BootstrapInfo {
         assert(
           bootstrapInfo.fieldsMap.contains(field.name),
           s"""Table $table has column ${field.name} with ${field.fieldType}, but Join ${joinConf.metaData.name} does NOT have this field
-           |Bootstrap Query:
-           |${query}
            |""".stripMargin
         ))
       collectException(
@@ -280,8 +278,6 @@ object BootstrapInfo {
           s"""Table $table has column ${field.name} with ${field.fieldType}, but Join ${joinConf.metaData.name} has the same field with ${bootstrapInfo
             .fieldsMap(field.name)
             .fieldType}
-           |Bootstrap Query:
-           |${query}
            |""".stripMargin
         ))
     }
@@ -324,11 +320,9 @@ object BootstrapInfo {
          |Log Hashes: ${logHashes.keys.prettyInline}
          |""".stripMargin)
     tableHashes.foreach {
-      case (hash, (schema, _, query)) =>
+      case (hash, (schema, _)) =>
         logger.info(s"""Bootstrap Info for Table Bootstraps
            |Table Hash: ${hash}
-           |Bootstrap Query:
-           |\n${query}\n
            |Bootstrap Schema:
            |${stringify(schema)}
            |""".stripMargin)

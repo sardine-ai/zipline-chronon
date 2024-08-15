@@ -35,16 +35,12 @@ import org.junit.Test
 class MutationsTest {
   @transient lazy val logger = LoggerFactory.getLogger(getClass)
 
-  lazy val spark: SparkSession = SparkSessionBuilder.build(
-    "MutationsTest",
-    local = true,
-    additionalConfig = Some(Map("spark.chronon.backfill.validation.enabled" -> "false")))
+  val spark: SparkSession = SparkSessionBuilder.build("MutationsTest", local = true) //, additionalConfig = Some(Map("spark.chronon.backfill.validation.enabled" -> "false")))
+  private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private def namespace(suffix: String) = s"test_mutations_$suffix"
   private val groupByName = s"group_by_test.v0"
   private val joinName = s"join_test.v0"
-
-  private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   // {listing_id (key), ts (timestamp of property), rating (property: rated value), ds (partition ds)}
   private val snapshotSchema = StructType(
@@ -126,21 +122,21 @@ class MutationsTest {
     }
     val joinRdd = expectedRdd.join(computedRdd)
     if (totalExpectedRows == joinRdd.count()) return true
-    logger.info("Failed to assert equality!")
-    logger.info("== Joined RDD (listing_id, ts, rating_average)")
+    println("Failed to assert equality!")
+    println("== Joined RDD (listing_id, ts, rating_average)")
     val readableRDD = joinRdd.map {
       case ((id, ts, event, avg, ds), _) => Row(id, ts, event, avg, ds)
     }
     spark.createDataFrame(readableRDD, expectedSchema).show()
-    logger.info("== Expected")
+    println("== Expected")
     df.replaceWithReadableTime(Seq("ts"), false).show()
-    logger.info("== Computed")
+    println("== Computed")
     computed.replaceWithReadableTime(Seq("ts"), false).show()
     false
   }
 
   def computeTemporalTestJoin(suffix: String,
-                              eventData: Seq[Row],
+                              leftData: Seq[Row],
                               snapshotData: Seq[Row],
                               mutationData: Seq[Row],
                               endPartition: String,
@@ -148,8 +144,8 @@ class MutationsTest {
                               windows: Seq[Window] = null,
                               operation: Operation = Operation.AVERAGE): DataFrame = {
     val testNamespace = namespace(suffix)
-    spark.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
-    spark.createDataFrame(spark.sparkContext.parallelize(eventData), leftSchema).save(s"$testNamespace.$eventTable")
+    tableUtils.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
+    spark.createDataFrame(spark.sparkContext.parallelize(leftData), leftSchema).save(s"$testNamespace.$eventTable")
     spark
       .createDataFrame(spark.sparkContext.parallelize(snapshotData), snapshotSchema)
       .save(s"$testNamespace.$snapshotTable")
@@ -217,7 +213,7 @@ class MutationsTest {
   def computeSimpleAverageThroughSql(testNamespace: String): DataFrame = {
     val excludeCondition = "mutations.is_before AND mutations.ts <= queries.ts AND mutations.mutation_ts < queries.ts"
     val includeCondition = s"NOT $excludeCondition"
-    val expected = spark.sql(s"""
+    val expected = tableUtils.sql(s"""
          |WITH
          |queries AS (
          |  SELECT
@@ -303,7 +299,7 @@ class MutationsTest {
   def computeLastThroughSql(testNamespace: String): DataFrame = {
     val excludeCondition = "mutations.is_before AND mutations.ts <= queries.ts AND mutations.mutation_ts < queries.ts"
     val includeCondition = s"NOT $excludeCondition"
-    val expected = spark.sql(s"""
+    val expected = tableUtils.sql(s"""
          |WITH
          |queries AS (
          |  SELECT
@@ -411,7 +407,7 @@ class MutationsTest {
     expected
   }
 
-  def compareAgainstSql(suffix: String, computed: DataFrame, operation: Operation) = {
+  def compareAgainstSql(suffix: String, computed: DataFrame, operation: Operation): Unit = {
     val testNamespace = namespace(suffix)
     val fromSql = operation match {
       case Operation.AVERAGE => computeSimpleAverageThroughSql(testNamespace)
@@ -421,6 +417,8 @@ class MutationsTest {
     val diff = Comparison.sideBySide(computed, fromSql, List("listing_id", "ts", "ds"))
     assert(diff.count() == 0)
   }
+
+  private val millis = x => TsUtils.datetimeToTs(x)
 
   /** Simplest Case:
     *
@@ -433,60 +431,46 @@ class MutationsTest {
   @Test
   def testSimplestCase(): Unit = {
     val suffix = "simple"
-    val eventData = Seq(
-      Row(1, 1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), "2021-04-10"),
-      Row(1, 1, TsUtils.datetimeToTs("2021-04-10 02:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+    val leftData = Seq(
+      // {listing_id, some_col, ts, ds}
+      Row(1, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
+      Row(1, 1, millis("2021-04-10 02:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-04 06:00:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 5, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-05 04:00:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 02:30:00"), 5, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-09"),
+      Row(3, millis("2021-04-04 06:00:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 5, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-09"),
+      Row(3, millis("2021-04-05 04:00:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 02:30:00"), 5, "2021-04-09")
     )
     val mutationData = Seq(
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-10 02:00:00"),
-          2,
-          TsUtils.datetimeToTs("2021-04-10 02:00:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          3,
-          TsUtils.datetimeToTs("2021-04-10 02:10:00"),
-          false,
-          "2021-04-10"),
-      Row(3,
-          TsUtils.datetimeToTs("2021-04-10 23:00:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 02:15:00"),
-          false,
-          "2021-04-10")
+      Row(1, millis("2021-04-10 02:00:00"), 2, millis("2021-04-10 02:00:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 10:00:00"), 3, millis("2021-04-10 02:10:00"), false, "2021-04-10"),
+      Row(3, millis("2021-04-10 23:00:00"), 4, millis("2021-04-10 02:15:00"), false, "2021-04-10")
     )
     val (startPartition, endPartition) = ("2021-04-08", "2021-04-10")
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = startPartition,
                                          endPartition = endPartition)
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), 1, 4.5, "2021-04-10"),
-      Row(1, TsUtils.datetimeToTs("2021-04-10 02:30:00"), 1, 4.0, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 3.0, "2021-04-10")
+      Row(1, millis("2021-04-10 01:00:00"), 1, 4.5, "2021-04-10"),
+      Row(1, millis("2021-04-10 02:30:00"), 1, 4.0, "2021-04-10"),
+      Row(2, millis("2021-04-10 23:00:00"), 1, 3.0, "2021-04-10")
     )
     assert(compareResult(result, expected))
     compareAgainstSql(suffix, result, Operation.AVERAGE)
     val resultLast = computeTemporalTestJoin(suffix,
-                                             eventData,
+                                             leftData,
                                              snapshotData,
                                              mutationData,
                                              startPartition = startPartition,
@@ -506,62 +490,42 @@ class MutationsTest {
   @Test
   def testUpdateValueCase(): Unit = {
     val suffix = "update_value"
-    val eventData = Seq(
+    val leftData = Seq(
       // {listing_id, ts, event, ds}
-      Row(1, 1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), "2021-04-10"),
-      Row(1, 1, TsUtils.datetimeToTs("2021-04-10 02:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+      Row(1, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
+      Row(1, 1, millis("2021-04-10 02:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 5, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 02:30:00"), 5, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-04 06:00:00"), 4, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-05 04:00:00"), 4, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 5, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 02:30:00"), 5, "2021-04-09"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-09"),
+      Row(3, millis("2021-04-04 06:00:00"), 4, "2021-04-09"),
+      Row(3, millis("2021-04-05 04:00:00"), 4, "2021-04-09")
     )
     val mutationData = Seq(
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-05 00:30:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 02:00:00"),
-          true,
-          "2021-04-10"),
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-05 00:30:00"),
-          2,
-          TsUtils.datetimeToTs("2021-04-10 02:00:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          3,
-          TsUtils.datetimeToTs("2021-04-10 02:10:00"),
-          false,
-          "2021-04-10"),
-      Row(3,
-          TsUtils.datetimeToTs("2021-04-10 23:00:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 02:15:00"),
-          false,
-          "2021-04-10")
+      Row(1, millis("2021-04-05 00:30:00"), 4, millis("2021-04-10 02:00:00"), true, "2021-04-10"),
+      Row(1, millis("2021-04-05 00:30:00"), 2, millis("2021-04-10 02:00:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 10:00:00"), 3, millis("2021-04-10 02:10:00"), false, "2021-04-10"),
+      Row(3, millis("2021-04-10 23:00:00"), 4, millis("2021-04-10 02:15:00"), false, "2021-04-10")
     )
     val (startPartition, endPartition) = ("2021-04-08", "2021-04-10")
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = startPartition,
                                          endPartition = endPartition)
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), 1, 4.5, "2021-04-10"),
-      Row(1, TsUtils.datetimeToTs("2021-04-10 02:30:00"), 1, 4.0, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 3.0, "2021-04-10")
+      Row(1, millis("2021-04-10 01:00:00"), 1, 4.5, "2021-04-10"),
+      Row(1, millis("2021-04-10 02:30:00"), 1, 4.0, "2021-04-10"),
+      Row(2, millis("2021-04-10 23:00:00"), 1, 3.0, "2021-04-10")
     )
     assert(compareResult(result, expected))
     compareAgainstSql(suffix, result, Operation.AVERAGE)
@@ -578,62 +542,42 @@ class MutationsTest {
   @Test
   def testUpdateKeyCase(): Unit = {
     val suffix = "update_key"
-    val eventData = Seq(
-      Row(1, 1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 02:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+    val leftData = Seq(
+      Row(1, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 02:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 02:30:00"), 5, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-06 03:45:00"), 3, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-04 06:00:00"), 4, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-05 04:00:00"), 4, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 02:30:00"), 5, "2021-04-09"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-06 03:45:00"), 3, "2021-04-09"),
+      Row(3, millis("2021-04-04 06:00:00"), 4, "2021-04-09"),
+      Row(3, millis("2021-04-05 04:00:00"), 4, "2021-04-09")
     )
     val mutationData = Seq(
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-05 02:30:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          true,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-05 00:30:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          3,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          false,
-          "2021-04-10"),
-      Row(3,
-          TsUtils.datetimeToTs("2021-04-10 23:00:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 02:15:00"),
-          false,
-          "2021-04-10")
+      Row(1, millis("2021-04-05 02:30:00"), 5, millis("2021-04-10 00:30:00"), true, "2021-04-10"),
+      Row(2, millis("2021-04-05 00:30:00"), 5, millis("2021-04-10 00:30:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 10:00:00"), 3, millis("2021-04-10 10:00:00"), false, "2021-04-10"),
+      Row(3, millis("2021-04-10 23:00:00"), 4, millis("2021-04-10 02:15:00"), false, "2021-04-10")
     )
     val (startPartition, endPartition) = ("2021-04-08", "2021-04-10")
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = startPartition,
                                          endPartition = endPartition)
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), 1, 4.0, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 02:30:00"), 1, 3.5, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 3.4, "2021-04-10")
+      Row(1, millis("2021-04-10 01:00:00"), 1, 4.0, "2021-04-10"),
+      Row(2, millis("2021-04-10 02:30:00"), 1, 3.5, "2021-04-10"),
+      Row(2, millis("2021-04-10 23:00:00"), 1, 3.4, "2021-04-10")
     )
     assert(compareResult(result, expected))
     compareAgainstSql(suffix, result, Operation.AVERAGE)
@@ -656,89 +600,59 @@ class MutationsTest {
   @Test
   def testInconsistentTsLeftCase(): Unit = {
     val suffix = "inconsistent_ts"
-    val eventData = Seq(
-      Row(1, 1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 04:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 06:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 08:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+    val leftData = Seq(
+      Row(1, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-09 04:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-09 06:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-09 08:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-08"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-08"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-08"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 02:30:00"), 5, "2021-04-08"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-08"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-08"),
-      Row(2, TsUtils.datetimeToTs("2021-04-06 03:45:00"), 3, "2021-04-08"),
-      Row(3, TsUtils.datetimeToTs("2021-04-04 06:00:00"), 4, "2021-04-08"),
-      Row(3, TsUtils.datetimeToTs("2021-04-05 04:00:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-05 02:30:00"), 5, "2021-04-08"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-08"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-08"),
+      Row(2, millis("2021-04-06 03:45:00"), 3, "2021-04-08"),
+      Row(3, millis("2021-04-04 06:00:00"), 4, "2021-04-08"),
+      Row(3, millis("2021-04-05 04:00:00"), 4, "2021-04-08"),
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 02:30:00"), 5, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-06 03:45:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-09 05:45:00"), 5, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-04 06:00:00"), 4, "2021-04-09"),
-      Row(3, TsUtils.datetimeToTs("2021-04-05 04:00:00"), 4, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 02:30:00"), 5, "2021-04-09"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-06 03:45:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 5, "2021-04-09"),
+      Row(3, millis("2021-04-04 06:00:00"), 4, "2021-04-09"),
+      Row(3, millis("2021-04-05 04:00:00"), 4, "2021-04-09")
     )
     val mutationData = Seq(
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          false,
-          "2021-04-09"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-09 07:00:00"),
-          true,
-          "2021-04-09"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-09 07:00:00"),
-          false,
-          "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 4, millis("2021-04-09 05:45:00"), false, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 4, millis("2021-04-09 07:00:00"), true, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 5, millis("2021-04-09 07:00:00"), false, "2021-04-09"),
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          3,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          false,
-          "2021-04-10"),
-      Row(3,
-          TsUtils.datetimeToTs("2021-04-10 23:00:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 02:15:00"),
-          false,
-          "2021-04-10")
+      Row(1, millis("2021-04-10 00:30:00"), 5, millis("2021-04-10 00:30:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 10:00:00"), 3, millis("2021-04-10 10:00:00"), false, "2021-04-10"),
+      Row(3, millis("2021-04-10 23:00:00"), 4, millis("2021-04-10 02:15:00"), false, "2021-04-10")
     )
 
     val (startPartition, endPartition) = ("2021-04-08", "2021-04-10")
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = startPartition,
                                          endPartition = endPartition)
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), 1, 4.4, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-09 04:30:00"), 1, 3.0, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-09 06:30:00"), 1, 3.25, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-09 08:30:00"), 1, 3.5, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 3.4, "2021-04-10")
+      Row(1, millis("2021-04-10 01:00:00"), 1, 4.4, "2021-04-10"),
+      Row(2, millis("2021-04-09 04:30:00"), 1, 3.0, "2021-04-10"),
+      Row(2, millis("2021-04-09 06:30:00"), 1, 3.25, "2021-04-10"),
+      Row(2, millis("2021-04-09 08:30:00"), 1, 3.5, "2021-04-10"),
+      Row(2, millis("2021-04-10 23:00:00"), 1, 3.4, "2021-04-10")
     )
     assert(compareResult(result, expected))
     compareAgainstSql(suffix, result, Operation.AVERAGE)
@@ -756,68 +670,43 @@ class MutationsTest {
   @Test
   def testDecayedWindowCase(): Unit = {
     val suffix = "decayed"
-    val eventData = Seq(
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 01:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 04:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 06:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-09 08:30:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 09:00:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+    val leftData = Seq(
+      Row(2, 1, millis("2021-04-09 01:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-09 04:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-09 06:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-09 08:30:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 09:00:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-08"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-08"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-08"),
-      Row(1, TsUtils.datetimeToTs("2021-04-08 02:30:00"), 4, "2021-04-08"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-08"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-08"),
-      Row(2, TsUtils.datetimeToTs("2021-04-06 03:45:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-08"),
+      Row(1, millis("2021-04-08 02:30:00"), 4, "2021-04-08"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-08"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-08"),
+      Row(2, millis("2021-04-06 03:45:00"), 4, "2021-04-08"),
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-08 02:30:00"), 4, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-06 03:45:00"), 4, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-09 05:45:00"), 5, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-08 02:30:00"), 4, "2021-04-09"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-06 03:45:00"), 4, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 5, "2021-04-09")
     )
     val mutationData = Seq(
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          false,
-          "2021-04-09"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          2,
-          TsUtils.datetimeToTs("2021-04-09 07:00:00"),
-          true,
-          "2021-04-09"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-09 05:45:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-09 07:00:00"),
-          false,
-          "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 2, millis("2021-04-09 05:45:00"), false, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 2, millis("2021-04-09 07:00:00"), true, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 5, millis("2021-04-09 07:00:00"), false, "2021-04-09"),
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 10:00:00"),
-          false,
-          "2021-04-10")
+      Row(1, millis("2021-04-10 00:30:00"), 5, millis("2021-04-10 00:30:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 10:00:00"), 4, millis("2021-04-10 10:00:00"), false, "2021-04-10")
     )
 
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = "2021-04-08",
@@ -826,17 +715,17 @@ class MutationsTest {
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
       // Anything after 4/5 1:30 but before 4/9 1:30 [3@4/5 3:40 | 4@4/6 3:45] -> 3.5
-      Row(2, TsUtils.datetimeToTs("2021-04-09 01:30:00"), 1, 3.5, "2021-04-10"),
+      Row(2, millis("2021-04-09 01:30:00"), 1, 3.5, "2021-04-10"),
       // Anything after 4/5 4:30 but before 4/9 4:30 [4@4/6 3:45] -> 4.0
-      Row(2, TsUtils.datetimeToTs("2021-04-09 04:30:00"), 1, 4.0, "2021-04-10"),
+      Row(2, millis("2021-04-09 04:30:00"), 1, 4.0, "2021-04-10"),
       // Anything after 4/5 6:30 but before 4/9 6:30 [4@4/6 3:45 | 2@4/9 5:45] (before mutation ts)
-      Row(2, TsUtils.datetimeToTs("2021-04-09 06:30:00"), 1, 3.0, "2021-04-10"),
+      Row(2, millis("2021-04-09 06:30:00"), 1, 3.0, "2021-04-10"),
       // Anything after 4/5 8:30 but before 4/9 8:30 [4@4/6 3:45 | 5@4/9 5:45] (after mutation ts)
-      Row(2, TsUtils.datetimeToTs("2021-04-09 08:30:00"), 1, 4.5, "2021-04-10"),
+      Row(2, millis("2021-04-09 08:30:00"), 1, 4.5, "2021-04-10"),
       // Anything after 4/6 23:00 but before 4/10 23:00 [5@4/9 5:45] -> 5.0
-      Row(2, TsUtils.datetimeToTs("2021-04-10 09:00:00"), 1, 5.0, "2021-04-10"),
+      Row(2, millis("2021-04-10 09:00:00"), 1, 5.0, "2021-04-10"),
       // Anything after 4/6 23:00 but before 4/10 23:00 [5@4/9 5:45 | 4@4/10 10:00] -> 4.5
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 4.5, "2021-04-10")
+      Row(2, millis("2021-04-10 23:00:00"), 1, 4.5, "2021-04-10")
     )
     assert(compareResult(result, expected))
   }
@@ -853,33 +742,28 @@ class MutationsTest {
   @Test
   def testDecayedWindowCaseNoMutation(): Unit = {
     val suffix = "decayed_v2"
-    val eventData = Seq(
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 01:00:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+    val leftData = Seq(
+      Row(2, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-08 02:30:00"), 4, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-04 01:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-05 03:40:00"), 3, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-06 03:45:00"), 4, "2021-04-09"),
-      Row(2, TsUtils.datetimeToTs("2021-04-09 05:45:00"), 5, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-08 02:30:00"), 4, "2021-04-09"),
+      Row(2, millis("2021-04-04 01:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-05 03:40:00"), 3, "2021-04-09"),
+      Row(2, millis("2021-04-06 03:45:00"), 4, "2021-04-09"),
+      Row(2, millis("2021-04-09 05:45:00"), 5, "2021-04-09")
     )
     val mutationData = Seq(
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(1,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          false,
-          "2021-04-10")
+      Row(1, millis("2021-04-10 00:30:00"), 5, millis("2021-04-10 00:30:00"), false, "2021-04-10")
     )
 
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = "2021-04-09",
@@ -888,9 +772,9 @@ class MutationsTest {
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
       // Anything after 4/6 01:00 but before 4/10 01:00 [4@4/6 3:45, 5@4/9 5:45] -> 4.5
-      Row(2, TsUtils.datetimeToTs("2021-04-10 01:00:00"), 1, 4.5, "2021-04-10"),
+      Row(2, millis("2021-04-10 01:00:00"), 1, 4.5, "2021-04-10"),
       // Anything after 4/6 23:00 but before 4/10 23:00 [5@4/9 5:45] -> 5.0
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 5.0, "2021-04-10")
+      Row(2, millis("2021-04-10 23:00:00"), 1, 5.0, "2021-04-10")
     )
     assert(compareResult(result, expected))
   }
@@ -907,49 +791,29 @@ class MutationsTest {
   @Test
   def testNoSnapshotJustMutation(): Unit = {
     val suffix = "no_mutation"
-    val eventData = Seq(
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 00:07:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 01:07:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 05:00:00"), "2021-04-10"),
-      Row(2, 1, TsUtils.datetimeToTs("2021-04-10 23:00:00"), "2021-04-10")
+    val leftData = Seq(
+      Row(2, 1, millis("2021-04-10 00:07:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 01:07:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 05:00:00"), "2021-04-10"),
+      Row(2, 1, millis("2021-04-10 23:00:00"), "2021-04-10")
     )
     val snapshotData = Seq(
       // {listing_id, ts, rating, ds}
-      Row(1, TsUtils.datetimeToTs("2021-04-04 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-04 12:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-05 00:30:00"), 4, "2021-04-09"),
-      Row(1, TsUtils.datetimeToTs("2021-04-08 02:30:00"), 4, "2021-04-09")
+      Row(1, millis("2021-04-04 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-04 12:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-05 00:30:00"), 4, "2021-04-09"),
+      Row(1, millis("2021-04-08 02:30:00"), 4, "2021-04-09")
     )
     val mutationData = Seq(
       // {listing_id, ts, rating, mutation_ts, is_before, ds}
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          5,
-          TsUtils.datetimeToTs("2021-04-10 00:30:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 04:30:00"),
-          2,
-          TsUtils.datetimeToTs("2021-04-10 04:30:00"),
-          false,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 04:30:00"),
-          2,
-          TsUtils.datetimeToTs("2021-04-10 12:30:00"),
-          true,
-          "2021-04-10"),
-      Row(2,
-          TsUtils.datetimeToTs("2021-04-10 04:30:00"),
-          4,
-          TsUtils.datetimeToTs("2021-04-10 12:30:00"),
-          false,
-          "2021-04-10")
+      Row(2, millis("2021-04-10 00:30:00"), 5, millis("2021-04-10 00:30:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 04:30:00"), 2, millis("2021-04-10 04:30:00"), false, "2021-04-10"),
+      Row(2, millis("2021-04-10 04:30:00"), 2, millis("2021-04-10 12:30:00"), true, "2021-04-10"),
+      Row(2, millis("2021-04-10 04:30:00"), 4, millis("2021-04-10 12:30:00"), false, "2021-04-10")
     )
 
     val result = computeTemporalTestJoin(suffix,
-                                         eventData,
+                                         leftData,
                                          snapshotData,
                                          mutationData,
                                          startPartition = "2021-04-09",
@@ -957,10 +821,10 @@ class MutationsTest {
                                          windows = Seq(new Window(4, TimeUnit.DAYS)))
     val expected = Seq(
       // {listing_id, ts (query), event, rating_average, ds}
-      Row(2, TsUtils.datetimeToTs("2021-04-10 00:07:00"), 1, null, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 01:07:00"), 1, 5.0, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 05:00:00"), 1, 3.5, "2021-04-10"),
-      Row(2, TsUtils.datetimeToTs("2021-04-10 23:00:00"), 1, 4.5, "2021-04-10")
+      Row(2, millis("2021-04-10 00:07:00"), 1, null, "2021-04-10"),
+      Row(2, millis("2021-04-10 01:07:00"), 1, 5.0, "2021-04-10"),
+      Row(2, millis("2021-04-10 05:00:00"), 1, 3.5, "2021-04-10"),
+      Row(2, millis("2021-04-10 23:00:00"), 1, 4.5, "2021-04-10")
     )
     assert(compareResult(result, expected))
   }
@@ -969,12 +833,12 @@ class MutationsTest {
   def testWithGeneratedData(): Unit = {
     val suffix = "generated"
     val reviews = List(
-      Column("listing_id", api.StringType, 100),
-      Column("rating", api.LongType, 100)
+      Column("listing_id", api.StringType, 10),
+      Column("rating", api.LongType, 5)
     )
     val events = List(
-      Column("listing_id", api.StringType, 100),
-      Column("event", api.IntType, 6)
+      Column("listing_id", api.StringType, 10),
+      Column("event", api.IntType, 5)
     )
     val (snapshotDf, mutationsDf) = DataFrameGen.mutations(spark, reviews, 10000, 20, 0.2, 1, "listing_id")
     val (_, maxDs) = mutationsDf.range[String](tableUtils.partitionColumn)
@@ -984,7 +848,7 @@ class MutationsTest {
       .drop()
       .withShiftedPartition(tableUtils.partitionColumn, -1)
     val testNamespace = namespace(suffix)
-    spark.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
+    tableUtils.sql(s"CREATE DATABASE IF NOT EXISTS $testNamespace")
     snapshotDf.save(s"$testNamespace.$snapshotTable")
     mutationsDf.save(s"$testNamespace.$mutationTable")
     leftDf.save(s"$testNamespace.$eventTable")
@@ -992,17 +856,12 @@ class MutationsTest {
     val expected = computeSimpleAverageThroughSql(testNamespace)
     val diff = Comparison.sideBySide(result, expected, List("listing_id", "ts", "ds"))
     if (diff.count() > 0) {
-      logger.info(s"Actual count: ${result.count()}")
-      logger.info(s"Expected count: ${expected.count()}")
-      logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      println(s"Actual count: ${result.count()}")
+      println(s"Expected count: ${expected.count()}")
+      println(s"Diff count: ${diff.count()}")
+      println(s"diff result rows")
       diff.show()
-      val recomputedResult = computeJoinFromTables(suffix, minDs, maxDs, null, Operation.AVERAGE)
-      val recomputedDiff = Comparison.sideBySide(recomputedResult, expected, List("listing_id", "ts", "ds"))
-      logger.info("Checking second run of the same data.")
-      logger.info(s"recomputed diff result rows")
-      recomputedDiff.show()
-      assert(recomputedDiff.count() == 0)
+      assert(diff.count() == 0)
     }
   }
 }
