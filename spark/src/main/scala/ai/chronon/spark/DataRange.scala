@@ -89,7 +89,7 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
 
   def scanDf(query: Query,
              table: String,
-             fillIfAbsent: Map[String, String] = Map.empty,
+             fillIfAbsent: Option[Map[String, String]] = None,
              partitionColumn: String = tableUtils.partitionColumn)(implicit tableUtils: TableUtils): DataFrame = {
     tableUtils.scanDf(query, table, fillIfAbsent, partitionColumn, Some(this))
   }

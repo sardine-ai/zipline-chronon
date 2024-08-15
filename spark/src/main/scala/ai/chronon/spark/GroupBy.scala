@@ -663,7 +663,7 @@ object GroupBy {
       selects,
       if (mutations) source.getEntities.mutationTable.cleanSpec else source.table,
       Option(source.query.wheres).map(_.toScala).getOrElse(Seq.empty[String]) ++ partitionConditions,
-      metaColumns ++ keys.map(_ -> null)
+      Some(metaColumns ++ keys.map(_ -> null))
     )
   }
 
