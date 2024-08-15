@@ -262,6 +262,7 @@ class Analyzer(tableUtils: TableUtils,
     joinConf.setups.foreach(tableUtils.sql)
 
     val (analysis, leftDf) = if (enableHitter) {
+      println()
       val leftDf = JoinUtils.leftDf(joinConf, range, tableUtils, allowEmpty = true).get
       val analysis = analyze(leftDf, joinConf.leftKeyCols, joinConf.left.table)
       (analysis, leftDf)
@@ -301,6 +302,11 @@ class Analyzer(tableUtils: TableUtils,
                             part.getGroupBy.getMetaData.getName)
       }
       // Run validation checks.
+      println(
+        s"""
+          |left columns: ${leftDf.columns.mkString(", ")}
+          |gb columns: ${gbKeySchema.keys.mkString(", ")}
+          |""".stripMargin)
       keysWithError ++= runSchemaValidation(leftSchema, gbKeySchema, part.rightToLeft)
       gbTables ++= part.groupBy.sources.toScala.map(_.table)
       dataAvailabilityErrors ++= runDataAvailabilityCheck(joinConf.left.dataModel, part.groupBy, unfilledRanges)
