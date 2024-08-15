@@ -23,10 +23,14 @@ object QueryUtils {
 
     def toProjections(m: Map[String, String]): Seq[String] =
       m.map {
-        case (col, expr) => if ((expr == col) || (expr == null)) col else s"$expr as $col"
+        case (col, expr) => if ((expr == col) || (expr == null)) s"`$col`" else s"$expr as `$col`"
       }.toSeq
 
     (Option(selects), Option(fillIfAbsent)) match {
+      // pick only aliases with valid expression from the fills
+      // eg., select *, ts from x -- is not valid, ts will 
+      // but select *, unixtime(ds) as `ts` from x -- is valid
+      case (Some(sels), Some(fills)) if sels.isEmpty => Seq("*") ++ toProjections(fills.filter(_._2 != null))
       case (Some(sels), Some(fills)) => toProjections(fills ++ sels)
       case (Some(sels), None)        => toProjections(sels)
       case (None, _)                 => Seq("*")
