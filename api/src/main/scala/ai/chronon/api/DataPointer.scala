@@ -16,8 +16,10 @@ object DataPointer extends RegexParsers {
   def apply(str: String): DataPointer = {
     parse(dataPointer, str) match {
       case Success(result, _) => result
-      case Failure(msg, _)    => throw new IllegalArgumentException(s"Invalid DataPointer string: $str. Error: $msg")
-      case Error(msg, _)      => throw new IllegalArgumentException(s"Invalid DataPointer string: $str. Error: $msg")
+      case Failure(msg, next) =>
+        throw new IllegalArgumentException(s"Invalid DataPointer string at position ${next.pos}: $str. Error: $msg")
+      case Error(msg, next) =>
+        throw new IllegalArgumentException(s"Invalid DataPointer string at position ${next.pos}: $str. Error: $msg")
     }
   }
 

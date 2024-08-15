@@ -592,10 +592,11 @@ object Extensions {
         val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
         val fillIfAbsent = groupBy.dataModel match {
           case DataModel.Entities =>
-            Map(Constants.TimeColumn -> timeColumn,
-                Constants.ReversalColumn -> null,
-                Constants.MutationTimeColumn -> null)
-          case DataModel.Events => Map(Constants.TimeColumn -> timeColumn)
+            Some(
+              Map(Constants.TimeColumn -> timeColumn,
+                  Constants.ReversalColumn -> null,
+                  Constants.MutationTimeColumn -> null))
+          case DataModel.Events => Some(Map(Constants.TimeColumn -> timeColumn))
         }
         val keys = groupBy.getKeyColumns.toScala
 
@@ -612,7 +613,7 @@ object Extensions {
           selects,
           streamingInputTable,
           baseWheres ++ timeWheres(timeColumn) :+ s"($keyWhereOption)",
-          fillIfAbsent = if (selects == null) null else fillIfAbsent
+          fillIfAbsent
         )
       } else {
         //todo: this logic is similar in JoinSourceRunner, we can simplify it to a single place

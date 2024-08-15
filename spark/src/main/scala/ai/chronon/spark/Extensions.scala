@@ -383,7 +383,7 @@ object Extensions {
           sparkSession.table(tableOrPath)
 
         case _ =>
-          throw new RuntimeException(s"Unsupported catalog: ${dataPointer.catalog}")
+          throw new UnsupportedOperationException(s"Unsupported catalog: ${dataPointer.catalog}")
       }
     }
   }

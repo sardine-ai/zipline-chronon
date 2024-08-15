@@ -269,7 +269,9 @@ class Analyzer(tableUtils: TableUtils,
     } else {
       val analysis = ""
       val leftDf =
-        range.scanDf(joinConf.left.query, joinConf.left.table, fillIfAbsent = Map(tableUtils.partitionColumn -> null))
+        range.scanDf(joinConf.left.query,
+                     joinConf.left.table,
+                     fillIfAbsent = Some(Map(tableUtils.partitionColumn -> null)))
       (analysis, leftDf)
     }
 
@@ -302,8 +304,7 @@ class Analyzer(tableUtils: TableUtils,
                             part.getGroupBy.getMetaData.getName)
       }
       // Run validation checks.
-      println(
-        s"""
+      println(s"""
           |left columns: ${leftDf.columns.mkString(", ")}
           |gb columns: ${gbKeySchema.keys.mkString(", ")}
           |""".stripMargin)
