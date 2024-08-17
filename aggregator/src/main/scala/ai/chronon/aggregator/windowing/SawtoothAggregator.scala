@@ -17,8 +17,13 @@
 package ai.chronon.aggregator.windowing
 
 import ai.chronon.aggregator.row.RowAggregator
-import ai.chronon.api.Extensions.{UnpackedAggregations, WindowMapping, WindowOps}
-import ai.chronon.api.{Aggregation, AggregationPart, DataType, Row}
+import ai.chronon.api.Aggregation
+import ai.chronon.api.AggregationPart
+import ai.chronon.api.DataType
+import ai.chronon.api.Extensions.UnpackedAggregations
+import ai.chronon.api.Extensions.WindowMapping
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Row
 
 import java.util
 import scala.collection.Seq
@@ -45,7 +50,7 @@ class SawtoothAggregator(aggregations: Seq[Aggregation], inputSchema: Seq[(Strin
 
   protected val hopSizes = resolution.hopSizes
 
-  @transient lazy val unpackedAggs = UnpackedAggregations.from(aggregations)
+  @transient lazy val unpackedAggs: UnpackedAggregations = UnpackedAggregations.from(aggregations)
   @transient lazy protected val tailHopIndices: Array[Int] = windowMappings.map { mapping =>
     hopSizes.indexOf(resolution.calculateTailHop(mapping.aggregationPart.window))
   }
@@ -54,7 +59,7 @@ class SawtoothAggregator(aggregations: Seq[Aggregation], inputSchema: Seq[(Strin
   @transient lazy val perWindowAggs: Array[AggregationPart] = windowMappings.map(_.aggregationPart)
   @transient lazy val windowedAggregator = new RowAggregator(inputSchema, unpackedAggs.perWindow.map(_.aggregationPart))
   @transient lazy val baseAggregator = new RowAggregator(inputSchema, unpackedAggs.perBucket)
-  @transient protected lazy val baseIrIndices = windowMappings.map(_.baseIrIndex)
+  @transient protected lazy val baseIrIndices: Array[Int] = windowMappings.map(_.baseIrIndex)
 
   // the cache uses this space to work out the IRs for the whole window based on hops
   // we only create this arena once, so GC kicks in fewer times

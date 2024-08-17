@@ -17,22 +17,29 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.DataModel.{Entities, Events}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel.Entities
+import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{Accuracy, Constants, JoinPart}
+import ai.chronon.api.JoinPart
 import ai.chronon.online.Metrics
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.JoinUtils.{coalescedJoin, leftDf, tablesToRecompute, shouldRecomputeLeft}
+import ai.chronon.spark.JoinUtils.coalescedJoin
+import ai.chronon.spark.JoinUtils.leftDf
+import ai.chronon.spark.JoinUtils.shouldRecomputeLeft
+import ai.chronon.spark.JoinUtils.tablesToRecompute
 import com.google.gson.Gson
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.apache.spark.util.sketch.BloomFilter
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.time.Instant
 
+import java.time.Instant
+import java.util
 import scala.collection.JavaConverters._
 import scala.collection.Seq
-import java.util
 import scala.util.ScalaJavaConversions.ListOps
 
 abstract class JoinBase(joinConf: api.Join,
@@ -41,9 +48,9 @@ abstract class JoinBase(joinConf: api.Join,
                         skipFirstHole: Boolean,
                         showDf: Boolean = false,
                         selectedJoinParts: Option[Seq[String]] = None) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private implicit val tu = tableUtils
-  assert(Option(joinConf.metaData.outputNamespace).nonEmpty, s"output namespace could not be empty or null")
+  assert(Option(joinConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinOffline, joinConf)
   val outputTable = joinConf.metaData.outputTable
 
@@ -343,7 +350,7 @@ abstract class JoinBase(joinConf: api.Join,
     // Runs the left side query for a join and saves the output to a table, for reuse by joinPart
     // Computation in parallelized joinPart execution mode.
     if (shouldRecomputeLeft(joinConf, bootstrapTable, tableUtils)) {
-      logger.info(s"Detected semantic change in left side of join, archiving left table for recomputation.")
+      logger.info("Detected semantic change in left side of join, archiving left table for recomputation.")
       val archivedAtTs = Instant.now()
       tableUtils.archiveOrDropTableIfExists(bootstrapTable, Some(archivedAtTs))
     }
@@ -351,7 +358,7 @@ abstract class JoinBase(joinConf: api.Join,
     val (rangeToFill, unfilledRanges) = getUnfilledRange(overrideStartPartition, bootstrapTable)
 
     if (unfilledRanges.isEmpty) {
-      logger.info(s"Range to fill already computed. Skipping query execution...")
+      logger.info("Range to fill already computed. Skipping query execution...")
     } else {
       // Register UDFs for the left part computation
       joinConf.setups.foreach(tableUtils.sql)
@@ -372,13 +379,13 @@ abstract class JoinBase(joinConf: api.Join,
 
   def computeFinalJoin(leftDf: DataFrame, leftRange: PartitionRange, bootstrapInfo: BootstrapInfo): Unit
 
-  def computeFinal(overrideStartPartition: Option[String] = None) = {
+  def computeFinal(overrideStartPartition: Option[String] = None): Unit = {
 
     // Utilizes the same tablesToRecompute check as the monolithic spark job, because if any joinPart changes, then so does the output table
     if (tablesToRecompute(joinConf, outputTable, tableUtils).isEmpty) {
-      logger.info(s"No semantic change detected, leaving output table in place.")
+      logger.info("No semantic change detected, leaving output table in place.")
     } else {
-      logger.info(s"Semantic changes detected, archiving output table.")
+      logger.info("Semantic changes detected, archiving output table.")
       val archivedAtTs = Instant.now()
       tableUtils.archiveOrDropTableIfExists(outputTable, Some(archivedAtTs))
     }
@@ -386,7 +393,7 @@ abstract class JoinBase(joinConf: api.Join,
     val (rangeToFill, unfilledRanges) = getUnfilledRange(overrideStartPartition, outputTable)
 
     if (unfilledRanges.isEmpty) {
-      logger.info(s"Range to fill already computed. Skipping query execution...")
+      logger.info("Range to fill already computed. Skipping query execution...")
     } else {
       val leftSchema = leftDf(joinConf, unfilledRanges.head, tableUtils, limit = Some(1)).map(df => df.schema)
       val bootstrapInfo = BootstrapInfo.from(joinConf, rangeToFill, tableUtils, leftSchema)
@@ -429,7 +436,7 @@ abstract class JoinBase(joinConf: api.Join,
     } catch {
       case ex: AssertionError =>
         metrics.gauge(Metrics.Name.validationFailure, 1)
-        logger.error(s"Validation failed. Please check the validation error in log.")
+        logger.error("Validation failed. Please check the validation error in log.")
         if (tableUtils.backfillValidationEnforced) throw ex
       case e: Throwable =>
         metrics.gauge(Metrics.Name.validationFailure, 1)

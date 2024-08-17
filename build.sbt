@@ -31,6 +31,20 @@ lazy val avro_1_11 = "1.11.2"
 
 ThisBuild / scalaVersion := scala_2_12
 
+inThisBuild(
+  List(
+    scalaVersion := "2.12.18",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision,
+    scalacOptions += {
+      if (scalaVersion.value.startsWith("2.12"))
+        "-Ywarn-unused"
+      else
+        "-Wunused:imports"
+    }
+  )
+)
+
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))

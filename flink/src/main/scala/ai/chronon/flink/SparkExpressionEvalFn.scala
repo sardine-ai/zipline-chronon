@@ -1,21 +1,29 @@
 package ai.chronon.flink
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.Extensions.{GroupByOps, MetadataOps}
-import ai.chronon.api.{Constants, GroupBy, Query, StructType => ChrononStructType}
-import ai.chronon.online.{CatalystUtil, SparkConversions}
+import ai.chronon.api.Constants
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.GroupBy
+import ai.chronon.api.Query
+import ai.chronon.api.{StructType => ChrononStructType}
+import ai.chronon.online.CatalystUtil
+import ai.chronon.online.SparkConversions
 import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.metrics.{Counter, Histogram}
+import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
+import org.apache.flink.metrics.Counter
+import org.apache.flink.metrics.Histogram
 import org.apache.flink.util.Collector
 import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
 import org.apache.spark.sql.types.StructType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.jdk.CollectionConverters.{asScalaBufferConverter, mapAsScalaMapConverter}
+import scala.jdk.CollectionConverters.asScalaBufferConverter
+import scala.jdk.CollectionConverters.mapAsScalaMapConverter
 
 /**
   * A Flink function that uses Chronon's CatalystUtil to evaluate the Spark SQL expression in a GroupBy.
@@ -28,7 +36,7 @@ import scala.jdk.CollectionConverters.{asScalaBufferConverter, mapAsScalaMapConv
   * @tparam T The type of the input data.
   */
 class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends RichFlatMapFunction[T, Map[String, Any]] {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val query: Query = groupBy.streamingSource.get.getEvents.query
 

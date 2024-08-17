@@ -17,7 +17,8 @@
 package ai.chronon.aggregator.row
 
 import ai.chronon.aggregator.base.BaseAggregator
-import ai.chronon.api.{DataType, Row}
+import ai.chronon.api.DataType
+import ai.chronon.api.Row
 
 class DirectColumnAggregator[Input, IR, Output](agg: BaseAggregator[Input, IR, Output],
                                                 columnIndices: ColumnIndices,

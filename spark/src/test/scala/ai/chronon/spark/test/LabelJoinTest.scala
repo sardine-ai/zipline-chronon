@@ -16,12 +16,18 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.{Accuracy, Builders, Constants, Operation, TimeUnit, Window}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
+import ai.chronon.api.Constants
+import ai.chronon.api.Operation
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
 import ai.chronon.spark._
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.slf4j.LoggerFactory
 
 class LabelJoinTest {
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
@@ -51,7 +57,7 @@ class LabelJoinTest {
     val computed = runner.computeLabelJoin(skipFinalJoin = true)
     logger.info(" == Computed == ")
     computed.show()
-    val expected = tableUtils.sql(s"""
+    val expected = tableUtils.sql("""
                                      SELECT v.listing_id as listing,
                                         dim_room_type as listing_attributes_dim_room_type,
                                         a.ds as label_ds,
@@ -90,7 +96,7 @@ class LabelJoinTest {
     val computed = runner.computeLabelJoin(skipFinalJoin = true)
     logger.info(" == Computed == ")
     computed.show()
-    val expected = tableUtils.sql(s"""
+    val expected = tableUtils.sql("""
                                      |SELECT listing,
                                      |       listing_attributes_room_dim_room_type,
                                      |       b.dim_reservations as listing_attributes_reservation_dim_reservations,
@@ -346,7 +352,7 @@ class LabelJoinTest {
     logger.info(" == computed == ")
     computed.show()
     val expected =
-      tableUtils.sql(s"""
+      tableUtils.sql("""
            |SELECT listing, ds, listing_label_group_by_is_active_max_5d, DATE_ADD(ds, 4) as label_ds
            |FROM(
            | SELECT v.listing_id as listing,

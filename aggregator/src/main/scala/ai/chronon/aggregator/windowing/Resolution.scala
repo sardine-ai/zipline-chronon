@@ -16,11 +16,13 @@
 
 package ai.chronon.aggregator.windowing
 
-import ai.chronon.api.Extensions.{WindowOps, WindowUtils}
-import ai.chronon.api.{GroupBy, TimeUnit, Window}
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.GroupBy
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
 
 import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaVersionSpecificCollectionsConverter.convertJavaListToScala
 
 trait Resolution extends Serializable {
   // For a given window what is the resolution of the tail
@@ -54,7 +56,7 @@ object DailyResolution extends Resolution {
       case _ =>
         throw new IllegalArgumentException(
           s"Invalid request for window $window for daily aggregation. " +
-            s"Window can only be multiples of 1d or the operation needs to be un-windowed."
+            "Window can only be multiples of 1d or the operation needs to be un-windowed."
         )
     }
 

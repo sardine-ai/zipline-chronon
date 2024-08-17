@@ -1,6 +1,6 @@
 package ai.chronon.online.connectors
 
-import ai.chronon.api.{StructType, DataSpec}
+import ai.chronon.api.DataSpec
 import ai.chronon.online.KVStore
 
 import scala.concurrent.duration.Duration

@@ -19,9 +19,11 @@ package ai.chronon.api
 import ai.chronon.api.Extensions._
 
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneOffset}
-import java.util.{Locale, TimeZone}
+import java.util.Locale
+import java.util.TimeZone
 
 case class PartitionSpec(format: String, spanMillis: Long) {
   private def partitionFormatter =

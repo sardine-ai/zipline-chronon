@@ -16,8 +16,11 @@
 
 package ai.chronon.online
 
-import java.util.concurrent.{ArrayBlockingQueue, ThreadPoolExecutor, TimeUnit}
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContextExecutor
 
 object FlexibleExecutionContext {
   def buildExecutor: ThreadPoolExecutor =

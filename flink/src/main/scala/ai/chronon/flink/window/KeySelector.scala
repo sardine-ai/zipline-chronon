@@ -1,9 +1,9 @@
 package ai.chronon.flink.window
 
 import ai.chronon.api.GroupBy
+import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters._
-import org.slf4j.LoggerFactory
 
 /**
   * A KeySelector is what Flink uses to determine how to partition a DataStream. In a distributed environment, the

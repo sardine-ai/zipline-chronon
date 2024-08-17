@@ -16,8 +16,6 @@
 
 package ai.chronon.api
 
-import ai.chronon.api.Extensions._
-
 object Constants {
   val TimeColumn: String = "ts"
   val LabelPartitionColumn: String = "label_ds"

@@ -17,7 +17,9 @@
 package ai.chronon.aggregator.row
 
 import ai.chronon.aggregator.base.BaseAggregator
-import ai.chronon.api.{DataType, MapType, StringType}
+import ai.chronon.api.DataType
+import ai.chronon.api.MapType
+import ai.chronon.api.StringType
 
 import java.util
 

@@ -124,7 +124,7 @@ jobs:
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt "spark/testOnly ai.chronon.spark.test.FetcherTest"
 
-  scala_compile_and_fmt:
+  scala_compile_fmt_fix      :
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -141,8 +141,11 @@ jobs:
       - name: Scala compile
         run: sbt "++ 2.12.18 compile"
 
-      - name: Run ScalafmtCheck
+      - name: Check Scalafmt
         run: sbt +scalafmtCheck
+
+      - name: Check ScalaFix
+        run: sbt "scalafixAll --check"
 
 
   other_scala_tests:

@@ -16,16 +16,25 @@
 
 package ai.chronon.spark.test
 
+import ai.chronon.api.StructField
 import ai.chronon.api._
+import ai.chronon.api._
+import ai.chronon.online.SparkConversions
+import ai.chronon.spark.IncompatibleSchemaException
+import ai.chronon.spark.PartitionRange
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import ai.chronon.spark._
 import ai.chronon.spark.test.TestUtils.makeDf
-import ai.chronon.api.{StructField, _}
-import ai.chronon.online.SparkConversions
-import ai.chronon.spark.{IncompatibleSchemaException, PartitionRange, SparkSessionBuilder, TableUtils}
 import org.apache.hadoop.hive.ql.exec.UDF
+import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SparkSession, types}
-import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.apache.spark.sql.types
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 import scala.util.Try

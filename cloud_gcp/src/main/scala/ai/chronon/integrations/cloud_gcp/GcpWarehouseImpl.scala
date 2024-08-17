@@ -1,33 +1,39 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.api.{DataSpec, DataType}
+import ai.chronon.api.DataSpec
+import ai.chronon.api.DataType
 import ai.chronon.online.connectors
-import ai.chronon.online.connectors.{Catalog, Topic, Warehouse}
+import ai.chronon.online.connectors.Catalog
+import ai.chronon.online.connectors.Topic
+import ai.chronon.online.connectors.Warehouse
+import com.google.cloud.bigquery.BigQuery
+import com.google.cloud.bigquery.BigQueryException
+import com.google.cloud.bigquery.BigQueryOptions
+import com.google.cloud.bigquery.DatasetInfo
+import com.google.cloud.bigquery.Field
+import com.google.cloud.bigquery.JobId
+import com.google.cloud.bigquery.JobInfo
 import com.google.cloud.bigquery.JobStatistics.QueryStatistics
-import com.google.cloud.bigquery.{
-  BigQuery,
-  BigQueryException,
-  BigQueryOptions,
-  DatasetInfo,
-  Field,
-  JobId,
-  JobInfo,
-  QueryJobConfiguration,
-  StandardSQLTypeName,
-  StandardTableDefinition,
-  TableId,
-  TableInfo,
-  TimePartitioning
-}
-import com.google.cloud.pubsub.v1.{SubscriptionAdminClient, TopicAdminClient}
-import com.google.pubsub.v1.{ProjectSubscriptionName, PushConfig, Subscription, TopicName}
+import com.google.cloud.bigquery.QueryJobConfiguration
+import com.google.cloud.bigquery.StandardSQLTypeName
+import com.google.cloud.bigquery.StandardTableDefinition
+import com.google.cloud.bigquery.TableId
+import com.google.cloud.bigquery.TableInfo
+import com.google.cloud.bigquery.TimePartitioning
+import com.google.cloud.pubsub.v1.SubscriptionAdminClient
+import com.google.cloud.pubsub.v1.TopicAdminClient
+import com.google.pubsub.v1.ProjectSubscriptionName
+import com.google.pubsub.v1.PushConfig
+import com.google.pubsub.v1.Subscription
+import com.google.pubsub.v1.TopicName
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
 class GcpWarehouseImpl(projectId: String, catalog: Catalog) extends Warehouse(catalog) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private val bigquery: BigQuery = BigQueryOptions.getDefaultInstance.getService
   def createTopic(topic: Topic, spec: DataSpec): Unit = {
     try {

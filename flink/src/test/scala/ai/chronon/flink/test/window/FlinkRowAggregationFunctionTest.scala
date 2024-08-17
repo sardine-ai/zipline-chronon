@@ -6,7 +6,8 @@ import ai.chronon.online.TileCodec
 import org.junit.Assert.fail
 import org.junit.Test
 
-import scala.util.{Failure, Try}
+import scala.util.Failure
+import scala.util.Try
 
 class FlinkRowAggregationFunctionTest {
   private val aggregations: Seq[Aggregation] = Seq(
@@ -180,7 +181,7 @@ class FlinkRowAggregationFunctionTest {
     } match {
       case Failure(e) => {
         fail(
-          s"An exception was thrown by the aggregator when it should not have been. " +
+          "An exception was thrown by the aggregator when it should not have been. " +
             s"The aggregator should fix the order without failing. $e")
       }
       case _ =>

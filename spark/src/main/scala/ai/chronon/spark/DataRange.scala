@@ -17,7 +17,8 @@
 package ai.chronon.spark
 
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.{Constants, Query}
+import ai.chronon.api.Constants
+import ai.chronon.api.Query
 import org.apache.spark.sql.DataFrame
 
 sealed trait DataRange {

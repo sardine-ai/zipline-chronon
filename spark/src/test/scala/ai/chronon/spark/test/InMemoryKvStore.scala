@@ -16,15 +16,18 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api.Constants
 import ai.chronon.online.KVStore
-import ai.chronon.online.KVStore.{PutRequest, TimedValue}
+import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.Row
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
-import java.util.{Base64, function}
+import java.util.function
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.Try
@@ -138,7 +141,7 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
 }
 
 object InMemoryKvStore {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val stores: ConcurrentHashMap[String, InMemoryKvStore] = new ConcurrentHashMap[String, InMemoryKvStore]
 
   // We would like to create one instance of InMemoryKVStore per executors, but share SparkContext

@@ -16,14 +16,20 @@
 
 package ai.chronon.aggregator.windowing
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing.HopsAggregator._
-import ai.chronon.api.Extensions.{AggregationOps, AggregationsOps, WindowOps, WindowUtils}
-import ai.chronon.api.{Aggregation, DataType, Row}
+import ai.chronon.api.Aggregation
+import ai.chronon.api.DataType
+import ai.chronon.api.Extensions.AggregationOps
+import ai.chronon.api.Extensions.AggregationsOps
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.Row
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
 import java.util
+import scala.collection.Seq
 
 // generate hops per spec, (NOT per window) for the given hop sizes in the resolution
 // we use minQueryTs to construct only the relevant hops for a given hop size.
@@ -94,7 +100,7 @@ class HopsAggregator(minQueryTs: Long,
                      inputSchema: Seq[(String, DataType)],
                      resolution: Resolution)
     extends HopsAggregatorBase(aggregations, inputSchema, resolution) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val leftBoundaries: Array[Option[Long]] = {
     // Nikhil is pretty confident we won't call this when aggregations is empty

@@ -17,7 +17,9 @@
 package ai.chronon.online
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression, Predicate}
+import org.apache.spark.sql.catalyst.expressions.Attribute
+import org.apache.spark.sql.catalyst.expressions.Expression
+import org.apache.spark.sql.catalyst.expressions.Predicate
 
 object ScalaVersionSpecificCatalystHelper {
 

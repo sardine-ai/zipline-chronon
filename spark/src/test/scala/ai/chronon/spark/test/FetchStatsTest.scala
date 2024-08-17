@@ -16,28 +16,39 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Builders, Operation, TimeUnit, Window}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
 import ai.chronon.api.Constants.ChrononMetadataKey
 import ai.chronon.api.Extensions._
-import ai.chronon.online.Fetcher.{SeriesStatsResponse, StatsRequest}
-
-import scala.compat.java8.FutureConverters
-import ai.chronon.online.{JavaStatsRequest, MetadataStore}
+import ai.chronon.api.Operation
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import ai.chronon.online.Fetcher.SeriesStatsResponse
+import ai.chronon.online.Fetcher.StatsRequest
+import ai.chronon.online.JavaStatsRequest
+import ai.chronon.online.MetadataStore
+import ai.chronon.spark.Analyzer
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.Join
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.ConsistencyJob
-import ai.chronon.spark.{Analyzer, Join, SparkSessionBuilder, TableUtils}
 import com.google.gson.GsonBuilder
 import junit.framework.TestCase
 import org.apache.spark.sql.SparkSession
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.TimeZone
 import java.util.concurrent.Executors
-import scala.concurrent.duration.{Duration, SECONDS}
 import scala.collection.JavaConverters._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.compat.java8.FutureConverters
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.SECONDS
 
 /**
   * For testing of the consumption side of Stats end to end.
@@ -47,10 +58,10 @@ import scala.concurrent.{Await, ExecutionContext}
   * Fetch stats.
   */
 class FetchStatsTest extends TestCase {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("FetchStatsTest", local = true)
-  val tableUtils = TableUtils(spark)
+  val tableUtils: TableUtils = TableUtils(spark)
   val namespace = "fetch_stats"
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -136,7 +147,7 @@ class FetchStatsTest extends TestCase {
       s"INSERT OVERWRITE TABLE ${joinConf.metaData.loggedTable} PARTITION(ds) SELECT * FROM ${joinConf.metaData.outputTable}")
     // Run consistency job
     val consistencyJob = new ConsistencyJob(spark, joinConf, today)
-    val metrics = consistencyJob.buildConsistencyMetrics()
+    consistencyJob.buildConsistencyMetrics()
     OnlineUtils.serveConsistency(tableUtils, inMemoryKvStore, today, joinConf)
     OnlineUtils.serveLogStats(tableUtils, inMemoryKvStore, yesterday, joinConf)
     joinConf.joinParts.asScala.foreach(jp =>

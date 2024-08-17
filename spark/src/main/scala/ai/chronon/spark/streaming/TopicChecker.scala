@@ -16,26 +16,28 @@
 
 package ai.chronon.spark.streaming
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.base.BottomK
 import ai.chronon.api
-import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
-import ai.chronon.api.{ThriftJsonCodec, UnknownType}
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.UnknownType
 import ai.chronon.spark.Driver
-import ai.chronon.spark.Driver.OnlineSubcommand
-import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig, ListTopicsOptions}
 import ai.chronon.spark.stats.EditDistance
-import org.apache.thrift.TBase
-import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
+import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.AdminClientConfig
+import org.apache.kafka.clients.admin.ListTopicsOptions
+import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.ScallopOption
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util
 import java.util.Properties
-import scala.collection.JavaConverters.{asScalaBufferConverter, asScalaIteratorConverter}
-import scala.reflect.ClassTag
-import scala.util.Try
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.asScalaIteratorConverter
 
 object TopicChecker {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def getPartitions(topic: String, bootstrap: String): Int = {
     val props = new Properties()
@@ -86,7 +88,7 @@ object TopicChecker {
   }
 
   class Args(arguments: Seq[String]) extends ScallopConf(arguments) {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     val conf: ScallopOption[String] = opt[String](descr = "Conf to pull topic and bootstrap server information")
     val bootstrap: ScallopOption[String] = opt[String](descr = "Kafka bootstrap server in host:port format")
     val topic: ScallopOption[String] = opt[String](descr = "kafka topic to check metadata for")
@@ -94,7 +96,7 @@ object TopicChecker {
   }
 
   // print out number of partitions and exit
-  def main(argSeq: Array[String]) {
+  def main(argSeq: Array[String]): Unit = {
     val args = new Args(argSeq)
     val (topic, bootstrap) = if (args.conf.isDefined) {
       val confPath = args.conf()

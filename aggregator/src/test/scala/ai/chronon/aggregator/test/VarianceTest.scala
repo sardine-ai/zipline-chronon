@@ -16,13 +16,14 @@
 
 package ai.chronon.aggregator.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.base.Variance
 import junit.framework.TestCase
 import org.junit.Assert._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class VarianceTest extends TestCase {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def mean(elems: Seq[Double]): Double = elems.sum / elems.length
   def naive(elems: Seq[Double]): Double = {

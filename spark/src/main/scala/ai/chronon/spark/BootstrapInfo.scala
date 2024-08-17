@@ -16,17 +16,24 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
+import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{Constants, ExternalPart, JoinPart, StructField}
+import ai.chronon.api.ExternalPart
+import ai.chronon.api.JoinPart
+import ai.chronon.api.StructField
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.expr
-import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.collection.{Seq, immutable, mutable}
+import scala.collection.Seq
+import scala.collection.immutable
+import scala.collection.mutable
 import scala.util.ScalaJavaConversions.ListOps
 import scala.util.Try
 
@@ -69,7 +76,7 @@ case class BootstrapInfo(
 }
 
 object BootstrapInfo {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // Build metadata for the join that contains schema information for join parts, external parts and bootstrap parts
   def from(joinConf: api.Join,

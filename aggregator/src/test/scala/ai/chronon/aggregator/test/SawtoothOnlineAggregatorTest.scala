@@ -17,14 +17,18 @@
 package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.test.SawtoothAggregatorTest.sawtoothAggregate
-import ai.chronon.aggregator.windowing.{FiveMinuteResolution, SawtoothOnlineAggregator, TsUtils}
-import ai.chronon.api.Extensions.{WindowOps, WindowUtils}
+import ai.chronon.aggregator.windowing.FiveMinuteResolution
+import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
+import ai.chronon.aggregator.windowing.TsUtils
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._
 import com.google.gson.Gson
 import junit.framework.TestCase
 import org.junit.Assert.assertEquals
 
-import java.time.{Instant, ZoneOffset}
+import java.time.Instant
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 

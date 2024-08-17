@@ -16,14 +16,24 @@
 
 package ai.chronon.aggregator.test
 
-import ai.chronon.aggregator.base.{Sum, TopK}
+import ai.chronon.aggregator.base.TopK
 import ai.chronon.aggregator.test.SawtoothAggregatorTest.sawtoothAggregate
-import ai.chronon.aggregator.windowing.{TwoStackLiteAggregator, TwoStackLiteAggregationBuffer, FiveMinuteResolution, SawtoothAggregator}
-import ai.chronon.api.{Aggregation, Builders, IntType, LongType, Operation, StructField, StructType, TimeUnit, Window}
+import ai.chronon.aggregator.windowing.FiveMinuteResolution
+import ai.chronon.aggregator.windowing.SawtoothAggregator
+import ai.chronon.aggregator.windowing.TwoStackLiteAggregationBuffer
+import ai.chronon.aggregator.windowing.TwoStackLiteAggregator
+import ai.chronon.api.Aggregation
+import ai.chronon.api.Builders
+import ai.chronon.api.IntType
+import ai.chronon.api.LongType
+import ai.chronon.api.Operation
+import ai.chronon.api.StructField
+import ai.chronon.api.StructType
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import com.google.gson.Gson
 import junit.framework.TestCase
 import org.junit.Assert._
-import ai.chronon.api.Extensions.AggregationOps
-import com.google.gson.Gson
 
 import scala.collection.Seq
 

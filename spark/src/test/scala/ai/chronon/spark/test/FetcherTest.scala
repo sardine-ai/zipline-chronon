@@ -16,38 +16,56 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
 import ai.chronon.api.Constants.ChrononMetadataKey
-import ai.chronon.api.Extensions.{DerivationOps, JoinOps, MetadataOps}
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.{Request, Response, StatsRequest}
+import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.Fetcher.Response
+import ai.chronon.online.Fetcher.StatsRequest
+import ai.chronon.online.JavaRequest
 import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.{JavaRequest, LoggableResponseBase64, MetadataDirWalker, MetadataEndPoint, MetadataStore, SparkConversions, StringArrayConverter}
+import ai.chronon.online.LoggableResponseBase64
+import ai.chronon.online.MetadataDirWalker
+import ai.chronon.online.MetadataEndPoint
+import ai.chronon.online.MetadataStore
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.{Join => _, _}
 import com.google.gson.GsonBuilder
 import junit.framework.TestCase
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.functions.{avg, col, lit}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.apache.spark.sql.functions.avg
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.lit
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.lang
 import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.collection.Seq
 import scala.compat.java8.FutureConverters
-import scala.concurrent.duration.{Duration, SECONDS}
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.SECONDS
 import scala.io.Source
 import scala.util.ScalaJavaConversions._
 
 class FetcherTest extends TestCase {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "FetcherTest"
   val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
@@ -79,7 +97,7 @@ class FetcherTest extends TestCase {
     val singleFileDirWalker = new MetadataDirWalker(confResource.getPath, acceptedEndPoints)
     val singleFileKvMap = singleFileDirWalker.run
     val singleFilePut: Seq[Future[scala.collection.Seq[Boolean]]] = singleFileKvMap.toSeq.map {
-      case (endPoint, kvMap) => singleFileMetadataStore.put(kvMap, singleFileDataSet)
+      case (_, kvMap) => singleFileMetadataStore.put(kvMap, singleFileDataSet)
     }
     singleFilePut.flatMap(putRequests => Await.result(putRequests, Duration.Inf))
 
@@ -99,7 +117,7 @@ class FetcherTest extends TestCase {
     val directoryDataDirWalker = new MetadataDirWalker(confResource.getPath.replace(s"/$joinPath", ""), acceptedEndPoints)
     val directoryDataKvMap = directoryDataDirWalker.run
     val directoryPut = directoryDataKvMap.toSeq.map {
-      case (endPoint, kvMap) => directoryMetadataStore.put(kvMap, directoryDataSetDataSet)
+      case (_, kvMap) => directoryMetadataStore.put(kvMap, directoryDataSetDataSet)
     }
     directoryPut.flatMap(putRequests => Await.result(putRequests, Duration.Inf))
     val dirResponse =
@@ -509,7 +527,7 @@ class FetcherTest extends TestCase {
     println("saved all data hand written for fetcher test")
 
     val startPartition = "2021-04-07"
-    val endPartition = "2021-04-10"
+    
 
     val leftSource =
       Builders.Source.events(
@@ -690,7 +708,7 @@ class FetcherTest extends TestCase {
       endDsQueries.show()
       logger.info(s"Total count: ${responseDf.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows:")
+      logger.info("diff result rows:")
       diff
         .withTimeBasedColumn("ts_string", "ts", "yy-MM-dd HH:mm")
         .select("ts_string", diff.schema.fieldNames: _*)
@@ -748,7 +766,7 @@ class FetcherTest extends TestCase {
 }
 
 object FetcherTestUtil {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   def joinResponses(spark: SparkSession,
                     requests: Array[Request],
                     mockApi: MockApi,

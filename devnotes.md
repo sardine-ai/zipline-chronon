@@ -123,7 +123,7 @@ sbt assembly
 
 ### Building a fat jar for just one submodule
 ```shell
-sbt 'spark_uber/assembly'
+sbt 'spark/assembly'
 ```
 
 # Chronon Artifacts Publish Process
@@ -271,7 +271,7 @@ sudo sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/com-lihaoyi/
 
 Build the chronon jar for scala 2.12
 ```shell
-sbt ++2.12.12 spark_uber/assembly
+sbt ++2.12.12 spark/assembly
 ```
 
 Start the REPL
@@ -281,7 +281,44 @@ Start the REPL
 
 In the repl prompt load the jar 
 ```scala
-import $cp.spark.target.`scala-2.12`.`spark_uber-assembly-0.0.63-SNAPSHOT.jar`
+import $cp.spark.target.`scala-2.12`.`spark-assembly-0.0.63-SNAPSHOT.jar`
 ```
 
 Now you can import the chronon classes and use them directly from repl for testing.
+
+
+### Pushing code
+
+We run formatting a auto-fixing for scala code. CI will fail if you don't do this
+To simplify your CLI - add the following snippet to your zshrc
+
+```sh
+function zpush() {
+    if [ $# -eq 0 ]; then
+        echo "Error: Please provide a commit message."
+        return 1
+    fi
+
+    local commit_message="$1"
+
+    sbt compile && \
+    sbt scalafixAll && \
+    sbt scalafmt && \
+    git add -u && \
+    git commit -m "$commit_message" && \
+    git push
+
+    if [ $? -eq 0 ]; then
+        echo "Successfully compiled, formatted, committed, and pushed changes."
+    else
+        echo "An error occurred during the process."
+    fi
+}
+```
+
+You can invoke this command as below
+
+```
+zpush "Your commit message"
+```
+> Note: The quotes are necessary for multi-word commit message.

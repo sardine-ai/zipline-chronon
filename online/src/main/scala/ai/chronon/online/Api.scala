@@ -16,18 +16,27 @@
 
 package ai.chronon.online
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.{Constants, StructType}
-import ai.chronon.online.KVStore.{GetRequest, GetResponse, PutRequest}
+import ai.chronon.api.Constants
+import ai.chronon.api.StructType
+import ai.chronon.online.KVStore.GetRequest
+import ai.chronon.online.KVStore.GetResponse
+import ai.chronon.online.KVStore.PutRequest
 import org.apache.spark.sql.SparkSession
-import java.util.Base64
-import java.nio.charset.StandardCharsets
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.function.Consumer
 import scala.collection.Seq
-import scala.concurrent.duration.{Duration, MILLISECONDS}
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.MILLISECONDS
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 object KVStore {
   // a scan request essentially for the keyBytes
@@ -43,7 +52,7 @@ object KVStore {
 // the main system level api for key value storage
 // used for streaming writes, batch bulk uploads & fetching
 trait KVStore {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val executionContext: ExecutionContext = FlexibleExecutionContext.buildExecutionContext
 
   def create(dataset: String): Unit
@@ -100,7 +109,7 @@ trait KVStore {
 }
 
 object StringArrayConverter {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // Method to convert an array of strings to a byte array using Base64 encoding for each element
   def stringsToBytes(strings: Seq[String]): Array[Byte] = {
     val base64EncodedStrings = strings.map(s => Base64.getEncoder.encodeToString(s.getBytes(StandardCharsets.UTF_8)))
@@ -213,7 +222,7 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
   // kafka has built-in support - but one can add support to other types using this method.
   def generateStreamBuilder(streamType: String): StreamBuilder = null
 
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   def setupLogging(): Unit = {}
 
   /** logged responses should be made available to an offline log table in Hive
@@ -230,25 +239,7 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
     */
   def logResponse(resp: LoggableResponse): Unit
 
-  private def logResponseInternal(resp: LoggableResponse): Unit = {
-    trySetupLoggingOnce()
-    logResponse(resp)
-  }
-
   // not sure if thread safe - TODO: double check
-  private var isLoggingSetupAttempted: Boolean = false
-  private def trySetupLoggingOnce(): Unit = {
-    if (!isLoggingSetupAttempted) {
-      try {
-        setupLogging()
-      } catch {
-        case e: Exception =>
-          logger.error("Error setting up logging", e)
-      } finally {
-        isLoggingSetupAttempted = true
-      }
-    }
-  }
 
   // helper functions
   final def buildFetcher(debug: Boolean = false,

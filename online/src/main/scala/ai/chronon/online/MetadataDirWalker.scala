@@ -1,19 +1,21 @@
 package ai.chronon.online
 
-import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api
-import org.slf4j.LoggerFactory
+import ai.chronon.api.ThriftJsonCodec
 import com.google.gson.Gson
 import org.apache.thrift.TBase
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.io.File
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
+import java.nio.file.Paths
 import scala.reflect.ClassTag
 
 class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
   // ignore files ending with extensions below
   private val ignoreExtensions = List(".class", ".csv", ".java", ".scala", ".py")
-  @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private def listFiles(base: File, recursive: Boolean = true): Seq[File] = {
     if (base.isFile) {
       Seq(base)

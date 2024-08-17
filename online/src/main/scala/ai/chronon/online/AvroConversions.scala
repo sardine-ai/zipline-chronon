@@ -19,13 +19,15 @@ package ai.chronon.online
 import ai.chronon.api._
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
-import org.apache.avro.generic.{GenericData, GenericRecord}
+import org.apache.avro.generic.GenericData
+import org.apache.avro.generic.GenericRecord
 import org.apache.avro.util.Utf8
 
 import java.nio.ByteBuffer
 import java.util
+import scala.collection.AbstractIterator
 import scala.collection.JavaConverters._
-import scala.collection.{AbstractIterator, mutable}
+import scala.collection.mutable
 
 object AvroConversions {
 
@@ -96,7 +98,7 @@ object AvroConversions {
         )
       case ListType(elementType) => Schema.createArray(fromChrononSchema(elementType, nameSet))
       case MapType(keyType, valueType) => {
-        assert(keyType == StringType, s"Avro only supports string keys for a map")
+        assert(keyType == StringType, "Avro only supports string keys for a map")
         Schema.createMap(fromChrononSchema(valueType, nameSet))
       }
       case StringType  => Schema.create(Schema.Type.STRING)

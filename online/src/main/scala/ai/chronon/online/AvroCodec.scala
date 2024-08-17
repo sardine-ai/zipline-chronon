@@ -16,11 +16,15 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.{DataType, Row}
+import ai.chronon.api.DataType
+import ai.chronon.api.Row
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
 import org.apache.avro.file.SeekableByteArrayInput
-import org.apache.avro.generic.{GenericData, GenericDatumReader, GenericDatumWriter, GenericRecord}
+import org.apache.avro.generic.GenericData
+import org.apache.avro.generic.GenericDatumReader
+import org.apache.avro.generic.GenericDatumWriter
+import org.apache.avro.generic.GenericRecord
 import org.apache.avro.io._
 
 import java.io.ByteArrayOutputStream
@@ -29,7 +33,7 @@ import scala.util.ScalaJavaConversions.ListOps
 
 class AvroCodec(val schemaStr: String) extends Serializable {
   @transient private lazy val parser = new Schema.Parser()
-  @transient lazy val schema = parser.parse(schemaStr)
+  @transient lazy val schema: Schema = parser.parse(schemaStr)
 
   // we reuse a lot of intermediate
   // lazy vals so that spark can serialize & ship the codec to executors

@@ -16,17 +16,26 @@
 
 package ai.chronon.spark.stats
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.{Constants, PartitionSpec}
+import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.online.{DataMetrics, SparkConversions}
+import ai.chronon.api.PartitionSpec
+import ai.chronon.online.DataMetrics
+import ai.chronon.online.SparkConversions
+import ai.chronon.spark.Analyzer
+import ai.chronon.spark.PartitionRange
+import ai.chronon.spark.StagingQuery
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.TimedKvRdd
 import ai.chronon.spark.stats.CompareJob.getJoinKeys
-import ai.chronon.spark.{Analyzer, PartitionRange, StagingQuery, TableUtils, TimedKvRdd}
-import org.apache.spark.sql.{DataFrame, SaveMode}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SaveMode
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.util.ScalaJavaConversions.{ListOps, MapOps}
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
 
 /**
   * Compare Job for comparing data between joins, staging queries and raw queries.
@@ -39,15 +48,15 @@ class CompareJob(
     startDate: String,
     endDate: String
 ) extends Serializable {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val tableProps: Map[String, String] = Option(joinConf.metaData.tableProperties)
     .map(_.toScala)
     .orNull
   val namespace = joinConf.metaData.outputNamespace
   val joinName = joinConf.metaData.cleanName
   val stagingQueryName = stagingQueryConf.metaData.cleanName
-  val comparisonTableName = s"${namespace}.compare_join_query_${joinName}_${stagingQueryName}"
-  val metricsTableName = s"${namespace}.compare_stats_join_query_${joinName}_${stagingQueryName}"
+  val comparisonTableName: String = s"${namespace}.compare_join_query_${joinName}_${stagingQueryName}"
+  val metricsTableName: String = s"${namespace}.compare_stats_join_query_${joinName}_${stagingQueryName}"
 
   def run(): (DataFrame, DataFrame, DataMetrics) = {
     assert(endDate != null, "End date for the comparison should not be null")
@@ -107,7 +116,7 @@ class CompareJob(
 }
 
 object CompareJob {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   /**
     * Extract the discrepancy metrics (like missing records, data mismatch) from the hourly compare metrics, consolidate
@@ -155,8 +164,8 @@ object CompareJob {
 
     if (consolidatedData.size == 0) {
       logger.info(
-        s"No discrepancies found for data mismatches and missing counts. " +
-          s"It is highly recommended to explore the full metrics.")
+        "No discrepancies found for data mismatches and missing counts. " +
+          "It is highly recommended to explore the full metrics.")
     } else {
       consolidatedData.foreach {
         case (date, mismatchCount) =>

@@ -1,13 +1,18 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.api.{Constants, StructType}
-import ai.chronon.online.{AvroConversions, Mutation, Serde}
+import ai.chronon.api.Constants
+import ai.chronon.api.StructType
+import ai.chronon.online.AvroConversions
+import ai.chronon.online.Mutation
+import ai.chronon.online.Serde
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.io.{BinaryDecoder, DecoderFactory}
+import org.apache.avro.io.BinaryDecoder
+import org.apache.avro.io.DecoderFactory
 import org.apache.avro.specific.SpecificDatumReader
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 
 class AvroStreamDecoder(inputSchema: StructType) extends Serde {
 

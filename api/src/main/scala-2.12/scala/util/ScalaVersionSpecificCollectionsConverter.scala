@@ -1,8 +1,5 @@
 package scala.util
 
-import java.util
-import scala.collection.immutable.ListMap
-import scala.collection.mutable
 import scala.collection.parallel.ParSeq
 import scala.jdk.CollectionConverters._
 

@@ -16,17 +16,18 @@
 
 package ai.chronon.aggregator.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.base.ApproxPercentiles
 import ai.chronon.aggregator.row.StatsGenerator
 import com.yahoo.sketches.kll.KllFloatsSketch
 import junit.framework.TestCase
 import org.junit.Assert._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.util.Random
 
 class ApproxPercentilesTest extends TestCase {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   def testBasicImpl(nums: Int, slide: Int, k: Int, percentiles: Array[Double], errorPercent: Float): Unit = {
     val sorted = (0 to nums).map(_.toFloat)
     val elems = Random.shuffle(sorted.toList).toArray

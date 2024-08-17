@@ -18,12 +18,15 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
+import ai.chronon.api.Builders
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{Builders, _}
+import ai.chronon.api._
 import ai.chronon.online.DataMetrics
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.Join
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.CompareJob
-import ai.chronon.spark.{Join, SparkSessionBuilder, StagingQuery, TableUtils}
 import org.apache.spark.sql.SparkSession
 import org.junit.Test
 

@@ -18,7 +18,9 @@ package ai.chronon.online
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import com.timgroup.statsd.{Event, NonBlockingStatsDClient, NonBlockingStatsDClientBuilder}
+import com.timgroup.statsd.Event
+import com.timgroup.statsd.NonBlockingStatsDClient
+import com.timgroup.statsd.NonBlockingStatsDClientBuilder
 
 import scala.util.ScalaJavaConversions.ListOps
 

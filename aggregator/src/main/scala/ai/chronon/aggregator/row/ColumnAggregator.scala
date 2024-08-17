@@ -17,13 +17,13 @@
 package ai.chronon.aggregator.row
 
 import ai.chronon.aggregator.base._
-import ai.chronon.api.Extensions.{AggregationPartOps, OperationOps}
+import ai.chronon.api.Extensions.AggregationPartOps
+import ai.chronon.api.Extensions.OperationOps
 import ai.chronon.api._
 import com.fasterxml.jackson.databind.ObjectMapper
 
 import java.util
 import scala.collection.JavaConverters.asScalaIteratorConverter
-import scala.util.ScalaJavaConversions.IteratorOps
 
 abstract class ColumnAggregator extends Serializable {
   def outputType: DataType
@@ -222,8 +222,8 @@ object ColumnAggregator {
       case DateType | TimestampType =>
         throw new IllegalArgumentException(
           s"Error while aggregating over '${aggregationPart.inputColumn}'. " +
-            s"Date type and Timestamp time should not be aggregated over (They don't serialize well in avro either). " +
-            s"Please use Query's Select expressions to transform them into Long.")
+            "Date type and Timestamp time should not be aggregated over (They don't serialize well in avro either). " +
+            "Please use Query's Select expressions to transform them into Long.")
       case _ =>
     }
 

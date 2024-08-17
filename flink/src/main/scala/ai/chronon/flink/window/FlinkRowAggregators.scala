@@ -1,18 +1,24 @@
 package ai.chronon.flink.window
 
 import ai.chronon.aggregator.row.RowAggregator
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.{Constants, DataType, GroupBy, Row}
-import ai.chronon.online.{ArrayRow, TileCodec}
+import ai.chronon.api.Constants
+import ai.chronon.api.DataType
+import ai.chronon.api.GroupBy
+import ai.chronon.api.Row
+import ai.chronon.online.ArrayRow
+import ai.chronon.online.TileCodec
 import org.apache.flink.api.common.functions.AggregateFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
 import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 /**
   * TimestampedIR combines the current Intermediate Result with the timestamp of the event being processed.
@@ -41,7 +47,7 @@ class FlinkRowAggregationFunction(
     inputSchema: Seq[(String, DataType)]
 ) extends AggregateFunction[Map[String, Any], TimestampedIR, TimestampedIR] {
   @transient private[flink] var rowAggregator: RowAggregator = _
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val valueColumns: Array[String] = inputSchema.map(_._1).toArray // column order matters
   private val timeColumnAlias: String = Constants.TimeColumn
@@ -96,7 +102,7 @@ class FlinkRowAggregationFunction(
       }
       case Failure(e) =>
         logger.error(
-          s"Flink error calculating partial row aggregate. " +
+          "Flink error calculating partial row aggregate. " +
             s"groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element",
           e
         )
@@ -148,7 +154,7 @@ class FlinkRowAggProcessFunction(
 ) extends ProcessWindowFunction[TimestampedIR, TimestampedTile, List[Any], TimeWindow] {
 
   @transient private[flink] var tileCodec: TileCodec = _
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   @transient private var rowProcessingErrorCounter: Counter = _
   @transient private var eventProcessingErrorCounter: Counter =
@@ -198,7 +204,7 @@ class FlinkRowAggProcessFunction(
       case Failure(e) =>
         // To improve availability, we don't rethrow the exception. We just drop the event
         // and track the errors in a metric. Alerts should be set up on this metric.
-        logger.error(s"Flink process error making tile IR", e)
+        logger.error("Flink process error making tile IR", e)
         eventProcessingErrorCounter.inc()
         rowProcessingErrorCounter.inc()
     }

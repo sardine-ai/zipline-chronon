@@ -16,20 +16,25 @@
 
 package ai.chronon.spark.test.bootstrap
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api._
+import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{Comparison, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.junit.Assert.{assertEquals, assertFalse}
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.util.ScalaJavaConversions.JListOps
 
 class TableBootstrapTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("BootstrapTest", local = true)
   private val tableUtils = TableUtils(spark)
@@ -150,7 +155,7 @@ class TableBootstrapTest {
       logger.info(s"Actual count: ${computed.count()}")
       logger.info(s"Expected count: ${expected.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
 

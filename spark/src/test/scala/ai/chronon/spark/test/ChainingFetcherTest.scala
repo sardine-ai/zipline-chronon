@@ -16,21 +16,27 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
 import ai.chronon.api.Constants.ChrononMetadataKey
-import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.{Request}
-import ai.chronon.online.{MetadataStore, SparkConversions}
+import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.MetadataStore
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.{Join => _, _}
 import junit.framework.TestCase
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.junit.Assert.{assertEquals, assertTrue}
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.lang
 import java.util.TimeZone
@@ -40,7 +46,7 @@ import scala.concurrent.ExecutionContext
 import scala.util.ScalaJavaConversions._
 
 class ChainingFetcherTest extends TestCase {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "ChainingFetcherTest"
   val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
@@ -302,7 +308,7 @@ class ChainingFetcherTest extends TestCase {
     if (diff.count() > 0) {
       logger.info(s"Total count: ${responseDf.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows:")
+      logger.info("diff result rows:")
       diff
         .withTimeBasedColumn("ts_string", "ts", "yy-MM-dd HH:mm")
         .select("ts_string", diff.schema.fieldNames: _*)
