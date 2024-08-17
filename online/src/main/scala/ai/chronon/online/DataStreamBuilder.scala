@@ -16,15 +16,20 @@
 
 package ai.chronon.online
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.{Constants, DataModel}
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel
 import ai.chronon.api.DataModel.DataModel
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.{ListOps, MapOps}
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
+import scala.util.Success
+import scala.util.Try
 
 case class TopicInfo(name: String, topicType: String, params: Map[String, String])
 object TopicInfo {
@@ -49,7 +54,7 @@ object TopicInfo {
 }
 
 case class DataStream(df: DataFrame, partitions: Int, topicInfo: TopicInfo) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // apply a query to a given data stream
   def apply(query: api.Query, keys: Seq[String] = null, dataModel: DataModel = DataModel.Events): DataStream = {
@@ -59,7 +64,7 @@ case class DataStream(df: DataFrame, partitions: Int, topicInfo: TopicInfo) {
         case Failure(ex) =>
           logger.error(s"[Failure] Setup command: ($setup) failed with exception: ${ex.toString}")
           ex.printStackTrace(System.out)
-        case Success(value) => logger.info(s"[SUCCESS] Setup command: $setup")
+        case Success(_) => logger.info(s"[SUCCESS] Setup command: $setup")
       }
     })
 

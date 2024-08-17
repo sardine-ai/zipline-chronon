@@ -2,7 +2,9 @@ package ai.chronon.flink.test
 
 import ai.chronon.flink.SparkExpressionEvalFn
 import org.apache.flink.api.scala._
-import org.apache.flink.streaming.api.scala.{DataStream, DataStreamUtils, StreamExecutionEnvironment}
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.api.scala.DataStreamUtils
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.spark.sql.Encoders
 import org.junit.Test
 

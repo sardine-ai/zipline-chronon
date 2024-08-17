@@ -16,9 +16,11 @@
 
 package ai.chronon.spark.streaming
 
+import ai.chronon.online.Api
+import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.Metrics
 import ai.chronon.online.Metrics.Context
-import ai.chronon.online.{Api, KVStore, Metrics}
 import org.apache.spark.sql.ForeachWriter
 
 class DataWriter(onlineImpl: Api, context: Context, statsIntervalSecs: Int, debug: Boolean = false)

@@ -17,25 +17,36 @@
 package ai.chronon.online.test
 
 import ai.chronon.aggregator.windowing.FinalBatchIr
+import ai.chronon.api.Builders
 import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.{Builders, GroupBy, MetaData}
-import ai.chronon.online.Fetcher.{ColumnSpec, Request, Response}
+import ai.chronon.api.GroupBy
+import ai.chronon.api.MetaData
+import ai.chronon.online.Fetcher.ColumnSpec
+import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.Fetcher.Response
 import ai.chronon.online.FetcherCache.BatchResponses
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online._
-import org.junit.Assert.{assertFalse, assertTrue}
-import org.junit.{Before, Test}
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.mockito.Answers
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-import org.mockito.{Answers, ArgumentCaptor}
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
   val GroupBy = "relevance.short_term_user_features"
@@ -136,7 +147,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
     val queryResults = Await.result(fetcherBase.fetchColumns(Seq(query)), 1.second)
     queryResults.contains(query) shouldBe true
     queryResults.get(query).map(_.values) match {
-      case Some(Failure(ex: IllegalStateException)) => succeed
+      case Some(Failure(_: IllegalStateException)) => succeed
       case _                                        => fail()
     }
 

@@ -16,22 +16,25 @@
 
 package ai.chronon.spark.stats
 
-import org.slf4j.LoggerFactory
 import ai.chronon
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{PartitionRange, TableUtils}
+import ai.chronon.spark.PartitionRange
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import java.util
-
-import scala.util.ScalaJavaConversions.{JListOps, ListOps, MapOps}
-
-import ai.chronon.online.OnlineDerivationUtil.timeFields
+import scala.util.ScalaJavaConversions.JListOps
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
 
 class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) extends Serializable {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val tblProperties: Map[String, String] = Option(joinConf.metaData.tableProperties)
     .map(_.toScala)

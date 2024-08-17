@@ -17,12 +17,15 @@
 package ai.chronon.online
 
 import ai.chronon.api.Constants
-import ai.chronon.online.Fetcher.{Request, Response}
+import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.Fetcher.Response
 
-import scala.collection.{Seq, mutable}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.ScalaJavaConversions.IterableOps
-import scala.util.{Failure, Success}
+import scala.collection.Seq
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.util.Failure
+import scala.util.Success
 
 // users can simply register external endpoints with a lambda that can return the future of a response given keys
 // keys and values need to match schema in ExternalSource - chronon will validate automatically

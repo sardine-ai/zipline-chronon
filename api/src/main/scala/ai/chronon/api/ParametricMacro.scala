@@ -16,12 +16,14 @@
 
 package ai.chronon.api
 
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 
 // takes a map of macro names and functions and applies the functions on macro arguments
 case class ParametricMacro(value: String, func: Map[String, String] => String) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private val pattern = s"""\\{\\{\\s*$value(\\([\\s0-9A-Za-z_.,=]*\\))*\\s*}}""".r
 
   def replace(str: String): String = {
@@ -53,7 +55,7 @@ case class ParametricMacro(value: String, func: Map[String, String] => String) {
 }
 
 object ParametricMacro {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   def main(args: Array[String]): Unit = {
     val mc = ParametricMacro("something", { x => "st:" + x.keys.mkString("/") + "|" + x.values.mkString("/") })
     val str = "something nothing-{{ something( a_1=b,, 3.1, c=d) }}-something after-{{ thing:a1=b1 }}{{ something }}"

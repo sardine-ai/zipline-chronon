@@ -1,18 +1,23 @@
 package ai.chronon.flink
 
-import org.slf4j.LoggerFactory
-import ai.chronon.online.{Api, KVStore}
+import ai.chronon.online.Api
+import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
-import org.apache.flink.streaming.api.functions.async.{ResultFuture, RichAsyncFunction}
 import org.apache.flink.streaming.api.datastream.AsyncDataStream
+import org.apache.flink.streaming.api.functions.async.ResultFuture
+import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.scala.DataStream
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util
 import java.util.concurrent.TimeUnit
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.util.Failure
+import scala.util.Success
 
 case class WriteResponse(putRequest: PutRequest, status: Boolean)
 
@@ -65,7 +70,7 @@ object AsyncKVStoreWriter {
   */
 class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
     extends RichAsyncFunction[PutRequest, WriteResponse] {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   @transient private var kvStore: KVStore = _
 

@@ -16,17 +16,25 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.{Constants, DataPointer}
-import ai.chronon.online.{AvroCodec, AvroConversions, SparkConversions}
+import ai.chronon.api.Constants
+import ai.chronon.api.DataPointer
+import ai.chronon.online.AvroCodec
+import ai.chronon.online.AvroConversions
+import ai.chronon.online.SparkConversions
 import org.apache.avro.Schema
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{DataType, LongType, StructType}
+import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.sketch.BloomFilter
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util
 import scala.collection.Seq
@@ -90,7 +98,7 @@ object Extensions {
   }
 
   implicit class DataframeOps(df: DataFrame) {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     private implicit val tableUtils: TableUtils = TableUtils(df.sparkSession)
 
     // This is safe to call on dataframes that are un-shuffled from their disk sources -

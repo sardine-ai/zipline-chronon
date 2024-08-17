@@ -18,14 +18,21 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{Builders, Constants, TimeUnit, Window}
-import ai.chronon.spark.JoinUtils.{contains_any, set_add}
-import ai.chronon.spark.{JoinUtils, PartitionRange, SparkSessionBuilder, TableUtils}
+import ai.chronon.api.Builders
+import ai.chronon.api.Constants
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.JoinUtils
+import ai.chronon.spark.JoinUtils.contains_any
+import ai.chronon.spark.JoinUtils.set_add
+import ai.chronon.spark.PartitionRange
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.junit.Assert._
 import org.junit.Test
 

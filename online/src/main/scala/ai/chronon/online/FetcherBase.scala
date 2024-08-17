@@ -18,22 +18,36 @@ package ai.chronon.online
 
 import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.windowing
-import ai.chronon.aggregator.windowing.{FinalBatchIr, SawtoothOnlineAggregator, TiledIr}
+import ai.chronon.aggregator.windowing.FinalBatchIr
+import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
+import ai.chronon.aggregator.windowing.TiledIr
 import ai.chronon.api.Constants.ChrononMetadataKey
-import ai.chronon.api.Extensions.{GroupByOps, JoinOps, ThrowableOps}
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.ThrowableOps
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.{ColumnSpec, PrefixedRequest, Request, Response}
-import ai.chronon.online.FetcherCache.{BatchResponses, CachedBatchResponse, KvStoreBatchResponse}
-import ai.chronon.online.KVStore.{GetRequest, GetResponse, TimedValue}
+import ai.chronon.online.Fetcher.ColumnSpec
+import ai.chronon.online.Fetcher.PrefixedRequest
+import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.Fetcher.Response
+import ai.chronon.online.FetcherCache.BatchResponses
+import ai.chronon.online.FetcherCache.CachedBatchResponse
+import ai.chronon.online.FetcherCache.KvStoreBatchResponse
+import ai.chronon.online.KVStore.GetRequest
+import ai.chronon.online.KVStore.GetResponse
+import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.Metrics.Name
-import ai.chronon.online.OnlineDerivationUtil.{applyDeriveFunc, buildRenameOnlyDerivationFunction}
+import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
+import ai.chronon.online.OnlineDerivationUtil.buildRenameOnlyDerivationFunction
 import com.google.gson.Gson
 
 import java.util
 import scala.collection.JavaConverters._
 import scala.collection.Seq
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 // Does internal facing fetching
 //   1. takes join request or groupBy requests
@@ -127,7 +141,7 @@ class FetcherBase(kvStore: KVStore,
               case Failure(_) =>
                 logger.error(
                   s"Failed to decode tile ir for groupBy ${servingInfo.groupByOps.metaData.getName}" +
-                    s"Streaming tiled IRs will be ignored")
+                    "Streaming tiled IRs will be ignored")
                 val groupByFlag: Option[Boolean] = Option(flagStore)
                   .map(_.isSet(
                     "disable_streaming_decoding_error_throws",
@@ -169,7 +183,7 @@ class FetcherBase(kvStore: KVStore,
               case Failure(_) =>
                 logger.error(
                   s"Failed to decode streaming rows for groupBy ${servingInfo.groupByOps.metaData.getName}" +
-                    s"Streaming rows will be ignored")
+                    "Streaming rows will be ignored")
                 val groupByFlag: Option[Boolean] = Option(flagStore)
                   .map(_.isSet(
                     "disable_streaming_decoding_error_throws",

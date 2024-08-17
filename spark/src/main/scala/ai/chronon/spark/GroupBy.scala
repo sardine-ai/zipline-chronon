@@ -17,25 +17,35 @@
 package ai.chronon.spark
 
 import ai.chronon.aggregator.base.TimeTuple
+import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing._
 import ai.chronon.api
-import ai.chronon.api.DataModel.{Entities, Events}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel
+import ai.chronon.api.DataModel.Entities
+import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{Accuracy, Constants, DataModel, ParametricMacro}
-import ai.chronon.online.{RowWrapper, SparkConversions}
+import ai.chronon.api.ParametricMacro
+import ai.chronon.online.RowWrapper
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions._
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.util.sketch.BloomFilter
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
-import scala.collection.{Seq, mutable}
-import scala.util.ScalaJavaConversions.{JListOps, ListOps, MapOps}
-import scala.util.Try
+import scala.collection.Seq
+import scala.collection.mutable
+import scala.util.ScalaJavaConversions.JListOps
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
 
 class GroupBy(val aggregations: Seq[api.Aggregation],
               val keyColumns: Seq[String],
@@ -44,7 +54,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
               skewFilter: Option[String] = None,
               finalize: Boolean = true)
     extends Serializable {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   protected[spark] val tsIndex: Int = inputDf.schema.fieldNames.indexOf(Constants.TimeColumn)
   protected val selectedSchema: Array[(String, api.DataType)] = SparkConversions.toChrononSchema(inputDf.schema)
@@ -81,12 +91,14 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     api.StructType("", columns.map(tup => api.StructField(tup._1, tup._2)))
   }
 
-  lazy val aggregationParts = aggregations.flatMap(_.unpack)
+  lazy val aggregationParts: Seq[api.AggregationPart] = aggregations.flatMap(_.unpack)
 
-  lazy val columnAggregators = (new RowAggregator(selectedSchema, aggregationParts)).columnAggregators
+  lazy val columnAggregators: Array[ColumnAggregator] =
+    (new RowAggregator(selectedSchema, aggregationParts)).columnAggregators
 
   //should be only used when aggregations != null
-  lazy val aggPartWithSchema = aggregationParts.zip(columnAggregators.map(_.outputType))
+  lazy val aggPartWithSchema: Seq[(api.AggregationPart, api.DataType)] =
+    aggregationParts.zip(columnAggregators.map(_.outputType))
 
   lazy val postAggSchema: StructType = {
     val valueChrononSchema = if (finalize) windowAggregator.outputSchema else windowAggregator.irSchema
@@ -395,7 +407,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
 
 // TODO: truncate queryRange for caching
 object GroupBy {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // Need to use a case class here to allow null matching
   case class SourceDataProfile(earliestRequired: String, earliestPresent: String, latestAllowed: String)
@@ -650,7 +662,7 @@ object GroupBy {
       .map(_.toScala.map(keyValue => {
         if (keyValue._2.contains(Constants.ChrononRunDs)) {
           assert(intersectedRange.isDefined && intersectedRange.get.isSingleDay,
-                 s"ChrononRunDs is only supported for single day queries")
+                 "ChrononRunDs is only supported for single day queries")
           val parametricMacro = ParametricMacro(Constants.ChrononRunDs, _ => queryRange.start)
           (keyValue._1, parametricMacro.replace(keyValue._2))
         } else {

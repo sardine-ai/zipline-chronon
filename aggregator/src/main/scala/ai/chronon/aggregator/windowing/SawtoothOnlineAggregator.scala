@@ -16,10 +16,13 @@
 
 package ai.chronon.aggregator.windowing
 
-import org.slf4j.LoggerFactory
-import scala.collection.Seq
-import ai.chronon.api.Extensions.{AggregationPartOps, WindowOps}
+import ai.chronon.api.Extensions.AggregationPartOps
+import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import scala.collection.Seq
 
 // Wrapper class for handling Irs in the tiled chronon use case
 case class TiledIr(ts: Long, ir: Array[Any])
@@ -35,7 +38,7 @@ class SawtoothOnlineAggregator(val batchEndTs: Long,
                                        inputSchema: Seq[(String, DataType)],
                                        resolution: Resolution,
                                        tailBufferMillis: Long) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // logically, batch response is arranged like so
   // sum-90d =>  sum_ir_88d, [(sum_ir_1d, ts)] -> 1d is the hopSize for 90d

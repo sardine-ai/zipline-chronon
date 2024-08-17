@@ -22,8 +22,10 @@ import ai.chronon.api._
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import scala.util.ScalaJavaConversions.JListOps
 

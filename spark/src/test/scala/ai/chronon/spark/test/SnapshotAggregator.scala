@@ -18,7 +18,9 @@ package ai.chronon.spark.test
 
 import ai.chronon.api.Constants
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.types.{LongType, StructField, StructType}
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
 
 /**
   * Simple Aggregator class to generate snapshots from mutations based on the
@@ -30,13 +32,13 @@ class SnapshotAggregator(inputSchema: StructType,
                          partitionColumnName: String)
     extends Serializable {
 
-  val mutationTsIdx = inputSchema.fieldIndex(Constants.MutationTimeColumn)
-  val mutationColumnIdx = inputSchema.fieldIndex(mutationColumnName)
-  val dsIdx = inputSchema.fieldIndex(partitionColumnName)
-  val tsIdx = inputSchema.fieldIndex(Constants.TimeColumn)
-  val keyIdx = inputSchema.fieldIndex(keyColumnName)
+  val mutationTsIdx: Int = inputSchema.fieldIndex(Constants.MutationTimeColumn)
+  val mutationColumnIdx: Int = inputSchema.fieldIndex(mutationColumnName)
+  val dsIdx: Int = inputSchema.fieldIndex(partitionColumnName)
+  val tsIdx: Int = inputSchema.fieldIndex(Constants.TimeColumn)
+  val keyIdx: Int = inputSchema.fieldIndex(keyColumnName)
 
-  def aggregatorKey(row: Row) = {
+  def aggregatorKey(row: Row): (Any, Long, String) = {
     (row.get(keyIdx), row.getLong(tsIdx), row.getString(dsIdx))
   }
 
@@ -77,11 +79,11 @@ class SnapshotAggregator(inputSchema: StructType,
     (ir(1), ir(2), ir(3))
   }
 
-  def toRow(rddKey: (Any, Any, Any), rddValue: (Any, Any, Any)) = {
+  def toRow(rddKey: (Any, Any, Any), rddValue: (Any, Any, Any)): Row = {
     Row(rddKey._1, rddValue._1, rddKey._3, rddValue._2, rddValue._3, rddKey._2)
   }
 
-  val outputSchema = StructType(
+  val outputSchema: StructType = StructType(
     Array(
       inputSchema.fields(keyIdx),
       inputSchema.fields(mutationColumnIdx),

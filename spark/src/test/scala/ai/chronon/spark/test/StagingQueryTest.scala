@@ -16,18 +16,22 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{Comparison, SparkSessionBuilder, StagingQuery, TableUtils}
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.StagingQuery
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class StagingQueryTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = SparkSessionBuilder.build("StagingQueryTest", local = true)
   implicit private val tableUtils: TableUtils = TableUtils(spark)
 
@@ -75,7 +79,7 @@ class StagingQueryTest {
       logger.info(s"Computed count: ${computed.count()}")
       computed.show()
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
     assertEquals(0, diff.count())
@@ -95,7 +99,7 @@ class StagingQueryTest {
       println(s"Computed count: ${computedWithOverrideStartPartition.count()}")
       println(computedWithOverrideStartPartition.show())
       println(s"Diff count: ${diffWithOverrideStartPartition.count()}")
-      println(s"diffWithOverrideStartPartition result rows")
+      println("diffWithOverrideStartPartition result rows")
       diffWithOverrideStartPartition.show()
     }
     assertEquals(0, diffWithOverrideStartPartition.count())
@@ -169,7 +173,7 @@ class StagingQueryTest {
       logger.info(s"Computed count: ${computedUpdated.count()}")
       computedUpdated.show()
       logger.info(s"Diff count: ${diffV2.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diffV2.show()
     }
     assertEquals(0, diffV2.count())
@@ -225,7 +229,7 @@ class StagingQueryTest {
       logger.info(s"Computed count: ${computed.count()}")
       computed.show()
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
     assertEquals(0, diff.count())
@@ -277,7 +281,7 @@ class StagingQueryTest {
       logger.info(s"Computed count: ${computed.count()}")
       computed.show()
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
     assertEquals(0, diff.count())

@@ -16,14 +16,20 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.aggregator.test.{CStream, Column, RowsWithSchema}
-import ai.chronon.api.{Constants, LongType, StringType}
+import ai.chronon.aggregator.test.CStream
+import ai.chronon.aggregator.test.Column
+import ai.chronon.aggregator.test.RowsWithSchema
+import ai.chronon.api.Constants
+import ai.chronon.api.LongType
+import ai.chronon.api.StringType
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.TableUtils
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import scala.collection.Seq
 

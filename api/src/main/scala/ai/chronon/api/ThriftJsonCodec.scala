@@ -16,11 +16,17 @@
 
 package ai.chronon.api
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api.Extensions.StringsOps
-import com.fasterxml.jackson.databind.{DeserializationFeature, JsonNode, ObjectMapper}
-import org.apache.thrift.protocol.{TCompactProtocol, TSimpleJSONProtocol}
-import org.apache.thrift.{TBase, TDeserializer, TSerializer}
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.apache.thrift.TBase
+import org.apache.thrift.TDeserializer
+import org.apache.thrift.TSerializer
+import org.apache.thrift.protocol.TCompactProtocol
+import org.apache.thrift.protocol.TSimpleJSONProtocol
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util
 import java.util.Base64
@@ -29,14 +35,14 @@ import scala.reflect.ClassTag
 import scala.util.ScalaJavaConversions.ListOps
 
 object ThriftJsonCodec {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   @transient
   private lazy val serializerThreaded: ThreadLocal[TSerializer] = new ThreadLocal[TSerializer] {
     override def initialValue(): TSerializer = new TSerializer(new TSimpleJSONProtocol.Factory())
   }
 
-  def serializer = serializerThreaded.get()
+  def serializer: TSerializer = serializerThreaded.get()
 
   def toJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
     new String(serializer.serialize(obj), Constants.UTF8)
@@ -69,7 +75,7 @@ object ThriftJsonCodec {
       compactDeserializer.deserialize(base, bytes)
       base
     } catch {
-      case e: Exception => {
+      case _: Exception => {
         logger.error("Failed to deserialize using compact protocol, trying Json.")
         fromJsonStr(new String(bytes), check = false, base.getClass)
       }

@@ -17,15 +17,17 @@
 package ai.chronon.online.test
 
 import ai.chronon.api._
-import ai.chronon.online.{ArrayRow, TileCodec}
+import ai.chronon.online.ArrayRow
+import ai.chronon.online.TileCodec
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
 class TileCodecTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private val histogram = Map[String, Int]("A" -> 3, "B" -> 2).asJava
 
   private val aggregationsAndExpected: Array[(Aggregation, Seq[Any])] = Array(

@@ -16,20 +16,27 @@
 
 package ai.chronon.api
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import java.io.{PrintWriter, StringWriter}
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.util
 import java.util.regex.Pattern
-import scala.collection.{Seq, mutable}
-import scala.util.ScalaJavaConversions.{IteratorOps, ListOps, MapOps}
-import scala.util.{Failure, Success, Try}
+import scala.collection.Seq
+import scala.collection.mutable
+import scala.util.Failure
+import scala.util.ScalaJavaConversions.IteratorOps
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
+import scala.util.Success
+import scala.util.Try
 
 object Extensions {
 
@@ -96,28 +103,28 @@ object Extensions {
   implicit class MetadataOps(metaData: MetaData) {
     def cleanName: String = metaData.name.sanitize
 
-    def outputTable = s"${metaData.outputNamespace}.${metaData.cleanName}"
-    def outputLabelTable = s"${metaData.outputNamespace}.${metaData.cleanName}_labels"
-    def outputFinalView = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled"
-    def outputLatestLabelView = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled_latest"
-    def loggedTable = s"${outputTable}_logged"
+    def outputTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}"
+    def outputLabelTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labels"
+    def outputFinalView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled"
+    def outputLatestLabelView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled_latest"
+    def loggedTable: String = s"${outputTable}_logged"
 
-    def bootstrapTable = s"${outputTable}_bootstrap"
+    def bootstrapTable: String = s"${outputTable}_bootstrap"
 
     private def comparisonPrefix = "comparison"
 
-    def comparisonConfName = s"${metaData.getName}_$comparisonPrefix"
+    def comparisonConfName: String = s"${metaData.getName}_$comparisonPrefix"
 
-    def comparisonTable = s"${outputTable}_$comparisonPrefix"
+    def comparisonTable: String = s"${outputTable}_$comparisonPrefix"
 
-    def consistencyTable = s"${outputTable}_consistency"
-    def consistencyUploadTable = s"${consistencyTable}_upload"
+    def consistencyTable: String = s"${outputTable}_consistency"
+    def consistencyUploadTable: String = s"${consistencyTable}_upload"
 
-    def loggingStatsTable = s"${loggedTable}_daily_stats"
-    def uploadTable = s"${outputTable}_upload"
-    def dailyStatsOutputTable = s"${outputTable}_daily_stats"
+    def loggingStatsTable: String = s"${loggedTable}_daily_stats"
+    def uploadTable: String = s"${outputTable}_upload"
+    def dailyStatsOutputTable: String = s"${outputTable}_daily_stats"
 
-    def toUploadTable(name: String) = s"${name}_upload"
+    def toUploadTable(name: String): String = s"${name}_upload"
 
     def copyForVersioningComparison: MetaData = {
       // Changing name results in column rename, therefore schema change, other metadata changes don't effect output table
@@ -173,7 +180,7 @@ object Extensions {
 
     private def bucketSuffix = Option(aggregationPart.bucket).map("_by_" + _).getOrElse("")
 
-    def outputColumnName =
+    def outputColumnName: String =
       s"${aggregationPart.inputColumn}_$opSuffix${aggregationPart.window.suffix}${bucketSuffix}"
   }
 
@@ -451,7 +458,7 @@ object Extensions {
         .map(_.dataModel)
       assert(models.distinct.length == 1,
              s"All source of the groupBy: ${groupBy.metaData.name} " +
-               s"should be of the same type. Either 'Events' or 'Entities'")
+               "should be of the same type. Either 'Events' or 'Entities'")
       models.head
     }
 
@@ -716,7 +723,7 @@ object Extensions {
   }
 
   implicit class JoinPartOps(joinPart: JoinPart) extends JoinPart(joinPart) {
-    lazy val fullPrefix = (Option(prefix) ++ Some(groupBy.getMetaData.cleanName)).mkString("_")
+    lazy val fullPrefix: String = (Option(prefix) ++ Some(groupBy.getMetaData.cleanName)).mkString("_")
     lazy val leftToRight: Map[String, String] = rightToLeft.map { case (key, value) => value -> key }
 
     def valueColumns: Seq[String] = joinPart.groupBy.valueColumns.map(fullPrefix + "_" + _)
@@ -809,7 +816,7 @@ object Extensions {
   }
 
   implicit class JoinOps(val join: Join) extends Serializable {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     // all keys as they should appear in left that are being used on right
     def leftKeyCols: Array[String] = {
       join.joinParts.toScala

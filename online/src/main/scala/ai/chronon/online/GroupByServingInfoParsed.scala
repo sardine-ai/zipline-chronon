@@ -16,16 +16,17 @@
 
 package ai.chronon.online
 
-import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
-import ai.chronon.api.Constants.{ReversalField, TimeField}
-import ai.chronon.api.Extensions.{GroupByOps, MetadataOps}
+import ai.chronon.api.Constants.ReversalField
+import ai.chronon.api.Constants.TimeField
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
+import ai.chronon.online.OnlineDerivationUtil.DerivationFunc
+import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
 import org.apache.avro.Schema
-import org.apache.spark.sql.SparkSession
-import scala.collection.JavaConverters.asScalaBufferConverter
 
-import ai.chronon.online.OnlineDerivationUtil.{DerivationFunc, buildDerivationFunction, buildDerivedFields, timeFields}
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 // mixin class - with schema
 class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, partitionSpec: PartitionSpec)

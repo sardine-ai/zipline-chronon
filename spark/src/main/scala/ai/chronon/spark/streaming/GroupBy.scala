@@ -16,24 +16,28 @@
 
 package ai.chronon.spark.streaming
 
-import org.slf4j.LoggerFactory
 import ai.chronon
 import ai.chronon.api
-import ai.chronon.api.{Row => _, _}
-import ai.chronon.online._
 import ai.chronon.api.Extensions._
+import ai.chronon.api.{Row => _, _}
 import ai.chronon.online.Extensions.ChrononStructTypeOps
+import ai.chronon.online._
 import ai.chronon.spark.GenericRowHandler
 import com.google.gson.Gson
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.streaming.{DataStreamWriter, StreamingQuery, Trigger}
+import org.apache.spark.sql.streaming.DataStreamWriter
+import org.apache.spark.sql.streaming.StreamingQuery
+import org.apache.spark.sql.streaming.Trigger
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId, ZoneOffset}
 import java.util.Base64
 import scala.collection.JavaConverters._
-import scala.concurrent.duration.{DurationInt}
+import scala.concurrent.duration.DurationInt
 
 class GroupBy(inputStream: DataFrame,
               session: SparkSession,
@@ -41,7 +45,7 @@ class GroupBy(inputStream: DataFrame,
               onlineImpl: Api,
               debug: Boolean = false)
     extends Serializable {
-  @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private def buildStreamingQuery(inputTable: String): String = {
     val streamingSource = groupByConf.streamingSource.get

@@ -16,22 +16,38 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
+import ai.chronon.api.Accuracy
+import ai.chronon.api.AggregationPart
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType, TimeUnit, Window}
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel.DataModel
+import ai.chronon.api.DataModel.Entities
+import ai.chronon.api.DataModel.Events
+import ai.chronon.api.DataType
 import ai.chronon.api.Extensions._
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
 import com.yahoo.memory.Memory
 import com.yahoo.sketches.ArrayOfStringsSerDe
-import com.yahoo.sketches.frequencies.{ErrorType, ItemsSketch}
-import org.apache.spark.sql.{DataFrame, Row, types}
-import org.apache.spark.sql.functions.{col, from_unixtime, lit}
-import org.apache.spark.sql.types.{StringType, StructType}
-import ai.chronon.api.DataModel.{DataModel, Entities, Events}
+import com.yahoo.sketches.frequencies.ErrorType
+import com.yahoo.sketches.frequencies.ItemsSketch
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.from_unixtime
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.types
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.collection.{Seq, immutable, mutable}
+import scala.collection.Seq
+import scala.collection.immutable
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.ScalaJavaConversions.ListOps
 
@@ -72,7 +88,7 @@ class Analyzer(tableUtils: TableUtils,
                silenceMode: Boolean = false) {
   private implicit val tu: TableUtils = tableUtils
 
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // include ts into heavy hitter analysis - useful to surface timestamps that have wrong units
   // include total approx row count - so it is easy to understand the percentage of skewed data
   def heavyHittersWithTsAndCount(df: DataFrame,

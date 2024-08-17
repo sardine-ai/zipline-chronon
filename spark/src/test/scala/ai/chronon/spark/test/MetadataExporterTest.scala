@@ -16,24 +16,26 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{MetadataExporter, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.MetadataExporter
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.io.Files
 import junit.framework.TestCase
 import org.apache.spark.sql.SparkSession
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.junit.Assert.assertEquals
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.io.Source
 import java.io.File
-import java.net.URL
+import scala.io.Source
 
 class MetadataExporterTest extends TestCase {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val sessionName = "MetadataExporter"
   val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)

@@ -16,28 +16,46 @@
 
 package ai.chronon.spark.streaming
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online._
-import ai.chronon.spark.{GenericRowHandler, TableUtils}
+import ai.chronon.spark.GenericRowHandler
+import ai.chronon.spark.TableUtils
 import com.google.gson.Gson
-import org.apache.spark.api.java.function.{MapPartitionsFunction, VoidFunction2}
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.streaming.{DataStreamWriter, Trigger}
-import org.apache.spark.sql.types.{BooleanType, LongType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
+import org.apache.spark.api.java.function.MapPartitionsFunction
+import org.apache.spark.api.java.function.VoidFunction2
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.Encoders
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.streaming.DataStreamWriter
+import org.apache.spark.sql.streaming.Trigger
+import org.apache.spark.sql.types.BooleanType
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.lang
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId, ZoneOffset}
+import java.util
 import java.util.Base64
-import java.{lang, util}
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.util.ScalaJavaConversions.{IteratorOps, JIteratorOps, ListOps, MapOps}
+import scala.util.ScalaJavaConversions.IteratorOps
+import scala.util.ScalaJavaConversions.JIteratorOps
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
 
 // micro batching destroys and re-creates these objects repeatedly through ForeachBatchWriter and MapFunction
 // this allows for re-use
@@ -64,7 +82,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
     session: SparkSession,
     apiImpl: Api)
     extends Serializable {
-  @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val context: Metrics.Context = Metrics.Context(Metrics.Environment.GroupByStreaming, groupByConf)
 
@@ -107,7 +125,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
   private val microBatchIntervalMillis: Int = getProp("batch_interval_millis", "1000").toInt
 
   private case class PutRequestHelper(inputSchema: StructType) extends Serializable {
-    @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     private val keyIndices: Array[Int] = keyColumns.map(inputSchema.fieldIndex)
     private val valueIndices: Array[Int] = valueColumns.map(inputSchema.fieldIndex)
     private val tsIndex: Int = inputSchema.fieldIndex(eventTimeColumn)
@@ -176,7 +194,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
 
     val joinSource: JoinSource = source.get.getJoinSource
     val left: Source = joinSource.getJoin.getLeft
-    assert(left.topic != null, s"join source left side should have a topic")
+    assert(left.topic != null, "join source left side should have a topic")
 
     // for entities there is reversal and mutation column additionally
     val reversalField: StructField = StructField(Constants.ReversalColumn, BooleanType)

@@ -16,19 +16,22 @@
 
 package ai.chronon.spark.stats
 
-import ai.chronon.aggregator.row.{RowAggregator, StatsGenerator}
+import ai.chronon.aggregator.row.RowAggregator
+import ai.chronon.aggregator.row.StatsGenerator
 import ai.chronon.api
 import ai.chronon.api.Extensions._
-import ai.chronon.spark.Extensions._
 import ai.chronon.online.SparkConversions
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
+import ai.chronon.spark.TimedKvRdd
 import com.yahoo.memory.Memory
 import com.yahoo.sketches.kll.KllFloatsSketch
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{Column, DataFrame, functions}
 
 import scala.util.Try
-import ai.chronon.spark.TimedKvRdd
 
 class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends Serializable {
 
@@ -36,12 +39,13 @@ class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends 
     inputDf.columns
       .filter(colName => !keys.contains(colName))
       .map(colName => new Column(colName)): _*)
-  implicit val tableUtils = TableUtils(inputDf.sparkSession)
+  implicit val tableUtils: TableUtils = TableUtils(inputDf.sparkSession)
 
-  val timeColumns =
+  val timeColumns: Seq[String] =
     if (inputDf.columns.contains(api.Constants.TimeColumn)) Seq(api.Constants.TimeColumn, tableUtils.partitionColumn)
     else Seq(tableUtils.partitionColumn)
-  val metrics = StatsGenerator.buildMetrics(SparkConversions.toChrononSchema(noKeysDf.schema))
+  val metrics: Seq[StatsGenerator.MetricTransform] =
+    StatsGenerator.buildMetrics(SparkConversions.toChrononSchema(noKeysDf.schema))
   lazy val selectedDf: DataFrame = noKeysDf
     .select(timeColumns.map(col) ++ metrics.map(m =>
       m.expression match {

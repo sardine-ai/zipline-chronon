@@ -1,7 +1,9 @@
 package ai.chronon.online
 
-import com.github.benmanes.caffeine.cache.{Caffeine, Cache => CaffeineCache}
-import org.slf4j.{Logger, LoggerFactory}
+import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
   * Utility to create a cache with LRU semantics.

@@ -25,7 +25,8 @@ import org.junit.Test
 import java.util.Base64
 import scala.collection.mutable
 import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.SECONDS
 
 class ExternalSourcesTest {
   @Test

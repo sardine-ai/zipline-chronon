@@ -17,36 +17,55 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, SourceOps, StringOps}
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.ThriftJsonCodec
-import ai.chronon.online.{Api, Fetcher, MetadataDirWalker, MetadataEndPoint, MetadataStore}
-import ai.chronon.spark.stats.{CompareBaseJob, CompareJob, ConsistencyJob, SummaryJob}
-import ai.chronon.spark.streaming.{JoinSourceRunner, TopicChecker}
+import ai.chronon.online.Api
+import ai.chronon.online.Fetcher
+import ai.chronon.online.MetadataDirWalker
+import ai.chronon.online.MetadataEndPoint
+import ai.chronon.online.MetadataStore
+import ai.chronon.spark.stats.CompareBaseJob
+import ai.chronon.spark.stats.CompareJob
+import ai.chronon.spark.stats.ConsistencyJob
+import ai.chronon.spark.stats.SummaryJob
+import ai.chronon.spark.streaming.JoinSourceRunner
+import ai.chronon.spark.streaming.TopicChecker
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkFiles
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.SparkSessionExtensions
 import org.apache.spark.sql.streaming.StreamingQueryListener
-import org.apache.spark.sql.streaming.StreamingQueryListener.{
-  QueryProgressEvent,
-  QueryStartedEvent,
-  QueryTerminatedEvent
-}
-import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.streaming.StreamingQueryListener.QueryProgressEvent
+import org.apache.spark.sql.streaming.StreamingQueryListener.QueryStartedEvent
+import org.apache.spark.sql.streaming.StreamingQueryListener.QueryTerminatedEvent
 import org.apache.thrift.TBase
-import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
+import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.ScallopOption
+import org.rogach.scallop.Subcommand
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.io.File
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
+import java.nio.file.Paths
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.io.Source
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 // useful to override spark.sql.extensions args - there is no good way to unset that conf apparently
 // so we give it dummy extensions
@@ -56,7 +75,7 @@ class DummyExtensions extends (SparkSessionExtensions => Unit) {
 
 // The mega chronon cli
 object Driver {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
     ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
@@ -232,7 +251,7 @@ object Driver {
   }
 
   object JoinBackfill {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args
         extends Subcommand("join")
         with OfflineSubcommand
@@ -246,7 +265,7 @@ object Driver {
           default = Some(false),
           descr = "Whether or not to use the cached bootstrap table as the source - used in parallelized join flow.")
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName() = s"join_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"join_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
@@ -287,18 +306,18 @@ object Driver {
   }
 
   object JoinBackfillLeft {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args
         extends Subcommand("join-left")
         with OfflineSubcommand
         with LocalExportTableAbility
         with ResultValidationAbility {
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName() = s"join_left_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"join_left_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
-      val tableUtils = args.buildTableUtils()
+      args.buildTableUtils()
       val join = new Join(
         args.joinConf,
         args.endDate(),
@@ -310,18 +329,18 @@ object Driver {
   }
 
   object JoinBackfillFinal {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args
         extends Subcommand("join-final")
         with OfflineSubcommand
         with LocalExportTableAbility
         with ResultValidationAbility {
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName() = s"join_final_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"join_final_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
-      val tableUtils = args.buildTableUtils()
+      args.buildTableUtils()
       val join = new Join(
         args.joinConf,
         args.endDate(),
@@ -333,14 +352,14 @@ object Driver {
   }
 
   object GroupByBackfill {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args
         extends Subcommand("group-by-backfill")
         with OfflineSubcommand
         with LocalExportTableAbility
         with ResultValidationAbility {
       lazy val groupByConf: api.GroupBy = parseConf[api.GroupBy](confPath())
-      override def subcommandName() = s"groupBy_${groupByConf.metaData.name}_backfill"
+      override def subcommandName(): String = s"groupBy_${groupByConf.metaData.name}_backfill"
     }
 
     def run(args: Args): Unit = {
@@ -368,7 +387,7 @@ object Driver {
   object LabelJoin {
     class Args extends Subcommand("label-join") with OfflineSubcommand with LocalExportTableAbility {
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName() = s"label_join_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"label_join_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
@@ -448,7 +467,7 @@ object Driver {
                      default = Option(true))
 
       lazy val stagingQueryConf: api.StagingQuery = parseConf[api.StagingQuery](confPath())
-      override def subcommandName() = s"staging_query_${stagingQueryConf.metaData.name}_backfill"
+      override def subcommandName(): String = s"staging_query_${stagingQueryConf.metaData.name}_backfill"
     }
 
     def run(args: Args): Unit = {
@@ -480,7 +499,7 @@ object Driver {
                      descr = "Force backfill even if the table is already populated",
                      default = Option(false))
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName() = s"daily_stats_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"daily_stats_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
@@ -499,7 +518,7 @@ object Driver {
                      default = Option(false))
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
 
-      override def subcommandName() = s"log_stats_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"log_stats_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
@@ -542,7 +561,8 @@ object Driver {
 
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
       lazy val stagingQueryConf: api.StagingQuery = parseConf[api.StagingQuery](queryConf())
-      override def subcommandName() = s"compare_join_query_${joinConf.metaData.name}_${stagingQueryConf.metaData.name}"
+      override def subcommandName(): String =
+        s"compare_join_query_${joinConf.metaData.name}_${stagingQueryConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
@@ -591,7 +611,7 @@ object Driver {
   }
 
   object FetcherCli {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
     class Args extends Subcommand("fetch") with OnlineSubcommand {
       val confPath: ScallopOption[String] = opt[String](required = false, descr = "Path to conf to fetch features")
@@ -725,7 +745,7 @@ object Driver {
   }
 
   object MetadataUploader {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args extends Subcommand("metadata-upload") with OnlineSubcommand {
       val confPath: ScallopOption[String] =
         opt[String](required = true, descr = "Path to the Chronon config file or directory")
@@ -753,7 +773,7 @@ object Driver {
       val schemaTable: ScallopOption[String] =
         opt[String](required = true, descr = "Hive table with mapping from schema_hash to schema_value_last")
       lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName() = s"log_flattener_join_${joinConf.metaData.name}"
+      override def subcommandName(): String = s"log_flattener_join_${joinConf.metaData.name}"
     }
 
     def run(args: Args): Unit = {
@@ -771,7 +791,7 @@ object Driver {
   }
 
   object GroupByStreaming {
-    @transient lazy val logger = LoggerFactory.getLogger(getClass)
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     def dataStream(session: SparkSession, host: String, topic: String): DataFrame = {
       TopicChecker.topicShouldExist(topic, host)
       session.streams.addListener(new StreamingQueryListener() {
@@ -795,7 +815,7 @@ object Driver {
     }
 
     class Args extends Subcommand("group-by-streaming") with OnlineSubcommand {
-      @transient lazy val logger = LoggerFactory.getLogger(getClass)
+      @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
       val confPath: ScallopOption[String] = opt[String](required = true, descr = "path to groupBy conf")
       val DEFAULT_LAG_MILLIS = 2000 // 2seconds
       val kafkaBootstrap: ScallopOption[String] =
@@ -948,7 +968,7 @@ object Driver {
           case args.JoinBackfillFinalArgs  => JoinBackfillFinal.run(args.JoinBackfillFinalArgs)
           case _                           => logger.info(s"Unknown subcommand: $x")
         }
-      case None => logger.info(s"specify a subcommand please")
+      case None => logger.info("specify a subcommand please")
     }
     if (shouldExit) {
       System.exit(0)

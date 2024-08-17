@@ -1,15 +1,20 @@
 package ai.chronon.flink.test
 
-import ai.chronon.flink.window.{TimestampedIR, TimestampedTile}
-import ai.chronon.flink.{FlinkJob, SparkExpressionEvalFn}
-import ai.chronon.online.{Api, GroupByServingInfoParsed}
+import ai.chronon.flink.FlinkJob
+import ai.chronon.flink.SparkExpressionEvalFn
+import ai.chronon.flink.window.TimestampedIR
+import ai.chronon.flink.window.TimestampedTile
+import ai.chronon.online.Api
+import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.spark.sql.Encoders
+import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.{After, Before, Test}
+import org.junit.Before
+import org.junit.Test
 import org.mockito.Mockito.withSettings
 import org.scalatestplus.mockito.MockitoSugar.mock
 

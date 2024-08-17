@@ -1,12 +1,15 @@
 package ai.chronon.online
 
-import scala.util.{Failure, Success, Try}
-import scala.collection.Seq
-
 import ai.chronon.aggregator.windowing.TsUtils
+import ai.chronon.api.Derivation
 import ai.chronon.api.Extensions.DerivationOps
-import ai.chronon.api.{Derivation, LongType, StringType, StructField, StructType}
+import ai.chronon.api.LongType
+import ai.chronon.api.StringType
+import ai.chronon.api.StructField
+import ai.chronon.api.StructType
 import ai.chronon.online.Fetcher.Request
+
+import scala.collection.Seq
 
 object OnlineDerivationUtil {
   type DerivationFunc = (Map[String, Any], Map[String, Any]) => Map[String, Any]
@@ -109,7 +112,7 @@ object OnlineDerivationUtil {
           if (baseValueSchema.typeOf(d.expression).isEmpty) {
             throw new IllegalArgumentException(
               s"Failed to run expression ${d.expression} for ${d.name}. Please ensure the derivation is " +
-                s"correct.")
+                "correct.")
           } else {
             StructField(d.name, baseValueSchema.typeOf(d.expression).get)
           }

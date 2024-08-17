@@ -16,15 +16,22 @@
 
 package ai.chronon.online
 
-import ai.chronon.aggregator.row.{ColumnAggregator, StatsGenerator}
+import ai.chronon.aggregator.row.ColumnAggregator
+import ai.chronon.aggregator.row.StatsGenerator
 import ai.chronon.api
 import ai.chronon.api.Constants.UTF8
-import ai.chronon.api.Extensions.{ExternalPartOps, GroupByOps, JoinOps, MetadataOps, StringOps, ThrowableOps}
+import ai.chronon.api.Extensions.ExternalPartOps
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.StringOps
+import ai.chronon.api.Extensions.ThrowableOps
 import ai.chronon.api._
 import ai.chronon.online.Fetcher._
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.Metrics.Environment
-import ai.chronon.online.OnlineDerivationUtil.{applyDeriveFunc, buildDerivedFields}
+import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
+import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import com.google.gson.Gson
 import com.timgroup.statsd.Event
 import com.timgroup.statsd.Event.AlertType
@@ -33,10 +40,13 @@ import org.json4s.BuildInfo
 
 import java.util.function.Consumer
 import scala.collection.JavaConverters._
+import scala.collection.Seq
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.collection.{Seq, mutable}
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 object Fetcher {
   case class Request(name: String,

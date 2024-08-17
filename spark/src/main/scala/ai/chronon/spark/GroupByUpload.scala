@@ -16,26 +16,44 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
-import ai.chronon.aggregator.windowing.{FinalBatchIr, FiveMinuteResolution, Resolution, SawtoothOnlineAggregator}
+import ai.chronon.aggregator.windowing.FinalBatchIr
+import ai.chronon.aggregator.windowing.FiveMinuteResolution
+import ai.chronon.aggregator.windowing.Resolution
+import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Constants, DataModel, GroupByServingInfo, QueryUtils, ThriftJsonCodec}
-import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, SourceOps}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.GroupByServingInfo
+import ai.chronon.api.QueryUtils
+import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.Extensions.ChrononStructTypeOps
-import ai.chronon.online.{GroupByServingInfoParsed, Metrics, SparkConversions}
+import ai.chronon.online.GroupByServingInfoParsed
+import ai.chronon.online.Metrics
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.SparkEnv
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions.{col, lit, not}
-import org.apache.spark.sql.{Row, SparkSession, types}
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.not
+import org.apache.spark.sql.types
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.{ListOps, MapOps}
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Try
 
 class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val sparkSession: SparkSession = groupBy.sparkSession
   implicit private val tableUtils: TableUtils = TableUtils(sparkSession)
   private def fromBase(rdd: RDD[(Array[Any], Array[Any])]): KvRdd = {
@@ -105,7 +123,7 @@ class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable
 }
 
 object GroupByUpload {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // TODO - remove this if spark streaming can't reach hive tables
   private def buildServingInfo(groupByConf: api.GroupBy,

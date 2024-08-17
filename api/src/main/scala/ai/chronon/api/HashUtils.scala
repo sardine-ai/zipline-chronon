@@ -16,8 +16,6 @@
 
 package ai.chronon.api
 
-import org.apache.thrift.TBase
-
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.Base64

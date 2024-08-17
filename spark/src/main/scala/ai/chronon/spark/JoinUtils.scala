@@ -19,13 +19,17 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
-import ai.chronon.api.Extensions.{JoinOps, _}
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions._
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{coalesce, col, udf}
+import org.apache.spark.sql.functions.coalesce
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.util.sketch.BloomFilter
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
@@ -33,7 +37,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.ScalaJavaConversions.MapOps
 
 object JoinUtils {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val set_add: UserDefinedFunction =
     udf((set: Seq[String], item: String) => {
       if (set == null && item == null) {
@@ -213,12 +217,12 @@ object JoinUtils {
                             propertiesOverride: Map[String, String] = null): Unit = {
     val baseViewProperties = tableUtils.getTableProperties(baseView).getOrElse(Map.empty)
     val labelTableName = baseViewProperties.getOrElse(Constants.LabelViewPropertyKeyLabelTable, "")
-    assert(labelTableName.nonEmpty, s"Not able to locate underlying label table for partitions")
+    assert(labelTableName.nonEmpty, "Not able to locate underlying label table for partitions")
 
     val labelMapping = getLatestLabelMapping(labelTableName, tableUtils)
     val caseDefinitions = labelMapping.flatMap(entry => {
       entry._2
-        .map(v => s"WHEN " + v.betweenClauses + s" THEN ${Constants.LabelPartitionColumn} = '${entry._1}'")
+        .map(v => "WHEN " + v.betweenClauses + s" THEN ${Constants.LabelPartitionColumn} = '${entry._1}'")
         .toList
     })
 

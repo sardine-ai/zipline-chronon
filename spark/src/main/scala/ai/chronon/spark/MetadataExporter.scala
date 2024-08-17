@@ -16,27 +16,30 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
-import java.io.{BufferedWriter, File, FileWriter}
 import ai.chronon.api
-import ai.chronon.api.{DataType, ThriftJsonCodec}
+import ai.chronon.api.ThriftJsonCodec
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.commons.lang.exception.ExceptionUtils
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileWriter
 import java.nio.file.Files
 import java.nio.file.Paths
 import scala.collection.immutable.Map
 
 object MetadataExporter {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val GROUPBY_PATH_SUFFIX = "/group_bys"
   val JOIN_PATH_SUFFIX = "/joins"
 
   val mapper = new ObjectMapper()
   mapper.registerModule(DefaultScalaModule)
-  val tableUtils = TableUtils(SparkSessionBuilder.build("metadata_exporter"))
+  val tableUtils: TableUtils = TableUtils(SparkSessionBuilder.build("metadata_exporter"))
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val yesterday = tableUtils.partitionSpec.before(today)
 

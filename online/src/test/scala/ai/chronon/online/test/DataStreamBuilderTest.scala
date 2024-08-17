@@ -16,18 +16,28 @@
 
 package ai.chronon.online.test
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.{Builders, DataModel, LongType, StringType, StructField, StructType}
-import ai.chronon.online.{DataStream, SparkConversions, TopicInfo}
+import ai.chronon.api.Builders
+import ai.chronon.api.DataModel
+import ai.chronon.api.LongType
+import ai.chronon.api.StringType
+import ai.chronon.api.StructField
+import ai.chronon.api.StructType
+import ai.chronon.online.DataStream
+import ai.chronon.online.SparkConversions
+import ai.chronon.online.TopicInfo
 import ai.chronon.online.TopicInfo.parse
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.util.ScalaJavaConversions.JListOps
 
 class DataStreamBuilderTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = {
     System.setSecurityManager(null)
     val spark = SparkSession

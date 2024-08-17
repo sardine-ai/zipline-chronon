@@ -16,35 +16,49 @@
 
 package ai.chronon.spark
 
-import java.io.{PrintWriter, StringWriter}
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.{Constants, DataPointer, PartitionSpec, Query, QueryUtils}
+import ai.chronon.api.Constants
+import ai.chronon.api.DataPointer
 import ai.chronon.api.Extensions._
-import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
-import ai.chronon.spark.Extensions.{DataPointerOps, DfStats, DfWithStats}
-import jnr.ffi.annotations.Synchronized
+import ai.chronon.api.PartitionSpec
+import ai.chronon.api.Query
+import ai.chronon.api.QueryUtils
+import ai.chronon.spark.Extensions.DataPointerOps
+import ai.chronon.spark.Extensions.DfStats
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
+import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
+import org.apache.spark.sql.catalyst.plans.logical.Filter
+import org.apache.spark.sql.catalyst.plans.logical.Project
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
-import java.util.concurrent.{ExecutorService, Executors}
-import scala.collection.{Seq, mutable}
+import scala.collection.Seq
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
-import scala.util.ScalaJavaConversions.{ListOps, MapOps}
-import scala.util.{Failure, Success, Try}
+import scala.collection.mutable
+import scala.util.Failure
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
+import scala.util.Success
+import scala.util.Try
 
 case class TableUtils(sparkSession: SparkSession) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val ARCHIVE_TIMESTAMP_FORMAT = "yyyyMMddHHmmss"
   @transient private lazy val archiveTimestampFormatter = DateTimeFormatter
@@ -437,7 +451,7 @@ case class TableUtils(sparkSession: SparkSession) {
                                   stats: Option[DfStats],
                                   sortByCols: Seq[String] = Seq.empty): Unit = {
     wrapWithCache(s"repartition & write to $tableName", df) {
-      logger.info(s"Repartitioning before writing...")
+      logger.info("Repartitioning before writing...")
       repartitionAndWriteInternal(df, tableName, saveMode, stats, sortByCols)
     }.get
   }

@@ -2,17 +2,23 @@ package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.online.KVStore
 import com.google.cloud.bigquery._
-import com.google.cloud.bigtable.data.v2.models.{Filters, Query, RowMutation, TableId => BTTableId}
-import com.google.cloud.bigtable.data.v2.{BigtableDataClient, BigtableDataSettings}
+import com.google.cloud.bigtable.data.v2.BigtableDataClient
+import com.google.cloud.bigtable.data.v2.BigtableDataSettings
+import com.google.cloud.bigtable.data.v2.models.Filters
+import com.google.cloud.bigtable.data.v2.models.Query
+import com.google.cloud.bigtable.data.v2.models.RowMutation
+import com.google.cloud.bigtable.data.v2.models.{TableId => BTTableId}
 import com.google.protobuf.ByteString
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success}
+import scala.util.Failure
+import scala.util.Success
 
 class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore {
-  @transient override lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient override lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val dataClient: BigtableDataClient = {
     val settings = BigtableDataSettings

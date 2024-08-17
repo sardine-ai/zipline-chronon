@@ -17,8 +17,11 @@
 package ai.chronon.aggregator.windowing
 
 import ai.chronon.aggregator.row.RowAggregator
-import ai.chronon.api.Extensions.{AggregationOps, AggregationPartOps, WindowOps}
+import ai.chronon.api.Extensions.AggregationOps
+import ai.chronon.api.Extensions.AggregationPartOps
+import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api._
+
 import scala.collection.Seq
 
 // This implements the two-stack-lite algorithm
@@ -28,7 +31,7 @@ class TwoStackLiteAggregator(inputSchema: StructType,
                              resolution: Resolution = FiveMinuteResolution) {
 
   private val allParts = aggregations.flatMap(_.unpack)
-  private val outputColumnNames = allParts.map(_.outputColumnName)
+  allParts.map(_.outputColumnName)
   // create row aggregator per window - we will loop over data as many times as there are unique windows
   // we will use different row aggregators to do so
   case class PerWindowAggregator(window: Window, agg: RowAggregator, indexMapping: Array[Int]) {

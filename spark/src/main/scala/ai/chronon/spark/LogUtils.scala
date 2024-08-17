@@ -15,7 +15,10 @@
  */
 
 package ai.chronon.spark
-import ai.chronon.api.{Accuracy, Builders, Constants, Operation}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
+import ai.chronon.api.Constants
+import ai.chronon.api.Operation
 
 object LogUtils {
   def buildLogSchemaGroupBy(logTable: String,

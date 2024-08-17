@@ -16,14 +16,20 @@
 
 package ai.chronon.api.test
 
-import ai.chronon.api.{Accuracy, Builders, Constants, GroupBy}
-import org.junit.Test
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
+import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
-import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
-import org.mockito.Mockito.{spy, when}
+import ai.chronon.api.GroupBy
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.mockito.Mockito.spy
+import org.mockito.Mockito.when
 
-import scala.util.ScalaJavaConversions.JListOps
 import java.util.Arrays
+import scala.util.ScalaJavaConversions.JListOps
 
 class ExtensionsTest {
 

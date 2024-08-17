@@ -16,33 +16,37 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.DataModel.{Entities, Events}
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel.Entities
+import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{Constants, JoinPart, TimeUnit, Window}
-import ai.chronon.spark.Extensions._
+import ai.chronon.api.JoinPart
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
 import ai.chronon.online.Metrics
+import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.util.sketch.BloomFilter
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.util
 import scala.collection.JavaConverters._
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.IterableOps
-import java.util
 
 class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tableUtilsI: TableUtils = tableUtils
-  assert(Option(joinConf.metaData.outputNamespace).nonEmpty, s"output namespace could not be empty or null")
+  assert(Option(joinConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   assert(
     joinConf.labelPart.leftStartOffset >= joinConf.labelPart.getLeftEndOffset,
     s"Start time offset ${joinConf.labelPart.leftStartOffset} must be earlier than end offset " +
       s"${joinConf.labelPart.leftEndOffset}"
   )
 
-  val metrics = Metrics.Context(Metrics.Environment.LabelJoin, joinConf)
+  val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.LabelJoin, joinConf)
   private val outputLabelTable = joinConf.metaData.outputLabelTable
   private val labelJoinConf = joinConf.labelPart
   private val confTableProps = Option(joinConf.metaData.tableProperties)
@@ -50,8 +54,10 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     .getOrElse(Map.empty[String, String])
 
   // offsets are inclusive, e.g label_ds = 04-03, left_start_offset = left_end_offset = 3, left_ds will be 04-01
-  val leftStart = tableUtils.partitionSpec.minus(labelDS, new Window(labelJoinConf.leftStartOffset - 1, TimeUnit.DAYS))
-  val leftEnd = tableUtils.partitionSpec.minus(labelDS, new Window(labelJoinConf.leftEndOffset - 1, TimeUnit.DAYS))
+  val leftStart: String =
+    tableUtils.partitionSpec.minus(labelDS, new Window(labelJoinConf.leftStartOffset - 1, TimeUnit.DAYS))
+  val leftEnd: String =
+    tableUtils.partitionSpec.minus(labelDS, new Window(labelJoinConf.leftEndOffset - 1, TimeUnit.DAYS))
 
   def computeLabelJoin(stepDays: Option[Int] = None, skipFinalJoin: Boolean = false): DataFrame = {
     // validations
@@ -185,7 +191,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
         } catch {
           case e: Exception =>
             logger.info(
-              s"Error while processing groupBy: " +
+              "Error while processing groupBy: " +
                 s"${joinConf.metaData.name}/${labelJoinPart.groupBy.getMetaData.getName}")
             throw e
         }
@@ -241,7 +247,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
       case (_, _, _) =>
         throw new IllegalArgumentException(
           s"Data model type ${joinConf.left.dataModel}:${joinPart.groupBy.dataModel} " +
-            s"not supported for label join. Valid type [Events : Entities] or [Events : Events]")
+            "not supported for label join. Valid type [Events : Entities] or [Events : Events]")
     }
     df.withColumnRenamed(tableUtils.partitionColumn, Constants.LabelPartitionColumn)
   }

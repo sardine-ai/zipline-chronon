@@ -20,7 +20,8 @@ import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api._
 
 import java.util
-import scala.collection.{Seq, mutable}
+import scala.collection.Seq
+import scala.collection.mutable
 
 case class BatchIr(collapsed: Array[Any], tailHops: HopsAggregator.IrMapType)
 case class FinalBatchIr(collapsed: Array[Any], tailHops: HopsAggregator.OutputArrayType)
@@ -109,7 +110,7 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
     * Go through the aggregators and update or delete the intermediate with the information of the row if relevant.
     * Useful for both online and mutations
     */
-  def updateIr(ir: Array[Any], row: Row, queryTs: Long, hasReversal: Boolean = false) = {
+  def updateIr(ir: Array[Any], row: Row, queryTs: Long, hasReversal: Boolean = false): Unit = {
     var i: Int = 0
     while (i < windowedAggregator.length) {
       val window = windowMappings(i).aggregationPart.window
@@ -126,7 +127,7 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
     }
   }
 
-  def updateIrTiled(ir: Array[Any], otherIr: TiledIr, queryTs: Long) = {
+  def updateIrTiled(ir: Array[Any], otherIr: TiledIr, queryTs: Long): Unit = {
     val otherIrTs = otherIr.ts
     var i: Int = 0
     while (i < windowedAggregator.length) {

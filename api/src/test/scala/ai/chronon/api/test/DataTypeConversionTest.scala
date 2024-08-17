@@ -16,15 +16,16 @@
 
 package ai.chronon.api.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api._
 import org.apache.thrift.TSerializer
 import org.apache.thrift.protocol.TSimpleJSONProtocol
 import org.junit.Assert._
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class DataTypeConversionTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   @Test
   def testDataTypeToThriftAndBack(): Unit = {
     // build some complex type

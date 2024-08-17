@@ -28,13 +28,19 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
 import java.util.concurrent.Executors
-import scala.collection.compat._
-import scala.collection.{Seq, mutable}
+import scala.collection.Seq
+import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContextExecutorService
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutorService, Future}
 import scala.jdk.CollectionConverters._
-import scala.util.ScalaJavaConversions.{ListOps, MapOps}
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
+import scala.util.Success
+import scala.util.Try
 
 /*
  * hashes: a list containing bootstrap hashes that represent the list of bootstrap parts that a record has matched

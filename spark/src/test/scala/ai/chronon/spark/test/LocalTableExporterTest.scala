@@ -18,14 +18,23 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{Constants, IntType, LongType, StringType}
-import ai.chronon.spark.test.LocalTableExporterTest.{spark, tmpDir}
-import ai.chronon.spark.{LocalTableExporter, SparkSessionBuilder, TableUtils}
+import ai.chronon.api.Constants
+import ai.chronon.api.IntType
+import ai.chronon.api.LongType
+import ai.chronon.api.StringType
+import ai.chronon.spark.LocalTableExporter
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.test.LocalTableExporterTest.spark
+import ai.chronon.spark.test.LocalTableExporterTest.tmpDir
 import com.google.common.io.Files
 import org.apache.commons.io.FileUtils
-import org.apache.spark.sql.{SaveMode, SparkSession}
-import org.junit.Assert.{assertEquals, assertTrue}
-import org.junit.{AfterClass, Test}
+import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.SparkSession
+import org.junit.AfterClass
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
 
 import java.io.File
 

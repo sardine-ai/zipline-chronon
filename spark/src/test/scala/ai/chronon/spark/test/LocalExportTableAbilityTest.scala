@@ -16,13 +16,21 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.spark.Driver.{LocalExportTableAbility, OfflineSubcommand}
-import ai.chronon.spark.{LocalTableExporter, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.Driver.LocalExportTableAbility
+import ai.chronon.spark.Driver.OfflineSubcommand
+import ai.chronon.spark.LocalTableExporter
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
-import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{doNothing, mock, times, verify}
+import org.mockito.Mockito.doNothing
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
 import org.rogach.scallop.ScallopConf
 
 class LocalExportTableAbilityTest {

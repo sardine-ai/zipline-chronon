@@ -1,6 +1,7 @@
 package ai.chronon.online.connectors
 
-import ai.chronon.api.{Constants, ThriftJsonCodec}
+import ai.chronon.api.Constants
+import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.KVStore
 import org.apache.thrift.TBase
 

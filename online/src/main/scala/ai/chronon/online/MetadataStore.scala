@@ -16,29 +16,33 @@
 
 package ai.chronon.online
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.Constants.{ChrononMetadataKey, UTF8}
-import ai.chronon.api.Extensions.{JoinOps, MetadataOps, StringOps, WindowOps, WindowUtils}
+import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.StringOps
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._
-import ai.chronon.online.KVStore.{GetRequest, PutRequest, TimedValue}
-import ai.chronon.online.MetadataEndPoint.{ConfByKeyEndPointName, NameByTeamEndPointName}
-import ai.chronon.online.Metrics.Name.Exception
-import com.google.gson.{Gson, GsonBuilder}
+import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import org.apache.thrift.TBase
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import java.io.File
-import java.nio.file.{Files, Paths}
-import scala.collection.immutable.SortedMap
 import scala.collection.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.immutable.SortedMap
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 // [timestamp -> {metric name -> metric value}]
 case class DataMetrics(series: Seq[(Long, SortedMap[String, Any])])
 
 class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, timeoutMillis: Long) {
-  @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private var partitionSpec = PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
   private val CONF_BATCH_SIZE = 50
 
@@ -181,7 +185,7 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
         if (metaData.isFailure) {
           Failure(
             new RuntimeException(s"Couldn't fetch group by serving info for $batchDataset, " +
-                                   s"please make sure a batch upload was successful",
+                                   "please make sure a batch upload was successful",
                                  metaData.failed.get))
         } else {
           val groupByServingInfo = ThriftJsonCodec
