@@ -16,13 +16,12 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.SPARK_VERSION
+import org.apache.spark.sql.SparkSession
+import org.slf4j.LoggerFactory
 
 import java.io.File
 import java.util.logging.Logger
-import scala.reflect.io.Path
 import scala.util.Properties
 
 object SparkSessionBuilder {

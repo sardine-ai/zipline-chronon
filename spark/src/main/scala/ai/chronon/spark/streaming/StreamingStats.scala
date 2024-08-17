@@ -16,16 +16,19 @@
 
 package ai.chronon.spark.streaming
 
-import org.slf4j.LoggerFactory
 import ai.chronon.online.KVStore.PutRequest
 import com.yahoo.sketches.kll.KllFloatsSketch
 import org.apache.commons.io.FileUtils
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId, ZoneOffset}
 
 class StreamingStats(val publishDelaySeconds: Int) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private var latencyHistogram: KllFloatsSketch = new KllFloatsSketch()
   private var latencyMsTotal: Long = 0
   private var writesTotal: Long = 0

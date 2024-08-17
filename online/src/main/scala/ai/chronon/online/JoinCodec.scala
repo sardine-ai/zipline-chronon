@@ -16,19 +16,19 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.Extensions.{DerivationOps, JoinOps, MetadataOps}
-import ai.chronon.api.{DataType, HashUtils, StructField, StructType}
+import ai.chronon.api.DataType
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.HashUtils
+import ai.chronon.api.StructField
+import ai.chronon.api.StructType
+import ai.chronon.online.OnlineDerivationUtil.DerivationFunc
+import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
+import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
+import ai.chronon.online.OnlineDerivationUtil.buildRenameOnlyDerivationFunction
 import com.google.gson.Gson
-import scala.collection.Seq
-import scala.util.ScalaJavaConversions.JMapOps
 
-import ai.chronon.online.OnlineDerivationUtil.{
-  DerivationFunc,
-  buildDerivationFunction,
-  buildDerivedFields,
-  buildRenameOnlyDerivationFunction,
-  timeFields
-}
+import scala.util.ScalaJavaConversions.JMapOps
 
 case class JoinCodec(conf: JoinOps,
                      keySchema: StructType,

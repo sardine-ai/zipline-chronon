@@ -16,14 +16,17 @@
 
 package ai.chronon.spark.stats
 
-import org.slf4j.LoggerFactory
-import ai.chronon.online.SparkConversions
 import ai.chronon.aggregator.row.StatsGenerator
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{JoinUtils, PartitionRange, TableUtils}
+import ai.chronon.spark.JoinUtils
+import ai.chronon.spark.PartitionRange
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
   * Summary Job for daily upload of stats.
@@ -32,7 +35,7 @@ import org.apache.spark.sql.SparkSession
   * Follow pattern of OOC for computing offline and uploading online as well.
   */
 class SummaryJob(session: SparkSession, joinConf: Join, endDate: String) extends Serializable {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val tableUtils: TableUtils = TableUtils(session)
   private val loggingStatsTable = joinConf.metaData.loggingStatsTable

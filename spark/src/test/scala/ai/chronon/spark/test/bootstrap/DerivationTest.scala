@@ -16,27 +16,31 @@
 
 package ai.chronon.spark.test.bootstrap
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api.Builders.Derivation
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
-import ai.chronon.spark
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
-import ai.chronon.spark.test.{MockApi, OnlineUtils, SchemaEvolutionUtils}
+import ai.chronon.spark.test.MockApi
+import ai.chronon.spark.test.OnlineUtils
+import ai.chronon.spark.test.SchemaEvolutionUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.ScalaJavaConversions.JListOps
 
 class DerivationTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("DerivationTest", local = true)
   private val tableUtils = TableUtils(spark)
@@ -282,7 +286,7 @@ class DerivationTest {
       logger.info(s"Actual count: ${computed.count()}")
       logger.info(s"Expected count: ${expected.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
 
@@ -356,7 +360,7 @@ class DerivationTest {
       logger.info(s"Actual count: ${outputDf.count()}")
       logger.info(s"Expected count: ${bootstrapDf.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
 
@@ -490,7 +494,7 @@ class DerivationTest {
       logger.info(s"Actual count: ${computedDf.count()}")
       logger.info(s"Expected count: ${expectedDf.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
 
@@ -661,7 +665,7 @@ class DerivationTest {
       logger.info(s"Actual count: ${actualDf.count()}")
       logger.info(s"Expected count: ${expectedDf.count()}")
       logger.info(s"Diff count: ${diff.count()}")
-      logger.info(s"diff result rows")
+      logger.info("diff result rows")
       diff.show()
     }
     assertEquals(0, diff.count())

@@ -16,16 +16,31 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
-import ai.chronon.api.{Builders, Constants, Operation, TimeUnit, Window}
+import ai.chronon.api.Builders
+import ai.chronon.api.Operation
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{Comparison, Join, SparkSessionBuilder, TableUtils}
-import org.apache.spark.sql.types.{BooleanType, DoubleType, IntegerType, LongType, StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import ai.chronon.spark.Join
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.BooleanType
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.IntegerType
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /** Tests for the temporal join of entities.
   * Left is an event source with definite ts.
@@ -33,14 +48,14 @@ import org.junit.Test
   * Join is the events and the entity value at the exact timestamp of the ts.
   */
 class MutationsTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("MutationsTest", local = true) //, additionalConfig = Some(Map("spark.chronon.backfill.validation.enabled" -> "false")))
   private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private def namespace(suffix: String) = s"test_mutations_$suffix"
-  private val groupByName = s"group_by_test.v0"
-  private val joinName = s"join_test.v0"
+  private val groupByName = "group_by_test.v0"
+  private val joinName = "join_test.v0"
 
   // {listing_id (key), ts (timestamp of property), rating (property: rated value), ds (partition ds)}
   private val snapshotSchema = StructType(
@@ -80,11 +95,11 @@ class MutationsTest {
       StructField("ds", StringType, false)
     ))
 
-  val snapshotTable = s"listing_ratings_snapshot_v0"
-  val mutationTable = s"listing_ratings_mutations_v0"
-  val eventTable = s"listing_events"
-  val joinTable = s"${joinName.replace(".", "_")}"
-  val groupByTable = s"${joinName.replace(".", "_")}_${groupByName.replace(".", "_")}"
+  val snapshotTable: String = "listing_ratings_snapshot_v0"
+  val mutationTable: String = "listing_ratings_mutations_v0"
+  val eventTable: String = "listing_events"
+  val joinTable: String = s"${joinName.replace(".", "_")}"
+  val groupByTable: String = s"${joinName.replace(".", "_")}_${groupByName.replace(".", "_")}"
 
   /**
     * Join the expected rows against the computed DataFrame and check the row count is exact.
@@ -859,7 +874,7 @@ class MutationsTest {
       println(s"Actual count: ${result.count()}")
       println(s"Expected count: ${expected.count()}")
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff.show()
       assert(diff.count() == 0)
     }

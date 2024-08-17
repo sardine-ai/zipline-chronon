@@ -18,19 +18,21 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Builders, Constants, Operation, TimeUnit, Window}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
 import ai.chronon.api.Constants.ChrononMetadataKey
-import ai.chronon.api.Extensions._
-import ai.chronon.spark.test.StreamingTest.buildInMemoryKvStore
-import ai.chronon.online.{MetadataStore}
+import ai.chronon.api.Operation
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import ai.chronon.online.MetadataStore
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.test.StreamingTest.buildInMemoryKvStore
 import ai.chronon.spark.{Join => _, _}
 import junit.framework.TestCase
-import org.apache.spark.sql.{SparkSession}
+import org.apache.spark.sql.SparkSession
 
 import java.util.TimeZone
-
-import scala.collection.JavaConverters.{asScalaBufferConverter, _}
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 object StreamingTest {
   def buildInMemoryKvStore(): InMemoryKvStore = {
@@ -42,11 +44,11 @@ object StreamingTest {
 class StreamingTest extends TestCase {
 
   val spark: SparkSession = SparkSessionBuilder.build("StreamingTest", local = true)
-  val tableUtils = TableUtils(spark)
+  val tableUtils: TableUtils = TableUtils(spark)
   val namespace = "streaming_test"
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
-  private val yesterday = tableUtils.partitionSpec.before(today)
+  tableUtils.partitionSpec.before(today)
   private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
   def testStructInStreaming(): Unit = {

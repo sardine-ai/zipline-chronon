@@ -16,18 +16,19 @@
 
 package ai.chronon.spark.streaming
 
-import org.slf4j.LoggerFactory
-import ai.chronon.online.{DataStream, StreamBuilder, TopicInfo}
+import ai.chronon.online.DataStream
+import ai.chronon.online.StreamBuilder
+import ai.chronon.online.TopicInfo
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.StreamingQueryListener
-import org.apache.spark.sql.streaming.StreamingQueryListener.{
-  QueryProgressEvent,
-  QueryStartedEvent,
-  QueryTerminatedEvent
-}
+import org.apache.spark.sql.streaming.StreamingQueryListener.QueryProgressEvent
+import org.apache.spark.sql.streaming.StreamingQueryListener.QueryStartedEvent
+import org.apache.spark.sql.streaming.StreamingQueryListener.QueryTerminatedEvent
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 object KafkaStreamBuilder extends StreamBuilder {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   override def from(topicInfo: TopicInfo)(implicit session: SparkSession, conf: Map[String, String]): DataStream = {
     val conf = topicInfo.params
     val bootstrap = conf.getOrElse("bootstrap", conf("host") + conf.get("port").map(":" + _).getOrElse(""))

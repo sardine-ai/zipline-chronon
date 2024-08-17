@@ -1,15 +1,20 @@
 package ai.chronon.flink
 
-import org.slf4j.LoggerFactory
+import ai.chronon.api.Constants
+import ai.chronon.api.DataModel
 import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.{Constants, DataModel, Query, StructType => ChrononStructType}
+import ai.chronon.api.Query
+import ai.chronon.api.{StructType => ChrononStructType}
 import ai.chronon.flink.window.TimestampedTile
-import ai.chronon.online.{AvroConversions, GroupByServingInfoParsed}
+import ai.chronon.online.AvroConversions
+import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
 import org.apache.flink.util.Collector
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters._
 
@@ -24,7 +29,7 @@ import scala.jdk.CollectionConverters._
 sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, OUT] {
   def groupByServingInfoParsed: GroupByServingInfoParsed
 
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   @transient protected var avroConversionErrorCounter: Counter = _
   @transient protected var eventProcessingErrorCounter: Counter =
     _ // Shared metric for errors across the entire Flink app.
@@ -142,7 +147,7 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
       case e: Exception =>
         // To improve availability, we don't rethrow the exception. We just drop the event
         // and track the errors in a metric. Alerts should be set up on this metric.
-        logger.error(s"Error converting to Avro bytes - ", e)
+        logger.error("Error converting to Avro bytes - ", e)
         eventProcessingErrorCounter.inc()
         avroConversionErrorCounter.inc()
     }

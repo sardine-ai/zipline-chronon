@@ -3,21 +3,28 @@ package ai.chronon.online
 import ai.chronon.aggregator.windowing.FinalBatchIr
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.GroupBy
-import ai.chronon.online.FetcherBase._
 import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.FetcherCache.{BatchIrCache, BatchResponses, CachedMapBatchResponse}
+import ai.chronon.online.FetcherBase._
+import ai.chronon.online.FetcherCache.BatchIrCache
+import ai.chronon.online.FetcherCache.BatchResponses
+import ai.chronon.online.FetcherCache.CachedMapBatchResponse
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.Metrics.Context
-import org.junit.Assert.{assertArrayEquals, assertEquals, assertNull, fail}
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.fail
 import org.junit.Test
-import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
+import org.mockito.Mockito._
 import org.mockito.stubbing.Stubber
 import org.scalatestplus.mockito.MockitoSugar
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 trait MockitoHelper extends MockitoSugar {
   // We override doReturn to fix a known Java/Scala interoperability issue. Without this fix, we see "doReturn:
@@ -269,7 +276,7 @@ class FetcherCacheTest extends MockitoHelper {
     // Set up mocks and dummy data
     val servingInfo = mock[GroupByServingInfoParsed]
     val groupByOps = mock[GroupByOps]
-    val outputCodec = mock[AvroCodec]
+    mock[AvroCodec]
     when(servingInfo.groupByOps).thenReturn(groupByOps)
     when(groupByOps.batchDataset).thenReturn("test_dataset")
     when(servingInfo.groupByOps.batchDataset).thenReturn("test_dataset")
@@ -284,7 +291,7 @@ class FetcherCacheTest extends MockitoHelper {
     // 1. Cached BatchResponse returns the same Map responses passed in
     val mapResponse1 = mock[Map[String, AnyRef]]
     val cachedBatchResponse = BatchResponses(mapResponse1)
-    val decodingFunction1 = (bytes: Array[Byte]) => {
+    val decodingFunction1 = (_: Array[Byte]) => {
       fail("Decoding function should not be called when batch response is cached")
       mapResponse1
     }
@@ -298,7 +305,7 @@ class FetcherCacheTest extends MockitoHelper {
     // 2. Un-cached BatchResponse has Map responses added to cache
     val mapResponse2 = mock[Map[String, AnyRef]]
     val kvStoreBatchResponses = BatchResponses(Success(Seq(TimedValue(batchBytes, 1000L))))
-    def decodingFunction2 = (bytes: Array[Byte]) => mapResponse2
+    def decodingFunction2 = (_: Array[Byte]) => mapResponse2
     val decodedMapResponse = spiedFetcherCache.getMapResponseFromBatchResponse(kvStoreBatchResponses,
                                                                                batchBytes,
                                                                                decodingFunction2,

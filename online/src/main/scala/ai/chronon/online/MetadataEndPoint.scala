@@ -1,11 +1,16 @@
 package ai.chronon.online
 
 import ai.chronon.api.Extensions.StringOps
-import ai.chronon.api.{GroupBy, Join, StagingQuery, ThriftJsonCodec, MetaData}
+import ai.chronon.api.GroupBy
+import ai.chronon.api.Join
+import ai.chronon.api.MetaData
+import ai.chronon.api.StagingQuery
+import ai.chronon.api.ThriftJsonCodec
 import org.apache.thrift.TBase
-import org.slf4j.LoggerFactory
-import org.json4s.jackson.JsonMethods._
 import org.json4s._
+import org.json4s.jackson.JsonMethods._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.reflect.ClassTag
 
@@ -14,7 +19,7 @@ case class MetadataEndPoint[Conf <: TBase[_, _]: Manifest: ClassTag](
     name: String
 )
 object MetadataEndPoint {
-  @transient implicit lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val ConfByKeyEndPointName = "ZIPLINE_METADATA"
   val NameByTeamEndPointName = "CHRONON_ENTITY_BY_TEAM"

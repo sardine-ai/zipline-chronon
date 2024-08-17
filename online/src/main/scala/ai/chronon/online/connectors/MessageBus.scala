@@ -1,8 +1,8 @@
 package ai.chronon.online.connectors
 
 import ai.chronon.api.DataSpec
-import org.apache.flink.streaming.api.scala.{createTypeInformation, DataStream => FlinkStream}
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.streaming.api.scala.{DataStream => FlinkStream}
 
 trait Serde {
   def toBytes[T](t: T): Array[Byte]

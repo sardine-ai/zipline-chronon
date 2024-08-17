@@ -17,7 +17,7 @@
 package ai.chronon.online
 
 object CompatParColls {
-  val Converters = {
+  val Converters: Compat.CollectionConverters.type = {
     import Compat._
 
     {

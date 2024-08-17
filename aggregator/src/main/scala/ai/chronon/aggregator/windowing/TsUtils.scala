@@ -17,10 +17,12 @@
 package ai.chronon.aggregator.windowing
 
 import org.apache.commons.lang3.time.FastDateFormat
-import java.util.{Date, TimeZone}
+
+import java.util.Date
+import java.util.TimeZone
 
 object TsUtils {
-  val formatter = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))
+  val formatter: FastDateFormat = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))
 
   // in millisecond precision
   def toStr(epochMillis: Long): String = {

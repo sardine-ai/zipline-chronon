@@ -15,11 +15,17 @@
  */
 package ai.chronon.spark
 
-import ai.chronon.aggregator.base.FrequentItemType.{DoubleItemType, LongItemType, StringItemType}
+import ai.chronon.aggregator.base.FrequentItemType
+import ai.chronon.aggregator.base.FrequentItemType.DoubleItemType
+import ai.chronon.aggregator.base.FrequentItemType.LongItemType
+import ai.chronon.aggregator.base.FrequentItemType.StringItemType
+import ai.chronon.aggregator.base.FrequentItemsFriendly
 import ai.chronon.aggregator.base.FrequentItemsFriendly._
-import ai.chronon.aggregator.base.{FrequentItemType, FrequentItemsFriendly, ItemsSketchIR}
-import com.esotericsoftware.kryo.io.{Input, Output}
-import com.esotericsoftware.kryo.{Kryo, Serializer}
+import ai.chronon.aggregator.base.ItemsSketchIR
+import com.esotericsoftware.kryo.Kryo
+import com.esotericsoftware.kryo.Serializer
+import com.esotericsoftware.kryo.io.Input
+import com.esotericsoftware.kryo.io.Output
 import com.yahoo.memory.Memory
 import com.yahoo.sketches.ArrayOfItemsSerDe
 import com.yahoo.sketches.cpc.CpcSketch
@@ -70,7 +76,7 @@ class ItemsSketchKryoSerializer[T] extends Serializer[ItemsSketchIR[T]] {
 class ChrononKryoRegistrator extends KryoRegistrator {
   // registering classes tells kryo to not send schema on the wire
   // helps shuffles and spilling to disk
-  override def registerClasses(kryo: Kryo) {
+  override def registerClasses(kryo: Kryo): Unit = {
     //kryo.setWarnUnregisteredClasses(true)
     val names = Seq(
       "org.apache.hadoop.fs.Path",

@@ -43,7 +43,7 @@ object StatsGenerator {
   val finalizedPercentilesMerged: Array[Double] = Array(0.01) ++ (5 until 100 by 5).map(_.toDouble / 100) ++ Array(0.99)
   // Leveraged to build candlestick time series.
   val finalizedPercentilesSeries: Array[Double] = Array(0.05, 0.25, 0.5, 0.75, 0.95)
-  val ignoreColumns = Seq(api.Constants.TimeColumn, "ds", "date_key", "date", "datestamp")
+  val ignoreColumns: Seq[String] = Seq(api.Constants.TimeColumn, "ds", "date_key", "date", "datestamp")
 
   /**
     * InputTransform acts as a signal of how to process the metric.
@@ -75,7 +75,7 @@ object StatsGenerator {
     */
   def SeriesFinalizer(key: String, value: AnyRef): AnyRef = {
     (key, value) match {
-      case (k, sketch: Array[Byte]) if k.endsWith("percentile") =>
+      case (k, _: Array[Byte]) if k.endsWith("percentile") =>
         val sketch = KllFloatsSketch.heapify(Memory.wrap(value.asInstanceOf[Array[Byte]]))
         sketch.getQuantiles(finalizedPercentilesSeries).asInstanceOf[AnyRef]
       case _ => value

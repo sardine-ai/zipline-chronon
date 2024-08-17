@@ -16,26 +16,34 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
-import ai.chronon.api.{Constants, StructType}
+import ai.chronon.api.Constants
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.StructType
 import ai.chronon.online.Fetcher.Response
-import ai.chronon.online._
 import ai.chronon.online.Serde
+import ai.chronon.online._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.io.{BinaryDecoder, DecoderFactory}
+import org.apache.avro.io.BinaryDecoder
+import org.apache.avro.io.DecoderFactory
 import org.apache.avro.specific.SpecificDatumReader
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.util
 import java.util.Base64
-import java.util.concurrent.{CompletableFuture, ConcurrentLinkedQueue}
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.Seq
 import scala.concurrent.Future
-import scala.util.ScalaJavaConversions.{IteratorOps, JListOps, JMapOps}
+import scala.util.ScalaJavaConversions.IteratorOps
+import scala.util.ScalaJavaConversions.JListOps
+import scala.util.ScalaJavaConversions.JMapOps
 import scala.util.Success
 
 class MockDecoder(inputSchema: StructType) extends Serde {

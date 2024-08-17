@@ -16,11 +16,13 @@
 
 package ai.chronon.spark
 
-import org.slf4j.{Logger, LoggerFactory}
 import ai.chronon.spark.Extensions._
-import com.google.common.hash.{Hasher, Hashing}
+import com.google.common.hash.Hasher
+import com.google.common.hash.Hashing
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.nio.charset.Charset
 
@@ -42,7 +44,7 @@ case class KeyWithHash(data: Array[Any], hash: Array[Byte], hashInt: Int) extend
 }
 
 object FastHashing {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // function to generate a fast-ish hasher
   // the approach tries to accumulate several tiny closures to compute the final hash
   def generateKeyBuilder(keys: Array[String], schema: StructType): Row => KeyWithHash = {

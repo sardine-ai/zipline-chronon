@@ -16,12 +16,13 @@
 
 package ai.chronon.online.test
 
-import ai.chronon.api.{Derivation, Join, StructType}
-import ai.chronon.online.{CatalystUtil, SerializableFunction, SparkConversions, TBaseDecoderFactory}
+import ai.chronon.api.Derivation
+import ai.chronon.api.Join
+import ai.chronon.api.StructType
+import ai.chronon.online.CatalystUtil
+import ai.chronon.online.SerializableFunction
+import ai.chronon.online.TBaseDecoderFactory
 import com.google.gson.Gson
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

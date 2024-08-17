@@ -16,7 +16,6 @@
 
 package ai.chronon.aggregator.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.test.SawtoothAggregatorTest.sawtoothAggregate
 import ai.chronon.aggregator.windowing._
@@ -25,13 +24,15 @@ import ai.chronon.api._
 import com.google.gson.Gson
 import junit.framework.TestCase
 import org.junit.Assert._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util
-import scala.collection.mutable
 import scala.collection.Seq
+import scala.collection.mutable
 
 class Timer {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   var ts: Long = System.currentTimeMillis()
 

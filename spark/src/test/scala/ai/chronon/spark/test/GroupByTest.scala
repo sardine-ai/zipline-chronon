@@ -16,29 +16,35 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.aggregator.test.{CStream, Column, NaiveAggregator}
+import ai.chronon.aggregator.test.CStream
+import ai.chronon.aggregator.test.Column
+import ai.chronon.aggregator.test.NaiveAggregator
 import ai.chronon.aggregator.windowing.FiveMinuteResolution
+import ai.chronon.api.Aggregation
+import ai.chronon.api.Builders
+import ai.chronon.api.Constants
+import ai.chronon.api.DoubleType
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{
-  Aggregation,
-  Builders,
-  Constants,
-  DoubleType,
-  IntType,
-  LongType,
-  Operation,
-  Source,
-  StringType,
-  TimeUnit,
-  Window
-}
-import ai.chronon.online.{RowWrapper, SparkConversions}
+import ai.chronon.api.IntType
+import ai.chronon.api.LongType
+import ai.chronon.api.Operation
+import ai.chronon.api.Source
+import ai.chronon.api.StringType
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import ai.chronon.online.RowWrapper
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import com.google.gson.Gson
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{StructField, StructType, LongType => SparkLongType, StringType => SparkStringType}
-import org.apache.spark.sql.{Encoders, Row, SparkSession}
+import org.apache.spark.sql.Encoders
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{LongType => SparkLongType}
+import org.apache.spark.sql.types.{StringType => SparkStringType}
 import org.junit.Assert._
 import org.junit.Test
 
@@ -47,7 +53,7 @@ import scala.collection.mutable
 class GroupByTest {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build("GroupByTest", local = true)
-  implicit val tableUtils = TableUtils(spark)
+  implicit val tableUtils: TableUtils = TableUtils(spark)
 
   @Test
   def testSnapshotEntities(): Unit = {
@@ -161,7 +167,7 @@ class GroupByTest {
     val computed = resultDf.select("user", "ts", "listing_view_last30", "listing_view_count")
     computed.show()
 
-    val expected = eventDf.sqlContext.sql(s"""
+    val expected = eventDf.sqlContext.sql("""
          |SELECT
          |      events_last_k.user as user,
          |      queries_last_k.ts as ts,
@@ -180,7 +186,7 @@ class GroupByTest {
       println(s"Actual count: ${computed.count()}")
       println(s"Expected count: ${expected.count()}")
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows last_k_test")
+      println("diff result rows last_k_test")
       diff.show()
       diff.rdd.foreach { row =>
         val gson = new Gson()

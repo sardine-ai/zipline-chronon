@@ -17,7 +17,8 @@
 package ai.chronon.api
 
 import java.util
-import scala.util.ScalaJavaConversions.{JListOps, ListOps}
+import scala.util.ScalaJavaConversions.JListOps
+import scala.util.ScalaJavaConversions.ListOps
 
 sealed trait DataType extends Serializable
 
@@ -38,7 +39,7 @@ object DataType {
       case DateType                    => "date"
       case TimestampType               => "timestamp"
       case StructType(name, _)         => s"struct_$name"
-      case UnknownType(any)            => "unknown_type"
+      case UnknownType(_)              => "unknown_type"
     }
 
   def isScalar(dt: DataType): Boolean =
@@ -129,7 +130,7 @@ object DataType {
       case TimestampType => new TDataType(DataKind.TIMESTAMP)
       case StructType(name, fields) =>
         new TDataType(DataKind.STRUCT).setName(name).setParams(toParams(fields.map(f => f.name -> f.fieldType): _*))
-      case UnknownType(any) => throw new RuntimeException("Cannot convert unknown type")
+      case UnknownType(_) => throw new RuntimeException("Cannot convert unknown type")
     }
   }
 }

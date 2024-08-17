@@ -16,15 +16,23 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.online.{AvroCodec, AvroConversions, SparkConversions}
+import ai.chronon.online.AvroConversions
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
-import org.apache.avro.generic.GenericData
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.expressions.{GenericRow, GenericRowWithSchema}
-import org.apache.spark.sql.types.{BinaryType, LongType, StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.expressions.GenericRow
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.types.BinaryType
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 object GenericRowHandler {
   val func: Any => Array[Any] = {
@@ -71,7 +79,7 @@ sealed trait BaseKvRdd {
 case class KvRdd(data: RDD[(Array[Any], Array[Any])], keySchema: StructType, valueSchema: StructType)(implicit
     sparkSession: SparkSession)
     extends BaseKvRdd {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val withTime = false
 
   def toAvroDf(jsonPercent: Int = 1): DataFrame = {
@@ -113,7 +121,7 @@ case class TimedKvRdd(data: RDD[(Array[Any], Array[Any], Long)],
                       valueSchema: StructType,
                       storeSchemasPrefix: Option[String] = None)(implicit sparkSession: SparkSession)
     extends BaseKvRdd {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val withTime = true
 
   // TODO make json percent configurable

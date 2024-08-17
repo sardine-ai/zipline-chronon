@@ -16,21 +16,30 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
-import ai.chronon.api.{Constants, GroupBy, StructType}
-import ai.chronon.online.{AvroConversions, Mutation, SparkConversions, TileCodec}
-import ai.chronon.online.Extensions.StructTypeOps
-import ai.chronon.spark.{GenericRowHandler, TableUtils}
-import com.esotericsoftware.kryo.Kryo
-import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.apache.avro.io.{BinaryEncoder, EncoderFactory}
+import ai.chronon.api.Constants
+import ai.chronon.api.GroupBy
+import ai.chronon.api.StructType
+import ai.chronon.online.AvroConversions
+import ai.chronon.online.SparkConversions
+import ai.chronon.online.TileCodec
+import ai.chronon.spark.GenericRowHandler
+import ai.chronon.spark.TableUtils
+import org.apache.avro.generic.GenericData
+import org.apache.avro.generic.GenericRecord
+import org.apache.avro.io.BinaryEncoder
+import org.apache.avro.io.EncoderFactory
 import org.apache.avro.specific.SpecificDatumWriter
 import org.apache.commons.io.output.ByteArrayOutputStream
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.execution.streaming.MemoryStream
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class InMemoryStream {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private def encode(schema: org.apache.avro.Schema)(row: Row): Array[Byte] = {
     val gr: GenericRecord = new GenericData.Record(schema)

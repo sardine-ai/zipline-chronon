@@ -1,10 +1,13 @@
 package ai.chronon.flink.test
 
 import ai.chronon.flink.AsyncKVStoreWriter
-import ai.chronon.online.{Api, KVStore}
+import ai.chronon.online.Api
+import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.PutRequest
-import org.apache.flink.streaming.api.scala.{DataStream, DataStreamUtils, StreamExecutionEnvironment}
 import org.apache.flink.api.scala._
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.api.scala.DataStreamUtils
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.junit.Test
 import org.scalatestplus.mockito.MockitoSugar.mock
 

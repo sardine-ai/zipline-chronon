@@ -16,25 +16,29 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
 import ai.chronon.spark.Extensions.StructTypeOps
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import java.util.Base64
-
-import scala.+:
-import scala.collection.mutable
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.{IterableOps, MapOps}
-import scala.util.{Failure, Success, Try}
-
-import ai.chronon.online.OnlineDerivationUtil.timeFields
+import scala.collection.mutable
+import scala.util.Failure
+import scala.util.ScalaJavaConversions.MapOps
+import scala.util.Success
+import scala.util.Try
 
 /**
   * Purpose of LogFlattenerJob is to unpack serialized Avro data from online requests and flatten each field
@@ -54,7 +58,7 @@ class LogFlattenerJob(session: SparkSession,
                       schemaTable: String,
                       stepDays: Option[Int] = None)
     extends Serializable {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tableUtils: TableUtils = TableUtils(session)
   val joinTblProps: Map[String, String] = Option(joinConf.metaData.tableProperties)
     .map(_.toScala)

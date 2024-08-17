@@ -17,14 +17,19 @@
 package ai.chronon.spark.stats
 
 import ai.chronon.aggregator.row.RowAggregator
-import ai.chronon.api.Extensions.{AggregationPartOps, WindowUtils}
+import ai.chronon.api.Extensions.AggregationPartOps
+import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._
-import ai.chronon.online.{DataMetrics, SparkConversions}
-import ai.chronon.spark.{Comparison, TableUtils, TimedKvRdd}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.expressions.GenericRow
+import ai.chronon.online.DataMetrics
+import ai.chronon.online.SparkConversions
+import ai.chronon.spark.Comparison
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.TimedKvRdd
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.{Column, DataFrame, functions, types, Row => SparkRow}
+import org.apache.spark.sql.functions
+import org.apache.spark.sql.types
 
 import scala.collection.immutable.SortedMap
 import scala.util.ScalaJavaConversions.JMapOps

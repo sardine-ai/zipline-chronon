@@ -1,6 +1,9 @@
 package ai.chronon.aggregator.test
 
-import ai.chronon.aggregator.base.{FrequentItemType, FrequentItems, FrequentItemsFriendly, ItemsSketchIR}
+import ai.chronon.aggregator.base.FrequentItemType
+import ai.chronon.aggregator.base.FrequentItems
+import ai.chronon.aggregator.base.FrequentItemsFriendly
+import ai.chronon.aggregator.base.ItemsSketchIR
 import junit.framework.TestCase
 import org.junit.Assert._
 

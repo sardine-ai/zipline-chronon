@@ -16,38 +16,42 @@
 
 package ai.chronon.spark.test
 
-import org.slf4j.LoggerFactory
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.online.DataMetrics
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.TimedKvRdd
 import ai.chronon.spark.stats.CompareBaseJob
-import ai.chronon.spark.{SparkSessionBuilder, TableUtils, TimedKvRdd}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.junit.Test
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 class CompareTest {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = SparkSessionBuilder.build("CompareTest", local = true)
 
   private val tableUtils = TableUtils(spark)
 
   def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)
 
-  val leftData = Seq(
+  val leftData: Seq[(Int, Option[Int], Double, String, Long, String)] = Seq(
     (1, Some(1), 1.0, "a", toTs("2021-04-10 09:00:00"), "2021-04-10"),
     (1, Some(2), 2.0, "b", toTs("2021-04-10 11:00:00"), "2021-04-10"),
     (2, Some(2), 2.0, "c", toTs("2021-04-10 15:00:00"), "2021-04-10"),
     (3, None, 1.0, "d", toTs("2021-04-10 19:00:00"), "2021-04-10")
   )
 
-  val rightData = Seq(
+  val rightData: Seq[(Int, Option[Int], Double, String, Long, String)] = Seq(
     (1, Some(1), 5.0, "a", toTs("2021-04-10 09:00:00"), "2021-04-10"),
     (2, Some(3), 2.0, "b", toTs("2021-04-10 11:00:00"), "2021-04-10"),
     (2, Some(5), 6.0, "c", toTs("2021-04-10 15:00:00"), "2021-04-10"),
     (3, None, 1.0, "d", toTs("2021-04-10 19:00:00"), "2021-04-10")
   )
 
-  val leftColumns = Seq("serial", "value", "rating", "keyId", "ts", "ds")
-  val rightColumns = Seq("rev_serial", "rev_value", "rev_rating", "keyId", "ts", "ds")
+  val leftColumns: Seq[String] = Seq("serial", "value", "rating", "keyId", "ts", "ds")
+  val rightColumns: Seq[String] = Seq("rev_serial", "rev_value", "rev_rating", "keyId", "ts", "ds")
 
   @Test
   def basicTest(): Unit = {
@@ -222,7 +226,7 @@ class CompareTest {
       )
       throw new AssertionError("Expecting an error")
     } catch {
-      case e: AssertionError => true
+      case _: AssertionError => true
       case ex: Throwable     => throw ex
     }
   }

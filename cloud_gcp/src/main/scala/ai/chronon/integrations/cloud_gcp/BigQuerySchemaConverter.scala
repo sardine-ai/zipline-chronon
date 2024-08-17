@@ -1,7 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.api._
-import com.google.cloud.bigquery.{Field, Schema, StandardSQLTypeName}
+import com.google.cloud.bigquery.Field
+import com.google.cloud.bigquery.Schema
+import com.google.cloud.bigquery.StandardSQLTypeName
 
 object BigQuerySchemaConverter {
   def convertToBigQuerySchema(dataType: DataType): Schema = {

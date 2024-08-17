@@ -1,6 +1,11 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.online.{Api, ExternalSourceRegistry, GroupByServingInfoParsed, KVStore, LoggableResponse, Serde}
+import ai.chronon.online.Api
+import ai.chronon.online.ExternalSourceRegistry
+import ai.chronon.online.GroupByServingInfoParsed
+import ai.chronon.online.KVStore
+import ai.chronon.online.LoggableResponse
+import ai.chronon.online.Serde
 
 class GcpApiImpl(projectId: String, instanceId: String, conf: Map[String, String]) extends Api(conf) {
 

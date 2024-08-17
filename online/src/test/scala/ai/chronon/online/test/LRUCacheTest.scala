@@ -1,10 +1,9 @@
 package ai.chronon.online.test
 
-import org.junit.Test
-import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import ai.chronon.online.LRUCache
+import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
+import org.junit.Test
 
-import scala.collection.JavaConverters._
 
 class LRUCacheTest {
   val testCache: CaffeineCache[String, String] = LRUCache[String, String]("testCache")

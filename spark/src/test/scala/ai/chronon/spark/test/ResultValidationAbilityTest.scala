@@ -16,15 +16,21 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.api.Extensions.{WindowOps, WindowUtils}
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.PartitionSpec
-import ai.chronon.spark.Driver.{OfflineSubcommand, ResultValidationAbility}
-import ai.chronon.spark.{SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.Driver.OfflineSubcommand
+import ai.chronon.spark.Driver.ResultValidationAbility
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
-import org.junit.Assert.{assertFalse, assertTrue}
-import org.junit.{Before, Test}
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{mock, when}
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.when
 import org.rogach.scallop.ScallopConf
 
 class ResultValidationAbilityTest {

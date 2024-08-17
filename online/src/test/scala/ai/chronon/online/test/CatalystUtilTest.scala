@@ -19,7 +19,9 @@ package ai.chronon.online.test
 import ai.chronon.api._
 import ai.chronon.online.CatalystUtil
 import junit.framework.TestCase
-import org.junit.Assert.{assertEquals, assertTrue, assertArrayEquals}
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 import java.util

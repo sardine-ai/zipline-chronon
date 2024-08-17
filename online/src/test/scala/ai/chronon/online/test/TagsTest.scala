@@ -17,8 +17,10 @@
 package ai.chronon.online.test
 
 import ai.chronon.api.Builders
-import ai.chronon.online.Metrics.{Context, Environment}
-import ai.chronon.online.{Metrics, TTLCache}
+import ai.chronon.online.Metrics
+import ai.chronon.online.Metrics.Context
+import ai.chronon.online.Metrics.Environment
+import ai.chronon.online.TTLCache
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -75,9 +77,9 @@ class TagsTest {
     val copyCorrect = copyFake.copy(join = context.join)
 
     // add three entires to cache - two distinct contexts and one copy of the first
-    val original = cache(context)
-    val copied = cache(copyCorrect)
-    val copiedFake = cache(copyFake)
+    cache(context)
+    cache(copyCorrect)
+    cache(copyFake)
     assertEquals(cache.cMap.size(), 2)
 
     val slowTags = tagString(context.toTags, null)

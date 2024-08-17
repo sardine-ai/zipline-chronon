@@ -16,25 +16,29 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.{DataType, StructType}
-import ai.chronon.online.CatalystUtil.{IteratorWrapper, PoolKey, poolMap}
+import ai.chronon.api.DataType
+import ai.chronon.api.StructType
+import ai.chronon.online.CatalystUtil.IteratorWrapper
+import ai.chronon.online.CatalystUtil.PoolKey
+import ai.chronon.online.CatalystUtil.poolMap
 import ai.chronon.online.Extensions.StructTypeOps
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
-import org.apache.spark.sql.execution.{
-  BufferedRowIterator,
-  FilterExec,
-  LocalTableScanExec,
-  ProjectExec,
-  RDDScanExec,
-  WholeStageCodegenExec
-}
-import org.apache.spark.sql.{SparkSession, types}
+import org.apache.spark.sql.execution.BufferedRowIterator
+import org.apache.spark.sql.execution.FilterExec
+import org.apache.spark.sql.execution.LocalTableScanExec
+import org.apache.spark.sql.execution.ProjectExec
+import org.apache.spark.sql.execution.RDDScanExec
+import org.apache.spark.sql.execution.WholeStageCodegenExec
+import org.apache.spark.sql.types
 
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentHashMap}
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
 import java.util.function
-import scala.collection.{Seq, mutable}
+import scala.collection.Seq
+import scala.collection.mutable
 
 object CatalystUtil {
   private class IteratorWrapper[T] extends Iterator[T] {
@@ -119,9 +123,10 @@ class CatalystUtil(inputSchema: StructType, selects: Seq[(String, String)], wher
     }
 
   private val (transformFunc: (InternalRow => Option[InternalRow]), outputSparkSchema: types.StructType) = initialize()
-  @transient lazy val outputChrononSchema = SparkConversions.toChrononSchema(outputSparkSchema)
+  @transient lazy val outputChrononSchema: Array[(String, DataType)] =
+    SparkConversions.toChrononSchema(outputSparkSchema)
   private val outputDecoder = SparkInternalRowConversions.from(outputSparkSchema)
-  @transient lazy val inputSparkSchema = SparkConversions.fromChrononSchema(inputSchema)
+  @transient lazy val inputSparkSchema: types.StructType = SparkConversions.fromChrononSchema(inputSchema)
   private val inputEncoder = SparkInternalRowConversions.to(inputSparkSchema)
   private val inputArrEncoder = SparkInternalRowConversions.to(inputSparkSchema, false)
   private lazy val outputArrDecoder = SparkInternalRowConversions.from(outputSparkSchema, false)
@@ -191,7 +196,7 @@ class CatalystUtil(inputSchema: StructType, selects: Seq[(String, String)], wher
       case ProjectExec(projectList, childPlan) => {
         childPlan match {
           // This WholeStageCodegenExec case is slightly different from the one above as we apply a projection.
-          case whc @ WholeStageCodegenExec(fp: FilterExec) =>
+          case whc @ WholeStageCodegenExec(_: FilterExec) =>
             val unsafeProjection = UnsafeProjection.create(projectList, childPlan.output)
             val (ctx, cleanedSource) = whc.doCodeGen()
             val (clazz, _) = CodeGenerator.compile(cleanedSource)

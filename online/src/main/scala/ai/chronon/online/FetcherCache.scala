@@ -1,26 +1,24 @@
 package ai.chronon.online
 
 import ai.chronon.aggregator.windowing.FinalBatchIr
-import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.GroupBy
-import ai.chronon.online.FetcherBase.GroupByRequestMeta
 import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.FetcherCache.{
-  BatchIrCache,
-  BatchResponses,
-  CachedBatchResponse,
-  CachedFinalIrBatchResponse,
-  CachedMapBatchResponse,
-  KvStoreBatchResponse
-}
-import ai.chronon.online.KVStore.{GetRequest, TimedValue}
+import ai.chronon.online.FetcherBase.GroupByRequestMeta
+import ai.chronon.online.FetcherCache.BatchIrCache
+import ai.chronon.online.FetcherCache.BatchResponses
+import ai.chronon.online.FetcherCache.CachedBatchResponse
+import ai.chronon.online.FetcherCache.CachedFinalIrBatchResponse
+import ai.chronon.online.FetcherCache.CachedMapBatchResponse
+import ai.chronon.online.FetcherCache.KvStoreBatchResponse
+import ai.chronon.online.KVStore.GetRequest
+import ai.chronon.online.KVStore.TimedValue
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import scala.util.{Success, Try}
-import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConverters.mapAsScalaConcurrentMapConverter
 import scala.collection.Seq
-import org.slf4j.{Logger, LoggerFactory}
+import scala.util.Success
+import scala.util.Try
 
 /*
  * FetcherCache is an extension to FetcherBase that provides caching functionality. It caches KV store

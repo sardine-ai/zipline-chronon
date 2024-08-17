@@ -16,17 +16,20 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.spark.Extensions.StructTypeOps
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.util.FailFastMode
-import org.apache.spark.sql.functions.{col, unix_timestamp, date_format}
-import org.apache.spark.sql.types.{StringType, TimestampType}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.date_format
+import org.apache.spark.sql.functions.unix_timestamp
+import org.apache.spark.sql.types.StringType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.io.File
 
 object LocalDataLoader {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   def writeTableFromFile(file: File, tableName: String, session: SparkSession): Unit = {
     logger.info(s"Checking table: ${tableName}")
     if (session.catalog.tableExists(tableName)) return

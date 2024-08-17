@@ -16,18 +16,21 @@
 
 package ai.chronon.spark.stats
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api._
-import ai.chronon.online.{SparkConversions, _}
+import ai.chronon.online.SparkConversions
+import ai.chronon.online._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{TableUtils, TimedKvRdd}
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.TimedKvRdd
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.DataType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable.ListBuffer
 
 object CompareBaseJob {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def checkConsistency(
       leftFields: Map[String, DataType],

@@ -16,18 +16,19 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.api
-import ai.chronon.api.ParametricMacro
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ParametricMacro
 import ai.chronon.spark.Extensions._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.util.ScalaJavaConversions._
 
 class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils) {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
-  assert(Option(stagingQueryConf.metaData.outputNamespace).nonEmpty, s"output namespace could not be empty or null")
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+  assert(Option(stagingQueryConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   private val outputTable = stagingQueryConf.metaData.outputTable
   private val tableProps = Option(stagingQueryConf.metaData.tableProperties)
     .map(_.toScala.toMap)
@@ -100,7 +101,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
 }
 
 object StagingQuery {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def substitute(tu: TableUtils, query: String, start: String, end: String, latest: String): String = {
     val macros: Array[ParametricMacro] = Array(

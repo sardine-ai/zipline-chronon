@@ -17,8 +17,12 @@
 package ai.chronon.aggregator.row
 
 import ai.chronon.aggregator.base.SimpleAggregator
-import ai.chronon.api.Extensions.{AggregationPartOps, WindowOps}
-import ai.chronon.api.{AggregationPart, DataType, Row, StringType}
+import ai.chronon.api.AggregationPart
+import ai.chronon.api.DataType
+import ai.chronon.api.Extensions.AggregationPartOps
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Row
+import ai.chronon.api.StringType
 
 import scala.collection.Seq
 

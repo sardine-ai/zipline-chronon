@@ -18,21 +18,30 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Builders, Constants, LongType, Operation, StringType, TimeUnit, Window}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
+import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
+import ai.chronon.api.LongType
+import ai.chronon.api.Operation
+import ai.chronon.api.StringType
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.stats.SummaryJob
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{StructType, StringType => SparkStringType}
-import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SparkSession}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{StringType => SparkStringType}
 import org.junit.Assert._
 import org.junit.Test
 import org.scalatest.Assertions.intercept
-
-import org.apache.spark.sql.types._
-import org.apache.spark.sql.Row
 
 import scala.collection.JavaConverters._
 import scala.util.ScalaJavaConversions.ListOps
@@ -216,7 +225,7 @@ class JoinTest {
       println(s"Expected count: ${expected.count()}")
       println(s"Diff count: ${diff.count()}")
       println(s"Queries count: ${queries.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff.show()
     }
     assertEquals(0, diff.count())
@@ -248,7 +257,7 @@ class JoinTest {
       println(s"Expected count: ${expected2.count()}")
       println(s"Diff count: ${diff2.count()}")
       println(s"Queries count: ${queries.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff2.show()
     }
     assertEquals(0, diff2.count())
@@ -354,7 +363,7 @@ class JoinTest {
     val diff = Comparison.sideBySide(computed, expected, List("country", "ds"))
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff.show()
     }
     assertEquals(diff.count(), 0)
@@ -493,7 +502,7 @@ class JoinTest {
 
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff.show()
     }
     assertEquals(diff.count(), 0)
@@ -516,7 +525,7 @@ class JoinTest {
       table = viewsTable,
       query = Builders.Query(selects = Builders.Selects("time_spent_ms"), startPartition = yearAgo)
     )
-    val viewsGroupBy = Builders.GroupBy(
+    Builders.GroupBy(
       sources = Seq(viewsSource),
       keyColumns = Seq("item"),
       aggregations = Seq(
@@ -568,7 +577,7 @@ class JoinTest {
     assertEquals(queriesBare.count(), computed.count())
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff
         .replaceWithReadableTime(Seq("ts", "a_user_unit_test_item_views_ts_max", "b_user_unit_test_item_views_ts_max"),
                                  dropOriginal = true)
@@ -630,13 +639,13 @@ class JoinTest {
     assertEquals(queriesBare.count(), computed.count())
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff.show()
     }
     assertEquals(diff.count(), 0)
   }
 
-  def getGroupByForIncrementalSourceTest() = {
+  def getGroupByForIncrementalSourceTest(): api.GroupBy = {
     val messageData = Seq(
       Row("Hello", "a", "2021-01-01"),
       Row("World", "a", "2021-01-02"),
@@ -752,7 +761,7 @@ class JoinTest {
     val diff = Comparison.sideBySide(computed, expected, List("user", "ds"))
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff.show()
     }
     assertEquals(diff.count(), 0)
@@ -773,7 +782,7 @@ class JoinTest {
     // First test changing the left side table - this should trigger a full recompute
     val leftChangeJoinConf = joinConf.deepCopy()
     leftChangeJoinConf.getLeft.getEvents.setTable("some_other_table_name")
-    val leftChangeJoin = new Join(joinConf = leftChangeJoinConf, endPartition = dayAndMonthBefore, tableUtils)
+    new Join(joinConf = leftChangeJoinConf, endPartition = dayAndMonthBefore, tableUtils)
     val leftChangeRecompute =
       JoinUtils.tablesToRecompute(leftChangeJoinConf, leftChangeJoinConf.metaData.outputTable, tableUtils)
     println(leftChangeRecompute)
@@ -798,7 +807,7 @@ class JoinTest {
     // Test modifying only one of two joinParts
     val rightModJoinConf = addPartJoinConf.deepCopy()
     rightModJoinConf.getJoinParts.get(1).setPrefix("user_3")
-    val rightModJoin = new Join(joinConf = rightModJoinConf, endPartition = dayAndMonthBefore, tableUtils)
+    new Join(joinConf = rightModJoinConf, endPartition = dayAndMonthBefore, tableUtils)
     val rightModRecompute =
       JoinUtils.tablesToRecompute(rightModJoinConf, rightModJoinConf.metaData.outputTable, tableUtils)
     assertEquals(rightModRecompute.size, 2)
@@ -844,7 +853,7 @@ class JoinTest {
     assertEquals(queriesBare.count(), computed.count())
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")
-      println(s"diff result rows")
+      println("diff result rows")
       diff
         .replaceWithReadableTime(
           Seq("ts", "a_user_3_unit_test_item_views_ts_max", "b_user_3_unit_test_item_views_ts_max"),
@@ -1072,7 +1081,7 @@ class JoinTest {
     val join = Builders.Join(
       left = leftSource,
       joinParts = Seq(Builders.JoinPart(groupBy = groupBy, prefix = "user")),
-      metaData = Builders.MetaData(name = s"test.join_migration", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "test.join_migration", namespace = namespace, team = "chronon")
     )
 
     // test older versions before migration
@@ -1186,7 +1195,7 @@ class JoinTest {
         Builders.Aggregation(operation = Operation.LAST_K, argMap = Map("k" -> "10"), inputColumn = "user"),
         Builders.Aggregation(operation = Operation.MAX, argMap = Map("k" -> "2"), inputColumn = "value")
       ),
-      metaData = Builders.MetaData(name = s"unit_test.item_views_selected_join_parts_1",
+      metaData = Builders.MetaData(name = "unit_test.item_views_selected_join_parts_1",
                                    namespace = namespace,
                                    team = "item_team"),
       accuracy = Accuracy.SNAPSHOT
@@ -1202,7 +1211,7 @@ class JoinTest {
       aggregations = Seq(
         Builders.Aggregation(operation = Operation.MIN, argMap = Map("k" -> "1"), inputColumn = "value")
       ),
-      metaData = Builders.MetaData(name = s"unit_test.item_views_selected_join_parts_2",
+      metaData = Builders.MetaData(name = "unit_test.item_views_selected_join_parts_2",
                                    namespace = namespace,
                                    team = "item_team"),
       accuracy = Accuracy.SNAPSHOT
@@ -1218,7 +1227,7 @@ class JoinTest {
       aggregations = Seq(
         Builders.Aggregation(operation = Operation.AVERAGE, inputColumn = "value")
       ),
-      metaData = Builders.MetaData(name = s"unit_test.item_views_selected_join_parts_3",
+      metaData = Builders.MetaData(name = "unit_test.item_views_selected_join_parts_3",
                                    namespace = namespace,
                                    team = "item_team"),
       accuracy = Accuracy.SNAPSHOT
@@ -1232,7 +1241,7 @@ class JoinTest {
         Builders.JoinPart(groupBy = gb2, prefix = "user2"),
         Builders.JoinPart(groupBy = gb3, prefix = "user3")
       ),
-      metaData = Builders.MetaData(name = s"unit_test.item_temporal_features.selected_join_parts",
+      metaData = Builders.MetaData(name = "unit_test.item_temporal_features.selected_join_parts",
                                    namespace = namespace,
                                    team = "item_team",
                                    online = true)

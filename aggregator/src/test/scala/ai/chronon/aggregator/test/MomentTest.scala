@@ -2,7 +2,8 @@ package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base._
 import junit.framework.TestCase
-import org.apache.commons.math3.stat.descriptive.moment.{Kurtosis => ApacheKurtosis, Skewness => ApacheSkew}
+import org.apache.commons.math3.stat.descriptive.moment.{Kurtosis => ApacheKurtosis}
+import org.apache.commons.math3.stat.descriptive.moment.{Skewness => ApacheSkew}
 import org.junit.Assert._
 
 class MomentTest extends TestCase {

@@ -17,9 +17,14 @@
 package ai.chronon.online
 
 import ai.chronon.aggregator.row.RowAggregator
-import ai.chronon.api.{BooleanType, DataType, GroupBy, StructType}
+import ai.chronon.api.BooleanType
+import ai.chronon.api.DataType
+import ai.chronon.api.Extensions.AggregationOps
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.GroupBy
+import ai.chronon.api.StructType
 import org.apache.avro.generic.GenericData
-import ai.chronon.api.Extensions.{AggregationOps, MetadataOps, WindowUtils}
 
 import scala.collection.JavaConverters._
 import scala.util.ScalaJavaConversions.ListOps

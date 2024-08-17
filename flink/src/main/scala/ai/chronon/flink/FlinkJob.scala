@@ -2,23 +2,27 @@ package ai.chronon.flink
 
 import ai.chronon.aggregator.windowing.ResolutionUtils
 import ai.chronon.api.DataType
-import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
-import ai.chronon.flink.window.{
-  AlwaysFireOnElementTrigger,
-  FlinkRowAggProcessFunction,
-  FlinkRowAggregationFunction,
-  KeySelector,
-  TimestampedTile
-}
-import ai.chronon.online.{FlinkSource, GroupByServingInfoParsed, SparkConversions}
+import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.flink.window.AlwaysFireOnElementTrigger
+import ai.chronon.flink.window.FlinkRowAggProcessFunction
+import ai.chronon.flink.window.FlinkRowAggregationFunction
+import ai.chronon.flink.window.KeySelector
+import ai.chronon.flink.window.TimestampedTile
+import ai.chronon.online.FlinkSource
+import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
-import org.apache.flink.streaming.api.scala.{DataStream, OutputTag, StreamExecutionEnvironment}
-import org.apache.spark.sql.Encoder
+import ai.chronon.online.SparkConversions
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
-import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, WindowAssigner}
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
+import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.spark.sql.Encoder
 import org.slf4j.LoggerFactory
 
 /**
@@ -73,7 +77,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
   def runGroupByJob(env: StreamExecutionEnvironment): DataStream[WriteResponse] = {
     logger.info(
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
-        f"Tiling is disabled.")
+        "Tiling is disabled.")
 
     val sourceStream: DataStream[T] =
       eventSrc
@@ -116,7 +120,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
   def runTiledGroupByJob(env: StreamExecutionEnvironment): DataStream[WriteResponse] = {
     logger.info(
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
-        f"Tiling is enabled.")
+        "Tiling is enabled.")
 
     val tilingWindowSizeInMillis: Option[Long] =
       ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
@@ -173,13 +177,12 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
         .setParallelism(sourceStream.parallelism)
 
     // Track late events
-    val sideOutputStream: DataStream[Map[String, Any]] =
-      tilingDS
-        .getSideOutput(tilingLateEventsTag)
-        .flatMap(new LateEventCounter(groupByName))
-        .uid(s"tiling-side-output-01-$groupByName")
-        .name(s"Tiling Side Output Late Data for $groupByName")
-        .setParallelism(sourceStream.parallelism)
+    tilingDS
+      .getSideOutput(tilingLateEventsTag)
+      .flatMap(new LateEventCounter(groupByName))
+      .uid(s"tiling-side-output-01-$groupByName")
+      .name(s"Tiling Side Output Late Data for $groupByName")
+      .setParallelism(sourceStream.parallelism)
 
     val putRecordDS: DataStream[PutRequest] = tilingDS
       .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed))

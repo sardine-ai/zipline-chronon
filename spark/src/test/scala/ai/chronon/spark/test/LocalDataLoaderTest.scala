@@ -16,15 +16,17 @@
 
 package ai.chronon.spark.test
 
-import java.io.File
-
+import ai.chronon.spark.LocalDataLoader
+import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.test.LocalDataLoaderTest.spark
-import ai.chronon.spark.{LocalDataLoader, SparkSessionBuilder}
 import com.google.common.io.Files
 import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
+import org.junit.AfterClass
 import org.junit.Assert.assertEquals
-import org.junit.{AfterClass, Test}
+import org.junit.Test
+
+import java.io.File
 
 object LocalDataLoaderTest {
 
@@ -61,7 +63,7 @@ class LocalDataLoaderTest {
     val path = new File("spark/src/test/resources/local_data_csv")
     LocalDataLoader.loadDataRecursively(path, spark)
 
-    val loadedDataDf = spark.sql(s"SELECT * FROM local_data_csv.test_table_1_data")
+    val loadedDataDf = spark.sql("SELECT * FROM local_data_csv.test_table_1_data")
     val expectedColumns = Set("id_listing_view_event", "id_product", "dim_product_type", "ds")
 
     loadedDataDf.columns.foreach(column => expectedColumns.contains(column))

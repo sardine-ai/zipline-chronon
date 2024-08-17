@@ -19,12 +19,20 @@ package ai.chronon.aggregator.base
 import ai.chronon.aggregator.base.FrequentItemType.ItemType
 import ai.chronon.api._
 import com.yahoo.memory.Memory
-import com.yahoo.sketches.cpc.{CpcSketch, CpcUnion}
-import com.yahoo.sketches.frequencies.{ErrorType, ItemsSketch}
+import com.yahoo.sketches.ArrayOfDoublesSerDe
+import com.yahoo.sketches.ArrayOfItemsSerDe
+import com.yahoo.sketches.ArrayOfLongsSerDe
+import com.yahoo.sketches.ArrayOfStringsSerDe
+import com.yahoo.sketches.cpc.CpcSketch
+import com.yahoo.sketches.cpc.CpcUnion
+import com.yahoo.sketches.frequencies.ErrorType
+import com.yahoo.sketches.frequencies.ItemsSketch
 import com.yahoo.sketches.kll.KllFloatsSketch
-import com.yahoo.sketches.{ArrayOfDoublesSerDe, ArrayOfItemsSerDe, ArrayOfLongsSerDe, ArrayOfStringsSerDe}
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.util
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._

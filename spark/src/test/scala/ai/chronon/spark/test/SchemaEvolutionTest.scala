@@ -22,18 +22,30 @@ import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online._
 import ai.chronon.spark.Extensions.DataframeOps
-import ai.chronon.spark.{LogFlattenerJob, LoggingSchema, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.LogFlattenerJob
+import ai.chronon.spark.LoggingSchema
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
 import junit.framework.TestCase
-import org.apache.spark.sql.functions.{col, lit}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.lit
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 
 import java.nio.charset.StandardCharsets
-import java.util.{Base64, TimeZone}
+import java.util.Base64
+import java.util.TimeZone
 import scala.collection.Seq
 import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, SECONDS}
-import scala.util.ScalaJavaConversions.{JListOps, ListOps}
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration.SECONDS
+import scala.util.ScalaJavaConversions.JListOps
+import scala.util.ScalaJavaConversions.ListOps
 
 case class GroupByTestSuite(
     name: String,

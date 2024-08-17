@@ -16,16 +16,20 @@
 
 package ai.chronon.spark
 
-import org.slf4j.LoggerFactory
 import ai.chronon.online.Extensions.StructTypeOps
-import com.google.gson.{Gson, GsonBuilder}
+import com.google.gson.GsonBuilder
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.types.{DecimalType, DoubleType, FloatType, MapType}
+import org.apache.spark.sql.types.DecimalType
+import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.sql.types.FloatType
+import org.apache.spark.sql.types.MapType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util
 
 object Comparison {
-  @transient lazy val logger = LoggerFactory.getLogger(getClass)
+  @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // used for comparison
   def sortedJson(m: Map[String, Any]): String = {
