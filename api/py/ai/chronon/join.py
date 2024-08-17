@@ -24,6 +24,16 @@ import json
 import logging
 from typing import List, Dict, Tuple
 
+
+import os
+import threading
+import subprocess
+import time
+import asyncio
+from textual.app import App
+from textual.widget import Widget
+from textual.widgets import Static
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -645,12 +655,124 @@ def Join(
         derivations=derivations,
     )
 
-    print("+++ method binding run into join +++")
     join.run = run.__get__(join)
 
     return join
 
+import time
+import threading
+from pathlib import Path
+from rich.console import Console
+from rich.tree import Tree
+from rich.live import Live
+from rich.markup import escape
 
+console = Console()
 
-def run(self, start_date, end_date = None):
-    print("Running...")
+class Task:
+    def __init__(self, name, command):
+        self.name = name
+        self.command = command
+        self.status = "WAITING"
+        self.done = False
+        self.animation_step = 0
+        self.log_file = Path.home() / "logs" / f"{name.replace(' ', '_')}.log"
+
+    def run(self):
+        self.status = "RUNNING"
+        self.execute_command()
+        self.status = "SUCCEEDED"
+        self.done = True
+
+    def execute_command(self):
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.log_file, 'w') as log:
+            process = subprocess.Popen(
+                self.command,
+                shell=True,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
+            process.wait()
+
+def get_status_display(task):
+    color = {
+        "WAITING": "yellow",
+        "RUNNING": "blue",
+        "SUCCEEDED": "green"
+    }.get(task.status, "white")
+
+    if task.status == "RUNNING":
+        dots = "." * ((task.animation_step % 3) + 1)
+        task.animation_step += 1
+        status_text = f"[{color}]RUNNING{dots: <3}[/{color}]"
+    else:
+        status_text = f"[{color}]{task.status}[/{color}]"
+    
+    # <a href="file:///{log_path}">Link 1</a>
+    log_path = task.log_file.resolve()
+    from IPython.display import FileLink
+    file_url = f"file:///{log_path}"
+    file_name = str(log_path).split("/")[-1]
+    file_url = f"http://localhost:8000/{file_name}"
+    link_text = f"[link={file_url}]{file_name}[/link]"
+    return f"{task.name} ({status_text}) {link_text}"
+
+def create_dag_tree(tasks, name):
+    tree = Tree(f"Running: {name}")
+    left_branch = tree.add(get_status_display(tasks[0]))
+    parts_branch = left_branch.add("join parts")
+    for task in tasks[1:-1]:
+        parts_branch.add(get_status_display(task))
+    tree.add(get_status_display(tasks[-1]))
+    return tree
+
+def run_task(task):
+    task.run()
+
+def animate_tasks(live, tasks, name):
+    while any(task.status == "RUNNING" for task in tasks):
+        for task in tasks:
+            if task.status == "RUNNING":
+                task.animation_step += 1
+        live.update(create_dag_tree(tasks, name))
+        time.sleep(0.25)
+
+def run(self):
+    tasks = [
+        Task("compute left", "echo 'computing left...'"),
+        *[Task(f"compute {part.groupBy.metaData.name}", f"echo 'computing {part.groupBy.metaData.name}...'") for part in self.joinParts],
+        Task("compute final", "echo 'computing final...'")
+    ]
+    
+    with Live(create_dag_tree(tasks, self.metaData.name), refresh_per_second=4) as live:
+        # Run compute left
+        tasks[0].status = "RUNNING"
+        left_thread = threading.Thread(target=run_task, args=(tasks[0],))
+        left_thread.start()
+        animate_tasks(live, tasks, self.metaData.name)
+        left_thread.join()
+        
+        # Run join parts in parallel
+        for task in tasks[1:-1]:
+            task.status = "RUNNING"
+        threads = [threading.Thread(target=run_task, args=(task,)) for task in tasks[1:-1]]
+        for thread in threads:
+            thread.start()
+        animate_tasks(live, tasks, self.metaData.name)
+        for thread in threads:
+            thread.join()
+        
+        # Run compute final
+        tasks[-1].status = "RUNNING"
+        final_thread = threading.Thread(target=run_task, args=(tasks[-1],))
+        final_thread.start()
+        animate_tasks(live, tasks, self.metaData.name)
+        final_thread.join()
+        
+        # Ensure final state is displayed
+        live.update(create_dag_tree(tasks, self.metaData.name))
+        
+        # Add a small delay to ensure the final state is visible
+        time.sleep(0.5)
