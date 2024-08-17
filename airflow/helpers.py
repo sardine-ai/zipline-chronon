@@ -43,13 +43,6 @@ def task_default_args(team_conf, team_name, **kwargs):
         'retries': 1
     }
     airflow_base.update(kwargs)
-    print("REUTRNING ~~~~~~~~~~~~~~~~~~~~")
-    print(airflow_base)
-    print("BASE ~~~~~~~~~~~~~~~~~~~~")
-    print(team_conf.get(team_name, {}))
-    print("TEAM ~~~~~~~~~~~~~~~~~~~~")
-    print(team_conf)
-    print(team_name)
 
     return airflow_base
 

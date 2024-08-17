@@ -11,8 +11,6 @@ from datetime import datetime, timedelta
 
 
 def batch_constructor(conf, mode, conf_type, team_conf):
-    print("============")
-    print(helpers.dag_default_args())
     return DAG(
         helpers.dag_names(conf, mode, conf_type),
         **helpers.dag_default_args(),
@@ -53,6 +51,3 @@ all_dags.update(
 )
 g = globals()
 g.update(all_dags)
-
-print("---------->>>>")
-print(all_dags)
