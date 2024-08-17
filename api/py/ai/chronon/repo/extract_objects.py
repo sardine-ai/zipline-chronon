@@ -71,6 +71,8 @@ def from_file(root_path: str,
     # strips `.py` on the right side and finally replaces the slash sign to dot
     # eg: the output would be `team_name.python_script_name`
     mod_qualifier = file_path[len(root_path.rstrip('/')) + 1:-3].replace("/", ".")
+    print("=========")
+    print(mod_qualifier)
     mod = importlib.import_module(mod_qualifier)
 
     # the key of result dict would be `team_name.python_script_name.[group_by_name|join_name|staging_query_name]`

@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add the current directory (dags folder) to the Python path
+sys.path.append(os.path.dirname(__file__))
+
+
 import helpers, constants
 from airflow.models import DAG
 from datetime import datetime, timedelta

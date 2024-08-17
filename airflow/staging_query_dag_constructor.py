@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add the current directory (dags folder) to the Python path
+sys.path.append(os.path.dirname(__file__))
+
 from constants import CHRONON_PATH
 import helpers
 

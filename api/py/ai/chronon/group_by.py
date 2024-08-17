@@ -580,4 +580,9 @@ def GroupBy(
         derivations=derivations,
     )
     validate_group_by(group_by)
+    group_by.run = run.__get__(group_by)
     return group_by
+
+
+def run(self, start_date, end_date = None):
+    print("Running...")

@@ -1,2 +1,6 @@
 jupyter
 chronon-ai
+temporalio
+jupyterhub
+notebook
+nb_conda

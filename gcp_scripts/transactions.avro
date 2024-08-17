@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "Avro",
+  "fields": [
+    {
+      "name": "user",
+      "type": "int"
+    },
+    {
+      "name": "merchant",
+      "type": "int"
+    },
+    {
+      "name": "is_refund",
+      "type": "boolean"
+    },
+    {
+      "name": "amount",
+      "type": "float"
+    }
+  ]
+}

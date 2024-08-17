@@ -1,10 +1,18 @@
+import sys
+import os
+
+# Add the current directory (dags folder) to the Python path
+sys.path.append(os.path.dirname(__file__))
+
 from airflow.operators.bash_operator import BashOperator
 from airflow.exceptions import AirflowSkipException
 from airflow.models import TaskInstance, DagRun
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
-from airflow.sensors.named_hive_partition_sensor import NamedHivePartitionSensor
+#from airflow.sensors.named_hive_partition_sensor import NamedHivePartitionSensor
+from airflow.sensors.time_sensor import TimeSensor
+
 from airflow.utils.decorators import apply_defaults
 
 import decorators
@@ -102,7 +110,7 @@ class ChrononOperator(BashOperator):
         self.bash_command = f"python3 {run_file} {self.runpy_args} --ds {ds}"
 
 
-class SensorWithEndDate(NamedHivePartitionSensor):
+class SensorWithEndDate(TimeSensor):
     """
     Sensor that can read an end_date from the parameters and return early if sensing for after the end date.
     We still prefer named hive partition sensors because of smart sensing capabilities and concurrency.

@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add the current directory (dags folder) to the Python path
+sys.path.append(os.path.dirname(__file__))
+
 import helpers
 from constants import CHRONON_PATH, GROUP_BY_BATCH_CONCURRENCY
 from airflow.models import DAG
@@ -5,6 +11,8 @@ from datetime import datetime, timedelta
 
 
 def batch_constructor(conf, mode, conf_type, team_conf):
+    print("============")
+    print(helpers.dag_default_args())
     return DAG(
         helpers.dag_names(conf, mode, conf_type),
         **helpers.dag_default_args(),
@@ -45,3 +53,6 @@ all_dags.update(
 )
 g = globals()
 g.update(all_dags)
+
+print("---------->>>>")
+print(all_dags)

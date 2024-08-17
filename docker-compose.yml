@@ -36,7 +36,8 @@ services:
       KAFKA_MESSAGE_MAX_BYTES: 2147483647
 
   main:
-    image: ezvz/chronon
+    build: 
+      context: .
     command: bash -c "spark-shell -i scripts/data-loader.scala && tail -f /dev/null"
     ports:
       - "4040:4040"
@@ -53,10 +54,47 @@ services:
       - CHRONON_LOG_TABLE=default.chronon_log_table
       - CHRONON_ONLINE_CLASS=ai.chronon.quickstart.online.ChrononMongoOnlineImpl
       - CHRONON_ONLINE_ARGS=-Zuser=admin -Zpassword=admin -Zhost=mongodb -Zport=27017 -Zdatabase=admin
+    volumes:
+      - /Users/varantzanoyan/repos/chronon:/srv/chronon_jar
+      - /Users/varantzanoyan/repos/chronon/api:/srv/chronon/api
 
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: temporal
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporalpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  temporal:
+    image: temporalio/auto-setup:1.15.1
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporalpassword
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+    ports:
+      - "7233:7233"
+    depends_on:
+      - postgres
+
+  temporal-web:
+    image: temporalio/web:1.15.0
+    environment:
+      - TEMPORAL_GRPC_ENDPOINT=temporal:7233
+    ports:
+      - "8088:8088"
+    depends_on:
+      - temporal
 
 volumes:
   mongodb_data:
+  postgres_data:
   spark_events:
 
 

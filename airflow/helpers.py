@@ -2,10 +2,17 @@
 Helper to walk files and build dags.
 """
 
+import sys
+import os
+
+# Add the current directory (dags folder) to the Python path
+sys.path.append(os.path.dirname(__file__))
+
 from operators import ChrononOperator, create_skip_operator, SensorWithEndDate
 import constants
 
-from airflow.sensors.named_hive_partition_sensor import NamedHivePartitionSensor
+#from airflow.sensors.named_hive_partition_sensor import NamedHivePartitionSensor
+from airflow.sensors.time_delta import TimeDeltaSensor
 from datetime import timedelta
 import logging
 import json
@@ -36,6 +43,14 @@ def task_default_args(team_conf, team_name, **kwargs):
         'retries': 1
     }
     airflow_base.update(kwargs)
+    print("REUTRNING ~~~~~~~~~~~~~~~~~~~~")
+    print(airflow_base)
+    print("BASE ~~~~~~~~~~~~~~~~~~~~")
+    print(team_conf.get(team_name, {}))
+    print("TEAM ~~~~~~~~~~~~~~~~~~~~")
+    print(team_conf)
+    print(team_name)
+
     return airflow_base
 
 
@@ -44,9 +59,9 @@ def dag_default_args(**kwargs):
         'start_date': datetime.strptime("2023-02-01", "%Y-%m-%d"),
         'dagrun_timeout': timedelta(days=4),
         'schedule_interval': '@daily',
-        'concurrency': BATCH_CONCURRENCY,
+        'concurrency': constants.GROUP_BY_BATCH_CONCURRENCY,
         'catchup': False,
-    }.update(kwargs)
+    }#.update(kwargs)
 
 def get_kv_store_upload_operator(dag, conf, team_conf):
     """TODO: Your internal implementation"""
@@ -188,15 +203,14 @@ def extract_dependencies(conf, mode, conf_type, common_env, dag):
             continue
         op = SensorWithEndDate(
             task_id=name,
-            partition_names=[dep["spec"]],
             params={"end_partition": dep["end"]},
             execution_timeout=timedelta(hours=48),
+            target_time=datetime.now(),
             dag=dag,
             retries=3,
-        ) if dep.get("end") else NamedHivePartitionSensor(
+        ) if dep.get("end") else TimeDeltaSensor(
             task_id=name,
-            partition_names=[dep["spec"]],
-            execution_timeout=timedelta(hours=48),
+            delta=timedelta(minutes=5),
             dag=dag,
             retries=3,
         )
@@ -206,6 +220,7 @@ def extract_dependencies(conf, mode, conf_type, common_env, dag):
     if skip_name in dag.task_dict:
         return dag.task_dict[skip_name]
     custom_skip_op = create_skip_operator(dag, normalize_name(conf["metaData"]["name"]))
+    operators = list(operators)
     operators >> custom_skip_op
     return custom_skip_op
 
@@ -337,18 +352,21 @@ def walk_and_define_tasks(mode, conf_type, repo, dag_constructor, dags=None, sil
                         }
                         common_env = team_conf["default"]["common_env"]
                         baseop = ChrononOperator(
-                            conf_path,
-                            mode,
-                            repo,
-                            conf_type,
+                            conf_path=conf_path,
+                            mode=mode,
+                            repo=repo,
+                            conf_type=conf_type,
                             extra_args=get_extra_args(mode, conf_type, common_env, conf),
                             task_id=task_names(conf, mode, conf_type),
-                            on_success_callback=monitoring.update_datadog_counter_callback(
-                                conf, conf_type, "chronon.airflow.success", mode=mode),
-                            on_failure_callback=monitoring.update_datadog_counter_callback(
-                                conf, conf_type, "chronon.airflow.failure", mode=mode),
-                            on_retry_callback=monitoring.update_datadog_counter_callback(
-                                conf, conf_type, "chronon.airflow.retry", mode=mode),
+                            #on_success_callback=monitoring.update_datadog_counter_callback(
+                            #    conf, conf_type, "chronon.airflow.success", mode=mode),
+                            #on_failure_callback=monitoring.update_datadog_counter_callback(
+                            #    conf, conf_type, "chronon.airflow.failure", mode=mode),
+                            #on_retry_callback=monitoring.update_datadog_counter_callback(
+                            #    conf, conf_type, "chronon.airflow.retry", mode=mode),
+                            #on_success_callback=None,
+                            #on_failure_callback=None,
+                            #on_retry_callback=None,
                             params=params,
                             dag=dag
                         )

@@ -633,7 +633,7 @@ def Join(
         historicalBackfill=historical_backfill,
     )
 
-    return api.Join(
+    join = api.Join(
         left=updated_left,
         joinParts=right_parts,
         metaData=metadata,
@@ -644,3 +644,13 @@ def Join(
         labelPart=label_part,
         derivations=derivations,
     )
+
+    print("+++ method binding run into join +++")
+    join.run = run.__get__(join)
+
+    return join
+
+
+
+def run(self, start_date, end_date = None):
+    print("Running...")
