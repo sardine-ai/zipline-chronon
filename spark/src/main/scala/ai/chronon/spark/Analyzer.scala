@@ -28,6 +28,7 @@ import ai.chronon.api.DataType
 import ai.chronon.api.Extensions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
 import com.yahoo.memory.Memory
@@ -86,7 +87,6 @@ class Analyzer(tableUtils: TableUtils,
                sample: Double = 0.1,
                enableHitter: Boolean = false,
                silenceMode: Boolean = false) {
-  private implicit val tu: TableUtils = tableUtils
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // include ts into heavy hitter analysis - useful to surface timestamps that have wrong units
@@ -157,7 +157,7 @@ class Analyzer(tableUtils: TableUtils,
     frequentItemKeys.zip(freqMaps)
   }
 
-  private val range = PartitionRange(startDate, endDate)(tableUtils)
+  private val range = PartitionRange(startDate, endDate)(tableUtils.partitionSpec)
   // returns with heavy hitter analysis for the specified keys
   def analyze(df: DataFrame, keys: Array[String], sourceTable: String): String = {
     val result = heavyHittersWithTsAndCount(df, keys, count, sample)
@@ -285,9 +285,10 @@ class Analyzer(tableUtils: TableUtils,
     } else {
       val analysis = ""
       val leftDf =
-        range.scanDf(joinConf.left.query,
-                     joinConf.left.table,
-                     fillIfAbsent = Some(Map(tableUtils.partitionColumn -> null)))
+        tableUtils.scanDf(joinConf.left.query,
+                          joinConf.left.table,
+                          fallbackSelects = Some(Map(tableUtils.partitionColumn -> null)),
+                          range = Some(range))
       (analysis, leftDf)
     }
 
@@ -463,11 +464,11 @@ class Analyzer(tableUtils: TableUtils,
             // based on the end of the day snapshot
             case (Entities, Events, _)   => tableUtils.partitionSpec.minus(rightShiftedPartitionRangeStart, window)
             case (Entities, Entities, _) => firstUnfilledPartition
+            case (Events, Entities, _)   => leftShiftedPartitionRangeStart
             case (Events, Events, Accuracy.SNAPSHOT) =>
               tableUtils.partitionSpec.minus(leftShiftedPartitionRangeStart, window)
             case (Events, Events, Accuracy.TEMPORAL) =>
               tableUtils.partitionSpec.minus(firstUnfilledPartition, window)
-            case (Events, Entities, _) => leftShiftedPartitionRangeStart
           }
           println(
             s"Checking data availability for group_by ${groupBy.metaData.name} ... Expected start partition: $expectedStart")

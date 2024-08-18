@@ -28,8 +28,11 @@ import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ParametricMacro
+import ai.chronon.api.PartitionSpec
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.RowWrapper
 import ai.chronon.online.SparkConversions
+import ai.chronon.online.TimeRange
 import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -58,7 +61,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
 
   protected[spark] val tsIndex: Int = inputDf.schema.fieldNames.indexOf(Constants.TimeColumn)
   protected val selectedSchema: Array[(String, api.DataType)] = SparkConversions.toChrononSchema(inputDf.schema)
-  implicit private val tableUtils = TableUtils(inputDf.sparkSession)
+  implicit private val tableUtils: TableUtils = TableUtils(inputDf.sparkSession)
   val keySchema: StructType = StructType(keyColumns.map(inputDf.schema.apply).toArray)
   implicit val sparkSession: SparkSession = inputDf.sparkSession
   // distinct inputs to aggregations - post projection types that needs to match with
@@ -72,8 +75,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
             .getOrElse(Seq.empty[String]) :+
             agg.inputColumn)
         .distinct
-        .map(inputDf.schema.apply)
-        .toSeq)
+        .map(inputDf.schema.apply))
   } else {
     val values = inputDf.schema
       .map(_.name)
@@ -93,8 +95,8 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
 
   lazy val aggregationParts: Seq[api.AggregationPart] = aggregations.flatMap(_.unpack)
 
-  lazy val columnAggregators: Array[ColumnAggregator] =
-    (new RowAggregator(selectedSchema, aggregationParts)).columnAggregators
+  private lazy val columnAggregators: Array[ColumnAggregator] =
+    new RowAggregator(selectedSchema, aggregationParts).columnAggregators
 
   //should be only used when aggregations != null
   lazy val aggPartWithSchema: Seq[(api.AggregationPart, api.DataType)] =
@@ -374,7 +376,8 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   // Class HopsCacher(keySchema, irSchema, resolution) extends RddCacher[(KeyWithHash, HopsOutput)]
   //  buildTableRow((keyWithHash, hopsOutput)) -> GenericRowWithSchema
   //  buildRddRow(GenericRowWithSchema) -> (keyWithHash, hopsOutput)
-  def hopsAggregate(minQueryTs: Long, resolution: Resolution): RDD[(KeyWithHash, HopsAggregator.OutputArrayType)] = {
+  private def hopsAggregate(minQueryTs: Long,
+                            resolution: Resolution): RDD[(KeyWithHash, HopsAggregator.OutputArrayType)] = {
     val hopsAggregator =
       new HopsAggregator(minQueryTs, aggregations, selectedSchema, resolution)
     val keyBuilder: Row => KeyWithHash =
@@ -410,7 +413,7 @@ object GroupBy {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // Need to use a case class here to allow null matching
-  case class SourceDataProfile(earliestRequired: String, earliestPresent: String, latestAllowed: String)
+  private case class SourceDataProfile(earliestRequired: String, earliestPresent: String, latestAllowed: String)
 
   // if the source is a join - we are going to materialize the underlying table
   // and replace the joinSource with Event or Entity Source
@@ -563,10 +566,10 @@ object GroupBy {
                 finalize = finalize)
   }
 
-  def getIntersectedRange(source: api.Source,
-                          queryRange: PartitionRange,
-                          tableUtils: TableUtils,
-                          window: Option[api.Window]): PartitionRange = {
+  private def getIntersectedRange(source: api.Source,
+                                  queryRange: PartitionRange,
+                                  tableUtils: TableUtils,
+                                  window: Option[api.Window]): PartitionRange = {
     val PartitionRange(queryStart, queryEnd) = queryRange
     val effectiveEnd = (Option(queryRange.end) ++ Option(source.query.endPartition))
       .reduceLeftOption(Ordering[String].min)
@@ -587,10 +590,10 @@ object GroupBy {
           SourceDataProfile(windowStart, sourceStart, effectiveEnd)
         }
     }
-
-    val sourceRange = PartitionRange(dataProfile.earliestPresent, dataProfile.latestAllowed)(tableUtils)
+    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+    val sourceRange = PartitionRange(dataProfile.earliestPresent, dataProfile.latestAllowed)
     val queryableDataRange =
-      PartitionRange(dataProfile.earliestRequired, Seq(queryEnd, dataProfile.latestAllowed).max)(tableUtils)
+      PartitionRange(dataProfile.earliestRequired, Seq(queryEnd, dataProfile.latestAllowed).max)
     val intersectedRange = sourceRange.intersect(queryableDataRange)
     logger.info(s"""
                |Computing intersected range as:
@@ -645,7 +648,7 @@ object GroupBy {
          |""".stripMargin)
     metaColumns ++= timeMapping
 
-    val partitionConditions = intersectedRange.map(_.whereClauses()).getOrElse(Seq.empty)
+    val partitionConditions = intersectedRange.map(tableUtils.whereClauses(_)).getOrElse(Seq.empty)
 
     logger.info(s"""
          |Rendering source query:
@@ -696,12 +699,14 @@ object GroupBy {
       .orNull
     val inputTables = groupByConf.getSources.toScala.map(_.table)
     val isAnySourceCumulative =
-      groupByConf.getSources.toScala.exists(s => s.isSetEvents() && s.getEvents().isCumulative)
+      groupByConf.getSources.toScala.exists(s => s.isSetEvents && s.getEvents.isCumulative)
     val groupByUnfilledRangesOpt =
-      tableUtils.unfilledRanges(outputTable,
-                                PartitionRange(overrideStart, endPartition)(tableUtils),
-                                if (isAnySourceCumulative) None else Some(inputTables),
-                                skipFirstHole = skipFirstHole)
+      tableUtils.unfilledRanges(
+        outputTable,
+        PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
+        if (isAnySourceCumulative) None else Some(inputTables),
+        skipFirstHole = skipFirstHole
+      )
 
     if (groupByUnfilledRangesOpt.isEmpty) {
       logger.info(s"""Nothing to backfill for $outputTable - given
@@ -713,43 +718,42 @@ object GroupBy {
     val groupByUnfilledRanges = groupByUnfilledRangesOpt.get
     logger.info(s"group by unfilled ranges: $groupByUnfilledRanges")
     val exceptions = mutable.Buffer.empty[String]
-    groupByUnfilledRanges.foreach {
-      case groupByUnfilledRange =>
-        try {
-          val stepRanges = stepDays.map(groupByUnfilledRange.steps).getOrElse(Seq(groupByUnfilledRange))
-          logger.info(s"Group By ranges to compute: ${stepRanges.map {
-            _.toString
-          }.pretty}")
-          stepRanges.zipWithIndex.foreach {
-            case (range, index) =>
-              logger.info(s"Computing group by for range: $range [${index + 1}/${stepRanges.size}]")
-              val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)
-              val outputDf = groupByConf.dataModel match {
-                // group by backfills have to be snapshot only
-                case Entities => groupByBackfill.snapshotEntities
-                case Events   => groupByBackfill.snapshotEvents(range)
-              }
-              if (!groupByConf.hasDerivations) {
-                outputDf.save(outputTable, tableProps)
-              } else {
-                val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns).toSeq
-                val result = outputDf.select(finalOutputColumns: _*)
-                result.save(outputTable, tableProps)
-              }
-              logger.info(s"Wrote to table $outputTable, into partitions: $range")
-          }
-          logger.info(s"Wrote to table $outputTable for range: $groupByUnfilledRange")
-
-        } catch {
-          case err: Throwable =>
-            exceptions += s"Error handling range ${groupByUnfilledRange} : ${err.getMessage}\n${err.traceString}"
+    groupByUnfilledRanges.foreach { groupByUnfilledRange =>
+      try {
+        val stepRanges = stepDays.map(groupByUnfilledRange.steps).getOrElse(Seq(groupByUnfilledRange))
+        logger.info(s"Group By ranges to compute: ${stepRanges.map {
+          _.toString()
+        }.pretty}")
+        stepRanges.zipWithIndex.foreach {
+          case (range, index) =>
+            logger.info(s"Computing group by for range: $range [${index + 1}/${stepRanges.size}]")
+            val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)
+            val outputDf = groupByConf.dataModel match {
+              // group by backfills have to be snapshot only
+              case Entities => groupByBackfill.snapshotEntities
+              case Events   => groupByBackfill.snapshotEvents(range)
+            }
+            if (!groupByConf.hasDerivations) {
+              outputDf.save(outputTable, tableProps)
+            } else {
+              val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns)
+              val result = outputDf.select(finalOutputColumns: _*)
+              result.save(outputTable, tableProps)
+            }
+            logger.info(s"Wrote to table $outputTable, into partitions: $range")
         }
+        logger.info(s"Wrote to table $outputTable for range: $groupByUnfilledRange")
+
+      } catch {
+        case err: Throwable =>
+          exceptions += s"Error handling range $groupByUnfilledRange : ${err.getMessage}\n${err.traceString}"
+      }
     }
     if (exceptions.nonEmpty) {
       val length = exceptions.length
       val fullMessage = exceptions.zipWithIndex
         .map {
-          case (message, index) => s"[${index + 1}/${length} exceptions]\n${message}"
+          case (message, index) => s"[${index + 1}/$length exceptions]\n$message"
         }
         .mkString("\n")
       throw new Exception(fullMessage)

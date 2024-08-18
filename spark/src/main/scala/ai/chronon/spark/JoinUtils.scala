@@ -21,6 +21,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions._
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
 import org.apache.spark.sql.DataFrame
@@ -77,9 +78,10 @@ object JoinUtils {
     } else {
       Seq()
     }
-    var df = range.scanDf(joinConf.left.query,
-                          joinConf.left.table,
-                          fillIfAbsent = Some(Map(tableUtils.partitionColumn -> null) ++ timeProjection))(tableUtils)
+    var df = tableUtils.scanDf(joinConf.left.query,
+                               joinConf.left.table,
+                               Some(Map(tableUtils.partitionColumn -> null) ++ timeProjection),
+                               range = Some(range))
     limit.foreach(l => df = df.limit(l))
     val skewFilter = joinConf.skewFilter()
     val result = skewFilter
@@ -115,7 +117,7 @@ object JoinUtils {
       .getOrElse(tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters).get)
     val leftStart = overrideStart.getOrElse(defaultLeftStart)
     val leftEnd = Option(leftSource.query.endPartition).getOrElse(endPartition)
-    PartitionRange(leftStart, leftEnd)(tableUtils)
+    PartitionRange(leftStart, leftEnd)(tableUtils.partitionSpec)
   }
 
   /***
@@ -137,7 +139,7 @@ object JoinUtils {
              s"Column '$column' has mismatched data types - left type: $leftDataType vs. right type $rightDataType")
     }
 
-    val joinedDf = leftDf.join(rightDf, keys.toSeq, joinType)
+    val joinedDf = leftDf.join(rightDf, keys, joinType)
     // find columns that exist both on left and right that are not keys and coalesce them
     val selects = keys.map(col) ++
       leftDf.columns.flatMap { colName =>
@@ -156,7 +158,7 @@ object JoinUtils {
           Some(rightDf(colName))
         }
       }
-    val finalDf = joinedDf.select(selects.toSeq: _*)
+    val finalDf = joinedDf.select(selects: _*)
     finalDf
   }
 
@@ -171,7 +173,7 @@ object JoinUtils {
                           tableUtils: TableUtils,
                           viewProperties: Map[String, String] = null,
                           labelColumnPrefix: String = Constants.LabelColumnPrefix): Unit = {
-    val fieldDefinitions = joinKeys.map(field => s"l.`${field}`") ++
+    val fieldDefinitions = joinKeys.map(field => s"l.`$field`") ++
       tableUtils
         .getSchemaFromTable(leftTable)
         .filterNot(field => joinKeys.contains(field.name))
@@ -186,13 +188,13 @@ object JoinUtils {
             s"r.`${field.name}` AS `${labelColumnPrefix}_${field.name}`"
           }
         })
-    val joinKeyDefinitions = joinKeys.map(key => s"l.`${key}` = r.`${key}`")
+    val joinKeyDefinitions = joinKeys.map(key => s"l.`$key` = r.`$key`")
     val createFragment = s"""CREATE OR REPLACE VIEW $viewName"""
     val queryFragment =
       s"""
          |  AS SELECT
          |     ${fieldDefinitions.mkString(",\n    ")}
-         |    FROM ${leftTable} AS l LEFT OUTER JOIN ${rightTable} AS r
+         |    FROM $leftTable AS l LEFT OUTER JOIN $rightTable AS r
          |      ON ${joinKeyDefinitions.mkString(" AND ")}""".stripMargin
 
     val propertiesFragment = if (viewProperties != null && viewProperties.nonEmpty) {
@@ -219,18 +221,21 @@ object JoinUtils {
     val labelTableName = baseViewProperties.getOrElse(Constants.LabelViewPropertyKeyLabelTable, "")
     assert(labelTableName.nonEmpty, "Not able to locate underlying label table for partitions")
 
-    val labelMapping = getLatestLabelMapping(labelTableName, tableUtils)
-    val caseDefinitions = labelMapping.flatMap(entry => {
-      entry._2
-        .map(v => "WHEN " + v.betweenClauses + s" THEN ${Constants.LabelPartitionColumn} = '${entry._1}'")
-        .toList
-    })
+    val labelMapping: Map[String, Seq[PartitionRange]] = getLatestLabelMapping(labelTableName, tableUtils)
+    val caseDefinitions = labelMapping.flatMap {
+      case (ds: String, ranges: Seq[PartitionRange]) =>
+        ranges
+          .map(range =>
+            "WHEN " + range.betweenClauses(
+              tableUtils.partitionColumn) + s" THEN ${Constants.LabelPartitionColumn} = '$ds'")
+          .toList
+    }
 
     val createFragment = s"""CREATE OR REPLACE VIEW $viewName"""
     val queryFragment =
       s"""
          |  AS SELECT *
-         |     FROM ${baseView}
+         |     FROM $baseView
          |     WHERE (
          |       CASE
          |         ${caseDefinitions.mkString("\n         ")}
@@ -267,7 +272,7 @@ object JoinUtils {
       partitions.head.keys.equals(Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn)),
       s""" Table must have label partition columns for latest label computation: `${tableUtils.partitionColumn}`
          | & `${Constants.LabelPartitionColumn}`
-         |inputView: ${tableName}
+         |inputView: $tableName
          |""".stripMargin
     )
 
@@ -344,7 +349,7 @@ object JoinUtils {
       groupByKeyExpressions
         .map {
           case (keyName, groupByKeyExpression) =>
-            val leftSideKeyName = joinPart.rightToLeft.get(keyName).get
+            val leftSideKeyName = joinPart.rightToLeft(keyName)
             logger.info(
               s"KeyName: $keyName, leftSide KeyName: $leftSideKeyName , Join right to left: ${joinPart.rightToLeft
                 .mkString(", ")}")
@@ -400,8 +405,8 @@ object JoinUtils {
     // Determines if the saved left table of the join (includes bootstrap) needs to be recomputed due to semantic changes since last run
     if (tableUtils.tableExists(outputTable)) {
       val gson = new Gson()
-      val props = tableUtils.getTableProperties(outputTable);
-      val oldSemanticJson = props.get(Constants.SemanticHashKey);
+      val props = tableUtils.getTableProperties(outputTable)
+      val oldSemanticJson = props.get(Constants.SemanticHashKey)
       val oldSemanticHash = gson.fromJson(oldSemanticJson, classOf[java.util.HashMap[String, String]]).toScala
       joinConf.leftChanged(oldSemanticHash)
     } else {
