@@ -60,7 +60,8 @@ class LogFlattenerJob(session: SparkSession,
     extends Serializable {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tableUtils: TableUtils = TableUtils(session)
-  val joinTblProps: Map[String, String] = Option(joinConf.metaData.tableProperties)
+  implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+  private val joinTblProps: Map[String, String] = Option(joinConf.metaData.tableProperties)
     .map(_.toScala)
     .getOrElse(Map.empty[String, String])
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinLogFlatten, joinConf)
@@ -77,21 +78,18 @@ class LogFlattenerJob(session: SparkSession,
     )
 
     val ranges = unfilledRangeTry match {
-      case Failure(_: AssertionError) => {
+      case Failure(_: AssertionError) =>
         logger.info(s"""
              |The join name ${joinConf.metaData.nameToFilePath} does not have available logged data yet.
              |Please double check your logging status""".stripMargin)
         Seq()
-      }
-      case Success(None) => {
+      case Success(None) =>
         logger.info(
           s"$outputTable seems to be caught up - to either " +
             s"$inputTable(latest ${tableUtils.lastAvailablePartition(inputTable)}) or $endDate.")
         Seq()
-      }
-      case Success(Some(partitionRange)) => {
+      case Success(Some(partitionRange)) =>
         partitionRange
-      }
       case Failure(otherException) => throw otherException
     }
 
@@ -181,7 +179,7 @@ class LogFlattenerJob(session: SparkSession,
     session
       .table(schemaTable)
       .where(col(tableUtils.partitionColumn) === schemaTableDs.get)
-      .where(col(Constants.SchemaHash).isin(hashes.toSeq: _*))
+      .where(col(Constants.SchemaHash).isin(hashes: _*))
       .select(
         col(Constants.SchemaHash),
         col("schema_value_last").as("schema_value")
@@ -191,7 +189,7 @@ class LogFlattenerJob(session: SparkSession,
       .toMap
   }
 
-  def buildTableProperties(schemaMap: Map[String, String]): Map[String, String] = {
+  private def buildTableProperties(schemaMap: Map[String, String]): Map[String, String] = {
     def escape(str: String): String = str.replace("""\""", """\\""")
     (LogFlattenerJob.readSchemaTableProperties(tableUtils, joinConf.metaData.loggedTable) ++ schemaMap)
       .map {
@@ -215,12 +213,12 @@ class LogFlattenerJob(session: SparkSession,
     val start = System.currentTimeMillis()
     val columnBeforeCount = columnCount()
     val rowCounts = unfilledRanges.map { unfilled =>
-      val rawDf = unfilled.scanDf(null, logTable).where(col("name") === joinName)
+      val rawDf = tableUtils.scanDf(null, logTable).where(col("name") === joinName)
       val schemaHashes = rawDf.select(col(Constants.SchemaHash)).distinct().collect().map(_.getString(0)).toSeq
       val schemaStringsMap = fetchSchemas(schemaHashes)
 
       // we do not have exact joinConf at time of logging, and since it is not used during flattening, we pass in null
-      val schemaMap = schemaStringsMap.mapValues(LoggingSchema.parseLoggingSchema).map(identity).toMap
+      val schemaMap = schemaStringsMap.mapValues(LoggingSchema.parseLoggingSchema).map(identity)
       val flattenedDf = flattenKeyValueBytes(rawDf, schemaMap)
 
       val schemaTblProps = buildTableProperties(schemaStringsMap)
@@ -234,7 +232,7 @@ class LogFlattenerJob(session: SparkSession,
 
       val inputRowCount = rawDf.count()
       // read from output table to avoid recomputation
-      val outputRowCount = unfilled.scanDf(null, joinConf.metaData.loggedTable).count()
+      val outputRowCount = tableUtils.scanDf(null, joinConf.metaData.loggedTable, range = Some(unfilled)).count()
 
       (inputRowCount, outputRowCount)
     }
@@ -245,7 +243,7 @@ class LogFlattenerJob(session: SparkSession,
     val failureCount = totalInputRowCount - totalOutputRowCount
     metrics.gauge(Metrics.Name.RowCount, totalOutputRowCount)
     metrics.gauge(Metrics.Name.FailureCount, failureCount)
-    logger.info(s"Processed logs: ${totalOutputRowCount} rows success, ${failureCount} rows failed.")
+    logger.info(s"Processed logs: $totalOutputRowCount rows success, $failureCount rows failed.")
     metrics.gauge(Metrics.Name.ColumnBeforeCount, columnBeforeCount)
     metrics.gauge(Metrics.Name.ColumnAfterCount, columnAfterCount)
     val elapsedMins = (System.currentTimeMillis() - start) / 60000
@@ -262,6 +260,5 @@ object LogFlattenerJob {
       .map {
         case (key, value) => (key.substring(Constants.SchemaHash.length + 1), value)
       }
-      .toMap
   }
 }

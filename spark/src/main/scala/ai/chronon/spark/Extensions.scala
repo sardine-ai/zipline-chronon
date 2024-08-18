@@ -19,9 +19,11 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataPointer
-import ai.chronon.online.AvroCodec
+import ai.chronon.api.PartitionSpec
 import ai.chronon.online.AvroConversions
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
+import ai.chronon.online.TimeRange
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
@@ -29,7 +31,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.sketch.BloomFilter
@@ -61,12 +62,11 @@ object Extensions {
     def toChrononSchema(name: String = null): api.StructType =
       api.StructType.from(name, SparkConversions.toChrononSchema(schema))
     def toAvroSchema(name: String = null): Schema = AvroConversions.fromChrononSchema(toChrononSchema(name))
-    def toAvroCodec(name: String = null): AvroCodec = new AvroCodec(toAvroSchema(name).toString())
   }
 
   case class DfStats(count: Long, partitionRange: PartitionRange)
   // helper class to maintain datafram stats that are necessary for downstream operations
-  case class DfWithStats(df: DataFrame, partitionCounts: Map[String, Long])(implicit val tableUtils: TableUtils) {
+  case class DfWithStats(df: DataFrame, partitionCounts: Map[String, Long])(implicit val partitionSpec: PartitionSpec) {
     private val minPartition: String = partitionCounts.keys.min
     private val maxPartition: String = partitionCounts.keys.max
     val partitionRange: PartitionRange = PartitionRange(minPartition, maxPartition)
@@ -86,7 +86,7 @@ object Extensions {
   }
 
   object DfWithStats {
-    def apply(dataFrame: DataFrame)(implicit tableUtils: TableUtils): DfWithStats = {
+    def apply(dataFrame: DataFrame)(implicit partitionSpec: PartitionSpec): DfWithStats = {
       val partitionCounts = dataFrame
         .groupBy(col(TableUtils(dataFrame.sparkSession).partitionColumn))
         .count()
@@ -99,7 +99,8 @@ object Extensions {
 
   implicit class DataframeOps(df: DataFrame) {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-    private implicit val tableUtils: TableUtils = TableUtils(df.sparkSession)
+    private val tableUtils: TableUtils = TableUtils(df.sparkSession)
+    private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
     // This is safe to call on dataframes that are un-shuffled from their disk sources -
     // like tables read without shuffling with row level projections or filters.
@@ -113,7 +114,7 @@ object Extensions {
     }
 
     def prunePartition(partitionRange: PartitionRange): DataFrame = {
-      val pruneFilter = partitionRange.whereClauses().mkString(" AND ")
+      val pruneFilter = tableUtils.whereClauses(partitionRange).mkString(" AND ")
       logger.info(s"Pruning using $pruneFilter")
       df.filter(pruneFilter)
     }
@@ -133,15 +134,13 @@ object Extensions {
       val minMaxRows = df.sqlContext
         .sql(s"select min($columnName), max($columnName) from $viewName")
         .collect()
-      assert(minMaxRows.size == 1, "Logic error! There needs to be exactly one row")
+      assert(minMaxRows.length == 1, "Logic error! There needs to be exactly one row")
       val minMaxRow = minMaxRows(0)
       df.sparkSession.catalog.dropTempView(viewName)
       val (min, max) = (minMaxRow.getAs[T](0), minMaxRow.getAs[T](1))
       logger.info(s"Computed Range for $columnName - min: $min, max: $max")
       (min, max)
     }
-
-    def typeOf(col: String): DataType = df.schema(df.schema.fieldIndex(col)).dataType
 
     def save(tableName: String,
              tableProperties: Map[String, String] = null,
@@ -210,7 +209,7 @@ object Extensions {
         df.filter(df.col(col).isNotNull).select(approx_count_distinct(col)).collect()(0).getLong(0)
       if (approxCount == 0) {
         logger.info(
-          s"Warning: approxCount for col ${col} from table ${tableName} is 0. Please double check your input data.")
+          s"Warning: approxCount for col $col from table $tableName is 0. Please double check your input data.")
       }
       logger.info(s""" [STARTED] Generating bloom filter on key `$col` for range $partitionRange from $tableName
            | Approximate distinct count of `$col`: $approxCount
@@ -234,23 +233,6 @@ object Extensions {
       logger.info(s"filtering nulls from columns: [${cols.mkString(", ")}]")
       // do not use != or <> operator with null, it doesn't return false ever!
       df.filter(cols.map(_ + " IS NOT NULL").mkString(" AND "))
-    }
-
-    def nullSafeJoin(right: DataFrame, keys: Seq[String], joinType: String): DataFrame = {
-      validateJoinKeys(right, keys)
-      val prefixedLeft = df.prefixColumnNames("left", keys)
-      val prefixedRight = right.prefixColumnNames("right", keys)
-      val joinExpr = keys
-        .map(key => prefixedLeft(s"left_$key") <=> prefixedRight(s"right_$key"))
-        .reduce((col1, col2) => col1.and(col2))
-      val joined = prefixedLeft.join(
-        prefixedRight,
-        joinExpr,
-        joinType = joinType
-      )
-      keys.foldLeft(joined) { (renamedJoin, key) =>
-        renamedJoin.withColumnRenamed(s"left_$key", key).drop(s"right_$key")
-      }
     }
 
     // convert a millisecond timestamp to string with the specified format
@@ -292,12 +274,6 @@ object Extensions {
       }
     }
 
-    def order(keys: Seq[String]): DataFrame = {
-      val filterClause = keys.map(key => s"($key IS NOT NULL)").mkString(" AND ")
-      val filtered = df.where(filterClause)
-      filtered.orderBy(keys.map(desc).toSeq: _*)
-    }
-
     def prettyPrint(timeColumns: Seq[String] = Seq(Constants.TimeColumn, Constants.MutationTimeColumn)): Unit = {
       val availableColumns = timeColumns.filter(df.schema.names.contains)
       logger.info(s"schema: ${df.schema.fieldNames.mkString("Array(", ", ", ")")}")
@@ -323,7 +299,7 @@ object Extensions {
   }
 
   implicit class InternalRowOps(internalRow: InternalRow) {
-    def toRow(schema: StructType): Row = {
+    def toRow: Row = {
       new Row() {
         override def length: Int = {
           internalRow.numFields
@@ -333,7 +309,7 @@ object Extensions {
           internalRow.get(i, schema.fields(i).dataType)
         }
 
-        override def copy(): Row = internalRow.copy().toRow(schema)
+        override def copy(): Row = internalRow.copy().toRow
       }
     }
   }

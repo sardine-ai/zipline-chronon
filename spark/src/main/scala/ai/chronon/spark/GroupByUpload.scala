@@ -28,11 +28,13 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.GroupByServingInfo
+import ai.chronon.api.PartitionSpec
 import ai.chronon.api.QueryUtils
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.Extensions.ChrononStructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.Metrics
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.SparkEnv
@@ -55,7 +57,9 @@ import scala.util.Try
 class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val sparkSession: SparkSession = groupBy.sparkSession
-  implicit private val tableUtils: TableUtils = TableUtils(sparkSession)
+  private val tableUtils: TableUtils = TableUtils(sparkSession)
+  implicit private val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+
   private def fromBase(rdd: RDD[(Array[Any], Array[Any])]): KvRdd = {
     KvRdd(rdd.map { case (keyAndDs, values) => keyAndDs.init -> values }, groupBy.keySchema, groupBy.postAggSchema)
   }
@@ -130,7 +134,8 @@ object GroupByUpload {
                                session: SparkSession,
                                endDs: String): GroupByServingInfoParsed = {
     val groupByServingInfo = new GroupByServingInfo()
-    implicit val tableUtils: TableUtils = TableUtils(session)
+    val tableUtils: TableUtils = TableUtils(session)
+    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     val nextDay = tableUtils.partitionSpec.after(endDs)
 
     val groupBy = ai.chronon.spark.GroupBy
@@ -193,14 +198,15 @@ object GroupByUpload {
           jsonPercent: Int = 1): Unit = {
     val context = Metrics.Context(Metrics.Environment.GroupByUpload, groupByConf)
     val startTs = System.currentTimeMillis()
-    implicit val tableUtils: TableUtils =
+    val tableUtils: TableUtils =
       tableUtilsOpt.getOrElse(
         TableUtils(
           SparkSessionBuilder
             .build(s"groupBy_${groupByConf.metaData.name}_upload")))
+    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     groupByConf.setups.foreach(tableUtils.sql)
     // add 1 day to the batch end time to reflect data [ds 00:00:00.000, ds + 1 00:00:00.000)
-    val batchEndDate = tableUtils.partitionSpec.after(endDs)
+    val batchEndDate = partitionSpec.after(endDs)
     // for snapshot accuracy - we don't need to scan mutations
     lazy val groupBy =
       GroupBy.from(groupByConf, PartitionRange(endDs, endDs), tableUtils, computeDependency = true, showDf = showDf)
@@ -245,7 +251,7 @@ object GroupByUpload {
         Constants.GroupByServingInfoKey,
         ThriftJsonCodec.toJsonStr(groupByServingInfo)
       ))
-    val metaRdd = tableUtils.sparkSession.sparkContext.parallelize(metaRows.toSeq)
+    val metaRdd = tableUtils.sparkSession.sparkContext.parallelize(metaRows)
     val metaDf = tableUtils.sparkSession.createDataFrame(metaRdd, kvDf.schema)
     kvDf
       .union(metaDf)

@@ -14,33 +14,31 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark
+package ai.chronon.online
 
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.Constants
-import ai.chronon.api.Query
-import org.apache.spark.sql.DataFrame
+import ai.chronon.api.PartitionSpec
 
 sealed trait DataRange {
   def toTimePoints: Array[Long]
 }
-case class TimeRange(start: Long, end: Long)(implicit tableUtils: TableUtils) extends DataRange {
+case class TimeRange(start: Long, end: Long)(implicit partitionSpec: PartitionSpec) extends DataRange {
   def toTimePoints: Array[Long] = {
     Stream
-      .iterate(TsUtils.round(start, tableUtils.partitionSpec.spanMillis))(_ + tableUtils.partitionSpec.spanMillis)
+      .iterate(TsUtils.round(start, partitionSpec.spanMillis))(_ + partitionSpec.spanMillis)
       .takeWhile(_ <= end)
       .toArray
   }
 
   def toPartitionRange: PartitionRange = {
-    PartitionRange(tableUtils.partitionSpec.at(start), tableUtils.partitionSpec.at(end))
+    PartitionRange(partitionSpec.at(start), partitionSpec.at(end))
   }
 
   def pretty: String = s"start:[${TsUtils.toStr(start)}]-end:[${TsUtils.toStr(end)}]"
-  override def toString(): String = s"[${TsUtils.toStr(start)}-${TsUtils.toStr(end)}]"
+  override def toString: String = s"[${TsUtils.toStr(start)}-${TsUtils.toStr(end)}]"
 }
 // start and end can be null - signifies unbounded-ness
-case class PartitionRange(start: String, end: String)(implicit tableUtils: TableUtils)
+case class PartitionRange(start: String, end: String)(implicit partitionSpec: PartitionSpec)
     extends DataRange
     with Ordered[PartitionRange] {
 
@@ -70,35 +68,14 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
   override def toTimePoints: Array[Long] = {
     assert(start != null && end != null, "Can't request timePoint conversion when PartitionRange is unbounded")
     Stream
-      .iterate(start)(tableUtils.partitionSpec.after)
+      .iterate(start)(partitionSpec.after)
       .takeWhile(_ <= end)
-      .map(tableUtils.partitionSpec.epochMillis)
+      .map(partitionSpec.epochMillis)
       .toArray
   }
 
-  def betweenClauses: String = {
-    s"${tableUtils.partitionColumn} BETWEEN '" + start + "' AND '" + end + "'"
-  }
-
-  def substituteMacros(template: String): String = {
-    val substitutions = Seq(Constants.StartPartitionMacro -> Option(start), Constants.EndPartitionMacro -> Option(end))
-    substitutions.foldLeft(template) {
-      case (q, (target, Some(replacement))) => q.replaceAllLiterally(target, s"'$replacement'")
-      case (q, (_, None))                   => q
-    }
-  }
-
-  def scanDf(query: Query,
-             table: String,
-             fillIfAbsent: Option[Map[String, String]] = None,
-             partitionColumn: String = tableUtils.partitionColumn)(implicit tableUtils: TableUtils): DataFrame = {
-    tableUtils.scanDf(query, table, fillIfAbsent, partitionColumn, Some(this))
-  }
-
-  def whereClauses(partitionColumn: String = tableUtils.partitionColumn): Seq[String] = {
-    val startClause = Option(start).map(s"${partitionColumn} >= '" + _ + "'")
-    val endClause = Option(end).map(s"${partitionColumn} <= '" + _ + "'")
-    (startClause ++ endClause).toSeq
+  def betweenClauses(partitionColumn: String): String = {
+    s"$partitionColumn BETWEEN '$start' AND '$end'"
   }
 
   def steps(days: Int): Seq[PartitionRange] = {
@@ -109,9 +86,9 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
   }
 
   def partitions: Seq[String] = {
-    assert(wellDefined, s"Invalid partition range ${this}")
+    assert(wellDefined, s"Invalid partition range $this")
     Stream
-      .iterate(start)(tableUtils.partitionSpec.after)
+      .iterate(start)(partitionSpec.after)
       .takeWhile(_ <= end)
   }
 
@@ -122,7 +99,7 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
     if (days == 0) {
       this
     } else {
-      PartitionRange(tableUtils.partitionSpec.shift(start, days), tableUtils.partitionSpec.shift(end, days))
+      PartitionRange(partitionSpec.shift(start, days), partitionSpec.shift(end, days))
     }
   }
 
@@ -146,5 +123,5 @@ case class PartitionRange(start: String, end: String)(implicit tableUtils: Table
       compareDate(this.end, that.end)
     }
   }
-  override def toString(): String = s"[$start...$end]"
+  override def toString: String = s"[$start...$end]"
 }

@@ -18,10 +18,9 @@ package ai.chronon.spark.test
 
 import ai.chronon.api.StructField
 import ai.chronon.api._
-import ai.chronon.api._
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.IncompatibleSchemaException
-import ai.chronon.spark.PartitionRange
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark._
@@ -50,6 +49,7 @@ class SimpleAddUDF extends UDF {
 class TableUtilsTest {
   lazy val spark: SparkSession = SparkSessionBuilder.build("TableUtilsTest", local = true)
   private val tableUtils = TableUtils(spark)
+  private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
   @Test
   def ColumnFromSqlTest(): Unit = {
@@ -119,7 +119,7 @@ class TableUtilsTest {
     }
 
     if (df2.schema != df1.schema) {
-      val insertTry = Try(tableUtils.insertPartitions(df2, tableName, autoExpand = false))
+      val insertTry = Try(tableUtils.insertPartitions(df2, tableName))
       assertTrue(insertTry.failed.get.isInstanceOf[AnalysisException])
     }
 
@@ -253,9 +253,9 @@ class TableUtilsTest {
   def ChunkTest(): Unit = {
     val actual = tableUtils.chunk(Set("2021-01-01", "2021-01-02", "2021-01-05", "2021-01-07"))
     val expected = Seq(
-      PartitionRange("2021-01-01", "2021-01-02")(tableUtils),
-      PartitionRange("2021-01-05", "2021-01-05")(tableUtils),
-      PartitionRange("2021-01-07", "2021-01-07")(tableUtils)
+      PartitionRange("2021-01-01", "2021-01-02"),
+      PartitionRange("2021-01-05", "2021-01-05"),
+      PartitionRange("2021-01-07", "2021-01-07")
     )
     assertEquals(expected, actual)
   }
@@ -290,7 +290,7 @@ class TableUtilsTest {
                               subPartitionFilters = Map(Constants.LabelPartitionColumn -> "2022-11-02"))
 
     val updated = tableUtils.sql(s"""
-         |SELECT * from ${tableName}
+         |SELECT * from $tableName
          |""".stripMargin)
     assertEquals(updated.count(), 2)
     assertTrue(
@@ -334,18 +334,18 @@ class TableUtilsTest {
                                 partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
     val par = tableUtils.allPartitions(tableName)
     assertTrue(par.size == 6)
-    assertEquals(par(0).keys, Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+    assertEquals(par.head.keys, Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
 
     // filter subset of partitions
     val filtered = tableUtils.allPartitions(tableName, Seq(Constants.LabelPartitionColumn))
     assertTrue(filtered.size == 6)
-    assertEquals(filtered(0).keys, Set(Constants.LabelPartitionColumn))
+    assertEquals(filtered.head.keys, Set(Constants.LabelPartitionColumn))
 
     // verify the latest label version
     val labels = JoinUtils.getLatestLabelMapping(tableName, tableUtils)
-    assertEquals(labels.get("2022-11-09").get,
-                 List(PartitionRange("2022-10-01", "2022-10-02")(tableUtils),
-                      PartitionRange("2022-10-05", "2022-10-05")(tableUtils)))
+    assertEquals(labels("2022-11-09"),
+                 List(PartitionRange("2022-10-01", "2022-10-02"),
+                      PartitionRange("2022-10-05", "2022-10-05")))
   }
 
   private def prepareTestDataWithSubPartitions(tableName: String): Unit = {

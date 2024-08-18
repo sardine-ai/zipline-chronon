@@ -21,7 +21,9 @@ import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ExternalPart
 import ai.chronon.api.JoinPart
+import ai.chronon.api.PartitionSpec
 import ai.chronon.api.StructField
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.Row
@@ -84,7 +86,7 @@ object BootstrapInfo {
            tableUtils: TableUtils,
            leftSchema: Option[StructType]): BootstrapInfo = {
 
-    implicit val tu = tableUtils
+    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     // Enrich each join part with the expected output schema
     logger.info(s"\nCreating BootstrapInfo for GroupBys for Join ${joinConf.metaData.name}")
     var joinParts: Seq[JoinPartMetadata] = Option(joinConf.joinParts.toScala)
@@ -106,7 +108,7 @@ object BootstrapInfo {
           }
           val dummyOutputDf = tableUtils.sparkSession
             .createDataFrame(tableUtils.sparkSession.sparkContext.parallelize(immutable.Seq[Row]()), sparkSchema)
-          val finalOutputColumns = part.groupBy.derivationsScala.finalOutputColumn(dummyOutputDf.columns).toSeq
+          val finalOutputColumns = part.groupBy.derivationsScala.finalOutputColumn(dummyOutputDf.columns)
           val derivedDummyOutputDf = dummyOutputDf.select(finalOutputColumns: _*)
           val columns = SparkConversions.toChrononSchema(
             StructType(derivedDummyOutputDf.schema.filterNot(keyAndPartitionFields.contains)))
@@ -141,7 +143,7 @@ object BootstrapInfo {
       val derivedDf = baseDf.select(
         projections.map {
           case (name, expression) => expr(expression).as(name)
-        }.toSeq: _*
+        }: _*
       )
       SparkConversions.toChrononSchema(derivedDf.schema).map {
         case (name, dataType) => (StructField(name, dataType), projectionMap(name))
@@ -202,7 +204,8 @@ object BootstrapInfo {
     val tableHashes = tableBootstrapParts
       .map(part => {
         val range = PartitionRange(part.startPartition, part.endPartition)
-        val bootstrapDf = range.scanDf(part.query, part.table, Some(Map(tableUtils.partitionColumn -> null)))
+        val bootstrapDf =
+          tableUtils.scanDf(part.query, part.table, Some(Map(tableUtils.partitionColumn -> null)), Some(range))
         val schema = bootstrapDf.schema
         val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)
         collectException(
@@ -236,7 +239,7 @@ object BootstrapInfo {
      * - for chronon flattened log table: we use the schema_hash recorded at logging time generated per-row
      * - for regular hive tables: we use the semantic_hash (a snapshot) of the bootstrap part object
      */
-    val hashToSchema = logHashes ++ tableHashes.mapValues(_._1).toMap
+    val hashToSchema = logHashes ++ tableHashes.mapValues(_._1)
 
     /*
      * For each join part, find a mapping from a derived field to the subset of base fields that this derived field
@@ -329,7 +332,7 @@ object BootstrapInfo {
     tableHashes.foreach {
       case (hash, (schema, _)) =>
         logger.info(s"""Bootstrap Info for Table Bootstraps
-           |Table Hash: ${hash}
+           |Table Hash: $hash
            |Bootstrap Schema:
            |${stringify(schema)}
            |""".stripMargin)
