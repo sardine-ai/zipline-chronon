@@ -19,6 +19,7 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ParametricMacro
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -53,7 +54,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
     val overrideStart = overrideStartPartition.getOrElse(stagingQueryConf.startPartition)
     val unfilledRanges =
       tableUtils.unfilledRanges(outputTable,
-                                PartitionRange(overrideStart, endPartition)(tableUtils),
+                                PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
                                 skipFirstHole = skipFirstHole)
 
     if (unfilledRanges.isEmpty) {

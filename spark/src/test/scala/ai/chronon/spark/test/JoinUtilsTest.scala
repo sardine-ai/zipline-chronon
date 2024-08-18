@@ -20,11 +20,12 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Builders
 import ai.chronon.api.Constants
+import ai.chronon.api.PartitionSpec
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils
 import ai.chronon.spark.JoinUtils.contains_any
 import ai.chronon.spark.JoinUtils.set_add
-import ai.chronon.spark.PartitionRange
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import org.apache.spark.rdd.RDD
@@ -43,6 +44,7 @@ class JoinUtilsTest {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build("JoinUtilsTest", local = true)
   private val tableUtils = TableUtils(spark)
+  private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private val namespace = "joinUtil"
   @Test
   def testUDFSetAdd(): Unit = {
@@ -347,7 +349,7 @@ class JoinUtilsTest {
     val endPartition = "2023-08-01"
     val leftSource = Builders.Source.events(Builders.Query(startPartition = startPartition), table = itemQueriesTable)
     val range = JoinUtils.getRangesToFill(leftSource, tableUtils, endPartition)
-    assertEquals(range, PartitionRange(startPartition, endPartition)(tableUtils))
+    assertEquals(range, PartitionRange(startPartition, endPartition))
   }
 
   @Test
@@ -365,7 +367,7 @@ class JoinUtilsTest {
     val endPartition = "2023-08-08"
     val leftSource = Builders.Source.events(Builders.Query(startPartition = startPartition), table = itemQueriesTable)
     val range = JoinUtils.getRangesToFill(leftSource, tableUtils, endPartition, Some(startPartitionOverride))
-    assertEquals(range, PartitionRange(startPartitionOverride, endPartition)(tableUtils))
+    assertEquals(range, PartitionRange(startPartitionOverride, endPartition))
   }
 
   import ai.chronon.api.{LongType, StringType, StructField, StructType}

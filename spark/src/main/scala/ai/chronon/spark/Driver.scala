@@ -57,7 +57,6 @@ import java.nio.file.Paths
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.io.Source
@@ -755,7 +754,6 @@ object Driver {
       val acceptedEndPoints = List(MetadataEndPoint.ConfByKeyEndPointName, MetadataEndPoint.NameByTeamEndPointName)
       val dirWalker = new MetadataDirWalker(args.confPath(), acceptedEndPoints)
       val kvMap: Map[String, Map[String, List[String]]] = dirWalker.run
-      implicit val ec: ExecutionContext = ExecutionContext.global
       val putRequestsSeq: Seq[Future[scala.collection.Seq[Boolean]]] = kvMap.toSeq.map {
         case (endPoint, kvMap) => args.metaDataStore.put(kvMap, endPoint)
       }

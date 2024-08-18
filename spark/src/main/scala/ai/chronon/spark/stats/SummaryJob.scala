@@ -19,10 +19,10 @@ package ai.chronon.spark.stats
 import ai.chronon.aggregator.row.StatsGenerator
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils
-import ai.chronon.spark.PartitionRange
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -37,7 +37,8 @@ import org.slf4j.LoggerFactory
 class SummaryJob(session: SparkSession, joinConf: Join, endDate: String) extends Serializable {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val tableUtils: TableUtils = TableUtils(session)
+  protected val tableUtils: TableUtils = TableUtils(session)
+  implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private val loggingStatsTable = joinConf.metaData.loggingStatsTable
   private val dailyStatsTable = joinConf.metaData.dailyStatsOutputTable
   private val tableProps: Map[String, String] = tableUtils.getTableProperties(joinConf.metaData.outputTable).orNull
@@ -48,11 +49,11 @@ class SummaryJob(session: SparkSession, joinConf: Join, endDate: String) extends
                     sample: Double = 0.1,
                     forceBackfill: Boolean = false): Unit = {
     val uploadTable = joinConf.metaData.toUploadTable(outputTable)
-    val backfillRequired = (!JoinUtils.tablesToRecompute(joinConf, outputTable, tableUtils).isEmpty) || forceBackfill
+    val backfillRequired = JoinUtils.tablesToRecompute(joinConf, outputTable, tableUtils).nonEmpty || forceBackfill
     if (backfillRequired)
-      Seq(outputTable, uploadTable).foreach(tableUtils.dropTableIfExists(_))
+      Seq(outputTable, uploadTable).foreach(tableUtils.dropTableIfExists)
     val unfilledRanges = tableUtils
-      .unfilledRanges(outputTable, PartitionRange(null, endDate)(tableUtils), Some(Seq(inputTable)))
+      .unfilledRanges(outputTable, PartitionRange(null, endDate), Some(Seq(inputTable)))
       .getOrElse(Seq.empty)
     if (unfilledRanges.isEmpty) {
       logger.info(s"No data to compute for $outputTable")

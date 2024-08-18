@@ -22,9 +22,11 @@ import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.JoinPart
+import ai.chronon.api.PartitionSpec
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.online.Metrics
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.lit
@@ -38,7 +40,7 @@ import scala.collection.Seq
 
 class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  implicit val tableUtilsI: TableUtils = tableUtils
+  implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   assert(Option(joinConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   assert(
     joinConf.labelPart.leftStartOffset >= joinConf.labelPart.getLeftEndOffset,
@@ -95,7 +97,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     }
 
     labelJoinConf.setups.foreach(tableUtils.sql)
-    val labelTable = compute(PartitionRange(leftStart, leftEnd)(tableUtils), stepDays, Option(labelDS))
+    val labelTable = compute(PartitionRange(leftStart, leftEnd), stepDays, Option(labelDS))
 
     if (skipFinalJoin) {
       labelTable
@@ -125,7 +127,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val sanitizedLabelDs = labelDS.getOrElse(today)
     logger.info(s"Label join range to fill $leftRange")
-    def finalResult = leftRange.scanDf(null, outputLabelTable)
+    def finalResult = tableUtils.scanDf(null, outputLabelTable, range = Some(leftRange))
 
     val leftFeatureRange = leftRange
     stepDays.foreach(metrics.gauge("step_days", _))
@@ -165,7 +167,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
         // no need to generate join part cache if there are no aggregations
         computeLabelPart(labelJoinPart, leftRange, leftBlooms)
       } else {
-        val labelOutputRange = PartitionRange(sanitizedLabelDs, sanitizedLabelDs)(tableUtils)
+        val labelOutputRange = PartitionRange(sanitizedLabelDs, sanitizedLabelDs)
         val partTable = joinConf.partOutputTable(labelJoinPart)
         try {
           val leftRanges = tableUtils
@@ -195,12 +197,12 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                 s"${joinConf.metaData.name}/${labelJoinPart.groupBy.getMetaData.getName}")
             throw e
         }
-        labelOutputRange.scanDf(query = null, partTable, partitionColumn = Constants.LabelPartitionColumn)
+        tableUtils.scanDf(query = null, partTable, partitionColumn = Constants.LabelPartitionColumn)
       }
     }
 
     val rowIdentifier = labelJoinConf.rowIdentifier(joinConf.rowIds, tableUtils.partitionColumn)
-    logger.info("Label Join filtering left df with only row identifier:", rowIdentifier.mkString(", "))
+    logger.info("Label Join filtering left df with only row identifier:" + rowIdentifier.mkString(", "))
     val leftFiltered = JoinUtils.filterColumns(leftDf, rowIdentifier)
 
     val joined = rightDfs.zip(labelJoinConf.labels.asScala).foldLeft(leftFiltered) {
@@ -233,7 +235,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                |""".stripMargin)
 
     val groupBy = GroupBy.from(joinPart.groupBy,
-                               PartitionRange(labelDS, labelDS)(tableUtils),
+                               PartitionRange(labelDS, labelDS),
                                tableUtils,
                                computeDependency = true,
                                Option(rightBloomMap.iterator.toJMap),

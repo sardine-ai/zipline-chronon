@@ -22,7 +22,6 @@ import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.PartitionRange
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -36,10 +35,11 @@ import scala.util.ScalaJavaConversions.MapOps
 class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) extends Serializable {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val tblProperties: Map[String, String] = Option(joinConf.metaData.tableProperties)
+  private val tblProperties: Map[String, String] = Option(joinConf.metaData.tableProperties)
     .map(_.toScala)
     .getOrElse(Map.empty[String, String])
   implicit val tableUtils: TableUtils = TableUtils(session)
+  implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
   // Replace join's left side with the logged table events to determine offline values of the aggregations.
   private def buildComparisonJoin(): Join = {
@@ -110,8 +110,9 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
       .getOrElse(Seq.empty)
     if (unfilledRanges.isEmpty) return null
     val allMetrics = unfilledRanges.map { unfilled =>
-      val comparisonDf = unfilled.scanDf(null, joinConf.metaData.comparisonTable)
-      val loggedDf = unfilled.scanDf(null, joinConf.metaData.loggedTable).drop(Constants.SchemaHash)
+      val comparisonDf = tableUtils.scanDf(null, joinConf.metaData.comparisonTable, range = Some(unfilled))
+      val loggedDf =
+        tableUtils.scanDf(null, joinConf.metaData.loggedTable, range = Some(unfilled)).drop(Constants.SchemaHash)
       // there could be external columns that are logged during online env, therefore they could not be used for computing OOC
       val loggedDfNoExternalCols = loggedDf.select(comparisonDf.columns.map(org.apache.spark.sql.functions.col): _*)
       logger.info("Starting compare job for stats")
@@ -121,7 +122,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
         timeFields.map(_.name).toList ++ joinConf.leftKeyCols
       }
       logger.info(s"Using ${joinKeys.mkString("[", ",", "]")} as join keys between log and backfill.")
-      val (compareDf, metricsKvRdd, metrics) =
+      val (_, metricsKvRdd, metrics) =
         CompareBaseJob.compare(comparisonDf,
                                loggedDfNoExternalCols,
                                keys = joinKeys,

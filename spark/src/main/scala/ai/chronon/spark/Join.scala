@@ -20,6 +20,7 @@ import ai.chronon.api
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils._
@@ -74,7 +75,7 @@ class Join(joinConf: api.Join,
            selectedJoinParts: Option[List[String]] = None)
     extends JoinBase(joinConf, endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
 
-  private implicit val tu: TableUtils = tableUtils
+  private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
     structType.foldLeft(df) {
       case (df, field) =>
@@ -108,7 +109,7 @@ class Join(joinConf: api.Join,
     // Ensure keys and values for contextual fields are consistent even if only one of them is explicitly bootstrapped
     def withContextualFields(df: DataFrame): DataFrame =
       contextualFields.foldLeft(df) {
-        case (df, field) => {
+        case (df, field) =>
           var newDf = df
           if (!newDf.columns.contains(field.name)) {
             newDf = newDf.withColumn(field.name, lit(null).cast(field.dataType))
@@ -120,7 +121,6 @@ class Join(joinConf: api.Join,
           newDf
             .withColumn(field.name, coalesce(col(field.name), col(prefixedName)))
             .withColumn(prefixedName, coalesce(col(field.name), col(prefixedName)))
-        }
       }
 
     withContextualFields(withNonContextualFields(bootstrapDf))
@@ -153,7 +153,7 @@ class Join(joinConf: api.Join,
           val hashes = if (row.isNullAt(0)) {
             Seq()
           } else {
-            row.getAs[mutable.WrappedArray[String]](0).toSeq
+            row.getAs[mutable.WrappedArray[String]](0)
           }
           (hashes, row.getAs[Long](1))
         }.toSeq
@@ -221,7 +221,8 @@ class Join(joinConf: api.Join,
   }
 
   override def computeFinalJoin(leftDf: DataFrame, leftRange: PartitionRange, bootstrapInfo: BootstrapInfo): Unit = {
-    val bootstrapDf = leftRange.scanDf(query = null, table = bootstrapTable).addTimebasedColIfExists()
+    val bootstrapDf =
+      tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(leftRange)).addTimebasedColIfExists()
     val rightPartsData = getRightPartsData(leftRange)
     val joinedDfTry =
       try {
@@ -269,7 +270,8 @@ class Join(joinConf: api.Join,
       None
     } else {
       val leftRowCount = bootStrapWithStats.count
-      if (leftRowCount > tableUtils.bloomFilterThreshold) {
+      val skipBloomFilter = runSmallMode || leftRowCount > tableUtils.bloomFilterThreshold
+      if (skipBloomFilter) {
         None
       } else {
         val leftBlooms = joinConf.leftKeyCols.iterator.map { key =>
@@ -281,7 +283,7 @@ class Join(joinConf: api.Join,
 
     val leftTimeRangeOpt = if (leftTaggedDf.schema.fieldNames.contains(Constants.TimePartitionColumn)) {
       val leftTimePartitionMinMax = leftTaggedDf.range[String](Constants.TimePartitionColumn)
-      Some(PartitionRange(leftTimePartitionMinMax._1, leftTimePartitionMinMax._2)(tableUtils))
+      Some(PartitionRange(leftTimePartitionMinMax._1, leftTimePartitionMinMax._2))
     } else {
       None
     }
@@ -318,7 +320,7 @@ class Join(joinConf: api.Join,
                 ) {
                   assert(
                     leftRange.isSingleDay,
-                    s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is ${leftRange}")
+                    s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is $leftRange")
                 }
 
                 val bloomFilterOpt = if (runSmallMode) {
@@ -378,7 +380,7 @@ class Join(joinConf: api.Join,
     finalDf
   }
 
-  def applyDerivation(baseDf: DataFrame, bootstrapInfo: BootstrapInfo, leftColumns: Seq[String]): DataFrame = {
+  private def applyDerivation(baseDf: DataFrame, bootstrapInfo: BootstrapInfo, leftColumns: Seq[String]): DataFrame = {
     if (!joinConf.isSetDerivations || joinConf.derivations.isEmpty) {
       return baseDf
     }
@@ -445,7 +447,9 @@ class Join(joinConf: api.Join,
   /*
    * Remove extra contextual keys unless it is a result of derivations or it is a column from left
    */
-  def cleanUpContextualFields(finalDf: DataFrame, bootstrapInfo: BootstrapInfo, leftColumns: Seq[String]): DataFrame = {
+  private def cleanUpContextualFields(finalDf: DataFrame,
+                                      bootstrapInfo: BootstrapInfo,
+                                      leftColumns: Seq[String]): DataFrame = {
 
     val contextualNames =
       bootstrapInfo.externalParts.filter(_.externalPart.isContextual).flatMap(_.keySchema).map(_.name)
@@ -455,13 +459,12 @@ class Join(joinConf: api.Join,
       Seq()
     }
     contextualNames.foldLeft(finalDf) {
-      case (df, name) => {
+      case (df, name) =>
         if (leftColumns.contains(name) || projections.contains(name)) {
           df
         } else {
           df.drop(name)
         }
-      }
     }
   }
 
@@ -503,12 +506,11 @@ class Join(joinConf: api.Join,
           .withColumn(Constants.MatchedHashes, typedLit[Array[String]](null))
 
         val joinedDf = parts.foldLeft(initDf) {
-          case (partialDf, part) => {
-
-            logger.info(s"\nProcessing Bootstrap from table ${part.table} for range ${unfilledRange}")
+          case (partialDf, part) =>
+            logger.info(s"\nProcessing Bootstrap from table ${part.table} for range $unfilledRange")
 
             val bootstrapRange = if (part.isSetQuery) {
-              unfilledRange.intersect(PartitionRange(part.startPartition, part.endPartition)(tableUtils))
+              unfilledRange.intersect(PartitionRange(part.startPartition, part.endPartition))
             } else {
               unfilledRange
             }
@@ -517,7 +519,10 @@ class Join(joinConf: api.Join,
               partialDf
             } else {
               var bootstrapDf =
-                bootstrapRange.scanDf(part.query, part.table, Some(Map(tableUtils.partitionColumn -> null)))
+                tableUtils.scanDf(part.query,
+                                  part.table,
+                                  Some(Map(tableUtils.partitionColumn -> null)),
+                                  range = Some(bootstrapRange))
 
               // attach semantic_hash for either log or regular table bootstrap
               validateReservedColumns(bootstrapDf, part.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
@@ -539,7 +544,7 @@ class Join(joinConf: api.Join,
                 // TODO: allow customization of deduplication logic
                 .dropDuplicates(part.keys(joinConf, tableUtils.partitionColumn).toArray)
 
-              coalescedJoin(partialDf, bootstrapDf, part.keys(joinConf, tableUtils.partitionColumn).toSeq)
+              coalescedJoin(partialDf, bootstrapDf, part.keys(joinConf, tableUtils.partitionColumn))
               // as part of the left outer join process, we update and maintain matched_hashes for each record
               // that summarizes whether there is a join-match for each bootstrap source.
               // later on we use this information to decide whether we still need to re-run the backfill logic
@@ -547,7 +552,6 @@ class Join(joinConf: api.Join,
                             set_add(col(Constants.MatchedHashes), col(Constants.BootstrapHash)))
                 .drop(Constants.BootstrapHash)
             }
-          }
         }
 
         // include all external fields if not already bootstrapped
@@ -558,9 +562,9 @@ class Join(joinConf: api.Join,
       })
 
     val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
-    logger.info(s"Finished computing bootstrap table ${joinConf.metaData.bootstrapTable} in ${elapsedMins} minutes")
+    logger.info(s"Finished computing bootstrap table ${joinConf.metaData.bootstrapTable} in $elapsedMins minutes")
 
-    range.scanDf(query = null, table = bootstrapTable)
+    tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(range))
   }
 
   /*
@@ -585,7 +589,7 @@ class Join(joinConf: api.Join,
     } else if (filteredCount == 0) {
       None
     } else {
-      Some(DfWithStats(filteredDf)(bootstrapDfWithStats.tableUtils))
+      Some(DfWithStats(filteredDf)(bootstrapDfWithStats.partitionSpec))
     }
   }
 }

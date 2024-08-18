@@ -16,7 +16,8 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.spark.PartitionRange
+import ai.chronon.api.PartitionSpec
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
@@ -25,12 +26,12 @@ import org.junit.Test
 
 class DataRangeTest {
   val spark: SparkSession = SparkSessionBuilder.build("DataRangeTest", local = true)
-  private val tableUtils = TableUtils(spark)
+  private implicit val partitionSpec: PartitionSpec = TableUtils(spark).partitionSpec
 
   @Test
   def testIntersect(): Unit = {
-    val range1 = PartitionRange(null, null)(tableUtils)
-    val range2 = PartitionRange("2023-01-01", "2023-01-02")(tableUtils)
+    val range1 = PartitionRange(null, null)
+    val range2 = PartitionRange("2023-01-01", "2023-01-02")
     assertEquals(range2, range1.intersect(range2))
   }
 }

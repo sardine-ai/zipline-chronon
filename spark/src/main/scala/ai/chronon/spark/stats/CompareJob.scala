@@ -22,9 +22,9 @@ import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
 import ai.chronon.online.DataMetrics
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Analyzer
-import ai.chronon.spark.PartitionRange
 import ai.chronon.spark.StagingQuery
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd
@@ -52,22 +52,22 @@ class CompareJob(
   val tableProps: Map[String, String] = Option(joinConf.metaData.tableProperties)
     .map(_.toScala)
     .orNull
-  val namespace = joinConf.metaData.outputNamespace
-  val joinName = joinConf.metaData.cleanName
-  val stagingQueryName = stagingQueryConf.metaData.cleanName
-  val comparisonTableName: String = s"${namespace}.compare_join_query_${joinName}_${stagingQueryName}"
-  val metricsTableName: String = s"${namespace}.compare_stats_join_query_${joinName}_${stagingQueryName}"
+  val namespace: String = joinConf.metaData.outputNamespace
+  val joinName: String = joinConf.metaData.cleanName
+  private val stagingQueryName = stagingQueryConf.metaData.cleanName
+  private val comparisonTableName: String = s"$namespace.compare_join_query_${joinName}_$stagingQueryName"
+  private val metricsTableName: String = s"$namespace.compare_stats_join_query_${joinName}_$stagingQueryName"
 
   def run(): (DataFrame, DataFrame, DataMetrics) = {
     assert(endDate != null, "End date for the comparison should not be null")
     // Check for schema consistency issues
     validate()
 
-    val partitionRange = PartitionRange(startDate, endDate)(tableUtils)
+    val partitionRange = PartitionRange(startDate, endDate)(tableUtils.partitionSpec)
     val leftDf = tableUtils.sql(s"""
         |SELECT *
         |FROM ${joinConf.metaData.outputTable}
-        |WHERE ${partitionRange.betweenClauses}
+        |WHERE ${partitionRange.betweenClauses(partitionColumn = tableUtils.partitionColumn)}
         |""".stripMargin)
 
     // Run the staging query sql directly
@@ -101,11 +101,11 @@ class CompareJob(
   def validate(): Unit = {
     // Extract the schema of the Join, StagingQuery and the keys before calling this.
     val analyzer = new Analyzer(tableUtils, joinConf, startDate, endDate, enableHitter = false)
-    val joinChrononSchema = analyzer.analyzeJoin(joinConf, false)._1
-    val joinSchema = joinChrononSchema.map { case (k, v) => (k, SparkConversions.fromChrononType(v)) }.toMap
+    val joinChrononSchema = analyzer.analyzeJoin(joinConf)._1
+    val joinSchema = joinChrononSchema.map { case (k, v) => (k, SparkConversions.fromChrononType(v)) }
     val finalStagingQuery = StagingQuery.substitute(tableUtils, stagingQueryConf.query, startDate, endDate, endDate)
     val stagingQuerySchema =
-      tableUtils.sql(s"${finalStagingQuery} LIMIT 1").schema.fields.map(sb => (sb.name, sb.dataType)).toMap
+      tableUtils.sql(s"$finalStagingQuery LIMIT 1").schema.fields.map(sb => (sb.name, sb.dataType)).toMap
 
     CompareBaseJob.checkConsistency(joinSchema,
                                     stagingQuerySchema,
@@ -162,14 +162,14 @@ object CompareJob {
   def printAndGetBasicMetrics(metrics: DataMetrics, partitionSpec: PartitionSpec): List[(String, Long)] = {
     val consolidatedData = getConsolidatedData(metrics, partitionSpec)
 
-    if (consolidatedData.size == 0) {
+    if (consolidatedData.isEmpty) {
       logger.info(
         "No discrepancies found for data mismatches and missing counts. " +
           "It is highly recommended to explore the full metrics.")
     } else {
       consolidatedData.foreach {
         case (date, mismatchCount) =>
-          logger.info(s"Found ${mismatchCount} mismatches on date '${date}'")
+          logger.info(s"Found $mismatchCount mismatches on date '$date'")
       }
     }
     consolidatedData

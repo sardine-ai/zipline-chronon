@@ -28,10 +28,12 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.IntType
 import ai.chronon.api.LongType
 import ai.chronon.api.Operation
+import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Source
 import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.online.PartitionRange
 import ai.chronon.online.RowWrapper
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
@@ -53,7 +55,8 @@ import scala.collection.mutable
 class GroupByTest {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build("GroupByTest", local = true)
-  implicit val tableUtils: TableUtils = TableUtils(spark)
+  val tableUtils: TableUtils = TableUtils(spark)
+  implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
   @Test
   def testSnapshotEntities(): Unit = {
@@ -304,13 +307,13 @@ class GroupByTest {
     val groupByConf = getSampleGroupBy("unit_analyze_test_item_views", source, namespace)
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val (aggregationsMetadata, _) =
-      new Analyzer(tableUtils, groupByConf, endPartition, today).analyzeGroupBy(groupByConf, enableHitter = false)
+      new Analyzer(tableUtils, groupByConf, endPartition, today).analyzeGroupBy(groupByConf)
     val outputTable = backfill(name = "unit_analyze_test_item_views",
                                source = source,
                                endPartition = endPartition,
                                namespace = namespace,
                                tableUtils = tableUtils)
-    val df = tableUtils.sql(s"SELECT * FROM  ${outputTable}")
+    val df = tableUtils.sql(s"SELECT * FROM  $outputTable")
     val expectedSchema = df.schema.fields.map(field => s"${field.name} => ${field.dataType}")
     aggregationsMetadata
       .map(agg => s"${agg.name} => ${agg.columnType}")
@@ -341,9 +344,9 @@ class GroupByTest {
     )
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val (aggregationsMetadata, _) =
-      new Analyzer(tableUtils, groupByConf, endPartition, today).analyzeGroupBy(groupByConf, enableHitter = false)
+      new Analyzer(tableUtils, groupByConf, endPartition, today).analyzeGroupBy(groupByConf)
 
-    print(aggregationsMetadata)
+    print(aggregationsMetadata.mkString("Array(", ", ", ")"))
     assertTrue(aggregationsMetadata.length == 2)
 
     val columns = aggregationsMetadata.map(a => a.name -> a.columnType).toMap
@@ -557,7 +560,7 @@ class GroupByTest {
     val joinSource = TestUtils.getParentJoin(spark, namespace, "parent_join_table", "parent_gb")
     val query = Builders.Query(startPartition = today)
     val chainingGroupBy = TestUtils.getTestGBWithJoinSource(joinSource, query, namespace, "chaining_gb")
-    val newGroupBy = GroupBy.replaceJoinSource(chainingGroupBy, PartitionRange(today, today), tableUtils, false)
+    val newGroupBy = GroupBy.replaceJoinSource(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = false)
 
     assertEquals(joinSource.metaData.outputTable, newGroupBy.sources.get(0).table)
     assertEquals(joinSource.left.topic + Constants.TopicInvalidSuffix, newGroupBy.sources.get(0).topic)
@@ -574,7 +577,7 @@ class GroupByTest {
     val joinSource = TestUtils.getParentJoin(spark, namespace, joinName, parentGBName)
     val query = Builders.Query(startPartition = today)
     val chainingGroupBy = TestUtils.getTestGBWithJoinSource(joinSource, query, namespace, "user_viewed_price_gb")
-    val newGroupBy = GroupBy.from(chainingGroupBy, PartitionRange(today, today), tableUtils, true)
+    val newGroupBy = GroupBy.from(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = true)
 
     //verify parent join output table is computed and
     assertTrue(spark.catalog.tableExists(s"$namespace.parent_join_table"))
