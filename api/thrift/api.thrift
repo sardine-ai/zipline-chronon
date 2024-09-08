@@ -421,3 +421,9 @@ struct DataSpec {
     3: optional i32 retentionDays
     4: optional map<string, string> props
 }
+
+struct Model {
+    1: optional TDataType predictionSchema
+    2: optional MetaData metaData
+    3: optional Join join
+}
