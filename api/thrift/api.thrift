@@ -422,8 +422,15 @@ struct DataSpec {
     4: optional map<string, string> props
 }
 
+enum ModelType {
+    XGBoost = 1
+    PyTorch = 2
+}
+
 struct Model {
-    1: optional TDataType predictionSchema
-    2: optional MetaData metaData
-    3: optional Join join
+    1: optional TDataType outputSchema
+    2: optional ModelType modelType
+    3: optional MetaData metaData
+    4: optional Source source
+    5: optional map<string, string> modelParams
 }

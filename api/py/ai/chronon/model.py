@@ -5,17 +5,23 @@ import inspect
 import json
 from typing import List, Optional, Union, Dict, Callable, Tuple
 
+class ModelType:
+    XGBoost = ttypes.ModelType.XGBoost
+    PyTorth = ttypes.ModelType.PyTorch
 
+# Name must match S3 path that we expose if you're uploading trained models?
 def Model(
-    name: str,
-    join: Union[ttypes.Join | str],
-    predictionSchema: map[str, str],
+    source: ttypes.Source,
+    outputSchema: dict[str, str],
+    modelType: ModelType,
+    name: str = None,
+    modelParams: dict[str, str] = {}
 ) -> ttypes.Model:
-    
-    if (isinstance(join, str)):
-        # Todo load repo and get Join object
-        join=join
-    
+    outputSchema = None
+    # Todo: convert map to Tdata type
 
-    return ttypes.model(name=name, join=join, predictionSchema=predictionSchema)
+    metaData = ttypes.MetaData(
+        name=name,
+    )
 
+    return ttypes.Model(modelType=modelType, outputSchema=outputSchema, source=source, modelParams=modelParams, metaData=metaData)
