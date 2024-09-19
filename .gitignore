@@ -9,6 +9,7 @@
 *.ear
 *.logs
 *.iml
+*.db
 .idea/
 .eclipse
 **/.vscode/
