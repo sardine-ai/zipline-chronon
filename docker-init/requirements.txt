@@ -1,0 +1,7 @@
+numpy
+pyspark==3.5.2
+boto3
+s3fs
+pandas
+setuptools
+awswrangler==3.9.1
