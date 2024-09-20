@@ -73,37 +73,6 @@ def generate_timeseries_with_anomalies(num_samples=1000, base_value=100, amplitu
 
     return data, {'null': null_window, 'spike': spike_window}
 
-# # Generate the time series data
-# timeseries_data, anomaly_windows = generate_timeseries_with_anomalies(num_samples=10000)
-
-# # Convert to numpy arrays for easier plotting
-# times, values = zip(*timeseries_data)
-# times = np.array(times)
-# values = np.array(values)
-
-# # Plotting
-# plt.figure(figsize=(20, 10))
-# plt.plot(times, values, alpha=0.7)
-# plt.title('Time Series with Null and Spike Anomalies')
-# plt.xlabel('Date')
-# plt.ylabel('Value')
-
-# # Highlight anomaly windows
-# colors = {'null': 'red', 'spike': 'green'}
-# for anomaly_type, (start, end) in anomaly_windows.items():
-#     plt.axvspan(start, end, alpha=0.2, color=colors[anomaly_type], label=f'{anomaly_type} anomaly')
-    
-#     # Annotate the anomaly period
-#     mid_point = start + (end - start) / 2
-#     plt.annotate(anomaly_type, (mid_point, plt.gca().get_ylim()[1]), 
-#                  ha='center', va='bottom', rotation=0)
-
-# plt.legend()
-# plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-# plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
-# plt.xticks(rotation=45)
-# plt.tight_layout()
-# plt.show()
 
 fraud_fields = [
     StructField("transaction_amount", DecimalType(), True),
