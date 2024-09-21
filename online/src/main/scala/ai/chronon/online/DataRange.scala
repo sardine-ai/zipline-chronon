@@ -78,6 +78,10 @@ case class PartitionRange(start: String, end: String)(implicit partitionSpec: Pa
     s"$partitionColumn BETWEEN '$start' AND '$end'"
   }
 
+  def whereClauses(partitionColumn: String): Seq[String] = {
+    (Option(start).map(s => s"$partitionColumn >= '$s'") ++ Option(end).map(e => s"$partitionColumn <= '$e")).toSeq
+  }
+
   def steps(days: Int): Seq[PartitionRange] = {
     partitions
       .sliding(days, days)

@@ -10,7 +10,9 @@ import java.io.File
 import java.util
 import scala.util.Random
 
-object AvroEncodeDecode {
+
+// used for benchmarking decoding throughput
+object AvroDecodingBenchmark {
   // Define the Avro schema
   val schema: Schema = new Schema.Parser().parse(
     """

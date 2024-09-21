@@ -48,7 +48,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, overwatch)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -125,7 +125,7 @@ lazy val online = project
       "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8"
     ),
     libraryDependencies ++= jackson,
-    libraryDependencies ++= spark_all.map(_ % "provided"),
+    libraryDependencies ++= spark_all, //.map(_ % "provided"),
     libraryDependencies ++= flink_all.map(_ % "provided")
   )
 
@@ -162,6 +162,13 @@ lazy val spark = project
   )
 
 lazy val flink = project
+  .dependsOn(aggregator.%("compile->compile;test->test"), online)
+  .settings(
+    libraryDependencies ++= spark_all,
+    libraryDependencies ++= flink_all
+  )
+
+lazy val overwatch = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
     libraryDependencies ++= spark_all,

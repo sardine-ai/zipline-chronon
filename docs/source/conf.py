@@ -74,20 +74,13 @@ html_theme_options = {
     "use_download_button": True,
     "icon_links": [
         {
-            "name": "Discord",
-            "url": "https://discord.gg/GbmGATNqqP",
-            "icon": "fa-brands fa-discord",
+            "name": "Chronon Slack",
+            "url": "https://join.slack.com/t/chrononworkspace/shared_invite/zt-1no5t3lxd-mFUo644T6tPJOeTeZRTggw",
+            "icon": "fa-brands fa-slack",
             "type": "fontawesome",
-        },
-        # {
-        #     "name": "Pip Package",
-        #     "url": "https://pypi.org/project/chronon-ai/",
-        #     "icon": "fa-brands fa-python",
-        #     "type": "fontawesome",
-        # }
+        }
     ],
-    "article_header_end": ["navbar-icon-links.html", "theme-switcher.html"],
-    # "navbar_end": ["navbar-icon-links.html", "search-field.html"]
+    "article_header_end": ["navbar-icon-links.html", "theme-switcher.html"]
 }
 
 html_sidebars = {
