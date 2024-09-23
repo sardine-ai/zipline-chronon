@@ -37,3 +37,12 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+
+  app:
+    # image: generate_anomalous_data
+    build: .
+    environment:
+      - DYNAMO_ENDPOINT=http://dynamo:8000
+      - AWS_DEFAULT_REGION=fakeregion
+      - AWS_ACCESS_KEY_ID=fakeaccesskey
+      - AWS_SECRET_ACCESS_KEY=fakesecretkey

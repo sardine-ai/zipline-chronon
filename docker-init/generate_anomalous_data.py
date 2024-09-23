@@ -7,11 +7,12 @@ from pyspark.sql.types import StructType, StructField, DoubleType, FloatType, In
 import pandas as pd
 import boto3
 import awswrangler as wr
+import os
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("FraudClassificationSchema").getOrCreate()
 
-ENDPOINT_URL = 'http://localhost:8000'
+ENDPOINT_URL = os.environ.get("DYNAMO_ENDPOINT") if os.environ.get("DYNAMO_ENDPOINT") is not None else 'http://localhost:8000'
 
 wr.config.dynamodb_endpoint_url = ENDPOINT_URL
 
@@ -76,7 +77,7 @@ def generate_timeseries_with_anomalies(num_samples=1000, base_value=100, amplitu
 
 fraud_fields = [
     StructField("transaction_amount", DecimalType(), True),
-    StructField("transaction_time", StringType(), True),
+    StructField("transaction_time", DecimalType(), True),
     StructField("transaction_type", StringType(), True),
     StructField("merchant_category_code", IntegerType(), True),
     StructField("account_age", IntegerType(), True),
@@ -121,7 +122,7 @@ def generate_sample_data(num_samples=10000):
         # Generate other features
         row = [
             Decimal(str(transaction_amount[i][1]) if transaction_amount[i][1] is not None else "0"),
-            str(transaction_time),
+            Decimal(str(transaction_time.timestamp())),
             random.choice(['purchase', 'withdrawal', 'transfer']),
             random.randint(1000, 9999),
             random.randint(1, 3650),
@@ -156,17 +157,15 @@ df = spark.createDataFrame(data, schema=fraud_schema)
 
 pandas_df = df.select("*").toPandas()
 
-print(pandas_df.to_string())
+# print(pandas_df.to_string())
 
 dynamodb = boto3.client('dynamodb', endpoint_url=ENDPOINT_URL)
-# boto_session = boto3.Session()
-# dynamodb = boto_session.client('dynamodb', endpoint_url='http://localhost')
 try:
     dynamodb.create_table(
         AttributeDefinitions=[
             {
                 'AttributeName': 'transaction_time',
-                'AttributeType': 'S',
+                'AttributeType': 'N',
             },
         ],
         TableName='anomalous_data_table',
@@ -186,4 +185,6 @@ except dynamodb.exceptions.ResourceInUseException:
     # This means it already exists.
     pass
 
+print("Uploading anomalous data to Dynamodb")
 wr.dynamodb.put_df(df=pandas_df, table_name="anomalous_data_table")
+print("Successfully uploaded anomalous data to Dynamodb")
