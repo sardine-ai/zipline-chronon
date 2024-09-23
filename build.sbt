@@ -17,6 +17,8 @@ import sbt.Tests.{Group, SubProcess}
 // java incompatibility is probably not an issue, hopefully we can cross build flink 1.17 & 1.18 without code changes
 
 lazy val scala_2_12 = "2.12.18"
+lazy val scala_2_13 = "2.13.14"
+
 // spark deps: https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.12/3.5.0
 // avro 1.11.2, jackson: 2.15.2
 lazy val spark_3_5 = "3.5.1"
@@ -48,7 +50,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, webservice)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -175,6 +177,18 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
     libraryDependencies ++= spark_all
+  )
+
+lazy val webservice = (project in file("webservice"))
+  .enablePlugins(PlayScala)
+  .settings(
+    name := "webservice",
+    // play dropped support for Scala 2.12 in release 2.9
+    scalaVersion := scala_2_13,
+    libraryDependencies ++= Seq(
+      guice,
+      "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test
+    )
   )
 
 ThisBuild / assemblyMergeStrategy := {
