@@ -1,12 +1,13 @@
-@(message: String)
+@(title: String)(content: Html)
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Chronon Home</title>
+    <title>@title</title>
     <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+    <script src="@routes.Assets.versioned("javascripts/home.bundle.js")" defer></script>
 </head>
 <body>
-<h1>@message</h1>
+@content
 </body>
 </html>

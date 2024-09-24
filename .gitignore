@@ -43,3 +43,13 @@ mvn_settings.xml
 # Release folder
 releases
 
+# Npm
+node_modules/
+npm-debug.log*
+
+# Play Framework
+logs/
+RUNNING_PID
+
+# Webpack output
+public/javascripts/*.bundle.js

@@ -179,6 +179,9 @@ lazy val cloud_gcp = project
     libraryDependencies ++= spark_all
   )
 
+// Webpack integration
+lazy val webpack = taskKey[Unit]("Run webpack")
+
 lazy val webservice = (project in file("webservice"))
   .enablePlugins(PlayScala)
   .settings(
@@ -188,7 +191,16 @@ lazy val webservice = (project in file("webservice"))
     libraryDependencies ++= Seq(
       guice,
       "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test
-    )
+    ),
+    webpack := {
+      println("Running webpack...")
+      import scala.sys.process._
+      Process("npm run build", file("webservice")) !
+    },
+    // Run webpack before starting the play app
+    Compile / run := ((Compile / run) dependsOn webpack).evaluated,
+    // Run webpack before staging the app
+    Compile / stage := ((Compile / stage) dependsOn webpack).value
   )
 
 ThisBuild / assemblyMergeStrategy := {
