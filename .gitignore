@@ -44,7 +44,7 @@ mvn_settings.xml
 releases
 
 # Frontend build assets
-/webservice/public
+/hub/public
 
 # Frontend node_modules
 /frontend/node_modules

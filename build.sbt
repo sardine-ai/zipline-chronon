@@ -195,9 +195,9 @@ lazy val frontend = (project in file("frontend"))
       val buildResult = Process("npm run build", file("frontend")).!
 
       if (buildResult == 0) {
-        println("Copying frontend assets to /webservice/public...")
+        println("Copying frontend assets to /hub/public...")
         val buildDir = file("frontend/build")
-        val publicDir = file("webservice/public")
+        val publicDir = file("hub/public")
 
         // Clean the target directory if needed
         IO.delete(publicDir)
@@ -220,7 +220,7 @@ lazy val hub = (project in file("hub"))
       guice,
       "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test
     ),
-    // Ensure webservice depends on frontend build
+    // Ensure hub depends on frontend build
     Compile / run := ((Compile / run) dependsOn (frontend / buildFrontend)).evaluated,
     Compile / stage := ((Compile / stage) dependsOn (frontend / buildFrontend)).value
   )
