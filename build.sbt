@@ -50,7 +50,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, webservice)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, hub)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -93,7 +93,6 @@ lazy val api = project
     }.taskValue,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_sql_provided,
-
     libraryDependencies ++= Seq(
       "org.apache.thrift" % "libthrift" % "0.13.0", // cannot upgrade this without breaking compatibility
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -102,16 +101,16 @@ lazy val api = project
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
       "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test"
     )
-)
+  )
 
 lazy val aggregator = project
   .dependsOn(api.%("compile->compile;test->test"))
   .settings(
     libraryDependencies ++= Seq(
-        "com.yahoo.datasketches" % "sketches-core" % "0.13.4",
-        "com.google.code.gson" % "gson" % "2.10.1"
-      ),
-    libraryDependencies ++= spark_sql_provided,
+      "com.yahoo.datasketches" % "sketches-core" % "0.13.4",
+      "com.google.code.gson" % "gson" % "2.10.1"
+    ),
+    libraryDependencies ++= spark_sql_provided
   )
 
 // todo add a service module with spark as a hard dependency
@@ -130,7 +129,6 @@ lazy val online = project
     libraryDependencies ++= spark_all.map(_ % "provided"),
     libraryDependencies ++= flink_all.map(_ % "provided")
   )
-
 
 lazy val tmp_warehouse = "/tmp/chronon/"
 def cleanSparkMeta(): Unit = {
@@ -160,7 +158,7 @@ lazy val spark = project
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
     libraryDependencies ++= spark_all.map(_ % "test"),
-    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
+    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3"
   )
 
 lazy val flink = project
@@ -179,10 +177,10 @@ lazy val cloud_gcp = project
     libraryDependencies ++= spark_all
   )
 
-lazy val webservice = (project in file("webservice"))
+lazy val hub = (project in file("hub"))
   .enablePlugins(PlayScala)
   .settings(
-    name := "webservice",
+    name := "hub",
     // play dropped support for Scala 2.12 in release 2.9
     scalaVersion := scala_2_13,
     libraryDependencies ++= Seq(
@@ -193,10 +191,10 @@ lazy val webservice = (project in file("webservice"))
 
 ThisBuild / assemblyMergeStrategy := {
   case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
-  case PathList("META-INF", _*)         => MergeStrategy.filterDistinctLines
+  case PathList("META-INF", _*)            => MergeStrategy.filterDistinctLines
   case "plugin.xml"                        => MergeStrategy.last
-  case PathList("com", "fasterxml", _*) => MergeStrategy.last
-  case PathList("com", "google", _*)    => MergeStrategy.last
+  case PathList("com", "fasterxml", _*)    => MergeStrategy.last
+  case PathList("com", "google", _*)       => MergeStrategy.last
   case _                                   => MergeStrategy.first
 }
 exportJars := true
