@@ -45,3 +45,26 @@ releases
 
 # Frontend build assets
 /webservice/public
+
+# Frontend node_modules
+/frontend/node_modules
+
+# Frontend Output
+/frontend/.output
+/frontend/.vercel
+/frontend/.svelte-kit
+/frontend/build
+
+# Frontend OS
+/frontend/.DS_Store
+/frontend/Thumbs.db
+
+# Frontend Env
+/frontend/.env
+/frontend/.env.*
+!/frontend/.env.example
+!/frontend/.env.test
+
+# Frontend Vite
+/frontend/vite.config.js.timestamp-*
+/frontend/vite.config.ts.timestamp-*
