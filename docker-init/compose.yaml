@@ -39,8 +39,8 @@ services:
       - SPARK_USER=spark
 
   app:
-    # image: generate_anomalous_data
     build: .
+    command: tail nothing
     environment:
       - DYNAMO_ENDPOINT=http://dynamo:8000
       - AWS_DEFAULT_REGION=fakeregion

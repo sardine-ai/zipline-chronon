@@ -133,6 +133,9 @@ def generate_fraud_sample_data(num_samples=10000):
       
     data = []
     time_delta = (end_date - start_date) / num_samples
+
+    anomoly_windows = generate_non_overlapping_windows(start_date, end_date, 2)
+
     # Generate base values
     transaction_amount, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=100, amplitude=50, noise_level=10)
     account_balance, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=5000, amplitude=2000, noise_level=500)
@@ -147,13 +150,14 @@ def generate_fraud_sample_data(num_samples=10000):
         merchant_id = random.randint(1,250)
         if user_last_hour_list[i][1] == None:
             user_last_hour = user_last_hour_list[i][1]
+            user_last_day = None
             user_last_week = None
             user_last_month = None
             user_last_year = None
         else:
             user_last_hour = int(user_last_hour_list[i][1])
-            user_last_day = random.randint(user_last_hour, 50)
-            user_last_week = random.randint(user_last_day, 200)
+            user_last_day = random.randint(user_last_hour, 100)
+            user_last_week = random.randint(user_last_day, 500)
             user_last_month = random.randint(user_last_week, 1000)
             user_last_year = random.randint(user_last_month, 10000)
         user_account_age = random.randint(1, 3650)
@@ -166,11 +170,43 @@ def generate_fraud_sample_data(num_samples=10000):
             merchant_last_year = None
         else:
             merchant_last_hour = int(merchant_last_hour_list[i][1])
-            merchant_last_day = random.randint(merchant_last_hour, 50)
-            merchant_last_week = random.randint(merchant_last_day, 200)
+            merchant_last_day = random.randint(merchant_last_hour, 100)
+            merchant_last_week = random.randint(merchant_last_day, 500)
             merchant_last_month = random.randint(merchant_last_week, 1000)
             merchant_last_year = random.randint(merchant_last_month, 10000)
         # Generate other features
+
+        is_fast_drift = transaction_time > anomoly_windows[0][0] and transaction_time < anomoly_windows[0][1]
+        is_slow_drift = transaction_time > anomoly_windows[1][0] and transaction_time < anomoly_windows[1][1]
+
+        if is_fast_drift and user_last_hour is not None:
+            user_last_hour *= 10
+            user_last_day *= 10
+            user_last_week *= 10
+            user_last_month *= 10
+            user_last_year *= 10
+
+        if is_fast_drift and merchant_last_hour is not None:
+            merchant_last_hour *= 10
+            merchant_last_day *= 10
+            merchant_last_week *= 10
+            merchant_last_month *= 10
+            merchant_last_year *= 10
+
+        if is_slow_drift and user_last_hour is not None:
+            user_last_hour = int(user_last_hour * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            user_last_day = int(user_last_day * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            user_last_week = int(user_last_week * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            user_last_month = int(user_last_month * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            user_last_year = int(user_last_year * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+
+        if is_slow_drift and merchant_last_hour is not None:
+            merchant_last_hour = int(merchant_last_hour * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            merchant_last_day = int(merchant_last_day * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            merchant_last_week = int(merchant_last_week * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            merchant_last_month = int(merchant_last_month * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            merchant_last_year = int(merchant_last_year * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+
         row = [
             # join.source - txn_events
             random.randint(1,100),
@@ -204,7 +240,7 @@ def generate_fraud_sample_data(num_samples=10000):
             account_balance[i][1],
             random.randint(300, 850),
             random.randint(1, 5),
-            random.choice(['US', 'UK', 'CA', 'AU', 'DE', 'FR']),
+            random.choice(['US', 'UK', 'CA', 'AU', 'DE', 'FR']) if not is_fast_drift  else random.choice(['US', 'UK', 'CA', 'BR', 'ET', 'GE']),
             random.randint(0, 100),
             random.choice(['en-US', 'es-ES', 'fr-FR', 'de-DE', 'zh-CN']),
 
@@ -212,7 +248,7 @@ def generate_fraud_sample_data(num_samples=10000):
             random.randint(1, 3650),
             random.randint(10000, 99999),
             merchant_id < 100, 
-            random.choice(['US', 'UK', 'CA', 'AU', 'DE', 'FR']),
+            random.choice(['US', 'UK', 'CA', 'AU', 'DE', 'FR'])  if not is_fast_drift  else random.choice(['US', 'UK', 'CA', 'BR', 'ET', 'GE']),
             random.randint(0, 100),
             random.choice(['en-US', 'es-ES', 'fr-FR', 'de-DE', 'zh-CN']),
             
