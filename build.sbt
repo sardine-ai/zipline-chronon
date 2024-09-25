@@ -185,10 +185,10 @@ lazy val frontend = (project in file("frontend"))
     buildFrontend := {
       println("Installing frontend dependencies...")
       import scala.sys.process._
-      val npmInstallResult = Process("npm install", file("frontend")).!
+      val npmCiResult = Process("npm ci", file("frontend")).!
 
-      if (npmInstallResult != 0) {
-        sys.error("npm install failed!")
+      if (npmCiResult != 0) {
+        sys.error("npm ci failed!")
       }
 
       println("Building frontend...")
