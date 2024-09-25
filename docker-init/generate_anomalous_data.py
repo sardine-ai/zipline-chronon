@@ -1,10 +1,8 @@
-from decimal import Decimal
 import random
 from datetime import datetime, timedelta
 import numpy as np
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, DoubleType, FloatType, IntegerType, StringType, TimestampType, BooleanType, DecimalType
-import pandas as pd
+from pyspark.sql.types import StructType, StructField, DoubleType, IntegerType, StringType, TimestampType, BooleanType
 import boto3
 import awswrangler as wr
 import os
@@ -134,7 +132,7 @@ def generate_fraud_sample_data(num_samples=10000):
     data = []
     time_delta = (end_date - start_date) / num_samples
 
-    anomoly_windows = generate_non_overlapping_windows(start_date, end_date, 2)
+    anomaly_windows = generate_non_overlapping_windows(start_date, end_date, 2)
 
     # Generate base values
     transaction_amount, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=100, amplitude=50, noise_level=10)
@@ -148,7 +146,7 @@ def generate_fraud_sample_data(num_samples=10000):
     for i in range(num_samples):
         transaction_time = start_date + i * time_delta
         merchant_id = random.randint(1,250)
-        if user_last_hour_list[i][1] == None:
+        if user_last_hour_list[i][1] is None:
             user_last_hour = user_last_hour_list[i][1]
             user_last_day = None
             user_last_week = None
@@ -162,7 +160,7 @@ def generate_fraud_sample_data(num_samples=10000):
             user_last_year = random.randint(user_last_month, 10000)
         user_account_age = random.randint(1, 3650)
 
-        if merchant_last_hour_list[i][1] == None:
+        if merchant_last_hour_list[i][1] is None:
             merchant_last_hour = merchant_last_hour_list[i][1]
             merchant_last_day = None
             merchant_last_week = None
@@ -176,8 +174,8 @@ def generate_fraud_sample_data(num_samples=10000):
             merchant_last_year = random.randint(merchant_last_month, 10000)
         # Generate other features
 
-        is_fast_drift = transaction_time > anomoly_windows[0][0] and transaction_time < anomoly_windows[0][1]
-        is_slow_drift = transaction_time > anomoly_windows[1][0] and transaction_time < anomoly_windows[1][1]
+        is_fast_drift = transaction_time > anomaly_windows[0][0] and transaction_time < anomaly_windows[0][1]
+        is_slow_drift = transaction_time > anomaly_windows[1][0] and transaction_time < anomaly_windows[1][1]
 
         if is_fast_drift and user_last_hour is not None:
             user_last_hour *= 10
@@ -194,18 +192,18 @@ def generate_fraud_sample_data(num_samples=10000):
             merchant_last_year *= 10
 
         if is_slow_drift and user_last_hour is not None:
-            user_last_hour = int(user_last_hour * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            user_last_day = int(user_last_day * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            user_last_week = int(user_last_week * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            user_last_month = int(user_last_month * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            user_last_year = int(user_last_year * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            user_last_hour = int(user_last_hour * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            user_last_day = int(user_last_day * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            user_last_week = int(user_last_week * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            user_last_month = int(user_last_month * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            user_last_year = int(user_last_year * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
 
         if is_slow_drift and merchant_last_hour is not None:
-            merchant_last_hour = int(merchant_last_hour * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            merchant_last_day = int(merchant_last_day * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            merchant_last_week = int(merchant_last_week * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            merchant_last_month = int(merchant_last_month * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
-            merchant_last_year = int(merchant_last_year * (1+(0.05)**((transaction_time-anomoly_windows[1][0])).days))
+            merchant_last_hour = int(merchant_last_hour * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            merchant_last_day = int(merchant_last_day * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            merchant_last_week = int(merchant_last_week * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            merchant_last_month = int(merchant_last_month * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
+            merchant_last_year = int(merchant_last_year * (1.05)**((transaction_time-anomaly_windows[1][0])).days)
 
         row = [
             # join.source - txn_events

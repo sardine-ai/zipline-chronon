@@ -1,7 +1,6 @@
 awswrangler==3.9.1
-boto3==1.35.23
+boto3==1.28.62
 chronon-ai==0.0.82
 numpy==1.26.4
-pandas==2.2.2
 pyspark==3.5.2
 

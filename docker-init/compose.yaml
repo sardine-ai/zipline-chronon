@@ -40,7 +40,7 @@ services:
 
   app:
     build: .
-    command: tail nothing
+    command: tail -F nothing
     environment:
       - DYNAMO_ENDPOINT=http://dynamo:8000
       - AWS_DEFAULT_REGION=fakeregion

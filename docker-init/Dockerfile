@@ -1,5 +1,5 @@
-FROM python:3.9.8-slim-buster AS py3
-FROM openjdk:8-slim-buster
+FROM python:3.11-slim-buster AS py3
+FROM openjdk:11-slim-buster
 
 COPY --from=py3 / /
 
@@ -16,5 +16,3 @@ ENV AWS_ACCESS_KEY_ID="fakeaccesskey"
 ENV AWS_SECRET_ACCESS_KEY="fakesecretkey"
 
 RUN python3 generate_anomalous_data.py
-
-CMD [ "bash" ]
