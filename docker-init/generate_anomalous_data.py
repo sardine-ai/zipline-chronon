@@ -15,7 +15,7 @@ spark = SparkSession.builder.appName("FraudClassificationSchema").getOrCreate()
 ENDPOINT_URL = os.environ.get("DYNAMO_ENDPOINT") if os.environ.get("DYNAMO_ENDPOINT") is not None else 'http://localhost:8000'
 
 wr.config.dynamodb_endpoint_url = ENDPOINT_URL
-
+dynamodb = boto3.client('dynamodb', endpoint_url=ENDPOINT_URL)
 
 
 def time_to_value(t, base_value, amplitude, noise_level, scale=1):
@@ -76,35 +76,58 @@ def generate_timeseries_with_anomalies(num_samples=1000, base_value=100, amplitu
 
 
 fraud_fields = [
-    StructField("transaction_amount", DecimalType(), True),
-    StructField("transaction_time", DecimalType(), True),
-    StructField("transaction_type", StringType(), True),
-    StructField("merchant_category_code", IntegerType(), True),
-    StructField("account_age", IntegerType(), True),
-    StructField("account_balance", DecimalType(), True),
-    StructField("credit_score", IntegerType(), True),
-    StructField("number_of_cards", IntegerType(), True),
-    StructField("average_transaction_amount", DecimalType(), True),
-    StructField("transaction_frequency", DecimalType(), True),
+    # join.source - txn_events
+      StructField("user_id", IntegerType(), True),
+      StructField("merchant_id", IntegerType(), True),
+
+    # Contextual - 3
+	StructField("transaction_amount", DoubleType(), True),
+	StructField("transaction_time", TimestampType(), True),
+	StructField("transaction_type", StringType(), True),
+
+    # Transactions agg’d by user - 7 (txn_events)
+	StructField("user_average_transaction_amount", DoubleType(), True),    
+    StructField("user_transactions_last_hour", IntegerType(), True),
+	StructField("user_transactions_last_day", IntegerType(), True),
+    StructField("user_transactions_last_week", IntegerType(), True),
+    StructField("user_transactions_last_month", IntegerType(), True),
+    StructField("user_transactions_last_year", IntegerType(), True),
+	StructField("user_amount_last_hour", DoubleType(), True),
+
+    # Transactions agg’d by merchant - 7 (txn_events)
+	StructField("merchant_average_transaction_amount", DoubleType(), True),    
+    StructField("merchant_transactions_last_hour", IntegerType(), True),
+	StructField("merchant_transactions_last_day", IntegerType(), True),
+    StructField("merchant_transactions_last_week", IntegerType(), True),
+    StructField("merchant_transactions_last_month", IntegerType(), True),
+    StructField("merchant_transactions_last_year", IntegerType(), True),
+	StructField("merchant_amount_last_hour", DoubleType(), True),
+
+    # User features (dim_user) – 7
+	StructField("user_account_age", IntegerType(), True),
+	StructField("account_balance", DoubleType(), True),
+	StructField("credit_score", IntegerType(), True),
     StructField("number_of_devices", IntegerType(), True),
-    StructField("unusual_hour_flag", BooleanType(), True),
-    StructField("transaction_country", StringType(), True),
-    StructField("distance_from_last_transaction", DecimalType(), True),
-    StructField("ip_address_risk_score", DecimalType(), True),
-    StructField("transactions_last_hour", IntegerType(), True),
-    StructField("transactions_last_day", IntegerType(), True),
-    StructField("amount_last_hour", DecimalType(), True),
-    StructField("new_beneficiary_flag", BooleanType(), True),
-    StructField("common_beneficiary_count", IntegerType(), True),
-    StructField("device_type", StringType(), True),
-    StructField("browser_language", StringType(), True),
-    StructField("proxy_flag", BooleanType(), True),
-    StructField("previous_fraud_flag", BooleanType(), True),
-    StructField("days_since_last_transaction", IntegerType(), True)
+    StructField("user_country", StringType(), True),
+    StructField("user_account_type", IntegerType(), True),
+    StructField("user_preferred_language", StringType(), True),
+
+    # merchant features (dim_merchant) – 4
+	StructField("merchant_account_age", IntegerType(), True),
+	StructField("zipcode", IntegerType(), True),
+    # set to true for 100 merchant_ids
+    StructField("is_big_merchant", BooleanType(), True),
+    StructField("merchant_country", StringType(), True),
+    StructField("merchant_account_type", IntegerType(), True),      
+    StructField("merchant_preferred_language", StringType(), True),
+
+
+    # derived features - transactions_last_year / account_age - 1
+	StructField("transaction_frequency_last_year", DoubleType(), True),
 ]
 
 fraud_schema = StructType(fraud_fields)
-def generate_sample_data(num_samples=10000):
+def generate_fraud_sample_data(num_samples=10000):
     start_date = datetime(2023, 1, 1)
     end_date = datetime(2023, 12, 31)
       
@@ -113,78 +136,95 @@ def generate_sample_data(num_samples=10000):
     # Generate base values
     transaction_amount, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=100, amplitude=50, noise_level=10)
     account_balance, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=5000, amplitude=2000, noise_level=500)
-    average_transaction_amount, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=80, amplitude=30, noise_level=5)
-    transaction_frequency, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=5, amplitude=3, noise_level=1)
+    user_average_transaction_amount, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=80, amplitude=30, noise_level=5)
+    merchant_average_transaction_amount, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=80, amplitude=30, noise_level=5)
+    user_last_hour_list, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=5, amplitude=3, noise_level=1)
+    merchant_last_hour_list, _ = generate_timeseries_with_anomalies(num_samples=num_samples, base_value=5, amplitude=3, noise_level=1)
 
     # print(len(transaction_amount), len(transaction_frequency), len(average_transaction_amount), len(account_balance))
     for i in range(num_samples):
         transaction_time = start_date + i * time_delta
+        merchant_id = random.randint(1,250)
+        if user_last_hour_list[i][1] == None:
+            user_last_hour = user_last_hour_list[i][1]
+            user_last_week = None
+            user_last_month = None
+            user_last_year = None
+        else:
+            user_last_hour = int(user_last_hour_list[i][1])
+            user_last_day = random.randint(user_last_hour, 50)
+            user_last_week = random.randint(user_last_day, 200)
+            user_last_month = random.randint(user_last_week, 1000)
+            user_last_year = random.randint(user_last_month, 10000)
+        user_account_age = random.randint(1, 3650)
+
+        if merchant_last_hour_list[i][1] == None:
+            merchant_last_hour = merchant_last_hour_list[i][1]
+            merchant_last_day = None
+            merchant_last_week = None
+            merchant_last_month = None
+            merchant_last_year = None
+        else:
+            merchant_last_hour = int(merchant_last_hour_list[i][1])
+            merchant_last_day = random.randint(merchant_last_hour, 50)
+            merchant_last_week = random.randint(merchant_last_day, 200)
+            merchant_last_month = random.randint(merchant_last_week, 1000)
+            merchant_last_year = random.randint(merchant_last_month, 10000)
         # Generate other features
         row = [
-            Decimal(str(transaction_amount[i][1]) if transaction_amount[i][1] is not None else "0"),
-            Decimal(str(transaction_time.timestamp())),
+            # join.source - txn_events
+            random.randint(1,100),
+            merchant_id,
+
+            # Contextual - 3
+            transaction_amount[i][1],
+            transaction_time,
             random.choice(['purchase', 'withdrawal', 'transfer']),
-            random.randint(1000, 9999),
-            random.randint(1, 3650),
-            Decimal(str(account_balance[i][1]) if account_balance[i][1] is not None else "0"),
+
+            # Transactions agg’d by user - 7 (txn_events)
+            user_average_transaction_amount[i][1],
+            user_last_hour,
+            user_last_day,
+            user_last_week,
+            user_last_month,
+            user_last_year,
+            random.uniform(0,100.0),
+
+            # Transactions agg’d by merchant - 7 (txn_events)
+            merchant_average_transaction_amount[i][1],
+            merchant_last_hour,
+            merchant_last_day,
+            merchant_last_week,
+            merchant_last_month,
+            merchant_last_year,
+            random.uniform(0,1000.0),
+
+            # User features (dim_user) – 7    
+            user_account_age,
+            account_balance[i][1],
             random.randint(300, 850),
             random.randint(1, 5),
-            Decimal(str(average_transaction_amount[i][1]) if average_transaction_amount[i][1] is not None else "0"),
-            Decimal(str(transaction_frequency[i][1]) if transaction_frequency[i][1] is not None else "0"),
-            random.randint(1, 5),
-            random.choice([True, False]),
             random.choice(['US', 'UK', 'CA', 'AU', 'DE', 'FR']),
-            Decimal(str(float(max(0, random.gauss(50, 30))))),
-            Decimal(str(float(random.uniform(0, 1)))),
-            random.randint(0, 10),
-            random.randint(0, 50),
-            Decimal(str(float(max(0, random.gauss(1000, 500))))),
-            random.choice([True, False]),
             random.randint(0, 100),
-            random.choice(['mobile', 'desktop', 'tablet']),
             random.choice(['en-US', 'es-ES', 'fr-FR', 'de-DE', 'zh-CN']),
-            random.choice([True, False]),
-            random.choice([True, False]),
-            random.randint(0, 365)
-        ]
+
+            # merchant features (dim_merchant) – 4
+            random.randint(1, 3650),
+            random.randint(10000, 99999),
+            merchant_id < 100, 
+            random.choice(['US', 'UK', 'CA', 'AU', 'DE', 'FR']),
+            random.randint(0, 100),
+            random.choice(['en-US', 'es-ES', 'fr-FR', 'de-DE', 'zh-CN']),
+            
+            # derived features - transactions_last_year / account_age - 1
+            user_last_year/user_account_age if user_last_year is not None else None,
+]
         
         data.append(tuple(row))
     return data
 
-data = generate_sample_data(20000)
-df = spark.createDataFrame(data, schema=fraud_schema)
-# df.show()
+fraud_data = generate_fraud_sample_data(20000)
+fraud_df = spark.createDataFrame(fraud_data, schema=fraud_schema)
 
-pandas_df = df.select("*").toPandas()
-
-# print(pandas_df.to_string())
-
-dynamodb = boto3.client('dynamodb', endpoint_url=ENDPOINT_URL)
-try:
-    dynamodb.create_table(
-        AttributeDefinitions=[
-            {
-                'AttributeName': 'transaction_time',
-                'AttributeType': 'N',
-            },
-        ],
-        TableName='anomalous_data_table',
-        KeySchema=[
-            {
-                'AttributeName': 'transaction_time',
-                'KeyType': 'HASH'
-            },
-        ],
-        ProvisionedThroughput={
-            "ReadCapacityUnits": 10,
-            "WriteCapacityUnits": 10,
-        },
-    )
-    print("Created anomalous data table")
-except dynamodb.exceptions.ResourceInUseException:
-    # This means it already exists.
-    pass
-
-print("Uploading anomalous data to Dynamodb")
-wr.dynamodb.put_df(df=pandas_df, table_name="anomalous_data_table")
-print("Successfully uploaded anomalous data to Dynamodb")
+fraud_df.write.parquet("data.parquet")
+print("Successfully wrote user data to parquet")
