@@ -177,6 +177,39 @@ lazy val cloud_gcp = project
     libraryDependencies ++= spark_all
   )
 
+// Webpack integration for frontend
+lazy val buildFrontend = taskKey[Unit]("Build frontend")
+
+lazy val frontend = (project in file("frontend"))
+  .settings(
+    buildFrontend := {
+      println("Installing frontend dependencies...")
+      import scala.sys.process._
+      val npmCiResult = Process("npm ci", file("frontend")).!
+
+      if (npmCiResult != 0) {
+        sys.error("npm ci failed!")
+      }
+
+      println("Building frontend...")
+      val buildResult = Process("npm run build", file("frontend")).!
+
+      if (buildResult == 0) {
+        println("Copying frontend assets to /hub/public...")
+        val buildDir = file("frontend/build")
+        val publicDir = file("hub/public")
+
+        // Clean the target directory if needed
+        IO.delete(publicDir)
+
+        // Copy the build files to the public folder
+        IO.copyDirectory(buildDir, publicDir)
+      } else {
+        sys.error("Frontend build failed!")
+      }
+    }
+  )
+
 lazy val hub = (project in file("hub"))
   .enablePlugins(PlayScala)
   .settings(
@@ -186,7 +219,10 @@ lazy val hub = (project in file("hub"))
     libraryDependencies ++= Seq(
       guice,
       "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test
-    )
+    ),
+    // Ensure hub depends on frontend build
+    Compile / run := ((Compile / run) dependsOn (frontend / buildFrontend)).evaluated,
+    Compile / stage := ((Compile / stage) dependsOn (frontend / buildFrontend)).value
   )
 
 ThisBuild / assemblyMergeStrategy := {
