@@ -9,8 +9,7 @@ services:
     volumes:
       - "./docker/dynamodb:/home/dynamodblocal/data"
     working_dir: /home/dynamodblocal
-    user: root
-
+    user: dynamodblocal
 
   spark:
     image: bitnami/spark:3.5.2
