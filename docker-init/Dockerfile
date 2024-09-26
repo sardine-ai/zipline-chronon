@@ -1,8 +1,4 @@
-# FROM python:3.11-slim-buster AS py3
 FROM amazoncorretto:17
-
-# COPY --from=py3 / /
-
 
  # Install python deps
 COPY requirements.txt .
