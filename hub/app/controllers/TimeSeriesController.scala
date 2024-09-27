@@ -210,26 +210,21 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                                   granularity: Granularity,
                                   offset: Option[String],
                                   algorithm: Option[String]): Result = {
-    val maybeOffset = parseOffset(offset)
-    val maybeAlgorithm = parseAlgorithm(algorithm)
-
-    if (maybeOffset.isEmpty) {
-      BadRequest(s"Unable to parse offset - $offset")
-    } else if (maybeAlgorithm.isEmpty) {
-      BadRequest("Invalid drift algorithm. Expect PSI or KL")
-    } else if (granularity == Raw) {
+    if (granularity == Raw) {
       BadRequest("We don't support Raw granularity for drift metric types")
     } else {
-      // TODO uncomment when we're ready to use these
-      //val offset = maybeOffset.get
-      //val algorithm = maybeAlgorithm.get
-      val featureTs = if (granularity == Aggregates) {
-        FeatureTimeSeries(name, generateMockTimeSeriesPoints(startTs, endTs))
-      } else {
-        FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs))
+      (parseOffset(offset), parseAlgorithm(algorithm)) match {
+        case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
+        case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+        case (Some(parsedOffset), Some(parsedAlgorithm)) =>
+          // TODO: Use parsedOffset and parsedAlgorithm when ready
+          val featureTs = if (granularity == Aggregates) {
+            FeatureTimeSeries(name, generateMockTimeSeriesPoints(startTs, endTs))
+          } else {
+            FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs))
+          }
+          Ok(featureTs.asJson.noSpaces)
       }
-      val json = featureTs.asJson.noSpaces
-      Ok(json)
     }
   }
 
