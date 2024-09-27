@@ -13,20 +13,7 @@ import javax.inject._
   */
 class SearchController @Inject() (val controllerComponents: ControllerComponents) extends BaseController with Paginate {
 
-  // temporarily serve up mock data while we wait on hooking up our KV store layer
-  private[this] def generateMockModel(id: String): Model =
-    Model(s"my test model - $id",
-          id,
-          online = true,
-          production = true,
-          "my team",
-          "XGBoost",
-          1719262147000L,
-          1727210947000L)
-  private[this] val mockModelRegistry: Seq[Model] = (0 until 100).map(i => generateMockModel(i.toString))
-
-  val defaultOffset = 0
-  val defaultLimit = 10
+  import MockDataService._
 
   /**
     * Powers the /api/v1/search endpoint. Returns a list of models
