@@ -31,9 +31,6 @@ case object KL extends DriftAlgorithm
 /** Supported metric rollups */
 sealed trait Metric
 
-/** Roll up by computing max */
-case object MaxMetric extends Metric
-
 /** Roll up over null counts */
 case object NullMetric extends Metric
 

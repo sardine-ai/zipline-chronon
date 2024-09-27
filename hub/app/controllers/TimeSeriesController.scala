@@ -39,7 +39,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
     * Helps retrieve a time series (drift or skew) for each of the features that are part of a join. Time series is
     * retrieved between the start and end ts. If the metric type is for drift, the offset is used to compute the
     * distribution to compare against (we compare current time range with the same sized time range starting offset time
-    * period prior). We compute either the max (drift or skew), null drift / skew or value's drift or skew based on the
+    * period prior). We compute either the null drift / skew or value's drift or skew based on the
     * metric choice.
     */
   def fetchJoin(name: String,
@@ -134,7 +134,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
 
       (metricChoice, metricRollup) match {
         case (None, _)                   => BadRequest("Invalid metric choice. Expect drift / skew")
-        case (_, None)                   => BadRequest("Invalid metric rollup. Expect max / null / value")
+        case (_, None)                   => BadRequest("Invalid metric rollup. Expect null / value")
         case (Some(Drift), Some(rollup)) => doFetchJoinDrift(name, startTs, endTs, rollup, slice, offset, algorithm)
         case (Some(Skew), Some(rollup))  => doFetchJoinSkew(name, startTs, endTs, rollup, slice)
       }
@@ -209,7 +209,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
 
       (metricChoice, metricRollup, granularityType) match {
         case (None, _, _) => BadRequest("Invalid metric choice. Expect drift / skew")
-        case (_, None, _) => BadRequest("Invalid metric rollup. Expect max / null / value")
+        case (_, None, _) => BadRequest("Invalid metric rollup. Expect null / value")
         case (_, _, None) => BadRequest("Invalid granularity. Expect raw / percentile / aggregates")
         case (Some(Drift), Some(rollup), Some(g)) =>
           doFetchFeatureDrift(name, startTs, endTs, rollup, slice, g, offset, algorithm)
@@ -300,7 +300,6 @@ object TimeSeriesController {
 
   def parseMetricRollup(metrics: Option[String]): Option[Metric] = {
     metrics.map(_.toLowerCase) match {
-      case Some("max")   => Some(MaxMetric)
       case Some("null")  => Some(NullMetric)
       case Some("value") => Some(ValuesMetric)
       case _             => None

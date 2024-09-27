@@ -52,7 +52,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
   "TimeSeriesController's join ts lookup" should {
 
     "send 400 on an invalid metric choice" in {
-      val invalid = controller.fetchJoin("my_join", 123L, 456L, "meow", "max", None, None).apply(FakeRequest())
+      val invalid = controller.fetchJoin("my_join", 123L, 456L, "meow", "null", None, None).apply(FakeRequest())
       status(invalid) mustBe BAD_REQUEST
     }
 
@@ -63,17 +63,17 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
 
     "send 400 on an invalid time offset for drift metric" in {
       val invalid1 =
-        controller.fetchJoin("my_join", 123L, 456L, "drift", "max", Some("Xh"), Some("psi")).apply(FakeRequest())
+        controller.fetchJoin("my_join", 123L, 456L, "drift", "null", Some("Xh"), Some("psi")).apply(FakeRequest())
       status(invalid1) mustBe BAD_REQUEST
 
       val invalid2 =
-        controller.fetchJoin("my_join", 123L, 456L, "drift", "max", Some("-1h"), Some("psi")).apply(FakeRequest())
+        controller.fetchJoin("my_join", 123L, 456L, "drift", "null", Some("-1h"), Some("psi")).apply(FakeRequest())
       status(invalid2) mustBe BAD_REQUEST
     }
 
     "send 400 on an invalid algorithm for drift metric" in {
       val invalid1 =
-        controller.fetchJoin("my_join", 123L, 456L, "drift", "max", Some("10h"), Some("meow")).apply(FakeRequest())
+        controller.fetchJoin("my_join", 123L, 456L, "drift", "null", Some("10h"), Some("meow")).apply(FakeRequest())
       status(invalid1) mustBe BAD_REQUEST
     }
 
@@ -81,7 +81,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val startTs = 1725926400000L // 09/10/2024 00:00 UTC
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
-        controller.fetchJoin("my_join", startTs, endTs, "drift", "max", Some("10h"), Some("psi")).apply(FakeRequest())
+        controller.fetchJoin("my_join", startTs, endTs, "drift", "null", Some("10h"), Some("psi")).apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val modelTSResponse: Either[Error, JoinTimeSeriesResponse] = decode[JoinTimeSeriesResponse](bodyText)
@@ -100,7 +100,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val startTs = 1725926400000L // 09/10/2024 00:00 UTC
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
-        controller.fetchJoin("my_join", startTs, endTs, "skew", "max", None, None).apply(FakeRequest())
+        controller.fetchJoin("my_join", startTs, endTs, "skew", "null", None, None).apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val modelTSResponse: Either[Error, JoinTimeSeriesResponse] = decode[JoinTimeSeriesResponse](bodyText)
@@ -120,7 +120,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
 
     "send 400 on an invalid metric choice" in {
       val invalid =
-        controller.fetchFeature("my_feature", 123L, 456L, "meow", "max", "raw", None, None).apply(FakeRequest())
+        controller.fetchFeature("my_feature", 123L, 456L, "meow", "null", "raw", None, None).apply(FakeRequest())
       status(invalid) mustBe BAD_REQUEST
     }
 
@@ -132,20 +132,20 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
 
     "send 400 on an invalid granularity" in {
       val invalid =
-        controller.fetchFeature("my_feature", 123L, 456L, "drift", "max", "woof", None, None).apply(FakeRequest())
+        controller.fetchFeature("my_feature", 123L, 456L, "drift", "null", "woof", None, None).apply(FakeRequest())
       status(invalid) mustBe BAD_REQUEST
     }
 
     "send 400 on an invalid time offset for drift metric" in {
       val invalid1 =
         controller
-          .fetchFeature("my_feature", 123L, 456L, "drift", "max", "aggregates", Some("Xh"), Some("psi"))
+          .fetchFeature("my_feature", 123L, 456L, "drift", "null", "aggregates", Some("Xh"), Some("psi"))
           .apply(FakeRequest())
       status(invalid1) mustBe BAD_REQUEST
 
       val invalid2 =
         controller
-          .fetchFeature("my_feature", 123L, 456L, "drift", "max", "aggregates", Some("-1h"), Some("psi"))
+          .fetchFeature("my_feature", 123L, 456L, "drift", "null", "aggregates", Some("-1h"), Some("psi"))
           .apply(FakeRequest())
       status(invalid2) mustBe BAD_REQUEST
     }
@@ -153,7 +153,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
     "send 400 on an invalid algorithm for drift metric" in {
       val invalid1 =
         controller
-          .fetchFeature("my_feature", 123L, 456L, "drift", "max", "aggregates", Some("10h"), Some("meow"))
+          .fetchFeature("my_feature", 123L, 456L, "drift", "null", "aggregates", Some("10h"), Some("meow"))
           .apply(FakeRequest())
       status(invalid1) mustBe BAD_REQUEST
     }
@@ -161,7 +161,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
     "send 400 on an invalid granularity for drift metric" in {
       val invalid1 =
         controller
-          .fetchFeature("my_feature", 123L, 456L, "drift", "max", "raw", Some("10h"), Some("psi"))
+          .fetchFeature("my_feature", 123L, 456L, "drift", "null", "raw", Some("10h"), Some("psi"))
           .apply(FakeRequest())
       status(invalid1) mustBe BAD_REQUEST
     }
@@ -169,7 +169,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
     "send 400 on an invalid granularity for skew metric" in {
       val invalid1 =
         controller
-          .fetchFeature("my_feature", 123L, 456L, "skew", "max", "aggregates", Some("10h"), Some("psi"))
+          .fetchFeature("my_feature", 123L, 456L, "skew", "null", "aggregates", Some("10h"), Some("psi"))
           .apply(FakeRequest())
       status(invalid1) mustBe BAD_REQUEST
     }
@@ -179,7 +179,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
         controller
-          .fetchFeature("my_feature", startTs, endTs, "drift", "max", "aggregates", Some("10h"), Some("psi"))
+          .fetchFeature("my_feature", startTs, endTs, "drift", "null", "aggregates", Some("10h"), Some("psi"))
           .apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
@@ -197,7 +197,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
         controller
-          .fetchFeature("my_feature", startTs, endTs, "drift", "max", "percentile", Some("10h"), Some("psi"))
+          .fetchFeature("my_feature", startTs, endTs, "drift", "null", "percentile", Some("10h"), Some("psi"))
           .apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
@@ -217,7 +217,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val startTs = 1725926400000L // 09/10/2024 00:00 UTC
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
-        controller.fetchFeature("my_feature", startTs, endTs, "skew", "max", "raw", None, None).apply(FakeRequest())
+        controller.fetchFeature("my_feature", startTs, endTs, "skew", "null", "raw", None, None).apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val featureTSResponse: Either[Error, RawComparedFeatureTimeSeries] =
@@ -236,7 +236,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
         controller
-          .fetchFeature("my_feature", startTs, endTs, "skew", "max", "percentile", None, None)
+          .fetchFeature("my_feature", startTs, endTs, "skew", "null", "percentile", None, None)
           .apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
