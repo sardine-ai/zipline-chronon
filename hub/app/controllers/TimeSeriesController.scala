@@ -105,7 +105,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       (parseOffset(Some(offset)), parseAlgorithm(Some(algorithm))) match {
         case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
         case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
-        case (Some(parsedOffset), Some(parsedAlgorithm)) =>
+        case (Some(_), Some(_)) =>
           // TODO: Use parsedOffset and parsedAlgorithm when ready
           val mockTSData = ModelTimeSeriesResponse(id, generateMockTimeSeriesPoints(startTs, endTs))
           Ok(mockTSData.asJson.noSpaces)
@@ -143,7 +143,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
     (parseOffset(offset), parseAlgorithm(algorithm)) match {
       case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
       case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
-      case (Some(parsedOffset), Some(parsedAlgorithm)) =>
+      case (Some(_), Some(_)) =>
         // TODO: Use parsedOffset and parsedAlgorithm when ready
         val mockGroupBys = generateMockGroupBys(3)
         val groupByTimeSeries = mockGroupBys.map { g =>
@@ -216,7 +216,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       (parseOffset(offset), parseAlgorithm(algorithm)) match {
         case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
         case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
-        case (Some(parsedOffset), Some(parsedAlgorithm)) =>
+        case (Some(_), Some(_)) =>
           // TODO: Use parsedOffset and parsedAlgorithm when ready
           val featureTs = if (granularity == Aggregates) {
             FeatureTimeSeries(name, generateMockTimeSeriesPoints(startTs, endTs))
