@@ -102,21 +102,13 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                            algorithm: String,
                            sliceId: Option[String] = None): Action[AnyContent] =
     Action { implicit request: Request[AnyContent] =>
-      val maybeOffset = parseOffset(Some(offset))
-      val maybeAlgorithm = parseAlgorithm(Some(algorithm))
-
-      if (maybeOffset.isEmpty) {
-        BadRequest(s"Unable to parse offset - $offset")
-      } else if (maybeAlgorithm.isEmpty) {
-        BadRequest("Invalid drift algorithm. Expect PSI or KL")
-      } else {
-        // TODO uncomment when we're ready to use these
-        //val offset = maybeOffset.get
-        //val algorithm = maybeAlgorithm.get
-
-        val mockTSData = ModelTimeSeriesResponse(id, generateMockTimeSeriesPoints(startTs, endTs))
-        val json = mockTSData.asJson.noSpaces
-        Ok(json)
+      (parseOffset(Some(offset)), parseAlgorithm(Some(algorithm))) match {
+        case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
+        case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+        case (Some(parsedOffset), Some(parsedAlgorithm)) =>
+          // TODO: Use parsedOffset and parsedAlgorithm when ready
+          val mockTSData = ModelTimeSeriesResponse(id, generateMockTimeSeriesPoints(startTs, endTs))
+          Ok(mockTSData.asJson.noSpaces)
       }
     }
 
