@@ -103,8 +103,8 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                            sliceId: Option[String] = None): Action[AnyContent] =
     Action { implicit request: Request[AnyContent] =>
       (parseOffset(Some(offset)), parseAlgorithm(Some(algorithm))) match {
-        case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
-        case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+        case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
+        case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
         case (Some(_), Some(_)) =>
           // TODO: Use parsedOffset and parsedAlgorithm when ready
           val mockTSData = ModelTimeSeriesResponse(id, generateMockTimeSeriesPoints(startTs, endTs))
@@ -141,8 +141,8 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                                algorithm: Option[String]): Result = {
 
     (parseOffset(offset), parseAlgorithm(algorithm)) match {
-      case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
-      case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+      case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
+      case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
       case (Some(_), Some(_)) =>
         // TODO: Use parsedOffset and parsedAlgorithm when ready
         val mockGroupBys = generateMockGroupBys(3)
@@ -214,8 +214,8 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       BadRequest("We don't support Raw granularity for drift metric types")
     } else {
       (parseOffset(offset), parseAlgorithm(algorithm)) match {
-        case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
-        case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+        case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
+        case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
         case (Some(_), Some(_)) =>
           // TODO: Use parsedOffset and parsedAlgorithm when ready
           val featureTs = if (granularity == Aggregates) {
