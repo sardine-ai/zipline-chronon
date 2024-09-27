@@ -1,11 +1,12 @@
 package controllers
 
-import model.{Model, SearchModelResponse}
+import io.circe.generic.auto._
+import io.circe.syntax._
+import model.Model
+import model.SearchModelResponse
 import play.api.mvc._
 
 import javax.inject._
-import io.circe.generic.auto._
-import io.circe.syntax._
 
 /**
   * Controller to power search related APIs

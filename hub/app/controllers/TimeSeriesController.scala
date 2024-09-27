@@ -1,11 +1,10 @@
 package controllers
-import play.api.mvc._
-
-import javax.inject._
 import io.circe.generic.auto._
 import io.circe.syntax._
 import model._
+import play.api.mvc._
 
+import javax.inject._
 import scala.concurrent.duration._
 import scala.util.Random
 
@@ -134,8 +133,8 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       val metricRollup = parseMetricRollup(Some(metrics))
 
       (metricChoice, metricRollup) match {
-        case (None, _)                   => BadRequest(s"Invalid metric choice. Expect drift / skew")
-        case (_, None)                   => BadRequest(s"Invalid metric rollup. Expect max / null / value")
+        case (None, _)                   => BadRequest("Invalid metric choice. Expect drift / skew")
+        case (_, None)                   => BadRequest("Invalid metric rollup. Expect max / null / value")
         case (Some(Drift), Some(rollup)) => doFetchJoinDrift(name, startTs, endTs, rollup, slice, offset, algorithm)
         case (Some(Skew), Some(rollup))  => doFetchJoinSkew(name, startTs, endTs, rollup, slice)
       }
@@ -209,9 +208,9 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       val granularityType = parseGranularity(granularity)
 
       (metricChoice, metricRollup, granularityType) match {
-        case (None, _, _) => BadRequest(s"Invalid metric choice. Expect drift / skew")
-        case (_, None, _) => BadRequest(s"Invalid metric rollup. Expect max / null / value")
-        case (_, _, None) => BadRequest(s"Invalid granularity. Expect raw / percentile / aggregates")
+        case (None, _, _) => BadRequest("Invalid metric choice. Expect drift / skew")
+        case (_, None, _) => BadRequest("Invalid metric rollup. Expect max / null / value")
+        case (_, _, None) => BadRequest("Invalid granularity. Expect raw / percentile / aggregates")
         case (Some(Drift), Some(rollup), Some(g)) =>
           doFetchFeatureDrift(name, startTs, endTs, rollup, slice, g, offset, algorithm)
         case (Some(Skew), Some(rollup), Some(g)) => doFetchFeatureSkew(name, startTs, endTs, rollup, slice, g)

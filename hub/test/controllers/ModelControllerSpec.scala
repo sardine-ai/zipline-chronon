@@ -1,21 +1,21 @@
 package controllers
 
-import org.scalatestplus.play._
-import play.api.http.Status.{BAD_REQUEST, OK}
-import play.api.mvc._
-import play.api.test.Helpers._
-import play.api.test._
-
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
 import model.ListModelResponse
 import org.scalatest.EitherValues
+import org.scalatestplus.play._
+import play.api.http.Status.BAD_REQUEST
+import play.api.http.Status.OK
+import play.api.mvc._
+import play.api.test.Helpers._
+import play.api.test._
 
 class ModelControllerSpec extends PlaySpec with Results with EitherValues {
 
   // Create a stub ControllerComponents
-  val stubCC = stubControllerComponents()
+  val stubCC: ControllerComponents = stubControllerComponents()
 
   val controller = new ModelController(stubCC)
 

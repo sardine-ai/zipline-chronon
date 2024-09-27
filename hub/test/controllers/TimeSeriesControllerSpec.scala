@@ -6,7 +6,8 @@ import io.circe.parser._
 import model._
 import org.scalatest.EitherValues
 import org.scalatestplus.play._
-import play.api.http.Status.{BAD_REQUEST, OK}
+import play.api.http.Status.BAD_REQUEST
+import play.api.http.Status.OK
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
@@ -17,7 +18,7 @@ import scala.concurrent.duration.Duration
 class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
 
   // Create a stub ControllerComponents
-  val stubCC = stubControllerComponents()
+  val stubCC: ControllerComponents = stubControllerComponents()
 
   val controller = new TimeSeriesController(stubCC)
 

@@ -1,11 +1,12 @@
 package controllers
 
-import model.{ListModelResponse, Model}
+import io.circe.generic.auto._
+import io.circe.syntax._
+import model.ListModelResponse
+import model.Model
 import play.api.mvc._
 
 import javax.inject._
-import io.circe.generic.auto._
-import io.circe.syntax._
 
 /**
   * Controller for the Zipline models entities
