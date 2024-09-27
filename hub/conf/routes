@@ -1,6 +1,3 @@
-# Serve SvelteKit static assets
-GET    /          controllers.Assets.at(path="/public", file="index.html")
-GET    /*file      controllers.Assets.at(path="/public", file)
 # Backend APIs
 GET     /api/v1/ping                                     controllers.ApplicationController.ping()
 GET     /api/v1/models                                   controllers.ModelController.list(offset: Option[Int], limit: Option[Int])
@@ -11,3 +8,6 @@ GET     /api/v1/join/:name/timeseries                    controllers.TimeSeriesC
 GET     /api/v1/join/:name/timeseries/slice/:sliceId     controllers.TimeSeriesController.fetchJoinSlice(name: String, sliceId: String, startTs: Long, endTs: Long, metricType: String, metrics: String, offset: Option[String], algorithm: Option[String])
 GET     /api/v1/feature/:name/timeseries                 controllers.TimeSeriesController.fetchFeature(name: String, startTs: Long, endTs: Long, metricType: String, metrics: String, granularity: String, offset: Option[String], algorithm: Option[String])
 GET     /api/v1/feature/:name/timeseries/slice/:sliceId  controllers.TimeSeriesController.fetchFeatureSlice(name: String, sliceId: String, startTs: Long, endTs: Long, metricType: String, metrics: String, granularity: String, offset: Option[String], algorithm: Option[String])
+# Serve SvelteKit static assets
+GET    /          controllers.Assets.at(path="/public", file="index.html")
+GET    /*file      controllers.Assets.at(path="/public", file)
