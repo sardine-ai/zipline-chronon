@@ -139,30 +139,23 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                                sliceId: Option[String],
                                offset: Option[String],
                                algorithm: Option[String]): Result = {
-    val maybeOffset = parseOffset(offset)
-    val maybeAlgorithm = parseAlgorithm(algorithm)
 
-    if (maybeOffset.isEmpty) {
-      BadRequest(s"Unable to parse offset - $offset")
-    } else if (maybeAlgorithm.isEmpty) {
-      BadRequest("Invalid drift algorithm. Expect PSI or KL")
-    } else {
-      // TODO uncomment when we're ready to use these
-      //val offset = maybeOffset.get
-      //val algorithm = maybeAlgorithm.get
-
-      val mockGroupBys = generateMockGroupBys(3)
-      val groupByTimeSeries = mockGroupBys.map { g =>
-        val mockFeatures = generateMockFeatures(g, 10)
-        val featureTS = mockFeatures.map {
-          FeatureTimeSeries(_, generateMockTimeSeriesPoints(startTs, endTs))
+    (parseOffset(offset), parseAlgorithm(algorithm)) match {
+      case (None, _)                                   => BadRequest(s"Unable to parse offset - $offset")
+      case (_, None)                                   => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+      case (Some(parsedOffset), Some(parsedAlgorithm)) =>
+        // TODO: Use parsedOffset and parsedAlgorithm when ready
+        val mockGroupBys = generateMockGroupBys(3)
+        val groupByTimeSeries = mockGroupBys.map { g =>
+          val mockFeatures = generateMockFeatures(g, 10)
+          val featureTS = mockFeatures.map {
+            FeatureTimeSeries(_, generateMockTimeSeriesPoints(startTs, endTs))
+          }
+          GroupByTimeSeries(g, featureTS)
         }
-        GroupByTimeSeries(g, featureTS)
-      }
 
-      val mockTSData = JoinTimeSeriesResponse(name, groupByTimeSeries)
-      val json = mockTSData.asJson.noSpaces
-      Ok(json)
+        val mockTSData = JoinTimeSeriesResponse(name, groupByTimeSeries)
+        Ok(mockTSData.asJson.noSpaces)
     }
   }
 
