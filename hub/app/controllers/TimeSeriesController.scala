@@ -274,10 +274,12 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
 object TimeSeriesController {
 
   def parseOffset(offset: Option[String]): Option[Duration] = {
+    val hourPattern = """(\d+)h""".r
+    val dayPattern = """(\d+)d""".r
     offset.map(_.toLowerCase) match {
-      case Some(s"${num}h") if num.forall(_.isDigit) => Some(num.toInt.hours)
-      case Some(s"${num}d") if num.forall(_.isDigit) => Some(num.toInt.days)
-      case _                                         => None
+      case Some(hourPattern(num)) => Some(num.toInt.hours)
+      case Some(dayPattern(num))  => Some(num.toInt.days)
+      case _                      => None
     }
   }
 
