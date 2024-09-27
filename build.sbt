@@ -27,6 +27,7 @@ lazy val spark_3_5 = "3.5.1"
 lazy val flink_1_17 = "1.17.0"
 lazy val jackson_2_15 = "2.15.2"
 lazy val avro_1_11 = "1.11.2"
+lazy val circeVersion = "0.14.9"
 
 // skip tests on assembly - uncomment if builds become slow
 // ThisBuild / assembly / test := {}
@@ -218,7 +219,10 @@ lazy val hub = (project in file("hub"))
     scalaVersion := scala_2_13,
     libraryDependencies ++= Seq(
       guice,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test
+      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.0" % Test,
+      "io.circe" %% "circe-core" % circeVersion,
+      "io.circe" %% "circe-generic" % circeVersion,
+      "io.circe" %% "circe-parser" % circeVersion
     ),
     // Ensure hub depends on frontend build
     Compile / run := ((Compile / run) dependsOn (frontend / buildFrontend)).evaluated,
