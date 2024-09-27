@@ -44,6 +44,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val modelTSResponse: Either[Error, ModelTimeSeriesResponse] = decode[ModelTimeSeriesResponse](bodyText)
+      modelTSResponse.isRight mustBe true
       val items = modelTSResponse.value.items
       items.length mustBe (Duration(endTs, TimeUnit.MILLISECONDS) - Duration(startTs, TimeUnit.MILLISECONDS)).toHours
     }
@@ -85,6 +86,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val modelTSResponse: Either[Error, JoinTimeSeriesResponse] = decode[JoinTimeSeriesResponse](bodyText)
+      modelTSResponse.isRight mustBe true
       val response = modelTSResponse.value
       response.name mustBe "my_join"
       response.items.nonEmpty mustBe true
@@ -104,6 +106,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val modelTSResponse: Either[Error, JoinTimeSeriesResponse] = decode[JoinTimeSeriesResponse](bodyText)
+      modelTSResponse.isRight mustBe true
       val response = modelTSResponse.value
       response.name mustBe "my_join"
       response.items.nonEmpty mustBe true
@@ -184,6 +187,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val featureTSResponse: Either[Error, FeatureTimeSeries] = decode[FeatureTimeSeries](bodyText)
+      featureTSResponse.isRight mustBe true
       val response = featureTSResponse.value
       response.feature mustBe "my_feature"
       response.points.nonEmpty mustBe true
@@ -202,6 +206,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val featureTSResponse: Either[Error, FeatureTimeSeries] = decode[FeatureTimeSeries](bodyText)
+      featureTSResponse.isRight mustBe true
       val response = featureTSResponse.value
       response.feature mustBe "my_feature"
       response.points.nonEmpty mustBe true
@@ -220,6 +225,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       val bodyText = contentAsString(result)
       val featureTSResponse: Either[Error, RawComparedFeatureTimeSeries] =
         decode[RawComparedFeatureTimeSeries](bodyText)
+      featureTSResponse.isRight mustBe true
       val response = featureTSResponse.value
       response.feature mustBe "my_feature"
       response.baseline.nonEmpty mustBe true
@@ -239,6 +245,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val featureTSResponse: Either[Error, FeatureTimeSeries] = decode[FeatureTimeSeries](bodyText)
+      featureTSResponse.isRight mustBe true
       val response = featureTSResponse.value
       response.feature mustBe "my_feature"
       response.points.nonEmpty mustBe true
