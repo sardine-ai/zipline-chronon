@@ -89,7 +89,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       response.name mustBe "my_join"
       response.items.nonEmpty mustBe true
 
-      val expectedLength = (Duration(endTs, TimeUnit.MILLISECONDS) - Duration(startTs, TimeUnit.MILLISECONDS)).toHours
+      val expectedLength = expectedHours(startTs, endTs)
       response.items.foreach { grpByTs =>
         grpByTs.items.isEmpty mustBe false
         grpByTs.items.foreach(featureTs => featureTs.points.length mustBe expectedLength)
@@ -108,7 +108,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       response.name mustBe "my_join"
       response.items.nonEmpty mustBe true
 
-      val expectedLength = (Duration(endTs, TimeUnit.MILLISECONDS) - Duration(startTs, TimeUnit.MILLISECONDS)).toHours
+      val expectedLength = expectedHours(startTs, endTs)
       response.items.foreach { grpByTs =>
         grpByTs.items.isEmpty mustBe false
         grpByTs.items.foreach(featureTs => featureTs.points.length mustBe expectedLength)
@@ -188,7 +188,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       response.feature mustBe "my_feature"
       response.points.nonEmpty mustBe true
 
-      val expectedLength = (Duration(endTs, TimeUnit.MILLISECONDS) - Duration(startTs, TimeUnit.MILLISECONDS)).toHours
+      val expectedLength = expectedHours(startTs, endTs)
       response.points.length mustBe expectedLength
     }
 
@@ -207,9 +207,7 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       response.points.nonEmpty mustBe true
 
       // expect one entry per percentile for each time series point
-      val expectedLength = TimeSeriesController.mockGeneratedPercentiles.length * (Duration(
-        endTs,
-        TimeUnit.MILLISECONDS) - Duration(startTs, TimeUnit.MILLISECONDS)).toHours
+      val expectedLength = TimeSeriesController.mockGeneratedPercentiles.length * expectedHours(startTs, endTs)
       response.points.length mustBe expectedLength
     }
 
@@ -246,10 +244,12 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       response.points.nonEmpty mustBe true
 
       // expect one entry per percentile for each time series point
-      val expectedLength = TimeSeriesController.mockGeneratedPercentiles.length * (Duration(
-        endTs,
-        TimeUnit.MILLISECONDS) - Duration(startTs, TimeUnit.MILLISECONDS)).toHours
+      val expectedLength = TimeSeriesController.mockGeneratedPercentiles.length * expectedHours(startTs, endTs)
       response.points.length mustBe expectedLength
     }
+  }
+
+  private def expectedHours(startTs: Long, endTs: Long): Long = {
+    Duration(endTs - startTs, TimeUnit.MILLISECONDS).toHours
   }
 }
