@@ -11,7 +11,7 @@ import javax.inject._
 /**
   * Controller to power search related APIs
   */
-class SearchController @Inject() (val controllerComponents: ControllerComponents) extends BaseController {
+class SearchController @Inject() (val controllerComponents: ControllerComponents) extends BaseController with Paginate {
 
   // temporarily serve up mock data while we wait on hooking up our KV store layer
   private[this] def generateMockModel(id: String): Model =
@@ -38,7 +38,7 @@ class SearchController @Inject() (val controllerComponents: ControllerComponents
     Action { implicit request: Request[AnyContent] =>
       // Default values if the parameters are not provided
       val offsetValue = offset.getOrElse(defaultOffset)
-      val limitValue = limit.getOrElse(defaultLimit)
+      val limitValue = limit.map(l => math.min(l, maxLimit)).getOrElse(defaultLimit)
 
       if (offsetValue < 0) {
         BadRequest("Invalid offset - expect a positive number")
@@ -46,7 +46,7 @@ class SearchController @Inject() (val controllerComponents: ControllerComponents
         BadRequest("Invalid limit - expect a positive number")
       } else {
         val searchResults = searchRegistry(term)
-        val paginatedResults = searchResults.slice(offsetValue, offsetValue + limitValue)
+        val paginatedResults = paginateResults(searchResults, offsetValue, limitValue)
         val json = SearchModelResponse(offsetValue, paginatedResults).asJson.noSpaces
         Ok(json)
       }

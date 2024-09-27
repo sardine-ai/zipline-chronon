@@ -12,7 +12,7 @@ import javax.inject._
   * Controller for the Zipline models entities
   */
 @Singleton
-class ModelController @Inject() (val controllerComponents: ControllerComponents) extends BaseController {
+class ModelController @Inject() (val controllerComponents: ControllerComponents) extends BaseController with Paginate {
 
   // temporarily serve up mock data while we wait on hooking up our KV store layer
   private[this] def generateMockModel(id: String): Model =
@@ -26,9 +26,6 @@ class ModelController @Inject() (val controllerComponents: ControllerComponents)
           1727210947000L)
   private[this] val mockModelRegistry: Seq[Model] = (0 until 100).map(i => generateMockModel(i.toString))
 
-  val defaultOffset = 0
-  val defaultLimit = 10
-
   /**
     * Powers the /api/v1/models endpoint. Returns a list of models
     * @param offset - For pagination. We skip over offset entries before returning results
@@ -38,14 +35,14 @@ class ModelController @Inject() (val controllerComponents: ControllerComponents)
     Action { implicit request: Request[AnyContent] =>
       // Default values if the parameters are not provided
       val offsetValue = offset.getOrElse(defaultOffset)
-      val limitValue = limit.getOrElse(defaultLimit)
+      val limitValue = limit.map(l => math.min(l, maxLimit)).getOrElse(defaultLimit)
 
       if (offsetValue < 0) {
         BadRequest("Invalid offset - expect a positive number")
       } else if (limitValue < 0) {
         BadRequest("Invalid limit - expect a positive number")
       } else {
-        val paginatedResults = mockModelRegistry.slice(offsetValue, offsetValue + limitValue)
+        val paginatedResults = paginateResults(mockModelRegistry, offsetValue, limitValue)
         val json = ListModelResponse(offsetValue, paginatedResults).asJson.noSpaces
         Ok(json)
       }
