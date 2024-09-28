@@ -260,5 +260,5 @@ def generate_fraud_sample_data(num_samples=10000):
 fraud_data = generate_fraud_sample_data(20000)
 fraud_df = spark.createDataFrame(fraud_data, schema=fraud_schema)
 
-fraud_df.write.parquet("anomalous_data")
+fraud_df.write.mode("overwrite").parquet("data")
 print("Successfully wrote user data to parquet")
