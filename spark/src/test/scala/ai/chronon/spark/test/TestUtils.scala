@@ -18,7 +18,12 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
+<<<<<<< HEAD
 import ai.chronon.api.ScalaJavaConversions._
+=======
+import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Extensions.MetadataOps
+>>>>>>> 787e9fce (Replace multiple calls to `withColumn` with single `select` to simplify query plans)
 import ai.chronon.api._
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
@@ -27,6 +32,14 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
+<<<<<<< HEAD
+=======
+import org.apache.spark.sql.types.{StructType => SparkStructType}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+
+import scala.collection.JavaConverters._
+import scala.util.ScalaJavaConversions.JListOps
+>>>>>>> 787e9fce (Replace multiple calls to `withColumn` with single `select` to simplify query plans)
 
 object TestUtils {
   def createViewsGroupBy(namespace: String,
@@ -335,6 +348,28 @@ object TestUtils {
     )
 
     groupBy
+  }
+
+  /** Compares two schemas, returns a list of differences if they are not equal. */
+  def compareDfSchemas(expectedSchema: SparkStructType, actualSchema: SparkStructType): Seq[String] = {
+    val expectedSchemaMap = expectedSchema.fields.map(field => field.name -> (field.dataType, field.nullable)).toMap
+    val expectedSchemaKeys = expectedSchemaMap.keys.toSet
+    val actualSchemaMap = actualSchema.fields.map(field => field.name -> (field.dataType, field.nullable)).toMap
+    val actualSchemaKeys = actualSchemaMap.keys.toSet
+    val added = actualSchemaKeys.diff(expectedSchemaKeys)
+      .map(field => s"unexpected field added $field: ${actualSchemaMap(field)}").toSeq
+    val removed = expectedSchemaKeys.diff(actualSchemaKeys)
+      .map(field => s"expected field not found $field: ${expectedSchemaMap(field)}").toSeq
+    val diffs = expectedSchemaKeys.intersect(actualSchemaKeys).map(key => {
+      val expectedField = expectedSchemaMap(key)
+      val actualField = actualSchemaMap(key)
+      if (expectedField != actualField) {
+        Some(s"unexpected field definition $key: expected: $expectedField found: $actualField")
+      } else {
+        None
+      }
+    }).filter(_.nonEmpty).map(_.get).toSeq
+    added ++ removed ++ diffs
   }
 
   def createSampleLabelTableDf(spark: SparkSession, tableName: String = "listing_labels"): DataFrame = {

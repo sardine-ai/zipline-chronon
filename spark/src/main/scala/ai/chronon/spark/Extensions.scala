@@ -35,6 +35,9 @@ import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.Logger
+import ai.chronon.api.Extensions.JoinPartOps
+import ai.chronon.api.JoinPart
+import org.apache.spark.sql
 import org.slf4j.LoggerFactory
 
 import java.util
@@ -163,10 +166,31 @@ object Extensions {
       TableUtils(df.sparkSession).insertUnPartitioned(df, tableName, tableProperties)
     }
 
-    def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {
-      columns.foldLeft(df) { (renamedDf, key) =>
-        renamedDf.withColumnRenamed(key, s"${prefix}_$key")
+    def padFields(structType: sql.types.StructType): DataFrame = {
+      val existingColumns = df.columns.toSet
+      val paddedColumns = structType
+        .filterNot(field => existingColumns.contains(field.name))
+        .map(field => lit(null).cast(field.dataType).as(field.name))
+      val columnsWithPadding = df.columns.map(col) ++ paddedColumns
+      df.select(columnsWithPadding:_*)
+    }
+
+    def renameRightColumnsForJoin(joinPart: JoinPart, timeColumns: Set[String]): DataFrame = {
+      val nonValueColumns = joinPart.rightToLeft.keys.toSet ++ timeColumns
+      val valueColumns = df.schema.names.toSet.diff(nonValueColumns)
+
+      val renamedColumns = df.columns.map { columnName =>
+        val column = col(columnName)
+        if (joinPart.rightToLeft.contains(columnName)) {
+          column.as(joinPart.rightToLeft(columnName))
+        } else if (valueColumns.contains(columnName)) {
+          column.as(s"${joinPart.fullPrefix}_$columnName")
+        } else {
+          column
+        }
       }
+
+      df.select(renamedColumns:_*)
     }
 
     def validateJoinKeys(right: DataFrame, keys: Seq[String]): Unit = {
