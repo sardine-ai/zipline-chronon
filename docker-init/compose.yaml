@@ -1,4 +1,4 @@
-version: '3.8'
+name: 'hub-monitoring-demo'
 services:
   dynamo:
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
@@ -37,11 +37,30 @@ services:
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
 
+  base:
+    build:
+      context: ..
+      dockerfile: .github/image/Dockerfile
+    image: base_image:latest
+
   app:
-    build: .
-    command: tail -F nothing
+    build:
+      context: ..
+      dockerfile: docker-init/Dockerfile
+    depends_on:
+      - base
     environment:
       - DYNAMO_ENDPOINT=http://dynamo:8000
       - AWS_DEFAULT_REGION=fakeregion
       - AWS_ACCESS_KEY_ID=fakeaccesskey
       - AWS_SECRET_ACCESS_KEY=fakesecretkey
+      - PLAY_HTTP_SECRET_KEY=my_fake_chronon_monitoring_hub_http_secret_key # needs to be long to make Play happy
+      - JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - '9000:9000'
+    healthcheck:
+      interval: 1s
+      retries: 5
+      start_period: 60s
+      test: curl -sS --fail http://app:${APP_PORT:-9000}/api/v1/ping
+      timeout: 5s
