@@ -10,10 +10,12 @@ app-1           | [info] 2024-09-30 20:47:56,448 [main] INFO  play.api.Play - Ap
 app-1           | [info] 2024-09-30 20:47:56,665 [main] INFO  play.core.server.PekkoHttpServer - Listening for HTTP on /[0:0:0:0:0:0:0:0]:9000
 ```
 
-You can now pull up the web-server on http://localhost:9000
+The **backend** is served at: http://localhost:9000
+
+The **frontend** is served at: http://localhost:3000
 
 You can also access the parquet anomaly data table. To do so, from another terminal run:
 
-```docker-compose exec app bash```
+`docker-compose exec app bash`
 
 The parquet is available in the /app/data directory.
