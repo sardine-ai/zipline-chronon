@@ -57,5 +57,10 @@
     "quickstart": {
         "description": "Used for the quickstart example",
         "namespace": "default"
+    },
+    "risk": {
+        "description": "Used for proof of concept",
+        "namespace": "default"
     }
+
 }
