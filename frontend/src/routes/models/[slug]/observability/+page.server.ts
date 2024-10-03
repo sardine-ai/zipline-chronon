@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import * as api from '$lib/api/api';
-import type { TimeSeriesResponse } from '$lib/types/Model';
+import type { TimeSeriesResponse } from '$lib/types/Model/Model';
 
 export const load: PageServerLoad = async ({
 	params

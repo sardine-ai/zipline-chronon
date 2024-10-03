@@ -1,0 +1,75 @@
+import { describe, it, expect } from 'vitest';
+import * as api from '$lib/api/api';
+import type { ModelsResponse, TimeSeriesResponse, Model } from '$lib/types/Model/Model';
+
+describe('Model types', () => {
+	it('should match ModelsResponse type', async () => {
+		const result = (await api.get('models')) as ModelsResponse;
+
+		const expectedKeys = ['offset', 'items'];
+		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
+
+		// Log a warning if there are additional fields
+		const additionalKeys = Object.keys(result).filter((key) => !expectedKeys.includes(key));
+		if (additionalKeys.length > 0) {
+			console.warn(`Additional fields found in ModelsResponse: ${additionalKeys.join(', ')}`);
+		}
+
+		expect(Array.isArray(result.items)).toBe(true);
+
+		if (result.items.length > 0) {
+			const model = result.items[0];
+			const expectedModelKeys: (keyof Model)[] = [
+				'name',
+				'id',
+				'online',
+				'production',
+				'team',
+				'modelType',
+				'createTime',
+				'lastUpdated'
+			];
+			expect(Object.keys(model)).toEqual(expect.arrayContaining(expectedModelKeys));
+
+			// Log a warning if there are additional fields
+			const additionalModelKeys = Object.keys(model).filter(
+				(key) => !expectedModelKeys.includes(key as keyof Model)
+			);
+			if (additionalModelKeys.length > 0) {
+				console.warn(`Additional fields found in Model: ${additionalModelKeys.join(', ')}`);
+			}
+		}
+	});
+
+	it('should match TimeSeriesResponse type', async () => {
+		const modelId = '0';
+		const result = (await api.get(
+			`model/${modelId}/timeseries?startTs=1725926400000&endTs=1726106400000&offset=10h&algorithm=psi`
+		)) as TimeSeriesResponse;
+
+		const expectedKeys = ['id', 'items'];
+		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
+
+		// Log a warning if there are additional fields
+		const additionalKeys = Object.keys(result).filter((key) => !expectedKeys.includes(key));
+		if (additionalKeys.length > 0) {
+			console.warn(`Additional fields found in TimeSeriesResponse: ${additionalKeys.join(', ')}`);
+		}
+
+		expect(Array.isArray(result.items)).toBe(true);
+
+		if (result.items.length > 0) {
+			const item = result.items[0];
+			const expectedItemKeys = ['value', 'ts', 'label'];
+			expect(Object.keys(item)).toEqual(expect.arrayContaining(expectedItemKeys));
+
+			// Log a warning if there are additional fields
+			const additionalItemKeys = Object.keys(item).filter((key) => !expectedItemKeys.includes(key));
+			if (additionalItemKeys.length > 0) {
+				console.warn(
+					`Additional fields found in TimeSeriesResponse item: ${additionalItemKeys.join(', ')}`
+				);
+			}
+		}
+	});
+});

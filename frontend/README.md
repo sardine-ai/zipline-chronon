@@ -68,6 +68,8 @@ npm run preview
 
 ### Running Tests
 
+> **Important:** You must start the backend before running tests. In the future, we can add scripts to automatically start the backend before any tests are run.
+
 #### All Tests
 
 To run both unit and integration tests together:

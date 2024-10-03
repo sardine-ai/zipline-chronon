@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Model } from '$lib/types/Model.js';
+	import type { Model } from '$lib/types/Model/Model';
 	import {
 		Table,
 		TableBody,
