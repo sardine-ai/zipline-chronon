@@ -1,0 +1,27 @@
+{
+  "outputSchema": {
+    "kind": 6
+  },
+  "modelType": 1,
+  "metaData": {
+    "name": "quickstart.test.v1",
+    "tableProperties": {
+      "source": "chronon"
+    },
+    "outputNamespace": "default",
+    "team": "quickstart"
+  },
+  "source": {
+    "events": {
+      "table": "data.checkouts",
+      "query": {
+        "selects": {
+          "user_id": "user_id"
+        },
+        "timeColumn": "ts",
+        "setups": []
+      }
+    }
+  },
+  "modelParams": {}
+}
