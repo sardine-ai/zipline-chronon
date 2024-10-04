@@ -25,9 +25,9 @@ import click
 import ai.chronon.api.ttypes as api
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
-from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery
+from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery, Model
 from ai.chronon.repo import JOIN_FOLDER_NAME, \
-    GROUP_BY_FOLDER_NAME, STAGING_QUERY_FOLDER_NAME, TEAMS_FILE_PATH
+    GROUP_BY_FOLDER_NAME, STAGING_QUERY_FOLDER_NAME, MODEL_FOLDER_NAME, TEAMS_FILE_PATH
 from ai.chronon.repo import teams
 from ai.chronon.repo.serializer import thrift_simple_json_protected
 from ai.chronon.repo.validator import ChrononRepoValidator, get_join_output_columns, get_group_by_output_columns
@@ -38,6 +38,7 @@ FOLDER_NAME_TO_CLASS = {
     GROUP_BY_FOLDER_NAME: GroupBy,
     JOIN_FOLDER_NAME: Join,
     STAGING_QUERY_FOLDER_NAME: StagingQuery,
+    MODEL_FOLDER_NAME: Model,
 }
 
 DEFAULT_TEAM_NAME = "default"
