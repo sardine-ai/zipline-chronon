@@ -18,16 +18,11 @@ package ai.chronon.aggregator.base
 
 import ai.chronon.aggregator.base.FrequentItemType.ItemType
 import ai.chronon.api._
-import com.yahoo.memory.Memory
-import com.yahoo.sketches.ArrayOfDoublesSerDe
-import com.yahoo.sketches.ArrayOfItemsSerDe
-import com.yahoo.sketches.ArrayOfLongsSerDe
-import com.yahoo.sketches.ArrayOfStringsSerDe
-import com.yahoo.sketches.cpc.CpcSketch
-import com.yahoo.sketches.cpc.CpcUnion
-import com.yahoo.sketches.frequencies.ErrorType
-import com.yahoo.sketches.frequencies.ItemsSketch
-import com.yahoo.sketches.kll.KllFloatsSketch
+import org.apache.datasketches.common.{ArrayOfDoublesSerDe, ArrayOfItemsSerDe, ArrayOfLongsSerDe, ArrayOfStringsSerDe}
+import org.apache.datasketches.cpc.{CpcSketch, CpcUnion}
+import org.apache.datasketches.frequencies.{ErrorType, ItemsSketch}
+import org.apache.datasketches.kll.KllFloatsSketch
+import org.apache.datasketches.memory.Memory
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -336,12 +331,23 @@ object CpcFriendly {
   implicit val stringIsCpcFriendly: CpcFriendly[String] = new CpcFriendly[String] {
     override def update(sketch: CpcSketch, input: String): Unit = sketch.update(input)
   }
+  implicit val intIsCpcFriendly: CpcFriendly[Int] = new CpcFriendly[Int] {
+    override def update(sketch: CpcSketch, input: Int): Unit = sketch.update(input.toLong)
+  }
+
+  implicit val floatIsCpcFriendly: CpcFriendly[Float] = new CpcFriendly[Float] {
+    override def update(sketch: CpcSketch, input: Float): Unit = sketch.update(input.toDouble)
+  }
 
   implicit val longIsCpcFriendly: CpcFriendly[Long] = new CpcFriendly[Long] {
     override def update(sketch: CpcSketch, input: Long): Unit = sketch.update(input)
   }
   implicit val doubleIsCpcFriendly: CpcFriendly[Double] = new CpcFriendly[Double] {
     override def update(sketch: CpcSketch, input: Double): Unit = sketch.update(input)
+  }
+
+  implicit val decimalIsCpcFriendly: CpcFriendly[java.math.BigDecimal] = new CpcFriendly[java.math.BigDecimal] {
+    override def update(sketch: CpcSketch, input: java.math.BigDecimal): Unit = sketch.update(input.toPlainString)
   }
 
   implicit val BinaryIsCpcFriendly: CpcFriendly[Array[Byte]] = new CpcFriendly[Array[Byte]] {
@@ -666,7 +672,7 @@ class ApproxPercentiles(k: Int = 128, percentiles: Array[Double] = Array(0.5))
   override def irType: DataType = BinaryType
 
   override def prepare(input: Float): KllFloatsSketch = {
-    val sketch = new KllFloatsSketch(k)
+    val sketch = KllFloatsSketch.newHeapInstance(k)
     sketch.update(input)
     sketch
   }
@@ -682,7 +688,7 @@ class ApproxPercentiles(k: Int = 128, percentiles: Array[Double] = Array(0.5))
   }
 
   override def bulkMerge(irs: Iterator[KllFloatsSketch]): KllFloatsSketch = {
-    val result = new KllFloatsSketch(k)
+    val result = KllFloatsSketch.newHeapInstance(k)
     irs.foreach(result.merge)
     result
   }

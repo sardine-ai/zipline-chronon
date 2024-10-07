@@ -106,7 +106,7 @@ lazy val aggregator = project
   .dependsOn(api.%("compile->compile;test->test"))
   .settings(
     libraryDependencies ++= Seq(
-        "com.yahoo.datasketches" % "sketches-core" % "0.13.4",
+        "org.apache.datasketches" % "datasketches-java" % "6.1.0",
         "com.google.code.gson" % "gson" % "2.10.1"
       ),
     libraryDependencies ++= spark_sql_provided,

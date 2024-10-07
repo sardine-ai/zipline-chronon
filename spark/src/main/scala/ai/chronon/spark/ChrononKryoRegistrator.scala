@@ -26,10 +26,10 @@ import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.Serializer
 import com.esotericsoftware.kryo.io.Input
 import com.esotericsoftware.kryo.io.Output
-import com.yahoo.memory.Memory
-import com.yahoo.sketches.ArrayOfItemsSerDe
-import com.yahoo.sketches.cpc.CpcSketch
-import com.yahoo.sketches.frequencies.ItemsSketch
+import org.apache.datasketches.common.ArrayOfItemsSerDe
+import org.apache.datasketches.cpc.CpcSketch
+import org.apache.datasketches.frequencies.ItemsSketch
+import org.apache.datasketches.memory.Memory
 import org.apache.spark.serializer.KryoRegistrator
 
 class CpcSketchKryoSerializer extends Serializer[CpcSketch] {

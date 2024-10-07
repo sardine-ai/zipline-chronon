@@ -38,7 +38,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
-import scala.collection.Seq
+import scala.collection.{Seq, mutable}
 import scala.reflect.ClassTag
 import scala.util.ScalaJavaConversions.IteratorOps
 
@@ -278,6 +278,27 @@ object Extensions {
       val availableColumns = timeColumns.filter(df.schema.names.contains)
       logger.info(s"schema: ${df.schema.fieldNames.mkString("Array(", ", ", ")")}")
       df.replaceWithReadableTime(availableColumns, dropOriginal = true).show(truncate = false)
+    }
+
+    // converts a df with a single row with columns of the same type to a map
+    private def rowDfToMap[T](df: DataFrame): Map[String, T] = {
+      assert(df.count() == 1, "there should be exactly one row in the dataframe to convert it to map")
+      assert(df.schema.forall(_.dataType == df.schema.head.dataType), "all columns should have the same type")
+
+      val row = df.collect().head
+      var index = 0
+      val schema = df.schema
+      val schemaValueMap: mutable.Map[String, T] = mutable.Map.empty
+      while (index < schema.length) {
+        schemaValueMap.put(schema(index).name, row.get(index).asInstanceOf[T])
+        index += 1
+      }
+      schemaValueMap.toMap
+    }
+
+    def computeUniqueCountsMap: Map[String, Long] = {
+      val uniqueCountsDf = df.agg(df.schema.names.map { col => col -> s"approx_count_distinct($col)" }.toMap)
+      rowDfToMap[Long](uniqueCountsDf)
     }
   }
 

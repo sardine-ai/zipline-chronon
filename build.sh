@@ -43,6 +43,7 @@ deactivate
 
 sbt +spark/assembly
 SBT_JAR_12=$(ls -rt spark/target/scala-2.12/ | grep ".*assembly.*\.jar$" |tail -n 1 | awk '{print $(NF)}')
+
 rm -rf releases
 mkdir releases
 mkdir -p releases/jar_scala_12

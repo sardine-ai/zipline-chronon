@@ -1,81 +1,319 @@
 package ai.chronon.spark.stats
 
-import ai.chronon.api.DataType
-import ai.chronon.api.DataType.isNumeric
-import ai.chronon.online.{PartitionRange, SparkConversions}
+import ai.chronon.api.ColorPrinter.ColorString
+import ai.chronon.api.Constants
+import ai.chronon.online.Extensions.StructTypeOps
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.TableUtils
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.{col, expr}
+import org.apache.spark.sql.{DataFrame, types}
 
-case class TransformSpec(where: Seq[String], select: Map[String, String]) {
-  def toSql(table: String, partitionRange: PartitionRange)(implicit tableUtils: TableUtils): String = {
-    val selectStr = if(select == null || select.isEmpty) {
-      "*"
-    } else {
-      select.map { case (k, v) => s"$v AS $k" }.mkString(", ")
-    }
+import scala.util.Try
 
-    val partitionWheres = partitionRange.whereClauses(tableUtils.partitionColumn)
-    val allWheres = Option(where).getOrElse(Seq()) ++ partitionWheres
-    val whereStr = if (allWheres.nonEmpty) {
-      "WHERE " + allWheres.map(w => s"($w)").mkString(" AND ")
-    } else {
-      ""
-    }
+sealed trait SemanticType
 
-    s"SELECT $selectStr FROM $table $whereStr"
+case class DriftSpec(
+    table: String,
+    range: Option[PartitionRange] = None,
+    selects: Map[String, String] = Map.empty,
+    wheres: Seq[String] = Seq.empty,
+    timeColumn: Option[String] = None,
+    semanticOverrides: Map[String, SemanticType] = Map.empty,
+    slices: Seq[String] = Seq.empty,
+    tileMinutes: Int = 5,
+)
+
+object DriftUtils {
+
+  def isScalar(dataType: types.DataType): Boolean = dataType match {
+    case types.StringType | types.ShortType | types.BooleanType | types.IntegerType | types.LongType | types.FloatType | types.DoubleType => true
+    case _ => false
   }
-}
 
-object SemanticType extends Enumeration {
-  type SemanticType = Value
-  val Continuous, Nominal, Ordinal, Textual, Sequence, Vector = Value
+  sealed trait Cardinality
 
-  // default semantic types for given data types, can be overriden in DriftSpec
-  def of(dataType: DataType): SemanticType = {
-    if (isNumeric(dataType)) {
-      Continuous
-    } else {
-      Nominal
-    }
+  case object Low extends Cardinality
+
+  case object High extends Cardinality
+
+
+  /* ---------------------- NOTATION ----------------- */
+  // one of those cases where we prioritize readability over idiomatic scala.
+  // code would be harder to read without short-form & abbreviated notation
+
+
+  private object Agg {
+    // aggregation expressions - we will substitute out the "col" downstream
+    val hist = "count_histogram(_col_)"
+    val ptile = "approx_percentile(_col_)"
+    val arrPtile = "array_percentile(_col_)"
+    val arrHist = "array_histogram(_col_)"
+    val arrNulls = "sum(aggregate(_col_, 0, (acc, v) -> if(v is NULL, acc + 1, acc)))/sum(size(_col_))"
+
+    val uniq = "approx_count_distinct(_col_)"
+    val arrDblUniq = "array_dbl_distinct(_col_)"
+    val arrStrUniq = "array_str_distinct(_col_)"
   }
-}
 
+  // expressions over raw columns
+  private object Inp {
+    val len = "length(_col_)"
+    val cLen = "size(_col_)"
+    val strCast = "CAST(_col_ as STRING)"
+    val dblCast = "CAST(_col_ as DOUBLE)"
+    val arrStrCast = "transform(_col_, x -> CAST(x as STRING))"
+    val arrDblCast = "transform(_col_, x -> CAST(x as Double))"
+    val mapVals = "map_values(_col_)"
+    val lenVals = "CAST(transform(map_values(_col_), x -> len(x)) AS FLOAT)"
+    val mapStrCast = "transform(map_values(_col_), x -> CAST(x as STRING))"
+    val mapDblCast = "transform(map_values(_col_), x -> CAST(x as DOUBLE))"
+  }
 
-case class SemanticOverride(column: String, semanticType: SemanticType.SemanticType, categoryOrdering: Option[Seq[String]])
+  // metric names, "_drift" will be appended to these names downstream
+  private object Name {
+    val cov = "coverage"
+    val dist = "distribution"
+    val vCov = "value_coverage"
+    val length = "length"
+    val vLength = "value_length"
+  }
 
+  case class CardinalityExpression(select: Option[String], aggExpr: String)
 
-case class DriftSpec(transform: Option[TransformSpec],
-                     keyColumns: Seq[String],
-                     timeColumn: String,
-                     sliceColumns: Seq[String],
-                     semanticOverrides: Seq[SemanticOverride],
-                     tileSizeMinutes: Int = 5)
+  object CardinalityExpression {
+    private def ce(select: String, aggExpr: String): CardinalityExpression =
+      CardinalityExpression(Option(select), aggExpr)
 
-object Drift {
-  def computeBatch(table: String, driftSpec: DriftSpec, partitionRange: PartitionRange)(implicit
-      tableUtils: TableUtils): DataFrame = {
-    // 3. For each tile, aggregate into KLL sketch tiles
-    // 4. Compute drift
-
-    // 1. Scan table & get schema
-    val transformSpec = driftSpec.transform.getOrElse(TransformSpec(Seq(), Map()))
-    val sql = transformSpec.toSql(table, partitionRange)
-    val df = tableUtils.sql(sql)
-    val schema = df.schema
-
-    // 2. Identify categorical, continuous etc
-    val semanticTypes = schema.fields.map { field =>
-      val semanticType = driftSpec.semanticOverrides.find(_.column == field.name)
-      val categoryOrdering = semanticType.flatMap(_.categoryOrdering)
-      val semantic = semanticType.map(_.semanticType).getOrElse {
-        if (isNumeric(SparkConversions.toChrononType(field.name, field.dataType))) {
-          SemanticType.Continuous
-        } else {
-          SemanticType.Nominal
-        }
+    def apply(dataType: types.DataType): CardinalityExpression = {
+      dataType match {
+        case dType if isScalar(dType) => ce(null, Agg.uniq)
+        case types.ArrayType(elemType, _) =>
+          elemType match { // histogram
+            case types.StringType => ce(null, Agg.arrStrUniq)
+            case types.DoubleType => ce(null, Agg.arrDblUniq)
+            case eType if isScalar(eType) => ce(Inp.dblCast, Agg.arrDblUniq)
+            case _ => throw new UnsupportedOperationException(s"Unsupported array element type $elemType")
+          }
+        // TODO: measure and handle map key cardinality
+        case types.MapType(_, vType, _) =>
+          vType match {
+            case types.StringType => ce(Inp.mapVals, Agg.arrStrUniq)
+            case types.DoubleType => ce(Inp.mapVals, Agg.arrDblUniq)
+            case eType if isScalar(eType) => ce(Inp.mapDblCast, Agg.arrDblUniq)
+            case _ => throw new UnsupportedOperationException(s"Unsupported map value type $vType")
+          }
+        case _ => throw new UnsupportedOperationException(s"Unsupported data type $dataType")
       }
-      SemanticOverride(field.name, semantic, categoryOrdering)
     }
+  }
+
+  case class SummaryExpression(mapEx: Option[String], aggFunc: String, name: String)
+  object SummaryExpression {
+    private def se(mapEx: String, aggFunc: String, name: String): Seq[SummaryExpression] = Seq(SummaryExpression(Option(mapEx), aggFunc, name))
+
+    def of(dataType: types.DataType, cardinality: Cardinality): Seq[SummaryExpression] = cardinality match {
+      case Low => dataType match {
+        case types.StringType => se(null, Agg.hist, Name.dist)
+        case dType if isScalar(dType) => se(Inp.strCast, Agg.hist, Name.dist)
+        case types.ArrayType(elemType, _) =>
+          se(Inp.cLen, Agg.ptile, Name.length) ++
+            se(null, Agg.arrNulls, Name.vCov) ++
+            (elemType match { // histogram
+              case types.StringType => se(null, Agg.arrHist, Name.dist)
+              case eType if isScalar(eType) => se(Inp.arrStrCast, Agg.arrHist, Name.dist)
+              case _ => Seq.empty
+            })
+        // TODO: measure and handle map key cardinality
+        case types.MapType(_, vType, _) =>
+          se(Inp.cLen, Agg.ptile, Name.length) ++ // length drift
+            se(Inp.mapVals, Agg.arrNulls, Name.vCov) ++
+            (vType match { // histogram of values
+              case types.StringType => se(Inp.mapVals, Agg.arrHist, Name.dist)
+              case eType if isScalar(eType) => se(Inp.mapStrCast, Agg.arrHist, Name.dist)
+              case _ => Seq.empty
+            })
+        case _ => throw new UnsupportedOperationException(s"Unsupported data type $dataType")
+      }
+      case High => dataType match {
+        case types.StringType => se(Inp.len, Agg.ptile, Name.dist)
+        case dType if isScalar(dType) => se(Inp.dblCast, Agg.ptile, Name.dist)
+        case types.ArrayType(elemType, _) =>
+          se(Inp.cLen, Agg.ptile, Name.length) ++ (elemType match {
+            case types.StringType => se(Inp.len, Agg.ptile, Name.vLength)
+            case eType if isScalar(eType) => se(Inp.arrDblCast, Agg.arrPtile, Name.dist)
+            case _ => Seq.empty
+          })
+        case types.MapType(_, vType, _) =>
+          se(Inp.cLen, Agg.ptile, Name.length) ++ (vType match {
+            case types.StringType => se(Inp.lenVals, Agg.arrPtile, Name.vLength)
+            case eType if isScalar(eType) => se(Inp.mapStrCast, Agg.arrPtile, Name.dist)
+            case _ => Seq.empty
+          })
+        case _ => throw new UnsupportedOperationException(s"Unsupported data type $dataType")
+      }
+    }
+  }
+
+  class DataFrameSummary(df: DataFrame,
+                         timeColumn: Option[String] = None,
+                         sliceColumns: Option[Seq[String]] = None,
+                         derivedColumns: Option[Map[String, String]] = None,
+                         includeColumns: Option[Seq[String]] = None,
+                         excludeColumns: Option[Seq[String]] = None,
+                         cardinalityThreshold: Int = 10000,
+                        )(implicit val tu: TableUtils) {
+
+    
+
+    // prune down to the set of columns to summarize + validations
+    val (cardinalityInputDf, summaryInputDf): (DataFrame, DataFrame) = {
+
+      println(s"Original schema:\n${df.schema.pretty}".green)
+
+      val derivedDf = derivedColumns.map { dc =>
+        val derivedColumns = dc.map { case (k, v) => s"$v as `$k`" }.toSeq
+        // original columns that are not colliding with derived map
+        // all valid slice columns will be included into the result
+        val originalColumns = df.schema.fieldNames.filterNot(dc.keySet.contains)
+        val derivedDf = df.selectExpr(originalColumns ++ derivedColumns :_*)
+        println(s"Schema after derivations:\n${derivedDf.schema.pretty}".green)
+        derivedDf
+      }.getOrElse(df)
+
+      if (includeColumns.nonEmpty) {
+        val unknownColumns = includeColumns.get.filterNot(derivedDf.schema.fieldNames.contains)
+        assert(unknownColumns.isEmpty, s"Unknown columns to include: ${unknownColumns.mkString(", ")}")
+      }
+
+      if(excludeColumns.nonEmpty) {
+        val unknownColumns = excludeColumns.get.filterNot(derivedDf.schema.fieldNames.contains)
+        assert(unknownColumns.isEmpty, s"Unknown columns to exclude: ${unknownColumns.mkString(", ")}")
+      }
+
+      if(sliceColumns.nonEmpty) {
+        val unknownColumns = sliceColumns.get.filterNot(derivedDf.schema.fieldNames.contains)
+        assert(unknownColumns.isEmpty, s"Unknown slice columns: ${unknownColumns.mkString(", ")}")
+      }
+
+      val derivedCols = derivedDf.schema.fieldNames.toSeq
+      val (derivedDfWithTime, timeColumn) = injectTime(derivedDf)
+
+      val summaryColumns = (includeColumns
+        .getOrElse(derivedCols)
+        .filterNot(excludeColumns.getOrElse(Seq.empty).contains) ++ sliceColumns.getOrElse(Seq.empty) ++ timeColumn.toSeq).distinct
+      
+      val cardinalityColumns = summaryColumns
+        .filterNot((tu.partitionColumn +: timeColumn.toSeq).contains)
+      
+      assert(cardinalityColumns.nonEmpty, "No columns selected for cardinality estimation")
+      assert(summaryColumns.nonEmpty, "No columns selected for summarization")
+
+      val cardinalityInputDf = derivedDfWithTime.select(cardinalityColumns.head, cardinalityColumns.tail: _*)
+      println(s"Schema of columns to estimate cardinality for:\n${cardinalityInputDf.schema.pretty}".green)
+      
+      val summaryInputDf = derivedDfWithTime.select(summaryColumns.head, summaryColumns.tail: _*)
+      println(s"Schema of columns to summarize:\n${summaryInputDf.schema.pretty}".green)
+
+      cardinalityInputDf -> summaryInputDf
+    }
+
+
+    // inject time column into the dataframe if it is not already present
+    def injectTime(derivedDf: DataFrame): (DataFrame, Option[String]) = {
+      val derivedCols = derivedDf.schema.fieldNames
+      timeColumn match {
+        case Some(ts) => if (derivedCols.contains(ts)) {
+          derivedDf -> Some(ts)
+        } else {  
+          assert(!derivedCols.contains("_ts"), s"Time column _ts is reserved. Please use a different name.")
+          // ts might be already present and the user might want to override it, hence the _ prefix
+          derivedDf.withColumn("_ts", expr(ts)) -> Some("_ts")
+        }
+        case None => if (derivedCols.contains("ts")) {
+          derivedDf -> Some("ts")
+        } else {
+          derivedDf -> None // no time column
+        }        
+      }
+    }
+
+    lazy val cardinalityMap: Map[String, Long] = {
+
+      val exprs: Seq[(String, String)] = cardinalityInputDf.schema.fields
+        .flatMap { f =>
+          val ceTry = Try {
+            CardinalityExpression(f.dataType)
+          }
+          if (ceTry.isFailure) {
+            println(s"Cannot compute cardinality of column ${f.name}: ${ceTry.failed.get.getMessage}".red)
+            None
+          } else {
+            val ce = ceTry.get
+            val select = ce.select.map(s => s"$s as `${f.name}`").getOrElse(f.name)
+            val agg = ce.aggExpr.replace("_col_", f.name)
+            Some(select -> agg)
+          }
+        }
+
+      println(s"Extracting countable structures using expressions:\n  ${exprs.map(_._1).mkString("\n  ")}")
+      val inputTransformed = df.selectExpr(exprs.map(_._1): _*)
+      inputTransformed.limit(5).show()
+      println(s"Aggregating countable structures using expressions:\n  ${exprs.map(_._2).mkString("\n  ")}")
+      val aggregated = inputTransformed.selectExpr(exprs.map(_._2): _*)
+      val counts = aggregated.collect().head.getValuesMap[Long](aggregated.schema.fieldNames)
+      println(s"Counts for each field:\n  ${counts.mkString(",\n  ")}")
+
+      // verify that all slices are low cardinality
+      for(
+        cols <- sliceColumns;
+        col <- cols;
+        count <- counts.get(col)
+      ) {
+        assert(count <= cardinalityThreshold, s"Slice column $col is high cardinality $count")
+      }
+      counts
+    }
+
+
+    
+    def summaryDf: DataFrame = {
+      null
+    }
+
+  }
+}
+
+
+sealed trait DriftSummary extends Serializable {
+  val preProcess: String => String
+  val aggregate: String => String
+}
+
+case object NumericDriftSummary
+
+
+class Drift(spec: DriftSpec)(implicit tableUtils: TableUtils) {
+  def compute: DataFrame = {
+    val inputDf = tableUtils.sql(inputQuery)
+    val schema = inputDf.schema
+
+    val percentilePoints = (0 to 20).map(_.toDouble / 20)
     null
+  }
+
+  def inputQuery: String = {
+
+    val selects = if(spec.selects == null || spec.selects.isEmpty) Seq("*") else {
+      spec.selects.map{case (k, v) => s"$v as `$k`"}.mkString(",\n    ")
+    }
+
+    val partitionWheres = spec.range.map(_.whereClauses(tableUtils.partitionColumn)).getOrElse(Seq.empty)
+    val wheres = Option(spec.wheres).getOrElse(Seq.empty)
+    val allWheres = partitionWheres ++ wheres
+    val whereStr = if (allWheres.isEmpty) "" else {
+      s"\nWHERE\n    ${allWheres.map(w => s"($w)").mkString(" AND\n    ")}"
+    }
+
+    s"SELECT\n    $selects\n    FROM ${spec.table}$whereStr"
   }
 }
