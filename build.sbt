@@ -193,7 +193,7 @@ lazy val frontend = (project in file("frontend"))
       }
 
       println("Building frontend...")
-      val buildResult = Process("npm run build:docker", file("frontend")).!
+      val buildResult = Process("npm run build", file("frontend")).!
 
       if (buildResult == 0) {
         println("Copying frontend assets to /hub/public...")
