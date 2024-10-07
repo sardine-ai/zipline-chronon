@@ -30,10 +30,10 @@ describe('API module', () => {
 
 			const result = await get('test-path');
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				`${import.meta.env.VITE_API_BASE_URL}/api/v1/test-path`,
-				{ method: 'GET', headers: {} }
-			);
+			expect(mockFetch).toHaveBeenCalledWith(`http://localhost:9000/api/v1/test-path`, {
+				method: 'GET',
+				headers: {}
+			});
 			expect(result).toEqual(mockResponse);
 		});
 

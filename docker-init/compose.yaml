@@ -72,6 +72,8 @@ services:
     depends_on:
       - base
       - app
+    environment:
+      - API_BASE_URL=http://app:9000
     ports:
       - "3000:3000"
     healthcheck:
