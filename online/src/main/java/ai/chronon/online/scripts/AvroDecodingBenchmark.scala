@@ -1,21 +1,22 @@
 package ai.chronon.online.scripts
 
 import org.apache.avro.Schema
-import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.apache.avro.file.{DataFileReader, DataFileWriter}
-import org.apache.avro.specific.SpecificDatumWriter
+import org.apache.avro.file.DataFileReader
+import org.apache.avro.file.DataFileWriter
+import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericDatumReader
+import org.apache.avro.generic.GenericRecord
+import org.apache.avro.specific.SpecificDatumWriter
 
 import java.io.File
 import java.util
 import scala.util.Random
 
-
 // used for benchmarking decoding throughput
 object AvroDecodingBenchmark {
   // Define the Avro schema
-  val schema: Schema = new Schema.Parser().parse(
-    """
+  val schema: Schema =
+    new Schema.Parser().parse("""
       |{
       |  "type": "record",
       |  "name": "RandomData",
@@ -77,7 +78,7 @@ object AvroDecodingBenchmark {
     val megabytesPerSecond = bytesPerSecond / (1024 * 1024)
     val totalSizeMB = totalBytes.toDouble / (1024 * 1024)
 
-    println(f"Deserialization throughput:")
+    println("Deserialization throughput:")
     println(f"  Records: $count")
     println(f"  Total size: $totalSizeMB%.2f MB")
     println(f"  Duration: $durationSeconds%.2f seconds")

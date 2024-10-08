@@ -1,12 +1,15 @@
 package ai.chronon.spark.test.udafs
 
-import org.apache.spark.sql.{SparkSession, Row}
+import ai.chronon.spark.udafs.ArrayStringHistogramAggregator
+import ai.chronon.spark.udafs.HistogramAggregator
+import ai.chronon.spark.udafs.MapHistogramAggregator
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udaf
 import org.apache.spark.sql.types._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterAll
-import ai.chronon.spark.udafs.{MapHistogramAggregator, HistogramAggregator, ArrayStringHistogramAggregator}
 
 class UDAFSQLUsageTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 

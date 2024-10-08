@@ -38,7 +38,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
-import scala.collection.{Seq, mutable}
+import scala.collection.Seq
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.util.ScalaJavaConversions.IteratorOps
 

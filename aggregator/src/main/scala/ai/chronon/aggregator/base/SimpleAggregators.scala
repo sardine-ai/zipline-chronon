@@ -18,9 +18,14 @@ package ai.chronon.aggregator.base
 
 import ai.chronon.aggregator.base.FrequentItemType.ItemType
 import ai.chronon.api._
-import org.apache.datasketches.common.{ArrayOfDoublesSerDe, ArrayOfItemsSerDe, ArrayOfLongsSerDe, ArrayOfStringsSerDe}
-import org.apache.datasketches.cpc.{CpcSketch, CpcUnion}
-import org.apache.datasketches.frequencies.{ErrorType, ItemsSketch}
+import org.apache.datasketches.common.ArrayOfDoublesSerDe
+import org.apache.datasketches.common.ArrayOfItemsSerDe
+import org.apache.datasketches.common.ArrayOfLongsSerDe
+import org.apache.datasketches.common.ArrayOfStringsSerDe
+import org.apache.datasketches.cpc.CpcSketch
+import org.apache.datasketches.cpc.CpcUnion
+import org.apache.datasketches.frequencies.ErrorType
+import org.apache.datasketches.frequencies.ItemsSketch
 import org.apache.datasketches.kll.KllFloatsSketch
 import org.apache.datasketches.memory.Memory
 

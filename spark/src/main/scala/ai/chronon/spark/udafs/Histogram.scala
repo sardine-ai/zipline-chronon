@@ -1,7 +1,7 @@
 package ai.chronon.spark.udafs
 
+import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.{Encoder, Encoders, SparkSession}
 import org.apache.spark.sql.expressions.Aggregator
 
 // we assume that inputs are cast to strings prior to passing into the aggregator

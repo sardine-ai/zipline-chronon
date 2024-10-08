@@ -2,12 +2,18 @@ package ai.chronon.spark.udafs
 
 import ai.chronon.aggregator.base.CpcFriendly
 import ai.chronon.api.ColorPrinter.ColorString
-import org.apache.datasketches.cpc.{CpcSketch, CpcUnion}
+import org.apache.datasketches.cpc.CpcSketch
+import org.apache.datasketches.cpc.CpcUnion
+import org.apache.spark.sql.Column
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.expressions.{Aggregator, UserDefinedFunction}
-import org.apache.spark.sql.functions.{map_values, udaf}
+import org.apache.spark.sql.expressions.Aggregator
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.map_values
+import org.apache.spark.sql.functions.udaf
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Column, DataFrame, Encoder, Encoders}
 
 import scala.util.Try
 
@@ -57,31 +63,31 @@ object ApproxDistinct {
   def udafOf(dataType: DataType): UserDefinedFunction = {
     dataType match {
       case IntegerType => udaf(new ScalarApproxDistinct[Int]())
-      case FloatType => udaf(new ScalarApproxDistinct[Float]())
-      case LongType => udaf(new ScalarApproxDistinct[Long]())
-      case DoubleType => udaf(new ScalarApproxDistinct[Double]())
-      case StringType => udaf(new ScalarApproxDistinct[String]())
-      case ArrayType(valueType, _) => valueType match {
-        case IntegerType => udaf(new ArrayApproxDistinct[Int]())
-        case FloatType => udaf(new ArrayApproxDistinct[Float]())
-        case LongType => udaf(new ArrayApproxDistinct[Long]())
-        case DoubleType => udaf(new ArrayApproxDistinct[Double]())
-        case StringType => udaf(new ArrayApproxDistinct[String]())
-        case ByteType => udaf(new ScalarApproxDistinct[Array[Byte]]())
-        case _ => throw new UnsupportedOperationException(s"Unsupported array type $valueType")
-      }
+      case FloatType   => udaf(new ScalarApproxDistinct[Float]())
+      case LongType    => udaf(new ScalarApproxDistinct[Long]())
+      case DoubleType  => udaf(new ScalarApproxDistinct[Double]())
+      case StringType  => udaf(new ScalarApproxDistinct[String]())
+      case ArrayType(valueType, _) =>
+        valueType match {
+          case IntegerType => udaf(new ArrayApproxDistinct[Int]())
+          case FloatType   => udaf(new ArrayApproxDistinct[Float]())
+          case LongType    => udaf(new ArrayApproxDistinct[Long]())
+          case DoubleType  => udaf(new ArrayApproxDistinct[Double]())
+          case StringType  => udaf(new ArrayApproxDistinct[String]())
+          case ByteType    => udaf(new ScalarApproxDistinct[Array[Byte]]())
+          case _           => throw new UnsupportedOperationException(s"Unsupported array type $valueType")
+        }
       case _ => throw new UnsupportedOperationException(s"Unsupported type $dataType")
     }
   }
 
   def columnCardinality(df: DataFrame): Map[String, Long] = {
     val aggs: Array[Column] = df.schema.fields.flatMap { field =>
-
       val expr = Try {
         // we count uniques of map's value types only, keys are assumed to be categorical
         val (inner, effectiveType) = field.dataType match {
           case MapType(_, v, _) => map_values(df(field.name)) -> ArrayType(v)
-          case t => df(field.name) -> t
+          case t                => df(field.name) -> t
         }
         val aggFunc = ApproxDistinct.udafOf(effectiveType)
         aggFunc(inner).as(s"${field.name}_count")

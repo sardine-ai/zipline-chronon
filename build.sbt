@@ -48,7 +48,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, overwatch)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp)
   .settings(name := "chronon")
 
 val spark_sql = Seq(

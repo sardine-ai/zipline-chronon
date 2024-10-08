@@ -1,7 +1,8 @@
 package ai.chronon.spark.test.udafs
 
 import ai.chronon.spark.udafs.ApproxDistinct
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

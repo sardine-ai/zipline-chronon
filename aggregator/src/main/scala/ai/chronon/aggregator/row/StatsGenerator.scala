@@ -162,7 +162,8 @@ object StatsGenerator {
     val referenceSketch = KllFloatsSketch.heapify(Memory.wrap(reference.asInstanceOf[Array[Byte]]))
     val comparisonSketch = KllFloatsSketch.heapify(Memory.wrap(comparison.asInstanceOf[Array[Byte]]))
     val binsToDoubles = (0 to bins).map(_.toDouble / bins).toArray
-    val keySet = referenceSketch.getQuantiles(binsToDoubles).union(comparisonSketch.getQuantiles(binsToDoubles)).distinct.sorted
+    val keySet =
+      referenceSketch.getQuantiles(binsToDoubles).union(comparisonSketch.getQuantiles(binsToDoubles)).distinct.sorted
     val referencePMF = regularize(referenceSketch.getPMF(keySet), eps)
     val comparisonPMF = regularize(comparisonSketch.getPMF(keySet), eps)
     var psi = 0.0
