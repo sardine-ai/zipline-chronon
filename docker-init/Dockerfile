@@ -12,8 +12,11 @@ FROM amazoncorretto:17
 
  # Install python deps
 COPY docker-init/requirements.txt .
-RUN yum install -y python3 unzip
-RUN  pip3 install --upgrade pip; pip3 install -r requirements.txt
+# Python3.8 to allow for numpy==1.22.0 due to security concern
+RUN amazon-linux-extras enable python3.8
+RUN yum clean metadata; yum install -y python38 unzip
+RUN  pip3.8 install --upgrade pip; pip3.8 install -r requirements.txt
+ENV PYSPARK_PYTHON=python3.8
 
 RUN mkdir -p /app
 COPY docker-init/generate_anomalous_data.py /app/
