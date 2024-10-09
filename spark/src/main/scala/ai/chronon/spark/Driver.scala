@@ -754,6 +754,10 @@ object Driver {
       val acceptedEndPoints = List(MetadataEndPoint.ConfByKeyEndPointName, MetadataEndPoint.NameByTeamEndPointName)
       val dirWalker = new MetadataDirWalker(args.confPath(), acceptedEndPoints)
       val kvMap: Map[String, Map[String, List[String]]] = dirWalker.run
+
+      // trigger creates of the datasets before we proceed with writes
+      acceptedEndPoints.foreach(e => args.metaDataStore.create(e))
+
       val putRequestsSeq: Seq[Future[scala.collection.Seq[Boolean]]] = kvMap.toSeq.map {
         case (endPoint, kvMap) => args.metaDataStore.put(kvMap, endPoint)
       }

@@ -228,4 +228,8 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
     val futures = putsBatches.map(batch => kvStore.multiPut(batch))
     Future.sequence(futures).map(_.flatten)
   }
+
+  def create(dataset: String): Unit = {
+    kvStore.create(dataset)
+  }
 }

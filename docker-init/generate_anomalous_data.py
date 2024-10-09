@@ -3,18 +3,9 @@ from datetime import datetime, timedelta
 import numpy as np
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, DoubleType, IntegerType, StringType, TimestampType, BooleanType
-import boto3
-import awswrangler as wr
-import os
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("FraudClassificationSchema").getOrCreate()
-
-ENDPOINT_URL = os.environ.get("DYNAMO_ENDPOINT") if os.environ.get("DYNAMO_ENDPOINT") is not None else 'http://localhost:8000'
-
-wr.config.dynamodb_endpoint_url = ENDPOINT_URL
-dynamodb = boto3.client('dynamodb', endpoint_url=ENDPOINT_URL)
-
 
 def time_to_value(t, base_value, amplitude, noise_level, scale=1):
     if scale is None:

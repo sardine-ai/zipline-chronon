@@ -49,9 +49,10 @@ services:
       dockerfile: docker-init/Dockerfile
     depends_on:
       - base
+      - dynamo
     environment:
       - DYNAMO_ENDPOINT=http://dynamo:8000
-      - AWS_DEFAULT_REGION=fakeregion
+      - AWS_DEFAULT_REGION=us-west-2
       - AWS_ACCESS_KEY_ID=fakeaccesskey
       - AWS_SECRET_ACCESS_KEY=fakesecretkey
       - PLAY_HTTP_SECRET_KEY=my_fake_chronon_monitoring_hub_http_secret_key # needs to be long to make Play happy
