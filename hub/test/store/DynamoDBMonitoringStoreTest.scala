@@ -50,7 +50,13 @@ class DynamoDBMonitoringStoreTest extends MockitoSugar with Matchers {
     // let's check models specifically
     val models = dynamoDBMonitoringStore.getModels
     models.length shouldBe 1
-    models.head.name shouldBe "risk.transaction_model.v1"
+
+    val firstModel = models.head
+    firstModel.name shouldBe "risk.transaction_model.v1"
+    firstModel.join.name shouldBe "risk.user_transactions.txn_join"
+    firstModel.join.joinFeatures.isEmpty shouldBe true
+    firstModel.join.groupBys.length shouldBe 4
+    firstModel.join.groupBys.foreach(g => g.features.isEmpty shouldBe false)
   }
 
   private def generateListResponse(): Future[ListResponse] = {

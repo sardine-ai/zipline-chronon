@@ -3,7 +3,7 @@ package controllers
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
-import model.{ListModelResponse, Model}
+import model.{GroupBy, Join, ListModelResponse, Model}
 import org.scalatest.EitherValues
 import org.scalatestplus.play._
 import play.api.http.Status.BAD_REQUEST
@@ -66,8 +66,11 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
 }
 
 object MockDataService {
-  def generateMockModel(id: String): Model =
-    Model(id, online = true, production = true, "my team", "XGBoost")
+  def generateMockModel(id: String): Model = {
+    val groupBys = Seq(GroupBy("my_groupBy", Seq("g1", "g2")))
+    val join = Join("my_join", Seq("ext_f1", "ext_f2", "d_1", "d2"), groupBys)
+    Model(id, join, online = true, production = true, "my team", "XGBoost")
+  }
 
   val mockModelRegistry: Seq[Model] = (0 until 100).map(i => generateMockModel(i.toString))
 }

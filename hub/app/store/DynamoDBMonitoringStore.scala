@@ -6,7 +6,7 @@ import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.listLimit
 import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.continuationKey
 import ai.chronon.online.KVStore.{ListRequest, ListResponse}
 import ai.chronon.online.{Api, KVStore, MetadataEndPoint, Metrics, TTLCache}
-import model.Model
+import model.{GroupBy, Join, Model}
 import org.apache.thrift.TBase
 
 import java.nio.charset.StandardCharsets
@@ -14,6 +14,9 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 import play.api.Logger
+
+import scala.jdk.CollectionConverters._
+import ai.chronon.api.Extensions._
 
 case class LoadedConfs(joins: Seq[api.Join] = Seq.empty,
                        GroupBys: Seq[api.GroupBy] = Seq.empty,
@@ -40,8 +43,24 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
   }
 
   def getModels: Seq[Model] =
-    configRegistryCache("default").models.map(m =>
-      Model(m.metaData.name, m.metaData.online, m.metaData.production, m.metaData.team, m.modelType.name()))
+    configRegistryCache("default").models.flatMap { m =>
+      if (m.source.isSetJoinSource && m.source.getJoinSource.isSetJoin) {
+        val thriftJoin = m.source.getJoinSource.join
+
+        val groupBys = thriftJoin.joinParts.asScala.map { part =>
+          GroupBy(part.groupBy.metaData.name, part.groupBy.valueColumns)
+        }
+
+        val derivedFeatures = thriftJoin.derivationsWithoutStar.map(_.name)
+        val externalFeatures = thriftJoin.getExternalFeatureCols
+        val join = Join(thriftJoin.metaData.name, derivedFeatures ++ externalFeatures, groupBys)
+        Option(
+          Model(m.metaData.name, join, m.metaData.online, m.metaData.production, m.metaData.team, m.modelType.name()))
+      } else {
+        logger.warn(s"Skipping model ${m.metaData.name} as it's missing join related details")
+        None
+      }
+    }
 
   val logger: Logger = Logger(this.getClass)
   val defaultListLookupLimit: Int = 100
