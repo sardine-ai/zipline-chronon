@@ -4,6 +4,11 @@ if ! python3.8 generate_anomalous_data.py; then
     exit 1
 fi
 
+# Load up metadata into DynamoDB
+echo "Loading metadata.."
+java -cp /app/cli/spark.jar:$CLASSPATH ai.chronon.spark.Driver metadata-upload --conf-path=/chronon_sample/production/ --online-jar=/app/cli/cloud_aws.jar --online-class=ai.chronon.integrations.aws.AwsApiImpl
+echo "Metadata load done!"
+
 # Add these java options as without them we hit the below error:
 # throws java.lang.ClassFormatError accessible: module java.base does not "opens java.lang" to unnamed module @36328710
 export JAVA_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED"
