@@ -3,7 +3,7 @@ package controllers
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
-import model.ListModelResponse
+import model.{ListModelResponse, Model}
 import org.scalatest.EitherValues
 import org.scalatestplus.play._
 import play.api.http.Status.BAD_REQUEST
@@ -11,13 +11,19 @@ import play.api.http.Status.OK
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
+import org.mockito.Mockito._
+import store.DynamoDBMonitoringStore
 
 class ModelControllerSpec extends PlaySpec with Results with EitherValues {
 
+  import MockDataService._
+
   // Create a stub ControllerComponents
   val stubCC: ControllerComponents = stubControllerComponents()
+  // Create a mocked DynDB store
+  val mockedStore = mock(classOf[DynamoDBMonitoringStore])
 
-  val controller = new ModelController(stubCC)
+  val controller = new ModelController(stubCC, mockedStore)
 
   "ModelController" should {
 
@@ -32,16 +38,20 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
     }
 
     "send valid results on a correctly formed request" in {
+      when(mockedStore.getModels).thenReturn(mockModelRegistry)
+
       val result = controller.list(None, None).apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](bodyText)
       val items = listModelResponse.right.value.items
       items.length mustBe controller.defaultLimit
-      items.map(_.id.toInt).toSet mustBe (0 until 10).toSet
+      items.map(_.name.toInt).toSet mustBe (0 until 10).toSet
     }
 
     "send results in a paginated fashion correctly" in {
+      when(mockedStore.getModels).thenReturn(mockModelRegistry)
+
       val startOffset = 25
       val number = 20
       val result = controller.list(Some(startOffset), Some(number)).apply(FakeRequest())
@@ -50,7 +60,14 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
       val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](bodyText)
       val items = listModelResponse.right.value.items
       items.length mustBe number
-      items.map(_.id.toInt).toSet mustBe (startOffset until startOffset + number).toSet
+      items.map(_.name.toInt).toSet mustBe (startOffset until startOffset + number).toSet
     }
   }
+}
+
+object MockDataService {
+  def generateMockModel(id: String): Model =
+    Model(id, online = true, production = true, "my team", "XGBoost")
+
+  val mockModelRegistry: Seq[Model] = (0 until 100).map(i => generateMockModel(i.toString))
 }

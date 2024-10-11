@@ -5,6 +5,7 @@ import io.circe.syntax._
 import model.ListModelResponse
 import model.Model
 import play.api.mvc._
+import store.DynamoDBMonitoringStore
 
 import javax.inject._
 
@@ -12,9 +13,10 @@ import javax.inject._
   * Controller for the Zipline models entities
   */
 @Singleton
-class ModelController @Inject() (val controllerComponents: ControllerComponents) extends BaseController with Paginate {
-
-  import MockDataService._
+class ModelController @Inject() (val controllerComponents: ControllerComponents,
+                                 monitoringStore: DynamoDBMonitoringStore)
+    extends BaseController
+    with Paginate {
 
   /**
     * Powers the /api/v1/models endpoint. Returns a list of models
@@ -32,24 +34,10 @@ class ModelController @Inject() (val controllerComponents: ControllerComponents)
       } else if (limitValue < 0) {
         BadRequest("Invalid limit - expect a positive number")
       } else {
-        val paginatedResults = paginateResults(mockModelRegistry, offsetValue, limitValue)
+        val models = monitoringStore.getModels
+        val paginatedResults = paginateResults(models, offsetValue, limitValue)
         val json = ListModelResponse(offsetValue, paginatedResults).asJson.noSpaces
         Ok(json)
       }
     }
-}
-
-object MockDataService {
-  // temporarily serve up mock data while we wait on hooking up our KV store layer
-  def generateMockModel(id: String): Model =
-    Model(s"my test model - $id",
-          id,
-          online = true,
-          production = true,
-          "my team",
-          "XGBoost",
-          1719262147000L,
-          1727210947000L)
-
-  val mockModelRegistry: Seq[Model] = (0 until 100).map(i => generateMockModel(i.toString))
 }

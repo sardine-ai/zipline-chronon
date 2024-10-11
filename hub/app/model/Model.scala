@@ -1,14 +1,7 @@
 package model
 
 /** Captures some details related to ML models registered with Zipline to surface in the Hub UI */
-case class Model(name: String,
-                 id: String,
-                 online: Boolean,
-                 production: Boolean,
-                 team: String,
-                 modelType: String,
-                 createTime: Long,
-                 lastUpdated: Long)
+case class Model(name: String, online: Boolean, production: Boolean, team: String, modelType: String)
 
 /** Supported Metric types */
 sealed trait MetricType

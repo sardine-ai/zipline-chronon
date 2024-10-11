@@ -1,10 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.online.KVStore
-import ai.chronon.online.KVStore.GetResponse
-import ai.chronon.online.KVStore.ListRequest
-import ai.chronon.online.KVStore.ListResponse
-import ai.chronon.online.KVStore.TimedValue
+import ai.chronon.online.KVStore.{GetResponse, ListRequest, ListResponse, ListValue, TimedValue}
 import ai.chronon.online.Metrics
 import ai.chronon.online.Metrics.Context
 import software.amazon.awssdk.core.SdkBytes
@@ -282,7 +279,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     }
   }
 
-  private def extractListValues(tryScanResponse: Try[ScanResponse]): Try[Seq[Array[Byte]]] = {
+  private def extractListValues(tryScanResponse: Try[ScanResponse]): Try[Seq[ListValue]] = {
     tryScanResponse.map { response =>
       val ddbResponseList = response.items()
       ddbResponseList.asScala.map { ddbResponseMap =>
@@ -290,10 +287,12 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
         if (responseMap.isEmpty)
           throw new Exception("Empty response returned from DynamoDB")
 
+        val keyBytes = responseMap.get("keyBytes").map(v => v.b().asByteArray())
         val valueBytes = responseMap.get("valueBytes").map(v => v.b().asByteArray())
-        if (valueBytes.isEmpty)
-          throw new Exception("DynamoDB response missing valueBytes")
-        valueBytes.get
+
+        if (keyBytes.isEmpty || valueBytes.isEmpty)
+          throw new Exception("DynamoDB response missing key / valueBytes")
+        ListValue(keyBytes.get, valueBytes.get)
       }
     }
   }

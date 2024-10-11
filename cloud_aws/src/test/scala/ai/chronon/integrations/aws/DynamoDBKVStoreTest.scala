@@ -1,9 +1,6 @@
 package ai.chronon.integrations.aws
 
-import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.KVStore.GetResponse
-import ai.chronon.online.KVStore.ListRequest
-import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.KVStore.{GetRequest, GetResponse, ListRequest, ListValue, PutRequest}
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer
 import io.circe.generic.auto._
@@ -236,14 +233,18 @@ class DynamoDBKVStoreTest {
     }
   }
 
-  private def validateExpectedListResponse(response: Try[Seq[Array[Byte]]], maxElements: Int): Unit = {
+  private def validateExpectedListResponse(response: Try[Seq[ListValue]], maxElements: Int): Unit = {
     response match {
       case Success(mSeq) =>
         mSeq.length should be <= maxElements
-        mSeq.foreach { modelBytes =>
-          val jsonStr = new String(modelBytes, StandardCharsets.UTF_8)
+        mSeq.foreach { modelKV =>
+          val jsonStr = new String(modelKV.valueBytes, StandardCharsets.UTF_8)
           val returnedModel = decode[Model](jsonStr)
+          val returnedKeyJsonStr = new String(modelKV.keyBytes, StandardCharsets.UTF_8)
+          val returnedKey = decode[String](returnedKeyJsonStr)
           returnedModel.isRight shouldBe true
+          returnedKey.isRight shouldBe true
+          returnedModel.right.get.modelId shouldBe returnedKey.right.get
         }
       case Failure(exception) =>
         fail(s"List response failed with exception: $exception")

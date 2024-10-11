@@ -12,9 +12,9 @@ import java.net.URI
   */
 class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
   val ddbClient: DynamoDbClient = {
-    val regionEnvVar = conf.getOrElse("AWS_DEFAULT_REGION", "us-west-2")
-    val accessKeyId = conf.getOrElse("AWS_ACCESS_KEY_ID", "fakeaccesskey")
-    val secretAccessKey = conf.getOrElse("AWS_SECRET_ACCESS_KEY", "fakesecretaccesskey")
+    val regionEnvVar = sys.env.getOrElse("AWS_DEFAULT_REGION", "us-west-2")
+    val accessKeyId = sys.env.getOrElse("AWS_ACCESS_KEY_ID", "fakeaccesskey")
+    val secretAccessKey = sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", "fakesecretaccesskey")
     val dynamoEndpoint = sys.env.getOrElse("DYNAMO_ENDPOINT", "http://dynamo:8000")
 
     val credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey)

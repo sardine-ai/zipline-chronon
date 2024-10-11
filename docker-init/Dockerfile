@@ -17,13 +17,15 @@ FROM bitnami/spark:3.5.2 AS spark-source
 # Start a new stage for the runtime image
 FROM amazoncorretto:17
 
- # Install python deps
+# Install python deps
 COPY docker-init/requirements.txt .
 # Python3.8 to allow for numpy==1.22.0 due to security concern
 RUN amazon-linux-extras enable python3.8
 RUN yum clean metadata; yum install -y python38 unzip
 RUN  pip3.8 install --upgrade pip; pip3.8 install -r requirements.txt
 ENV PYSPARK_PYTHON=python3.8
+# Helps with debugging
+RUN pip3 install awscli
 
 RUN mkdir -p /app
 RUN mkdir -p /cli
