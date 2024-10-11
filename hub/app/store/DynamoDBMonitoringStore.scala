@@ -1,3 +1,122 @@
-package store class DynamoDBMonitoringStore {
+package store
 
+import ai.chronon.api
+import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.listLimit
+import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.continuationKey
+import ai.chronon.online.KVStore.{ListRequest, ListResponse}
+import ai.chronon.online.{Api, KVStore, MetadataEndPoint, Metrics, TTLCache}
+import model.Model
+import org.apache.thrift.TBase
+
+import java.nio.charset.StandardCharsets
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.reflect.ClassTag
+import play.api.Logger
+
+case class LoadedConfs(joins: Seq[api.Join] = Seq.empty,
+                       GroupBys: Seq[api.GroupBy] = Seq.empty,
+                       stagingQueries: Seq[api.StagingQuery] = Seq.empty,
+                       models: Seq[api.Model] = Seq.empty)
+
+class DynamoDBMonitoringStore(apiImpl: Api) {
+
+  val dynamoDBKVStore: KVStore = apiImpl.genKvStore
+  implicit val executionContext: ExecutionContext = dynamoDBKVStore.executionContext
+
+  // to help periodically refresh the load config catalog, we wrap this in a TTL cache
+  lazy val configRegistryCache: TTLCache[String, LoadedConfs] = {
+    new TTLCache[String, LoadedConfs](
+      { _ =>
+        Await.result(retrieveAllListConfs(LoadedConfs()), 10.seconds)
+      },
+      { _ => Metrics.Context(environment = "dynamodb_store.fetch_configs") }
+    )
+  }
+
+  def getConfigRegistry: LoadedConfs = {
+    configRegistryCache("default")
+  }
+
+  def getModels: Seq[Model] =
+    configRegistryCache("default").models.map(m =>
+      Model(m.metaData.name, m.metaData.online, m.metaData.production, m.metaData.team, m.modelType.name()))
+
+  val logger: Logger = Logger(this.getClass)
+  val defaultListLookupLimit: Int = 100
+
+  private def retrieveAllListConfs(acc: LoadedConfs, paginationKey: Option[Any] = None): Future[LoadedConfs] = {
+    val propsMap =
+      if (paginationKey.isDefined) Map(listLimit -> defaultListLookupLimit, continuationKey -> paginationKey.get)
+      else Map(listLimit -> defaultListLookupLimit)
+    val listRequest = ListRequest(MetadataEndPoint.ConfByKeyEndPointName, propsMap)
+    logger.info(s"Triggering list conf lookup with request: $listRequest")
+    dynamoDBKVStore.list(listRequest).flatMap { response =>
+      val newLoadedConfs = makeLoadedConfs(response)
+      val newAcc = LoadedConfs(
+        acc.joins ++ newLoadedConfs.joins,
+        acc.GroupBys ++ newLoadedConfs.GroupBys,
+        acc.stagingQueries ++ newLoadedConfs.stagingQueries,
+        acc.models ++ newLoadedConfs.models
+      )
+      if (response.resultProps.contains(continuationKey)) {
+        retrieveAllListConfs(newAcc, response.resultProps.get(continuationKey))
+      } else {
+        Future.successful(newAcc)
+      }
+    }
+  }
+
+  private def makeLoadedConfs(response: ListResponse): LoadedConfs = {
+    response.values
+      .map { seqAB =>
+        val seqKVStrings = seqAB.map(kv =>
+          (new String(kv.keyBytes, StandardCharsets.UTF_8), new String(kv.valueBytes, StandardCharsets.UTF_8)))
+        val result = seqKVStrings.foldLeft(LoadedConfs()) {
+          case (confs, kv) =>
+            kv._1 match {
+              case value if value.contains("joins/") =>
+                LoadedConfs(confs.joins ++ Seq(getConf[api.Join](kv._2)),
+                            confs.GroupBys,
+                            confs.stagingQueries,
+                            confs.models)
+              case value if value.contains("group_bys/") =>
+                LoadedConfs(confs.joins,
+                            confs.GroupBys ++ Seq(getConf[api.GroupBy](kv._2)),
+                            confs.stagingQueries,
+                            confs.models)
+              case value if value.contains("staging_queries/") =>
+                LoadedConfs(confs.joins,
+                            confs.GroupBys,
+                            confs.stagingQueries ++ Seq(getConf[api.StagingQuery](kv._2)),
+                            confs.models)
+              case value if value.contains("models/") =>
+                LoadedConfs(confs.joins,
+                            confs.GroupBys,
+                            confs.stagingQueries,
+                            confs.models ++ Seq(getConf[api.Model](kv._2)))
+              case _ =>
+                logger.error(s"Unable to parse list response key: ${kv._1}")
+                LoadedConfs()
+            }
+        }
+        logger.info(
+          s"Finished one batch load of configs. Loaded: ${result.joins.length} joins; " +
+            s"${result.GroupBys.length} GroupBys; ${result.models.length} models; " +
+            s"${result.stagingQueries.length} staging queries")
+        result
+      }
+      .recover {
+        case e: Exception =>
+          logger.error("Caught an exception", e)
+          LoadedConfs(Seq.empty, Seq.empty, Seq.empty, Seq.empty)
+      }
+      .get
+  }
+
+  def getConf[T <: TBase[_, _]: Manifest](confString: String): T = {
+    val clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
+    ThriftJsonCodec.fromJsonStr[T](confString, false, clazz)
+  }
 }
