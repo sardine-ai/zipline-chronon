@@ -2,7 +2,7 @@
   "outputSchema": {
     "kind": 6
   },
-  "modelType": 1,
+  "modelType": 0,
   "metaData": {
     "name": "quickstart.test.v1",
     "tableProperties": {
