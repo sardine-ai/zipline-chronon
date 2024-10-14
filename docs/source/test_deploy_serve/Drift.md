@@ -59,50 +59,28 @@ We have three stages of drift computation
 
 
 ## Cardinality estimation
-Cardinality is estimated via KLL sketch - which has the most optimal storage to accuracy ratio among all sketching 
-methods.
+Cardinality is estimated via CPCSketch - which has the most optimal storage to accuracy ratio among all sketching 
+methods. We will use this to determine if a feature is categorical or numeric.
 
-  - scalar columns 
-    - high cardinality & numeric => continuous values
-    - low cardinality & numeric => discrete values
-    - high cardinality & string => textual values
-    - low cardinality & string => nominal values
-  - array columns
-    - fixed length
-      - vector values
-    - variable length 
-      - high cardinality & numeric => array of continuous values
-      - low cardinality & numeric => array of discrete values
-      - low cardinality & string => array of nominal values
-      - high cardinality & string => array of textual values
-  - map columns
-    - high cardinality & numeric => map of continuous values
-    - low cardinality & numeric => map of discrete values 
-    - low cardinality & string => map of nominal values
-    - high cardinality & string => map of textual values 
+For numeric features we will compute percentile values using KLL sketch with a fixed number of same width intervals. 
+We are going to start with 20 for now. 20 intervals leads to 0.05% of values per interval. 
+  - p0, p5, ... p95, p100
+
+For categorical features we will compute histogram of values.
 
 
+To compute drift metrics of numerical value summaries we need to convert the percentile array into a probability 
+distribution function. 
+lets take a simpler example with fewer intervals - say 5 
+the percentile array is X =    [1, 4, 7, 11, 15, 98]
+the percentiles themselves are [p0, p20, p40, p60, p80, p100]
+so there are 20% of values between 1&4, 4&7, 7&11 etc
+assuming the values are uniformly distributed between the intervals
+i,e 6.67% of values between 1&2, 2&3, 3&4 each.
+If I were forced to introduce another number 2.5 between 1&4
+then there would be 1-2.5
+to make it continuous (accounting for fractions) - there are 
 
-notation: b_histogram stands for bounded_histogram 
-          f+b_histogram stands for flattened+bounded_histogram
-
-cardinality estimation => detect semantic type
-semantic type, data type => prepare func, summary func, drift func
-
-universal => check null ratio drift - avg(if(x is null, 1, 0)) as null_ratio
-string, array, map => check length drift - approx_percentile(length(x), (bins), accuracy=10000)
-array, map of nums low cardinality=> array_histogram
-
-array => value null ratio drift - sum(transform(col, if(x is null, 1, 0))) as nulls / sum(length(col)) as inner_null_ratio
-map => value null ratio drift - sum(transform(map_values(col), if(x is null, 1, 0))) as nulls / sum(length(col)) as inner_null_ratio
-
-low, (nums or string) => (hist:: cast to string, histogram), (psi)
-low, (num or string in array) => (hist:: transform(col, x-> cast x as string), array_histogram)
-low, (num or string in map) => (hist:: transform(map_values(col), x -> cast x as string), array_histogram)
-                               
-
-high, (nums) => (cast to double, kll sketch) (ks, js or psi)
-high, string
 
 
 

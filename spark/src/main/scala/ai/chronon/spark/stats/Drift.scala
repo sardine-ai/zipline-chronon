@@ -1,29 +1,20 @@
 package ai.chronon.spark.stats
 
 import ai.chronon.api.ColorPrinter.ColorString
+import ai.chronon.api.Constants
+import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Join
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.online.Extensions.StructTypeOps
-import ai.chronon.online.PartitionRange
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types
 
 import scala.util.Try
-
-sealed trait SemanticType
-
-case class DriftSpec(
-    table: String,
-    range: Option[PartitionRange] = None,
-    selects: Map[String, String] = Map.empty,
-    wheres: Seq[String] = Seq.empty,
-    timeColumn: Option[String] = None,
-    semanticOverrides: Map[String, SemanticType] = Map.empty,
-    slices: Seq[String] = Seq.empty,
-    tileMinutes: Int = 5
-)
 
 object DriftUtils {
 
@@ -172,18 +163,20 @@ object DriftUtils {
       }
   }
 
-  class DataFrameSummary(df: DataFrame,
+  class DataFrameSummary(name: String,
+                         df: DataFrame,
                          timeColumn: Option[String] = None,
                          sliceColumns: Option[Seq[String]] = None,
                          derivedColumns: Option[Map[String, String]] = None,
                          includeColumns: Option[Seq[String]] = None,
                          excludeColumns: Option[Seq[String]] = None,
+                         tileSize: Window = new Window(5, TimeUnit.MINUTES),
                          cardinalityThreshold: Int = 10000)(implicit val tu: TableUtils) {
 
     // prune down to the set of columns to summarize + validations
     val (cardinalityInputDf, summaryInputDf): (DataFrame, DataFrame) = {
 
-      println(s"Original schema:\n${df.schema.pretty}".green)
+      println(s"Original schema:\n${df.schema}".green)
 
       val derivedDf = derivedColumns
         .map { dc =>
@@ -192,7 +185,7 @@ object DriftUtils {
           // all valid slice columns will be included into the result
           val originalColumns = df.schema.fieldNames.filterNot(dc.keySet.contains)
           val derivedDf = df.selectExpr(originalColumns ++ derivedColumns: _*)
-          println(s"Schema after derivations:\n${derivedDf.schema.pretty}".green)
+          println(s"Schema after derivations:\n${derivedDf.schema}".green)
           derivedDf
         }
         .getOrElse(df)
@@ -213,12 +206,13 @@ object DriftUtils {
       }
 
       val derivedCols = derivedDf.schema.fieldNames.toSeq
-      val (derivedDfWithTime, timeColumn) = injectTime(derivedDf)
+      val derivedDfWithTile = injectTile(derivedDf)
 
       val summaryColumns = (includeColumns
         .getOrElse(derivedCols)
-        .filterNot(excludeColumns.getOrElse(Seq.empty).contains) ++ sliceColumns.getOrElse(
-        Seq.empty) ++ timeColumn.toSeq).distinct
+        .filterNot(excludeColumns.getOrElse(Seq.empty).contains) ++
+        sliceColumns.getOrElse(Seq.empty) :+
+        "tile").distinct
 
       val cardinalityColumns = summaryColumns
         .filterNot((tu.partitionColumn +: timeColumn.toSeq).contains)
@@ -226,36 +220,47 @@ object DriftUtils {
       assert(cardinalityColumns.nonEmpty, "No columns selected for cardinality estimation")
       assert(summaryColumns.nonEmpty, "No columns selected for summarization")
 
-      val cardinalityInputDf = derivedDfWithTime.select(cardinalityColumns.head, cardinalityColumns.tail: _*)
-      println(s"Schema of columns to estimate cardinality for:\n${cardinalityInputDf.schema.pretty}".green)
+      val cardinalityInputDf = derivedDfWithTile.select(cardinalityColumns.head, cardinalityColumns.tail: _*)
+      println(s"Schema of columns to estimate cardinality for:\n${cardinalityInputDf.schema}".green)
 
-      val summaryInputDf = derivedDfWithTime.select(summaryColumns.head, summaryColumns.tail: _*)
-      println(s"Schema of columns to summarize:\n${summaryInputDf.schema.pretty}".green)
+      val summaryInputDf = derivedDfWithTile.select(summaryColumns.head, summaryColumns.tail: _*)
+      println(s"Schema of columns to summarize:\n${summaryInputDf.schema}".green)
 
       cardinalityInputDf -> summaryInputDf
     }
 
-    // inject time column into the dataframe if it is not already present
-    def injectTime(derivedDf: DataFrame): (DataFrame, Option[String]) = {
+    private val tileColumn: String = "_tile"
+    // inject a tile column into the data frame to compute summaries within.
+    private def injectTile(derivedDf: DataFrame): DataFrame = {
       val derivedCols = derivedDf.schema.fieldNames
-      timeColumn match {
-        case Some(ts) =>
-          if (derivedCols.contains(ts)) {
-            derivedDf -> Some(ts)
-          } else {
-            assert(!derivedCols.contains("_ts"), "Time column _ts is reserved. Please use a different name.")
-            // ts might be already present and the user might want to override it, hence the _ prefix
-            derivedDf.withColumn("_ts", expr(ts)) -> Some("_ts")
-          }
-        case None =>
-          if (derivedCols.contains("ts")) {
-            derivedDf -> Some("ts")
-          } else {
-            derivedDf -> None // no time column
-          }
+      assert(!derivedCols.contains(tileColumn), s"Time column $tileColumn is reserved. Please use a different name.")
+
+      // adds a time based tile column for a given time expression in milliseconds
+      def addTileCol(ts: String): DataFrame = {
+        val tileExpr = s"round((${ts})/${tileSize.millis}) * ${tileSize.millis})"
+        val result = derivedDf.withColumn(tileColumn, expr(tileExpr))
+        if (derivedCols.contains(ts)) result.drop(ts) else result
+      }
+
+      val timeCol = timeColumn.getOrElse(
+        if (derivedCols.contains(Constants.TimeColumn)) Constants.TimeColumn
+        else null
+      )
+
+      if (timeCol != null) {
+        addTileCol(timeCol)
+      } else if (derivedCols.contains(tu.partitionColumn)) {
+        val conversionEx = s"unix_timestamp(to_timestamp(${tu.partitionColumn}, '${tu.partitionSpec.format}')) * 1000"
+        // no rounding if no millisTime - just tile by partition column
+        println("Ignoring tileSize since no time column specified, tiling by the partition instead".blue)
+        derivedDf.withColumn(tileColumn, expr(conversionEx)).drop(tu.partitionColumn)
+      } else {
+        // nothing to groupBy using a dummy
+        derivedDf.withColumn(tileColumn, lit(0).cast("long"))
       }
     }
 
+    // TODO - persist this after first computation into kvstore
     lazy val cardinalityMap: Map[String, Long] = {
 
       val exprs: Seq[(String, String)] = cardinalityInputDf.schema.fields
@@ -309,68 +314,51 @@ object DriftUtils {
       val mapQuery =
         s"""SELECT
            |  ${summaryExpressions.flatMap(_.mapEx).mkString(",\n  ")},
-           |
+           |  $tileColumn
            |FROM summary_input""".stripMargin
 
       val mappedDf = tu.sql(mapQuery)
-      println(s"Schema of mapped columns:\n${mappedDf.schema.pretty}".green)
+      println(s"Schema of mapped columns:\n${mappedDf.schema}".green)
       mappedDf.createTempView("mapped_input")
+
+      val keys = s"$tileColumn" + (if (summaryInputDf.schema.fieldNames.contains(tu.partitionColumn))
+                                     s", $tu.partitionColumn"
+                                   else "")
 
       val aggQuery =
         s"""SELECT
+           |  $keys,
            |  ${summaryExpressions.map(_.aggEx).mkString(",\n  ")}
            |FROM mapped_input
-           |GROUP BY tile""".stripMargin
+           |GROUP BY $keys""".stripMargin
 
       val aggDf = tu.sql(aggQuery)
-      println(s"Schema of aggregated columns:\n${aggDf.schema.pretty}".green)
+      println(s"Schema of aggregated columns:\n${aggDf.schema}".green)
+
+      if (aggDf.schema.contains(tu.partitionColumn)) {
+        aggDf.save(s"${name}_drift")
+      } else {
+        aggDf.saveUnPartitioned(s"${name}_drift")
+      }
 
       aggDf
     }
   }
-}
 
-case class Tile(w: Window, name: String)
-object Tiles {
-  private val _5m = Tile(new Window(5, TimeUnit.MINUTES), "5m")
-  private val _1h = Tile(new Window(1, TimeUnit.HOURS), "1h")
-  private val _1d = Tile(new Window(1, TimeUnit.DAYS), "1d")
-
-  def of(s: String): Tile =
-    s match {
-      case "5m" => _5m
-      case "1h" => _1h
-      case "1d" => _1d
-      case _    => throw new UnsupportedOperationException(s"Unsupported tile $s. Pick from 5m, 1h, 1d")
+  object DataFrameSummary {
+    def apply(join: Join): DataFrameSummary = {
+      join.metaData.outputTable
+      join.metaData.driftTable
+      null
+//      val timeColumn = None
+//      val sliceColumns = join.sliceColumns
+//      val derivedColumns = join.derivedColumns
+//      val includeColumns = join.includeColumns
+//      val excludeColumns = join.excludeColumns
+//      val tileSize = join.tileSize
+//      val cardinalityThreshold = join.cardinalityThreshold
+//      implicit val tu = join.tu
+//      new DataFrameSummary(join.name, inputDf, timeColumn, sliceColumns, derivedColumns, includeColumns, excludeColumns, tileSize, cardinalityThreshold)
     }
-}
-
-class Drift(spec: DriftSpec)(implicit tableUtils: TableUtils) {
-  def compute: DataFrame = {
-    val inputDf = tableUtils.sql(inputQuery)
-    inputDf.schema
-
-    (0 to 20).map(_.toDouble / 20)
-    null
-  }
-
-  def inputQuery: String = {
-
-    val selects =
-      if (spec.selects == null || spec.selects.isEmpty) Seq("*")
-      else {
-        spec.selects.map { case (k, v) => s"$v as `$k`" }.mkString(",\n    ")
-      }
-
-    val partitionWheres = spec.range.map(_.whereClauses(tableUtils.partitionColumn)).getOrElse(Seq.empty)
-    val wheres = Option(spec.wheres).getOrElse(Seq.empty)
-    val allWheres = partitionWheres ++ wheres
-    val whereStr =
-      if (allWheres.isEmpty) ""
-      else {
-        s"\nWHERE\n    ${allWheres.map(w => s"($w)").mkString(" AND\n    ")}"
-      }
-
-    s"SELECT\n    $selects\n    FROM ${spec.table}$whereStr"
   }
 }

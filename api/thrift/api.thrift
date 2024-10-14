@@ -221,11 +221,83 @@ enum Accuracy {
     SNAPSHOT = 1
 }
 
-//TODO: to be supported
-//enum JoinType {
-//    OUTER = 0,
-//    INNER = 1
-//}
+enum Cardinality {
+    LOW = 0,
+    HIGH = 1
+}
+
+
+/**
+
+Drift Metrics we support:
+
+Metric                            | Symmetry | Bounded     | Metric    | Computational | Sensitivity  | Distribution   | Key Advantages                                                        | Key Disadvantages
+                                  |          |             | Property  | Complexity    | to Outliers  | Assumptions    |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Jensen-Shannon Divergence         | Yes      | Yes (0-1)   | No (but   | Medium        | Medium       | Requires       | Symmetric version of KL, always finite                                 | Computationally more expensive than KL
+                                  |          |             | square    |               |              | density        |                                                                        |
+                                  |          |             | root is)  |               |              | estimation     |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Hellinger Distance                | Yes      | Yes (0-1)   | Yes       | Low           | Low-Medium   | Requires       | Less sensitive to outliers than KL                                     | May miss differences in distribution tails
+                                  |          |             |           |               |              | density        |                                                                        |
+                                  |          |             |           |               |              | estimation     |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Kolmogorov-Smirnov (K-S) Distance | Yes      | Yes (0-1)   | Yes       | Low           | Low in tails | None           | Distribution-free, easy to interpret, can be used for hypothesis       | Only considers maximum difference, less sensitive
+                                  |          |             |           |               |              | (non-          | testing                                                                | to tail differences
+                                  |          |             |           |               |              | parametric)    |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+
+
+
+Metrics we considered but decided not to support:
+Metric                            | Symmetry | Bounded     | Metric    | Computational | Sensitivity  | Distribution   | Key Advantages                                                        | Key Disadvantages
+                                  |          |             | Property  | Complexity    | to Outliers  | Assumptions    |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Kullback-Leibler (KL) Divergence  | No       | No          | No        | Low           | High         | Requires       | Widely used, measures relative entropy                                 | Asymmetric, undefined for some cases
+                                  |          |             |           |               |              | density        |                                                                        |
+                                  |          |             |           |               |              | estimation     |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Total Variation Distance          | Yes      | Yes (0-1)   | Yes       | Low           | High         | None           | Simple to understand and compute                                       | Can be overly sensitive to small differences
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Wasserstein Distance              | Yes      | No          | Yes       | High          | Medium       | None           | Captures geometric properties, works with non-overlapping support      | Computationally expensive, especially in high
+                                  |          |             |           |               |              |                |                                                                        | dimensions
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Kolmogorov-Smirnov (K-S) Distance | Yes      | Yes (0-1)   | Yes       | Low           | Low in tails | None           | Distribution-free, easy to interpret, can be used for hypothesis       | Only considers maximum difference, less sensitive
+                                  |          |             |           |               |              | (non-          | testing                                                                | to tail differences
+                                  |          |             |           |               |              | parametric)    |                                                                        |
+----------------------------------|----------|-------------|-----------|---------------|--------------|----------------|------------------------------------------------------------------------|--------------------------------------------------
+Population Stability Index (PSI)  | No       | No, but     | No        | Low           | High for     | Requires       | Easy to interpret, handles continuous and categorical variables        | Sensitive to binning choices, not a formal
+                                  |          | typically   |           |               | low-         | binning        |                                                                        | statistical test
+                                  |          | small       |           |               | frequency    |                |                                                                        |
+                                  |          |             |           |               | bins         |                |                                                                        |
+
++----------------------------------+-------------------+----------------+----------------------------------+
+| Metric                           | Moderate Drift    | Severe Drift   | Notes                            |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Jensen-Shannon Divergence        | 0.05 - 0.1        | > 0.1          | Max value is ln(2) ≈ 0.69        |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Hellinger Distance               | 0.1 - 0.25        | > 0.25         | Ranges from 0 to 1               |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Kolmogorov-Smirnov (K-S)         | 0.1 - 0.2         | > 0.2          | Ranges from 0 to 1               |
+| Distance                         |                   |                |                                  |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Population Stability Index (PSI) | 0.1 - 0.2         | > 0.2          | Industry standard in some fields |
++----------------------------------+-------------------+----------------+----------------------------------+
+**/
+
+
+enum DriftMetric {
+    JENSEN_SHANNON = 1,
+    HELLINGER = 2
+    KOLMOGOROV_SMIRNOV = 3,
+    PSI = 4
+}
+
+struct DriftSpec {
+    1: optional list<string> slices
+    2: optional map<string, string> derivations
+    3: optional map<string, Cardinality> columnCardinalities
+}
 
 struct MetaData {
     1: optional string name
@@ -259,6 +331,7 @@ struct MetaData {
     // Setting to false will only backfill latest single partition
     14: optional bool historicalBackfill
 }
+
 
 // Equivalent to a FeatureSet in chronon terms
 struct GroupBy {
