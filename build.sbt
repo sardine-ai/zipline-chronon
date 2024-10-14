@@ -211,19 +211,19 @@ lazy val frontend = (project in file("frontend"))
     }
   )
 
+// We use Play 2.x (version defined in plugins.sbt) as many of our modules are still on Scala 2.12
+// build interop between one module solely on 2.13 and others on 2.12 is painful
 lazy val hub = (project in file("hub"))
   .enablePlugins(PlayScala)
   .settings(
     name := "hub",
-    // play dropped support for Scala 2.12 in release 2.9
-    scalaVersion := scala_2_13,
     libraryDependencies ++= Seq(
       guice,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.0" % Test,
+      "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
       "io.circe" %% "circe-core" % circeVersion,
       "io.circe" %% "circe-generic" % circeVersion,
       "io.circe" %% "circe-parser" % circeVersion
-    ),
+    )
   )
 
 ThisBuild / assemblyMergeStrategy := {
