@@ -8,6 +8,7 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
+	import { Badge } from '$lib/components/ui/badge';
 
 	const { data } = $props();
 	const models: Model[] = $state(data.models.items);
@@ -19,6 +20,10 @@
 		<TableRow>
 			<TableHead>Name</TableHead>
 			<TableHead>Team</TableHead>
+			<TableHead>Type</TableHead>
+			<TableHead>Online</TableHead>
+			<TableHead>Production</TableHead>
+			<TableHead>Last Updated</TableHead>
 		</TableRow>
 	</TableHeader>
 	<TableBody>
@@ -30,6 +35,22 @@
 					</a>
 				</TableCell>
 				<TableCell>{model.team}</TableCell>
+				<TableCell>{model.modelType}</TableCell>
+				<TableCell>
+					{#if model.online}
+						<Badge variant="success">True</Badge>
+					{:else}
+						False
+					{/if}
+				</TableCell>
+				<TableCell>
+					{#if model.production}
+						<Badge variant="success">True</Badge>
+					{:else}
+						False
+					{/if}
+				</TableCell>
+				<TableCell>{new Date(model.lastUpdated).toLocaleString()}</TableCell>
 			</TableRow>
 		{/each}
 	</TableBody>

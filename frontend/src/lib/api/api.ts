@@ -1,3 +1,4 @@
+import type { ModelsResponse, TimeSeriesResponse } from '$lib/types/Model/Model';
 import { error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 
@@ -21,4 +22,33 @@ async function send({ method, path }: { method: string; path: string }) {
 
 export function get(path: string) {
 	return send({ method: 'GET', path });
+}
+
+// todo: eventually move this to a model-specific file/decide on a good project structure for organizing api calls
+export async function getModels(): Promise<ModelsResponse> {
+	return get('models');
+}
+
+export async function getModelTimeseries(
+	id: string,
+	startTs: number,
+	endTs: number,
+	offset: string = '10h',
+	algorithm: string = 'psi'
+): Promise<TimeSeriesResponse> {
+	const params = new URLSearchParams({
+		startTs: startTs.toString(),
+		endTs: endTs.toString(),
+		offset,
+		algorithm
+	});
+	return get(`model/${id}/timeseries?${params.toString()}`);
+}
+
+export async function search(term: string, limit: number = 20): Promise<ModelsResponse> {
+	const params = new URLSearchParams({
+		term,
+		limit: limit.toString()
+	});
+	return get(`search?${params.toString()}`);
 }

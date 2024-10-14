@@ -96,6 +96,11 @@
 	<Button on:click={generateSlowDriftData}>Generate Slow Drift Data</Button>
 </div>
 
+<div>
+	ECharts heatmaps are slow when there are lots of cells. I'm figuring it out/testing optimizaiton
+	stuff
+</div>
+
 <SplitView bind:sidebarOpen>
 	{#snippet main()}
 		<div style="height: 600px;">

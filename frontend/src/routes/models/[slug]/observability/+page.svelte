@@ -1,6 +1,6 @@
 <script lang="ts">
 	const { data } = $props();
-	const timeseries = $state(data.timeseries);
+	const timeseries = $derived(data.timeseries);
 </script>
 
 <div>Observability for Model {timeseries.id}</div>

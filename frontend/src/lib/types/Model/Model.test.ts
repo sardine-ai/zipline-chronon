@@ -4,7 +4,7 @@ import type { ModelsResponse, TimeSeriesResponse, Model } from '$lib/types/Model
 
 describe('Model types', () => {
 	it('should match ModelsResponse type', async () => {
-		const result = (await api.get('models')) as ModelsResponse;
+		const result = (await api.getModels()) as ModelsResponse;
 
 		const expectedKeys = ['offset', 'items'];
 		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
@@ -43,8 +43,10 @@ describe('Model types', () => {
 
 	it('should match TimeSeriesResponse type', async () => {
 		const modelId = '0';
-		const result = (await api.get(
-			`model/${modelId}/timeseries?startTs=1725926400000&endTs=1726106400000&offset=10h&algorithm=psi`
+		const result = (await api.getModelTimeseries(
+			modelId,
+			1725926400000,
+			1726106400000
 		)) as TimeSeriesResponse;
 
 		const expectedKeys = ['id', 'items'];
@@ -70,6 +72,52 @@ describe('Model types', () => {
 					`Additional fields found in TimeSeriesResponse item: ${additionalItemKeys.join(', ')}`
 				);
 			}
+		}
+	});
+
+	it('should match ModelsResponse type for search results', async () => {
+		const searchTerm = 'my test model - 0';
+		const limit = 5;
+		const result = (await api.search(searchTerm, limit)) as ModelsResponse;
+
+		const expectedKeys = ['offset', 'items'];
+		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
+
+		// Log a warning if there are additional fields
+		const additionalKeys = Object.keys(result).filter((key) => !expectedKeys.includes(key));
+		if (additionalKeys.length > 0) {
+			console.warn(
+				`Additional fields found in search ModelsResponse: ${additionalKeys.join(', ')}`
+			);
+		}
+
+		expect(Array.isArray(result.items)).toBe(true);
+		expect(result.items.length).toBeLessThanOrEqual(limit);
+
+		if (result.items.length > 0) {
+			const model = result.items[0];
+			const expectedModelKeys: (keyof Model)[] = [
+				'name',
+				'id',
+				'online',
+				'production',
+				'team',
+				'modelType',
+				'createTime',
+				'lastUpdated'
+			];
+			expect(Object.keys(model)).toEqual(expect.arrayContaining(expectedModelKeys));
+
+			// Log a warning if there are additional fields
+			const additionalModelKeys = Object.keys(model).filter(
+				(key) => !expectedModelKeys.includes(key as keyof Model)
+			);
+			if (additionalModelKeys.length > 0) {
+				console.warn(`Additional fields found in search Model: ${additionalModelKeys.join(', ')}`);
+			}
+
+			// Check if the search term is included in the model name
+			expect(model.name.toLowerCase()).toContain(searchTerm.toLowerCase());
 		}
 	});
 });

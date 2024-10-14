@@ -4,6 +4,6 @@ import * as api from '$lib/api/api';
 
 export const load: PageServerLoad = async (): Promise<{ models: ModelsResponse }> => {
 	return {
-		models: await api.get('models')
+		models: await api.getModels()
 	};
 };
