@@ -3,7 +3,11 @@ package controllers
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
-import model.{GroupBy, Join, ListModelResponse, Model}
+import model.GroupBy
+import model.Join
+import model.ListModelResponse
+import model.Model
+import org.mockito.Mockito._
 import org.scalatest.EitherValues
 import org.scalatestplus.play._
 import play.api.http.Status.BAD_REQUEST
@@ -11,7 +15,6 @@ import play.api.http.Status.OK
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
-import org.mockito.Mockito._
 import store.DynamoDBMonitoringStore
 
 class ModelControllerSpec extends PlaySpec with Results with EitherValues {
@@ -21,7 +24,7 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
   // Create a stub ControllerComponents
   val stubCC: ControllerComponents = stubControllerComponents()
   // Create a mocked DynDB store
-  val mockedStore = mock(classOf[DynamoDBMonitoringStore])
+  val mockedStore: DynamoDBMonitoringStore = mock(classOf[DynamoDBMonitoringStore])
 
   val controller = new ModelController(stubCC, mockedStore)
 

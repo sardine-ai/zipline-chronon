@@ -1,18 +1,25 @@
 package store
 
-import ai.chronon.online.KVStore.{ListRequest, ListResponse, ListValue}
-import ai.chronon.online.{Api, KVStore, MetadataEndPoint}
-import org.junit.{Before, Test}
+import ai.chronon.online.Api
+import ai.chronon.online.KVStore
+import ai.chronon.online.KVStore.ListRequest
+import ai.chronon.online.KVStore.ListResponse
+import ai.chronon.online.KVStore.ListValue
+import ai.chronon.online.MetadataEndPoint
+import org.junit.Before
+import org.junit.Test
 import org.mockito.Answers
-import org.mockito.Mockito.when
 import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
 import java.nio.charset.StandardCharsets
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.io.Source
-import scala.util.{Success, Try}
+import scala.util.Success
+import scala.util.Try
 
 class DynamoDBMonitoringStoreTest extends MockitoSugar with Matchers {
 

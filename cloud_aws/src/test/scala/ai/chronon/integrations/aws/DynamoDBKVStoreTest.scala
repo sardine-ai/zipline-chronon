@@ -1,6 +1,10 @@
 package ai.chronon.integrations.aws
 
-import ai.chronon.online.KVStore.{GetRequest, GetResponse, ListRequest, ListValue, PutRequest}
+import ai.chronon.online.KVStore.GetRequest
+import ai.chronon.online.KVStore.GetResponse
+import ai.chronon.online.KVStore.ListRequest
+import ai.chronon.online.KVStore.ListValue
+import ai.chronon.online.KVStore.PutRequest
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer
 import io.circe.generic.auto._

@@ -1,7 +1,11 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.online.KVStore
-import ai.chronon.online.KVStore.{GetResponse, ListRequest, ListResponse, ListValue, TimedValue}
+import ai.chronon.online.KVStore.GetResponse
+import ai.chronon.online.KVStore.ListRequest
+import ai.chronon.online.KVStore.ListResponse
+import ai.chronon.online.KVStore.ListValue
+import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.Metrics
 import ai.chronon.online.Metrics.Context
 import software.amazon.awssdk.core.SdkBytes

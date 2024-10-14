@@ -3,7 +3,6 @@ package controllers
 import io.circe.generic.auto._
 import io.circe.syntax._
 import model.ListModelResponse
-import model.Model
 import play.api.mvc._
 import store.DynamoDBMonitoringStore
 

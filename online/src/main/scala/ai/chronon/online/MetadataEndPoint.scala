@@ -1,7 +1,12 @@
 package ai.chronon.online
 
 import ai.chronon.api.Extensions.StringOps
-import ai.chronon.api.{GroupBy, Join, MetaData, Model, StagingQuery, ThriftJsonCodec}
+import ai.chronon.api.GroupBy
+import ai.chronon.api.Join
+import ai.chronon.api.MetaData
+import ai.chronon.api.Model
+import ai.chronon.api.StagingQuery
+import ai.chronon.api.ThriftJsonCodec
 import org.apache.thrift.TBase
 import org.json4s._
 import org.json4s.jackson.JsonMethods._

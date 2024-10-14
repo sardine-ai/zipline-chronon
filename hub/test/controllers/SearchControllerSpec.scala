@@ -5,7 +5,8 @@ import io.circe._
 import io.circe.generic.auto._
 import io.circe.parser._
 import model.ListModelResponse
-import org.mockito.Mockito.{mock, when}
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.when
 import org.scalatest.EitherValues
 import org.scalatestplus.play._
 import play.api.http.Status.BAD_REQUEST
@@ -20,7 +21,7 @@ class SearchControllerSpec extends PlaySpec with Results with EitherValues {
   // Create a stub ControllerComponents
   val stubCC: ControllerComponents = stubControllerComponents()
   // Create a mocked DynDB store
-  val mockedStore = mock(classOf[DynamoDBMonitoringStore])
+  val mockedStore: DynamoDBMonitoringStore = mock(classOf[DynamoDBMonitoringStore])
 
   val controller = new SearchController(stubCC, mockedStore)
 

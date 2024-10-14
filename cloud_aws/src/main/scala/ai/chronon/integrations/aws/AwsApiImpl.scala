@@ -1,9 +1,16 @@
 package ai.chronon.integrations.aws
 
-import ai.chronon.online.{Api, ExternalSourceRegistry, GroupByServingInfoParsed, KVStore, LoggableResponse, Serde}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import ai.chronon.online.Api
+import ai.chronon.online.ExternalSourceRegistry
+import ai.chronon.online.GroupByServingInfoParsed
+import ai.chronon.online.KVStore
+import ai.chronon.online.LoggableResponse
+import ai.chronon.online.Serde
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+
 import java.net.URI
 
 /**
