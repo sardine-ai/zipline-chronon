@@ -36,7 +36,7 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](bodyText)
-      val items = listModelResponse.value.items
+      val items = listModelResponse.right.value.items
       items.length mustBe controller.defaultLimit
       items.map(_.id.toInt).toSet mustBe (0 until 10).toSet
     }
@@ -48,7 +48,7 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
       status(result) mustBe OK
       val bodyText = contentAsString(result)
       val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](bodyText)
-      val items = listModelResponse.value.items
+      val items = listModelResponse.right.value.items
       items.length mustBe number
       items.map(_.id.toInt).toSet mustBe (startOffset until startOffset + number).toSet
     }

@@ -305,19 +305,19 @@ object TimeSeriesController {
   // temporarily serve up mock data while we wait on hooking up our KV store layer + drift calculation
   private def generateMockTimeSeriesPoints(startTs: Long, endTs: Long): Seq[TimeSeriesPoint] = {
     val random = new Random(1000)
-    (startTs until endTs by (1.hours.toMillis)).map(ts => TimeSeriesPoint(random.between(0, 0.5), ts))
+    (startTs until endTs by (1.hours.toMillis)).map(ts => TimeSeriesPoint(random.nextDouble(), ts))
   }
 
   private def generateMockRawTimeSeriesPoints(timestamp: Long, count: Int): Seq[TimeSeriesPoint] = {
     val random = new Random(1000)
-    (0 until count).map(_ => TimeSeriesPoint(random.between(0, 0.5), timestamp))
+    (0 until count).map(_ => TimeSeriesPoint(random.nextDouble(), timestamp))
   }
 
   private def generateMockTimeSeriesPercentilePoints(startTs: Long, endTs: Long): Seq[TimeSeriesPoint] = {
     val random = new Random(1000)
     (startTs until endTs by (1.hours.toMillis)).flatMap { ts =>
       mockGeneratedPercentiles.zipWithIndex.map {
-        case (p, i) => TimeSeriesPoint(random.between(0, 0.05 * (i + 1)), ts, Some(p))
+        case (p, _) => TimeSeriesPoint(random.nextDouble(), ts, Some(p))
       }
     }
   }
