@@ -20,6 +20,8 @@ import ai.chronon.api.Constants
 import ai.chronon.api.StructType
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.GetResponse
+import ai.chronon.online.KVStore.ListRequest
+import ai.chronon.online.KVStore.ListResponse
 import ai.chronon.online.KVStore.PutRequest
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -41,12 +43,19 @@ import scala.util.Try
 object KVStore {
   // a scan request essentially for the keyBytes
   // afterTsMillis - is used to limit the scan to more recent data
-  case class GetRequest(keyBytes: Array[Byte], dataset: String, afterTsMillis: Option[Long] = None)
+  // endTsMillis - end range of the scan (starts from afterTsMillis to endTsMillis)
+  case class GetRequest(keyBytes: Array[Byte],
+                        dataset: String,
+                        afterTsMillis: Option[Long] = None,
+                        endTsMillis: Option[Long] = None)
   case class TimedValue(bytes: Array[Byte], millis: Long)
   case class GetResponse(request: GetRequest, values: Try[Seq[TimedValue]]) {
     def latest: Try[TimedValue] = values.map(_.maxBy(_.millis))
   }
   case class PutRequest(keyBytes: Array[Byte], valueBytes: Array[Byte], dataset: String, tsMillis: Option[Long] = None)
+
+  case class ListRequest(dataset: String, props: Map[String, Any])
+  case class ListResponse(request: ListRequest, values: Try[Seq[Array[Byte]]], resultProps: Map[String, Any])
 }
 
 // the main system level api for key value storage
@@ -56,6 +65,12 @@ trait KVStore {
   implicit val executionContext: ExecutionContext = FlexibleExecutionContext.buildExecutionContext
 
   def create(dataset: String): Unit
+
+  def create(dataset: String, props: Map[String, Any]): Unit = create(dataset)
+
+  def list(request: ListRequest): Future[ListResponse] = {
+    throw new NotImplementedError("List operation isn't supported by this store!")
+  }
 
   def multiGet(requests: Seq[GetRequest]): Future[Seq[GetResponse]]
 
