@@ -27,7 +27,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
       df.isEmpty shouldBe false
       df.show(10, truncate = false)
 
-      val summarizer = new Summarizer("drift_test", df)
+      val summarizer = new Summarizer(df)
       val result = summarizer.computeSummaryDf
       result.show()
     } finally {

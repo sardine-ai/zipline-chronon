@@ -3,8 +3,10 @@ package ai.chronon.spark.stats.drift
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
+import ai.chronon.api.MetaData
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.udafs.ArrayApproxDistinct
@@ -21,8 +23,7 @@ import Expressions.{CardinalityExpression, High, Low, SummaryExpression}
 
 // join / sq / gb: metadata.monitors{} -> drift & skew
 // TODO override for metric
-class Summarizer(name: String,
-                 df: DataFrame,
+class Summarizer(df: DataFrame,
                  timeColumn: Option[String] = None,
                  sliceColumns: Option[Seq[String]] = None,
                  derivedColumns: Option[Map[String, String]] = None,
@@ -159,7 +160,7 @@ class Summarizer(name: String,
     counts
   }
 
-  def computeSummaryDf: DataFrame = {
+  private[spark] def computeSummaryDf: DataFrame = {
     val summaryExpressions = summaryInputDf.schema.fields.flatMap { f =>
       val cardinality = if (cardinalityMap.contains(f.name)) {
         if (cardinalityMap(f.name) <= cardinalityThreshold) Low else High
@@ -198,12 +199,47 @@ class Summarizer(name: String,
     val aggDf = tu.sql(aggQuery)
     println(s"Schema of aggregated columns:\n${aggDf.schema}".green)
 
-    if (aggDf.schema.contains(tu.partitionColumn)) {
-      aggDf.save(s"${name}_drift")
-    } else {
-      aggDf.saveUnPartitioned(s"${name}_drift")
-    }
-
     aggDf
+  }
+}
+
+object Summarizer {
+  def compute(metadata: MetaData, ds: String)(implicit tu: TableUtils): Unit = {
+    // output of the actual job node - nodes could be join, groupBy, stagingQuery or model
+    // will be the input to the summarization logic and drift computation logic
+    val inputTable = metadata.outputTable
+    val summaryTable = metadata.summaryTable
+
+    // check existing partitions
+    val inputPartitions = tu.partitions(inputTable)
+    val existingSummaryPartitions = tu.partitions(summaryTable)
+    val missingSummaryPartitions = (inputPartitions.toSet -- existingSummaryPartitions.toSet).filter(_ <= ds)
+
+    println(s"""
+         |Table to summarize: $inputTable, ${tu.partitionRange(inputTable)}
+         |Summary table: $summaryTable, ${tu.partitionRange(summaryTable)}
+         |Missing Partitions: [${missingSummaryPartitions.toSeq.sorted.mkString(", ")}]
+         |""".stripMargin.yellow)
+
+    if (missingSummaryPartitions.isEmpty) {
+      println("""Nothing left to summarize. Exiting..""".red)
+    } else {
+      val minMissing = missingSummaryPartitions.min
+      val maxMissing = missingSummaryPartitions.max
+      val missingRange = PartitionRange(minMissing, maxMissing)(tu.partitionSpec)
+      val inputDf = tu.loadTable(inputTable).filter(missingRange.whereClauses(tu.partitionColumn).mkString(" AND "))
+      val summarizer = new Summarizer(inputDf)(tu)
+      val aggDf = summarizer.computeSummaryDf
+      val summaryTable = metadata.summaryTable
+
+      if (inputDf.columns.contains(tu.partitionColumn)) {
+        assert(aggDf.columns.contains(tu.partitionColumn),
+               s"Logic error: Partition column ${tu.partitionColumn} missing in summary table")
+        println("Partition Column detected in input table. Saving partitioned table with drift summary to")
+        aggDf.save(summaryTable)
+      } else {
+        aggDf.saveUnPartitioned(summaryTable)
+      }
+    }
   }
 }

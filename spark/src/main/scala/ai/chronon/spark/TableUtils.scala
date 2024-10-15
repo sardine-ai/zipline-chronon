@@ -874,6 +874,13 @@ case class TableUtils(sparkSession: SparkSession) {
 
     scanDfBase(selects, table, wheres, fallbackSelects)
   }
+
+  def partitionRange(table: String): PartitionRange = {
+    val parts = partitions(table)
+    val minPartition = parts.reduceOption(Ordering[String].min).orNull
+    val maxPartition = parts.reduceOption(Ordering[String].max).orNull
+    PartitionRange(minPartition, maxPartition)(partitionSpec)
+  }
 }
 
 sealed case class IncompatibleSchemaException(inconsistencies: Seq[(String, DataType, DataType)]) extends Exception {
