@@ -27,7 +27,7 @@ import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 
 case class LoadedConfs(joins: Seq[api.Join] = Seq.empty,
-                       GroupBys: Seq[api.GroupBy] = Seq.empty,
+                       groupBys: Seq[api.GroupBy] = Seq.empty,
                        stagingQueries: Seq[api.StagingQuery] = Seq.empty,
                        models: Seq[api.Model] = Seq.empty)
 
@@ -74,16 +74,19 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
   val defaultListLookupLimit: Int = 100
 
   private def retrieveAllListConfs(acc: LoadedConfs, paginationKey: Option[Any] = None): Future[LoadedConfs] = {
-    val propsMap =
-      if (paginationKey.isDefined) Map(listLimit -> defaultListLookupLimit, continuationKey -> paginationKey.get)
-      else Map(listLimit -> defaultListLookupLimit)
+    val propsMap = {
+      paginationKey match {
+        case Some(key) => Map(listLimit -> defaultListLookupLimit, continuationKey -> key)
+        case None      => Map(listLimit -> defaultListLookupLimit)
+      }
+    }
     val listRequest = ListRequest(MetadataEndPoint.ConfByKeyEndPointName, propsMap)
     logger.info(s"Triggering list conf lookup with request: $listRequest")
     dynamoDBKVStore.list(listRequest).flatMap { response =>
       val newLoadedConfs = makeLoadedConfs(response)
       val newAcc = LoadedConfs(
         acc.joins ++ newLoadedConfs.joins,
-        acc.GroupBys ++ newLoadedConfs.GroupBys,
+        acc.groupBys ++ newLoadedConfs.groupBys,
         acc.stagingQueries ++ newLoadedConfs.stagingQueries,
         acc.models ++ newLoadedConfs.models
       )
@@ -105,22 +108,22 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
             kv._1 match {
               case value if value.contains("joins/") =>
                 LoadedConfs(confs.joins ++ Seq(getConf[api.Join](kv._2)),
-                            confs.GroupBys,
+                            confs.groupBys,
                             confs.stagingQueries,
                             confs.models)
               case value if value.contains("group_bys/") =>
                 LoadedConfs(confs.joins,
-                            confs.GroupBys ++ Seq(getConf[api.GroupBy](kv._2)),
+                            confs.groupBys ++ Seq(getConf[api.GroupBy](kv._2)),
                             confs.stagingQueries,
                             confs.models)
               case value if value.contains("staging_queries/") =>
                 LoadedConfs(confs.joins,
-                            confs.GroupBys,
+                            confs.groupBys,
                             confs.stagingQueries ++ Seq(getConf[api.StagingQuery](kv._2)),
                             confs.models)
               case value if value.contains("models/") =>
                 LoadedConfs(confs.joins,
-                            confs.GroupBys,
+                            confs.groupBys,
                             confs.stagingQueries,
                             confs.models ++ Seq(getConf[api.Model](kv._2)))
               case _ =>
@@ -130,7 +133,7 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
         }
         logger.info(
           s"Finished one batch load of configs. Loaded: ${result.joins.length} joins; " +
-            s"${result.GroupBys.length} GroupBys; ${result.models.length} models; " +
+            s"${result.groupBys.length} GroupBys; ${result.models.length} models; " +
             s"${result.stagingQueries.length} staging queries")
         result
       }

@@ -230,6 +230,14 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
   }
 
   def create(dataset: String): Unit = {
-    kvStore.create(dataset)
+    try {
+      logger.info(s"Creating dataset: $dataset")
+      kvStore.create(dataset)
+      logger.info(s"Successfully created dataset: $dataset")
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to create dataset: $dataset", e)
+        throw e
+    }
   }
 }

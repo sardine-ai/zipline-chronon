@@ -50,7 +50,7 @@ class DynamoDBMonitoringStoreTest extends MockitoSugar with Matchers {
   private def validateLoadedConfigs(dynamoDBMonitoringStore: DynamoDBMonitoringStore): Unit = {
     // check that our store has loaded the relevant artifacts
     dynamoDBMonitoringStore.getConfigRegistry.models.length shouldBe 1
-    dynamoDBMonitoringStore.getConfigRegistry.GroupBys.length shouldBe 2
+    dynamoDBMonitoringStore.getConfigRegistry.groupBys.length shouldBe 2
     dynamoDBMonitoringStore.getConfigRegistry.joins.length shouldBe 1
     dynamoDBMonitoringStore.getConfigRegistry.stagingQueries.length shouldBe 0
 

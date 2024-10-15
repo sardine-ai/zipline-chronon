@@ -5,8 +5,7 @@ FROM base_image:latest AS build_env
 COPY . /app
 
 # Build a fat jar for the various sub-modules
-RUN sbt clean
-RUN sbt assembly
+RUN sbt clean && sbt assembly
 
 # Build the frontend and play app
 RUN sbt dist
@@ -24,8 +23,6 @@ RUN amazon-linux-extras enable python3.8
 RUN yum clean metadata; yum install -y python38 unzip
 RUN  pip3.8 install --upgrade pip; pip3.8 install -r requirements.txt
 ENV PYSPARK_PYTHON=python3.8
-# Helps with debugging
-RUN pip3 install awscli
 
 RUN mkdir -p /app
 RUN mkdir -p /cli

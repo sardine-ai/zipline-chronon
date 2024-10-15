@@ -19,12 +19,22 @@ import java.net.URI
   */
 class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
   val ddbClient: DynamoDbClient = {
-    val regionEnvVar = sys.env.getOrElse("AWS_DEFAULT_REGION", "us-west-2")
-    val accessKeyId = sys.env.getOrElse("AWS_ACCESS_KEY_ID", "fakeaccesskey")
-    val secretAccessKey = sys.env.getOrElse("AWS_SECRET_ACCESS_KEY", "fakesecretaccesskey")
-    val dynamoEndpoint = sys.env.getOrElse("DYNAMO_ENDPOINT", "http://dynamo:8000")
+    val maybeAccessKeyId = sys.env.get("AWS_ACCESS_KEY_ID")
+    val maybeSecretAccessKey = sys.env.get("AWS_SECRET_ACCESS_KEY")
 
-    val credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey)
+    val credentials = (maybeAccessKeyId, maybeSecretAccessKey) match {
+      case (None, None) =>
+        throw new IllegalArgumentException("Missing AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars")
+      case (None, Some(_)) => throw new IllegalArgumentException("Missing AWS_ACCESS_KEY_ID env var")
+      case (Some(_), None) => throw new IllegalArgumentException("Missing AWS_SECRET_ACCESS_KEY env var")
+      case (Some(accessKeyId), Some(secretAccessKey)) =>
+        AwsBasicCredentials.create(accessKeyId, secretAccessKey)
+    }
+
+    val regionEnvVar =
+      sys.env.getOrElse("AWS_DEFAULT_REGION", throw new IllegalArgumentException("Missing AWS_DEFAULT_REGION env var"))
+    val dynamoEndpoint =
+      sys.env.getOrElse("DYNAMO_ENDPOINT", throw new IllegalArgumentException("Missing DYNAMO_ENDPOINT env var"))
 
     DynamoDbClient
       .builder()
@@ -34,13 +44,26 @@ class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
       .build()
   }
 
-  override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde = ???
-
   override def genKvStore: KVStore = {
     new DynamoDBKVStoreImpl(ddbClient)
   }
 
+  /**
+    * The stream decoder method in the AwsApi is currently unimplemented. This needs to be implemented before
+    * we can spin up the Aws streaming Chronon stack
+    */
+  override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde = ???
+
+  /**
+    * The external registry extension is currently unimplemented. We'll need to implement this prior to spinning up
+    * a fully functional Chronon serving stack in Aws
+    * @return
+    */
   override def externalRegistry: ExternalSourceRegistry = ???
 
+  /**
+    * The logResponse method is currently unimplemented. We'll need to implement this prior to bringing up the
+    * fully functional serving stack in Aws which includes logging feature responses to a stream for OOC
+    */
   override def logResponse(resp: LoggableResponse): Unit = ???
 }
