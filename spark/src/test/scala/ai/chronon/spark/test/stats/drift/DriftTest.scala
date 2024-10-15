@@ -21,7 +21,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     tableUtils.createDatabase(namespace)
 
     try {
-      val df = generateDataFrame(100000)
+      val df = generateDataFrame(1000000, 10)
 
       // Check if DataFrame is created
       df.isEmpty shouldBe false
@@ -36,12 +36,11 @@ class DriftTest extends AnyFlatSpec with Matchers {
   }
 
 
-  def generateDataFrame(numRows: Int)(implicit spark: SparkSession): DataFrame = {
+  def generateDataFrame(numRows: Int, partitions: Int)(implicit spark: SparkSession): DataFrame = {
 
     val dollarTransactions = List(
       Column("user", api.StringType, 100),
       Column("user_name", api.StringType, 100),
-      Column("ts", api.LongType, 200),
       Column("amount_dollars", api.LongType, 100000),
       Column("item_prices", api.ListType(api.LongType), 1000),
       Column("category_item_prices", api.MapType(api.StringType, api.IntType), 100),
@@ -50,7 +49,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     val txnsTable = s"$namespace.txns"
     spark.sql(s"DROP TABLE IF EXISTS $txnsTable")
 
-    DataFrameGen.entities(spark, dollarTransactions, 3000, partitions = 200).save(txnsTable)
+    DataFrameGen.events(spark, dollarTransactions, numRows, partitions = partitions).save(txnsTable)
     TableUtils(spark).loadTable(txnsTable)
   }
 }

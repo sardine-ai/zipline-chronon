@@ -94,7 +94,7 @@ class Summarizer(name: String,
 
     // adds a time based tile column for a given time expression in milliseconds
     def addTileCol(ts: String): DataFrame = {
-      val tileExpr = s"round(($ts)/${tileSize.millis}) * ${tileSize.millis}"
+      val tileExpr = s"round(($ts)/${tileSize.millis}) * ${tileSize.millis}" // round to the nearest tile
       println(derivedDf.columns.mkString(", ").yellow)
       println("tile_expr: ".yellow + tileExpr)
       val result = derivedDf.withColumn(Constants.TileColumn, expr(tileExpr))
