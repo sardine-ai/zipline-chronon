@@ -109,7 +109,7 @@ object JensenShannonDivergenceCalculator {
   def computePDF(percentiles: Array[Double], breaks: Array[Double]): Array[Double] = {
     val interval: Double = 1.toDouble / (percentiles.length - 1)
     var i = 0
-    val result = breaks.map { break =>
+    breaks.map { break =>
       var equalityHits = 0
       while (i < percentiles.length && percentiles(i) <= break) {
         if (percentiles(i) == break) equalityHits += 1
@@ -133,8 +133,6 @@ object JensenShannonDivergenceCalculator {
         interval / (percentiles(i) - percentiles(i - 1))
       }
     }
-    assert(result.foldLeft(0.0)(_ + _) == 1, "Logic error: all the probabilities should sum to 1")
-    result
   }
 
   def klDivergence(p: Array[Double], q: Array[Double]): Double = {

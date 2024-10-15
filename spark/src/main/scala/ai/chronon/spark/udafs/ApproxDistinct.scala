@@ -54,6 +54,7 @@ class ArrayApproxDistinct[IN: CpcFriendly](lgK: Int = 8) extends ApproxDistinct[
   // Combine two values to produce a new value. For performance, the function may modify `buffer`
   // and return it instead of constructing a new object
   def reduce(buffer: CpcSketch, input: Seq[IN]): CpcSketch = {
+    if (input == null) return buffer
     input.iterator.filter(_ != null).foreach(implicitly[CpcFriendly[IN]].update(buffer, _))
     buffer
   }

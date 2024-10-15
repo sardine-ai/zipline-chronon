@@ -50,7 +50,7 @@ class SawtoothAggregatorTest extends TestCase {
 
   def testTailAccuracy(): Unit = {
     val timer = new Timer
-    val queries = CStream.genTimestamps(new Window(30, TimeUnit.DAYS), 10000, 5 * 60 * 1000)
+    val queries = CStream.genTimestamps(new Window(30, TimeUnit.DAYS), 10000, 5 * 60 * 1000).map(_.asInstanceOf[Long])
 
     val columns = Seq(Column("ts", LongType, 180), Column("num", LongType, 1000))
     val events = CStream.gen(columns, 10000).rows
@@ -121,7 +121,7 @@ class SawtoothAggregatorTest extends TestCase {
 
   def testRealTimeAccuracy(): Unit = {
     val timer = new Timer
-    val queries = CStream.genTimestamps(new Window(1, TimeUnit.DAYS), 1000)
+    val queries = CStream.genTimestamps(new Window(1, TimeUnit.DAYS), 1000).map(_.asInstanceOf[Long])
     val columns = Seq(Column("ts", LongType, 180),
                       Column("num", LongType, 1000),
                       Column("age", LongType, 100),

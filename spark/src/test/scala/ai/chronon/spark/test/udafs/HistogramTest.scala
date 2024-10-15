@@ -11,7 +11,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class UDAFSQLUsageTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class HistogramTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   var spark: SparkSession = _
 

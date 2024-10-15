@@ -37,7 +37,7 @@ class SawtoothOnlineAggregatorTest extends TestCase {
   def testConsistency(): Unit = {
     val queryEndTs = TsUtils.round(System.currentTimeMillis(), WindowUtils.Day.millis)
     val batchEndTs = queryEndTs - WindowUtils.Day.millis
-    val queries = CStream.genTimestamps(new Window(1, TimeUnit.DAYS), 1000)
+    val queries = CStream.genTimestamps(new Window(1, TimeUnit.DAYS), 1000).map(_.asInstanceOf[Long])
     val eventCount = 10000
 
     val columns = Seq(Column("ts", LongType, 60),

@@ -110,7 +110,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "ai.chronon.aggregator.windowing.FinalBatchIr",
       "ai.chronon.online.LoggableResponse",
       "ai.chronon.online.LoggableResponseBase64",
-      "com.yahoo.sketches.kll.KllFloatsSketch",
+      "org.apache.datasketches.kll.KllFloatsSketch",
       "java.util.HashMap",
       "java.util.ArrayList",
       "java.util.HashSet",

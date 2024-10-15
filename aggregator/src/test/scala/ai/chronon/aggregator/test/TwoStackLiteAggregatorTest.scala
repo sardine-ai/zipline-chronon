@@ -65,7 +65,7 @@ class TwoStackLiteAggregatorTest extends TestCase{
 
   def testAgainstSawtooth(): Unit = {
     val timer = new Timer
-    val queries = CStream.genTimestamps(new Window(30, TimeUnit.DAYS), 100000, 5 * 60 * 1000)
+    val queries = CStream.genTimestamps(new Window(30, TimeUnit.DAYS), 100000, 5 * 60 * 1000).map(_.asInstanceOf[Long])
 
     val columns = Seq(Column("ts", LongType, 180), Column("num", LongType, 1000))
     val events = CStream.gen(columns, 10000).rows
