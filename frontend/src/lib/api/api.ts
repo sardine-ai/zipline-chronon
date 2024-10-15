@@ -1,4 +1,8 @@
-import type { ModelsResponse, TimeSeriesResponse } from '$lib/types/Model/Model';
+import type {
+	JoinTimeSeriesResponse,
+	ModelsResponse,
+	TimeSeriesResponse
+} from '$lib/types/Model/Model';
 import { error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 
@@ -51,4 +55,25 @@ export async function search(term: string, limit: number = 20): Promise<ModelsRe
 		limit: limit.toString()
 	});
 	return get(`search?${params.toString()}`);
+}
+
+export async function getJoinTimeseries(
+	joinId: string,
+	startTs: number,
+	endTs: number,
+	metricType: string = 'drift',
+	metrics: string = 'null',
+	offset: string = '10h',
+	algorithm: string = 'psi'
+): Promise<JoinTimeSeriesResponse> {
+	const params = new URLSearchParams({
+		startTs: startTs.toString(),
+		endTs: endTs.toString(),
+		metricType,
+		metrics,
+		offset,
+		algorithm
+	});
+
+	return get(`join/${joinId}/timeseries?${params.toString()}`);
 }

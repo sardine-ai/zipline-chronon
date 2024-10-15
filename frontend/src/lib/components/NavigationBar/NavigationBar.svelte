@@ -15,6 +15,13 @@
 	import type { Model } from '$lib/types/Model/Model';
 	import debounce from 'lodash/debounce';
 	import { onDestroy } from 'svelte';
+	import {
+		DropdownMenu,
+		DropdownMenuTrigger,
+		DropdownMenuContent,
+		DropdownMenuItem
+	} from '$lib/components/ui/dropdown-menu/';
+	import { ChevronDown } from 'svelte-radix';
 
 	type Props = {
 		navItems: { label: string; href: string }[];
@@ -73,13 +80,24 @@
 		{/each}
 	</ul>
 	<div class="flex items-center mt-auto">
-		<span class="mr-2">{user.name}</span>
-		<Avatar>
-			<AvatarImage src={user.avatar} alt={user.name} />
-			<AvatarFallback>
-				<Person />
-			</AvatarFallback>
-		</Avatar>
+		<DropdownMenu>
+			<DropdownMenuTrigger>
+				<Button variant="outline" class="flex items-center cursor-pointer">
+					<Avatar class="h-4 w-4">
+						<AvatarImage src={user.avatar} alt={user.name} />
+						<AvatarFallback>
+							<Person />
+						</AvatarFallback>
+					</Avatar>
+					<span class="ml-3">{user.name}</span>
+					<ChevronDown class="w-4 h-4 ml-3" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent>
+				<DropdownMenuItem onclick={() => alert('Settings clicked')}>Settings</DropdownMenuItem>
+				<DropdownMenuItem onclick={() => alert('Sign out clicked')}>Sign out</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	</div>
 </nav>
 

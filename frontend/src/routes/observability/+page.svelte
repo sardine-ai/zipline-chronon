@@ -3,8 +3,10 @@
 	import SplitView from '$lib/components/SplitView/SplitView.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { generateXAxis, generateYAxis, generateHeatmapData } from '$lib/util/heatmap-data-gen';
-	import type { ECElementEvent, EChartOption } from 'echarts';
+	import type { ECElementEvent, EChartOption, EChartsType } from 'echarts';
 	import { onMount } from 'svelte';
+
+	let chart: EChartsType | null = $state(null);
 
 	const xAxis = generateXAxis(100);
 	const yAxis = generateYAxis(30);
@@ -104,7 +106,7 @@
 <SplitView bind:sidebarOpen>
 	{#snippet main()}
 		<div style="height: 600px;">
-			<EChart {option} on:click={handleChartClick}></EChart>
+			<EChart {option} on:click={handleChartClick} bind:chartInstance={chart}></EChart>
 		</div>
 	{/snippet}
 

@@ -13,10 +13,12 @@
 
 	type $$Props = SheetPrimitive.ContentProps & {
 		side?: Side;
+		noAnimation?: boolean;
 	};
 
 	let className: $$Props['class'] = undefined;
 	export let side: $$Props['side'] = 'right';
+	export let noAnimation: $$Props['noAnimation'] = false;
 	export { className as class };
 	export let inTransition: $$Props['inTransition'] = fly;
 	export let inTransitionConfig: $$Props['inTransitionConfig'] =
@@ -24,6 +26,11 @@
 	export let outTransition: $$Props['outTransition'] = fly;
 	export let outTransitionConfig: $$Props['outTransitionConfig'] =
 		sheetTransitions[side ?? 'right'].out;
+
+	$: if (noAnimation) {
+		inTransition = undefined;
+		outTransition = undefined;
+	}
 </script>
 
 <SheetPortal>

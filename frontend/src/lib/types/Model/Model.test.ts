@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import * as api from '$lib/api/api';
-import type { ModelsResponse, TimeSeriesResponse, Model } from '$lib/types/Model/Model';
+import type {
+	ModelsResponse,
+	TimeSeriesResponse,
+	Model,
+	JoinTimeSeriesResponse
+} from '$lib/types/Model/Model';
 
 describe('Model types', () => {
 	it('should match ModelsResponse type', async () => {
@@ -118,6 +123,76 @@ describe('Model types', () => {
 
 			// Check if the search term is included in the model name
 			expect(model.name.toLowerCase()).toContain(searchTerm.toLowerCase());
+		}
+	});
+
+	it('should match JoinTimeSeriesResponse type', async () => {
+		const modelId = '0';
+		const result = (await api.getJoinTimeseries(
+			modelId,
+			1725926400000,
+			1726106400000
+		)) as JoinTimeSeriesResponse;
+
+		const expectedKeys = ['name', 'items'];
+		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
+
+		// Log a warning if there are additional fields
+		const additionalKeys = Object.keys(result).filter((key) => !expectedKeys.includes(key));
+		if (additionalKeys.length > 0) {
+			console.warn(
+				`Additional fields found in JoinTimeSeriesResponse: ${additionalKeys.join(', ')}`
+			);
+		}
+
+		expect(Array.isArray(result.items)).toBe(true);
+
+		if (result.items.length > 0) {
+			const item = result.items[0];
+			const expectedItemKeys = ['name', 'items'];
+			expect(Object.keys(item)).toEqual(expect.arrayContaining(expectedItemKeys));
+
+			// Log a warning if there are additional fields
+			const additionalItemKeys = Object.keys(item).filter((key) => !expectedItemKeys.includes(key));
+			if (additionalItemKeys.length > 0) {
+				console.warn(
+					`Additional fields found in JoinTimeSeriesResponse item: ${additionalItemKeys.join(', ')}`
+				);
+			}
+
+			if (item.items.length > 0) {
+				const subItem = item.items[0];
+				const expectedSubItemKeys = ['feature', 'points'];
+				expect(Object.keys(subItem)).toEqual(expect.arrayContaining(expectedSubItemKeys));
+
+				// Log a warning if there are additional fields
+				const additionalSubItemKeys = Object.keys(subItem).filter(
+					(key) => !expectedSubItemKeys.includes(key)
+				);
+				if (additionalSubItemKeys.length > 0) {
+					console.warn(
+						`Additional fields found in JoinTimeSeriesResponse sub-item: ${additionalSubItemKeys.join(', ')}`
+					);
+				}
+
+				expect(Array.isArray(subItem.points)).toBe(true);
+
+				if (subItem.points.length > 0) {
+					const point = subItem.points[0];
+					const expectedPointKeys = ['value', 'ts', 'label'];
+					expect(Object.keys(point)).toEqual(expect.arrayContaining(expectedPointKeys));
+
+					// Log a warning if there are additional fields
+					const additionalPointKeys = Object.keys(point).filter(
+						(key) => !expectedPointKeys.includes(key)
+					);
+					if (additionalPointKeys.length > 0) {
+						console.warn(
+							`Additional fields found in JoinTimeSeriesResponse point: ${additionalPointKeys.join(', ')}`
+						);
+					}
+				}
+			}
 		}
 	});
 });
