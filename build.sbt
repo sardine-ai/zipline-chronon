@@ -51,7 +51,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, hub)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, hub)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -175,6 +175,17 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
+    libraryDependencies ++= spark_all
+  )
+
+lazy val cloud_aws = project
+  .dependsOn(api.%("compile->compile;test->test"), online)
+  .settings(
+    libraryDependencies += "software.amazon.awssdk" % "dynamodb" % "2.25.35",
+    libraryDependencies += "com.amazonaws" % "DynamoDBLocal" % "2.5.1" % "test",
+    libraryDependencies += "io.circe" %% "circe-core" % circeVersion % "test",
+    libraryDependencies += "io.circe" %% "circe-generic" % circeVersion % "test",
+    libraryDependencies += "io.circe" %% "circe-parser" % circeVersion % "test",
     libraryDependencies ++= spark_all
   )
 
