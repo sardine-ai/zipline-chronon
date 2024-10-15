@@ -381,7 +381,7 @@ case class TableUtils(sparkSession: SparkSession) {
          |$stackTraceStringPretty
          |
          |  ---- end ----
-         |""".stripMargin)
+         |""".stripMargin.yellow)
     try {
       // Run the query
       val df = sparkSession.sql(query).coalesce(partitionCount)
