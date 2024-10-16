@@ -455,6 +455,16 @@ struct GroupByServingInfo {
     6: optional string dateFormat
 }
 
+//TODO: Couple of questions:
+// 1. Does the value schema change if we choose drift / skew?
+// 2. Do we need any other fields on the serving side to leverage this (e.g. DriftMetric / DriftSpec)
+struct MonitoringServingInfo {
+    // schema of the statistics row's keys
+    1: optional string keyAvroSchema
+    // schema of the statistics value payload
+    2: optional string valueAvroSchema
+}
+
 // DataKind + TypeParams = DataType
 // for primitive types there is no need for params
 enum DataKind {
