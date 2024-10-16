@@ -199,6 +199,36 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
       },
       { gb => Metrics.Context(environment = "group_by.serving_info.fetch", groupBy = gb) })
 
+  lazy val getMonitoringServingInfo: TTLCache[String, Try[MonitoringServingInfo]] =
+    new TTLCache[String, Try[MonitoringServingInfo]](
+      { name =>
+        val startTimeMs = System.currentTimeMillis()
+        val batchDataset = s"${name.sanitize.toUpperCase()}_BATCH"
+        val metaData =
+          kvStore.getString(Constants.MonitoringServingInfoKey, batchDataset, timeoutMillis).recover {
+            case e: java.util.NoSuchElementException =>
+              logger.error(
+                s"Failed to fetch metadata for $batchDataset, is it possible the corresponding stats upload job for $name has not succeeded?")
+              throw e
+          }
+        logger.info(s"Fetched ${Constants.MonitoringServingInfoKey} from : $batchDataset")
+        if (metaData.isFailure) {
+          Failure(
+            new RuntimeException(s"Couldn't fetch monitoring serving info for $batchDataset, " +
+                                   "please make sure a batch upload was successful",
+                                 metaData.failed.get))
+        } else {
+          val statsServingInfo = ThriftJsonCodec
+            .fromJsonStr[MonitoringServingInfo](metaData.get, check = true, classOf[MonitoringServingInfo])
+          Metrics
+            .Context(Metrics.Environment.MetaDataFetching)
+            .withSuffix("monitoring_serving")
+            .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+          Success(statsServingInfo)
+        }
+      },
+      { gb => Metrics.Context(environment = "monitoring.serving_info.fetch") })
+
   def put(
       kVPairs: Map[String, Seq[String]],
       datasetName: String = ChrononMetadataKey,
