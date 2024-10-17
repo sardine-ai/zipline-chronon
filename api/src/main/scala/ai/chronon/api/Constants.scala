@@ -62,5 +62,11 @@ object Constants {
   val LabelViewPropertyFeatureTable: String = "feature_table"
   val LabelViewPropertyKeyLabelTable: String = "label_table"
   val ChrononRunDs: String = "CHRONON_RUN_DS"
-  val MonitoringServingInfoKey = "monitoring_serving_info"
+
+  val DriftStatsServingInfoKey: String = "drift_serving_info"
+  val DriftStatsKeySchema: StructType =
+    StructType("keySchema", Array(StructField("slice", StringType), StructField("feature", StringType)))
+  val SliceColumn: String = "slice"
+  val FeatureColumn: String = "feature"
+  val MetricsColumn: String = "metrics"
 }

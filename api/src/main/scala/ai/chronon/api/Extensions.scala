@@ -111,6 +111,7 @@ object Extensions {
     def outputLatestLabelView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled_latest"
     def loggedTable: String = s"${outputTable}_logged"
     def summaryTable: String = s"${outputTable}_summary"
+    def summaryUploadTable: String = s"${outputTable}_summary_upload"
     def driftTable: String = s"${outputTable}_drift"
 
     def bootstrapTable: String = s"${outputTable}_bootstrap"

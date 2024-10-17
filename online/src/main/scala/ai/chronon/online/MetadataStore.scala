@@ -199,35 +199,35 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
       },
       { gb => Metrics.Context(environment = "group_by.serving_info.fetch", groupBy = gb) })
 
-  lazy val getMonitoringServingInfo: TTLCache[String, Try[MonitoringServingInfo]] =
-    new TTLCache[String, Try[MonitoringServingInfo]](
-      { name =>
+  lazy val getDriftServingInfo: TTLCache[MetaData, Try[DriftStatsServingInfo]] =
+    new TTLCache[MetaData, Try[DriftStatsServingInfo]](
+      { metadata =>
         val startTimeMs = System.currentTimeMillis()
-        val batchDataset = s"${name.sanitize.toUpperCase()}_BATCH"
+        val batchDataset = metadata.summaryUploadTable
         val metaData =
-          kvStore.getString(Constants.MonitoringServingInfoKey, batchDataset, timeoutMillis).recover {
+          kvStore.getString(Constants.DriftStatsServingInfoKey, batchDataset, timeoutMillis).recover {
             case e: java.util.NoSuchElementException =>
               logger.error(
-                s"Failed to fetch metadata for $batchDataset, is it possible the corresponding stats upload job for $name has not succeeded?")
+                s"Failed to fetch metadata for $batchDataset, is it possible the corresponding drift stats upload job for $name has not succeeded?")
               throw e
           }
-        logger.info(s"Fetched ${Constants.MonitoringServingInfoKey} from : $batchDataset")
+        logger.info(s"Fetched ${Constants.DriftStatsServingInfoKey} from : $batchDataset")
         if (metaData.isFailure) {
           Failure(
-            new RuntimeException(s"Couldn't fetch monitoring serving info for $batchDataset, " +
+            new RuntimeException(s"Couldn't fetch drift stats serving info for $batchDataset, " +
                                    "please make sure a batch upload was successful",
                                  metaData.failed.get))
         } else {
           val statsServingInfo = ThriftJsonCodec
-            .fromJsonStr[MonitoringServingInfo](metaData.get, check = true, classOf[MonitoringServingInfo])
+            .fromJsonStr[DriftStatsServingInfo](metaData.get, check = true, classOf[DriftStatsServingInfo])
           Metrics
             .Context(Metrics.Environment.MetaDataFetching)
-            .withSuffix("monitoring_serving")
+            .withSuffix("drift_stats")
             .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
           Success(statsServingInfo)
         }
       },
-      { gb => Metrics.Context(environment = "monitoring.serving_info.fetch") })
+      { _ => Metrics.Context(environment = "monitoring.serving_info.fetch") })
 
   def put(
       kVPairs: Map[String, Seq[String]],
