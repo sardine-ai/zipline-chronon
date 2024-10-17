@@ -31,7 +31,7 @@ class SummaryUploader(inputDf: DataFrame, driftSpec: DriftSpec, ds: String)(impl
 
     val dataRDD: RDD[(Array[Any], Array[Any], Long)] = inputDf.rdd.map { row =>
       val keyArray: Array[Any] = keyIdxes.map(i => row.get(i)).toArray
-      val tileTs: Long = row.getLong(tsIdx)
+      val tileTs: Long = row.getDouble(tsIdx).toLong
       val valueArray: Array[Any] = Array(row.get(metricsIdx))
       (keyArray, valueArray, tileTs)
     }
@@ -51,7 +51,8 @@ class SummaryUploader(inputDf: DataFrame, driftSpec: DriftSpec, ds: String)(impl
         ThriftJsonCodec.toJsonStr(servingInfo).getBytes(Constants.UTF8),
         Constants.DriftStatsServingInfoKey,
         ThriftJsonCodec.toJsonStr(servingInfo),
-        tu.partitionSpec.epochMillis(ds)
+        tu.partitionSpec.epochMillis(ds), // set ts == ds
+        ds
       ))
 
     val metaRdd = tu.sparkSession.sparkContext.parallelize(metaRows)

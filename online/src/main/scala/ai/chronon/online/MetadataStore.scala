@@ -208,7 +208,7 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
           kvStore.getString(Constants.DriftStatsServingInfoKey, batchDataset, timeoutMillis).recover {
             case e: java.util.NoSuchElementException =>
               logger.error(
-                s"Failed to fetch metadata for $batchDataset, is it possible the corresponding drift stats upload job for $name has not succeeded?")
+                s"Failed to fetch metadata for $batchDataset, is it possible the corresponding drift stats upload job for ${metadata.name} has not succeeded?")
               throw e
           }
         logger.info(s"Fetched ${Constants.DriftStatsServingInfoKey} from : $batchDataset")
