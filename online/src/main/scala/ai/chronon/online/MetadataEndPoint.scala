@@ -4,6 +4,7 @@ import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.GroupBy
 import ai.chronon.api.Join
 import ai.chronon.api.MetaData
+import ai.chronon.api.Model
 import ai.chronon.api.StagingQuery
 import ai.chronon.api.ThriftJsonCodec
 import org.apache.thrift.TBase
@@ -39,6 +40,7 @@ object MetadataEndPoint {
       case join: Join                 => "joins/" + getTeamFromMetadata(join.metaData)
       case groupBy: GroupBy           => "group_bys/" + getTeamFromMetadata(groupBy.metaData)
       case stagingQuery: StagingQuery => "staging_queries/" + getTeamFromMetadata(stagingQuery.metaData)
+      case model: Model               => "models/" + getTeamFromMetadata(model.metaData)
       case _ =>
         logger.error(s"Failed to parse team from $conf")
         throw new Exception(s"Failed to parse team from $conf")

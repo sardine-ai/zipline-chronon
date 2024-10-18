@@ -423,8 +423,8 @@ struct DataSpec {
 }
 
 enum ModelType {
-    XGBoost = 1
-    PyTorch = 2
+    XGBoost = 0
+    PyTorch = 1
 }
 
 struct Model {
