@@ -54,8 +54,9 @@ object KVStore {
   }
   case class PutRequest(keyBytes: Array[Byte], valueBytes: Array[Byte], dataset: String, tsMillis: Option[Long] = None)
 
+  case class ListValue(keyBytes: Array[Byte], valueBytes: Array[Byte])
   case class ListRequest(dataset: String, props: Map[String, Any])
-  case class ListResponse(request: ListRequest, values: Try[Seq[Array[Byte]]], resultProps: Map[String, Any])
+  case class ListResponse(request: ListRequest, values: Try[Seq[ListValue]], resultProps: Map[String, Any])
 }
 
 // the main system level api for key value storage

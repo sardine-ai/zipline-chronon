@@ -5,15 +5,17 @@ import io.circe.syntax._
 import model.Model
 import model.SearchModelResponse
 import play.api.mvc._
+import store.DynamoDBMonitoringStore
 
 import javax.inject._
 
 /**
   * Controller to power search related APIs
   */
-class SearchController @Inject() (val controllerComponents: ControllerComponents) extends BaseController with Paginate {
-
-  import MockDataService._
+class SearchController @Inject() (val controllerComponents: ControllerComponents,
+                                  monitoringStore: DynamoDBMonitoringStore)
+    extends BaseController
+    with Paginate {
 
   /**
     * Powers the /api/v1/search endpoint. Returns a list of models
@@ -41,6 +43,7 @@ class SearchController @Inject() (val controllerComponents: ControllerComponents
 
   // a trivial search where we check the model name for similarity with the search term
   private def searchRegistry(term: String): Seq[Model] = {
-    mockModelRegistry.filter(m => m.name.contains(term))
+    val models = monitoringStore.getModels
+    models.filter(m => m.name.contains(term))
   }
 }

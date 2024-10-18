@@ -1,14 +1,9 @@
 package model
 
 /** Captures some details related to ML models registered with Zipline to surface in the Hub UI */
-case class Model(name: String,
-                 id: String,
-                 online: Boolean,
-                 production: Boolean,
-                 team: String,
-                 modelType: String,
-                 createTime: Long,
-                 lastUpdated: Long)
+case class GroupBy(name: String, features: Seq[String])
+case class Join(name: String, joinFeatures: Seq[String], groupBys: Seq[GroupBy])
+case class Model(name: String, join: Join, online: Boolean, production: Boolean, team: String, modelType: String)
 
 /** Supported Metric types */
 sealed trait MetricType

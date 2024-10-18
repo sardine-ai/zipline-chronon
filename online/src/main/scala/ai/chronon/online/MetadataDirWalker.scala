@@ -94,6 +94,7 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
             case value if value.contains("joins/")           => loadJsonToConf[api.Join](filePath)
             case value if value.contains("group_bys/")       => loadJsonToConf[api.GroupBy](filePath)
             case value if value.contains("staging_queries/") => loadJsonToConf[api.StagingQuery](filePath)
+            case value if value.contains("models/")          => loadJsonToConf[api.Model](filePath)
           }
         } catch {
           case e: Throwable =>
@@ -114,6 +115,10 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
               MetadataEndPoint
                 .getEndPoint[api.StagingQuery](endPointName)
                 .extractFn(filePath, conf.asInstanceOf[api.StagingQuery])
+            case value if value.contains("models/") =>
+              MetadataEndPoint
+                .getEndPoint[api.Model](endPointName)
+                .extractFn(filePath, conf.asInstanceOf[api.Model])
           }
           (endPointName, kVPair)
         }

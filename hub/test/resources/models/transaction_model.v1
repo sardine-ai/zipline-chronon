@@ -2,7 +2,7 @@
   "outputSchema": {
     "kind": 6
   },
-  "modelType": 0,
+  "modelType": 1,
   "metaData": {
     "name": "risk.transaction_model.v1",
     "tableProperties": {
@@ -15,8 +15,8 @@
     "joinSource": {
       "join": {
         "metaData": {
-          "online": 0,
           "name": "risk.user_transactions.txn_join",
+          "online": 0,
           "production": 0,
           "customJson": "{\"check_consistency\": false, \"lag\": 0, \"join_tags\": null, \"join_part_tags\": {}}",
           "dependencies": [

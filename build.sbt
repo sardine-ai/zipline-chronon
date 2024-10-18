@@ -85,7 +85,6 @@ val flink_all = Seq(
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
 
 lazy val api = project
-  .enablePlugins(ShadingPlugin)
   .settings(
     Compile / sourceGenerators += Def.task {
       val inputThrift = baseDirectory.value / "thrift" / "api.thrift"
@@ -226,14 +225,34 @@ lazy val frontend = (project in file("frontend"))
 // build interop between one module solely on 2.13 and others on 2.12 is painful
 lazy val hub = (project in file("hub"))
   .enablePlugins(PlayScala)
+  .dependsOn(cloud_aws)
   .settings(
     name := "hub",
     libraryDependencies ++= Seq(
       guice,
       "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
+      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
       "io.circe" %% "circe-core" % circeVersion,
       "io.circe" %% "circe-generic" % circeVersion,
-      "io.circe" %% "circe-parser" % circeVersion
+      "io.circe" %% "circe-parser" % circeVersion,
+      "org.scala-lang.modules" %% "scala-xml" % "2.1.0",
+      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.3.0",
+      "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
+    ),
+    libraryDependencySchemes ++= Seq(
+      "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
+      "org.scala-lang.modules" %% "scala-parser-combinators" % VersionScheme.Always,
+      "org.scala-lang.modules" %% "scala-java8-compat" % VersionScheme.Always
+    ),
+    excludeDependencies ++= Seq(
+      ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
+      ExclusionRule(organization = "log4j", name = "log4j"),
+      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-to-slf4j")
+    ),
+    // Ensure consistent versions of logging libraries
+    dependencyOverrides ++= Seq(
+      "org.slf4j" % "slf4j-api" % "1.7.36",
+      "ch.qos.logback" % "logback-classic" % "1.2.11"
     )
   )
 
