@@ -34,7 +34,7 @@ export async function getModels(): Promise<ModelsResponse> {
 }
 
 export async function getModelTimeseries(
-	id: string,
+	name: string,
 	startTs: number,
 	endTs: number,
 	offset: string = '10h',
@@ -46,7 +46,7 @@ export async function getModelTimeseries(
 		offset,
 		algorithm
 	});
-	return get(`model/${id}/timeseries?${params.toString()}`);
+	return get(`model/${name}/timeseries?${params.toString()}`);
 }
 
 export async function search(term: string, limit: number = 20): Promise<ModelsResponse> {

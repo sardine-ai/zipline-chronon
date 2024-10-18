@@ -116,7 +116,7 @@
 					<CommandItem>
 						<Button
 							variant="ghost"
-							href="/models/{model.id}/observability"
+							href="/models/{model.name}/observability"
 							onclick={() => (open = false)}
 							class="w-full justify-start"
 						>

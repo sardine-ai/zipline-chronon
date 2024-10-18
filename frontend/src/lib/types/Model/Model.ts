@@ -1,12 +1,10 @@
 export type Model = {
 	name: string;
-	id: string;
 	online: boolean;
 	production: boolean;
 	team: string;
 	modelType: string;
-	createTime: number;
-	lastUpdated: number;
+	join: JoinTimeSeriesResponse; // todo: this type needs to be updated to match the actual response once that WIP is finished
 };
 
 export type ModelsResponse = {

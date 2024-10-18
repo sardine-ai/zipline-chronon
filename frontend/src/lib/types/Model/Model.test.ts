@@ -26,13 +26,11 @@ describe('Model types', () => {
 			const model = result.items[0];
 			const expectedModelKeys: (keyof Model)[] = [
 				'name',
-				'id',
 				'online',
 				'production',
 				'team',
 				'modelType',
-				'createTime',
-				'lastUpdated'
+				'join'
 			];
 			expect(Object.keys(model)).toEqual(expect.arrayContaining(expectedModelKeys));
 
@@ -47,26 +45,31 @@ describe('Model types', () => {
 	});
 
 	it('should match TimeSeriesResponse type', async () => {
-		const modelId = '0';
-		const result = (await api.getModelTimeseries(
-			modelId,
+		const result = (await api.getModels()) as ModelsResponse;
+		expect(result.items.length).toBeGreaterThan(0);
+
+		const modelName = result.items[0].name;
+		const timeseriesResult = (await api.getModelTimeseries(
+			modelName,
 			1725926400000,
 			1726106400000
 		)) as TimeSeriesResponse;
 
 		const expectedKeys = ['id', 'items'];
-		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
+		expect(Object.keys(timeseriesResult)).toEqual(expect.arrayContaining(expectedKeys));
 
 		// Log a warning if there are additional fields
-		const additionalKeys = Object.keys(result).filter((key) => !expectedKeys.includes(key));
+		const additionalKeys = Object.keys(timeseriesResult).filter(
+			(key) => !expectedKeys.includes(key)
+		);
 		if (additionalKeys.length > 0) {
 			console.warn(`Additional fields found in TimeSeriesResponse: ${additionalKeys.join(', ')}`);
 		}
 
-		expect(Array.isArray(result.items)).toBe(true);
+		expect(Array.isArray(timeseriesResult.items)).toBe(true);
 
-		if (result.items.length > 0) {
-			const item = result.items[0];
+		if (timeseriesResult.items.length > 0) {
+			const item = timeseriesResult.items[0];
 			const expectedItemKeys = ['value', 'ts', 'label'];
 			expect(Object.keys(item)).toEqual(expect.arrayContaining(expectedItemKeys));
 
@@ -81,7 +84,7 @@ describe('Model types', () => {
 	});
 
 	it('should match ModelsResponse type for search results', async () => {
-		const searchTerm = 'my test model - 0';
+		const searchTerm = 'risk.transaction_model.v1';
 		const limit = 5;
 		const result = (await api.search(searchTerm, limit)) as ModelsResponse;
 
@@ -103,13 +106,11 @@ describe('Model types', () => {
 			const model = result.items[0];
 			const expectedModelKeys: (keyof Model)[] = [
 				'name',
-				'id',
 				'online',
 				'production',
 				'team',
 				'modelType',
-				'createTime',
-				'lastUpdated'
+				'join'
 			];
 			expect(Object.keys(model)).toEqual(expect.arrayContaining(expectedModelKeys));
 
@@ -127,28 +128,31 @@ describe('Model types', () => {
 	});
 
 	it('should match JoinTimeSeriesResponse type', async () => {
-		const modelId = '0';
-		const result = (await api.getJoinTimeseries(
-			modelId,
+		const result = (await api.getModels()) as ModelsResponse;
+		expect(result.items.length).toBeGreaterThan(0);
+
+		const modelName = result.items[0].name;
+		const joinResult = (await api.getJoinTimeseries(
+			modelName,
 			1725926400000,
 			1726106400000
 		)) as JoinTimeSeriesResponse;
 
 		const expectedKeys = ['name', 'items'];
-		expect(Object.keys(result)).toEqual(expect.arrayContaining(expectedKeys));
+		expect(Object.keys(joinResult)).toEqual(expect.arrayContaining(expectedKeys));
 
 		// Log a warning if there are additional fields
-		const additionalKeys = Object.keys(result).filter((key) => !expectedKeys.includes(key));
+		const additionalKeys = Object.keys(joinResult).filter((key) => !expectedKeys.includes(key));
 		if (additionalKeys.length > 0) {
 			console.warn(
 				`Additional fields found in JoinTimeSeriesResponse: ${additionalKeys.join(', ')}`
 			);
 		}
 
-		expect(Array.isArray(result.items)).toBe(true);
+		expect(Array.isArray(joinResult.items)).toBe(true);
 
-		if (result.items.length > 0) {
-			const item = result.items[0];
+		if (joinResult.items.length > 0) {
+			const item = joinResult.items[0];
 			const expectedItemKeys = ['name', 'items'];
 			expect(Object.keys(item)).toEqual(expect.arrayContaining(expectedItemKeys));
 

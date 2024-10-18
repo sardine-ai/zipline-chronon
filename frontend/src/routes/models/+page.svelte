@@ -23,14 +23,13 @@
 			<TableHead>Type</TableHead>
 			<TableHead>Online</TableHead>
 			<TableHead>Production</TableHead>
-			<TableHead>Last Updated</TableHead>
 		</TableRow>
 	</TableHeader>
 	<TableBody>
 		{#each models as model}
 			<TableRow>
 				<TableCell>
-					<a href="/models/{model.id}/observability" class="hover:underline">
+					<a href="/models/{model.name}/observability" class="hover:underline">
 						{model.name}
 					</a>
 				</TableCell>
@@ -50,7 +49,6 @@
 						False
 					{/if}
 				</TableCell>
-				<TableCell>{new Date(model.lastUpdated).toLocaleString()}</TableCell>
 			</TableRow>
 		{/each}
 	</TableBody>
