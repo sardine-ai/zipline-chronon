@@ -228,4 +228,16 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
     val futures = putsBatches.map(batch => kvStore.multiPut(batch))
     Future.sequence(futures).map(_.flatten)
   }
+
+  def create(dataset: String): Unit = {
+    try {
+      logger.info(s"Creating dataset: $dataset")
+      kvStore.create(dataset)
+      logger.info(s"Successfully created dataset: $dataset")
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to create dataset: $dataset", e)
+        throw e
+    }
+  }
 }

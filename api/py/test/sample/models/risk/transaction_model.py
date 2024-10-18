@@ -2,7 +2,7 @@
 from ai.chronon.model import Model, ModelType
 from ai.chronon.api.ttypes import DataKind, JoinSource, Source, TDataType
 from ai.chronon.query import Query, select
-from joins.risk.user_transactions import txn_join
+from joins.risk import user_transactions
 
 
 """
@@ -11,7 +11,7 @@ and timestamps for which features will be computed.
 """
 source = Source(
     joinSource=JoinSource(
-        join=txn_join, 
+        join=user_transactions.txn_join,
         query=Query(
             selects=select("user_id"),
             )
