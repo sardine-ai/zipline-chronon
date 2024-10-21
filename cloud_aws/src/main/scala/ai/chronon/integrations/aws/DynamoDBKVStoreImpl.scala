@@ -1,5 +1,6 @@
 package ai.chronon.integrations.aws
 
+import ai.chronon.api.Constants
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetResponse
 import ai.chronon.online.KVStore.ListRequest
@@ -54,7 +55,7 @@ object DynamoDBKVStoreConstants {
   val partitionKeyColumn = "keyBytes"
 
   // Name of the time sort key column to use
-  val sortKeyColumn = "timestamp"
+  val sortKeyColumn = Constants.TimeColumn
 
   // TODO: tune these
   val defaultReadCapacityUnits = 10L
