@@ -42,13 +42,13 @@ class TwoStackLiteAggregatorTest extends TestCase{
     val topK = new TopK[Integer](IntType, 2)
     val bankersBuffer = new TwoStackLiteAggregationBuffer(topK, 5)
     assertEquals(null, bankersBuffer.query) // null
-    Seq(7, 8, 9).map(x => new Integer(x)).foreach(i => bankersBuffer.push(i))
+    Seq(7, 8, 9).map(x => Integer.valueOf(x)).foreach(i => bankersBuffer.push(i))
     def assertBufferEquals(a: Seq[Int], b: java.util.ArrayList[Integer]): Unit = {
       if(a==null || b == null) {
         assertEquals(a, b)
       } else {
         assertArrayEquals(
-          Option(a).map(_.map(x => new Integer(x).asInstanceOf[AnyRef]).toArray).orNull,
+          Option(a).map(_.map(x => Integer.valueOf(x).asInstanceOf[AnyRef]).toArray).orNull,
           Option(b).map(_.toArray).orNull)
       }
     }
@@ -59,7 +59,7 @@ class TwoStackLiteAggregatorTest extends TestCase{
     assertBufferEquals(Seq(9), bankersBuffer.query)
     bankersBuffer.pop()
     assertBufferEquals(null, bankersBuffer.query)
-    bankersBuffer.push(new Integer(10))
+    bankersBuffer.push(Integer.valueOf(10))
     assertBufferEquals(Seq(10), bankersBuffer.query)
   }
 

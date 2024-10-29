@@ -78,8 +78,7 @@ val jackson = Seq(
 val flink_all = Seq(
   "org.apache.flink" %% "flink-streaming-scala",
   "org.apache.flink" % "flink-metrics-dropwizard",
-  "org.apache.flink" % "flink-clients",
-  "org.apache.flink" % "flink-test-utils"
+  "org.apache.flink" % "flink-clients"
 ).map(_ % flink_1_17)
 
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
@@ -107,10 +106,10 @@ lazy val aggregator = project
   .dependsOn(api.%("compile->compile;test->test"))
   .settings(
     libraryDependencies ++= Seq(
-      "com.yahoo.datasketches" % "sketches-core" % "0.13.4",
-      "com.google.code.gson" % "gson" % "2.10.1"
-    ),
-    libraryDependencies ++= spark_sql_provided
+        "org.apache.datasketches" % "datasketches-java" % "6.1.0",
+        "com.google.code.gson" % "gson" % "2.10.1"
+      ),
+    libraryDependencies ++= spark_sql_provided,
   )
 
 // todo add a service module with spark as a hard dependency
@@ -165,7 +164,12 @@ lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
     libraryDependencies ++= spark_all,
-    libraryDependencies ++= flink_all
+    libraryDependencies ++= flink_all,
+    libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll(
+      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
+      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),
+      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-slf4j-impl")
+    )
   )
 
 lazy val cloud_gcp = project

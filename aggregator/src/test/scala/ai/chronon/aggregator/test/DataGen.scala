@@ -35,6 +35,12 @@ abstract class CStream[+T: ClassTag] {
     else min + ((max - min) * math.random)
   }
 
+  protected def rollFloat(max: JDouble, min: JDouble = 0, nullRate: Double = 0.1): java.lang.Float = {
+    val dice: Double = math.random
+    if (dice < nullRate) null
+    else (min + ((max - min) * math.random)).toFloat
+  }
+
   // roll a dice that gives max to min uniformly, with nulls interspersed as per null rate
   protected def roll(max: JLong, min: JLong = 0, nullRate: Double = 0.1): JLong = {
     val roll = rollDouble(max.toDouble, min.toDouble, nullRate)
@@ -45,13 +51,29 @@ abstract class CStream[+T: ClassTag] {
     Stream.fill(count)(next())
   }
 
-  def chunk(minSize: Long = 0, maxSize: Long = 10, nullRate: Double = 0.1): CStream[Seq[T]] = {
+  def chunk(minSize: Long = 0, maxSize: Long = 10, nullRate: Double = 0.1): CStream[Any] = {
     def innerNext(): T = next()
-    new CStream[Seq[T]] {
+    new CStream[Any] {
       override def next(): Seq[T] = {
         val size = roll(minSize, maxSize, nullRate)
         if (size != null) {
           (0 until size.toInt).map { _ => innerNext() }
+        } else {
+          null
+        }
+      }
+    }
+  }
+
+  def zipChunk[Other](other: CStream[Other], minSize: Int = 0, maxSize: Int = 20, nullRate: Double = 0.1): CStream[Any] = {
+    def nextKey(): T = next()
+    def nextValue(): Other = other.next()
+
+    new CStream[Any] {
+      override def next(): Map[T, Other] = {
+        val size = roll(minSize, maxSize, nullRate)
+        if (size != null) {
+          (0 until size.toInt).map { _ => nextKey() -> nextValue() }.toMap
         } else {
           null
         }
@@ -63,12 +85,15 @@ abstract class CStream[+T: ClassTag] {
 object CStream {
   private type JLong = java.lang.Long
   private type JDouble = java.lang.Double
+  private type JFloat = java.lang.Float
 
   def genTimestamps(window: Window,
                     count: Int,
                     roundMillis: Int = 1,
                     maxTs: Long = System.currentTimeMillis()): Array[Long] =
-    new CStream.TimeStream(window, roundMillis, maxTs).gen(count).toArray.sorted
+    new CStream.TimeStream(window, roundMillis, maxTs).gen(count).toArray.sorted(new Ordering[Any] {
+      override def compare(x: Any, y: Any): Int = x.asInstanceOf[Long].compareTo(y.asInstanceOf[Long])
+    })
 
   def genPartitions(count: Int, partitionSpec: PartitionSpec): Array[String] = {
     val today = partitionSpec.at(System.currentTimeMillis())
@@ -121,6 +146,11 @@ object CStream {
       Option(rollDouble(max, 1, nullRate = nullRate)).map(java.lang.Double.valueOf(_)).orNull
   }
 
+  class FloatStream(max: Double = 10000, nullRate: Double = 0.1) extends CStream[JFloat] {
+    override def next(): java.lang.Float =
+      Option(rollFloat(max, 1, nullRate = nullRate)).map(java.lang.Float.valueOf(_)).orNull
+  }
+
   class ZippedStream(streams: CStream[Any]*)(tsIndex: Int) extends CStream[TestRow] {
     override def next(): TestRow =
       new TestRow(streams.map(_.next()).toArray: _*)(tsIndex)
@@ -139,7 +169,7 @@ object CStream {
 }
 
 case class Column(name: String, `type`: DataType, cardinality: Int, chunkSize: Int = 10, nullRate: Double = 0.1) {
-  def genImpl(dtype: DataType, partitionColumn: String, partitionSpec: PartitionSpec): CStream[Any] =
+  def genImpl(dtype: DataType, partitionColumn: String, partitionSpec: PartitionSpec, nullRate: Double): CStream[Any] =
     dtype match {
       case StringType =>
         name match {
@@ -148,18 +178,23 @@ case class Column(name: String, `type`: DataType, cardinality: Int, chunkSize: I
         }
       case IntType    => new IntStream(cardinality, nullRate)
       case DoubleType => new DoubleStream(cardinality, nullRate)
+      case FloatType => new FloatStream(cardinality, nullRate)
       case LongType =>
         name match {
           case Constants.TimeColumn => new TimeStream(new Window(cardinality, TimeUnit.DAYS))
           case _                    => new LongStream(cardinality, nullRate)
         }
       case ListType(elementType) =>
-        genImpl(elementType, partitionColumn, partitionSpec).chunk(chunkSize)
+        genImpl(elementType, partitionColumn, partitionSpec, nullRate).chunk(chunkSize)
+      case MapType(keyType, valueType) =>
+        val keyStream = genImpl(keyType, partitionColumn, partitionSpec, 0)
+        val valueStream = genImpl(valueType, partitionColumn, partitionSpec, nullRate)
+        keyStream.zipChunk(valueStream, maxSize = chunkSize)
       case otherType => throw new UnsupportedOperationException(s"Can't generate random data for $otherType yet.")
     }
 
   def gen(partitionColumn: String, partitionSpec: PartitionSpec): CStream[Any] =
-    genImpl(`type`, partitionColumn, partitionSpec)
+    genImpl(`type`, partitionColumn, partitionSpec, nullRate)
   def schema: (String, DataType) = name -> `type`
 }
 case class RowsWithSchema(rows: Array[TestRow], schema: Seq[(String, DataType)])

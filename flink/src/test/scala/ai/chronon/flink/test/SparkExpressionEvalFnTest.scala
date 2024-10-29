@@ -31,9 +31,9 @@ class SparkExpressionEvalFnTest {
     val sparkExprEvalDS = source.flatMap(sparkExprEval)
 
     val result = new DataStreamUtils(sparkExprEvalDS).collect.toSeq
-    // lets check the size
+    // let's check the size
     assert(result.size == elements.size, "Expect result sets to include all 3 rows")
-    // lets check the id field
+    // let's check the id field
     assert(result.map(_.apply("id")).toSet == Set("test1", "test2", "test3"))
   }
 

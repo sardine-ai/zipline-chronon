@@ -167,6 +167,7 @@ enum Operation {
 enum TimeUnit {
     HOURS = 0
     DAYS = 1
+    MINUTES = 2
 }
 
 struct Window {
@@ -220,11 +221,68 @@ enum Accuracy {
     SNAPSHOT = 1
 }
 
-//TODO: to be supported
-//enum JoinType {
-//    OUTER = 0,
-//    INNER = 1
-//}
+enum Cardinality {
+    LOW = 0,
+    HIGH = 1
+}
+
+/**
++----------------------------------+-------------------+----------------+----------------------------------+
+| Metric                           | Moderate Drift    | Severe Drift   | Notes                            |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Jensen-Shannon Divergence        | 0.05 - 0.1        | > 0.1          | Max value is ln(2) ≈ 0.69        |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Hellinger Distance               | 0.1 - 0.25        | > 0.25         | Ranges from 0 to 1               |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Kolmogorov-Smirnov (K-S)         | 0.1 - 0.2         | > 0.2          | Ranges from 0 to 1               |
+| Distance                         |                   |                |                                  |
++----------------------------------+-------------------+----------------+----------------------------------+
+| Population Stability Index (PSI) | 0.1 - 0.2         | > 0.2          | Industry standard in some fields |
++----------------------------------+-------------------+----------------+----------------------------------+
+**/
+enum DriftMetric {
+    JENSEN_SHANNON = 0,
+    HELLINGER = 1,
+    KOLMOGOROV_SMIRNOV = 2,
+    PSI = 3
+}
+
+struct TileKey {
+  1: optional string column
+  2: optional string slice
+  3: optional string name // name of the join, groupBy, stagingQuery etc
+  4: optional i64 sizeMillis
+}
+
+struct TileSummaries {
+  1: optional list<double> percentiles
+  2: optional map<string, i64> histogram
+  3: optional i64 count
+  4: optional i64 nullCount
+
+  // for container types
+  5: optional i64 innerCount // total of number of entries within all containers of this column
+  6: optional i64 innerNullCount
+  7: optional list<i32> lengthPercentiles
+
+  // high cardinality string type
+  8: optional list<i32> stringLengthPercentiles
+}
+
+struct DriftSpec {
+    // slices is another key to summarize the data with - besides the column & slice
+    // currently supports only one slice
+    1: optional list<string> slices
+    // additional things you want us to monitor drift on
+    // eg., specific column values or specific invariants
+    // shopify_txns = IF(merchant = 'shopify', txn_amount, NULL)
+    // likes_over_dislines = IF(dislikes > likes, 1, 0)
+    // or any other expression that you care about
+    2: optional map<string, string> derivations
+    // we measure the unique counts of the columns and decide if they are categorical and numeric
+    // you can use this to override that decision by setting cardinality hints
+    3: optional map<string, Cardinality> columnCardinalityHints
+}
 
 struct MetaData {
     1: optional string name
@@ -258,6 +316,7 @@ struct MetaData {
     // Setting to false will only backfill latest single partition
     14: optional bool historicalBackfill
 }
+
 
 // Equivalent to a FeatureSet in chronon terms
 struct GroupBy {

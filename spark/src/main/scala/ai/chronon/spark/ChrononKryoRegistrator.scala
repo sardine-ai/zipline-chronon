@@ -26,10 +26,10 @@ import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.Serializer
 import com.esotericsoftware.kryo.io.Input
 import com.esotericsoftware.kryo.io.Output
-import com.yahoo.memory.Memory
-import com.yahoo.sketches.ArrayOfItemsSerDe
-import com.yahoo.sketches.cpc.CpcSketch
-import com.yahoo.sketches.frequencies.ItemsSketch
+import org.apache.datasketches.common.ArrayOfItemsSerDe
+import org.apache.datasketches.cpc.CpcSketch
+import org.apache.datasketches.frequencies.ItemsSketch
+import org.apache.datasketches.memory.Memory
 import org.apache.spark.serializer.KryoRegistrator
 
 class CpcSketchKryoSerializer extends Serializer[CpcSketch] {
@@ -79,6 +79,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
   override def registerClasses(kryo: Kryo): Unit = {
     //kryo.setWarnUnregisteredClasses(true)
     val names = Seq(
+      "java.time.LocalDateTime",
       "org.apache.hadoop.fs.Path",
       "org.apache.hadoop.fs.FileStatus",
       "org.apache.hadoop.fs.LocatedFileStatus",
@@ -110,7 +111,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "ai.chronon.aggregator.windowing.FinalBatchIr",
       "ai.chronon.online.LoggableResponse",
       "ai.chronon.online.LoggableResponseBase64",
-      "com.yahoo.sketches.kll.KllFloatsSketch",
+      "org.apache.datasketches.kll.KllFloatsSketch",
       "java.util.HashMap",
       "java.util.ArrayList",
       "java.util.HashSet",
@@ -164,7 +165,10 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "org.apache.spark.sql.catalyst.InternalRow$$anonfun$getAccessor$8",
       "org.apache.spark.sql.catalyst.InternalRow$$anonfun$getAccessor$5",
       "scala.collection.immutable.ArraySeq$ofRef",
-      "org.apache.spark.sql.catalyst.expressions.GenericInternalRow"
+      "org.apache.spark.sql.catalyst.expressions.GenericInternalRow",
+      "org.apache.datasketches.kll.KllHeapFloatsSketch",
+      "org.apache.datasketches.kll.KllSketch$SketchStructure",
+      "org.apache.datasketches.kll.KllSketch$SketchType"
     )
     names.foreach { name =>
       try {

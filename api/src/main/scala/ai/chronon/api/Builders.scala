@@ -275,7 +275,14 @@ object Builders {
       result.setProduction(production)
       result.setCustomJson(customJson)
       result.setOutputNamespace(namespace)
-      result.setTeam(Option(team).getOrElse("chronon"))
+
+      val effectiveTeam = (Option(team), Option(name)) match {
+        case (Some(t), _) => t
+        case (_, Some(n)) => n.split("\\.").headOption.getOrElse("chronon")
+        case _            => "chronon"
+      }
+
+      result.setTeam(effectiveTeam)
       result.setHistoricalBackfill(historicalBackill)
       if (dependencies != null)
         result.setDependencies(dependencies.toSeq.toJava)

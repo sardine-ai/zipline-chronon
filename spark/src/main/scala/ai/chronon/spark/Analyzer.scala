@@ -31,10 +31,10 @@ import ai.chronon.api.Window
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
-import com.yahoo.memory.Memory
-import com.yahoo.sketches.ArrayOfStringsSerDe
-import com.yahoo.sketches.frequencies.ErrorType
-import com.yahoo.sketches.frequencies.ItemsSketch
+import org.apache.datasketches.common.ArrayOfStringsSerDe
+import org.apache.datasketches.frequencies.ErrorType
+import org.apache.datasketches.frequencies.ItemsSketch
+import org.apache.datasketches.memory.Memory
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.col
