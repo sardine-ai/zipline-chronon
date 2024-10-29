@@ -29,8 +29,8 @@ with open(os.path.join(current_dir, "requirements/base.in"), "r") as infile:
 __version__ = "local"
 __branch__ = "main"
 def get_version():
-    version_str = os.environ.get("CHRONON_VERSION_STR", __version__)
-    branch_str = os.environ.get("CHRONON_BRANCH_STR", __branch__)
+    version_str = os.environ.get("VERSION", __version__)
+    branch_str = os.environ.get("BRANCH", __branch__)
     # Replace "-SNAPSHOT" with ".dev"
     version_str = version_str.replace("-SNAPSHOT", ".dev")
     # If the prefix is the branch name, then convert it as suffix after '+' to make it Python PEP440 complaint

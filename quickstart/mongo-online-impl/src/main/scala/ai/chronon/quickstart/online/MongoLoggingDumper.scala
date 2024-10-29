@@ -49,6 +49,7 @@ object MongoLoggingDumper {
         .format("parquet")
         .mode("overwrite")
         .saveAsTable(tableName)
+
       spark.stop()
     }
 }

@@ -48,6 +48,7 @@ object Constants {
   val MutationAvroFields: Seq[StructField] = Seq(TimeField, ReversalField)
   val MutationAvroColumns: Seq[String] = MutationAvroFields.map(_.name)
   val MutationFields: Seq[StructField] = Seq(MutationTimeField, ReversalField)
+  val TileColumn: String = "__tile"
   val TimedKvRDDKeySchemaKey: String = "__keySchema"
   val TimedKvRDDValueSchemaKey: String = "__valueSchema"
   val StatsKeySchema: StructType = StructType("keySchema", Array(StructField("JoinPath", StringType)))

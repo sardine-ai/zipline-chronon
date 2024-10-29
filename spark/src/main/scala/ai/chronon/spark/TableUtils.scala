@@ -381,7 +381,7 @@ case class TableUtils(sparkSession: SparkSession) {
          |$stackTraceStringPretty
          |
          |  ---- end ----
-         |""".stripMargin)
+         |""".stripMargin.yellow)
     try {
       // Run the query
       val df = sparkSession.sql(query).coalesce(partitionCount)
@@ -873,6 +873,13 @@ case class TableUtils(sparkSession: SparkSession) {
     val selects = Option(query).flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
 
     scanDfBase(selects, table, wheres, fallbackSelects)
+  }
+
+  def partitionRange(table: String): PartitionRange = {
+    val parts = partitions(table)
+    val minPartition = parts.reduceOption(Ordering[String].min).orNull
+    val maxPartition = parts.reduceOption(Ordering[String].max).orNull
+    PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }
 

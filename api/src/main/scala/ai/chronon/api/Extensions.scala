@@ -43,14 +43,16 @@ object Extensions {
   implicit class TimeUnitOps(timeUnit: TimeUnit) {
     def str: String =
       timeUnit match {
-        case TimeUnit.HOURS => "h"
-        case TimeUnit.DAYS  => "d"
+        case TimeUnit.HOURS   => "h"
+        case TimeUnit.DAYS    => "d"
+        case TimeUnit.MINUTES => "m"
       }
 
     def millis: Long =
       timeUnit match {
-        case TimeUnit.HOURS => 3600 * 1000
-        case TimeUnit.DAYS  => 24 * 3600 * 1000
+        case TimeUnit.HOURS   => 3600 * 1000
+        case TimeUnit.DAYS    => 24 * 3600 * 1000
+        case TimeUnit.MINUTES => 60 * 1000
       }
   }
 
@@ -108,6 +110,9 @@ object Extensions {
     def outputFinalView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled"
     def outputLatestLabelView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled_latest"
     def loggedTable: String = s"${outputTable}_logged"
+    def summaryTable: String = s"${outputTable}_summary"
+    def packedSummaryTable: String = s"${outputTable}_summary_packed"
+    def driftTable: String = s"${outputTable}_drift"
 
     def bootstrapTable: String = s"${outputTable}_bootstrap"
 
