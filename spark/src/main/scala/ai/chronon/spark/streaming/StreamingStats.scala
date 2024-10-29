@@ -17,8 +17,8 @@
 package ai.chronon.spark.streaming
 
 import ai.chronon.online.KVStore.PutRequest
-import com.yahoo.sketches.kll.KllFloatsSketch
 import org.apache.commons.io.FileUtils
+import org.apache.datasketches.kll.KllFloatsSketch
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -29,7 +29,7 @@ import java.time.format.DateTimeFormatter
 
 class StreamingStats(val publishDelaySeconds: Int) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  private var latencyHistogram: KllFloatsSketch = new KllFloatsSketch()
+  private var latencyHistogram: KllFloatsSketch = KllFloatsSketch.newHeapInstance()
   private var latencyMsTotal: Long = 0
   private var writesTotal: Long = 0
   private var keyBytesTotal: Long = 0
@@ -58,7 +58,7 @@ class StreamingStats(val publishDelaySeconds: Int) {
       writesTotal = 0
       keyBytesTotal = 0
       valueBytesTotal = 0
-      latencyHistogram = new KllFloatsSketch()
+      latencyHistogram = KllFloatsSketch.newHeapInstance()
       startMs = now
     } else {
       logger.info("No writes registered")

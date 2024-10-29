@@ -47,7 +47,28 @@ case class PartitionSpec(format: String, spanMillis: Long) {
 
   def minus(s: String, window: Window): String = at(epochMillis(s) - window.millis)
 
+  def plus(s: String, window: Window): String = at(epochMillis(s) + window.millis)
+
+  def minus(partition: String, window: Option[Window]): String = {
+    if (partition == null) return null
+    window.map(minus(partition, _)).getOrElse(partition)
+  }
+
+  def plus(partition: String, window: Option[Window]): String = {
+    if (partition == null) return null
+    window.map(plus(partition, _)).getOrElse(partition)
+  }
+
   def after(s: String): String = shift(s, 1)
+
+  // all partitions `count` ahead of `s` including `s` - result size will be count + 1
+  // used to compute effected output partitions for a given partition
+  def partitionsFrom(s: String, count: Int): Seq[String] = s +: (1 to count).map(shift(s, _))
+
+  def partitionsFrom(s: String, window: Window): Seq[String] = {
+    val count = math.ceil(window.millis.toDouble / spanMillis).toInt
+    partitionsFrom(s, count)
+  }
 
   def before(millis: Long): String = at(millis - spanMillis)
 
@@ -57,4 +78,10 @@ case class PartitionSpec(format: String, spanMillis: Long) {
   def now: String = at(System.currentTimeMillis())
 
   def shiftBackFromNow(days: Int): String = shift(now, 0 - days)
+}
+
+object PartitionSpec {
+  val daily: PartitionSpec = PartitionSpec("yyyy-MM-dd", 24 * 60 * 60 * 1000)
+  val hourly: PartitionSpec = PartitionSpec("yyyy-MM-dd-HH", 60 * 60 * 1000)
+  val fifteenMinutes: PartitionSpec = PartitionSpec("yyyy-MM-dd-HH-mm", 15 * 60 * 1000)
 }

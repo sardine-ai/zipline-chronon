@@ -18,8 +18,8 @@ package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base.ApproxPercentiles
 import ai.chronon.aggregator.row.StatsGenerator
-import com.yahoo.sketches.kll.KllFloatsSketch
 import junit.framework.TestCase
+import org.apache.datasketches.kll.KllFloatsSketch
 import org.junit.Assert._
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -28,7 +28,8 @@ import scala.util.Random
 
 class ApproxPercentilesTest extends TestCase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  def testBasicImpl(nums: Int, slide: Int, k: Int, percentiles: Array[Double], errorPercent: Float): Unit = {
+
+  def basicImplTestHelper(nums: Int, slide: Int, k: Int, percentiles: Array[Double], errorPercent: Float): Unit = {
     val sorted = (0 to nums).map(_.toFloat)
     val elems = Random.shuffle(sorted.toList).toArray
     val chunks = elems.sliding(slide, slide)
@@ -58,14 +59,14 @@ class ApproxPercentilesTest extends TestCase {
   def testBasicPercentiles: Unit = {
     val percentiles_tested: Int = 31
     val percentiles: Array[Double] = (0 to percentiles_tested).toArray.map(i => i * 1.0 / percentiles_tested)
-    testBasicImpl(3000, 5, 100, percentiles, errorPercent = 4)
-    testBasicImpl(30000, 50, 200, percentiles, errorPercent = 2)
-    testBasicImpl(30000, 50, 50, percentiles, errorPercent = 5)
+    basicImplTestHelper(3000, 5, 100, percentiles, errorPercent = 4)
+    basicImplTestHelper(30000, 50, 200, percentiles, errorPercent = 2)
+    basicImplTestHelper(30000, 50, 50, percentiles, errorPercent = 5)
   }
 
   def getPSIDrift(sample1: Array[Float], sample2: Array[Float]): Double = {
-    val sketch1 = new KllFloatsSketch(200)
-    val sketch2 = new KllFloatsSketch(200)
+    val sketch1 = KllFloatsSketch.newHeapInstance(200)
+    val sketch2 = KllFloatsSketch.newHeapInstance(200)
     sample1.map(sketch1.update)
     sample2.map(sketch2.update)
     val drift = StatsGenerator.PSIKllSketch(sketch1.toByteArray, sketch2.toByteArray).asInstanceOf[Double]

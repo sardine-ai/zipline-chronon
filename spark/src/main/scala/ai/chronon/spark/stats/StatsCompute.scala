@@ -24,8 +24,8 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd
-import com.yahoo.memory.Memory
-import com.yahoo.sketches.kll.KllFloatsSketch
+import org.apache.datasketches.kll.KllFloatsSketch
+import org.apache.datasketches.memory.Memory
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions

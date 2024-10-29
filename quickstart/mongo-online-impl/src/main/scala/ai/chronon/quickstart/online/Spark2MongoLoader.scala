@@ -40,6 +40,5 @@ object Spark2MongoLoader {
       .option("database", Constants.mongoDatabase)
       .option("collection", dataset)
       .save()
-    spark.stop()
   }
 }

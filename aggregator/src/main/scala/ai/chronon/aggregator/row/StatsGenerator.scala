@@ -18,8 +18,8 @@ package ai.chronon.aggregator.row
 
 import ai.chronon.api
 import ai.chronon.api.Extensions._
-import com.yahoo.memory.Memory
-import com.yahoo.sketches.kll.KllFloatsSketch
+import org.apache.datasketches.kll.KllFloatsSketch
+import org.apache.datasketches.memory.Memory
 
 import java.util
 import scala.collection.Seq
@@ -131,11 +131,12 @@ object StatsGenerator {
     metrics :+ MetricTransform(totalColumn, InputTransform.One, api.Operation.COUNT)
   }
 
-  def lInfKllSketch(sketch1: AnyRef, sketch2: AnyRef, bins: Int = 128): AnyRef = {
+  def lInfKllSketch(sketch1: AnyRef, sketch2: AnyRef, bins: Int = 20): AnyRef = {
     if (sketch1 == null || sketch2 == null) return None
     val sketchIr1 = KllFloatsSketch.heapify(Memory.wrap(sketch1.asInstanceOf[Array[Byte]]))
     val sketchIr2 = KllFloatsSketch.heapify(Memory.wrap(sketch2.asInstanceOf[Array[Byte]]))
-    val keySet = sketchIr1.getQuantiles(bins).union(sketchIr2.getQuantiles(bins))
+    val binsToDoubles = (0 to bins).map(_.toDouble / bins).toArray
+    val keySet = sketchIr1.getQuantiles(binsToDoubles).union(sketchIr2.getQuantiles(binsToDoubles))
     var linfSimple = 0.0
     keySet.foreach { key =>
       val cdf1 = sketchIr1.getRank(key)
@@ -156,15 +157,17 @@ object StatsGenerator {
     * and PSI>0.25 means "significant shift, action required"
     * https://scholarworks.wmich.edu/dissertations/3208
     */
-  def PSIKllSketch(reference: AnyRef, comparison: AnyRef, bins: Int = 128, eps: Double = 0.000001): AnyRef = {
+  def PSIKllSketch(reference: AnyRef, comparison: AnyRef, bins: Int = 20, eps: Double = 0.000001): AnyRef = {
     if (reference == null || comparison == null) return None
     val referenceSketch = KllFloatsSketch.heapify(Memory.wrap(reference.asInstanceOf[Array[Byte]]))
     val comparisonSketch = KllFloatsSketch.heapify(Memory.wrap(comparison.asInstanceOf[Array[Byte]]))
-    val keySet = referenceSketch.getQuantiles(bins).union(comparisonSketch.getQuantiles(bins)).toSet.toArray.sorted
+    val binsToDoubles = (0 to bins).map(_.toDouble / bins).toArray
+    val keySet =
+      referenceSketch.getQuantiles(binsToDoubles).union(comparisonSketch.getQuantiles(binsToDoubles)).distinct.sorted
     val referencePMF = regularize(referenceSketch.getPMF(keySet), eps)
     val comparisonPMF = regularize(comparisonSketch.getPMF(keySet), eps)
     var psi = 0.0
-    for (i <- 0 until referencePMF.length) {
+    for (i <- referencePMF.indices) {
       psi += (referencePMF(i) - comparisonPMF(i)) * Math.log(referencePMF(i) / comparisonPMF(i))
     }
     psi.asInstanceOf[AnyRef]

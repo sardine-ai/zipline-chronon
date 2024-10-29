@@ -78,9 +78,13 @@ case class PartitionRange(start: String, end: String)(implicit partitionSpec: Pa
     s"$partitionColumn BETWEEN '$start' AND '$end'"
   }
 
+  def whereClauses(partitionColumn: String): Seq[String] = {
+    (Option(start).map(s => s"$partitionColumn >= '$s'") ++ Option(end).map(e => s"$partitionColumn <= '$e'")).toSeq
+  }
+
   def steps(days: Int): Seq[PartitionRange] = {
     partitions
-      .sliding(days, days)
+      .sliding(days, days) //sliding(x, x) => tumbling(x)
       .map { step => PartitionRange(step.head, step.last) }
       .toSeq
   }
@@ -124,4 +128,44 @@ case class PartitionRange(start: String, end: String)(implicit partitionSpec: Pa
     }
   }
   override def toString: String = s"[$start...$end]"
+}
+
+object PartitionRange {
+  def rangesToString(ranges: Iterable[PartitionRange]): String = {
+    val tuples = ranges.map(r => s"(${r.start} -> ${r.end})").mkString(", ")
+    s"$tuples"
+  }
+
+  // takes a list of partitions and collapses them into ranges
+  // eg: ["2020-01-01", "2020-01-02", "2020-01-03", "2020-01-05", "2020-01-07", "2020-01-08"]
+  // will return: [
+  //    PartitionRange("2020-01-01", "2020-01-03"),
+  //    PartitionRange("2020-01-05", "2020-01-05"),
+  //    PartitionRange("2020-01-07", "2020-01-08")
+  // ]
+  def collapseToRange(partitions: Iterable[String])(implicit partitionSpec: PartitionSpec): Seq[PartitionRange] = {
+    if (partitions == null) return null
+    var result = Seq.empty[PartitionRange]
+    val sortedPartitions = partitions.toSeq.sorted.distinct
+    if (sortedPartitions.isEmpty) return result
+    var start = sortedPartitions.head
+    var end = start
+    sortedPartitions.tail.foreach { p =>
+      if (partitionSpec.after(end) == p) {
+        end = p
+      } else {
+        val range = PartitionRange(start, end)
+        result = result :+ range
+        start = p
+        end = p
+      }
+    }
+    result :+ PartitionRange(start, end)
+  }
+
+  def collapsedPrint(parts: Iterable[String])(implicit partitionSpec: PartitionSpec): String = {
+    val ranges = collapseToRange(parts)
+    if (ranges == null) return ""
+    rangesToString(ranges)
+  }
 }

@@ -681,7 +681,7 @@ class FetcherTest extends TestCase {
           res.request.keys ++
             res.values.get ++
             Map(tableUtils.partitionColumn -> today) ++
-            Map(Constants.TimeColumn -> new lang.Long(res.request.atMillis.get))
+            Map(Constants.TimeColumn -> lang.Long.valueOf(res.request.atMillis.get))
         val values: Array[Any] = columns.map(all.get(_).orNull)
         SparkConversions
           .toSparkRow(values, StructType.from("record", SparkConversions.toChrononSchema(endDsExpected.schema)))
