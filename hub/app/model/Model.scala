@@ -44,9 +44,9 @@ case object Percentile extends Granularity
 /** Aggregates - compute aggregated metrics (e.g. drift) */
 case object Aggregates extends Granularity
 
-case class TimeSeriesPoint(value: Double, ts: Long, label: Option[String] = None)
+case class TimeSeriesPoint(value: Double, ts: Long, label: Option[String] = None, nullValue: Option[Int] = None)
 case class FeatureTimeSeries(feature: String, points: Seq[TimeSeriesPoint])
-case class RawComparedFeatureTimeSeries(feature: String, baseline: Seq[TimeSeriesPoint], current: Seq[TimeSeriesPoint])
+case class ComparedFeatureTimeSeries(feature: String, baseline: Seq[TimeSeriesPoint], current: Seq[TimeSeriesPoint])
 case class GroupByTimeSeries(name: String, items: Seq[FeatureTimeSeries])
 
 // Currently search only covers models

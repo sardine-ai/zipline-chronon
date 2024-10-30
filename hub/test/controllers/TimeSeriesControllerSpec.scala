@@ -177,23 +177,42 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       status(invalid1) mustBe BAD_REQUEST
     }
 
-    "send valid results on a correctly formed feature ts aggregate drift lookup request" in {
+    "send valid results on a correctly formed numeric feature ts aggregate drift lookup request" in {
       val startTs = 1725926400000L // 09/10/2024 00:00 UTC
       val endTs = 1726106400000L // 09/12/2024 02:00 UTC
       val result =
         controller
-          .fetchFeature("my_feature", startTs, endTs, "drift", "null", "aggregates", Some("10h"), Some("psi"))
+          .fetchFeature("my_feature_0", startTs, endTs, "drift", "null", "aggregates", Some("10h"), Some("psi"))
           .apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
-      val featureTSResponse: Either[Error, FeatureTimeSeries] = decode[FeatureTimeSeries](bodyText)
+      val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] = decode[ComparedFeatureTimeSeries](bodyText)
       featureTSResponse.isRight mustBe true
       val response = featureTSResponse.right.value
-      response.feature mustBe "my_feature"
-      response.points.nonEmpty mustBe true
+      response.feature mustBe "my_feature_0"
+      response.current.length mustBe response.baseline.length
+      response.current.zip(response.baseline).foreach {
+        case (current, baseline) =>
+          current.ts mustBe baseline.ts
+      }
+    }
 
-      val expectedLength = expectedHours(startTs, endTs)
-      response.points.length mustBe expectedLength
+    "send valid results on a correctly formed categorical feature ts aggregate drift lookup request" in {
+      val startTs = 1725926400000L // 09/10/2024 00:00 UTC
+      val endTs = 1726106400000L // 09/12/2024 02:00 UTC
+      val result =
+        controller
+          .fetchFeature("my_feature_1", startTs, endTs, "drift", "null", "aggregates", Some("10h"), Some("psi"))
+          .apply(FakeRequest())
+      status(result) mustBe OK
+      val bodyText = contentAsString(result)
+      val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] = decode[ComparedFeatureTimeSeries](bodyText)
+      featureTSResponse.isRight mustBe true
+      val response = featureTSResponse.right.value
+      response.feature mustBe "my_feature_1"
+      response.current.map(_.ts).toSet mustBe response.baseline.map(_.ts).toSet
+      response.current.foreach(_.label.isEmpty mustBe false)
+      response.baseline.foreach(_.label.isEmpty mustBe false)
     }
 
     "send valid results on a correctly formed feature ts percentile drift lookup request" in {
@@ -223,8 +242,8 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
         controller.fetchFeature("my_feature", startTs, endTs, "skew", "null", "raw", None, None).apply(FakeRequest())
       status(result) mustBe OK
       val bodyText = contentAsString(result)
-      val featureTSResponse: Either[Error, RawComparedFeatureTimeSeries] =
-        decode[RawComparedFeatureTimeSeries](bodyText)
+      val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] =
+        decode[ComparedFeatureTimeSeries](bodyText)
       featureTSResponse.isRight mustBe true
       val response = featureTSResponse.right.value
       response.feature mustBe "my_feature"

@@ -218,12 +218,24 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
         case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
         case (Some(_), Some(_)) =>
           // TODO: Use parsedOffset and parsedAlgorithm when ready
-          val featureTs = if (granularity == Aggregates) {
-            FeatureTimeSeries(name, generateMockTimeSeriesPoints(startTs, endTs))
+          val featureTsJson = if (granularity == Aggregates) {
+            // if feature name ends in an even digit we consider it continuous and generate mock data accordingly
+            // else we generate mock data for a categorical feature
+            val featureId = name.split("_").last.toInt
+            val featureTs = if (featureId % 2 == 0) {
+              ComparedFeatureTimeSeries(name,
+                                        generateMockRawTimeSeriesPoints(startTs, 100),
+                                        generateMockRawTimeSeriesPoints(startTs, 100))
+            } else {
+              ComparedFeatureTimeSeries(name,
+                                        generateMockCategoricalTimeSeriesPoints(startTs, 5, 1),
+                                        generateMockCategoricalTimeSeriesPoints(startTs, 5, 2))
+            }
+            featureTs.asJson
           } else {
-            FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs))
+            FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs)).asJson
           }
-          Ok(featureTs.asJson.noSpaces)
+          Ok(featureTsJson.noSpaces)
       }
     }
   }
@@ -238,9 +250,9 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       BadRequest("We don't support Aggregates granularity for skew metric types")
     } else {
       val featureTsJson = if (granularity == Raw) {
-        val featureTs = RawComparedFeatureTimeSeries(name,
-                                                     generateMockRawTimeSeriesPoints(startTs, 100),
-                                                     generateMockRawTimeSeriesPoints(startTs, 100))
+        val featureTs = ComparedFeatureTimeSeries(name,
+                                                  generateMockRawTimeSeriesPoints(startTs, 100),
+                                                  generateMockRawTimeSeriesPoints(startTs, 100))
         featureTs.asJson.noSpaces
       } else {
         val featuresTs = FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs))
@@ -311,6 +323,16 @@ object TimeSeriesController {
   private def generateMockRawTimeSeriesPoints(timestamp: Long, count: Int): Seq[TimeSeriesPoint] = {
     val random = new Random(1000)
     (0 until count).map(_ => TimeSeriesPoint(random.nextDouble(), timestamp))
+  }
+
+  private def generateMockCategoricalTimeSeriesPoints(timestamp: Long,
+                                                      categoryCount: Int,
+                                                      nullCategoryCount: Int): Seq[TimeSeriesPoint] = {
+    val random = new Random(1000)
+    val catTSPoints = (0 until categoryCount).map(i => TimeSeriesPoint(random.nextInt(1000), timestamp, Some(s"A_$i")))
+    val nullCatTSPoints = (0 until nullCategoryCount).map(i =>
+      TimeSeriesPoint(random.nextDouble(), timestamp, Some(s"A_{$i + $categoryCount}"), Some(random.nextInt(10))))
+    catTSPoints ++ nullCatTSPoints
   }
 
   private def generateMockTimeSeriesPercentilePoints(startTs: Long, endTs: Long): Seq[TimeSeriesPoint] = {
