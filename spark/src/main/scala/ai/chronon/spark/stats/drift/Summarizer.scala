@@ -8,6 +8,9 @@ import ai.chronon.api.MetaData
 import ai.chronon.api.TileKey
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.api.thrift.TSerializer
+import ai.chronon.api.thrift.protocol.TCompactProtocol
+import ai.chronon.api.thrift.protocol.TProtocolFactory
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Expressions.CardinalityExpression
 import ai.chronon.spark.stats.drift.Expressions.SummaryExpression
@@ -25,9 +28,6 @@ import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.udaf
 import org.apache.spark.sql.types
-import org.apache.thrift.TSerializer
-import org.apache.thrift.protocol.TCompactProtocol
-import org.apache.thrift.protocol.TProtocolFactory
 import org.slf4j.LoggerFactory
 
 import java.io.Serializable

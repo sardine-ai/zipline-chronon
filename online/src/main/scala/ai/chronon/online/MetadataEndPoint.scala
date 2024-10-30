@@ -7,7 +7,7 @@ import ai.chronon.api.MetaData
 import ai.chronon.api.Model
 import ai.chronon.api.StagingQuery
 import ai.chronon.api.ThriftJsonCodec
-import org.apache.thrift.TBase
+import ai.chronon.api.thrift.TBase
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.slf4j.Logger

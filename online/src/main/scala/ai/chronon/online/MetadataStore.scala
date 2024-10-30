@@ -23,9 +23,9 @@ import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._
+import ai.chronon.api.thrift.TBase
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
-import org.apache.thrift.TBase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 

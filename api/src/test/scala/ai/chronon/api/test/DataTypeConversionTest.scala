@@ -17,8 +17,8 @@
 package ai.chronon.api.test
 
 import ai.chronon.api._
-import org.apache.thrift.TSerializer
-import org.apache.thrift.protocol.TSimpleJSONProtocol
+import ai.chronon.api.thrift.TSerializer
+import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol
 import org.junit.Assert._
 import org.junit.Test
 import org.slf4j.Logger
