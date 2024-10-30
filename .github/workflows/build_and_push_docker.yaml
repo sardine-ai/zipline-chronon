@@ -2,6 +2,10 @@ name: Build and Push Docker Image
 
 on:
   push:
+    branches: [ main ]
+    paths:
+      - '.github/image/Dockerfile'
+  pull_request:
     paths:
       - '.github/image/Dockerfile'
   workflow_dispatch:
@@ -26,6 +30,16 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build and push pr specific images when there's changes to Dockerfile as part of a PR
+      # Update the 'latest' tag when the change hits master
+      - name: Extract metadata for Docker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=pr
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
