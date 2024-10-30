@@ -17,10 +17,11 @@
 package ai.chronon.online;
 
 import ai.chronon.api.*;
-import org.apache.thrift.TBase;
-import org.apache.thrift.TFieldIdEnum;
-import org.apache.thrift.meta_data.*;
-import org.apache.thrift.protocol.TType;
+import ai.chronon.api.thrift.TBase;
+import ai.chronon.api.thrift.TFieldIdEnum;
+import ai.chronon.api.thrift.meta_data.*;
+import ai.chronon.api.thrift.protocol.TType;
+
 
 import java.io.Serializable;
 import java.util.ArrayList;

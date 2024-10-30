@@ -37,10 +37,6 @@ object SparkSessionBuilder {
             localWarehouseLocation: Option[String] = None,
             additionalConfig: Option[Map[String, String]] = None,
             enforceKryoSerializer: Boolean = true): SparkSession = {
-    if (local) {
-      //required to run spark locally with hive support enabled - for sbt test
-      System.setSecurityManager(null)
-    }
     val userName = Properties.userName
     val warehouseDir = localWarehouseLocation.map(expandUser).getOrElse(DefaultWarehouseDir.getAbsolutePath)
     println(s"Using warehouse dir: $warehouseDir")
@@ -86,6 +82,8 @@ object SparkSessionBuilder {
         .config("spark.sql.warehouse.dir", s"$warehouseDir/data")
         .config("spark.hadoop.javax.jdo.option.ConnectionURL", metastoreDb)
         .config("spark.driver.bindAddress", "127.0.0.1")
+        .config("spark.ui.enabled", "false")
+        .config("spark.sql.catalogImplementation", "hive")
     } else {
       // hive jars need to be available on classpath - no needed for local testing
       baseBuilder

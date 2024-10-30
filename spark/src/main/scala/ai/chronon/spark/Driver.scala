@@ -22,6 +22,7 @@ import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.api.thrift.TBase
 import ai.chronon.online.Api
 import ai.chronon.online.Fetcher
 import ai.chronon.online.MetadataDirWalker
@@ -44,7 +45,6 @@ import org.apache.spark.sql.streaming.StreamingQueryListener
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryProgressEvent
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryStartedEvent
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryTerminatedEvent
-import org.apache.thrift.TBase
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Subcommand

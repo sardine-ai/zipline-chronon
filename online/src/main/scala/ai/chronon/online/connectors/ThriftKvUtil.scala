@@ -2,8 +2,8 @@ package ai.chronon.online.connectors
 
 import ai.chronon.api.Constants
 import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.api.thrift.TBase
 import ai.chronon.online.KVStore
-import org.apache.thrift.TBase
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

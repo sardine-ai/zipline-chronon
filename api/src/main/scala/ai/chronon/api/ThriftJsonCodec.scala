@@ -17,14 +17,14 @@
 package ai.chronon.api
 
 import ai.chronon.api.Extensions.StringsOps
+import ai.chronon.api.thrift.TBase
+import ai.chronon.api.thrift.TDeserializer
+import ai.chronon.api.thrift.TSerializer
+import ai.chronon.api.thrift.protocol.TCompactProtocol
+import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.apache.thrift.TBase
-import org.apache.thrift.TDeserializer
-import org.apache.thrift.TSerializer
-import org.apache.thrift.protocol.TCompactProtocol
-import org.apache.thrift.protocol.TSimpleJSONProtocol
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
