@@ -71,5 +71,5 @@ RUN java -version && \
 # Set working directory
 WORKDIR /app
 
-# Command to run when starting the container
+# Cmd to run when starting the container
 CMD ["/bin/bash"]
