@@ -3,6 +3,7 @@ package store
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.api.thrift.TBase
 import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.continuationKey
 import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.listLimit
 import ai.chronon.online.Api
@@ -15,7 +16,6 @@ import ai.chronon.online.TTLCache
 import model.GroupBy
 import model.Join
 import model.Model
-import org.apache.thrift.TBase
 import play.api.Logger
 
 import java.nio.charset.StandardCharsets

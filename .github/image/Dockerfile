@@ -20,7 +20,7 @@ RUN curl -L "https://github.com/sbt/sbt/releases/download/v1.8.2/sbt-1.8.2.tgz" 
 ENV PATH="/usr/local/sbt/bin:${PATH}"
 
 # thrift
-ARG THRIFT_VERSION=0.13.0
+ARG THRIFT_VERSION=0.21.0
 RUN apk add --no-cache \
         build-base \
         cmake \

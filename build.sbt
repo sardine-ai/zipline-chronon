@@ -1,6 +1,5 @@
 import sbt.Keys.{libraryDependencies, *}
-import sbt.Test
-import sbt.*
+import sbt.{Test, *}
 import sbt.Tests.{Group, SubProcess}
 
 // Notes about a few dependencies - and how we land on versions
@@ -65,8 +64,10 @@ val spark_all = Seq(
   "org.apache.spark" %% "spark-hive",
   "org.apache.spark" %% "spark-core",
   "org.apache.spark" %% "spark-streaming",
-  "org.apache.spark" %% "spark-sql-kafka-0-10"
-).map(_ % spark_3_5)
+  "org.apache.spark" %% "spark-sql-kafka-0-10",
+).map(_ % spark_3_5) :+ (
+    "javax.servlet" % "javax.servlet-api" % "3.1.0",
+  )
 val spark_all_provided = spark_all.map(_ % "provided")
 
 val jackson = Seq(
@@ -93,7 +94,6 @@ lazy val api = project
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_sql_provided,
     libraryDependencies ++= Seq(
-      "org.apache.thrift" % "libthrift" % "0.13.0", // cannot upgrade this without breaking compatibility
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
       "com.novocode" % "junit-interface" % "0.11" % "test",

@@ -17,7 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api.ThriftJsonCodec
-import org.apache.thrift.TBase
+import ai.chronon.api.thrift.TBase
 import org.rogach.scallop._
 
 import scala.reflect.ClassTag

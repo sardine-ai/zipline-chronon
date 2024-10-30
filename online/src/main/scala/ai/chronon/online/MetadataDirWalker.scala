@@ -2,8 +2,8 @@ package ai.chronon.online
 
 import ai.chronon.api
 import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.api.thrift.TBase
 import com.google.gson.Gson
-import org.apache.thrift.TBase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
