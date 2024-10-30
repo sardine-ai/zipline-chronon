@@ -10,10 +10,25 @@ on:
 # If this is in a PR we use the pr specific docker image (as there might be docker file changes)
 # Else we use the 'latest' image
 jobs:
+  determine-image:
+    runs-on: ubuntu-latest
+    outputs:
+      container_image: ${{ steps.set-image.outputs.container_image }}
+    steps:
+      - id: set-image
+        run: |
+          REPOSITORY="${{ github.repository }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "container_image=ghcr.io/${REPOSITORY,,}-ci:pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "container_image=ghcr.io/${REPOSITORY,,}-ci:latest" >> $GITHUB_OUTPUT
+          fi
+
   python_tests:
+    needs: determine-image
     runs-on: ubuntu-latest
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -53,8 +68,9 @@ jobs:
 
   other_spark_tests:
     runs-on: ubuntu-latest
+    needs: determine-image
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -72,8 +88,9 @@ jobs:
 
   join_spark_tests:
     runs-on: ubuntu-latest
+    needs: determine-image
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -91,8 +108,9 @@ jobs:
 
   mutation_spark_tests:
     runs-on: ubuntu-latest
+    needs: determine-image
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -110,8 +128,9 @@ jobs:
 
   fetcher_spark_tests:
     runs-on: ubuntu-latest
+    needs: determine-image
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -127,10 +146,11 @@ jobs:
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt "spark/testOnly ai.chronon.spark.test.FetcherTest"
 
-  scala_compile_fmt_fix      :
+  scala_compile_fmt_fix:
     runs-on: ubuntu-latest
+    needs: determine-image
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -153,8 +173,9 @@ jobs:
 
   other_scala_tests:
     runs-on: ubuntu-latest
+    needs: determine-image
     container:
-      image: ${{ github.event_name == 'pull_request' && format('{0}/{1}-ci:pr-{2}', 'ghcr.io', github.repository, github.event.pull_request.number) || format('{0}/{1}-ci:latest', 'ghcr.io', github.repository) }}
+      image: ${{ needs.determine-image.outputs.container_image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

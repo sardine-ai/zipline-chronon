@@ -33,17 +33,18 @@ jobs:
 
       # Build and push pr specific images when there's changes to Dockerfile as part of a PR
       # Update the 'latest' tag when the change hits master
-      - name: Extract metadata for Docker
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=pr
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+      - name: Set Docker tag
+        id: docker_tag
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "tag=${REGISTRY}/${IMAGE_NAME}:pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${REGISTRY}/${IMAGE_NAME}:latest" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .github/image
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ${{ steps.docker_tag.outputs.tag }}
