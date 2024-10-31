@@ -37,7 +37,6 @@ import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.{Join => _, _}
 import com.google.gson.GsonBuilder
-import junit.framework.TestCase
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -48,6 +47,7 @@ import org.apache.spark.sql.functions.lit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -64,7 +64,11 @@ import scala.concurrent.duration.SECONDS
 import scala.io.Source
 import scala.util.ScalaJavaConversions._
 
-class FetcherTest extends TestCase {
+// Run as follows: sbt "spark/testOnly -- -n fetchertest"
+class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
+
+  override def tagName: String = "fetchertest"
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "FetcherTest"
   val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
@@ -74,7 +78,7 @@ class FetcherTest extends TestCase {
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val yesterday = tableUtils.partitionSpec.before(today)
 
-  def testMetadataStore(): Unit = {
+  test("test metadata store") {
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
     implicit val tableUtils: TableUtils = TableUtils(spark)
 
@@ -114,7 +118,8 @@ class FetcherTest extends TestCase {
     val directoryDataSetDataSet = ChrononMetadataKey + "_directory_test"
     val directoryMetadataStore = new MetadataStore(inMemoryKvStore, directoryDataSetDataSet, timeoutMillis = 10000)
     inMemoryKvStore.create(directoryDataSetDataSet)
-    val directoryDataDirWalker = new MetadataDirWalker(confResource.getPath.replace(s"/$joinPath", ""), acceptedEndPoints)
+    val directoryDataDirWalker =
+      new MetadataDirWalker(confResource.getPath.replace(s"/$joinPath", ""), acceptedEndPoints)
     val directoryDataKvMap = directoryDataDirWalker.run
     val directoryPut = directoryDataKvMap.toSeq.map {
       case (_, kvMap) => directoryMetadataStore.put(kvMap, directoryDataSetDataSet)
@@ -385,9 +390,8 @@ class FetcherTest extends TestCase {
       sources = Seq(Builders.Source.entities(query = Builders.Query(), snapshotTable = creditTable)),
       keyColumns = Seq("vendor_id"),
       aggregations = Seq(
-        Builders.Aggregation(operation = Operation.SUM,
-          inputColumn = "credit",
-          windows = Seq(new Window(3, TimeUnit.DAYS)))),
+        Builders
+          .Aggregation(operation = Operation.SUM, inputColumn = "credit", windows = Seq(new Window(3, TimeUnit.DAYS)))),
       metaData = Builders.MetaData(name = "unit_test/vendor_credit_derivation", namespace = namespace),
       derivations = Seq(
         Builders.Derivation("credit_sum_3d_test_rename", "credit_sum_3d"),
@@ -527,7 +531,6 @@ class FetcherTest extends TestCase {
     println("saved all data hand written for fetcher test")
 
     val startPartition = "2021-04-07"
-    
 
     val leftSource =
       Builders.Source.events(
@@ -717,13 +720,13 @@ class FetcherTest extends TestCase {
     assertEquals(0, diff.count())
   }
 
-  def testTemporalFetchJoinDeterministic(): Unit = {
+  test("test temporal fetch join deterministic") {
     val namespace = "deterministic_fetch"
     val joinConf = generateMutationData(namespace)
     compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
   }
 
-  def testTemporalFetchJoinGenerated(): Unit = {
+  test("test temporal fetch join generated") {
     val namespace = "generated_fetch"
     val joinConf = generateRandomData(namespace)
     compareTemporalFetch(joinConf,
@@ -733,14 +736,14 @@ class FetcherTest extends TestCase {
                          dropDsOnWrite = false)
   }
 
-  def testTemporalTiledFetchJoinDeterministic(): Unit = {
+  test("test temporal tiled fetch join deterministic") {
     val namespace = "deterministic_tiled_fetch"
     val joinConf = generateEventOnlyData(namespace, groupByCustomJson = Some("{\"enable_tiling\": true}"))
     compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
   }
 
   // test soft-fail on missing keys
-  def testEmptyRequest(): Unit = {
+  test("test empty request") {
     val namespace = "empty_request"
     val joinConf = generateRandomData(namespace, 5, 5)
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))

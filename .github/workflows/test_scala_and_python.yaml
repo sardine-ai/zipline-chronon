@@ -65,7 +65,7 @@ jobs:
       - name: Run other spark tests
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly -- -l ai.chronon.spark.JoinTest -l ai.chronon.spark.test.MutationsTest -l ai.chronon.spark.test.FetcherTest"
+          sbt "spark/testOnly"
 
   join_spark_tests:
     runs-on: ubuntu-latest
@@ -84,7 +84,7 @@ jobs:
       - name: Run other spark tests
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly ai.chronon.spark.JoinTest"
+          sbt "spark/testOnly -- -n jointest"
 
   mutation_spark_tests:
     runs-on: ubuntu-latest
@@ -103,7 +103,7 @@ jobs:
       - name: Run other spark tests
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly ai.chronon.spark.test.MutationsTest"
+          sbt "spark/testOnly -- -n mutationstest"
 
   fetcher_spark_tests:
     runs-on: ubuntu-latest
@@ -122,7 +122,7 @@ jobs:
       - name: Run other spark tests
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly ai.chronon.spark.test.FetcherTest"
+          sbt "spark/testOnly -- -n fetchertest"
 
   scala_compile_fmt_fix      :
     runs-on: ubuntu-latest
