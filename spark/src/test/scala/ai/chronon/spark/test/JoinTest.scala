@@ -40,13 +40,13 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.types.{StringType => SparkStringType}
 import org.junit.Assert._
-import org.junit.Test
-import org.scalatest.Assertions.intercept
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.JavaConverters._
 import scala.util.ScalaJavaConversions.ListOps
 
-class JoinTest {
+// Run as follows: sbt "spark/testOnly -- -n jointest"
+class JoinTest extends AnyFunSuite with TaggedFilterSuite {
 
   val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
   private implicit val tableUtils = TableUtils(spark)
@@ -59,8 +59,9 @@ class JoinTest {
   private val namespace = "test_namespace_jointest"
   tableUtils.createDatabase(namespace)
 
-  @Test
-  def testEventsEntitiesSnapshot(): Unit = {
+  override def tagName: String = "jointest"
+
+  test("test events entities snapshot") {
     val dollarTransactions = List(
       Column("user", StringType, 100),
       Column("user_name", api.StringType, 100),
@@ -263,8 +264,7 @@ class JoinTest {
     assertEquals(0, diff2.count())
   }
 
-  @Test
-  def testEntitiesEntities(): Unit = {
+  test("test entities entities") {
     // untimed/unwindowed entities on right
     // right side
     val weightSchema = List(
@@ -384,8 +384,7 @@ class JoinTest {
      */
   }
 
-  @Test
-  def testEntitiesEntitiesNoHistoricalBackfill(): Unit = {
+  test("test entities entities no historical backfill") {
     // Only backfill latest partition if historical_backfill is turned off
     val weightSchema = List(
       Column("user", api.StringType, 1000),
@@ -438,8 +437,7 @@ class JoinTest {
     assertEquals(allPartitions.toList(0), end)
   }
 
-  @Test
-  def testEventsEventsSnapshot(): Unit = {
+  test("test events events snapshot") {
     val viewsSchema = List(
       Column("user", api.StringType, 10000),
       Column("item", api.StringType, 100),
@@ -508,8 +506,7 @@ class JoinTest {
     assertEquals(diff.count(), 0)
   }
 
-  @Test
-  def testEventsEventsTemporal(): Unit = {
+  test("test events events temporal") {
 
     val joinConf = getEventsEventsTemporal("temporal")
     val viewsSchema = List(
@@ -586,8 +583,7 @@ class JoinTest {
     assertEquals(diff.count(), 0)
   }
 
-  @Test
-  def testEventsEventsCumulative(): Unit = {
+  test("test events events cumulative") {
     // Create a cumulative source GroupBy
     val viewsTable = s"$namespace.view_cumulative"
     val viewsGroupBy = getViewsGroupBy(suffix = "cumulative", makeCumulative = true)
@@ -686,8 +682,7 @@ class JoinTest {
 
   }
 
-  @Test
-  def testNoAgg(): Unit = {
+  test("test no agg") {
     // Left side entities, right side entities no agg
     // Also testing specific select statement (rather than select *)
     val namesSchema = List(
@@ -767,8 +762,7 @@ class JoinTest {
     assertEquals(diff.count(), 0)
   }
 
-  @Test
-  def testVersioning(): Unit = {
+  test("test versioning") {
     val joinConf = getEventsEventsTemporal("versioning")
 
     // Run the old join to ensure that tables exist
@@ -922,8 +916,7 @@ class JoinTest {
 
   }
 
-  @Test
-  def testEndPartitionJoin(): Unit = {
+  test("test end partition join") {
     val join = getEventsEventsTemporal("end_partition_test")
     val start = join.getLeft.query.startPartition
     val end = tableUtils.partitionSpec.after(start)
@@ -940,12 +933,11 @@ class JoinTest {
     assertTrue(ds.first().getString(0) < today)
   }
 
-  @Test
-  def testSkipBloomFilterJoinBackfill(): Unit = {
-    val testSpark: SparkSession = SparkSessionBuilder.build(
-      "JoinTest",
-      local = true,
-      additionalConfig = Some(Map("spark.chronon.backfill.bloomfilter.threshold" -> "100")))
+  test("test skip bloom filter join backfill") {
+    val testSpark: SparkSession =
+      SparkSessionBuilder.build("JoinTest",
+                                local = true,
+                                additionalConfig = Some(Map("spark.chronon.backfill.bloomfilter.threshold" -> "100")))
     val testTableUtils = TableUtils(testSpark)
     val viewsSchema = List(
       Column("user", api.StringType, 10000),
@@ -990,8 +982,7 @@ class JoinTest {
     assertEquals(leftSideCount, skipBloomComputed.count())
   }
 
-  @Test
-  def testStructJoin(): Unit = {
+  test("test struct join") {
     val nameSuffix = "_struct_test"
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_$nameSuffix"
@@ -1049,8 +1040,7 @@ class JoinTest {
     new SummaryJob(spark, join, today).dailyRun(stepDays = Some(30))
   }
 
-  @Test
-  def testMigration(): Unit = {
+  test("test migration") {
 
     // Left
     val itemQueriesTable = s"$namespace.item_queries"
@@ -1099,8 +1089,7 @@ class JoinTest {
     assertEquals(0, join.tablesToDrop(productionHashV2).length)
   }
 
-  @Test
-  def testKeyMappingOverlappingFields(): Unit = {
+  test("testKeyMappingOverlappingFields") {
     // test the scenario when a key_mapping is a -> b, (right key b is mapped to left key a) and
     // a happens to be another field in the same group by
 
@@ -1158,8 +1147,7 @@ class JoinTest {
     * Run computeJoin().
     * Check if the selected join part is computed and the other join parts are not computed.
     */
-  @Test
-  def testSelectedJoinParts(): Unit = {
+  test("test selected join parts") {
     // Left
     val itemQueries = List(
       Column("item", api.StringType, 100),
