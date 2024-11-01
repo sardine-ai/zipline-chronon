@@ -1,7 +1,6 @@
 name: "hub-monitoring-demo"
 services:
   dynamo:
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
     image: "amazon/dynamodb-local:2.5.2"
     container_name: dynamodb-local
     ports:
@@ -10,6 +9,11 @@ services:
       - "./docker/dynamodb:/home/dynamodblocal/data"
     working_dir: /home/dynamodblocal
     user: dynamodblocal
+    entrypoint: >
+      /bin/sh -c "
+        chown -R dynamodblocal:dynamodblocal /home/dynamodblocal/data
+        java -jar DynamoDBLocal.jar -sharedDb -dbPath ./data
+      "
 
   spark:
     image: bitnami/spark:3.5.2
