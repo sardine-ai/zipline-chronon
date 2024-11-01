@@ -579,6 +579,18 @@ object Driver {
     }
   }
 
+  object CreateStatsTable {
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("create-stats-table") with OnlineSubcommand
+
+    def run(args: Args): Unit = {
+      logger.info("Creating table 'drift_statistics'")
+      val store = args.api.genKvStore
+      val props = Map("is-time-sorted" -> "true")
+      store.create("drift_statistics", props)
+    }
+  }
+
   // common arguments to all online commands
   trait OnlineSubcommand { s: ScallopConf =>
     // this is `-Z` and not `-D` because sbt-pack plugin uses that for JAVA_OPTS
@@ -595,6 +607,8 @@ object Driver {
       propsInner.foreach { case (key, value) => map.update(key, value) }
       map.toMap
     }
+
+    lazy val api: Api = impl(serializableProps)
 
     def metaDataStore =
       new MetadataStore(impl(serializableProps).genKvStore, "ZIPLINE_METADATA", timeoutMillis = 10000)
@@ -929,6 +943,8 @@ object Driver {
     addSubcommand(JoinBackfillFinalArgs)
     object LabelJoinArgs extends LabelJoin.Args
     addSubcommand(LabelJoinArgs)
+    object CreateStatsTableArgs extends CreateStatsTable.Args
+    addSubcommand(CreateStatsTableArgs)
     requireSubcommand()
     verify()
   }
@@ -968,6 +984,7 @@ object Driver {
           case args.LabelJoinArgs          => LabelJoin.run(args.LabelJoinArgs)
           case args.JoinBackfillLeftArgs   => JoinBackfillLeft.run(args.JoinBackfillLeftArgs)
           case args.JoinBackfillFinalArgs  => JoinBackfillFinal.run(args.JoinBackfillFinalArgs)
+          case args.CreateStatsTableArgs   => CreateStatsTable.run(args.CreateStatsTableArgs)
           case _                           => logger.info(s"Unknown subcommand: $x")
         }
       case None => logger.info("specify a subcommand please")
