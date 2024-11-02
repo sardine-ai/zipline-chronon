@@ -1,5 +1,5 @@
 # Start from a Debian base image
-FROM openjdk:8-jre-slim
+FROM openjdk:17-jdk
 
 # Update package lists and install necessary tools
 RUN apt-get update && apt-get install -y \
