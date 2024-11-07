@@ -14,7 +14,7 @@
 .eclipse
 **/.vscode/
 **/__pycache__/
-**/.DS_Store/
+**/.DS_Store
 api/py/ai/chronon/api/
 api/py/test/sample/production/group_bys/quickstart/
 api/py/test/sample/production/joins/quickstart/
@@ -57,7 +57,6 @@ releases
 /frontend/build
 
 # Frontend OS
-/frontend/.DS_Store
 /frontend/Thumbs.db
 
 # Frontend Env
