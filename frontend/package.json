@@ -18,6 +18,7 @@
 		"test:unit:once": "vitest --run"
 	},
 	"devDependencies": {
+		"@internationalized/date": "^3.5.6",
 		"@playwright/test": "^1.28.1",
 		"@sveltejs/adapter-auto": "^3.0.0",
 		"@sveltejs/adapter-node": "^5.2.5",
@@ -29,6 +30,7 @@
 		"@types/lodash": "^4.17.10",
 		"@types/node": "^22.7.4",
 		"autoprefixer": "^10.4.20",
+		"bits-ui": "^0.21.16",
 		"eslint": "^9.0.0",
 		"eslint-config-prettier": "^9.1.0",
 		"eslint-plugin-svelte": "^2.36.0",
@@ -36,8 +38,11 @@
 		"postcss": "^8.4.47",
 		"prettier": "^3.1.1",
 		"prettier-plugin-svelte": "^3.1.2",
-		"svelte": "^5.0.0-next.1",
+		"svelte": "^5.0.4",
 		"svelte-check": "^4.0.0",
+		"svelte-hero-icons": "^5.2.0",
+		"svelte-intersection-observer": "^1.0.0",
+		"svelte-radix": "^1.1.1",
 		"tailwindcss": "^3.4.13",
 		"typescript": "^5.0.0",
 		"typescript-eslint": "^8.0.0",
@@ -47,13 +52,11 @@
 	"type": "module",
 	"dependencies": {
 		"@types/echarts": "^4.9.22",
-		"bits-ui": "^0.21.16",
 		"clsx": "^2.1.1",
 		"cmdk-sv": "^0.0.18",
 		"dotenv": "^16.4.5",
 		"echarts": "^5.5.1",
 		"lodash": "^4.17.21",
-		"svelte-radix": "^1.1.1",
 		"tailwind-merge": "^2.5.2",
 		"tailwind-variants": "^0.2.1"
 	}

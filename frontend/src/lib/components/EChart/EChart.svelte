@@ -7,11 +7,17 @@
 	let {
 		option,
 		chartInstance = $bindable(),
-		enableMousemove = false
+		enableMousemove = false,
+		enableCustomZoom = false,
+		width = '100%',
+		height = '200px'
 	}: {
 		option: EChartOption;
 		chartInstance: echarts.ECharts | null;
 		enableMousemove?: boolean;
+		enableCustomZoom?: boolean;
+		width?: string;
+		height?: string;
 	} = $props();
 	const dispatch = createEventDispatcher();
 
@@ -20,9 +26,25 @@
 
 	// todo this needs to change dynamically when we support light mode
 	const theme = $derived('dark');
-	const defaultOption: EChartOption = {
-		backgroundColor: 'transparent'
-	};
+	const defaultOption: EChartOption = $derived.by(() => ({
+		backgroundColor: 'transparent',
+		...(enableCustomZoom && {
+			toolbox: {
+				feature: {
+					dataZoom: {
+						yAxisIndex: 'none',
+						icon: {
+							zoom: 'path://', // hack to remove zoom button
+							back: 'path://' // hack to remove restore button
+						}
+					}
+				}
+			}
+		}),
+		textStyle: {
+			fontFamily: 'Geist Mono, Geist'
+		}
+	}));
 
 	const mergedOption: EChartOption = $derived.by(() => {
 		return merge({}, defaultOption, option);
@@ -44,6 +66,18 @@
 				}
 			});
 		}
+
+		if (enableCustomZoom) {
+			activateZoom();
+		}
+	}
+
+	function activateZoom() {
+		chartInstance?.dispatchAction({
+			type: 'takeGlobalCursor',
+			key: 'dataZoomSelect',
+			dataZoomSelectActive: true
+		});
 	}
 
 	function handleResize() {
@@ -62,8 +96,10 @@
 	});
 
 	$effect(() => {
-		chartInstance?.setOption(mergedOption, true);
+		chartInstance?.setOption(mergedOption);
 	});
 </script>
 
-<div bind:this={chartDiv} style="width: 100%; height: 100%;"></div>
+<div style="width: {width}; height: {height};">
+	<div bind:this={chartDiv} style="width: 100%; height: 100%;"></div>
+</div>

@@ -57,7 +57,16 @@ const config = {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
-				sans: [...fontFamily.sans]
+				sans: ['Geist Mono', 'Geist', ...fontFamily.sans]
+			},
+			fontSize: {
+				sm: ['13px', { lineHeight: '16px' }],
+				md: ['14px', { lineHeight: '18px' }],
+				lg: ['16px', { lineHeight: '21px' }],
+				xl: ['20px', { lineHeight: '28px' }],
+				'2xl': ['25px', { lineHeight: '32px' }],
+				'3xl': ['34px', { lineHeight: '32px' }],
+				'4xl': ['52px', { lineHeight: '58px' }]
 			}
 		}
 	}

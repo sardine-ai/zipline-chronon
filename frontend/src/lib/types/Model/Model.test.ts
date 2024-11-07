@@ -4,7 +4,8 @@ import type {
 	ModelsResponse,
 	TimeSeriesResponse,
 	Model,
-	JoinTimeSeriesResponse
+	JoinTimeSeriesResponse,
+	FeatureResponse
 } from '$lib/types/Model/Model';
 
 describe('Model types', () => {
@@ -196,6 +197,42 @@ describe('Model types', () => {
 						);
 					}
 				}
+			}
+		}
+	});
+
+	it('should match FeatureResponse type', async () => {
+		const featureName = 'test_feature';
+		const featureResult = (await api.getFeatureTimeseries(
+			featureName,
+			1725926400000,
+			1726106400000
+		)) as FeatureResponse;
+
+		const expectedKeys = ['feature', 'points'];
+		expect(Object.keys(featureResult)).toEqual(expect.arrayContaining(expectedKeys));
+
+		// Log a warning if there are additional fields
+		const additionalKeys = Object.keys(featureResult).filter((key) => !expectedKeys.includes(key));
+		if (additionalKeys.length > 0) {
+			console.warn(`Additional fields found in FeatureResponse: ${additionalKeys.join(', ')}`);
+		}
+
+		expect(Array.isArray(featureResult.points)).toBe(true);
+
+		if (featureResult.points.length > 0) {
+			const point = featureResult.points[0];
+			const expectedPointKeys = ['value', 'ts', 'label', 'nullValue'];
+			expect(Object.keys(point)).toEqual(expect.arrayContaining(expectedPointKeys));
+
+			// Log a warning if there are additional fields
+			const additionalPointKeys = Object.keys(point).filter(
+				(key) => !expectedPointKeys.includes(key)
+			);
+			if (additionalPointKeys.length > 0) {
+				console.warn(
+					`Additional fields found in FeatureResponse point: ${additionalPointKeys.join(', ')}`
+				);
 			}
 		}
 	});

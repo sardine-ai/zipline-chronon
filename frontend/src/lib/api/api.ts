@@ -1,4 +1,5 @@
 import type {
+	FeatureResponse,
 	JoinTimeSeriesResponse,
 	ModelsResponse,
 	TimeSeriesResponse
@@ -76,4 +77,26 @@ export async function getJoinTimeseries(
 	});
 
 	return get(`join/${joinId}/timeseries?${params.toString()}`);
+}
+
+export async function getFeatureTimeseries(
+	featureName: string,
+	startTs: number,
+	endTs: number,
+	metricType: string = 'drift',
+	metrics: string = 'null',
+	offset: string = '10h',
+	algorithm: string = 'psi',
+	granularity: string = 'percentile'
+): Promise<FeatureResponse> {
+	const params = new URLSearchParams({
+		startTs: startTs.toString(),
+		endTs: endTs.toString(),
+		metricType,
+		metrics,
+		offset,
+		algorithm,
+		granularity
+	});
+	return get(`feature/${featureName}/timeseries?${params.toString()}`);
 }

@@ -9,13 +9,33 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Icon, Plus, ArrowsUpDown } from 'svelte-hero-icons';
+
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import PageHeader from '$lib/components/PageHeader/PageHeader.svelte';
 
 	const { data } = $props();
 	const models: Model[] = $state(data.models.items);
 </script>
 
+<PageHeader title="Models"></PageHeader>
+
+<div class="w-full">
+	<div class="flex space-x-3 mb-4">
+		<Button variant="secondary" size="sm">
+			<Icon src={Plus} micro size="16" class="mr-2" />
+			Filter
+		</Button>
+		<Button variant="secondary" size="sm">
+			<Icon src={ArrowsUpDown} micro size="16" class="mr-2" />
+
+			Sort
+		</Button>
+	</div>
+</div>
+<Separator fullWidthExtend={true} />
 <Table>
-	<caption class="caption-top text-lg font-semibold text-left"> Models </caption>
 	<TableHeader>
 		<TableRow>
 			<TableHead>Name</TableHead>

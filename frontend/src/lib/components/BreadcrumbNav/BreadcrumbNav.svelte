@@ -7,19 +7,20 @@
 		BreadcrumbSeparator
 	} from '$lib/components/ui/breadcrumb';
 	import BreadcrumbList from '$lib/components/ui/breadcrumb/breadcrumb-list.svelte';
-	import Slash from 'svelte-radix/Slash.svelte';
+	import { cn } from '$lib/utils';
+	import { Icon, Slash } from 'svelte-hero-icons';
 
-	const { breadcrumbs }: { breadcrumbs: string[] } = $props();
+	const { breadcrumbs, class: className }: { breadcrumbs: string[]; class?: string } = $props();
 </script>
 
-<Breadcrumb class="mb-4">
+<Breadcrumb class={cn('', className)}>
 	<BreadcrumbList>
 		<BreadcrumbItem>
 			<BreadcrumbLink href="/">Home</BreadcrumbLink>
 		</BreadcrumbItem>
 		{#each breadcrumbs as crumb, index}
 			<BreadcrumbSeparator>
-				<Slash />
+				<Icon src={Slash} />
 			</BreadcrumbSeparator>
 			<BreadcrumbItem>
 				{#if index === breadcrumbs.length - 1}

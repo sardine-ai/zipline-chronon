@@ -14,8 +14,9 @@ export type ModelsResponse = {
 
 export type TimeSeriesItem = {
 	value: number;
+	nullValue: number;
 	ts: number;
-	label: string | null;
+	label?: string | number;
 };
 
 export type TimeSeriesResponse = {
@@ -32,4 +33,15 @@ export type JoinTimeSeriesResponse = {
 			points: TimeSeriesItem[];
 		}[];
 	}[];
+};
+
+export type FeatureResponse = {
+	feature: string;
+	points: TimeSeriesItem[];
+};
+
+export type RawComparedFeatureResponse = {
+	feature: string;
+	baseline: TimeSeriesItem[];
+	current: TimeSeriesItem[];
 };

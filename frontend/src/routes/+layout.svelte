@@ -6,6 +6,7 @@
 	import NavigationBar from '$lib/components/NavigationBar/NavigationBar.svelte';
 	import BreadcrumbNav from '$lib/components/BreadcrumbNav/BreadcrumbNav.svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { Cube, PuzzlePiece, Square3Stack3d } from 'svelte-hero-icons';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -15,11 +16,10 @@
 		avatar: '/path/to/avatar.jpg'
 	};
 
-	// TODO: Replace with actual navigation items
 	const navItems = [
-		{ label: 'Models', href: '/models' },
-		{ label: 'GroupBys', href: '/groupbys' },
-		{ label: 'Joins', href: '/joins' }
+		{ label: 'Models', href: '/models', icon: Cube },
+		{ label: 'GroupBys', href: '/groupbys', icon: PuzzlePiece },
+		{ label: 'Joins', href: '/joins', icon: Square3Stack3d }
 	];
 
 	const breadcrumbs = $derived($page.url.pathname.split('/').filter(Boolean));
@@ -33,14 +33,12 @@
 
 	<!-- Main content -->
 	<main
-		class="flex-1 flex flex-col overflow-hidden bg-muted/30 rounded-tl-xl border-l border-border"
+		class="flex-1 flex flex-col overflow-hidden bg-muted/30 relative rounded-tl-xl"
 		data-testid="app-main"
 	>
-		<div class="p-4">
-			<BreadcrumbNav {breadcrumbs} />
-		</div>
-		<ScrollArea class="flex-1">
-			<div class="p-4">
+		<ScrollArea class="flex-1 border-l border-t border-border rounded-tl-xl">
+			<div class="px-8 py-5">
+				<BreadcrumbNav {breadcrumbs} class="mb-10" />
 				{@render children()}
 			</div>
 		</ScrollArea>

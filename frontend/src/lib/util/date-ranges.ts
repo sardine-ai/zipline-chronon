@@ -1,4 +1,11 @@
-import { LAST_DAY, LAST_7_DAYS, LAST_MONTH } from '$lib/constants/date-ranges';
+import {
+	DATE_RANGE_PARAM,
+	DATE_RANGE_START_PARAM,
+	DATE_RANGE_END_PARAM,
+	LAST_7_DAYS,
+	LAST_DAY,
+	LAST_MONTH
+} from '$lib/constants/date-ranges';
 
 export function getDateRange(range: string): [number, number] {
 	const now = new Date();
@@ -20,4 +27,26 @@ export function getDateRange(range: string): [number, number] {
 	}
 
 	return [start, end];
+}
+
+export function parseDateRangeParams(searchParams: URLSearchParams) {
+	const dateRangeValue = searchParams.get(DATE_RANGE_PARAM);
+	const startParam = searchParams.get(DATE_RANGE_START_PARAM);
+	const endParam = searchParams.get(DATE_RANGE_END_PARAM);
+
+	let startTimestamp: number;
+	let endTimestamp: number;
+
+	if (startParam && endParam) {
+		startTimestamp = Number(startParam);
+		endTimestamp = Number(endParam);
+	} else {
+		[startTimestamp, endTimestamp] = getDateRange(dateRangeValue || LAST_7_DAYS);
+	}
+
+	return {
+		dateRangeValue: dateRangeValue || LAST_7_DAYS,
+		startTimestamp,
+		endTimestamp
+	};
 }

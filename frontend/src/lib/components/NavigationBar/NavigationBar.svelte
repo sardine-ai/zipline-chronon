@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { Avatar, AvatarFallback, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
-	import { Person, MagnifyingGlass } from 'svelte-radix';
 	import { page } from '$app/stores';
 	import {
 		CommandDialog,
@@ -21,10 +20,11 @@
 		DropdownMenuContent,
 		DropdownMenuItem
 	} from '$lib/components/ui/dropdown-menu/';
-	import { ChevronDown } from 'svelte-radix';
+	import { Icon, ChevronDown, MagnifyingGlass, User } from 'svelte-hero-icons';
+	import type { IconSource } from 'svelte-hero-icons';
 
 	type Props = {
-		navItems: { label: string; href: string }[];
+		navItems: { label: string; href: string; icon: IconSource }[];
 		user: { name: string; avatar: string };
 	};
 
@@ -61,7 +61,7 @@
 		class="mb-4 w-full flex justify-start pl-2"
 		onclick={() => (open = true)}
 	>
-		<MagnifyingGlass class="mr-2" />
+		<Icon src={MagnifyingGlass} size="16" class="mr-2" />
 		<span>Search</span>
 	</Button>
 	<ul class="space-y-1 flex-grow">
@@ -74,6 +74,7 @@
 						: 'hover:bg-primary/5'}"
 					href={item.href}
 				>
+					<Icon src={item.icon} micro size="16" class="mr-2" />
 					{item.label}
 				</Button>
 			</li>
@@ -86,11 +87,11 @@
 					<Avatar class="h-4 w-4">
 						<AvatarImage src={user.avatar} alt={user.name} />
 						<AvatarFallback>
-							<Person />
+							<Icon src={User} />
 						</AvatarFallback>
 					</Avatar>
 					<span class="ml-3">{user.name}</span>
-					<ChevronDown class="w-4 h-4 ml-3" />
+					<Icon src={ChevronDown} size="16" class="ml-3" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent>
