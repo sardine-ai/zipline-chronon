@@ -3,13 +3,17 @@ package ai.chronon.spark.test.stats.drift
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.ColorPrinter.ColorString
+import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.online.KVStore
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryPacker
+import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.test.DataFrameGen
+import ai.chronon.spark.test.MockKVStore
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
@@ -36,6 +40,18 @@ class DriftTest extends AnyFlatSpec with Matchers {
       val packer = new SummaryPacker("drift_test_basic", summaryExprs, summarizer.tileSize, summarizer.sliceColumns)
       val (packed, _) = packer.packSummaryDf(result)
       packed.show()
+
+      val props = Map("is-time-sorted" -> "true")
+
+      val kvStore: () => KVStore = () => {
+        val result = new MockKVStore()
+        result.create(Constants.DriftStatsTable, props)
+        result
+      }
+      
+      val uploader = new SummaryUploader(packed,kvStore)
+      uploader.run()
+      //kvStore.show()
     }
   }
 

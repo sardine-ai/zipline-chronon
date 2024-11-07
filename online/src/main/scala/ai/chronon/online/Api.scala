@@ -64,7 +64,6 @@ object KVStore {
 trait KVStore {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val executionContext: ExecutionContext = FlexibleExecutionContext.buildExecutionContext
-
   def create(dataset: String): Unit
 
   def create(dataset: String, props: Map[String, Any]): Unit = create(dataset)

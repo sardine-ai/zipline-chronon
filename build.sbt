@@ -157,8 +157,9 @@ lazy val spark = project
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_all_provided,
     libraryDependencies ++= spark_all.map(_ % "test"),
-    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3"
-  )
+    libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
+    libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre"
+)
 
 lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
@@ -189,6 +190,7 @@ lazy val cloud_aws = project
     libraryDependencies += "io.circe" %% "circe-core" % circeVersion % "test",
     libraryDependencies += "io.circe" %% "circe-generic" % circeVersion % "test",
     libraryDependencies += "io.circe" %% "circe-parser" % circeVersion % "test",
+    libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre",
     libraryDependencies ++= spark_all
   )
 

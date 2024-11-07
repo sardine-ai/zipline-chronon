@@ -9,6 +9,7 @@ import ai.chronon.online.KVStore.ListValue
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.Metrics
 import ai.chronon.online.Metrics.Context
+import com.google.common.util.concurrent.RateLimiter
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition
@@ -30,6 +31,7 @@ import software.amazon.awssdk.services.dynamodb.model.ScanResponse
 
 import java.time.Instant
 import java.util
+import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
 import scala.util.Success
@@ -64,6 +66,8 @@ object DynamoDBKVStoreConstants {
 
 class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
   import DynamoDBKVStoreConstants._
+  private val readRateLimiters = new ConcurrentHashMap[String, RateLimiter]()
+  private val writeRateLimiters = new ConcurrentHashMap[String, RateLimiter]()
 
   protected val metricsContext: Metrics.Context = Metrics.Context(Metrics.Environment.KVStore).withSuffix("dynamodb")
 
@@ -87,6 +91,9 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
 
     val rcu = getCapacityUnits(props, readCapacityUnits, defaultReadCapacityUnits)
     val wcu = getCapacityUnits(props, writeCapacityUnits, defaultWriteCapacityUnits)
+
+    readRateLimiters.put(dataset, RateLimiter.create(rcu))
+    writeRateLimiters.put(dataset, RateLimiter.create(wcu))
 
     val request =
       CreateTableRequest.builder
@@ -137,6 +144,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     val getItemResults = getItemRequestPairs.map {
       case (req, getItemReq) =>
         Future {
+          readRateLimiters.computeIfAbsent(req.dataset, _ => RateLimiter.create(defaultReadCapacityUnits)).acquire()
           val item: Try[util.Map[String, AttributeValue]] =
             handleDynamoDbOperation(metricsContext.withSuffix("multiget"), req.dataset) {
               dynamoDbClient.getItem(getItemReq).item()
@@ -151,6 +159,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     val queryResults = queryRequestPairs.map {
       case (req, queryRequest) =>
         Future {
+          readRateLimiters.computeIfAbsent(req.dataset, _ => RateLimiter.create(defaultReadCapacityUnits)).acquire()
           val responses = handleDynamoDbOperation(metricsContext.withSuffix("query"), req.dataset) {
             dynamoDbClient.query(queryRequest).items()
           }
@@ -218,12 +227,10 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     val futureResponses = datasetToWriteRequests.map {
       case (dataset, putItemRequest) =>
         Future {
+          writeRateLimiters.computeIfAbsent(dataset, _ => RateLimiter.create(defaultWriteCapacityUnits)).acquire()
           handleDynamoDbOperation(metricsContext.withSuffix("multiput"), dataset) {
             dynamoDbClient.putItem(putItemRequest)
-          }.recover {
-            case _: Exception => false
-          }
-          true
+          }.isSuccess
         }
     }
     Future.sequence(futureResponses)

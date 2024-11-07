@@ -62,4 +62,5 @@ object Constants {
   val LabelViewPropertyFeatureTable: String = "feature_table"
   val LabelViewPropertyKeyLabelTable: String = "label_table"
   val ChrononRunDs: String = "CHRONON_RUN_DS"
+  val DriftStatsTable: String = "drift_statistics"
 }
