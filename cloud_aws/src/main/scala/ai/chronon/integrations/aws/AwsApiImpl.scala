@@ -16,7 +16,7 @@ import java.net.URI
   * DynamoDB based KV store implementation.
   */
 class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
-  val ddbClient: DynamoDbClient = {
+  @transient lazy val ddbClient: DynamoDbClient = {
     val regionEnvVar =
       sys.env.getOrElse("AWS_DEFAULT_REGION", throw new IllegalArgumentException("Missing AWS_DEFAULT_REGION env var"))
     val dynamoEndpoint =
