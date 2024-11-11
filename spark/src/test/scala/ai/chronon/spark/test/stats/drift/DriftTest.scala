@@ -13,6 +13,7 @@ import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.test.DataFrameGen
+import ai.chronon.spark.test.MockApi
 import ai.chronon.spark.test.MockKVStore
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
@@ -48,10 +49,10 @@ class DriftTest extends AnyFlatSpec with Matchers {
         result.create(Constants.DriftStatsTable, props)
         result
       }
-      
-      val uploader = new SummaryUploader(packed,kvStore)
+      val api = new MockApi(kvStore, "drift_test_basic")
+
+      val uploader = new SummaryUploader(packed,api)
       uploader.run()
-      //kvStore.show()
     }
   }
 

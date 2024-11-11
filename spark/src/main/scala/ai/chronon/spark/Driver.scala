@@ -17,6 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
@@ -32,6 +33,9 @@ import ai.chronon.spark.stats.CompareBaseJob
 import ai.chronon.spark.stats.CompareJob
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.stats.SummaryJob
+import ai.chronon.spark.stats.drift.Summarizer
+import ai.chronon.spark.stats.drift.SummaryPacker
+import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.streaming.JoinSourceRunner
 import ai.chronon.spark.streaming.TopicChecker
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -579,18 +583,6 @@ object Driver {
     }
   }
 
-  object CreateStatsTable {
-    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-    class Args extends Subcommand("create-stats-table") with OnlineSubcommand
-
-    def run(args: Args): Unit = {
-      logger.info("Creating table 'drift_statistics'")
-      val store = args.api.genKvStore
-      val props = Map("is-time-sorted" -> "true")
-      store.create("drift_statistics", props)
-    }
-  }
-
   // common arguments to all online commands
   trait OnlineSubcommand { s: ScallopConf =>
     // this is `-Z` and not `-D` because sbt-pack plugin uses that for JAVA_OPTS
@@ -908,6 +900,59 @@ object Driver {
     }
   }
 
+  object CreateStatsTable {
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("create-stats-table") with OnlineSubcommand
+
+    def run(args: Args): Unit = {
+      logger.info(s"Creating table '${Constants.DriftStatsTable}'")
+      val store = args.api.genKvStore
+      val props = Map("is-time-sorted" -> "true")
+      store.create(Constants.DriftStatsTable, props)
+    }
+  }
+
+  object SummarizeAndUpload {
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("summarize-and-upload") with OnlineSubcommand {
+
+      val tableName: ScallopOption[String] =
+        opt[String](required = true, descr = "Name of the table to summarize")
+
+      val parquetPath: ScallopOption[String] =
+        opt[String](required = true, descr = "Location of the parquet containing the data to summarize")
+
+      val timeColumn: ScallopOption[String] =
+        opt[String](required = false, descr = "The column in the dataset which tracks the time")
+    }
+
+    def run(args: Args): Unit = {
+      val sparkSession: SparkSession = SparkSession
+        .builder()
+        .appName("ParquetReader")
+        .config("spark.master", sys.env.getOrElse("SPARK_MASTER_URL", "local"))
+        .config("spark.jars", args.onlineJar())
+        .getOrCreate()
+      implicit val tableUtils: TableUtils = TableUtils(sparkSession)
+      logger.info("Running Summarizer")
+      val tableName = args.tableName.getOrElse(Constants.DriftStatsTable)
+      val summarizer = new Summarizer(tableName, timeColumn = args.timeColumn.toOption)
+      try {
+        val df = sparkSession.read.parquet(args.parquetPath())
+        val (result, summaryExprs) = summarizer.computeSummaryDf(df)
+        val packer = new SummaryPacker(tableName, summaryExprs, summarizer.tileSize, summarizer.sliceColumns)
+        val (packed, _) = packer.packSummaryDf(result)
+
+        val uploader = new SummaryUploader(packed, args.api)
+        uploader.run()
+      } catch {
+        case e: Exception =>
+          logger.error(s"Failed to summarize and upload data for table: $tableName", e)
+          throw e
+      }
+    }
+  }
+
   class Args(args: Array[String]) extends ScallopConf(args) {
     object JoinBackFillArgs extends JoinBackfill.Args
     addSubcommand(JoinBackFillArgs)
@@ -945,6 +990,8 @@ object Driver {
     addSubcommand(LabelJoinArgs)
     object CreateStatsTableArgs extends CreateStatsTable.Args
     addSubcommand(CreateStatsTableArgs)
+    object SummarizeAndUploadArgs extends SummarizeAndUpload.Args
+    addSubcommand(SummarizeAndUploadArgs)
     requireSubcommand()
     verify()
   }
@@ -985,6 +1032,7 @@ object Driver {
           case args.JoinBackfillLeftArgs   => JoinBackfillLeft.run(args.JoinBackfillLeftArgs)
           case args.JoinBackfillFinalArgs  => JoinBackfillFinal.run(args.JoinBackfillFinalArgs)
           case args.CreateStatsTableArgs   => CreateStatsTable.run(args.CreateStatsTableArgs)
+          case args.SummarizeAndUploadArgs => SummarizeAndUpload.run(args.SummarizeAndUploadArgs)
           case _                           => logger.info(s"Unknown subcommand: $x")
         }
       case None => logger.info("specify a subcommand please")

@@ -69,9 +69,10 @@ fraud_fields = [
       StructField("user_id", IntegerType(), True),
       StructField("merchant_id", IntegerType(), True),
 
-    # Contextual - 3
+    # Contextual - 4
 	StructField("transaction_amount", DoubleType(), True),
-	StructField("transaction_time", TimestampType(), True),
+	StructField("transaction_time", DoubleType(), True),
+    StructField("ds", StringType(), True),
 	StructField("transaction_type", StringType(), True),
 
     # Transactions agg’d by user - 7 (txn_events)
@@ -201,9 +202,10 @@ def generate_fraud_sample_data(num_samples=10000):
             random.randint(1,100),
             merchant_id,
 
-            # Contextual - 3
+            # Contextual - 4
             transaction_amount[i][1],
-            transaction_time,
+            transaction_time.timestamp(),
+            transaction_time.date().isoformat(),
             random.choice(['purchase', 'withdrawal', 'transfer']),
 
             # Transactions agg’d by user - 7 (txn_events)
@@ -251,5 +253,5 @@ def generate_fraud_sample_data(num_samples=10000):
 fraud_data = generate_fraud_sample_data(20000)
 fraud_df = spark.createDataFrame(fraud_data, schema=fraud_schema)
 
-fraud_df.write.mode("overwrite").parquet("data")
+fraud_df.write.mode("overwrite").parquet("drift_data")
 print("Successfully wrote user data to parquet")
