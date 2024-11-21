@@ -197,7 +197,10 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                 s"${joinConf.metaData.name}/${labelJoinPart.groupBy.getMetaData.getName}")
             throw e
         }
-        tableUtils.scanDf(query = null, partTable, partitionColumn = Constants.LabelPartitionColumn)
+        tableUtils.scanDf(query = null,
+                          partTable,
+                          range = Some(labelOutputRange),
+                          partitionColumn = Constants.LabelPartitionColumn)
       }
     }
 
