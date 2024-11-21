@@ -25,6 +25,7 @@ import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.gson.GsonBuilder
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -46,6 +47,13 @@ object ThriftJsonCodec {
 
   def toJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
     new String(serializer.serialize(obj), Constants.UTF8)
+  }
+
+  @transient private lazy val prettyGson = new GsonBuilder().setPrettyPrinting().create()
+  def toPrettyJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
+    val raw = toJsonStr(obj)
+    val je = prettyGson.fromJson(raw, classOf[com.google.gson.JsonElement])
+    prettyGson.toJson(je)
   }
 
   def toJsonList[T <: TBase[_, _]: Manifest](obj: util.List[T]): String = {

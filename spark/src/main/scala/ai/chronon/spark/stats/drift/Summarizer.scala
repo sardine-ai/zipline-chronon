@@ -1,21 +1,13 @@
 package ai.chronon.spark.stats.drift
 
-import ai.chronon.api.Cardinality
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
-import ai.chronon.api.MetaData
-import ai.chronon.api.TileKey
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
-import ai.chronon.api.thrift.TSerializer
-import ai.chronon.api.thrift.protocol.TCompactProtocol
-import ai.chronon.api.thrift.protocol.TProtocolFactory
+import ai.chronon.api._
+import ai.chronon.online.stats.DriftStore.compactSerializer
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Expressions.CardinalityExpression
 import ai.chronon.spark.stats.drift.Expressions.SummaryExpression
 import ai.chronon.spark.stats.drift.Expressions.TileRow
-import ai.chronon.spark.stats.drift.Summarizer.compactSerializer
 import ai.chronon.spark.udafs.ArrayApproxDistinct
 import ai.chronon.spark.udafs.ArrayStringHistogramAggregator
 import ai.chronon.spark.udafs.HistogramAggregator
@@ -35,9 +27,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-// join / sq / gb: metadata.monitors{} -> drift & skew
-// TODO override for metric
-class Summarizer(name: String,
+class Summarizer(confPath: String,
                  timeColumn: Option[String] = None,
                  val sliceColumns: Option[Seq[String]] = None,
                  derivedColumns: Option[Map[String, String]] = None,
@@ -186,9 +176,12 @@ class Summarizer(name: String,
     ) {
       assert(count <= cardinalityThreshold, s"Slice column $col is high cardinality $count")
     }
+    println("Cardinality counts:".red)
+    counts.foreach { case (k, v) => println(s"  $k: $v, [${if (cardinalityThreshold < v) "high" else "low"}]".yellow) }
     counts
   }
 
+  // TODO: figure out why this gets called multiple times
   private def buildSummaryExpressions(inputDf: DataFrame, summaryInputDf: DataFrame): Seq[SummaryExpression] =
     summaryInputDf.schema.fields.flatMap { f =>
       val cardinalityMap = buildCardinalityMap(inputDf)
@@ -236,7 +229,7 @@ class Summarizer(name: String,
   }
 }
 
-class SummaryPacker(confName: String,
+class SummaryPacker(confPath: String,
                     summaryExpressions: Seq[SummaryExpression],
                     tileSize: Window,
                     sliceColumns: Option[Seq[String]])(implicit tu: TableUtils)
@@ -253,7 +246,7 @@ class SummaryPacker(confName: String,
 
     val keyBuilder = { (column: String, row: sql.Row) =>
       val tileKey = new TileKey()
-      tileKey.setName(confName)
+      tileKey.setName(confPath)
       tileKey.setSizeMillis(tileSize.millis)
       if (sliceIndex >= 0) tileKey.setSlice(row.getString(sliceIndex))
       tileKey.setColumn(column)
@@ -263,7 +256,7 @@ class SummaryPacker(confName: String,
     val func: sql.Row => Seq[TileRow] =
       Expressions.summaryPopulatorFunc(summaryExpressions, df.schema, keyBuilder, tu.partitionColumn)
 
-    val serializer: Summarizer.SerializableSerializer = compactSerializer
+    val serializer = compactSerializer
     val packedRdd: RDD[sql.Row] = df.rdd.flatMap(func).map { tileRow =>
       // pack into bytes
       val partition = tileRow.partition
@@ -293,10 +286,6 @@ object Summarizer {
   // Initialize the logger
   private val logger = LoggerFactory.getLogger(getClass)
 
-  class SerializableSerializer(factory: TProtocolFactory) extends TSerializer(factory) with Serializable
-
-  def compactSerializer: SerializableSerializer = new SerializableSerializer(new TCompactProtocol.Factory())
-
   def compute(metadata: MetaData,
               ds: String,
               useLogs: Boolean = false,
@@ -313,7 +302,7 @@ object Summarizer {
                           endDs = ds,
                           inputTable = inputTable,
                           outputTable = summaryTable,
-                          computeFunc = new Summarizer(metadata.getName, tileSize = tileSize).computeSummaryDf)
+                          computeFunc = new Summarizer(metadata.nameToFilePath, tileSize = tileSize).computeSummaryDf)
     val exprs = partitionFiller.runInSequence
 
     val packedPartitionFiller =

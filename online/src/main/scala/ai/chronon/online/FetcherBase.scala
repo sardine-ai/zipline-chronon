@@ -21,7 +21,7 @@ import ai.chronon.aggregator.windowing
 import ai.chronon.aggregator.windowing.FinalBatchIr
 import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
 import ai.chronon.aggregator.windowing.TiledIr
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.ThrowableOps
@@ -54,7 +54,7 @@ import scala.util.Try
 //   2. does the fan out and fan in from kv store in a parallel fashion
 //   3. does the post aggregation
 class FetcherBase(kvStore: KVStore,
-                  metaDataSet: String = ChrononMetadataKey,
+                  metaDataSet: String = MetadataDataset,
                   timeoutMillis: Long = 10000,
                   debug: Boolean = false,
                   flagStore: FlagStore = null,

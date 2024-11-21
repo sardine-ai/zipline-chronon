@@ -97,10 +97,10 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     }
 
     labelJoinConf.setups.foreach(tableUtils.sql)
-    val labelTable = compute(PartitionRange(leftStart, leftEnd), stepDays, Option(labelDS))
+    val labelDf = compute(PartitionRange(leftStart, leftEnd), stepDays, Option(labelDS))
 
     if (skipFinalJoin) {
-      labelTable
+      labelDf
     } else {
       // creating final join view with feature join output table
       logger.info(
@@ -119,7 +119,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                                       baseView = joinConf.metaData.outputFinalView,
                                       tableUtils)
       logger.info(s"Final view with latest label created: ${joinConf.metaData.outputLatestLabelView}")
-      labelTable
+      labelDf
     }
   }
 

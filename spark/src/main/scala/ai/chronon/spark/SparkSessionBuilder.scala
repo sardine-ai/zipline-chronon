@@ -78,7 +78,7 @@ object SparkSessionBuilder {
       // use all threads - or the tests will be slow
         .master("local[*]")
         .config("spark.kryo.registrationRequired", s"${localWarehouseLocation.isEmpty}")
-        .config("spark.local.dir", s"/tmp/$userName/$name")
+        .config("spark.local.dir", s"/tmp/$userName/${name}_$warehouseId")
         .config("spark.sql.warehouse.dir", s"$warehouseDir/data")
         .config("spark.hadoop.javax.jdo.option.ConnectionURL", metastoreDb)
         .config("spark.driver.bindAddress", "127.0.0.1")

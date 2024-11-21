@@ -29,7 +29,6 @@ import ai.chronon.spark.GenericRowHandler
 import ai.chronon.spark.GroupByUpload
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
-import ai.chronon.spark.stats.SummaryJob
 import ai.chronon.spark.streaming.GroupBy
 import ai.chronon.spark.streaming.JoinSourceRunner
 import org.apache.spark.sql.SparkSession
@@ -157,7 +156,7 @@ object OnlineUtils {
       val streamingSource = groupByConf.streamingSource.get
       inMemoryKvStore.create(groupByConf.streamingDataset)
       if (streamingSource.isSetJoinSource) {
-        inMemoryKvStore.create(Constants.ChrononMetadataKey)
+        inMemoryKvStore.create(Constants.MetadataDataset)
         new MockApi(kvStoreGen, namespace).buildFetcher().putJoinConf(streamingSource.getJoinSource.getJoin)
         OnlineUtils.putStreamingNew(groupByConf, endDs, namespace, kvStoreGen, debug)(tableUtils.sparkSession)
       } else {
@@ -171,25 +170,6 @@ object OnlineUtils {
                                  dropDsOnWrite)
       }
     }
-  }
-
-  def serveStats(tableUtils: TableUtils, inMemoryKvStore: InMemoryKvStore, endDs: String, joinConf: api.Join): Unit = {
-    val statsJob = new SummaryJob(tableUtils.sparkSession, joinConf, endDs)
-    statsJob.dailyRun()
-    inMemoryKvStore.bulkPut(joinConf.metaData.toUploadTable(joinConf.metaData.dailyStatsOutputTable),
-                            Constants.StatsBatchDataset,
-                            null)
-  }
-
-  def serveLogStats(tableUtils: TableUtils,
-                    inMemoryKvStore: InMemoryKvStore,
-                    endDs: String,
-                    joinConf: api.Join): Unit = {
-    val statsJob = new SummaryJob(tableUtils.sparkSession, joinConf, endDs)
-    statsJob.loggingRun()
-    inMemoryKvStore.bulkPut(joinConf.metaData.toUploadTable(joinConf.metaData.loggingStatsTable),
-                            Constants.LogStatsBatchDataset,
-                            null)
   }
 
   def serveConsistency(tableUtils: TableUtils,

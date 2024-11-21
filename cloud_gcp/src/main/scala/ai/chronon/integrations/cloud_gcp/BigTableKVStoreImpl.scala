@@ -47,7 +47,7 @@ class BigTableKVStoreImpl(projectId: String, instanceId: String) extends KVStore
 
         val queryTime = System.currentTimeMillis()
         // scan from afterTsMillis to now - skip events with future timestamps
-        request.afterTsMillis.foreach { ts =>
+        request.startTsMillis.foreach { ts =>
           // Bigtable uses microseconds
           query.filter(Filters.FILTERS.timestamp().range().startOpen(ts * 1000).endClosed(queryTime))
         }

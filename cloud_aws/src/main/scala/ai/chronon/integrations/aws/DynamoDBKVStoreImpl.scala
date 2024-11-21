@@ -127,7 +127,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
   override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = {
     // partition our requests into pure get style requests (where we're missing timestamps and only have key lookup)
     // and query requests (we want to query a range based on afterTsMillis -> endTsMillis or now() )
-    val (getLookups, queryLookups) = requests.partition(r => r.afterTsMillis.isEmpty)
+    val (getLookups, queryLookups) = requests.partition(r => r.startTsMillis.isEmpty)
     val getItemRequestPairs = getLookups.map { req =>
       val keyAttributeMap = primaryKeyMap(req.keyBytes)
       (req, GetItemRequest.builder.key(keyAttributeMap.asJava).tableName(req.dataset).build)
@@ -325,7 +325,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     val partitionAlias = "#pk"
     val timeAlias = "#ts"
     val attrNameAliasMap = Map(partitionAlias -> partitionKeyColumn, timeAlias -> sortKeyColumn)
-    val startTs = request.afterTsMillis.get
+    val startTs = request.startTsMillis.get
     val endTs = request.endTsMillis.getOrElse(System.currentTimeMillis())
     val attrValuesMap =
       Map(
