@@ -25,7 +25,7 @@ services:
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
     ports:
-      - "8080:8080"
+      - "8081:8080"
       - "7077:7077"
 
   spark-worker:
@@ -90,3 +90,90 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  mysql:
+    container_name: temporal-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    image: mysql:8
+    networks:
+      - temporal-network
+    ports:
+      - 3306:3306
+    volumes:
+      - /var/lib/mysql
+  elasticsearch:
+    container_name: temporal-elasticsearch
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1g -Xmx1g}
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+    image: elasticsearch:8.16.0
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - temporal-network
+    ports:
+      - 9200:9200
+    volumes:
+      - ./elasticsearch-data:/usr/share/elasticsearch/data
+  temporal:
+    container_name: temporal
+    depends_on:
+      - mysql
+      - elasticsearch
+    environment:
+      - DB=mysql8
+      - DB_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PWD=root
+      - MYSQL_SEEDS=mysql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=true
+      - ES_SEEDS=elasticsearch
+      - ES_VERSION=v7
+      - ES_USER=elastic
+      - ES_PWD=${ELASTIC_PASSWORD:-changeme}
+    image: temporalio/server:1.25.2
+    networks:
+      - temporal-network
+    ports:
+      - 7233:7233
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:1.25.2-tctl-1.18.1-cli-1.1.1
+    networks:
+      - temporal-network
+    stdin_open: true
+    tty: true
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    image: temporalio/ui:2.31.2
+    networks:
+      - temporal-network
+    ports:
+      - 8080:8080
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
