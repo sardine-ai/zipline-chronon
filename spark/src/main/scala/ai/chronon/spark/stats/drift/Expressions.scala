@@ -3,7 +3,7 @@ package ai.chronon.spark.stats.drift
 import ai.chronon.api.Cardinality
 import ai.chronon.api.Constants
 import ai.chronon.api.TileKey
-import ai.chronon.api.TileSummaries
+import ai.chronon.api.TileSummary
 import org.apache.spark.sql
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types
@@ -45,8 +45,6 @@ object Expressions {
     val nullCount = "sum(if(_col_ is NULL, 1, 0))"
   }
 
-  // array or map
-
   // expressions over raw columns
   private object Inp {
     val len = "length(_col_)"
@@ -61,7 +59,6 @@ object Expressions {
     val mapDblCast = "transform(map_values(_col_), x -> CAST(x as DOUBLE))"
   }
 
-  // metric names, "_drift" will be appended to these names downstream
   private object MetricName {
     val nullCount = "null_count"
     val count = "count"
@@ -73,7 +70,7 @@ object Expressions {
     val stringLengthPercentiles = "string_length_percentiles"
   }
 
-  case class TileRow(partition: String, tileTs: Long, key: TileKey, summaries: TileSummaries)
+  case class TileRow(partition: String, tileTs: Long, key: TileKey, summaries: TileSummary)
   def summaryPopulatorFunc(summaryExpressions: Seq[SummaryExpression],
                            summarySchema: StructType,
                            keyBuilder: (String, sql.Row) => TileKey,
@@ -82,15 +79,15 @@ object Expressions {
       val metricName = se.name
       val colName = se.column
       val populatorFunc = metricPopulatorFunc(colName, metricName, summarySchema)
-      (row: Row, columnTileSummaries: mutable.Map[String, TileSummaries]) =>
-        populatorFunc(row, columnTileSummaries.getOrElseUpdate(colName, new TileSummaries()))
+      (row: Row, columnTileSummaries: mutable.Map[String, TileSummary]) =>
+        populatorFunc(row, columnTileSummaries.getOrElseUpdate(colName, new TileSummary()))
     }
 
     val partitionIndex = summarySchema.fieldIndex(partitionColumn)
     val tileIndex = summarySchema.fieldIndex(Constants.TileColumn)
 
     { row: Row =>
-      val columnTileSummaries: mutable.Map[String, TileSummaries] = mutable.Map.empty
+      val columnTileSummaries: mutable.Map[String, TileSummary] = mutable.Map.empty
       funcs.foreach(_(row, columnTileSummaries))
       val tileTimestamp = row.getLong(tileIndex)
       val partition = row.getString(partitionIndex)
@@ -104,17 +101,17 @@ object Expressions {
   // creates a function to populate TileSummaries object given schema and names
   private def metricPopulatorFunc(colName: String,
                                   metricName: String,
-                                  schema: StructType): (Row, TileSummaries) => Unit = {
+                                  schema: StructType): (Row, TileSummary) => Unit = {
     val summaryCol = s"${colName}_${metricName}"
     assert(schema.fieldNames.contains(summaryCol),
            s"Summary column ${summaryCol} not found among: ${schema.fieldNames.mkString(", ")}")
     val index = schema.fieldIndex(summaryCol)
 
     metricName match {
-      case MetricName.nullCount => (row: Row, summaries: TileSummaries) => summaries.setNullCount(row.getLong(index))
-      case MetricName.count     => (row: Row, summaries: TileSummaries) => summaries.setCount(row.getLong(index))
+      case MetricName.nullCount => (row: Row, summaries: TileSummary) => summaries.setNullCount(row.getLong(index))
+      case MetricName.count     => (row: Row, summaries: TileSummary) => summaries.setCount(row.getLong(index))
       case MetricName.histogram =>
-        (row: Row, summaries: TileSummaries) =>
+        (row: Row, summaries: TileSummary) =>
           summaries.setHistogram(
             row
               .getMap[String, Long](index)
@@ -122,21 +119,21 @@ object Expressions {
               .asJava
           )
       case MetricName.percentiles =>
-        (row: Row, summaries: TileSummaries) =>
+        (row: Row, summaries: TileSummary) =>
           summaries.setPercentiles(row.getSeq[Double](index).map(lang.Double.valueOf).toJava)
 
       case MetricName.innerNullCount =>
-        (row: Row, summaries: TileSummaries) => summaries.setInnerNullCount(row.getLong(index))
+        (row: Row, summaries: TileSummary) => summaries.setInnerNullCount(row.getLong(index))
 
       case MetricName.innerCount =>
-        (row: Row, summaries: TileSummaries) => summaries.setInnerCount(row.getLong(index))
+        (row: Row, summaries: TileSummary) => summaries.setInnerCount(row.getLong(index))
 
       case MetricName.lengthPercentiles =>
-        (row: Row, summaries: TileSummaries) =>
+        (row: Row, summaries: TileSummary) =>
           summaries.setLengthPercentiles(row.getSeq[Int](index).map(lang.Integer.valueOf).toJava)
 
       case MetricName.stringLengthPercentiles =>
-        (row: Row, summaries: TileSummaries) =>
+        (row: Row, summaries: TileSummary) =>
           summaries.setStringLengthPercentiles(row.getSeq[Int](index).map(lang.Integer.valueOf).toJava)
     }
   }

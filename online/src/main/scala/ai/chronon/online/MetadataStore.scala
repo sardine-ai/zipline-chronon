@@ -16,7 +16,7 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.StringOps
@@ -41,7 +41,7 @@ import scala.util.Try
 // [timestamp -> {metric name -> metric value}]
 case class DataMetrics(series: Seq[(Long, SortedMap[String, Any])])
 
-class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, timeoutMillis: Long) {
+class MetadataStore(kvStore: KVStore, val dataset: String = MetadataDataset, timeoutMillis: Long) {
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private var partitionSpec = PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
   private val CONF_BATCH_SIZE = 50
@@ -201,7 +201,7 @@ class MetadataStore(kvStore: KVStore, val dataset: String = ChrononMetadataKey, 
 
   def put(
       kVPairs: Map[String, Seq[String]],
-      datasetName: String = ChrononMetadataKey,
+      datasetName: String = MetadataDataset,
       batchSize: Int = CONF_BATCH_SIZE
   ): Future[Seq[Boolean]] = {
     val puts = kVPairs.map {

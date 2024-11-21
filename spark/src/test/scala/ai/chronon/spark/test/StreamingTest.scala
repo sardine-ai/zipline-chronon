@@ -20,7 +20,7 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Accuracy
 import ai.chronon.api.Builders
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Operation
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
@@ -110,7 +110,7 @@ class StreamingTest extends TestCase {
         Builders.MetaData(name = s"test.item_temporal_features$nameSuffix", namespace = namespace, team = "item_team")
     )
     val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
-    inMemoryKvStore.create(ChrononMetadataKey)
+    inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
     joinConf.joinParts.asScala.foreach(jp =>
       OnlineUtils.serve(tableUtils, inMemoryKvStore, buildInMemoryKvStore, namespace, today, jp.groupBy))

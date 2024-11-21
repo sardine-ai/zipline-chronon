@@ -32,7 +32,6 @@ import ai.chronon.online.MetadataStore
 import ai.chronon.spark.stats.CompareBaseJob
 import ai.chronon.spark.stats.CompareJob
 import ai.chronon.spark.stats.ConsistencyJob
-import ai.chronon.spark.stats.SummaryJob
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
@@ -491,45 +490,6 @@ object Driver {
     }
   }
 
-  object DailyStats {
-    class Args extends Subcommand("stats-summary") with OfflineSubcommand {
-      val sample: ScallopOption[Double] =
-        opt[Double](required = false,
-                    descr = "Sampling ratio - what fraction of rows into incorporate into the heavy hitter estimate",
-                    default = Option(0.1))
-      val forceBackfill: ScallopOption[Boolean] =
-        opt[Boolean](required = false,
-                     descr = "Force backfill even if the table is already populated",
-                     default = Option(false))
-      lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName(): String = s"daily_stats_${joinConf.metaData.name}"
-    }
-
-    def run(args: Args): Unit = {
-      new SummaryJob(args.sparkSession, args.joinConf, endDate = args.endDate())
-        .dailyRun(Some(args.stepDays()), args.sample(), args.forceBackfill())
-    }
-  }
-
-  object LogStats {
-    class Args extends Subcommand("log-summary") with OfflineSubcommand {
-      val sample: ScallopOption[Double] =
-        opt[Double](required = false, descr = "Sampling ratio", default = Option(0.1))
-      val forceBackfill: ScallopOption[Boolean] =
-        opt[Boolean](required = false,
-                     descr = "Force backfill even if the table is already populated",
-                     default = Option(false))
-      lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-
-      override def subcommandName(): String = s"log_stats_${joinConf.metaData.name}"
-    }
-
-    def run(args: Args): Unit = {
-      new SummaryJob(args.sparkSession, args.joinConf, endDate = args.endDate())
-        .loggingRun(Some(args.stepDays()), args.sample(), args.forceBackfill())
-    }
-  }
-
   object GroupByUploader {
     class Args extends Subcommand("group-by-upload") with OfflineSubcommand {
       override def subcommandName() = "group-by-upload"
@@ -646,26 +606,6 @@ object Driver {
       )
     }
 
-    def fetchStats(args: Args, objectMapper: ObjectMapper, keyMap: Map[String, AnyRef], fetcher: Fetcher): Unit = {
-      val resFuture = fetcher.fetchStatsTimeseries(
-        Fetcher.StatsRequest(
-          args.name(),
-          keyMap.get("startTs").map(_.asInstanceOf[String].toLong),
-          keyMap.get("endTs").map(_.asInstanceOf[String].toLong)
-        ))
-      val stats = Await.result(resFuture, 100.seconds)
-      val series = stats.values.get
-      val toPrint =
-        if (
-          keyMap.contains("statsKey")
-          && series.contains(keyMap("statsKey").asInstanceOf[String])
-        )
-          series.get(keyMap("statsKey").asInstanceOf[String])
-        else series
-      logger.info(
-        s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(toPrint)}")
-    }
-
     def run(args: Args): Unit = {
       if (args.keyJson.isEmpty && args.keyJsonFile.isEmpty) {
         throw new Exception("At least one of keyJson and keyJsonFile should be specified!")
@@ -699,46 +639,44 @@ object Driver {
       def iterate(): Unit = {
         keyMapList.foreach(keyMap => {
           logger.info(s"--- [START FETCHING for ${keyMap}] ---")
-          if (args.`type`() == "join-stats") {
-            fetchStats(args, objectMapper, keyMap, fetcher)
-          } else {
-            val featureName = if (args.name.isDefined) {
-              args.name()
-            } else {
-              args.confPath().confPathToKey
-            }
-            lazy val joinConfOption: Option[api.Join] =
-              args.confPath.toOption.map(confPath => parseConf[api.Join](confPath))
-            val startNs = System.nanoTime
-            val requests = Seq(Fetcher.Request(featureName, keyMap, args.atMillis.toOption))
-            val resultFuture = if (args.`type`() == "join") {
-              fetcher.fetchJoin(requests, joinConfOption)
-            } else {
-              fetcher.fetchGroupBys(requests)
-            }
-            val result = Await.result(resultFuture, 5.seconds)
-            val awaitTimeMs = (System.nanoTime - startNs) / 1e6d
 
-            // treeMap to produce a sorted result
-            val tMap = new java.util.TreeMap[String, AnyRef]()
-            result.foreach(r =>
-              r.values match {
-                case Success(valMap) => {
-                  if (valMap == null) {
-                    logger.info("No data present for the provided key.")
-                  } else {
-                    valMap.foreach { case (k, v) => tMap.put(k, v) }
-                    logger.info(
-                      s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
-                  }
-                  logger.info(s"Fetched in: $awaitTimeMs ms")
-                }
-                case Failure(exception) => {
-                  exception.printStackTrace()
-                }
-              })
-            Thread.sleep(args.interval() * 1000)
+          val featureName = if (args.name.isDefined) {
+            args.name()
+          } else {
+            args.confPath().confPathToKey
           }
+          lazy val joinConfOption: Option[api.Join] =
+            args.confPath.toOption.map(confPath => parseConf[api.Join](confPath))
+          val startNs = System.nanoTime
+          val requests = Seq(Fetcher.Request(featureName, keyMap, args.atMillis.toOption))
+          val resultFuture = if (args.`type`() == "join") {
+            fetcher.fetchJoin(requests, joinConfOption)
+          } else {
+            fetcher.fetchGroupBys(requests)
+          }
+          val result = Await.result(resultFuture, 5.seconds)
+          val awaitTimeMs = (System.nanoTime - startNs) / 1e6d
+
+          // treeMap to produce a sorted result
+          val tMap = new java.util.TreeMap[String, AnyRef]()
+          result.foreach(r =>
+            r.values match {
+              case Success(valMap) => {
+                if (valMap == null) {
+                  logger.info("No data present for the provided key.")
+                } else {
+                  valMap.foreach { case (k, v) => tMap.put(k, v) }
+                  logger.info(
+                    s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
+                }
+                logger.info(s"Fetched in: $awaitTimeMs ms")
+              }
+              case Failure(exception) => {
+                exception.printStackTrace()
+              }
+            })
+          Thread.sleep(args.interval() * 1000)
+
         })
       }
       iterate()
@@ -900,15 +838,15 @@ object Driver {
     }
   }
 
-  object CreateStatsTable {
+  object CreateSummaryDataset {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-    class Args extends Subcommand("create-stats-table") with OnlineSubcommand
+    class Args extends Subcommand("create-summary-dataset") with OnlineSubcommand
 
     def run(args: Args): Unit = {
-      logger.info(s"Creating table '${Constants.DriftStatsTable}'")
+      logger.info(s"Creating table '${Constants.TiledSummaryDataset}'")
       val store = args.api.genKvStore
       val props = Map("is-time-sorted" -> "true")
-      store.create(Constants.DriftStatsTable, props)
+      store.create(Constants.TiledSummaryDataset, props)
     }
   }
 
@@ -916,9 +854,10 @@ object Driver {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args extends Subcommand("summarize-and-upload") with OnlineSubcommand {
 
-      val tableName: ScallopOption[String] =
-        opt[String](required = true, descr = "Name of the table to summarize")
+      val confPath: ScallopOption[String] =
+        opt[String](required = true, descr = "Name of the conf to summarize - joins/team/file.variable")
 
+      //TODO: we should pull conf from conf path and figure out table name from the conf instead
       val parquetPath: ScallopOption[String] =
         opt[String](required = true, descr = "Location of the parquet containing the data to summarize")
 
@@ -926,6 +865,7 @@ object Driver {
         opt[String](required = false, descr = "The column in the dataset which tracks the time")
     }
 
+    // drift for all the conf-s go into same online table, but different offline table
     def run(args: Args): Unit = {
       val sparkSession: SparkSession = SparkSession
         .builder()
@@ -935,19 +875,19 @@ object Driver {
         .getOrCreate()
       implicit val tableUtils: TableUtils = TableUtils(sparkSession)
       logger.info("Running Summarizer")
-      val tableName = args.tableName.getOrElse(Constants.DriftStatsTable)
-      val summarizer = new Summarizer(tableName, timeColumn = args.timeColumn.toOption)
+      val confPath = args.confPath()
+      val summarizer = new Summarizer(confPath, timeColumn = args.timeColumn.toOption)
       try {
         val df = sparkSession.read.parquet(args.parquetPath())
         val (result, summaryExprs) = summarizer.computeSummaryDf(df)
-        val packer = new SummaryPacker(tableName, summaryExprs, summarizer.tileSize, summarizer.sliceColumns)
+        val packer = new SummaryPacker(confPath, summaryExprs, summarizer.tileSize, summarizer.sliceColumns)
         val (packed, _) = packer.packSummaryDf(result)
 
         val uploader = new SummaryUploader(packed, args.api)
         uploader.run()
       } catch {
         case e: Exception =>
-          logger.error(s"Failed to summarize and upload data for table: $tableName", e)
+          logger.error(s"Failed to summarize and upload data for conf: $confPath", e)
           throw e
       }
     }
@@ -974,10 +914,6 @@ object Driver {
     addSubcommand(GroupByStreamingArgs)
     object AnalyzerArgs extends Analyzer.Args
     addSubcommand(AnalyzerArgs)
-    object DailyStatsArgs extends DailyStats.Args
-    addSubcommand(DailyStatsArgs)
-    object LogStatsArgs extends LogStats.Args
-    addSubcommand(LogStatsArgs)
     object CompareJoinQueryArgs extends CompareJoinQuery.Args
     addSubcommand(CompareJoinQueryArgs)
     object MetadataExportArgs extends MetadataExport.Args
@@ -988,7 +924,7 @@ object Driver {
     addSubcommand(JoinBackfillFinalArgs)
     object LabelJoinArgs extends LabelJoin.Args
     addSubcommand(LabelJoinArgs)
-    object CreateStatsTableArgs extends CreateStatsTable.Args
+    object CreateStatsTableArgs extends CreateSummaryDataset.Args
     addSubcommand(CreateStatsTableArgs)
     object SummarizeAndUploadArgs extends SummarizeAndUpload.Args
     addSubcommand(SummarizeAndUploadArgs)
@@ -1025,13 +961,11 @@ object Driver {
           case args.ConsistencyMetricsArgs => ConsistencyMetricsCompute.run(args.ConsistencyMetricsArgs)
           case args.CompareJoinQueryArgs   => CompareJoinQuery.run(args.CompareJoinQueryArgs)
           case args.AnalyzerArgs           => Analyzer.run(args.AnalyzerArgs)
-          case args.DailyStatsArgs         => DailyStats.run(args.DailyStatsArgs)
-          case args.LogStatsArgs           => LogStats.run(args.LogStatsArgs)
           case args.MetadataExportArgs     => MetadataExport.run(args.MetadataExportArgs)
           case args.LabelJoinArgs          => LabelJoin.run(args.LabelJoinArgs)
           case args.JoinBackfillLeftArgs   => JoinBackfillLeft.run(args.JoinBackfillLeftArgs)
           case args.JoinBackfillFinalArgs  => JoinBackfillFinal.run(args.JoinBackfillFinalArgs)
-          case args.CreateStatsTableArgs   => CreateStatsTable.run(args.CreateStatsTableArgs)
+          case args.CreateStatsTableArgs   => CreateSummaryDataset.run(args.CreateStatsTableArgs)
           case args.SummarizeAndUploadArgs => SummarizeAndUpload.run(args.SummarizeAndUploadArgs)
           case _                           => logger.info(s"Unknown subcommand: $x")
         }

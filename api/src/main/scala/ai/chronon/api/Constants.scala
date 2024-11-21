@@ -37,7 +37,7 @@ object Constants {
   val ChrononDynamicTable = "chronon_dynamic_table"
   val ChrononOOCTable: String = "chronon_ooc_table"
   val ChrononLogTable: String = "chronon_log_table"
-  val ChrononMetadataKey = "ZIPLINE_METADATA"
+  val MetadataDataset = "CHRONON_METADATA"
   val SchemaPublishEvent = "SCHEMA_PUBLISH_EVENT"
   val StatsBatchDataset = "CHRONON_STATS_BATCH"
   val ConsistencyMetricsDataset = "CHRONON_CONSISTENCY_METRICS_STATS_BATCH"
@@ -62,5 +62,8 @@ object Constants {
   val LabelViewPropertyFeatureTable: String = "feature_table"
   val LabelViewPropertyKeyLabelTable: String = "label_table"
   val ChrononRunDs: String = "CHRONON_RUN_DS"
-  val DriftStatsTable: String = "drift_statistics"
+
+  val TiledSummaryDataset: String = "TILE_SUMMARIES"
+
+  val DefaultDriftTileSize: Window = new Window(30, TimeUnit.MINUTES)
 }

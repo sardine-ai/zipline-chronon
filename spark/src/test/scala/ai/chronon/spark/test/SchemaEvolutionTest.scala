@@ -16,7 +16,7 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
@@ -319,7 +319,7 @@ class SchemaEvolutionTest extends TestCase {
     val tableUtils: TableUtils = TableUtils(spark)
     val inMemoryKvStore = OnlineUtils.buildInMemoryKVStore(namespace)
     val mockApi = new MockApi(() => inMemoryKvStore, namespace)
-    inMemoryKvStore.create(ChrononMetadataKey)
+    inMemoryKvStore.create(MetadataDataset)
     val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
 
     /* STAGE 1: Create join v1 and upload the conf to MetadataStore */

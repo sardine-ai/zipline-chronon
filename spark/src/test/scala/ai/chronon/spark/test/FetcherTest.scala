@@ -19,7 +19,7 @@ package ai.chronon.spark.test
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
@@ -94,7 +94,7 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
 
     val acceptedEndPoints = List(MetadataEndPoint.ConfByKeyEndPointName, MetadataEndPoint.NameByTeamEndPointName)
     val inMemoryKvStore = OnlineUtils.buildInMemoryKVStore("FetcherTest")
-    val singleFileDataSet = ChrononMetadataKey + "_single_file_test"
+    val singleFileDataSet = MetadataDataset + "_single_file_test"
     val singleFileMetadataStore = new MetadataStore(inMemoryKvStore, singleFileDataSet, timeoutMillis = 10000)
     inMemoryKvStore.create(singleFileDataSet)
     // set the working directory to /chronon instead of $MODULE_DIR in configuration if Intellij fails testing
@@ -115,7 +115,7 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
     val teamMetadataRes = teamMetadataResponse.get
     assert(teamMetadataRes.equals("joins/team/example_join.v1"))
 
-    val directoryDataSetDataSet = ChrononMetadataKey + "_directory_test"
+    val directoryDataSetDataSet = MetadataDataset + "_directory_test"
     val directoryMetadataStore = new MetadataStore(inMemoryKvStore, directoryDataSetDataSet, timeoutMillis = 10000)
     inMemoryKvStore.create(directoryDataSetDataSet)
     val directoryDataDirWalker =
@@ -622,7 +622,7 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
     val keyIndices = keys.map(endDsQueries.schema.fieldIndex)
     val tsIndex = endDsQueries.schema.fieldIndex(Constants.TimeColumn)
     val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
-    inMemoryKvStore.create(ChrononMetadataKey)
+    inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 
     def buildRequests(lagMs: Int = 0): Array[Request] =
@@ -752,7 +752,7 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
     val mockApi = new MockApi(kvStoreFunc, namespace)
 
     val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
-    inMemoryKvStore.create(ChrononMetadataKey)
+    inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 
     val request = Request(joinConf.metaData.nameToFilePath, Map.empty)

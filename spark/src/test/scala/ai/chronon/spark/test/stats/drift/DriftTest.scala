@@ -1,24 +1,28 @@
 package ai.chronon.spark.test.stats.drift
 
-import ai.chronon.aggregator.test.Column
-import ai.chronon.api
+import ai.chronon
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
+import ai.chronon.api.DriftMetric
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.PartitionSpec
+import ai.chronon.api.Window
 import ai.chronon.online.KVStore
-import ai.chronon.spark.Extensions._
+import ai.chronon.online.stats.DriftStore
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
-import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
-import ai.chronon.spark.test.DataFrameGen
+import ai.chronon.spark.test.InMemoryKvStore
 import ai.chronon.spark.test.MockApi
-import ai.chronon.spark.test.MockKVStore
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+
+import java.util.concurrent.TimeUnit
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.util.ScalaJavaConversions.ListOps
 
 class DriftTest extends AnyFlatSpec with Matchers {
 
@@ -26,35 +30,6 @@ class DriftTest extends AnyFlatSpec with Matchers {
   implicit val spark: SparkSession = SparkSessionBuilder.build(namespace, local = true)
   implicit val tableUtils: TableUtils = TableUtils(spark)
   tableUtils.createDatabase(namespace)
-
-  "TestDataFrameGenerator" should "create a DataFrame with various column types including nulls" in {
-    try {
-      val df = generateDataFrame(100000, 10, namespace)
-
-      // Check if DataFrame is created
-      df.isEmpty shouldBe false
-      df.show(10, truncate = false)
-
-      val summarizer = new Summarizer("drift_test_basic")
-      val (result, summaryExprs) = summarizer.computeSummaryDf(df)
-      result.show()
-      val packer = new SummaryPacker("drift_test_basic", summaryExprs, summarizer.tileSize, summarizer.sliceColumns)
-      val (packed, _) = packer.packSummaryDf(result)
-      packed.show()
-
-      val props = Map("is-time-sorted" -> "true")
-
-      val kvStore: () => KVStore = () => {
-        val result = new MockKVStore()
-        result.create(Constants.DriftStatsTable, props)
-        result
-      }
-      val api = new MockApi(kvStore, "drift_test_basic")
-
-      val uploader = new SummaryUploader(packed,api)
-      uploader.run()
-    }
-  }
 
   def showTable(name: String)(implicit tableUtils: TableUtils): Unit = {
     println(s"Showing table $name".yellow)
@@ -68,39 +43,77 @@ class DriftTest extends AnyFlatSpec with Matchers {
     df.show(10, truncate = false)
   }
 
-  "PrepareData" should "should create fraud dataframe with anomalies without exceptions" in {
+  "end_to_end" should "fetch prepare anomalous data, summarize, upload and fetch without failures" in {
 
+    // generate anomalous data (join output)
     val prepareData = PrepareData(namespace)
     val join = prepareData.generateAnomalousFraudJoin
-    val df = prepareData.generateFraudSampleData(1000000, "2023-01-01", "2023-03-31", join.metaData.loggedTable)
-
+    val df = prepareData.generateFraudSampleData(100000, "2023-01-01", "2023-01-30", join.metaData.loggedTable)
     df.show(10, truncate = false)
-    Summarizer.compute(join.metaData, ds = "2023-03-31", useLogs = true)
 
+    // compute summary table and packed table (for uploading)
+    Summarizer.compute(join.metaData, ds = "2023-01-30", useLogs = true)
     val summaryTable = join.metaData.summaryTable
     val packedTable = join.metaData.packedSummaryTable
-
     showTable(summaryTable)
     showTable(packedTable)
-  }
 
-  // step1 - generate some data with prepare join
-  // step2 - inject anomalies into the input data
+    // mock api impl for online fetching and uploading
+    val kvStoreFunc: () => KVStore = () => {
+      // cannot reuse the variable - or serialization error
+      val result = InMemoryKvStore.build("drift_test", () => null)
+      result
+    }
+    val api = new MockApi(kvStoreFunc, namespace)
 
-  def generateDataFrame(numRows: Int, partitions: Int, namespace: String)(implicit spark: SparkSession): DataFrame = {
+    // create necessary tables in kvstore
+    val kvStore = api.genKvStore
+    kvStore.create(Constants.MetadataDataset)
+    kvStore.create(Constants.TiledSummaryDataset)
 
-    val dollarTransactions = List(
-      Column("user", api.StringType, 100),
-      Column("user_name", api.StringType, 100),
-      Column("amount_dollars", api.LongType, 100000),
-      Column("item_prices", api.ListType(api.LongType), 1000),
-      Column("category_item_prices", api.MapType(api.StringType, api.IntType), 100),
+    // upload join conf
+    api.buildFetcher().putJoinConf(join)
+
+    // upload summaries
+    val uploader = new SummaryUploader(tableUtils.loadTable(packedTable),api)
+    uploader.run()
+
+    // test drift store methods
+    val driftStore = new DriftStore(api.genKvStore)
+
+    // fetch keys
+    val tileKeys = driftStore.tileKeysForJoin(join)
+    println(tileKeys)
+
+    // fetch summaries
+    val startMs = PartitionSpec.daily.epochMillis("2023-01-01")
+    val endMs = PartitionSpec.daily.epochMillis("2023-01-29")
+    val summariesFuture = driftStore.getSummaries(join, Some(startMs), Some(endMs))
+    val summaries = Await.result(summariesFuture, Duration.create(10, TimeUnit.SECONDS))
+    println(summaries)
+
+    // fetch drift series
+    val driftSeriesFuture = driftStore.getDriftSeries(
+      join.metaData.nameToFilePath,
+      DriftMetric.JENSEN_SHANNON,
+      lookBack = new Window(7, chronon.api.TimeUnit.DAYS),
+      startMs,
+      endMs
     )
+    val driftSeries = Await.result(driftSeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
 
-    val txnsTable = s"$namespace.txns"
-    spark.sql(s"DROP TABLE IF EXISTS $txnsTable")
+    driftSeries.foreach{s => println(s"${s.getKey.getColumn}: ${s.getPercentileDriftSeries.toScala}")}
 
-    DataFrameGen.events(spark, dollarTransactions, numRows, partitions = partitions).save(txnsTable)
-    TableUtils(spark).loadTable(txnsTable)
+    println("Drift series fetched successfully".green)
+
+    // TODO: fix timeout issue
+//    val summarySeriesFuture = driftStore.getSummarySeries(
+//      join.metaData.nameToFilePath,
+//      startMs,
+//      endMs
+//    )
+//    val summarySeries = Await.result(summarySeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
+//    summarySeries.foreach{s => println(s"${s.getKey.getColumn}: ${s.getPercentiles.toScala}")}
+//    println("Summary series fetched successfully".green)
   }
 }

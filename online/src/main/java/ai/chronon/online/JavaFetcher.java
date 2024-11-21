@@ -141,18 +141,6 @@ public class JavaFetcher {
     return new Metrics.Context("group_by.fetch", null, groupByName, null, false, null, null, null, null);
   }
 
-  public CompletableFuture<JavaSeriesStatsResponse> fetchStatsTimeseries(JavaStatsRequest request) {
-    Future<Fetcher.SeriesStatsResponse> response = this.fetcher.fetchStatsTimeseries(request.toScalaRequest());
-    // Convert responses to CompletableFuture
-    return FutureConverters.toJava(response).toCompletableFuture().thenApply(JavaFetcher::toJavaSeriesStatsResponse);
-  }
-
-  public CompletableFuture<JavaSeriesStatsResponse> fetchLogStatsTimeseries(JavaStatsRequest request) {
-    Future<Fetcher.SeriesStatsResponse> response = this.fetcher.fetchLogStatsTimeseries(request.toScalaRequest());
-    // Convert responses to CompletableFuture
-    return FutureConverters.toJava(response).toCompletableFuture().thenApply(JavaFetcher::toJavaSeriesStatsResponse);
-  }
-
   public CompletableFuture<JavaSeriesStatsResponse> fetchConsistencyMetricsTimeseries(JavaStatsRequest request) {
     Future<Fetcher.SeriesStatsResponse> response = this.fetcher.fetchConsistencyMetricsTimeseries(request.toScalaRequest());
     // Convert responses to CompletableFuture

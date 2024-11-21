@@ -158,6 +158,15 @@ object Extensions {
       val teamOverride = Try(customJsonLookUp(Constants.TeamOverride).asInstanceOf[String]).toOption
       teamOverride.getOrElse(metaData.team)
     }
+
+    // if drift spec is set but tile size is not set, default to 30 minutes
+    def driftTileSize: Option[Window] = {
+      Option(metaData.getDriftSpec) match {
+        case Some(driftSpec) =>
+          Option(driftSpec.getTileSize).orElse(Some(Constants.DefaultDriftTileSize))
+        case None => None
+      }
+    }
   }
 
   // one per output column - so single window
@@ -879,24 +888,69 @@ object Extensions {
       partHashes ++ Map(leftSourceKey -> leftHash, join.metaData.bootstrapTable -> bootstrapHash) ++ derivedHashMap
     }
 
-    /*
-    External features computed in online env and logged
-    This method will get the external feature column names
-     */
-    def getExternalFeatureCols: Seq[String] = {
-      Option(join.onlineExternalParts)
-        .map(_.toScala
-          .map { part =>
-            {
-              val keys = part.source.getKeySchema.params.toScala
-                .map(_.name)
-              val values = part.source.getValueSchema.params.toScala
-                .map(_.name)
-              keys ++ values
+    def externalPartColumns: Map[String, Array[String]] =
+      Option(join.onlineExternalParts) match {
+        case Some(parts) =>
+          parts.toScala.map { part =>
+            val keys = part.source.getKeySchema.params.toScala.map(_.name)
+            val values = part.source.getValueSchema.params.toScala.map(_.name)
+            part.fullName -> (keys ++ values).toArray
+          }.toMap
+        case None => Map.empty
+      }
+
+    def derivedColumns: Array[String] =
+      Option(join.getDerivations) match {
+        case Some(derivations) =>
+          derivations.toScala.flatMap { derivation =>
+            derivation.getName match {
+              case "*" => None
+              case _   => Some(derivation.getName)
             }
-          }
-          .flatMap(_.toSet))
-        .getOrElse(Seq.empty)
+          }.toArray
+        case None => Array.empty
+      }
+
+    // renamed cols are no longer part of the output
+    private def renamedColumns: Set[String] =
+      Option(join.derivations)
+        .map {
+          _.toScala.renameOnlyDerivations.map(_.expression).toSet
+        }
+        .getOrElse(Set.empty)
+
+    def joinPartColumns: Map[String, Array[String]] =
+      Option(join.getJoinParts) match {
+        case None => Map.empty
+        case Some(parts) =>
+          parts.toScala.map { part =>
+            val prefix = Option(part.prefix)
+            val groupByName = part.getGroupBy.getMetaData.cleanName
+            val partName = (prefix.toSeq :+ groupByName).mkString("_")
+
+            val outputColumns = part.getGroupBy.valueColumns
+            val cols = outputColumns.map { column =>
+              (prefix.toSeq :+ groupByName :+ column).mkString("_")
+            }
+            partName -> cols
+          }.toMap
+      }
+
+    def outputColumnsByGroup: Map[String, Array[String]] = {
+      val preDeriveCols = (joinPartColumns ++ externalPartColumns)
+      val preDerivedWithoutRenamed = preDeriveCols.mapValues(_.filterNot(renamedColumns.contains))
+      val derivedColumns: Array[String] = Option(join.derivations) match {
+        case Some(derivations) => derivations.toScala.map { _.getName }.filter(_ == "*").toArray
+        case None              => Array.empty
+      }
+      preDerivedWithoutRenamed ++ Map("derivations" -> derivedColumns)
+    }
+
+    def keyColumns: Array[String] = {
+      val joinPartKeys = join.joinParts.toScala.flatMap(_.groupBy.keyColumns.toScala).toSet
+      val externalKeys = join.onlineExternalParts.toScala.flatMap(_.source.keyNames).toSet
+      val bootstrapKeys = join.bootstrapParts.toScala.flatMap(_.keyColumns.toScala).toSet
+      (joinPartKeys ++ externalKeys ++ bootstrapKeys).toArray
     }
 
     /*

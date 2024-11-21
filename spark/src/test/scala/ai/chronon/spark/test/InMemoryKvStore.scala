@@ -38,11 +38,12 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
   type Data = Array[Byte]
   type DataSet = String
   type Version = Long
+  // this linear scans on multiGet TODO: use a better data structure (TreeSet?)
   type VersionedData = mutable.Buffer[(Version, Data)]
   type Table = ConcurrentHashMap[Key, VersionedData]
   protected[spark] val database = new ConcurrentHashMap[DataSet, Table]
 
-  @transient lazy val encoder = Base64.getEncoder
+  @transient lazy val encoder: Base64.Encoder = Base64.getEncoder
   def encode(bytes: Array[Byte]): String = encoder.encodeToString(bytes)
   def toStr(bytes: Array[Byte]): String = new String(bytes, Constants.UTF8)
   override def multiGet(requests: collection.Seq[KVStore.GetRequest]): Future[collection.Seq[KVStore.GetResponse]] = {
@@ -55,7 +56,7 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
             .get(req.dataset) // table
             .get(encode(req.keyBytes)) // values of key
             .filter {
-              case (version, _) => req.afterTsMillis.forall(version >= _)
+              case (version, _) => req.startTsMillis.forall(version >= _)
             } // filter version
             .map { case (version, bytes) => TimedValue(bytes, version) }
         }
@@ -117,7 +118,7 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
   }
 
   override def create(dataset: String): Unit = {
-    database.put(dataset, new ConcurrentHashMap[Key, mutable.Buffer[(Version, Data)]])
+    database.computeIfAbsent(dataset,  _ => new ConcurrentHashMap[Key, VersionedData])
   }
 
   def show(): Unit = {

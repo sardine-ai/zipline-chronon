@@ -46,7 +46,7 @@ object KVStore {
   // endTsMillis - end range of the scan (starts from afterTsMillis to endTsMillis)
   case class GetRequest(keyBytes: Array[Byte],
                         dataset: String,
-                        afterTsMillis: Option[Long] = None,
+                        startTsMillis: Option[Long] = None,
                         endTsMillis: Option[Long] = None)
   case class TimedValue(bytes: Array[Byte], millis: Long)
   case class GetResponse(request: GetRequest, values: Try[Seq[TimedValue]]) {
@@ -261,7 +261,7 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
                          callerName: String = null,
                          disableErrorThrows: Boolean = false): Fetcher =
     new Fetcher(genKvStore,
-                Constants.ChrononMetadataKey,
+                Constants.MetadataDataset,
                 logFunc = responseConsumer,
                 debug = debug,
                 externalSourceRegistry = externalRegistry,
@@ -272,7 +272,7 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
 
   final def buildJavaFetcher(callerName: String = null, disableErrorThrows: Boolean = false): JavaFetcher = {
     new JavaFetcher(genKvStore,
-                    Constants.ChrononMetadataKey,
+                    Constants.MetadataDataset,
                     timeoutMillis,
                     responseConsumer,
                     externalRegistry,

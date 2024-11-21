@@ -18,8 +18,8 @@ If you'd to start with an example, please refer to the [MongoDB Implementation i
 
 ```scala
 object KVStore {
-  // `afterTsMillis` implies that this is a range scan of all values with `timestamp` >= to the specified one. This can be implemented efficiently, if `timestamp` can be a secondary key. Some databases have a native version id concept which also can map to timestamp.
-  case class GetRequest(keyBytes: Array[Byte], dataset: String, afterTsMillis: Option[Long] = None)
+  // `startTsMillis` implies that this is a range scan of all values with `timestamp` >= to the specified one. This can be implemented efficiently, if `timestamp` can be a secondary key. Some databases have a native version id concept which also can map to timestamp.
+  case class GetRequest(keyBytes: Array[Byte], dataset: String, startTsMillis: Option[Long] = None)
 
   // response is a series of values that are 
   case class TimedValue(bytes: Array[Byte], millis: Long)

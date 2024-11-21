@@ -18,7 +18,7 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
@@ -244,7 +244,7 @@ class ChainingFetcherTest extends TestCase {
     val keyIndices = keys.map(endDsQueries.schema.fieldIndex)
     val tsIndex = endDsQueries.schema.fieldIndex(Constants.TimeColumn)
     val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
-    inMemoryKvStore.create(ChrononMetadataKey)
+    inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 
     def buildRequests(lagMs: Int = 0): Array[Request] =
