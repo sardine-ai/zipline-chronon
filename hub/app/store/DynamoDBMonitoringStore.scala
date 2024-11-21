@@ -59,9 +59,8 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
           GroupBy(part.groupBy.metaData.name, part.groupBy.valueColumns)
         }
 
-        val derivedFeatures = thriftJoin.derivationsWithoutStar.map(_.name)
-        val externalFeatures = thriftJoin.getExternalFeatureCols
-        val join = Join(thriftJoin.metaData.name, derivedFeatures ++ externalFeatures, groupBys)
+        val outputColumns = thriftJoin.outputColumnsByGroup.values.flatten.toArray
+        val join = Join(thriftJoin.metaData.name, outputColumns, groupBys)
         Option(
           Model(m.metaData.name, join, m.metaData.online, m.metaData.production, m.metaData.team, m.modelType.name()))
       } else {

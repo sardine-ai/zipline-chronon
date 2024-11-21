@@ -29,7 +29,6 @@ import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
-import ai.chronon.spark.stats.SummaryJob
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.DataFrame
@@ -419,7 +418,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
       metaData = Builders.MetaData(name = "test.country_no_historical_backfill",
                                    namespace = namespace,
                                    team = "chronon",
-                                   historicalBackill = false)
+                                   historicalBackfill = false)
     )
 
     val runner = new Join(joinConf, end, tableUtils)
@@ -1036,8 +1035,6 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     )
     val toCompute = new Join(join, today, tableUtils)
     toCompute.computeJoin()
-    // Add stats
-    new SummaryJob(spark, join, today).dailyRun(stepDays = Some(30))
   }
 
   test("test migration") {

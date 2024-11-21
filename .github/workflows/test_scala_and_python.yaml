@@ -49,7 +49,7 @@ jobs:
           path: api/py/htmlcov
 
   other_spark_tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-8_cores-32_gb
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
       credentials:
@@ -64,7 +64,7 @@ jobs:
 
       - name: Run other spark tests
         run: |
-          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+          export SBT_OPTS="-Xmx24G -Xms4G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt "spark/testOnly"
 
   join_spark_tests:

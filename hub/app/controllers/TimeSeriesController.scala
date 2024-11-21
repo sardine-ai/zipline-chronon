@@ -1,4 +1,5 @@
 package controllers
+import ai.chronon.api.DriftMetric
 import io.circe.generic.auto._
 import io.circe.syntax._
 import model._
@@ -142,7 +143,7 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
 
     (parseOffset(offset), parseAlgorithm(algorithm)) match {
       case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
-      case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
+      case (_, None)          => BadRequest("Invalid drift algorithm. Expect JSD, PSI or Hellinger")
       case (Some(_), Some(_)) =>
         // TODO: Use parsedOffset and parsedAlgorithm when ready
         val mockGroupBys = generateMockGroupBys(3)
@@ -233,6 +234,10 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
             }
             featureTs.asJson
           } else {
+            //
+            //{new: Array[Double], old: Array[Double], x: Array[String]}
+            //{old_null_count: Long, new_null_count: long, old_total_count: Long, new_total_count: Long}
+
             FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs)).asJson
           }
           Ok(featureTsJson.noSpaces)
@@ -275,11 +280,14 @@ object TimeSeriesController {
     }
   }
 
-  def parseAlgorithm(algorithm: Option[String]): Option[DriftAlgorithm] = {
-    algorithm.map(_.toLowerCase) match {
-      case Some("psi") => Some(PSI)
-      case Some("kl")  => Some(KL)
-      case _           => None
+  def parseAlgorithm(algorithm: Option[String]): Option[DriftMetric] = {
+    algorithm.map {
+      _.toLowerCase match {
+        case "psi"       => DriftMetric.PSI
+        case "hellinger" => DriftMetric.HELLINGER
+        case "jsd"       => DriftMetric.JENSEN_SHANNON
+        case _           => throw new IllegalArgumentException("Invalid drift algorithm. Pick one of PSI, Hellinger or JSD")
+      }
     }
   }
 

@@ -116,7 +116,7 @@ class LogBootstrapTest {
     val fetcher = mockApi.buildFetcher(debug = true)
 
     val metadataStore = new MetadataStore(kvStore, timeoutMillis = 10000)
-    kvStore.create(Constants.ChrononMetadataKey)
+    kvStore.create(Constants.MetadataDataset)
     metadataStore.putJoinConf(joinV1)
 
     val requests = spark

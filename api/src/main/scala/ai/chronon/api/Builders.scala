@@ -267,7 +267,8 @@ object Builders {
         samplePercent: Double = 100,
         consistencySamplePercent: Double = 5,
         tableProperties: Map[String, String] = Map.empty,
-        historicalBackill: Boolean = true
+        historicalBackfill: Boolean = true,
+        driftSpec: DriftSpec = null
     ): MetaData = {
       val result = new MetaData()
       result.setName(name)
@@ -283,7 +284,7 @@ object Builders {
       }
 
       result.setTeam(effectiveTeam)
-      result.setHistoricalBackfill(historicalBackill)
+      result.setHistoricalBackfill(historicalBackfill)
       if (dependencies != null)
         result.setDependencies(dependencies.toSeq.toJava)
       if (samplePercent > 0)
@@ -292,6 +293,8 @@ object Builders {
         result.setConsistencySamplePercent(consistencySamplePercent)
       if (tableProperties.nonEmpty)
         result.setTableProperties(tableProperties.toJava)
+      if (driftSpec != null)
+        result.setDriftSpec(driftSpec)
       result
     }
   }

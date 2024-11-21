@@ -490,17 +490,9 @@ class Fetcher(val kvStore: KVStore,
     }
   }
 
-  /** Main endpoint for fetching backfill tables stats or drifts. */
-  def fetchStatsTimeseries(joinRequest: StatsRequest): Future[SeriesStatsResponse] =
-    fetchDriftOrStatsTimeseries(joinRequest, fetchMetricsTimeseriesFromDataset(_, Constants.StatsBatchDataset))
-
   /** Main endpoint for fetching OOC metrics stats or drifts. */
   def fetchConsistencyMetricsTimeseries(joinRequest: StatsRequest): Future[SeriesStatsResponse] =
     fetchDriftOrStatsTimeseries(joinRequest, fetchMetricsTimeseriesFromDataset(_, Constants.ConsistencyMetricsDataset))
-
-  /** Main endpoint for fetching logging stats or drifts. */
-  def fetchLogStatsTimeseries(joinRequest: StatsRequest): Future[SeriesStatsResponse] =
-    fetchDriftOrStatsTimeseries(joinRequest, fetchMetricsTimeseriesFromDataset(_, Constants.LogStatsBatchDataset))
 
   private def fetchMetricsTimeseriesFromDataset(joinRequest: StatsRequest,
                                                 dataset: String): Future[Seq[StatsResponse]] = {
@@ -508,7 +500,7 @@ class Fetcher(val kvStore: KVStore,
     val valueCodec = getStatsSchemaFromKVStore(dataset, s"${joinRequest.name}${Constants.TimedKvRDDValueSchemaKey}")
     val upperBound: Long = joinRequest.endTs.getOrElse(System.currentTimeMillis())
     val responseFuture: Future[Seq[StatsResponse]] = kvStore
-      .get(GetRequest(keyCodec.encodeArray(Array(joinRequest.name)), dataset, afterTsMillis = joinRequest.startTs))
+      .get(GetRequest(keyCodec.encodeArray(Array(joinRequest.name)), dataset, startTsMillis = joinRequest.startTs))
       .map(
         _.values.get.toArray
           .filter(_.millis <= upperBound)

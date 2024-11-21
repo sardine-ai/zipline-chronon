@@ -4,6 +4,10 @@ import ai.chronon.api
 import ai.chronon.api.Builders
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
+import ai.chronon.api.DriftMetric
+import ai.chronon.api.DriftSpec
+import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Operation
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
@@ -36,10 +40,16 @@ import scala.util.Random
 
 case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
+  val dimMerchant = "dim_merchant"
+  val dimUser = "dim_user"
+  val txnByMerchant = "txn_by_merchant"
+  val txnByUser = "txn_by_user"
+
   // generate data for a hypothetical fraud model with anomalies
   // ported from: https://github.com/zipline-ai/chronon/pull/30/
   // jsondiff-ed it to make sure they are semantically equivalent
   def generateAnomalousFraudJoin: api.Join = {
+
     val merchant_source = Builders.Source.entities(
       query = Builders.Query(
         selects = Seq("merchant_id", "account_age", "zipcode", "is_big_merchant", "country", "account_type", "preferred_language").map(s => s->s).toMap
@@ -47,7 +57,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
       snapshotTable = "data.merchants"
     )
     val merchant_group_by = Builders.GroupBy(
-      metaData = Builders.MetaData(name = "risk.merchant_data.merchant_group_by", namespace = namespace),
+      metaData = Builders.MetaData(name = dimMerchant, namespace = namespace),
       sources = Seq(merchant_source),
       keyColumns = Seq("merchant_id")
     )
@@ -66,8 +76,13 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
       val windowSizes = Seq(
         new Window(1, TimeUnit.HOURS),
         new Window(1, TimeUnit.DAYS),
+        new Window(7, TimeUnit.DAYS),
         new Window(30, TimeUnit.DAYS),
         new Window(365, TimeUnit.DAYS)
+      )
+      val avg = Builders.Aggregation(
+        inputColumn = "transaction_amount",
+        operation = Operation.AVERAGE
       )
       val countAgg = Builders.Aggregation(
         inputColumn = "transaction_amount",
@@ -80,18 +95,18 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
         windows = Seq(new Window(1, TimeUnit.HOURS))
       )
       Builders.GroupBy(
-        metaData = Builders.MetaData(name = s"risk.transaction_events.$name", namespace = namespace),
+        metaData = Builders.MetaData(name = name, namespace = namespace),
         sources = Seq(source),
         keyColumns = Seq(key),
-        aggregations = Seq(countAgg, sumAgg)
+        aggregations = Seq(avg, countAgg, sumAgg)
       )
     }
 
     val source_user_transactions = createTransactionSource("user_id")
-    val txn_group_by_user = createTxnGroupBy(source_user_transactions, "user_id", "txn_group_by_user")
+    val txn_group_by_user = createTxnGroupBy(source_user_transactions, "user_id", txnByUser)
 
     val source_merchant_transactions = createTransactionSource("merchant_id")
-    val txn_group_by_merchant = createTxnGroupBy(source_merchant_transactions, "merchant_id", "txn_group_by_merchant")
+    val txn_group_by_merchant = createTxnGroupBy(source_merchant_transactions, "merchant_id", txnByMerchant)
 
     val userSource = Builders.Source.entities(
       query = Builders.Query(
@@ -100,7 +115,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
       snapshotTable = "data.users"
     )
     val userGroupBy = Builders.GroupBy(
-      metaData = Builders.MetaData(name = "risk.user_data.user_group_by", namespace = namespace),
+      metaData = Builders.MetaData(name = dimUser, namespace = namespace),
       sources = Seq(userSource),
       keyColumns = Seq("user_id")
     )
@@ -114,15 +129,26 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
       table = "data.users",
     )
 
+    val driftSpec = new DriftSpec()
+    driftSpec.setTileSize(new Window(30, TimeUnit.MINUTES))
+    driftSpec.setDriftMetric(DriftMetric.JENSEN_SHANNON)
+    val windows = new java.util.ArrayList[Window]()
+    windows.add(new Window(30, TimeUnit.MINUTES))
+    driftSpec.setLookbackWindows(windows)
+
     Builders.Join(
       left = joinUserSource,
       joinParts = Seq(
-        Builders.JoinPart(groupBy = txn_group_by_user, prefix = "user"),
-        Builders.JoinPart(groupBy = txn_group_by_merchant, prefix = "merchant"),
-        Builders.JoinPart(groupBy = userGroupBy, prefix = "user"),
-        Builders.JoinPart(groupBy = merchant_group_by, prefix = "merchant")
+        Builders.JoinPart(groupBy = txn_group_by_user),
+        Builders.JoinPart(groupBy = txn_group_by_merchant),
+        Builders.JoinPart(groupBy = userGroupBy),
+        Builders.JoinPart(groupBy = merchant_group_by)
       ),
-      metaData = Builders.MetaData(name = "risk.user_transactions.txn_join", namespace = namespace)
+      metaData = Builders.MetaData(
+        name = "risk.user_transactions.txn_join",
+        namespace = namespace,
+        driftSpec = driftSpec
+      )
     )
   }
 
@@ -147,7 +173,8 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
   def generateNonOverlappingWindows(startDate: LocalDate, endDate: LocalDate, numWindows: Int): List[(LocalDate, LocalDate)] = {
     val totalDays = ChronoUnit.DAYS.between(startDate, endDate).toInt
     val windowLengths = List.fill(numWindows)(RandomUtils.between(3, 8))
-    val gapDays = RandomUtils.between(7, 31)
+    val maxGap = totalDays - windowLengths.sum
+    val gapDays = RandomUtils.between(2, maxGap)
 
     val windows = new ListBuffer[(LocalDate, LocalDate)]()
     var currentStart = startDate.plusDays(RandomUtils.between(0, totalDays - windowLengths.sum - gapDays + 1))
@@ -211,6 +238,14 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     TimeSeriesWithAnomalies(data, nullWindow = nullWindow, spikeWindow = spikeWindow)
   }
 
+  implicit class StructFieldOps(sf: StructField) {
+    def prefix(p: String): StructField = {
+      val name = s"${p.sanitize}_${sf.name}"
+      sf.copy(name = name)
+    }
+  }
+
+
   private val fraudFields = Array(
     // join.source - txn_events
     StructField("user_id", IntegerType, nullable = true),
@@ -221,47 +256,59 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     StructField("transaction_time", LongType, nullable = true),
     StructField("transaction_type", StringType, nullable = true),
 
-    // Transactions agg'd by user - 7 (txn_events)
-    StructField("user_average_transaction_amount", DoubleType, nullable = true),
-    StructField("user_transactions_last_hour", IntegerType, nullable = true),
-    StructField("user_transactions_last_day", IntegerType, nullable = true),
-    StructField("user_transactions_last_week", IntegerType, nullable = true),
-    StructField("user_transactions_last_month", IntegerType, nullable = true),
-    StructField("user_transactions_last_year", IntegerType, nullable = true),
-    StructField("user_amount_last_hour", DoubleType, nullable = true),
+    // Transactions agg'd by user - 5 (txn_events)
+    StructField("transaction_amount_average", DoubleType, nullable = true).prefix(txnByUser),
+    StructField("transaction_amount_count_1h", IntegerType, nullable = true).prefix(txnByUser),
+    StructField("transaction_amount_count_1d", IntegerType, nullable = true).prefix(txnByUser),
+    StructField("transaction_amount_count_7d", IntegerType, nullable = true).prefix(txnByUser),
+    StructField("transaction_amount_count_30d", IntegerType, nullable = true).prefix(txnByUser),
+    StructField("transaction_amount_count_365d", IntegerType, nullable = true).prefix(txnByUser),
+    StructField("transaction_amount_sum_1h", DoubleType, nullable = true).prefix(txnByUser),
 
     // Transactions agg'd by merchant - 7 (txn_events)
-    StructField("merchant_average_transaction_amount", DoubleType, nullable = true),
-    StructField("merchant_transactions_last_hour", IntegerType, nullable = true),
-    StructField("merchant_transactions_last_day", IntegerType, nullable = true),
-    StructField("merchant_transactions_last_week", IntegerType, nullable = true),
-    StructField("merchant_transactions_last_month", IntegerType, nullable = true),
-    StructField("merchant_transactions_last_year", IntegerType, nullable = true),
-    StructField("merchant_amount_last_hour", DoubleType, nullable = true),
+    StructField("transaction_amount_average", DoubleType, nullable = true).prefix(txnByMerchant),
+    StructField("transaction_amount_count_1h", IntegerType, nullable = true).prefix(txnByMerchant),
+    StructField("transaction_amount_count_1d", IntegerType, nullable = true).prefix(txnByMerchant),
+    StructField("transaction_amount_count_7d", IntegerType, nullable = true).prefix(txnByMerchant),
+    StructField("transaction_amount_count_30d", IntegerType, nullable = true).prefix(txnByMerchant),
+    StructField("transaction_amount_count_365d", IntegerType, nullable = true).prefix(txnByMerchant),
+    StructField("transaction_amount_sum_1h", DoubleType, nullable = true).prefix(txnByMerchant),
 
     // User features (dim_user) – 7
-    StructField("user_account_age", IntegerType, nullable = true),
-    StructField("account_balance", DoubleType, nullable = true),
-    StructField("credit_score", IntegerType, nullable = true),
-    StructField("number_of_devices", IntegerType, nullable = true),
-    StructField("user_country", StringType, nullable = true),
-    StructField("user_account_type", IntegerType, nullable = true),
-    StructField("user_preferred_language", StringType, nullable = true),
+    StructField("account_age", IntegerType, nullable = true).prefix(dimUser),
+    StructField("account_balance", DoubleType, nullable = true).prefix(dimUser),
+    StructField("credit_score", IntegerType, nullable = true).prefix(dimUser),
+    StructField("number_of_devices", IntegerType, nullable = true).prefix(dimUser),
+    StructField("country", StringType, nullable = true).prefix(dimUser),
+    StructField("account_type", IntegerType, nullable = true).prefix(dimUser),
+    StructField("preferred_language", StringType, nullable = true).prefix(dimUser),
 
     // merchant features (dim_merchant) – 4
-    StructField("merchant_account_age", IntegerType, nullable = true),
-    StructField("zipcode", IntegerType, nullable = true),
+    StructField("account_age", IntegerType, nullable = true).prefix(dimMerchant),
+    StructField("zipcode", IntegerType, nullable = true).prefix(dimMerchant),
     // set to true for 100 merchant_ids
-    StructField("is_big_merchant", BooleanType, nullable = true),
-    StructField("merchant_country", StringType, nullable = true),
-    StructField("merchant_account_type", IntegerType, nullable = true),
-    StructField("merchant_preferred_language", StringType, nullable = true),
+    StructField("is_big_merchant", BooleanType, nullable = true).prefix(dimMerchant),
+    StructField("country", StringType, nullable = true).prefix(dimMerchant),
+    StructField("account_type", IntegerType, nullable = true).prefix(dimMerchant),
+    StructField("preferred_language", StringType, nullable = true).prefix(dimMerchant),
 
     // derived features - transactions_last_year / account_age - 1
     StructField("transaction_frequency_last_year", DoubleType, nullable = true)
   )
 
-  private val fraudSchema: StructType = StructType(fraudFields)
+  private val fraudJoin: api.Join = generateAnomalousFraudJoin
+  private val fraudSchema: StructType = {
+    val schema = StructType(fraudFields)
+    val expected = fraudJoin.outputColumnsByGroup.values.flatten.toSet
+    val actual = schema.fieldNames.toSet
+
+    val matching = expected.intersect(actual)
+    val missing = expected.diff(actual)
+    val extra = actual.diff(expected)
+
+    require(matching == expected, s"Schema mismatch: expected $expected, got $actual. Missing: $missing, Extra: $extra")
+    schema
+  }
 
   def generateFraudSampleData(numSamples: Int = 10000,
                               startDateStr: String,
@@ -277,7 +324,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
     val timeDelta = Duration.between(startDate, endDate).dividedBy(numSamples)
 
-    val anomalyWindows = generateNonOverlappingWindows(startDate.toLocalDate, endDate.toLocalDate, 2)
+     val anomalyWindows = generateNonOverlappingWindows(startDate.toLocalDate, endDate.toLocalDate, 2)
 
     // Generate base values
     val transactionAmount = generateTimeseriesWithAnomalies(numSamples, 100, 50, 10)
@@ -383,6 +430,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
     dfWithTimeConvention.save(outputTable)
     println(s"Successfully wrote fraud data to table. ${outputTable.yellow}")
+
 
     dfWithTimeConvention
   }

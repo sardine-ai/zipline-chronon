@@ -15,7 +15,7 @@
  */
 
 package ai.chronon.spark.test
-import ai.chronon.api.Constants.ChrononMetadataKey
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.spark.LoggingSchema
@@ -94,7 +94,7 @@ class ExternalSourcesTest {
     val kvStoreFunc = () => OnlineUtils.buildInMemoryKVStore("external_test")
     val mockApi = new MockApi(kvStoreFunc, "external_test")
     val fetcher = mockApi.buildFetcher(true)
-    fetcher.kvStore.create(ChrononMetadataKey)
+    fetcher.kvStore.create(MetadataDataset)
     fetcher.putJoinConf(join)
 
     val requests = (10 until 21).map(x =>
