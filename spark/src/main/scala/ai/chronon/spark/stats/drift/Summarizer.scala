@@ -181,18 +181,16 @@ class Summarizer(confPath: String,
     counts
   }
 
-  // TODO: figure out why this gets called multiple times
-  private def buildSummaryExpressions(inputDf: DataFrame, summaryInputDf: DataFrame): Seq[SummaryExpression] =
-    summaryInputDf.schema.fields.flatMap { f =>
-      val cardinalityMap = buildCardinalityMap(inputDf)
-      val cardinality = if (cardinalityMap.contains(f.name)) {
-        if (cardinalityMap(f.name) <= cardinalityThreshold) Cardinality.LOW else Cardinality.HIGH
-      } else {
-        logger.info(s"Cardinality not computed for column ${f.name}".yellow)
-        Cardinality.LOW
-      }
+  private def buildSummaryExpressions(inputDf: DataFrame, summaryInputDf: DataFrame): Seq[SummaryExpression] = {
+    val cardinalityMap = buildCardinalityMap(inputDf)
+    val excludedFields = Set(Constants.TileColumn, tu.partitionColumn, Constants.TimeColumn)
+    summaryInputDf.schema.fields.filterNot { f => excludedFields.contains(f.name) }.flatMap { f =>
+      val cardinality =
+        if (cardinalityMap(f.name + "_cardinality") <= cardinalityThreshold) Cardinality.LOW else Cardinality.HIGH
+
       SummaryExpression.of(f.dataType, cardinality, f.name)
     }
+  }
 
   private[spark] def computeSummaryDf(df: DataFrame): (DataFrame, Seq[SummaryExpression]) = {
     val summaryInputDf = prepare(df)._2
