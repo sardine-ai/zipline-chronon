@@ -12,8 +12,8 @@ RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazon
 RUN apk add --no-cache amazon-corretto-17
 
 # java
-ENV JAVA_HOME /usr/lib/jvm/default-jvm
-ENV PATH $PATH:$JAVA_HOME/bin
+ENV JAVA_HOME=/usr/lib/jvm/default-jvm
+ENV PATH=$PATH:$JAVA_HOME/bin
 
 # sbt for scala
 RUN curl -L "https://github.com/sbt/sbt/releases/download/v1.8.2/sbt-1.8.2.tgz" | tar -xz -C /usr/local

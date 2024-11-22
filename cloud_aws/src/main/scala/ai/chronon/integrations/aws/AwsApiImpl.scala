@@ -17,16 +17,26 @@ import java.net.URI
   */
 class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
   @transient lazy val ddbClient: DynamoDbClient = {
-    val regionEnvVar =
-      sys.env.getOrElse("AWS_DEFAULT_REGION", throw new IllegalArgumentException("Missing AWS_DEFAULT_REGION env var"))
-    val dynamoEndpoint =
-      sys.env.getOrElse("DYNAMO_ENDPOINT", throw new IllegalArgumentException("Missing DYNAMO_ENDPOINT env var"))
-
-    DynamoDbClient
+    var builder = DynamoDbClient
       .builder()
-      .region(Region.of(regionEnvVar))
-      .endpointOverride(URI.create(dynamoEndpoint)) // TODO remove post docker
-      .build()
+    sys.env.get("AWS_DEFAULT_REGION").foreach { region =>
+      try {
+        builder = builder.region(Region.of(region))
+      } catch {
+        case e: IllegalArgumentException =>
+          throw new IllegalArgumentException(s"Invalid AWS region format: $region", e)
+      }
+    }
+    sys.env.get("DYNAMO_ENDPOINT").foreach { endpoint =>
+      try {
+        builder = builder.endpointOverride(URI.create(endpoint))
+      } catch {
+        case e: IllegalArgumentException =>
+          throw new IllegalArgumentException(s"Invalid DynamoDB endpoint URI: $endpoint", e)
+      }
+    }
+    builder.build()
+
   }
 
   override def genKvStore: KVStore = {
