@@ -22,7 +22,7 @@ echo "Metadata load completed successfully!"
 
 # Initialize DynamoDB
 echo "Initializing DynamoDB Table .."
-if ! output=$(java -cp $SPARK_JAR:$CLASSPATH ai.chronon.spark.Driver create-stats-table \
+if ! output=$(java -cp $SPARK_JAR:$CLASSPATH ai.chronon.spark.Driver create-summary-dataset \
   --online-jar=$CLOUD_AWS_JAR \
   --online-class=$ONLINE_CLASS 2>&1); then
   echo "Error: Failed to bring up DynamoDB table" >&2
@@ -39,7 +39,7 @@ if ! java --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun
   --online-jar=$CLOUD_AWS_JAR \
   --online-class=$ONLINE_CLASS \
   --parquet-path="$(pwd)/drift_data" \
-  --table-name=drift_statistics \
+  --conf-path=/chronon_sample/production/ \
   --time-column=transaction_time; then
   echo "Error: Failed to load summary data into DynamoDB" >&2
   exit 1
