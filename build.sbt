@@ -1,6 +1,8 @@
-import sbt.Keys.{libraryDependencies, *}
+import sbt.Keys.{dependencyOverrides, libraryDependencies, *}
 import sbt.{Test, *}
 import sbt.Tests.{Group, SubProcess}
+
+import scala.collection.Seq
 
 // Notes about a few dependencies - and how we land on versions
 // Our approach is to use the latest stable versions of deps as of today (July 24) and pin to them for a few years
@@ -64,10 +66,10 @@ val spark_all = Seq(
   "org.apache.spark" %% "spark-hive",
   "org.apache.spark" %% "spark-core",
   "org.apache.spark" %% "spark-streaming",
-  "org.apache.spark" %% "spark-sql-kafka-0-10",
+  "org.apache.spark" %% "spark-sql-kafka-0-10"
 ).map(_ % spark_3_5) :+ (
-    "javax.servlet" % "javax.servlet-api" % "3.1.0",
-  )
+  "javax.servlet" % "javax.servlet-api" % "3.1.0",
+)
 val spark_all_provided = spark_all.map(_ % "provided")
 
 val jackson = Seq(
@@ -106,10 +108,10 @@ lazy val aggregator = project
   .dependsOn(api.%("compile->compile;test->test"))
   .settings(
     libraryDependencies ++= Seq(
-        "org.apache.datasketches" % "datasketches-java" % "6.1.0",
-        "com.google.code.gson" % "gson" % "2.10.1"
-      ),
-    libraryDependencies ++= spark_sql_provided,
+      "org.apache.datasketches" % "datasketches-java" % "6.1.0",
+      "com.google.code.gson" % "gson" % "2.10.1"
+    ),
+    libraryDependencies ++= spark_sql_provided
   )
 
 // todo add a service module with spark as a hard dependency
@@ -122,7 +124,7 @@ lazy val online = project
       "com.datadoghq" % "java-dogstatsd-client" % "4.4.1",
       "org.rogach" %% "scallop" % "5.1.0",
       "net.jodah" % "typetools" % "0.6.3",
-      "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8",
+      "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8"
     ),
     libraryDependencies ++= jackson,
     libraryDependencies ++= spark_all.map(_ % "provided"),
@@ -158,15 +160,20 @@ lazy val spark = project
     libraryDependencies ++= spark_all_provided,
     libraryDependencies ++= spark_all.map(_ % "test"),
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
-    libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre"
-)
+    libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre",
+    // Ensure consistent versions of logging libraries
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.13",
+    dependencyOverrides ++= Seq(
+      "org.slf4j" % "slf4j-api" % "1.7.36"
+    )
+  )
 
 lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online)
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
-    libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll(
+    libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-slf4j-impl")
@@ -258,7 +265,7 @@ lazy val hub = (project in file("hub"))
     // Ensure consistent versions of logging libraries
     dependencyOverrides ++= Seq(
       "org.slf4j" % "slf4j-api" % "1.7.36",
-      "ch.qos.logback" % "logback-classic" % "1.2.11"
+      "ch.qos.logback" % "logback-classic" % "1.2.13"
     )
   )
 
