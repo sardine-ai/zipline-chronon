@@ -74,3 +74,6 @@ releases
 
 # Generated during dynamodb kv store tests
 /cloud_aws/dynamodb-local-metadata.json
+
+# Elastic Search files
+/docker-init/elasticsearch-data
