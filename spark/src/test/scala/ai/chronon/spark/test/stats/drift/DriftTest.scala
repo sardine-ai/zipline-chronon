@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.IteratorOps
 
 class DriftTest extends AnyFlatSpec with Matchers {
 
@@ -102,18 +102,46 @@ class DriftTest extends AnyFlatSpec with Matchers {
     )
     val driftSeries = Await.result(driftSeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
 
-    driftSeries.foreach{s => println(s"${s.getKey.getColumn}: ${s.getPercentileDriftSeries.toScala}")}
+    val (nulls, totals) = driftSeries.iterator.foldLeft(0 -> 0) {
+      case ((nulls, total), s) =>
+        val currentNulls = s.getPercentileDriftSeries.iterator().toScala.count(_ == null)
+        val currentCount = s.getPercentileDriftSeries.size()
+        (nulls + currentNulls, total + currentCount)
+    }
+
+    println(
+      s"""drift totals: $totals
+         |drift nulls: $nulls
+         |""".stripMargin.red)
 
     println("Drift series fetched successfully".green)
 
-    // TODO: fix timeout issue
-//    val summarySeriesFuture = driftStore.getSummarySeries(
-//      join.metaData.nameToFilePath,
-//      startMs,
-//      endMs
-//    )
-//    val summarySeries = Await.result(summarySeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
-//    summarySeries.foreach{s => println(s"${s.getKey.getColumn}: ${s.getPercentiles.toScala}")}
-//    println("Summary series fetched successfully".green)
+    totals should be > 0
+    nulls.toDouble / totals.toDouble should be < 0.6
+
+    val summarySeriesFuture = driftStore.getSummarySeries(
+      join.metaData.nameToFilePath,
+      startMs,
+      endMs
+    )
+    val summarySeries = Await.result(summarySeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
+    val (summaryNulls, summaryTotals) = summarySeries.iterator.foldLeft(0 -> 0) {
+      case ((nulls, total), s) =>
+        if (s.getPercentiles == null) {
+          (nulls + 1) -> (total + 1)
+        } else {
+          val currentNulls = s.getPercentiles.iterator().toScala.count(_ == null)
+          val currentCount = s.getPercentiles.size()
+          (nulls + currentNulls, total + currentCount)
+        }
+    }
+    println(
+      s"""summary ptile totals: $summaryTotals
+         |summary ptile nulls: $summaryNulls
+         |""".stripMargin)
+
+    summaryTotals should be > 0
+    summaryNulls.toDouble / summaryTotals.toDouble should be < 0.1
+    println("Summary series fetched successfully".green)
   }
 }
