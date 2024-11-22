@@ -13,11 +13,7 @@
 
 <RangeCalendarPrimitive.NextButton
 	on:click
-	class={cn(
-		buttonVariants({ variant: 'outline' }),
-		'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100',
-		className
-	)}
+	class={cn(buttonVariants({ variant: 'secondary' }), 'h-7 w-7 p-0', className)}
 	{...$$restProps}
 	let:builder
 >

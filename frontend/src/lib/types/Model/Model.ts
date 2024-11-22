@@ -41,7 +41,14 @@ export type FeatureResponse = {
 };
 
 export type RawComparedFeatureResponse = {
-	feature: string;
-	baseline: TimeSeriesItem[];
-	current: TimeSeriesItem[];
+	new: number[];
+	old: number[];
+	x: string[];
+};
+
+export type NullComparedFeatureResponse = {
+	oldNullCount: number;
+	newNullCount: number;
+	oldValueCount: number;
+	newValueCount: number;
 };

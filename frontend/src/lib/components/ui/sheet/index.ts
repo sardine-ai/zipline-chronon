@@ -38,7 +38,7 @@ export {
 };
 
 export const sheetVariants = tv({
-	base: 'bg-background fixed z-50 gap-4 px-4 py-5 shadow-lg',
+	base: 'bg-neutral-200 fixed z-50 gap-4 px-4 py-5 shadow-lg',
 	variants: {
 		side: {
 			top: 'inset-x-0 top-0 border-b ',

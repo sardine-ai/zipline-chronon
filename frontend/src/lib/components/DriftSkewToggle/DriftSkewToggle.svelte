@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { Icon, ArrowTrendingUp, ArrowsRightLeft } from 'svelte-hero-icons';
-
+	import { Icon, ArrowTrendingUp } from 'svelte-hero-icons';
+	import { ChartSkew } from '@zipline-ai/icons';
 	let {
 		selected = $bindable('drift')
 	}: {
@@ -13,21 +13,25 @@
 	}
 </script>
 
-<div class="flex space-x-2">
+<div class="flex space-x-[1px]">
 	<Button
-		variant={selected === 'drift' ? 'default' : 'outline'}
+		variant={selected === 'drift' ? 'default' : 'secondary'}
 		size="sm"
 		on:click={() => toggle('drift')}
+		class="rounded-r-none"
+		icon="leading"
 	>
-		<Icon src={ArrowTrendingUp} micro size="16" class="mr-2" />
+		<Icon src={ArrowTrendingUp} micro size="16" />
 		Drift
 	</Button>
 	<Button
-		variant={selected === 'skew' ? 'default' : 'outline'}
+		variant={selected === 'skew' ? 'default' : 'secondary'}
 		size="sm"
 		on:click={() => toggle('skew')}
+		class="rounded-l-none"
+		icon="leading"
 	>
-		<Icon src={ArrowsRightLeft} micro size="16" class="mr-2" />
+		<Icon src={ChartSkew} size="16" />
 		Skew
 	</Button>
 </div>

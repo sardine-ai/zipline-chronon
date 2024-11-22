@@ -15,7 +15,7 @@
 <li
 	role="presentation"
 	aria-hidden="true"
-	class={cn('[&>svg]:size-3.5', className)}
+	class={cn('[&>svg]:size-3.5 text-neutral-800', className)}
 	bind:this={el}
 	{...$$restProps}
 >

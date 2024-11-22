@@ -1,4 +1,8 @@
-import type { FeatureResponse, RawComparedFeatureResponse } from '$lib/types/Model/Model';
+import type {
+	FeatureResponse,
+	NullComparedFeatureResponse,
+	RawComparedFeatureResponse
+} from '$lib/types/Model/Model';
 
 export const percentileSampleData: FeatureResponse = {
 	feature: 'my_feat',
@@ -710,35 +714,41 @@ export const percentileSampleData: FeatureResponse = {
 };
 
 export const comparedFeatureNumericalSampleData: RawComparedFeatureResponse = {
-	feature: 'my_feat',
-	baseline: [
-		{ value: 0, ts: 1727807201931, label: 0, nullValue: 1 },
-		{ value: 3, ts: 1727807201931, label: 1, nullValue: 3 },
-		{ value: 6, ts: 1727807201931, label: 2, nullValue: 2 },
-		{ value: 9, ts: 1727807201931, label: 3, nullValue: 10 },
-		{ value: 2, ts: 1727807201931, label: 4, nullValue: 9 },
-		{ value: 1, ts: 1727807201931, label: 5, nullValue: 6 }
-	],
-	current: [
-		{ value: 1, ts: 1727807201931, label: 0, nullValue: 19 },
-		{ value: 9, ts: 1727807201931, label: 1, nullValue: 33 },
-		{ value: 3, ts: 1727807201931, label: 2, nullValue: 1 },
-		{ value: 2, ts: 1727807201931, label: 3, nullValue: 23 },
-		{ value: 1, ts: 1727807201931, label: 4, nullValue: 12 },
-		{ value: 0, ts: 1727807201931, label: 5, nullValue: 3 }
-	]
+	new: Array.from({ length: 1000 }, () => Math.floor(Math.random() * 100) + 1),
+	old: Array.from({ length: 1000 }, () => Math.floor(Math.random() * 10) + 1),
+	x: Array.from({ length: 1000 }, (_, i) => i.toString())
 };
 
 export const comparedFeatureCategoricalSampleData: RawComparedFeatureResponse = {
-	feature: 'my_feat',
-	baseline: [
-		{ value: 2, ts: 1727807201931, label: 'A', nullValue: 33 },
-		{ value: 1, ts: 1727807201931, label: 'B', nullValue: 0 },
-		{ value: 6, ts: 1727807201931, label: 'C', nullValue: 5 }
-	],
-	current: [
-		{ value: 1, ts: 1727807201931, label: 'A', nullValue: 11 },
-		{ value: 4, ts: 1727807201931, label: 'B', nullValue: 23 },
-		{ value: 2, ts: 1727807201931, label: 'C', nullValue: 9 }
+	new: [10, 1, 12, 8, 15, 7, 13, 4, 9, 11, 6, 14, 3, 16, 5, 8, 12, 7, 10, 9],
+	old: [1, 3, 1, 5, 8, 2, 6, 2, 4, 7, 3, 9, 1, 7, 2, 4, 5, 3, 6, 4],
+	x: [
+		'apples',
+		'oranges',
+		'pears',
+		'bananas',
+		'strawberries',
+		'blueberries',
+		'mangoes',
+		'grapes',
+		'peaches',
+		'plums',
+		'cherries',
+		'watermelons',
+		'kiwis',
+		'pineapples',
+		'raspberries',
+		'blackberries',
+		'lemons',
+		'limes',
+		'figs',
+		'pomegranates'
 	]
+};
+
+export const nullCountSampleData: NullComparedFeatureResponse = {
+	oldNullCount: 10,
+	newNullCount: 20,
+	oldValueCount: 90,
+	newValueCount: 80
 };

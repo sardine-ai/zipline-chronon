@@ -16,7 +16,7 @@
 	let attrs: Record<string, unknown>;
 
 	$: attrs = {
-		class: cn('hover:text-foreground transition-colors', className),
+		class: cn('hover:text-foreground transition-colors text-neutral-800', className),
 		href,
 		...$$restProps
 	};

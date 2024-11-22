@@ -8,12 +8,10 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Icon, Plus, ArrowsUpDown } from 'svelte-hero-icons';
-
+	import TrueFalseBadge from '$lib/components/TrueFalseBadge/TrueFalseBadge.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import PageHeader from '$lib/components/PageHeader/PageHeader.svelte';
+	import ActionButtons from '$lib/components/ActionButtons/ActionButtons.svelte';
 
 	const { data } = $props();
 	const models: Model[] = $state(data.models.items);
@@ -22,23 +20,13 @@
 <PageHeader title="Models"></PageHeader>
 
 <div class="w-full">
-	<div class="flex space-x-3 mb-4">
-		<Button variant="secondary" size="sm">
-			<Icon src={Plus} micro size="16" class="mr-2" />
-			Filter
-		</Button>
-		<Button variant="secondary" size="sm">
-			<Icon src={ArrowsUpDown} micro size="16" class="mr-2" />
-
-			Sort
-		</Button>
-	</div>
+	<ActionButtons class="mb-4" />
 </div>
 <Separator fullWidthExtend={true} />
 <Table>
 	<TableHeader>
 		<TableRow>
-			<TableHead>Name</TableHead>
+			<TableHead>Model</TableHead>
 			<TableHead>Team</TableHead>
 			<TableHead>Type</TableHead>
 			<TableHead>Online</TableHead>
@@ -49,27 +37,20 @@
 		{#each models as model}
 			<TableRow>
 				<TableCell>
-					<a href="/models/{model.name}/observability" class="hover:underline">
+					<a href="/models/{model.name}" class="hover:underline">
 						{model.name}
 					</a>
 				</TableCell>
 				<TableCell>{model.team}</TableCell>
 				<TableCell>{model.modelType}</TableCell>
 				<TableCell>
-					{#if model.online}
-						<Badge variant="success">True</Badge>
-					{:else}
-						False
-					{/if}
+					<TrueFalseBadge isTrue={model.online} />
 				</TableCell>
 				<TableCell>
-					{#if model.production}
-						<Badge variant="success">True</Badge>
-					{:else}
-						False
-					{/if}
+					<TrueFalseBadge isTrue={model.production} />
 				</TableCell>
 			</TableRow>
 		{/each}
 	</TableBody>
 </Table>
+<Separator fullWidthExtend={true} />

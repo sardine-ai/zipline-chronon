@@ -1,6 +1,6 @@
 import { fontFamily } from 'tailwindcss/defaultTheme';
 import typography from '@tailwindcss/typography';
-
+import { createColorScale } from './src/lib/util/colors';
 /** @type {import('tailwindcss').Config} */
 const config = {
 	plugins: [typography],
@@ -22,10 +22,10 @@ const config = {
 				ring: 'hsl(var(--ring) / <alpha-value>)',
 				background: 'hsl(var(--background) / <alpha-value>)',
 				foreground: 'hsl(var(--foreground) / <alpha-value>)',
-				primary: {
-					DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
-					foreground: 'hsl(var(--primary-foreground) / <alpha-value>)'
-				},
+				// todo add default and foreground shades for neutral and warning
+				neutral: createColorScale('neutral'),
+				warning: createColorScale('warning'),
+				primary: createColorScale('primary'),
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
 					foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)'
@@ -36,7 +36,9 @@ const config = {
 				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
-					foreground: 'hsl(var(--muted-foreground) / <alpha-value>)'
+					foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+					'icon-neutral': 'hsl(var(--muted-icon-neutral) / <alpha-value>)',
+					'icon-primary': 'hsl(var(--muted-icon-primary) / <alpha-value>)'
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
@@ -60,13 +62,80 @@ const config = {
 				sans: ['Geist Mono', 'Geist', ...fontFamily.sans]
 			},
 			fontSize: {
-				sm: ['13px', { lineHeight: '16px' }],
-				md: ['14px', { lineHeight: '18px' }],
-				lg: ['16px', { lineHeight: '21px' }],
-				xl: ['20px', { lineHeight: '28px' }],
-				'2xl': ['25px', { lineHeight: '32px' }],
-				'3xl': ['34px', { lineHeight: '32px' }],
-				'4xl': ['52px', { lineHeight: '58px' }]
+				'3xl-medium': [
+					'3.625rem', // 58px
+					{
+						lineHeight: '3.75rem', // 60px
+						letterSpacing: '-0.125rem', // -2px
+						fontWeight: '500'
+					}
+				],
+				'2xl-medium': [
+					'2.25rem', // 36px
+					{
+						lineHeight: '2.75rem', // 44px
+						letterSpacing: '-0.0625rem', // -1px
+						fontWeight: '500'
+					}
+				],
+				'xl-medium': [
+					'1.25rem', // 20px
+					{
+						lineHeight: '1.75rem', // 28px
+						letterSpacing: '0rem', // 0px
+						fontWeight: '500'
+					}
+				],
+				'large-medium': [
+					'1rem', // 16px
+					{
+						lineHeight: '1.5rem', // 24px
+						letterSpacing: '0rem',
+						fontWeight: '500'
+					}
+				],
+				'regular-medium': [
+					'0.875rem', // 14px
+					{
+						lineHeight: '1.25rem', // 20px
+						letterSpacing: '0rem',
+						fontWeight: '500'
+					}
+				],
+				regular: [
+					'0.875rem', // 14px
+					{
+						lineHeight: '1.25rem', // 20px
+						letterSpacing: '0rem',
+						fontWeight: '400'
+					}
+				],
+				'regular-mono': [], // todo
+				small: [
+					'0.8125rem', // 13px
+					{
+						lineHeight: '1rem', // 16px
+						letterSpacing: '0rem',
+						fontWeight: '400'
+					}
+				],
+				'xs-medium': [
+					'0.75rem', // 12px
+					{
+						lineHeight: '0.875rem', // 14px
+						letterSpacing: '0rem',
+						fontWeight: '500'
+					}
+				],
+				xs: [
+					'0.75rem', // 12px
+					{
+						lineHeight: '0.875rem', // 14px
+						letterSpacing: '0rem',
+						fontWeight: '400'
+					}
+				],
+				'xs-mono': [] // todo
 			}
 		}
 	}

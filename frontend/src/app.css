@@ -37,11 +37,13 @@
 	}
 
 	.dark {
-		--background: 0 0% 3.9%;
-		--foreground: 0 0% 98%;
+		--background: var(--neutral-50);
+		--foreground: 0 0% 100%;
 
 		--muted: 0 0% 14.9%;
-		--muted-foreground: 0 0% 63.9%;
+		--muted-foreground: var(--neutral-800);
+		--muted-icon-neutral: var(--neutral-700);
+		--muted-icon-primary: var(--primary-700);
 
 		--popover: 0 0% 3.9%;
 		--popover-foreground: 0 0% 98%;
@@ -49,11 +51,44 @@
 		--card: 0 0% 3.9%;
 		--card-foreground: 0 0% 98%;
 
-		--border: 0 0% 14.9%;
+		--border: var(--neutral-300);
 		--input: 0 0% 14.9%;
 
-		--primary: 0 0% 98%;
-		--primary-foreground: 0 0% 9%;
+		--neutral-50: 0 0% 5%;
+		--neutral-100: 0 0% 8%;
+		--neutral-200: 0 0% 10%;
+		--neutral-300: 0 0% 13%;
+		--neutral-400: 0 0% 16%;
+		--neutral-500: 0 0% 24%;
+		--neutral-600: 0 0% 32%;
+		--neutral-700: 0 0% 40%;
+		--neutral-800: 0 0% 64%;
+		--neutral-900: 0 0% 80%;
+		--neutral-950: 0 0% 98%;
+
+		--primary-50: 351 24% 6%;
+		--primary-100: 354 20% 10%;
+		--primary-200: 349 48% 15%;
+		--primary-300: 345 62% 19%;
+		--primary-400: 345 58% 23%;
+		--primary-500: 346 50% 29%;
+		--primary-600: 347 45% 37%;
+		--primary-700: 347 45% 48%;
+		--primary-800: 345 100% 65%;
+		--primary-900: 348 100% 78%;
+		--primary-950: 352 100% 91%;
+
+		--warning-50: 41 66% 10%;
+		--warning-100: 40 29% 8%;
+		--warning-200: 41 66% 10%;
+		--warning-300: 41 100% 12%;
+		--warning-400: 42 100% 14%;
+		--warning-500: 43 81% 19%;
+		--warning-600: 42 58% 26%;
+		--warning-700: 42 56% 34%;
+		--warning-800: 44 100% 55%;
+		--warning-900: 45 100% 60%;
+		--warning-950: 40 100% 86%;
 
 		--secondary: 0 0% 14.9%;
 		--secondary-foreground: 0 0% 98%;
@@ -70,7 +105,7 @@
 
 @layer base {
 	* {
-		@apply border-border;
+		@apply border-border antialiased;
 	}
 	body {
 		@apply bg-background text-foreground;
@@ -79,7 +114,7 @@
 
 @font-face {
 	font-family: 'Geist';
-	src: url('/fonts/Geist[wght].woff2') format('woff2-variations');
+	src: url('/fonts/Geist-v1.4.01/webfonts/Geist[wght].woff2') format('woff2-variations');
 	font-weight: 100 900;
 	font-style: normal;
 	font-display: swap;
@@ -87,7 +122,7 @@
 
 @font-face {
 	font-family: 'Geist Mono';
-	src: url('/fonts/GeistMono[wght].woff2') format('woff2-variations');
+	src: url('/fonts/GeistMono-1.4.01/webfonts/GeistMono[wght].woff2') format('woff2-variations');
 	font-weight: 100 900;
 	font-style: normal;
 	font-display: swap;

@@ -87,10 +87,24 @@
 			<Button
 				variant="outline"
 				size="sm"
-				class="w-[86px] justify-between rounded-r-none"
+				class={cn('rounded-r-none', dateRangePopoverOpen && 'border border-primary-800')}
 				builders={[builder]}
 			>
 				<span>{selectDateRange?.label || 'Select range'}</span>
+				<span class="border-input border-l mx-2 h-full"></span>
+				<span>
+					{#if calendarDateRange && calendarDateRange.start}
+						{#if calendarDateRange.end}
+							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
+								calendarDateRange.end.toDate(getLocalTimeZone())
+							)}
+						{:else}
+							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))}
+						{/if}
+					{:else}
+						Pick a date
+					{/if}
+				</span>
 			</Button>
 		</PopoverTrigger>
 		<PopoverContent class="w-[200px] p-0" align="start">
@@ -112,24 +126,11 @@
 				variant="outline"
 				size="sm"
 				class={cn(
-					'w-[220px] justify-start text-left rounded-l-none border-l-0',
-					!calendarDateRange && 'text-muted-foreground'
+					'rounded-l-none border-l-transparent',
+					calendarDateRangePopoverOpen && 'border border-primary-800 bg-primary hover:bg-primary'
 				)}
 				builders={[builder]}
 			>
-				<span class="flex-grow border-r-1 border-border">
-					{#if calendarDateRange && calendarDateRange.start}
-						{#if calendarDateRange.end}
-							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
-								calendarDateRange.end.toDate(getLocalTimeZone())
-							)}
-						{:else}
-							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))}
-						{/if}
-					{:else}
-						Pick a date
-					{/if}
-				</span>
 				<Icon src={CalendarDateRange} micro size="16" />
 			</Button>
 		</PopoverTrigger>
@@ -138,6 +139,7 @@
 				bind:value={calendarDateRange}
 				numberOfMonths={1}
 				onValueChange={handleCalendarChange}
+				weekdayFormat="narrow"
 			/>
 		</PopoverContent>
 	</Popover>

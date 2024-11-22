@@ -16,7 +16,7 @@
 <Breadcrumb class={cn('', className)}>
 	<BreadcrumbList>
 		<BreadcrumbItem>
-			<BreadcrumbLink href="/">Home</BreadcrumbLink>
+			<BreadcrumbLink href="/">Zipline AI</BreadcrumbLink>
 		</BreadcrumbItem>
 		{#each breadcrumbs as crumb, index}
 			<BreadcrumbSeparator>

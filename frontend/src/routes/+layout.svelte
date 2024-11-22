@@ -10,7 +10,7 @@
 
 	let { children }: { children: Snippet } = $props();
 
-	// TODO: Replace with actual user data
+	// TODO: Replace with actual user data when implemented
 	const user = {
 		name: 'Demo User',
 		avatar: '/path/to/avatar.jpg'
@@ -33,12 +33,16 @@
 
 	<!-- Main content -->
 	<main
-		class="flex-1 flex flex-col overflow-hidden bg-muted/30 relative rounded-tl-xl"
+		class="flex-1 flex flex-col overflow-hidden bg-neutral-100 relative rounded-tl-xl"
 		data-testid="app-main"
 	>
-		<ScrollArea class="flex-1 border-l border-t border-border rounded-tl-xl">
+		<div class="absolute top-0 bottom-0 w-px bg-border"></div>
+		<div
+			class="absolute top-0 left-0 w-full h-4 border-l border-t border-border rounded-tl-xl z-20"
+		></div>
+		<ScrollArea class="flex-1">
 			<div class="px-8 py-5">
-				<BreadcrumbNav {breadcrumbs} class="mb-10" />
+				<BreadcrumbNav {breadcrumbs} class="mb-[38px] ml-2" />
 				{@render children()}
 			</div>
 		</ScrollArea>

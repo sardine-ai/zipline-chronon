@@ -6,22 +6,33 @@
 		CommandDialog,
 		CommandInput,
 		CommandList,
-		CommandEmpty,
 		CommandGroup,
 		CommandItem
 	} from '$lib/components/ui/command/';
 	import { search } from '$lib/api/api';
 	import type { Model } from '$lib/types/Model/Model';
 	import debounce from 'lodash/debounce';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import {
 		DropdownMenu,
 		DropdownMenuTrigger,
 		DropdownMenuContent,
 		DropdownMenuItem
 	} from '$lib/components/ui/dropdown-menu/';
-	import { Icon, ChevronDown, MagnifyingGlass, User } from 'svelte-hero-icons';
+	import {
+		Icon,
+		ChevronDown,
+		MagnifyingGlass,
+		User,
+		DocumentText,
+		ExclamationTriangle,
+		AdjustmentsHorizontal,
+		ArrowsUpDown
+	} from 'svelte-hero-icons';
 	import type { IconSource } from 'svelte-hero-icons';
+	import { goto } from '$app/navigation';
+	import { isMacOS } from '$lib/util/browser';
+	import { Badge } from '$lib/components/ui/badge';
 
 	type Props = {
 		navItems: { label: string; href: string; icon: IconSource }[];
@@ -32,9 +43,9 @@
 
 	let open = $state(false);
 	let searchResults: Model[] = $state([]);
+	let isMac: boolean | undefined = $state(undefined);
 
 	const debouncedSearch = debounce(async () => {
-		console.log('searching', input);
 		if (input.length > 0) {
 			const response = await search(input);
 			searchResults = response.items;
@@ -48,33 +59,87 @@
 	});
 
 	let input = $state('');
+
+	function isActiveRoute(searchString: string): boolean {
+		return $page.url.pathname.startsWith(searchString);
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+			event.preventDefault();
+			open = true;
+		}
+	}
+
+	onMount(() => {
+		isMac = isMacOS();
+		document.addEventListener('keydown', handleKeydown);
+		return () => {
+			document.removeEventListener('keydown', handleKeydown);
+		};
+	});
+
+	function handleSelect(path: string) {
+		goto(path);
+		open = false;
+	}
 </script>
 
-<nav class="w-64 p-4 flex flex-col">
-	<div class="mb-4 flex items-center justify-between">
-		<Button variant="ghost" href="/" class="p-0">
-			<img src="/logo.webp" alt="Zipline Logo" class="h-8 w-auto" />
+<nav class="w-60 p-3 flex flex-col">
+	<div class="ml-2 mt-1 mb-10 flex items-center justify-between">
+		<Button variant="link" href="/" class="p-0 h-6 w-6">
+			<img src="/logo.png" alt="Zipline Logo" />
 		</Button>
 	</div>
 	<Button
 		variant="outline"
-		class="mb-4 w-full flex justify-start pl-2"
+		size="sm"
+		class="mb-6 w-full flex justify-start pl-2"
 		onclick={() => (open = true)}
+		icon="leading"
 	>
-		<Icon src={MagnifyingGlass} size="16" class="mr-2" />
-		<span>Search</span>
+		<Icon src={MagnifyingGlass} micro size="16" class="text-foreground" />
+		<span class="text-muted-foreground">Search</span>
+		{#if isMac !== undefined}
+			<span class="ml-auto text-xs text-muted-foreground">
+				{#if isMac}
+					<Badge variant="key-bg">⌘</Badge>
+					<Badge variant="key-bg">K</Badge>
+				{:else}
+					<Badge variant="key-bg">Ctrl</Badge>
+					<Badge variant="key-bg">K</Badge>
+				{/if}
+			</span>
+		{/if}
 	</Button>
+	<Button
+		variant="ghost"
+		class="mb-9 text-regular-medium"
+		size="nav"
+		href="https://docs.chronon.ai"
+		target="_blank"
+		rel="noopener noreferrer"
+		icon="leading"
+	>
+		<Icon src={DocumentText} micro size="16" class="text-muted-icon-neutral" />
+		<span class="text-muted-foreground">Chronon docs</span>
+	</Button>
+	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Observability</span>
 	<ul class="space-y-1 flex-grow">
 		{#each navItems as item}
 			<li>
 				<Button
-					variant="ghost"
-					class="w-full justify-start h-7 px-2 {$page.url.pathname === item.href
-						? 'bg-primary/10 text-primary'
-						: 'hover:bg-primary/5'}"
+					variant={isActiveRoute(item.href) ? 'default' : 'ghost'}
+					size="nav"
 					href={item.href}
+					icon="leading"
 				>
-					<Icon src={item.icon} micro size="16" class="mr-2" />
+					<Icon
+						src={item.icon}
+						micro
+						size="16"
+						class={isActiveRoute(item.href) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}
+					/>
 					{item.label}
 				</Button>
 			</li>
@@ -83,7 +148,7 @@
 	<div class="flex items-center mt-auto">
 		<DropdownMenu>
 			<DropdownMenuTrigger>
-				<Button variant="outline" class="flex items-center cursor-pointer">
+				<Button variant="ghost" class="flex items-center cursor-pointer">
 					<Avatar class="h-4 w-4">
 						<AvatarImage src={user.avatar} alt={user.name} />
 						<AvatarFallback>
@@ -103,26 +168,40 @@
 </nav>
 
 <CommandDialog bind:open>
-	<CommandInput placeholder="Type to search..." oninput={debouncedSearch} bind:value={input} />
+	<CommandInput
+		placeholder="Type a command or search..."
+		oninput={debouncedSearch}
+		bind:value={input}
+	/>
 	<CommandList>
 		{#if searchResults.length === 0}
 			{#if input === ''}
-				<CommandEmpty>Type to search by model name.</CommandEmpty>
-			{:else}
-				<CommandEmpty>No results found.</CommandEmpty>
+				<CommandGroup heading="Quick actions">
+					<CommandItem disabled>
+						<Icon src={ExclamationTriangle} micro size="16" />
+						Show only models with alerts</CommandItem
+					>
+					<CommandItem disabled>
+						<Icon src={AdjustmentsHorizontal} micro size="16" />
+						Filter by...</CommandItem
+					>
+					<CommandItem disabled>
+						<Icon src={ArrowsUpDown} micro size="16" />
+						Sort by...</CommandItem
+					>
+				</CommandGroup>
+				<CommandGroup heading="Learn">
+					<CommandItem onSelect={() => window.open('https://docs.chronon.ai', '_blank')}>
+						<Icon src={DocumentText} micro size="16" />
+						Chronon docs</CommandItem
+					>
+				</CommandGroup>
 			{/if}
 		{:else}
-			<CommandGroup heading="Search Results">
+			<CommandGroup heading={`Search for "${input}"`}>
 				{#each searchResults as model}
-					<CommandItem>
-						<Button
-							variant="ghost"
-							href="/models/{model.name}/observability"
-							onclick={() => (open = false)}
-							class="w-full justify-start"
-						>
-							{model.name}
-						</Button>
+					<CommandItem onSelect={() => handleSelect(`/models/${encodeURIComponent(model.name)}`)}>
+						{model.name}
 					</CommandItem>
 				{/each}
 			</CommandGroup>

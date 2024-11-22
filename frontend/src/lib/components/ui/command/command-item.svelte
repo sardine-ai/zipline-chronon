@@ -13,10 +13,10 @@
 <CommandPrimitive.Item
 	{asChild}
 	class={cn(
-		'aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+		'aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-default select-none items-center !px-4 py-1.5 text-regular outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg:first-of-type]:mr-2 bg-neutral-200 h-10 [&:not(:last-child)]:border-b',
+		'data-[disabled]:cursor-default cursor-pointer',
 		className
 	)}
-	style="padding: 0;"
 	{...$$restProps}
 	let:action
 	let:attrs
