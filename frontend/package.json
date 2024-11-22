@@ -62,5 +62,8 @@
 		"lodash": "^4.17.21",
 		"tailwind-merge": "^2.5.2",
 		"tailwind-variants": "^0.2.1"
+	},
+	"overrides": {
+		"cross-spawn": "^7.0.6"
 	}
 }
