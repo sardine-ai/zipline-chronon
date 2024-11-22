@@ -120,7 +120,11 @@ object Expressions {
           )
       case MetricName.percentiles =>
         (row: Row, summaries: TileSummary) =>
-          summaries.setPercentiles(row.getSeq[Double](index).map(lang.Double.valueOf).toJava)
+          if (row.isNullAt(index)) {
+            summaries.setPercentiles(null)
+          } else {
+            summaries.setPercentiles(row.getSeq[Double](index).map(lang.Double.valueOf).toJava)
+          }
 
       case MetricName.innerNullCount =>
         (row: Row, summaries: TileSummary) => summaries.setInnerNullCount(row.getLong(index))
