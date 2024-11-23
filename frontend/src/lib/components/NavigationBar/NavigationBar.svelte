@@ -7,7 +7,8 @@
 		CommandInput,
 		CommandList,
 		CommandGroup,
-		CommandItem
+		CommandItem,
+		CommandEmpty
 	} from '$lib/components/ui/command/';
 	import { search } from '$lib/api/api';
 	import type { Model } from '$lib/types/Model/Model';
@@ -174,6 +175,7 @@
 		bind:value={input}
 	/>
 	<CommandList>
+		<CommandEmpty>No results found</CommandEmpty>
 		{#if searchResults.length === 0}
 			{#if input === ''}
 				<CommandGroup heading="Quick actions">
