@@ -30,13 +30,13 @@
 		AdjustmentsHorizontal,
 		ArrowsUpDown
 	} from 'svelte-hero-icons';
-	import type { IconSource } from 'svelte-hero-icons';
 	import { goto } from '$app/navigation';
 	import { isMacOS } from '$lib/util/browser';
 	import { Badge } from '$lib/components/ui/badge';
+	import { getEntity, type Entity } from '$lib/types/Entity/Entity';
 
 	type Props = {
-		navItems: { label: string; href: string; icon: IconSource }[];
+		navItems: Entity[];
 		user: { name: string; avatar: string };
 	};
 
@@ -130,16 +130,16 @@
 		{#each navItems as item}
 			<li>
 				<Button
-					variant={isActiveRoute(item.href) ? 'default' : 'ghost'}
+					variant={isActiveRoute(item.path) ? 'default' : 'ghost'}
 					size="nav"
-					href={item.href}
+					href={item.path}
 					icon="leading"
 				>
 					<Icon
 						src={item.icon}
 						micro
 						size="16"
-						class={isActiveRoute(item.href) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}
+						class={isActiveRoute(item.path) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}
 					/>
 					{item.label}
 				</Button>
@@ -202,9 +202,31 @@
 		{:else}
 			<CommandGroup heading={`Search for "${input}"`}>
 				{#each searchResults as model}
-					<CommandItem onSelect={() => handleSelect(`/models/${encodeURIComponent(model.name)}`)}>
+					<CommandItem
+						disabled
+						onSelect={() =>
+							handleSelect(`${getEntity('models').path}/${encodeURIComponent(model.name)}`)}
+					>
+						<Icon src={getEntity('models').icon} micro size="16" />
 						{model.name}
 					</CommandItem>
+					<CommandItem
+						onSelect={() =>
+							handleSelect(`${getEntity('joins').path}/${encodeURIComponent(model.join.name)}`)}
+					>
+						<Icon src={getEntity('joins').icon} micro size="16" />
+						{model.join.name}
+					</CommandItem>
+					{#each model.join.groupBys as groupBy}
+						<CommandItem
+							disabled
+							onSelect={() =>
+								handleSelect(`${getEntity('groupbys').path}/${encodeURIComponent(groupBy.name)}`)}
+						>
+							<Icon src={getEntity('groupbys').icon} micro size="16" />
+							{groupBy.name}
+						</CommandItem>
+					{/each}
 				{/each}
 			</CommandGroup>
 		{/if}

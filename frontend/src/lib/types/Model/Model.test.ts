@@ -71,7 +71,7 @@ describe('Model types', () => {
 
 		if (timeseriesResult.items.length > 0) {
 			const item = timeseriesResult.items[0];
-			const expectedItemKeys = ['value', 'ts', 'label'];
+			const expectedItemKeys = ['value', 'ts', 'label', 'nullValue'];
 			expect(Object.keys(item)).toEqual(expect.arrayContaining(expectedItemKeys));
 
 			// Log a warning if there are additional fields
@@ -184,7 +184,7 @@ describe('Model types', () => {
 
 				if (subItem.points.length > 0) {
 					const point = subItem.points[0];
-					const expectedPointKeys = ['value', 'ts', 'label'];
+					const expectedPointKeys = ['value', 'ts', 'label', 'nullValue'];
 					expect(Object.keys(point)).toEqual(expect.arrayContaining(expectedPointKeys));
 
 					// Log a warning if there are additional fields

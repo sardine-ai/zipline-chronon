@@ -6,7 +6,7 @@
 	import NavigationBar from '$lib/components/NavigationBar/NavigationBar.svelte';
 	import BreadcrumbNav from '$lib/components/BreadcrumbNav/BreadcrumbNav.svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { Cube, PuzzlePiece, Square3Stack3d } from 'svelte-hero-icons';
+	import { entityConfig } from '$lib/types/Entity/Entity';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -16,12 +16,6 @@
 		avatar: '/path/to/avatar.jpg'
 	};
 
-	const navItems = [
-		{ label: 'Models', href: '/models', icon: Cube },
-		{ label: 'GroupBys', href: '/groupbys', icon: PuzzlePiece },
-		{ label: 'Joins', href: '/joins', icon: Square3Stack3d }
-	];
-
 	const breadcrumbs = $derived($page.url.pathname.split('/').filter(Boolean));
 </script>
 
@@ -29,7 +23,7 @@
 	<NavigationSlider />
 
 	<!-- Left navigation -->
-	<NavigationBar {navItems} {user} />
+	<NavigationBar navItems={entityConfig.filter((entity) => entity.id === 'joins')} {user} />
 
 	<!-- Main content -->
 	<main

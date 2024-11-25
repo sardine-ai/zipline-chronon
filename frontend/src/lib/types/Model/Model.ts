@@ -4,7 +4,7 @@ export type Model = {
 	production: boolean;
 	team: string;
 	modelType: string;
-	join: JoinTimeSeriesResponse; // todo: this type needs to be updated to match the actual response once that WIP is finished
+	join: Join;
 };
 
 export type ModelsResponse = {
@@ -22,6 +22,16 @@ export type TimeSeriesItem = {
 export type TimeSeriesResponse = {
 	id: string;
 	items: TimeSeriesItem[];
+};
+export type Join = {
+	name: string;
+	joinFeatures: string[];
+	groupBys: GroupBy[];
+};
+
+export type GroupBy = {
+	name: string;
+	features: string[];
 };
 
 export type JoinTimeSeriesResponse = {
