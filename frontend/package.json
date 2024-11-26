@@ -64,6 +64,7 @@
 		"tailwind-variants": "^0.2.1"
 	},
 	"overrides": {
-		"cross-spawn": "^7.0.6"
+		"cross-spawn": "^7.0.6",
+		"cookie": "^0.7.0"
 	}
 }
