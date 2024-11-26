@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.utils
 
 import ai.chronon.api.Constants
 import ai.chronon.api.GroupBy

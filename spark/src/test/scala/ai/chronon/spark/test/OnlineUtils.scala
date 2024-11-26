@@ -31,6 +31,9 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.streaming.GroupBy
 import ai.chronon.spark.streaming.JoinSourceRunner
+import ai.chronon.spark.utils.InMemoryKvStore
+import ai.chronon.spark.utils.InMemoryStream
+import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.Trigger
 

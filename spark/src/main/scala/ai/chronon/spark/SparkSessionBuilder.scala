@@ -34,6 +34,7 @@ object SparkSessionBuilder {
   // we would want to share locally generated warehouse during CI testing
   def build(name: String,
             local: Boolean = false,
+            hiveSupport: Boolean = true,
             localWarehouseLocation: Option[String] = None,
             additionalConfig: Option[Map[String, String]] = None,
             enforceKryoSerializer: Boolean = true): SparkSession = {
@@ -44,7 +45,10 @@ object SparkSessionBuilder {
     var baseBuilder = SparkSession
       .builder()
       .appName(name)
-      .enableHiveSupport()
+
+    if (hiveSupport) baseBuilder = baseBuilder.enableHiveSupport()
+
+    baseBuilder = baseBuilder
       .config("spark.sql.session.timeZone", "UTC")
       //otherwise overwrite will delete ALL partitions, not just the ones it touches
       .config("spark.sql.sources.partitionOverwriteMode", "dynamic")

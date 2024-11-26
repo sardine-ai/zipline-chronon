@@ -147,7 +147,9 @@ object Driver {
 
     protected def buildSparkSession(): SparkSession = {
       if (localTableMapping.nonEmpty) {
-        val localSession = SparkSessionBuilder.build(subcommandName(), local = true, localWarehouseLocation.toOption)
+        val localSession = SparkSessionBuilder.build(subcommandName(),
+                                                     local = true,
+                                                     localWarehouseLocation = localWarehouseLocation.toOption)
         localTableMapping.foreach {
           case (table, filePath) =>
             val file = new File(filePath)

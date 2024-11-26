@@ -13,8 +13,9 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryUploader
-import ai.chronon.spark.test.InMemoryKvStore
-import ai.chronon.spark.test.MockApi
+import ai.chronon.spark.stats.drift.scripts.PrepareData
+import ai.chronon.spark.utils.InMemoryKvStore
+import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -88,7 +89,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     // fetch summaries
     val startMs = PartitionSpec.daily.epochMillis("2023-01-01")
     val endMs = PartitionSpec.daily.epochMillis("2023-01-29")
-    val summariesFuture = driftStore.getSummaries(join, Some(startMs), Some(endMs))
+    val summariesFuture = driftStore.getSummaries(join, Some(startMs), Some(endMs), None)
     val summaries = Await.result(summariesFuture, Duration.create(10, TimeUnit.SECONDS))
     println(summaries)
 
