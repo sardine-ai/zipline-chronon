@@ -35,6 +35,7 @@ import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
+import ai.chronon.spark.utils.MockApi
 import ai.chronon.spark.{Join => _, _}
 import com.google.gson.GsonBuilder
 import org.apache.spark.sql.DataFrame

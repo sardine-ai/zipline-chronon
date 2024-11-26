@@ -19,6 +19,7 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.spark.LoggingSchema
+import ai.chronon.spark.utils.MockApi
 import org.junit.Assert._
 import org.junit.Test
 

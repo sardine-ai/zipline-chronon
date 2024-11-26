@@ -14,14 +14,13 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.utils
 
 import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.StructType
 import ai.chronon.online.Fetcher.Response
-import ai.chronon.online.Serde
 import ai.chronon.online._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils

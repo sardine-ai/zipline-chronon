@@ -23,9 +23,9 @@ import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
-import ai.chronon.spark.test.MockApi
 import ai.chronon.spark.test.OnlineUtils
 import ai.chronon.spark.test.SchemaEvolutionUtils
+import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert.assertEquals

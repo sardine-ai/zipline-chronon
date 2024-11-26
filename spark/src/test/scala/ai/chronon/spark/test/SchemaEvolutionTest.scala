@@ -26,6 +26,8 @@ import ai.chronon.spark.LogFlattenerJob
 import ai.chronon.spark.LoggingSchema
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
+import ai.chronon.spark.utils.InMemoryKvStore
+import ai.chronon.spark.utils.MockApi
 import junit.framework.TestCase
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
