@@ -5,7 +5,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, DoubleType, IntegerType, StringType, TimestampType, BooleanType
 
 # Initialize Spark session
-spark = SparkSession.builder.appName("FraudClassificationSchema").getOrCreate()
+spark = SparkSession.builder.appName("FraudClassificationSchema").config("spark.log.level", "WARN").getOrCreate()
 
 def time_to_value(t, base_value, amplitude, noise_level, scale=1):
     if scale is None:

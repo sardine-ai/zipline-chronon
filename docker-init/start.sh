@@ -1,7 +1,13 @@
 #!/bin/bash
+
+start_time=$(date +%s)
 if ! python3.8 generate_anomalous_data.py; then
     echo "Error: Failed to generate anomalous data" >&2
     exit 1
+else
+    end_time=$(date +%s)
+    elapsed_time=$((end_time - start_time))
+    echo "Anomalous data generated successfully! Took $elapsed_time seconds."
 fi
 
 
@@ -10,7 +16,6 @@ if [[ ! -f $SPARK_JAR ]] || [[ ! -f $CLOUD_AWS_JAR ]]; then
     echo "Error: Required JAR files not found" >&2
     exit 1
 fi
-
 
 # Load up metadata into DynamoDB
 echo "Loading metadata.."
@@ -32,9 +37,11 @@ fi
 echo "DynamoDB Table created successfully!"
 
 
-# Load up summary data into DynamoDB
-echo "Loading Summary.."
-if ! java --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED \
+start_time=$(date +%s)
+
+if ! java \
+  --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+  --add-opens=java.base/sun.security.action=ALL-UNNAMED \
   -cp $SPARK_JAR:$CLASSPATH ai.chronon.spark.Driver summarize-and-upload \
   --online-jar=$CLOUD_AWS_JAR \
   --online-class=$ONLINE_CLASS \
@@ -43,8 +50,11 @@ if ! java --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun
   --time-column=transaction_time; then
   echo "Error: Failed to load summary data into DynamoDB" >&2
   exit 1
+else
+  end_time=$(date +%s)
+  elapsed_time=$((end_time - start_time))
+  echo "Summary load completed successfully! Took $elapsed_time seconds."
 fi
-echo "Summary load completed successfully!"
 
 # Add these java options as without them we hit the below error:
 # throws java.lang.ClassFormatError accessible: module java.base does not "opens java.lang" to unnamed module @36328710
