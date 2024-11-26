@@ -74,7 +74,7 @@ class DriftStore(kvStore: KVStore,
   def getSummaries(joinConf: api.Join,
                    startMs: Option[Long],
                    endMs: Option[Long],
-                   columnPrefix: Option[String] = None): Future[Seq[TileSummaryInfo]] = {
+                   columnPrefix: Option[String]): Future[Seq[TileSummaryInfo]] = {
 
     val serializer: TSerializer = compactSerializer
     val tileKeyMap = tileKeysForJoin(joinConf, columnPrefix)

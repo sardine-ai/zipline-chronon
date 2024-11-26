@@ -1,4 +1,4 @@
-package ai.chronon.spark.test.stats.drift
+package ai.chronon.spark.stats.drift.scripts
 
 import ai.chronon.api
 import ai.chronon.api.Builders
@@ -21,18 +21,13 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.date_format
 import org.apache.spark.sql.functions.from_unixtime
-import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row => SRow}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.time.Duration
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneOffset
+import java.time._
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import scala.collection.mutable.ListBuffer
@@ -52,7 +47,13 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
     val merchant_source = Builders.Source.entities(
       query = Builders.Query(
-        selects = Seq("merchant_id", "account_age", "zipcode", "is_big_merchant", "country", "account_type", "preferred_language").map(s => s->s).toMap
+        selects = Seq("merchant_id",
+                      "account_age",
+                      "zipcode",
+                      "is_big_merchant",
+                      "country",
+                      "account_type",
+                      "preferred_language").map(s => s -> s).toMap
       ),
       snapshotTable = "data.merchants"
     )
@@ -63,13 +64,13 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     )
 
     def createTransactionSource(key: String): api.Source = {
-        Builders.Source.events(
-            query = Builders.Query(
-              selects = Seq(key, "transaction_amount", "transaction_type").map(s => s->s).toMap,
-              timeColumn = "transaction_time"
-            ),
-            table = "data.txn_events"
-        )
+      Builders.Source.events(
+        query = Builders.Query(
+          selects = Seq(key, "transaction_amount", "transaction_type").map(s => s -> s).toMap,
+          timeColumn = "transaction_time"
+        ),
+        table = "data.txn_events"
+      )
     }
 
     def createTxnGroupBy(source: api.Source, key: String, name: String): api.GroupBy = {
@@ -110,7 +111,14 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
     val userSource = Builders.Source.entities(
       query = Builders.Query(
-        selects = Seq("user_id", "account_age", "account_balance", "credit_score", "number_of_devices", "country", "account_type", "preferred_language").map(s => s->s).toMap
+        selects = Seq("user_id",
+                      "account_age",
+                      "account_balance",
+                      "credit_score",
+                      "number_of_devices",
+                      "country",
+                      "account_type",
+                      "preferred_language").map(s => s -> s).toMap
       ),
       snapshotTable = "data.users"
     )
@@ -121,12 +129,12 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     )
 
     // TODO: this is inconsistent with the defn of userSource above - but to maintain portability - we will keep it as is
-    val joinUserSource =  Builders.Source.events(
+    val joinUserSource = Builders.Source.events(
       query = Builders.Query(
-        selects = Seq("user_id", "ts").map(s => s->s).toMap,
+        selects = Seq("user_id", "ts").map(s => s -> s).toMap,
         timeColumn = "ts"
       ),
-      table = "data.users",
+      table = "data.users"
     )
 
     val driftSpec = new DriftSpec()
@@ -152,7 +160,11 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     )
   }
 
-  def timeToValue(t: LocalTime, baseValue: Double, amplitude: Double, noiseLevel: Double, scale: Double = 1.0): java.lang.Double = {
+  def timeToValue(t: LocalTime,
+                  baseValue: Double,
+                  amplitude: Double,
+                  noiseLevel: Double,
+                  scale: Double = 1.0): java.lang.Double = {
     if (scale == 0) null
     else {
       val hours = t.getHour + t.getMinute / 60.0 + t.getSecond / 3600.0
@@ -170,7 +182,9 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     }
   }
 
-  def generateNonOverlappingWindows(startDate: LocalDate, endDate: LocalDate, numWindows: Int): List[(LocalDate, LocalDate)] = {
+  def generateNonOverlappingWindows(startDate: LocalDate,
+                                    endDate: LocalDate,
+                                    numWindows: Int): List[(LocalDate, LocalDate)] = {
     val totalDays = ChronoUnit.DAYS.between(startDate, endDate).toInt
     val windowLengths = List.fill(numWindows)(RandomUtils.between(3, 8))
     val maxGap = totalDays - windowLengths.sum
@@ -194,19 +208,15 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     windows.toList
   }
 
-
-
-
   case class DataWithTime(ts: LocalDateTime, value: java.lang.Double)
   case class TimeSeriesWithAnomalies(dataWithTime: Array[DataWithTime],
                                      nullWindow: (LocalDate, LocalDate),
                                      spikeWindow: (LocalDate, LocalDate))
 
   def generateTimeseriesWithAnomalies(numSamples: Int = 1000,
-                                       baseValue: Double = 100,
-                                       amplitude: Double = 50,
-                                       noiseLevel: Double = 10
-                                     ): TimeSeriesWithAnomalies = {
+                                      baseValue: Double = 100,
+                                      amplitude: Double = 50,
+                                      noiseLevel: Double = 10): TimeSeriesWithAnomalies = {
 
     val startDate = LocalDate.of(2023, 1, 1)
     val endDate = LocalDate.of(2023, 12, 31)
@@ -245,17 +255,14 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     }
   }
 
-
   private val fraudFields = Array(
     // join.source - txn_events
     StructField("user_id", IntegerType, nullable = true),
     StructField("merchant_id", IntegerType, nullable = true),
-
     // Contextual - 3
     StructField("transaction_amount", DoubleType, nullable = true),
     StructField("transaction_time", LongType, nullable = true),
     StructField("transaction_type", StringType, nullable = true),
-
     // Transactions agg'd by user - 5 (txn_events)
     StructField("transaction_amount_average", DoubleType, nullable = true).prefix(txnByUser),
     StructField("transaction_amount_count_1h", IntegerType, nullable = true).prefix(txnByUser),
@@ -264,7 +271,6 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     StructField("transaction_amount_count_30d", IntegerType, nullable = true).prefix(txnByUser),
     StructField("transaction_amount_count_365d", IntegerType, nullable = true).prefix(txnByUser),
     StructField("transaction_amount_sum_1h", DoubleType, nullable = true).prefix(txnByUser),
-
     // Transactions agg'd by merchant - 7 (txn_events)
     StructField("transaction_amount_average", DoubleType, nullable = true).prefix(txnByMerchant),
     StructField("transaction_amount_count_1h", IntegerType, nullable = true).prefix(txnByMerchant),
@@ -273,7 +279,6 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     StructField("transaction_amount_count_30d", IntegerType, nullable = true).prefix(txnByMerchant),
     StructField("transaction_amount_count_365d", IntegerType, nullable = true).prefix(txnByMerchant),
     StructField("transaction_amount_sum_1h", DoubleType, nullable = true).prefix(txnByMerchant),
-
     // User features (dim_user) – 7
     StructField("account_age", IntegerType, nullable = true).prefix(dimUser),
     StructField("account_balance", DoubleType, nullable = true).prefix(dimUser),
@@ -282,7 +287,6 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     StructField("country", StringType, nullable = true).prefix(dimUser),
     StructField("account_type", IntegerType, nullable = true).prefix(dimUser),
     StructField("preferred_language", StringType, nullable = true).prefix(dimUser),
-
     // merchant features (dim_merchant) – 4
     StructField("account_age", IntegerType, nullable = true).prefix(dimMerchant),
     StructField("zipcode", IntegerType, nullable = true).prefix(dimMerchant),
@@ -291,7 +295,6 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     StructField("country", StringType, nullable = true).prefix(dimMerchant),
     StructField("account_type", IntegerType, nullable = true).prefix(dimMerchant),
     StructField("preferred_language", StringType, nullable = true).prefix(dimMerchant),
-
     // derived features - transactions_last_year / account_age - 1
     StructField("transaction_frequency_last_year", DoubleType, nullable = true)
   )
@@ -324,7 +327,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
     val timeDelta = Duration.between(startDate, endDate).dividedBy(numSamples)
 
-     val anomalyWindows = generateNonOverlappingWindows(startDate.toLocalDate, endDate.toLocalDate, 2)
+    val anomalyWindows = generateNonOverlappingWindows(startDate.toLocalDate, endDate.toLocalDate, 2)
 
     // Generate base values
     val transactionAmount = generateTimeseriesWithAnomalies(numSamples, 100, 50, 10)
@@ -339,7 +342,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
       val transactionTime = startDate.plus(timeDelta.multipliedBy(i))
       val merchantId = Random.nextInt(250) + 1
 
-      if(i % 100000 == 0) {
+      if (i % 100000 == 0) {
         println(s"Generated $i/$numSamples rows of data.")
       }
 
@@ -348,9 +351,9 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
       val isSlowDrift = transactionTime.isAfter(anomalyWindows(1)._1.atStartOfDay) &&
         transactionTime.isBefore(anomalyWindows(1)._2.atTime(23, 59))
 
-      val driftFactor = if(isFastDrift) 10 else if(isSlowDrift) 1.05 else 1.0
+      val driftFactor = if (isFastDrift) 10 else if (isSlowDrift) 1.05 else 1.0
 
-      def genTuple(lastHour: java.lang.Double): (Integer,Integer,Integer,Integer,Integer) = {
+      def genTuple(lastHour: java.lang.Double): (Integer, Integer, Integer, Integer, Integer) = {
         lastHour match {
           case x if x == null => (null, null, null, null, null)
           case x =>
@@ -373,15 +376,20 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
 
       val userAccountAge = Random.nextInt(3650) + 1
 
+      val (adjustedUserLastHour,
+           adjustedUserLastDay,
+           adjustedUserLastWeek,
+           adjustedUserLastMonth,
+           adjustedUserLastYear) = genTuple(userLastHourList.dataWithTime(i).value)
 
+      val (adjustedMerchantLastHour,
+           adjustedMerchantLastDay,
+           adjustedMerchantLastWeek,
+           adjustedMerchantLastMonth,
+           adjustedMerchantLastYear) = genTuple(merchantLastHourList.dataWithTime(i).value)
 
-      val (adjustedUserLastHour, adjustedUserLastDay, adjustedUserLastWeek, adjustedUserLastMonth, adjustedUserLastYear)
-        = genTuple(userLastHourList.dataWithTime(i).value)
-
-      val (adjustedMerchantLastHour, adjustedMerchantLastDay, adjustedMerchantLastWeek, adjustedMerchantLastMonth, adjustedMerchantLastYear)
-        = genTuple(merchantLastHourList.dataWithTime(i).value)
-
-      val arr = Array(Random.nextInt(100) + 1,
+      val arr = Array(
+        Random.nextInt(100) + 1,
         merchantId,
         transactionAmount.dataWithTime(i).value,
         transactionTime.toEpochSecond(ZoneOffset.UTC) * 1000,
@@ -425,21 +433,20 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     val spark = tableUtils.sparkSession
     val rdd: RDD[SRow] = spark.sparkContext.parallelize(data)
     val df = spark.createDataFrame(rdd, fraudSchema)
-    val dfWithTimeConvention = df.withColumn(Constants.TimeColumn, col("transaction_time"))
-      .withColumn(tableUtils.partitionColumn, date_format(from_unixtime(col(Constants.TimeColumn) / 1000), tableUtils.partitionSpec.format))
+    val dfWithTimeConvention = df
+      .withColumn(Constants.TimeColumn, col("transaction_time"))
+      .withColumn(tableUtils.partitionColumn,
+                  date_format(from_unixtime(col(Constants.TimeColumn) / 1000), tableUtils.partitionSpec.format))
 
     dfWithTimeConvention.save(outputTable)
     println(s"Successfully wrote fraud data to table. ${outputTable.yellow}")
 
-
     dfWithTimeConvention
   }
-
 
   def isWithinWindow(date: LocalDate, window: (LocalDate, LocalDate)): Boolean = {
     !date.isBefore(window._1) && !date.isAfter(window._2)
   }
-
 
   // dummy code below to write to spark
   def expandTilde(path: String): String = {

@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.utils
 
 import ai.chronon.api.Constants
 import ai.chronon.online.KVStore
@@ -118,7 +118,7 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
   }
 
   override def create(dataset: String): Unit = {
-    database.computeIfAbsent(dataset,  _ => new ConcurrentHashMap[Key, VersionedData])
+    database.computeIfAbsent(dataset, _ => new ConcurrentHashMap[Key, VersionedData])
   }
 
   def show(): Unit = {

@@ -41,7 +41,7 @@ import java.io.File
 object LocalTableExporterTest {
 
   val tmpDir: File = Files.createTempDir()
-  val spark: SparkSession = SparkSessionBuilder.build("LocalTableExporterTest", local = true, Some(tmpDir.getPath))
+  val spark: SparkSession = SparkSessionBuilder.build("LocalTableExporterTest", local = true, localWarehouseLocation = Some(tmpDir.getPath))
 
   @AfterClass
   def teardown(): Unit = {

@@ -22,6 +22,8 @@ import ai.chronon.online.JavaResponse;
 import ai.chronon.online.Fetcher;
 import ai.chronon.spark.TableUtils;
 import ai.chronon.spark.SparkSessionBuilder;
+import ai.chronon.spark.utils.InMemoryKvStore;
+import ai.chronon.spark.utils.MockApi;
 import com.google.gson.Gson;
 import org.apache.spark.sql.SparkSession;
 import org.junit.Test;
@@ -39,7 +41,7 @@ import static scala.compat.java8.JFunction.func;
 
 public class JavaFetcherTest {
     String namespace = "java_fetcher_test";
-    SparkSession session = SparkSessionBuilder.build(namespace, true, scala.Option.apply(null), scala.Option.apply(null), true);
+    SparkSession session = SparkSessionBuilder.build(namespace, true, true, scala.Option.apply(null), scala.Option.apply(null), true);
     TableUtils tu = new TableUtils(session);
     InMemoryKvStore kvStore = new InMemoryKvStore(func(() -> tu));
     MockApi mockApi = new MockApi(func(() -> kvStore), "java_fetcher_test");
