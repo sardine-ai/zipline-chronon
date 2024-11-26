@@ -29,22 +29,58 @@ brew install thrift@0.13
 python3 -m pip install -U tox build
 ```
 
+### Install appropriate java, scala, and python versions
+Recommend you do this through a runtime version manager. [asdf](https://asdf-vm.com/) recommended since it works for most all languages.
+
+- Use scala`2.12` and java `corretto-17` for the Zipline Chronon distribution.
+
+- Use scala `2.12.18` and java `corretto-8` for the OSS Chronon distribution.
+
+
+
+### Clone the Chronon Repo
+
+```bash
+git clone git@github.com:zipline-ai/chronon.git
+```
+
 ### Configuring IntelliJ
 
-Be sure to open the project from the `build.sbt` file (at the root level of the git directory).
+- Open the project from the root `chronon` directory. 
+- Under File > Project Structure > Platform Settings, add java `corretto-17` and scala `scala-2.12.18` SDKs.
+- Under Intellij IDEA > Settings > Editor > Code Style > Scala enable `scalafmt`.
+- Follow the steps below to configure unit tests in intellij:
+  
+  Run > Edit Configurations
+  ![](./intellij_unit_test_1.png)
 
-Mark the following directories as `Sources Root` by right clicking on the directory in the tree view, and selecting `Mark As` -> `Sources Root`:
-- aggregator/src/main/scala
-- api/src/main/scala
-- spark/src/main/scala
+  Set the following [java arguments](https://stackoverflow.com/questions/72724816/running-unit-tests-with-spark-3-3-0-on-java-17-fails-with-illegalaccesserror-cl) by copy pasting into the run configuration arguments list:
+  ```bash
+  --add-opens=java.base/java.lang=ALL-UNNAMED \
+  --add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
+  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \ 
+  --add-opens=java.base/java.io=ALL-UNNAMED \
+  --add-opens=java.base/java.net=ALL-UNNAMED \
+  --add-opens=java.base/java.nio=ALL-UNNAMED \
+  --add-opens=java.base/java.util=ALL-UNNAMED \
+  --add-opens=java.base/java.util.concurrent=ALL-UNNAMED \
+  --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED \
+  --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+  --add-opens=java.base/sun.nio.cs=ALL-UNNAMED \
+  --add-opens=java.base/sun.security.action=ALL-UNNAMED \
+  --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+  ```
+  ![](./intellij_unit_test_2.png)
+
+  Then, set the classpath to `chronon/<module_name>`
+  ![](./intellij_unit_test_3.png)
+- Do the same for `ScalaTests` as well.
+- Run an [example test](https://github.com/zipline-ai/chronon/blob/main/spark/src/test/scala/ai/chronon/spark/test/bootstrap/LogBootstrapTest.scala) in Chronon to verify that you’ve set things up correctly.
+
+  From CLI: `sbt "testOnly ai.chronon.spark.test.TableUtilsFormatTest"`
 
 
-Mark the following directories as `Test Root` in a similar way:
-- aggregator/src/test/scala
-- api/src/test/scala
-- spark/src/test/scala
 
-The project should then automatically start indexing, and when it finishes you should be good to go.
 
 **Troubleshooting**
 
