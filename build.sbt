@@ -72,6 +72,8 @@ val spark_all = Seq(
 )
 val spark_all_provided = spark_all.map(_ % "provided")
 
+val log4j2 = Seq("org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.20.0")
+
 val jackson = Seq(
   "com.fasterxml.jackson.core" % "jackson-core",
   "com.fasterxml.jackson.core" % "jackson-databind",
@@ -161,11 +163,7 @@ lazy val spark = project
     libraryDependencies ++= spark_all.map(_ % "test"),
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
     libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre",
-    // Ensure consistent versions of logging libraries
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.13",
-    dependencyOverrides ++= Seq(
-      "org.slf4j" % "slf4j-api" % "1.7.36"
-    )
+    libraryDependencies ++= log4j2
   )
 
 lazy val flink = project
