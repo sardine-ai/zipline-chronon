@@ -11,11 +11,14 @@ object ColorPrinter {
   private val ANSI_YELLOW = "\u001B[38;5;172m" // Muted Orange
   private val ANSI_GREEN = "\u001B[38;5;28m" // Forest green
 
+  private val BOLD = "\u001B[1m"
+
   implicit class ColorString(val s: String) extends AnyVal {
     def red: String = s"$ANSI_RED$s$ANSI_RESET"
     def blue: String = s"$ANSI_BLUE$s$ANSI_RESET"
     def yellow: String = s"$ANSI_YELLOW$s$ANSI_RESET"
     def green: String = s"$ANSI_GREEN$s$ANSI_RESET"
     def low: String = s.toLowerCase
+    def highlight: String = s"$BOLD$ANSI_RED$s$ANSI_RESET"
   }
 }

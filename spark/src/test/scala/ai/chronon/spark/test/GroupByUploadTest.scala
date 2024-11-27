@@ -172,39 +172,17 @@ class GroupByUploadTest {
     ratingsDf.show()
 
     val ratingsMutationsColumns = Seq("is_before", "mutation_ts", "review", "rating", "category_ratings", "ts", "ds")
+
+    val ds = "2023-08-15"
     val ratingsMutations = Seq(
-      (true,
-       ts("08-15 06:00"),
-       "review2",
-       5,
-       Map("location" -> 5, "cleanliness" -> 4),
-       ts("07-13 12:00"),
-       "2023-08-15"
-      ), // delete
-      (false,
-       ts("08-15 09:00"),
-       "review3",
-       3,
-       Map("location" -> 4, "cleanliness" -> 2),
-       ts("08-15 09:00"),
-       "2023-08-15"
-      ), // insert
-      (true,
-       ts("08-15 10:00"),
-       "review1",
-       4,
-       Map("location" -> 4, "cleanliness" -> 4),
-       ts("07-13 11:00"),
-       "2023-08-15"
-      ), // update - before
-      (false,
-       ts("08-15 10:00"),
-       "review1",
-       2,
-       Map("location" -> 1, "cleanliness" -> 3),
-       ts("08-15 10:00"),
-       "2023-08-15"
-      ) // update - after
+      // delete
+      (true, ts("08-15 06:00"), "review2", 5, Map("location" -> 5, "cleanliness" -> 4), ts("07-13 12:00"), ds),
+      // insert
+      (false, ts("08-15 09:00"), "review3", 3, Map("location" -> 4, "cleanliness" -> 2), ts("08-15 09:00"), ds),
+      // update - before
+      (true, ts("08-15 10:00"), "review1", 4, Map("location" -> 4, "cleanliness" -> 4), ts("07-13 11:00"), ds),
+      // update - after
+      (false, ts("08-15 10:00"), "review1", 2, Map("location" -> 1, "cleanliness" -> 3), ts("08-15 10:00"), ds)
     )
     val ratingsMutationsRdd = spark.sparkContext.parallelize(ratingsMutations)
     val ratingsMutationsDf = spark.createDataFrame(ratingsMutationsRdd).toDF(ratingsMutationsColumns: _*)

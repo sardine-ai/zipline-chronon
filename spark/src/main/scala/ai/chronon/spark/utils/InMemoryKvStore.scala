@@ -52,13 +52,18 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
       Thread.sleep(4)
       requests.map { req =>
         val values = Try {
-          database
+          val valueSeries = database
             .get(req.dataset) // table
             .get(encode(req.keyBytes)) // values of key
-            .filter {
-              case (version, _) => req.startTsMillis.forall(version >= _)
-            } // filter version
-            .map { case (version, bytes) => TimedValue(bytes, version) }
+
+          if (valueSeries == null)
+            null
+          else
+            valueSeries
+              .filter {
+                case (version, _) => req.startTsMillis.forall(version >= _)
+              } // filter version
+              .map { case (version, bytes) => TimedValue(bytes, version) }
         }
         KVStore.GetResponse(req, values)
       }

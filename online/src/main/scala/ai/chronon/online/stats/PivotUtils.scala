@@ -79,7 +79,7 @@ object PivotUtils {
   }
 
   def pivot(summariesWithTimestamps: Array[(TileSummary, Long)]): TileSummarySeries = {
-    if (summariesWithTimestamps.isEmpty) {
+    if (summariesWithTimestamps == null || summariesWithTimestamps.isEmpty) {
       return new TileSummarySeries()
     }
 
