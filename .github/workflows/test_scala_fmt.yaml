@@ -1,0 +1,40 @@
+name: Scala Fmt
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.scala'
+      - '.github/workflows/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.scala'
+      - '.github/workflows/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scala_compile_fmt_fix:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Scalafmt
+        run: sbt +scalafmtCheck
+
+      - name: Check ScalaFix
+        run: sbt "scalafixAll --check"
