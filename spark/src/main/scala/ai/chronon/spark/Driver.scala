@@ -18,6 +18,7 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Constants
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
@@ -565,7 +566,7 @@ object Driver {
     lazy val api: Api = impl(serializableProps)
 
     def metaDataStore =
-      new MetadataStore(impl(serializableProps).genKvStore, "ZIPLINE_METADATA", timeoutMillis = 10000)
+      new MetadataStore(impl(serializableProps).genKvStore, MetadataDataset, timeoutMillis = 10000)
 
     def impl(props: Map[String, String]): Api = {
       val urls = Array(new File(onlineJar()).toURI.toURL)

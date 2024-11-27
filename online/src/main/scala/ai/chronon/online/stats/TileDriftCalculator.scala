@@ -81,7 +81,7 @@ object TileDriftCalculator {
     result
   }
 
-  // for each summary with ts >= startMs, use spec.lookBack to find the previous summary and calculate dirft
+  // for each summary with ts >= startMs, use spec.lookBack to find the previous summary and calculate drift
   // we do this by first creating a map of summaries by timestamp
   def toTileDrifts(summariesWithTimestamps: Array[(TileSummary, Long)],
                    metric: DriftMetric,
