@@ -3,6 +3,9 @@ package ai.chronon.spark.stats.drift
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online.Api
+import ai.chronon.online.KVStore.GetRequest
+import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.stats.DriftStore.compactSerializer
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Expressions.CardinalityExpression
@@ -23,11 +26,16 @@ import org.apache.spark.sql.types
 import org.slf4j.LoggerFactory
 
 import java.io.Serializable
+import java.nio.charset.Charset
+import scala.concurrent.Await
 import scala.util.Failure
+import scala.util.ScalaJavaConversions.JMapOps
+import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 
-class Summarizer(confPath: String,
+class Summarizer(api: Api,
+                 confPath: String,
                  timeColumn: Option[String] = None,
                  val sliceColumns: Option[Seq[String]] = None,
                  derivedColumns: Option[Map[String, String]] = None,
@@ -41,7 +49,7 @@ class Summarizer(confPath: String,
   private val logger = LoggerFactory.getLogger(getClass)
 
   // prune down to the set of columns to summarize + validations
-  def prepare(df: DataFrame): (DataFrame, DataFrame) = {
+  private def prepare(df: DataFrame): (DataFrame, DataFrame) = {
 
     logger.info(s"Original schema:\n${df.schema}".green)
 
@@ -143,8 +151,66 @@ class Summarizer(confPath: String,
     }
   }
 
-  // TODO - persist this after first computation into kvstore
-  private def buildCardinalityMap(dataFrame: DataFrame): Map[String, Long] = {
+  private def getOrComputeCardinalityMap(dataFrame: DataFrame): Map[String, Double] = {
+    val kvStore = api.genKvStore
+
+    // construct request
+    val summaryDataset = Constants.TiledSummaryDataset
+    val key = s"$confPath/column_cardinality_map"
+    val charset = Charset.forName("UTF-8")
+    val getRequest = GetRequest(key.getBytes(charset), summaryDataset)
+
+    // fetch result
+    val responseFuture = kvStore.get(getRequest)
+    val response = Await.result(responseFuture, Constants.FetchTimeout)
+
+    // if response is empty, compute cardinality map and put it
+    response.values match {
+      case Failure(exception) =>
+        logger.error(s"Failed to fetch cardinality map from KVStore: ${exception.getMessage}".red)
+        computeAndPutCardinalityMap(dataFrame)
+      case Success(values) =>
+        if (values == null || values.isEmpty) {
+          logger.info("Cardinality map not found in KVStore, computing and putting it".yellow)
+          computeAndPutCardinalityMap(dataFrame)
+        } else {
+          val mapBytes = values.maxBy(_.millis).bytes
+          val gson = new com.google.gson.Gson()
+          val cardinalityMapJson = new String(mapBytes, charset)
+          logger.info(s"Cardinality map found in KVStore: $cardinalityMapJson".yellow)
+          val cardinalityMap = gson.fromJson(cardinalityMapJson, classOf[java.util.Map[String, Double]])
+          val result = cardinalityMap.toScala
+          result
+        }
+    }
+  }
+
+  private val cardinalityMapKey = s"$confPath/column_cardinality_map"
+  private def cardinalityMapGetRequest: GetRequest = {
+    // construct request
+    val summaryDataset = Constants.TiledSummaryDataset
+    GetRequest(cardinalityMapKey.getBytes(Constants.DefaultCharset), summaryDataset)
+  }
+
+  private def computeAndPutCardinalityMap(dataFrame: DataFrame): Map[String, Double] = {
+    val kvStore = api.genKvStore
+    val getRequest = cardinalityMapGetRequest
+    val dataset = getRequest.dataset
+    val keyBytes = getRequest.keyBytes
+    logger.info("Computing cardinality map".yellow)
+    val cardinalityMap = buildCardinalityMap(dataFrame)
+    // we use json to serialize this map - we convert to java map to simplify deps to gson
+    val gson = new com.google.gson.Gson()
+    val cardinalityMapJson = gson.toJson(cardinalityMap.toJava)
+    val cardinalityMapBytes = cardinalityMapJson.getBytes(Constants.DefaultCharset)
+    logger.info("Writing to kvstore @ " + s"$dataset[$cardinalityMapKey] = $cardinalityMapJson".yellow)
+    val putRequest = PutRequest(keyBytes, cardinalityMapBytes, dataset)
+    kvStore.create(dataset)
+    kvStore.put(putRequest)
+    cardinalityMap
+  }
+
+  private def buildCardinalityMap(dataFrame: DataFrame): Map[String, Double] = {
     val cardinalityInputDf = prepare(dataFrame)._1
     val exprs: Seq[(String, String)] = cardinalityInputDf.schema.fields
       .flatMap { f =>
@@ -165,7 +231,7 @@ class Summarizer(confPath: String,
     spark.udf.register("array_dbl_distinct", udaf(new ArrayApproxDistinct[Double]()))
     val aggregated = inputTransformed.selectExpr(exprs.map(_._2): _*)
     aggregated.schema.fields.map { f => f.name -> f.dataType }.toMap
-    val counts = aggregated.collect().head.getValuesMap[Long](aggregated.columns)
+    val counts = aggregated.collect().head.getValuesMap[Long](aggregated.columns).mapValues(_.toDouble)
     logger.info(s"Counts for each field:\n  ${counts.mkString(",\n  ")}")
 
     // verify that all slices are low cardinality
@@ -176,17 +242,19 @@ class Summarizer(confPath: String,
     ) {
       assert(count <= cardinalityThreshold, s"Slice column $col is high cardinality $count")
     }
-    println("Cardinality counts:".red)
-    counts.foreach { case (k, v) => println(s"  $k: $v, [${if (cardinalityThreshold < v) "high" else "low"}]".yellow) }
+    val cardinalityBlurb = counts
+      .map { case (k, v) => s"  $k: $v, [${if (cardinalityThreshold < v) "high" else "low"}]".yellow }
+      .mkString("\n")
+    logger.info("Cardinality counts:".red + s"\n$cardinalityBlurb")
     counts
   }
 
   private def buildSummaryExpressions(inputDf: DataFrame, summaryInputDf: DataFrame): Seq[SummaryExpression] = {
-    val cardinalityMap = buildCardinalityMap(inputDf)
+    val cardinalityMap = getOrComputeCardinalityMap(inputDf)
     val excludedFields = Set(Constants.TileColumn, tu.partitionColumn, Constants.TimeColumn)
     summaryInputDf.schema.fields.filterNot { f => excludedFields.contains(f.name) }.flatMap { f =>
-      val cardinality =
-        if (cardinalityMap(f.name + "_cardinality") <= cardinalityThreshold) Cardinality.LOW else Cardinality.HIGH
+      val count = cardinalityMap(f.name + "_cardinality")
+      val cardinality = if (count <= cardinalityThreshold) Cardinality.LOW else Cardinality.HIGH
 
       SummaryExpression.of(f.dataType, cardinality, f.name)
     }
@@ -284,7 +352,8 @@ object Summarizer {
   // Initialize the logger
   private val logger = LoggerFactory.getLogger(getClass)
 
-  def compute(metadata: MetaData,
+  def compute(api: Api,
+              metadata: MetaData,
               ds: String,
               useLogs: Boolean = false,
               tileSize: Window = new Window(30, TimeUnit.MINUTES))(implicit tu: TableUtils): Unit = {
@@ -300,7 +369,8 @@ object Summarizer {
                           endDs = ds,
                           inputTable = inputTable,
                           outputTable = summaryTable,
-                          computeFunc = new Summarizer(metadata.nameToFilePath, tileSize = tileSize).computeSummaryDf)
+                          computeFunc =
+                            new Summarizer(api, metadata.nameToFilePath, tileSize = tileSize).computeSummaryDf)
     val exprs = partitionFiller.runInSequence
 
     val packedPartitionFiller =

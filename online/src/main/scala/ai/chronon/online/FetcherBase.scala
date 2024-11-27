@@ -175,28 +175,33 @@ class FetcherBase(kvStore: KVStore,
           case DataModel.Entities => servingInfo.mutationValueAvroCodec
         }
 
-        val streamingRows: Array[Row] = streamingResponses.iterator
-          .filter(tVal => tVal.millis >= servingInfo.batchEndTsMillis)
-          .flatMap(tVal =>
-            Try(selectedCodec.decodeRow(tVal.bytes, tVal.millis, mutations)) match {
-              case Success(row) => Seq(row)
-              case Failure(_) =>
-                logger.error(
-                  s"Failed to decode streaming rows for groupBy ${servingInfo.groupByOps.metaData.getName}" +
-                    "Streaming rows will be ignored")
-                val groupByFlag: Option[Boolean] = Option(flagStore)
-                  .map(_.isSet(
-                    "disable_streaming_decoding_error_throws",
-                    Map(
-                      "groupby_streaming_dataset" -> servingInfo.groupByServingInfo.groupBy.getMetaData.getName).asJava))
-                if (groupByFlag.getOrElse(disableErrorThrows)) {
-                  Seq.empty[Row]
-                } else {
-                  throw new RuntimeException(
-                    s"Failed to decode streaming rows for groupBy ${servingInfo.groupByOps.metaData.getName}")
-                }
-            })
-          .toArray
+        def decodeRow(timedValue: TimedValue): Row = {
+          val gbName = servingInfo.groupByOps.metaData.getName
+          Try(selectedCodec.decodeRow(timedValue.bytes, timedValue.millis, mutations)) match {
+            case Success(row) => row
+            case Failure(_) =>
+              logger.error(
+                s"Failed to decode streaming row for groupBy $gbName" +
+                  "Streaming rows will be ignored")
+              val groupByFlag: Option[Boolean] = Option(flagStore)
+                .map(
+                  _.isSet("disable_streaming_decoding_error_throws", Map("groupby_streaming_dataset" -> gbName).asJava))
+              if (groupByFlag.getOrElse(disableErrorThrows)) {
+                null
+              } else {
+                throw new RuntimeException(s"Failed to decode streaming row for groupBy $gbName")
+              }
+          }
+        }
+
+        val streamingRows: Array[Row] =
+          if (streamingResponses == null) Array.empty
+          else
+            streamingResponses.iterator
+              .filter(tVal => tVal.millis >= servingInfo.batchEndTsMillis)
+              .map(decodeRow)
+              .filter(_ != null)
+              .toArray
 
         if (debug) {
           val gson = new Gson()
@@ -222,6 +227,7 @@ class FetcherBase(kvStore: KVStore,
                        queryTsMillis: Long,
                        latencyMillis: Long,
                        totalResponseBytes: Int): Unit = {
+    if (response == null) return
     val latestResponseTs = response.iterator.map(_.millis).reduceOption(_ max _)
     val responseBytes = response.iterator.map(_.bytes.length).sum
     val context = ctx.withSuffix("response")
@@ -398,7 +404,7 @@ class FetcherBase(kvStore: KVStore,
         val totalResponseValueBytes =
           responsesMap.iterator
             .map(_._2)
-            .filter(_.isSuccess)
+            .filter(v => v.isSuccess && v.get != null)
             .flatMap(_.get.map(v => Option(v.bytes).map(_.length).getOrElse(0)))
             .sum
 

@@ -5,6 +5,7 @@ import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
 import ai.chronon.api.DriftMetric
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.TileDriftSeries
 import ai.chronon.api.TileSummarySeries
@@ -88,12 +89,6 @@ object ObservabilityDemo {
       df.show(10, truncate = false)
     }
 
-    time("Summarizing data") {
-      // compute summary table and packed table (for uploading)
-      Summarizer.compute(join.metaData, ds = endDs, useLogs = true)
-    }
-
-    val packedTable = join.metaData.packedSummaryTable
     // mock api impl for online fetching and uploading
     val kvStoreFunc: () => KVStore = () => {
       // cannot reuse the variable - or serialization error
@@ -101,6 +96,13 @@ object ObservabilityDemo {
       result
     }
     val api = new MockApi(kvStoreFunc, namespace)
+
+    time("Summarizing data") {
+      // compute summary table and packed table (for uploading)
+      Summarizer.compute(api, join.metaData, ds = endDs, useLogs = true)
+    }
+
+    val packedTable = join.metaData.packedSummaryTable
 
     // create necessary tables in kvstore
     val kvStore = api.genKvStore
@@ -152,7 +154,8 @@ object ObservabilityDemo {
         (nulls + currentNulls, total + currentCount)
     }
 
-    logger.info(s"""drift totals: $totals
+    logger.info(s"""
+           |drift totals: $totals
            |drift nulls: $nulls
            |""".stripMargin.red)
 
@@ -180,7 +183,26 @@ object ObservabilityDemo {
         }
     }
 
-    println(s"""summary ptile totals: $summaryTotals
+    val startTs = 1673308800000L
+    val endTs = 1674172800000L
+    val joinName = "risk.user_transactions.txn_join"
+    val name = "dim_user_account_type"
+    val window = new Window(10, ai.chronon.api.TimeUnit.HOURS)
+
+    val joinPath = joinName.replaceFirst("\\.", "/")
+    logger.info("Looking up current summary series")
+    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name)).get
+    val currentSummarySeries = Await.result(maybeCurrentSummarySeries, Duration.create(10, TimeUnit.SECONDS))
+    logger.info("Now looking up baseline summary series")
+    val maybeBaselineSummarySeries =
+      driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
+    val baselineSummarySeries = Await.result(maybeBaselineSummarySeries.get, Duration.create(10, TimeUnit.SECONDS))
+
+    logger.info(s"Current summary series: $currentSummarySeries")
+    logger.info(s"Baseline summary series: $baselineSummarySeries")
+
+    logger.info(s"""
+           |summary ptile totals: $summaryTotals
            |summary ptile nulls: $summaryNulls
            |""".stripMargin)
 
