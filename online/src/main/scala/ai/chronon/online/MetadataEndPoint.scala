@@ -22,7 +22,7 @@ case class MetadataEndPoint[Conf <: TBase[_, _]: Manifest: ClassTag](
 object MetadataEndPoint {
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val ConfByKeyEndPointName = "ZIPLINE_METADATA"
+  val ConfByKeyEndPointName = "CHRONON_METADATA"
   val NameByTeamEndPointName = "CHRONON_ENTITY_BY_TEAM"
 
   private def getTeamFromMetadata(metaData: MetaData): String = {

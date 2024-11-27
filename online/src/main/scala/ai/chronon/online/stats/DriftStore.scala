@@ -12,8 +12,8 @@ import ai.chronon.api.thrift.protocol.TProtocolFactory
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.MetadataStore
-import ai.chronon.online.stats.DriftStore.compactDeserializer
-import ai.chronon.online.stats.DriftStore.compactSerializer
+import ai.chronon.online.stats.DriftStore.binaryDeserializer
+import ai.chronon.online.stats.DriftStore.binarySerializer
 
 import java.io.Serializable
 import scala.concurrent.Future
@@ -52,8 +52,6 @@ class DriftStore(kvStore: KVStore,
     }
   }
 
-  private val deserializer: TDeserializer = compactDeserializer
-
   private case class SummaryRequestContext(request: GetRequest, tileKey: TileKey, groupName: String)
   private case class SummaryResponseContext(summaries: Array[(TileSummary, Long)], tileKey: TileKey, groupName: String)
 
@@ -76,8 +74,8 @@ class DriftStore(kvStore: KVStore,
                    endMs: Option[Long],
                    columnPrefix: Option[String]): Future[Seq[TileSummaryInfo]] = {
 
-    val serializer: TSerializer = compactSerializer
-    val tileKeyMap = tileKeysForJoin(joinConf, columnPrefix)
+    val serializer: TSerializer = binarySerializer.get()
+    val tileKeyMap = tileKeysForJoin(joinConf, None, columnPrefix)
     val requestContextMap: Map[GetRequest, SummaryRequestContext] = tileKeyMap.flatMap {
       case (group, keys) =>
         keys.map { key =>
@@ -90,6 +88,7 @@ class DriftStore(kvStore: KVStore,
     val responseFuture = kvStore.multiGet(requestContextMap.keys.toSeq)
 
     responseFuture.map { responses =>
+      val deserializer = binaryDeserializer.get()
       // deserialize the responses and surround with context
       val responseContextTries: Seq[Try[SummaryResponseContext]] = responses.map { response =>
         val valuesTry = response.values
@@ -200,7 +199,17 @@ object DriftStore {
   class SerializableSerializer(factory: TProtocolFactory) extends TSerializer(factory) with Serializable
 
   // crazy bug in compact protocol - do not change to compact
-  def compactSerializer: SerializableSerializer = new SerializableSerializer(new TBinaryProtocol.Factory())
 
-  def compactDeserializer: TDeserializer = new TDeserializer(new TBinaryProtocol.Factory())
+  @transient
+  lazy val binarySerializer: ThreadLocal[TSerializer] = new ThreadLocal[TSerializer] {
+    override def initialValue(): TSerializer = new TSerializer(new TBinaryProtocol.Factory())
+  }
+
+  @transient
+  lazy val binaryDeserializer: ThreadLocal[TDeserializer] = new ThreadLocal[TDeserializer] {
+    override def initialValue(): TDeserializer = new TDeserializer(new TBinaryProtocol.Factory())
+  }
+
+  // todo - drop this hard-coded list in favor of a well known list or exposing as part of summaries
+  def breaks(count: Int): Seq[String] = (0 to count).map(_ * (100 / count)).map("p" + _.toString)
 }

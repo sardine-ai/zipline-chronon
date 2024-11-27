@@ -6,7 +6,7 @@ import ai.chronon.api._
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.PutRequest
-import ai.chronon.online.stats.DriftStore.compactSerializer
+import ai.chronon.online.stats.DriftStore.binarySerializer
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Expressions.CardinalityExpression
 import ai.chronon.spark.stats.drift.Expressions.SummaryExpression
@@ -322,9 +322,10 @@ class SummaryPacker(confPath: String,
     val func: sql.Row => Seq[TileRow] =
       Expressions.summaryPopulatorFunc(summaryExpressions, df.schema, keyBuilder, tu.partitionColumn)
 
-    val serializer = compactSerializer
     val packedRdd: RDD[sql.Row] = df.rdd.flatMap(func).map { tileRow =>
       // pack into bytes
+      val serializer = binarySerializer.get()
+
       val partition = tileRow.partition
       val timestamp = tileRow.tileTs
       val summaries = tileRow.summaries
