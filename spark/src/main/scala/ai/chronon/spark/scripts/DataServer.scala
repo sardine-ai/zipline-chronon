@@ -5,7 +5,6 @@ import ai.chronon.api.TileSeriesKey
 import ai.chronon.api.TileSummarySeries
 import ai.chronon.api.thrift.TBase
 import ai.chronon.online.stats.DriftStore
-import ai.chronon.online.stats.DriftStore.SerializableSerializer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -19,7 +18,6 @@ import io.netty.handler.codec.http._
 import io.netty.util.CharsetUtil
 
 import java.util.Base64
-import java.util.function.Supplier
 import scala.reflect.ClassTag
 
 class DataServer(driftSeries: Seq[TileDriftSeries], summarySeries: Seq[TileSummarySeries], port: Int = 8181) {
@@ -35,15 +33,10 @@ class DataServer(driftSeries: Seq[TileDriftSeries], summarySeries: Seq[TileSumma
       ctx.flush()
     }
 
-    private val serializer: ThreadLocal[SerializableSerializer] =
-      ThreadLocal.withInitial(new Supplier[SerializableSerializer] {
-        override def get(): SerializableSerializer = DriftStore.compactSerializer
-      })
-
     private def convertToBytesMap[T <: TBase[_, _]: Manifest: ClassTag](
         series: T,
         keyF: T => TileSeriesKey): Map[String, String] = {
-      val serializerInstance = serializer.get()
+      val serializerInstance = DriftStore.binarySerializer.get()
       val encoder = Base64.getEncoder
       val keyBytes = serializerInstance.serialize(keyF(series))
       val valueBytes = serializerInstance.serialize(series)
