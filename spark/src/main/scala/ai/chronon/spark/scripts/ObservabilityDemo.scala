@@ -32,42 +32,6 @@ import scala.util.ScalaJavaConversions.IteratorOps
 object ObservabilityDemo {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def time(message: String)(block: => Unit): Unit = {
-    logger.info(s"$message..".yellow)
-    val start = System.currentTimeMillis()
-    block
-    val end = System.currentTimeMillis()
-    logger.info(s"$message took ${end - start} ms".green)
-  }
-
-  class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val startDs: ScallopOption[String] = opt[String](
-      name = "start-ds",
-      default = Some("2023-01-01"),
-      descr = "Start date in YYYY-MM-DD format"
-    )
-
-    val endDs: ScallopOption[String] = opt[String](
-      name = "end-ds",
-      default = Some("2023-02-30"),
-      descr = "End date in YYYY-MM-DD format"
-    )
-
-    val rowCount: ScallopOption[Int] = opt[Int](
-      name = "row-count",
-      default = Some(700000),
-      descr = "Number of rows to generate"
-    )
-
-    val namespace: ScallopOption[String] = opt[String](
-      name = "namespace",
-      default = Some("observability_demo"),
-      descr = "Namespace for the demo"
-    )
-
-    verify()
-  }
-
   def main(args: Array[String]): Unit = {
 
     val config = new Conf(args)
@@ -183,6 +147,9 @@ object ObservabilityDemo {
         }
     }
 
+    val server = new DataServer(driftSeries, summarySeries)
+    server.start()
+
     val startTs = 1673308800000L
     val endTs = 1674172800000L
     val joinName = "risk.user_transactions.txn_join"
@@ -210,5 +177,41 @@ object ObservabilityDemo {
 
     spark.stop()
     System.exit(0)
+  }
+
+  def time(message: String)(block: => Unit): Unit = {
+    logger.info(s"$message..".yellow)
+    val start = System.currentTimeMillis()
+    block
+    val end = System.currentTimeMillis()
+    logger.info(s"$message took ${end - start} ms".green)
+  }
+
+  class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
+    val startDs: ScallopOption[String] = opt[String](
+      name = "start-ds",
+      default = Some("2023-01-08"),
+      descr = "Start date in YYYY-MM-DD format"
+    )
+
+    val endDs: ScallopOption[String] = opt[String](
+      name = "end-ds",
+      default = Some("2023-02-30"),
+      descr = "End date in YYYY-MM-DD format"
+    )
+
+    val rowCount: ScallopOption[Int] = opt[Int](
+      name = "row-count",
+      default = Some(700000),
+      descr = "Number of rows to generate"
+    )
+
+    val namespace: ScallopOption[String] = opt[String](
+      name = "namespace",
+      default = Some("observability_demo"),
+      descr = "Namespace for the demo"
+    )
+
+    verify()
   }
 }
