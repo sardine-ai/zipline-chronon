@@ -98,11 +98,16 @@ class DriftStore(kvStore: KVStore,
         val tileKey = requestContext.tileKey
         val groupName = requestContext.groupName
         valuesTry.map { values =>
-          val summaries = values.map { value =>
-            val summary = new TileSummary()
-            deserializer.deserialize(summary, value.bytes)
-            summary -> value.millis
-          }.toArray
+          val summaries =
+            if (values == null)
+              null
+            else
+              values.map { value =>
+                val summary = new TileSummary()
+                deserializer.deserialize(summary, value.bytes)
+                summary -> value.millis
+              }.toArray
+
           SummaryResponseContext(summaries, tileKey, groupName)
         }
       }

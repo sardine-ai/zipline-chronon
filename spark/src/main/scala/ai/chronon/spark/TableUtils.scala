@@ -372,16 +372,17 @@ case class TableUtils(sparkSession: SparkSession) {
       .map(_.replace("at ai.chronon.spark.test.", "").replace("at ai.chronon.spark.", "").stripLeading())
       .mkString("\n    ")
 
-    println(s"""  ---- running query ----
+    logger.info(s"""
+         |  ${"---- running query ----".highlight}
          |
-         |${"  " + query.trim.replace("\n", "\n  ")}
+         |${("    " + query.trim.replace("\n", "\n    ")).yellow}
          |
          |  ---- call path ----
          |
          |$stackTraceStringPretty
          |
          |  ---- end ----
-         |""".stripMargin.yellow)
+         |""".stripMargin)
     try {
       // Run the query
       val df = sparkSession.sql(query).coalesce(partitionCount)
@@ -840,14 +841,14 @@ case class TableUtils(sparkSession: SparkSession) {
     val dp = DataPointer(table)
     var df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
-    println(s"""Scanning data:
-         |  table: ${dp.tableOrPath}
+    logger.info(s""" Scanning data:
+         |  table: ${dp.tableOrPath.green}
          |  options: ${dp.options}
          |  format: ${dp.format}
          |  selects:
-         |    ${selects.mkString("\n    ")}
+         |    ${selects.mkString("\n    ").green}
          |  wheres:
-         |    ${wheres.mkString(",\n    ")}
+         |    ${wheres.mkString(",\n    ").green}
          |""".stripMargin.yellow)
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
     if (wheres.nonEmpty) df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
