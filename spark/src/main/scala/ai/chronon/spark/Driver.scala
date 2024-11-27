@@ -878,7 +878,7 @@ object Driver {
       implicit val tableUtils: TableUtils = TableUtils(sparkSession)
       logger.info("Running Summarizer")
       val confPath = args.confPath()
-      val summarizer = new Summarizer(confPath, timeColumn = args.timeColumn.toOption)
+      val summarizer = new Summarizer(args.api, confPath, timeColumn = args.timeColumn.toOption)
       try {
         val df = sparkSession.read.parquet(args.parquetPath())
         val (result, summaryExprs) = summarizer.computeSummaryDf(df)

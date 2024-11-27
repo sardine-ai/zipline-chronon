@@ -16,6 +16,10 @@
 
 package ai.chronon.api
 
+import java.nio.charset.Charset
+import java.util.concurrent
+import scala.concurrent.duration.Duration
+
 object Constants {
   val TimeColumn: String = "ts"
   val LabelPartitionColumn: String = "label_ds"
@@ -66,4 +70,8 @@ object Constants {
   val TiledSummaryDataset: String = "TILE_SUMMARIES"
 
   val DefaultDriftTileSize: Window = new Window(30, TimeUnit.MINUTES)
+
+  val FetchTimeout: Duration = Duration(10, concurrent.TimeUnit.MINUTES)
+  val DefaultCharset: Charset = Charset.forName("UTF-8")
+
 }

@@ -1,12 +1,16 @@
 <configuration>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>[%date] {%logger{0}} %level - %message%n</pattern>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%yellow(%d{yyyy-MM-dd HH:mm:ss}) %highlight(%-5level) %green(%file:%line) - %message%n</pattern>
         </encoder>
-      </appender>
-    <logger name="ai.chronon" level="DEBUG" />
+    </appender>
 
-    <root level="INFO">
+    <conversionRule conversionWord="highlight"
+                    converterClass="ch.qos.logback.classic.pattern.color.HighlightingCompositeConverter" />
+
+    <logger name="ai.chronon" level="INFO" />
+
+    <root level="ERROR">
         <appender-ref ref="CONSOLE"/>
     </root>
 </configuration>

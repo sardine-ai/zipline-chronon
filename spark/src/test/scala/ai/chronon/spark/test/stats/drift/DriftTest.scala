@@ -5,6 +5,7 @@ import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
 import ai.chronon.api.DriftMetric
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Window
 import ai.chronon.online.KVStore
@@ -49,15 +50,8 @@ class DriftTest extends AnyFlatSpec with Matchers {
     // generate anomalous data (join output)
     val prepareData = PrepareData(namespace)
     val join = prepareData.generateAnomalousFraudJoin
-    val df = prepareData.generateFraudSampleData(100000, "2023-01-01", "2023-01-30", join.metaData.loggedTable)
+    val df = prepareData.generateFraudSampleData(600000, "2023-01-01", "2023-02-30", join.metaData.loggedTable)
     df.show(10, truncate = false)
-
-    // compute summary table and packed table (for uploading)
-    Summarizer.compute(join.metaData, ds = "2023-01-30", useLogs = true)
-    val summaryTable = join.metaData.summaryTable
-    val packedTable = join.metaData.packedSummaryTable
-    showTable(summaryTable)
-    showTable(packedTable)
 
     // mock api impl for online fetching and uploading
     val kvStoreFunc: () => KVStore = () => {
@@ -66,6 +60,13 @@ class DriftTest extends AnyFlatSpec with Matchers {
       result
     }
     val api = new MockApi(kvStoreFunc, namespace)
+
+    // compute summary table and packed table (for uploading)
+    Summarizer.compute(api, join.metaData, ds = "2023-02-30", useLogs = true)
+    val summaryTable = join.metaData.summaryTable
+    val packedTable = join.metaData.packedSummaryTable
+    showTable(summaryTable)
+    showTable(packedTable)
 
     // create necessary tables in kvstore
     val kvStore = api.genKvStore
@@ -88,7 +89,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
 
     // fetch summaries
     val startMs = PartitionSpec.daily.epochMillis("2023-01-01")
-    val endMs = PartitionSpec.daily.epochMillis("2023-01-29")
+    val endMs = PartitionSpec.daily.epochMillis("2023-02-29")
     val summariesFuture = driftStore.getSummaries(join, Some(startMs), Some(endMs), None)
     val summaries = Await.result(summariesFuture, Duration.create(10, TimeUnit.SECONDS))
     println(summaries)
@@ -144,5 +145,22 @@ class DriftTest extends AnyFlatSpec with Matchers {
     summaryTotals should be > 0
     summaryNulls.toDouble / summaryTotals.toDouble should be < 0.1
     println("Summary series fetched successfully".green)
+
+    val startTs=1673308800000L
+    val endTs=1674172800000L
+    val joinName = "risk.user_transactions.txn_join"
+    val name = "dim_user_account_type"
+    val window = new Window(10, ai.chronon.api.TimeUnit.HOURS)
+
+    val joinPath = joinName.replaceFirst("\\.", "/")
+    println("Looking up current summary series")
+    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name)).get
+    val currentSummarySeries = Await.result(maybeCurrentSummarySeries, Duration.create(10, TimeUnit.SECONDS))
+    println("Now looking up baseline summary series")
+    val maybeBaselineSummarySeries = driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
+    val baselineSummarySeries = Await.result(maybeBaselineSummarySeries.get, Duration.create(10, TimeUnit.SECONDS))
+
+    println(s"Current summary series: $currentSummarySeries")
+    println(s"Baseline summary series: $baselineSummarySeries")
   }
 }
