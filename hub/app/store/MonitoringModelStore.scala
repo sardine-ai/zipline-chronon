@@ -31,10 +31,10 @@ case class LoadedConfs(joins: Seq[api.Join] = Seq.empty,
                        stagingQueries: Seq[api.StagingQuery] = Seq.empty,
                        models: Seq[api.Model] = Seq.empty)
 
-class DynamoDBMonitoringStore(apiImpl: Api) {
+class MonitoringModelStore(apiImpl: Api) {
 
-  val dynamoDBKVStore: KVStore = apiImpl.genKvStore
-  implicit val executionContext: ExecutionContext = dynamoDBKVStore.executionContext
+  val kvStore: KVStore = apiImpl.genKvStore
+  implicit val executionContext: ExecutionContext = kvStore.executionContext
 
   // to help periodically refresh the load config catalog, we wrap this in a TTL cache
   lazy val configRegistryCache: TTLCache[String, LoadedConfs] = {
@@ -59,8 +59,13 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
           GroupBy(part.groupBy.metaData.name, part.groupBy.valueColumns)
         }
 
-        val outputColumns = thriftJoin.outputColumnsByGroup.values.flatten.toArray
-        val join = Join(thriftJoin.metaData.name, outputColumns, groupBys)
+        val outputColumns = thriftJoin.outputColumnsByGroup.getOrElse("derivations", Array.empty)
+        val join = Join(thriftJoin.metaData.name,
+                        outputColumns,
+                        groupBys,
+                        thriftJoin.metaData.online,
+                        thriftJoin.metaData.production,
+                        Option(thriftJoin.metaData.team))
         Option(
           Model(m.metaData.name, join, m.metaData.online, m.metaData.production, m.metaData.team, m.modelType.name()))
       } else {
@@ -68,6 +73,22 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
         None
       }
     }
+
+  def getJoins: Seq[Join] = {
+    configRegistryCache("default").joins.map { thriftJoin =>
+      val groupBys = thriftJoin.joinParts.asScala.map { part =>
+        GroupBy(part.groupBy.metaData.name, part.groupBy.valueColumns)
+      }
+
+      val outputColumns = thriftJoin.outputColumnsByGroup.getOrElse("derivations", Array.empty)
+      Join(thriftJoin.metaData.name,
+           outputColumns,
+           groupBys,
+           thriftJoin.metaData.online,
+           thriftJoin.metaData.production,
+           Option(thriftJoin.metaData.team))
+    }
+  }
 
   val logger: Logger = Logger(this.getClass)
   val defaultListLookupLimit: Int = 100
@@ -81,7 +102,7 @@ class DynamoDBMonitoringStore(apiImpl: Api) {
     }
     val listRequest = ListRequest(MetadataEndPoint.ConfByKeyEndPointName, propsMap)
     logger.info(s"Triggering list conf lookup with request: $listRequest")
-    dynamoDBKVStore.list(listRequest).flatMap { response =>
+    kvStore.list(listRequest).flatMap { response =>
       val newLoadedConfs = makeLoadedConfs(response)
       val newAcc = LoadedConfs(
         acc.joins ++ newLoadedConfs.joins,

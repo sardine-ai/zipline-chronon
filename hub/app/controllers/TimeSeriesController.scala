@@ -1,40 +1,33 @@
 package controllers
 import ai.chronon.api.DriftMetric
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.TileDriftSeries
+import ai.chronon.api.TileSummarySeries
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import ai.chronon.online.stats.DriftStore
 import io.circe.generic.auto._
 import io.circe.syntax._
 import model._
 import play.api.mvc._
 
 import javax.inject._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.Random
+import scala.jdk.CollectionConverters._
+import scala.util.Failure
+import scala.util.Success
 
 /**
   * Controller that serves various time series endpoints at the model, join and feature level
   */
 @Singleton
-class TimeSeriesController @Inject() (val controllerComponents: ControllerComponents) extends BaseController {
+class TimeSeriesController @Inject() (val controllerComponents: ControllerComponents, driftStore: DriftStore)(implicit
+    ec: ExecutionContext)
+    extends BaseController {
 
   import TimeSeriesController._
-
-  /**
-    * Helps retrieve a model performance drift time series. Time series is retrieved between the start and end ts.
-    * The offset is used to compute the distribution to compare against (we compare current time range with the same
-    * sized time range starting offset time period prior).
-    */
-  def fetchModel(id: String, startTs: Long, endTs: Long, offset: String, algorithm: String): Action[AnyContent] =
-    doFetchModel(id, startTs, endTs, offset, algorithm)
-
-  /**
-    * Helps retrieve a model time series with the data sliced based on the relevant slice (identified by sliceId)
-    */
-  def fetchModelSlice(id: String,
-                      sliceId: String,
-                      startTs: Long,
-                      endTs: Long,
-                      offset: String,
-                      algorithm: String): Action[AnyContent] =
-    doFetchModel(id, startTs, endTs, offset, algorithm, Some(sliceId))
 
   /**
     * Helps retrieve a time series (drift or skew) for each of the features that are part of a join. Time series is
@@ -50,28 +43,15 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                 metrics: String,
                 offset: Option[String],
                 algorithm: Option[String]): Action[AnyContent] =
-    doFetchJoin(name, startTs, endTs, metricType, metrics, None, offset, algorithm)
-
-  /**
-    * Helps retrieve a time series (drift or skew) for each of the features that are part of a join. The data is sliced
-    * based on the configured slice (looked up by sliceId)
-    */
-  def fetchJoinSlice(name: String,
-                     sliceId: String,
-                     startTs: Long,
-                     endTs: Long,
-                     metricType: String,
-                     metrics: String,
-                     offset: Option[String],
-                     algorithm: Option[String]): Action[AnyContent] =
-    doFetchJoin(name, startTs, endTs, metricType, metrics, Some(sliceId), offset, algorithm)
+    doFetchJoin(name, startTs, endTs, metricType, metrics, offset, algorithm)
 
   /**
     * Helps retrieve a time series (drift or skew) for a given feature. Time series is
     * retrieved between the start and end ts. Choice of granularity (raw, aggregate, percentiles) along with the
     * metric type (drift / skew) dictates the shape of the returned time series.
     */
-  def fetchFeature(name: String,
+  def fetchFeature(join: String,
+                   name: String,
                    startTs: Long,
                    endTs: Long,
                    metricType: String,
@@ -79,57 +59,23 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                    granularity: String,
                    offset: Option[String],
                    algorithm: Option[String]): Action[AnyContent] =
-    doFetchFeature(name, startTs, endTs, metricType, metrics, None, granularity, offset, algorithm)
-
-  /**
-    * Helps retrieve a time series (drift or skew) for a given feature. The data is sliced based on the configured slice
-    * (looked up by sliceId)
-    */
-  def fetchFeatureSlice(name: String,
-                        sliceId: String,
-                        startTs: Long,
-                        endTs: Long,
-                        metricType: String,
-                        metrics: String,
-                        granularity: String,
-                        offset: Option[String],
-                        algorithm: Option[String]): Action[AnyContent] =
-    doFetchFeature(name, startTs, endTs, metricType, metrics, Some(sliceId), granularity, offset, algorithm)
-
-  private def doFetchModel(id: String,
-                           startTs: Long,
-                           endTs: Long,
-                           offset: String,
-                           algorithm: String,
-                           sliceId: Option[String] = None): Action[AnyContent] =
-    Action { implicit request: Request[AnyContent] =>
-      (parseOffset(Some(offset)), parseAlgorithm(Some(algorithm))) match {
-        case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
-        case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
-        case (Some(_), Some(_)) =>
-          // TODO: Use parsedOffset and parsedAlgorithm when ready
-          val mockTSData = ModelTimeSeriesResponse(id, generateMockTimeSeriesPoints(startTs, endTs))
-          Ok(mockTSData.asJson.noSpaces)
-      }
-    }
+    doFetchFeature(join, name, startTs, endTs, metricType, metrics, granularity, offset, algorithm)
 
   private def doFetchJoin(name: String,
                           startTs: Long,
                           endTs: Long,
                           metricType: String,
                           metrics: String,
-                          slice: Option[String],
                           offset: Option[String],
                           algorithm: Option[String]): Action[AnyContent] =
-    Action { implicit request: Request[AnyContent] =>
+    Action.async { implicit request: Request[AnyContent] =>
       val metricChoice = parseMetricChoice(Some(metricType))
       val metricRollup = parseMetricRollup(Some(metrics))
 
       (metricChoice, metricRollup) match {
-        case (None, _)                   => BadRequest("Invalid metric choice. Expect drift / skew")
-        case (_, None)                   => BadRequest("Invalid metric rollup. Expect null / value")
-        case (Some(Drift), Some(rollup)) => doFetchJoinDrift(name, startTs, endTs, rollup, slice, offset, algorithm)
-        case (Some(Skew), Some(rollup))  => doFetchJoinSkew(name, startTs, endTs, rollup, slice)
+        case (None, _)                   => Future.successful(BadRequest("Invalid metric choice. Expect drift"))
+        case (_, None)                   => Future.successful(BadRequest("Invalid metric rollup. Expect null / value"))
+        case (Some(Drift), Some(rollup)) => doFetchJoinDrift(name, startTs, endTs, rollup, offset, algorithm)
       }
     }
 
@@ -137,133 +83,174 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                                startTs: Long,
                                endTs: Long,
                                metric: Metric,
-                               sliceId: Option[String],
                                offset: Option[String],
-                               algorithm: Option[String]): Result = {
+                               algorithm: Option[String]): Future[Result] = {
 
     (parseOffset(offset), parseAlgorithm(algorithm)) match {
-      case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
-      case (_, None)          => BadRequest("Invalid drift algorithm. Expect JSD, PSI or Hellinger")
-      case (Some(_), Some(_)) =>
-        // TODO: Use parsedOffset and parsedAlgorithm when ready
-        val mockGroupBys = generateMockGroupBys(3)
-        val groupByTimeSeries = mockGroupBys.map { g =>
-          val mockFeatures = generateMockFeatures(g, 10)
-          val featureTS = mockFeatures.map {
-            FeatureTimeSeries(_, generateMockTimeSeriesPoints(startTs, endTs))
-          }
-          GroupByTimeSeries(g, featureTS)
+      case (None, _) => Future.successful(BadRequest(s"Unable to parse offset - $offset"))
+      case (_, None) => Future.successful(BadRequest("Invalid drift algorithm. Expect JSD, PSI or Hellinger"))
+      case (Some(o), Some(driftMetric)) =>
+        val window = new Window(o.toMinutes.toInt, TimeUnit.MINUTES)
+        val joinPath = name.replaceFirst("\\.", "/") // we need to look up in the drift store with this transformed name
+        val maybeDriftSeries = driftStore.getDriftSeries(joinPath, driftMetric, window, startTs, endTs)
+        maybeDriftSeries match {
+          case Failure(exception) =>
+            Future.successful(InternalServerError(s"Error computing join drift - ${exception.getMessage}"))
+          case Success(driftSeriesFuture) =>
+            driftSeriesFuture.map { driftSeries =>
+              // pull up a list of drift series objects for all the features in a group
+              val grpToDriftSeriesList: Map[String, Seq[TileDriftSeries]] = driftSeries.groupBy(_.key.groupName)
+              val groupByTimeSeries = grpToDriftSeriesList.map {
+                case (name, featureDriftSeriesInfoSeq) =>
+                  GroupByTimeSeries(
+                    name,
+                    featureDriftSeriesInfoSeq.map(series => convertTileDriftSeriesInfoToTimeSeries(series, metric)))
+              }.toSeq
+
+              val tsData = JoinTimeSeriesResponse(name, groupByTimeSeries)
+              Ok(tsData.asJson.noSpaces)
+            }
         }
-
-        val mockTSData = JoinTimeSeriesResponse(name, groupByTimeSeries)
-        Ok(mockTSData.asJson.noSpaces)
     }
   }
 
-  private def doFetchJoinSkew(name: String,
-                              startTs: Long,
-                              endTs: Long,
-                              metric: Metric,
-                              sliceId: Option[String]): Result = {
-    val mockGroupBys = generateMockGroupBys(3)
-    val groupByTimeSeries = mockGroupBys.map { g =>
-      val mockFeatures = generateMockFeatures(g, 10)
-      val featureTS = mockFeatures.map {
-        FeatureTimeSeries(_, generateMockTimeSeriesPoints(startTs, endTs))
-      }
-      GroupByTimeSeries(g, featureTS)
-    }
-
-    val mockTSData = JoinTimeSeriesResponse(name, groupByTimeSeries)
-    val json = mockTSData.asJson.noSpaces
-    Ok(json)
-  }
-
-  private def doFetchFeature(name: String,
+  private def doFetchFeature(join: String,
+                             name: String,
                              startTs: Long,
                              endTs: Long,
                              metricType: String,
                              metrics: String,
-                             slice: Option[String],
                              granularity: String,
                              offset: Option[String],
                              algorithm: Option[String]): Action[AnyContent] =
-    Action { implicit request: Request[AnyContent] =>
+    Action.async { implicit request: Request[AnyContent] =>
       val metricChoice = parseMetricChoice(Some(metricType))
       val metricRollup = parseMetricRollup(Some(metrics))
       val granularityType = parseGranularity(granularity)
 
       (metricChoice, metricRollup, granularityType) match {
-        case (None, _, _) => BadRequest("Invalid metric choice. Expect drift / skew")
-        case (_, None, _) => BadRequest("Invalid metric rollup. Expect null / value")
-        case (_, _, None) => BadRequest("Invalid granularity. Expect raw / percentile / aggregates")
+        case (None, _, _) => Future.successful(BadRequest("Invalid metric choice. Expect drift"))
+        case (_, None, _) => Future.successful(BadRequest("Invalid metric rollup. Expect null / value"))
+        case (_, _, None) => Future.successful(BadRequest("Invalid granularity. Expect raw / percentile / aggregates"))
         case (Some(Drift), Some(rollup), Some(g)) =>
-          doFetchFeatureDrift(name, startTs, endTs, rollup, slice, g, offset, algorithm)
-        case (Some(Skew), Some(rollup), Some(g)) => doFetchFeatureSkew(name, startTs, endTs, rollup, slice, g)
+          doFetchFeatureDrift(join, name, startTs, endTs, rollup, g, offset, algorithm)
       }
     }
 
-  private def doFetchFeatureDrift(name: String,
+  private def doFetchFeatureDrift(join: String,
+                                  name: String,
                                   startTs: Long,
                                   endTs: Long,
                                   metric: Metric,
-                                  sliceId: Option[String],
                                   granularity: Granularity,
                                   offset: Option[String],
-                                  algorithm: Option[String]): Result = {
+                                  algorithm: Option[String]): Future[Result] = {
     if (granularity == Raw) {
-      BadRequest("We don't support Raw granularity for drift metric types")
+      Future.successful(BadRequest("We don't support Raw granularity for drift metric types"))
     } else {
       (parseOffset(offset), parseAlgorithm(algorithm)) match {
-        case (None, _)          => BadRequest(s"Unable to parse offset - $offset")
-        case (_, None)          => BadRequest("Invalid drift algorithm. Expect PSI or KL")
-        case (Some(_), Some(_)) =>
-          // TODO: Use parsedOffset and parsedAlgorithm when ready
-          val featureTsJson = if (granularity == Aggregates) {
-            // if feature name ends in an even digit we consider it continuous and generate mock data accordingly
-            // else we generate mock data for a categorical feature
-            val featureId = name.split("_").last.toInt
-            val featureTs = if (featureId % 2 == 0) {
-              ComparedFeatureTimeSeries(name,
-                                        generateMockRawTimeSeriesPoints(startTs, 100),
-                                        generateMockRawTimeSeriesPoints(startTs, 100))
-            } else {
-              ComparedFeatureTimeSeries(name,
-                                        generateMockCategoricalTimeSeriesPoints(startTs, 5, 1),
-                                        generateMockCategoricalTimeSeriesPoints(startTs, 5, 2))
+        case (None, _) => Future.successful(BadRequest(s"Unable to parse offset - $offset"))
+        case (_, None) => Future.successful(BadRequest("Invalid drift algorithm. Expect JSD, PSI or Hellinger"))
+        case (Some(o), Some(driftMetric)) =>
+          val window = new Window(o.toMinutes.toInt, TimeUnit.MINUTES)
+          val joinPath =
+            join.replaceFirst("\\.", "/") // we need to look up in the drift store with this transformed name
+          if (granularity == Aggregates) {
+            val maybeDriftSeries =
+              driftStore.getDriftSeries(joinPath, driftMetric, window, startTs, endTs, Some(name))
+            maybeDriftSeries match {
+              case Failure(exception) =>
+                Future.successful(InternalServerError(s"Error computing feature drift - ${exception.getMessage}"))
+              case Success(driftSeriesFuture) =>
+                driftSeriesFuture.map { driftSeries =>
+                  val featureTs = convertTileDriftSeriesInfoToTimeSeries(driftSeries.head, metric)
+                  Ok(featureTs.asJson.noSpaces)
+                }
             }
-            featureTs.asJson
           } else {
-            //
-            //{new: Array[Double], old: Array[Double], x: Array[String]}
-            //{old_null_count: Long, new_null_count: long, old_total_count: Long, new_total_count: Long}
-
-            FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs)).asJson
+            // percentiles
+            val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name))
+            val maybeBaselineSummarySeries =
+              driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
+            (maybeCurrentSummarySeries, maybeBaselineSummarySeries) match {
+              case (Failure(exceptionA), Failure(exceptionB)) =>
+                Future.successful(InternalServerError(
+                  s"Error computing feature percentiles for current + offset time window.\nCurrent window error: ${exceptionA.getMessage}\nOffset window error: ${exceptionB.getMessage}"))
+              case (_, Failure(exception)) =>
+                Future.successful(
+                  InternalServerError(
+                    s"Error computing feature percentiles for offset time window - ${exception.getMessage}"))
+              case (Failure(exception), _) =>
+                Future.successful(
+                  InternalServerError(
+                    s"Error computing feature percentiles for current time window - ${exception.getMessage}"))
+              case (Success(currentSummarySeriesFuture), Success(baselineSummarySeriesFuture)) =>
+                Future.sequence(Seq(currentSummarySeriesFuture, baselineSummarySeriesFuture)).map { merged =>
+                  val currentSummarySeries = merged.head
+                  val baselineSummarySeries = merged.last
+                  val currentFeatureTs = {
+                    if (currentSummarySeries.isEmpty) Seq.empty
+                    else convertTileSummarySeriesToTimeSeries(currentSummarySeries.head, metric)
+                  }
+                  val baselineFeatureTs = {
+                    if (baselineSummarySeries.isEmpty) Seq.empty
+                    else convertTileSummarySeriesToTimeSeries(baselineSummarySeries.head, metric)
+                  }
+                  val comparedTsData = ComparedFeatureTimeSeries(name, baselineFeatureTs, currentFeatureTs)
+                  Ok(comparedTsData.asJson.noSpaces)
+                }
+            }
           }
-          Ok(featureTsJson.noSpaces)
       }
     }
   }
 
-  private def doFetchFeatureSkew(name: String,
-                                 startTs: Long,
-                                 endTs: Long,
-                                 metric: Metric,
-                                 sliceId: Option[String],
-                                 granularity: Granularity): Result = {
-    if (granularity == Aggregates) {
-      BadRequest("We don't support Aggregates granularity for skew metric types")
+  private def convertTileDriftSeriesInfoToTimeSeries(tileDriftSeries: TileDriftSeries,
+                                                     metric: Metric): FeatureTimeSeries = {
+    val lhsList = if (metric == NullMetric) {
+      tileDriftSeries.nullRatioChangePercentSeries.asScala
     } else {
-      val featureTsJson = if (granularity == Raw) {
-        val featureTs = ComparedFeatureTimeSeries(name,
-                                                  generateMockRawTimeSeriesPoints(startTs, 100),
-                                                  generateMockRawTimeSeriesPoints(startTs, 100))
-        featureTs.asJson.noSpaces
-      } else {
-        val featuresTs = FeatureTimeSeries(name, generateMockTimeSeriesPercentilePoints(startTs, endTs))
-        featuresTs.asJson.noSpaces
+      // check if we have a numeric / categorical feature. If the percentile drift series has non-null doubles
+      // then we have a numeric feature at hand
+      val isNumeric =
+        tileDriftSeries.percentileDriftSeries.asScala != null && tileDriftSeries.percentileDriftSeries.asScala
+          .exists(_ != null)
+      if (isNumeric) tileDriftSeries.percentileDriftSeries.asScala
+      else tileDriftSeries.histogramDriftSeries.asScala
+    }
+    val points = lhsList.zip(tileDriftSeries.timestamps.asScala).map {
+      case (v, ts) => TimeSeriesPoint(v, ts)
+    }
+
+    FeatureTimeSeries(tileDriftSeries.getKey.getColumn, points)
+  }
+
+  private def convertTileSummarySeriesToTimeSeries(summarySeries: TileSummarySeries,
+                                                   metric: Metric): Seq[TimeSeriesPoint] = {
+    if (metric == NullMetric) {
+      summarySeries.nullCount.asScala.zip(summarySeries.timestamps.asScala).map {
+        case (nullCount, ts) => TimeSeriesPoint(0, ts, nullValue = Some(nullCount.intValue()))
       }
-      Ok(featureTsJson)
+    } else {
+      // check if we have a numeric / categorical feature. If the percentile drift series has non-null doubles
+      // then we have a numeric feature at hand
+      val isNumeric = summarySeries.percentiles.asScala != null && summarySeries.percentiles.asScala.exists(_ != null)
+      if (isNumeric) {
+        summarySeries.percentiles.asScala.zip(summarySeries.timestamps.asScala).flatMap {
+          case (percentiles, ts) =>
+            DriftStore.breaks(20).zip(percentiles.asScala).map {
+              case (l, value) => TimeSeriesPoint(value, ts, Some(l))
+            }
+        }
+      } else {
+        summarySeries.timestamps.asScala.zipWithIndex.flatMap {
+          case (ts, idx) =>
+            summarySeries.histogram.asScala.map {
+              case (label, values) =>
+                TimeSeriesPoint(values.get(idx).toDouble, ts, Some(label))
+            }
+        }
+      }
     }
   }
 }
@@ -281,22 +268,21 @@ object TimeSeriesController {
   }
 
   def parseAlgorithm(algorithm: Option[String]): Option[DriftMetric] = {
-    algorithm.map {
-      _.toLowerCase match {
-        case "psi"       => DriftMetric.PSI
-        case "hellinger" => DriftMetric.HELLINGER
-        case "jsd"       => DriftMetric.JENSEN_SHANNON
-        case _           => throw new IllegalArgumentException("Invalid drift algorithm. Pick one of PSI, Hellinger or JSD")
-      }
+    algorithm.map(_.toLowerCase) match {
+      case Some("psi")       => Some(DriftMetric.PSI)
+      case Some("hellinger") => Some(DriftMetric.HELLINGER)
+      case Some("jsd")       => Some(DriftMetric.JENSEN_SHANNON)
+      case _                 => None
     }
   }
 
+  // We currently only support drift
   def parseMetricChoice(metricType: Option[String]): Option[MetricType] = {
     metricType.map(_.toLowerCase) match {
       case Some("drift") => Some(Drift)
-      case Some("skew")  => Some(Skew)
-      case Some("ooc")   => Some(Skew)
-      case _             => None
+//      case Some("skew")  => Some(Skew)
+//      case Some("ooc")   => Some(Skew)
+      case _ => None
     }
   }
 
@@ -316,46 +302,4 @@ object TimeSeriesController {
       case _            => None
     }
   }
-
-  // !!!!! Mock generation code !!!!! //
-
-  val mockGeneratedPercentiles: Seq[String] =
-    Seq("p0", "p10", "p20", "p30", "p40", "p50", "p60", "p70", "p75", "p80", "p90", "p95", "p99", "p100")
-
-  // temporarily serve up mock data while we wait on hooking up our KV store layer + drift calculation
-  private def generateMockTimeSeriesPoints(startTs: Long, endTs: Long): Seq[TimeSeriesPoint] = {
-    val random = new Random(1000)
-    (startTs until endTs by (1.hours.toMillis)).map(ts => TimeSeriesPoint(random.nextDouble(), ts))
-  }
-
-  private def generateMockRawTimeSeriesPoints(timestamp: Long, count: Int): Seq[TimeSeriesPoint] = {
-    val random = new Random(1000)
-    (0 until count).map(_ => TimeSeriesPoint(random.nextDouble(), timestamp))
-  }
-
-  private def generateMockCategoricalTimeSeriesPoints(timestamp: Long,
-                                                      categoryCount: Int,
-                                                      nullCategoryCount: Int): Seq[TimeSeriesPoint] = {
-    val random = new Random(1000)
-    val catTSPoints = (0 until categoryCount).map(i => TimeSeriesPoint(random.nextInt(1000), timestamp, Some(s"A_$i")))
-    val nullCatTSPoints = (0 until nullCategoryCount).map(i =>
-      TimeSeriesPoint(random.nextDouble(), timestamp, Some(s"A_{$i + $categoryCount}"), Some(random.nextInt(10))))
-    catTSPoints ++ nullCatTSPoints
-  }
-
-  private def generateMockTimeSeriesPercentilePoints(startTs: Long, endTs: Long): Seq[TimeSeriesPoint] = {
-    val random = new Random(1000)
-    (startTs until endTs by (1.hours.toMillis)).flatMap { ts =>
-      mockGeneratedPercentiles.zipWithIndex.map {
-        case (p, _) => TimeSeriesPoint(random.nextDouble(), ts, Some(p))
-      }
-    }
-  }
-
-  private def generateMockGroupBys(numGroupBys: Int): Seq[String] =
-    (1 to numGroupBys).map(i => s"my_groupby_$i")
-
-  private def generateMockFeatures(groupBy: String, featuresPerGroupBy: Int): Seq[String] =
-    (1 to featuresPerGroupBy).map(i => s"$groupBy.my_feature_$i")
-
 }

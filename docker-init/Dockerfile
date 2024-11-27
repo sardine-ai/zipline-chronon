@@ -43,6 +43,7 @@ ENV CHRONON_DRIVER_JAR="/app/cli/spark.jar"
 # Set up Spark dependencies to help with launching CLI
 # Copy Spark JARs from the Bitnami image
 COPY --from=spark-source /opt/bitnami/spark/jars /opt/spark/jars
+COPY --from=spark-source /opt/bitnami/spark/bin /opt/spark/bin
 
 # Add all Spark JARs to the classpath
 ENV CLASSPATH=/opt/spark/jars/*

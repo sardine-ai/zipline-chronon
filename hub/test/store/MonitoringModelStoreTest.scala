@@ -21,7 +21,7 @@ import scala.io.Source
 import scala.util.Success
 import scala.util.Try
 
-class DynamoDBMonitoringStoreTest extends MockitoSugar with Matchers {
+class MonitoringModelStoreTest extends MockitoSugar with Matchers {
 
   var api: Api = _
   var kvStore: KVStore = _
@@ -41,13 +41,13 @@ class DynamoDBMonitoringStoreTest extends MockitoSugar with Matchers {
 
   @Test
   def monitoringStoreShouldReturnModels(): Unit = {
-    val dynamoDBMonitoringStore = new DynamoDBMonitoringStore(api)
+    val dynamoDBMonitoringStore = new MonitoringModelStore(api)
     when(kvStore.list(any())).thenReturn(generateListResponse())
 
     validateLoadedConfigs(dynamoDBMonitoringStore)
   }
 
-  private def validateLoadedConfigs(dynamoDBMonitoringStore: DynamoDBMonitoringStore): Unit = {
+  private def validateLoadedConfigs(dynamoDBMonitoringStore: MonitoringModelStore): Unit = {
     // check that our store has loaded the relevant artifacts
     dynamoDBMonitoringStore.getConfigRegistry.models.length shouldBe 1
     dynamoDBMonitoringStore.getConfigRegistry.groupBys.length shouldBe 2

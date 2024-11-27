@@ -39,23 +39,6 @@ echo "DynamoDB Table created successfully!"
 
 start_time=$(date +%s)
 
-if ! java \
-  --add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
-  --add-opens=java.base/sun.security.action=ALL-UNNAMED \
-  -cp $SPARK_JAR:$CLASSPATH ai.chronon.spark.Driver summarize-and-upload \
-  --online-jar=$CLOUD_AWS_JAR \
-  --online-class=$ONLINE_CLASS \
-  --parquet-path="$(pwd)/drift_data" \
-  --conf-path=/chronon_sample/production/ \
-  --time-column=transaction_time; then
-  echo "Error: Failed to load summary data into DynamoDB" >&2
-  exit 1
-else
-  end_time=$(date +%s)
-  elapsed_time=$((end_time - start_time))
-  echo "Summary load completed successfully! Took $elapsed_time seconds."
-fi
-
 # Add these java options as without them we hit the below error:
 # throws java.lang.ClassFormatError accessible: module java.base does not "opens java.lang" to unnamed module @36328710
 export JAVA_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED"

@@ -15,7 +15,7 @@ import play.api.http.Status.OK
 import play.api.mvc._
 import play.api.test.Helpers._
 import play.api.test._
-import store.DynamoDBMonitoringStore
+import store.MonitoringModelStore
 
 class ModelControllerSpec extends PlaySpec with Results with EitherValues {
 
@@ -24,7 +24,7 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
   // Create a stub ControllerComponents
   val stubCC: ControllerComponents = stubControllerComponents()
   // Create a mocked DynDB store
-  val mockedStore: DynamoDBMonitoringStore = mock(classOf[DynamoDBMonitoringStore])
+  val mockedStore: MonitoringModelStore = mock(classOf[MonitoringModelStore])
 
   val controller = new ModelController(stubCC, mockedStore)
 
@@ -71,7 +71,7 @@ class ModelControllerSpec extends PlaySpec with Results with EitherValues {
 object MockDataService {
   def generateMockModel(id: String): Model = {
     val groupBys = Seq(GroupBy("my_groupBy", Seq("g1", "g2")))
-    val join = Join("my_join", Seq("ext_f1", "ext_f2", "d_1", "d2"), groupBys)
+    val join = Join("my_join", Seq("ext_f1", "ext_f2", "d_1", "d2"), groupBys, true, true, Some("my_team"))
     Model(id, join, online = true, production = true, "my team", "XGBoost")
   }
 

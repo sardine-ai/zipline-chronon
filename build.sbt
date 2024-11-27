@@ -80,6 +80,13 @@ val jackson = Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala"
 ).map(_ % jackson_2_15)
 
+// Circe is used to ser / deser case class payloads for the Hub Play webservice
+val circe = Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser",
+).map(_ % circeVersion)
+
 val flink_all = Seq(
   "org.apache.flink" %% "flink-streaming-scala",
   "org.apache.flink" % "flink-metrics-dropwizard",
@@ -129,6 +136,8 @@ lazy val online = project
       "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8"
     ),
     libraryDependencies ++= jackson,
+    // dep needed for HTTPKvStore - yank when we rip this out
+    libraryDependencies += "com.softwaremill.sttp.client3" %% "core" % "3.9.7",
     libraryDependencies ++= spark_all.map(_ % "provided"),
     libraryDependencies ++= flink_all.map(_ % "provided")
   )
@@ -236,20 +245,18 @@ lazy val frontend = (project in file("frontend"))
 // build interop between one module solely on 2.13 and others on 2.12 is painful
 lazy val hub = (project in file("hub"))
   .enablePlugins(PlayScala)
-  .dependsOn(cloud_aws)
+  .dependsOn(cloud_aws, spark)
   .settings(
     name := "hub",
     libraryDependencies ++= Seq(
       guice,
       "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
       "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
-      "io.circe" %% "circe-core" % circeVersion,
-      "io.circe" %% "circe-generic" % circeVersion,
-      "io.circe" %% "circe-parser" % circeVersion,
       "org.scala-lang.modules" %% "scala-xml" % "2.1.0",
       "org.scala-lang.modules" %% "scala-parser-combinators" % "2.3.0",
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
     ),
+    libraryDependencies ++= circe,
     libraryDependencySchemes ++= Seq(
       "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
       "org.scala-lang.modules" %% "scala-parser-combinators" % VersionScheme.Always,
@@ -258,7 +265,10 @@ lazy val hub = (project in file("hub"))
     excludeDependencies ++= Seq(
       ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
       ExclusionRule(organization = "log4j", name = "log4j"),
-      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-to-slf4j")
+      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-to-slf4j"),
+      ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl"),
+      ExclusionRule("org.apache.logging.log4j", "log4j-core"),
+      ExclusionRule("org.apache.logging.log4j", "log4j-api")
     ),
     // Ensure consistent versions of logging libraries
     dependencyOverrides ++= Seq(
