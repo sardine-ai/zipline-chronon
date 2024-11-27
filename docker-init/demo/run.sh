@@ -15,6 +15,7 @@ fi
 
 # Run new container
 docker run -d \
+  -p 8181:8181 \
   --name spark-app \
   -v "$SPARK_JAR_PATH":/opt/chronon/jars \
   obs

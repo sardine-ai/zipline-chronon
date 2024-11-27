@@ -32,4 +32,6 @@ ENV SPARK_DIST_CLASSPATH="/opt/spark/jars/*"
 ENV SPARK_EXTRA_CLASSPATH="/opt/spark/jars/*:/opt/chronon/jars/*"
 ENV HADOOP_CLASSPATH="/opt/spark/jars/*"
 
+EXPOSE 8181
+
 CMD ["tail", "-f", "/dev/null"]
