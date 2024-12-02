@@ -29,6 +29,7 @@ lazy val flink_1_17 = "1.17.0"
 lazy val jackson_2_15 = "2.15.2"
 lazy val avro_1_11 = "1.11.2"
 lazy val circeVersion = "0.14.9"
+lazy val deltaVersion = "3.2.0"
 
 // skip tests on assembly - uncomment if builds become slow
 // ThisBuild / assembly / test := {}
@@ -60,6 +61,10 @@ val spark_sql = Seq(
   "org.apache.spark" %% "spark-core"
 ).map(_ % spark_3_5)
 val spark_sql_provided = spark_sql.map(_ % "provided")
+
+val delta = Seq(
+  "io.delta" %% "delta-spark"
+).map(_ % deltaVersion)
 
 val spark_all = Seq(
   "org.apache.spark" %% "spark-sql",
@@ -172,7 +177,8 @@ lazy val spark = project
     libraryDependencies ++= spark_all.map(_ % "test"),
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
     libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre",
-    libraryDependencies ++= log4j2
+    libraryDependencies ++= log4j2,
+    libraryDependencies ++= delta.map(_ % "provided")
   )
 
 lazy val flink = project

@@ -59,6 +59,27 @@ jobs:
           export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt "spark/testOnly -- -n jointest"
 
+  table_utils_delta_format_spark_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run table utils format test for Delta Lake
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+          sbt "spark/testOnly ai.chronon.spark.test.TableUtilsFormatTest"
+        env:
+          format_test: deltalake
+  
   mutation_spark_tests:
     runs-on: ubuntu-latest
     container:
