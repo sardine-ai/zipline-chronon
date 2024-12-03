@@ -145,6 +145,10 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                                   granularity: Granularity,
                                   offset: Option[String],
                                   algorithm: Option[String]): Future[Result] = {
+    def checkIfNumeric(summarySeries: TileSummarySeries) = {
+      summarySeries.percentiles.asScala != null && summarySeries.percentiles.asScala.exists(_ != null)
+    }
+
     if (granularity == Raw) {
       Future.successful(BadRequest("We don't support Raw granularity for drift metric types"))
     } else {
@@ -188,15 +192,20 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
                 Future.sequence(Seq(currentSummarySeriesFuture, baselineSummarySeriesFuture)).map { merged =>
                   val currentSummarySeries = merged.head
                   val baselineSummarySeries = merged.last
+
+                  val isCurrentNumeric = currentSummarySeries.headOption.forall(checkIfNumeric)
+                  val isBaselineNumeric = baselineSummarySeries.headOption.forall(checkIfNumeric)
+
                   val currentFeatureTs = {
                     if (currentSummarySeries.isEmpty) Seq.empty
-                    else convertTileSummarySeriesToTimeSeries(currentSummarySeries.head, metric)
+                    else convertTileSummarySeriesToTimeSeries(currentSummarySeries.head, isCurrentNumeric, metric)
                   }
                   val baselineFeatureTs = {
                     if (baselineSummarySeries.isEmpty) Seq.empty
-                    else convertTileSummarySeriesToTimeSeries(baselineSummarySeries.head, metric)
+                    else convertTileSummarySeriesToTimeSeries(baselineSummarySeries.head, isBaselineNumeric, metric)
                   }
-                  val comparedTsData = ComparedFeatureTimeSeries(name, baselineFeatureTs, currentFeatureTs)
+                  val comparedTsData =
+                    ComparedFeatureTimeSeries(name, isCurrentNumeric, baselineFeatureTs, currentFeatureTs)
                   Ok(comparedTsData.asJson.noSpaces)
                 }
             }
@@ -207,14 +216,14 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
 
   private def convertTileDriftSeriesInfoToTimeSeries(tileDriftSeries: TileDriftSeries,
                                                      metric: Metric): FeatureTimeSeries = {
+    // check if we have a numeric / categorical feature. If the percentile drift series has non-null doubles
+    // then we have a numeric feature at hand
+    val isNumeric =
+      tileDriftSeries.percentileDriftSeries.asScala != null && tileDriftSeries.percentileDriftSeries.asScala
+        .exists(_ != null)
     val lhsList = if (metric == NullMetric) {
       tileDriftSeries.nullRatioChangePercentSeries.asScala
     } else {
-      // check if we have a numeric / categorical feature. If the percentile drift series has non-null doubles
-      // then we have a numeric feature at hand
-      val isNumeric =
-        tileDriftSeries.percentileDriftSeries.asScala != null && tileDriftSeries.percentileDriftSeries.asScala
-          .exists(_ != null)
       if (isNumeric) tileDriftSeries.percentileDriftSeries.asScala
       else tileDriftSeries.histogramDriftSeries.asScala
     }
@@ -222,19 +231,17 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       case (v, ts) => TimeSeriesPoint(v, ts)
     }
 
-    FeatureTimeSeries(tileDriftSeries.getKey.getColumn, points)
+    FeatureTimeSeries(tileDriftSeries.getKey.getColumn, isNumeric, points)
   }
 
   private def convertTileSummarySeriesToTimeSeries(summarySeries: TileSummarySeries,
+                                                   isNumeric: Boolean,
                                                    metric: Metric): Seq[TimeSeriesPoint] = {
     if (metric == NullMetric) {
       summarySeries.nullCount.asScala.zip(summarySeries.timestamps.asScala).map {
         case (nullCount, ts) => TimeSeriesPoint(0, ts, nullValue = Some(nullCount.intValue()))
       }
     } else {
-      // check if we have a numeric / categorical feature. If the percentile drift series has non-null doubles
-      // then we have a numeric feature at hand
-      val isNumeric = summarySeries.percentiles.asScala != null && summarySeries.percentiles.asScala.exists(_ != null)
       if (isNumeric) {
         summarySeries.percentiles.asScala.zip(summarySeries.timestamps.asScala).flatMap {
           case (percentiles, ts) =>
