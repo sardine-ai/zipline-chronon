@@ -30,11 +30,16 @@ python3 -m pip install -U tox build
 ```
 
 ### Install appropriate java, scala, and python versions
-Recommend you do this through a runtime version manager. [asdf](https://asdf-vm.com/) recommended since it works for most all languages.
 
-- Use scala`2.12` and java `corretto-17` for the Zipline Chronon distribution.
+* Install [asdf](https://asdf-vm.com/guide/getting-started.html#_2-download-asdf)
+* ```asdf plugin add asdf-plugin-manager```
+* ```asdf install asdf-plugin-manager latest```
+* ```asdf-plugin-manager add-all``` (see `.plugin-versions` for required plugins)
+* ```asdf-plugin-manager update-all```
+* ```asdf install``` (see `.tool-versions` for required runtimes and versions)
 
-- Use scala `2.12.18` and java `corretto-8` for the OSS Chronon distribution.
+
+> NOTE: Use scala `2.12.18` and java `corretto-8` for the OSS Chronon distribution.
 
 
 
