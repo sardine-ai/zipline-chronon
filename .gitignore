@@ -77,3 +77,13 @@ releases
 
 # Elastic Search files
 /docker-init/elasticsearch-data
+
+# Metals and Bloop
+.metals/
+.bloop/
+.worksheet/
+.project/
+
+# Metals-generated sbt files
+/project/**/metals.sbt
+/project/**/metals.sbt.lock
