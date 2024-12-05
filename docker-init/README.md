@@ -2,9 +2,9 @@
 
 This directory holds code to setup docker containers for dynamoDB, a spark master, and a spark worker. It also creates a container which contains a parquet table with example data containing anomolies. To start, run:
 
-> [!NOTE]
-> Make sure you have `docker>=20.10` installed.
-
+> **Note**  
+> Make sure you have `docker >= 20.10` installed.  
+> Install appropriate java, scala, and python versions following the instructions in [devnotes.md](../devnotes.md#install-appropriate-java-scala-and-python-versions).
 
 ```bash
 $ cd chronon
@@ -16,6 +16,7 @@ app-1           | [info] 2024-09-30 20:47:56,665 [main] INFO  play.core.server.P
 
 The build script will build the relevant Chronon modules (Spark, Frontend, Hub) and then trigger the docker container build. While iterating, you can selectively
 build modules you care about to speed your dev loop. For example to only rebuild Spark modules:
+
 ```bash
 $ ./docker-init/build.sh --spark
 Building Spark modules...
@@ -25,6 +26,7 @@ app-1           | [info] 2024-09-30 20:47:56,665 [main] INFO  play.core.server.P
 ```
 
 If you'd like to start up the docker containers without re-building any code:
+
 ```bash
 $ docker compose -f docker-init/compose.yaml up
 ```
