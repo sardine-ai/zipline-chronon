@@ -64,6 +64,7 @@ if [ "$BUILD_ALL" = true ]; then
     echo "Building all modules..."
     sbt assembly
     sbt dist
+    sbt "project frontend" buildFrontend
 fi
 
 # Build Spark modules
