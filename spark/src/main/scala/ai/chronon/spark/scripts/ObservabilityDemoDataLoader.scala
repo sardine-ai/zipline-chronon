@@ -37,13 +37,13 @@ object ObservabilityDemoDataLoader {
 
     val endDs: ScallopOption[String] = opt[String](
       name = "end-ds",
-      default = Some("2023-02-30"),
+      default = Some("2024-01-01"),
       descr = "End date in YYYY-MM-DD format"
     )
 
     val rowCount: ScallopOption[Int] = opt[Int](
       name = "row-count",
-      default = Some(700000),
+      default = Some(1400000),
       descr = "Number of rows to generate"
     )
 
