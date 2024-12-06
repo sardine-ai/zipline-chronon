@@ -184,6 +184,20 @@ def get_mod_name_from_gc(obj, mod_prefix):
     return mod_name
 
 
+def get_mod_and_var_name_from_gc(obj, mod_prefix):
+    # Find the variable name within the module
+    mod_name = get_mod_name_from_gc(obj, mod_prefix)
+    """Get the variable name that points to the obj in the module"""
+    if not mod_name:
+        return None
+
+    module = importlib.import_module(mod_name)
+    for var_name, value in vars(module).items():
+        if value is obj:
+            return mod_name, var_name
+        
+    return mod_name, None
+
 def __set_name(obj, cls, mod_prefix):
     module_qualifier = get_mod_name_from_gc(obj, mod_prefix)
 
