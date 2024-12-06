@@ -61,7 +61,7 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
           else
             valueSeries
               .filter {
-                case (version, _) => req.startTsMillis.forall(version >= _)
+                case (version, _) => req.startTsMillis.forall(version >= _) && req.endTsMillis.forall(version <= _)
               } // filter version
               .map { case (version, bytes) => TimedValue(bytes, version) }
         }
