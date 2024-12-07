@@ -210,6 +210,5 @@ object DriftStore {
     override def initialValue(): TDeserializer = new TDeserializer(new TBinaryProtocol.Factory())
   }
 
-  // todo - drop this hard-coded list in favor of a well known list or exposing as part of summaries
   def breaks(count: Int): Seq[String] = (0 to count).map(_ * (100 / count)).map("p" + _.toString)
 }
