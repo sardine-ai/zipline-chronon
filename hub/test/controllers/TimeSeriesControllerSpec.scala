@@ -297,9 +297,9 @@ class TimeSeriesControllerSpec extends PlaySpec with Results with EitherValues {
       tileSummarySeries.setNullCount(List.fill(timestamps.length)(JLong.valueOf(1)).asJava)
     } else {
       if (isNumeric) {
-        val percentileList = timestamps.map {
+        val percentileList = DriftStore.breaks(20).map {
           _ =>
-            List.fill(DriftStore.breaks(20).length)(JDouble.valueOf(0.12)).asJava
+            List.fill(timestamps.length)(JDouble.valueOf(0.12)).asJava
         }.asJava
         tileSummarySeries.setPercentiles(percentileList)
       } else {

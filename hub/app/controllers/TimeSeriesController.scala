@@ -17,6 +17,8 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Failure
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 
 /**
@@ -243,20 +245,20 @@ class TimeSeriesController @Inject() (val controllerComponents: ControllerCompon
       }
     } else {
       if (isNumeric) {
-        summarySeries.percentiles.asScala.zip(summarySeries.timestamps.asScala).flatMap {
-          case (percentiles, ts) =>
-            DriftStore.breaks(20).zip(percentiles.asScala).map {
-              case (l, value) => TimeSeriesPoint(value, ts, Some(l))
-            }
+        val percentileSeriesPerBreak = summarySeries.percentiles.toScala
+        val timeStamps = summarySeries.timestamps.toScala
+        val breaks = DriftStore.breaks(20)
+        percentileSeriesPerBreak.zip(breaks).flatMap {
+          case (percentileSeries, break) =>
+            percentileSeries.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value, ts, Some(break)) }
         }
       } else {
-        summarySeries.timestamps.asScala.zipWithIndex.flatMap {
-          case (ts, idx) =>
-            summarySeries.histogram.asScala.map {
-              case (label, values) =>
-                TimeSeriesPoint(values.get(idx).toDouble, ts, Some(label))
-            }
-        }
+        val histogramOfSeries = summarySeries.histogram.toScala
+        val timeStamps = summarySeries.timestamps.toScala
+        histogramOfSeries.flatMap {
+          case (label, values) =>
+            values.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value.toDouble, ts, Some(label)) }
+        }.toSeq
       }
     }
   }

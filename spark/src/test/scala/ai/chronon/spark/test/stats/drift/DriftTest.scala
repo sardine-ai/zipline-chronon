@@ -7,6 +7,7 @@ import ai.chronon.api.DriftMetric
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.TileSummarySeries
 import ai.chronon.api.Window
 import ai.chronon.online.KVStore
 import ai.chronon.online.stats.DriftStore
@@ -23,8 +24,12 @@ import org.scalatest.matchers.should.Matchers
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.util.ScalaJavaConversions.IteratorOps
+import scala.util.ScalaJavaConversions.ListOps
+import scala.util.ScalaJavaConversions.MapOps
+import scala.util.Success
 
 class DriftTest extends AnyFlatSpec with Matchers {
 
@@ -126,7 +131,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
       startMs,
       endMs
     )
-    val summarySeries = Await.result(summarySeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
+    val summarySeries = Await.result(summarySeriesFuture.get, Duration.create(100, TimeUnit.SECONDS))
     val (summaryNulls, summaryTotals) = summarySeries.iterator.foldLeft(0 -> 0) {
       case ((nulls, total), s) =>
         if (s.getPercentiles == null) {
@@ -153,14 +158,82 @@ class DriftTest extends AnyFlatSpec with Matchers {
     val window = new Window(10, ai.chronon.api.TimeUnit.HOURS)
 
     val joinPath = joinName.replaceFirst("\\.", "/")
-    println("Looking up current summary series")
-    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name)).get
-    val currentSummarySeries = Await.result(maybeCurrentSummarySeries, Duration.create(10, TimeUnit.SECONDS))
-    println("Now looking up baseline summary series")
-    val maybeBaselineSummarySeries = driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
-    val baselineSummarySeries = Await.result(maybeBaselineSummarySeries.get, Duration.create(10, TimeUnit.SECONDS))
 
-    println(s"Current summary series: $currentSummarySeries")
-    println(s"Baseline summary series: $baselineSummarySeries")
+    implicit val execContext = scala.concurrent.ExecutionContext.global
+    val metric = ValuesMetric
+    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name))
+    val maybeBaselineSummarySeries =
+      driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
+    val result = (maybeCurrentSummarySeries, maybeBaselineSummarySeries) match {
+      case (Success(currentSummarySeriesFuture), Success(baselineSummarySeriesFuture)) =>
+        Future.sequence(Seq(currentSummarySeriesFuture, baselineSummarySeriesFuture)).map { merged =>
+          val currentSummarySeries = merged.head
+          val baselineSummarySeries = merged.last
+          val isCurrentNumeric = currentSummarySeries.headOption.forall(checkIfNumeric)
+          val isBaselineNumeric = baselineSummarySeries.headOption.forall(checkIfNumeric)
+
+           val currentFeatureTs = {
+            if (currentSummarySeries.isEmpty) Seq.empty
+            else convertTileSummarySeriesToTimeSeries(currentSummarySeries.head, isCurrentNumeric, metric)
+          }
+          val baselineFeatureTs = {
+            if (baselineSummarySeries.isEmpty) Seq.empty
+            else convertTileSummarySeriesToTimeSeries(baselineSummarySeries.head, isBaselineNumeric, metric)
+          }
+
+          ComparedFeatureTimeSeries(name, isCurrentNumeric, baselineFeatureTs, currentFeatureTs)
+        }
+    }
+    println(Await.result(result, Duration.create(10, TimeUnit.SECONDS)))
+  }
+
+  // this is clunky copy of code, but was necessary to run the logic end-to-end without mocking drift store
+  // TODO move this into TimeSeriesControllerSpec and refactor that test to be more end-to-end.
+  case class ComparedFeatureTimeSeries(feature: String,
+                                       isNumeric: Boolean,
+                                       baseline: Seq[TimeSeriesPoint],
+                                       current: Seq[TimeSeriesPoint])
+
+  sealed trait Metric
+
+  /** Roll up over null counts */
+  case object NullMetric extends Metric
+
+  /** Roll up over raw values */
+  case object ValuesMetric extends Metric
+
+
+  case class TimeSeriesPoint(value: Double, ts: Long, label: Option[String] = None, nullValue: Option[Int] = None)
+
+  def checkIfNumeric(summarySeries: TileSummarySeries): Boolean = {
+    val ptiles = summarySeries.percentiles.toScala
+    ptiles != null && ptiles.exists(_ != null)
+  }
+
+
+
+  private def convertTileSummarySeriesToTimeSeries(summarySeries: TileSummarySeries,
+                                                   isNumeric: Boolean,
+                                                   metric: Metric): Seq[TimeSeriesPoint] = {
+    if (metric == NullMetric) {
+      summarySeries.nullCount.toScala.zip(summarySeries.timestamps.toScala).map {
+        case (nullCount, ts) => TimeSeriesPoint(0, ts, nullValue = Some(nullCount.intValue()))
+      }
+    } else {
+      if (isNumeric) {
+        val percentileSeriesPerBreak = summarySeries.percentiles.toScala
+        val timeStamps = summarySeries.timestamps.toScala
+        val breaks = DriftStore.breaks(20)
+        percentileSeriesPerBreak.zip(breaks).flatMap{ case (percentileSeries, break) =>
+            percentileSeries.toScala.zip(timeStamps).map{case (value, ts) => TimeSeriesPoint(value, ts, Some(break))}
+        }
+      } else {
+        val histogramOfSeries = summarySeries.histogram.toScala
+        val timeStamps = summarySeries.timestamps.toScala
+        histogramOfSeries.flatMap{ case (label, values) =>
+          values.toScala.zip(timeStamps).map{case (value, ts) => TimeSeriesPoint(value.toDouble, ts, Some(label))}
+        }.toSeq
+      }
+    }
   }
 }
