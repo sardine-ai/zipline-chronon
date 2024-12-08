@@ -33,14 +33,24 @@ The frontend for Chronon.
 
 To start the development server:
 
-1. First, start the backend project:
+1. First, start the backend project. Refer to [this doc](../docker-init/README.md) for more detailed info on
+   building/running the backend.
 
 ```bash
 # Run this command in the root directory
-sbt "project hub" run
+docker-init/build.sh --all
 ```
 
-2. Then, start the development server:
+2. Once that command has finished, upload demo data:
+
+```bash
+# Run this command in the root directory
+docker-init/demo/load_summaries.sh
+...
+Done uploading summaries! 🥳
+```
+
+3. Then, start the development server:
 
 ```bash
 npm run dev

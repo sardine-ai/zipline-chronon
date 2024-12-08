@@ -33,7 +33,7 @@ $ docker compose -f docker-init/compose.yaml up
 
 The **backend** is served at: http://localhost:9000
 
-The **frontend** is served at: http://localhost:3000
+The **frontend** is served at: http://localhost:3000. This serves statically built code - no live dev server. `cd frontend; npm run dev` for a live dev server.
 
 You can also access the parquet anomaly data table. To do so, from another terminal run:
 
