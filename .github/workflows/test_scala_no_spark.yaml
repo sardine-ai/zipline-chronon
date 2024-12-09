@@ -66,3 +66,8 @@ jobs:
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 hub/test"
+
+      - name: Run service tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 service/test"
