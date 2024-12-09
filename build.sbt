@@ -30,6 +30,8 @@ lazy val jackson_2_15 = "2.15.2"
 lazy val avro_1_11 = "1.11.2"
 lazy val circeVersion = "0.14.9"
 lazy val deltaVersion = "3.2.0"
+lazy val slf4jApiVersion = "2.0.12"
+lazy val logbackClassicVersion = "1.5.6"
 
 // skip tests on assembly - uncomment if builds become slow
 // ThisBuild / assembly / test := {}
@@ -53,7 +55,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, hub)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, hub, service)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -278,9 +280,59 @@ lazy val hub = (project in file("hub"))
     ),
     // Ensure consistent versions of logging libraries
     dependencyOverrides ++= Seq(
-      "org.slf4j" % "slf4j-api" % "1.7.36",
-      "ch.qos.logback" % "logback-classic" % "1.2.13"
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion
     )
+  )
+
+lazy val service = (project in file("service"))
+  .dependsOn(online)
+  .settings(
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    assembly / artifact := {
+      val art = (assembly / artifact).value
+      art.withClassifier(Some("assembly"))
+    },
+    addArtifact(assembly / artifact, assembly),
+    libraryDependencies ++= Seq(
+      "io.vertx" % "vertx-core" % "4.5.10",
+      "io.vertx" % "vertx-web" % "4.5.10",
+      "io.vertx" % "vertx-config" % "4.5.10",
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "com.typesafe" % "config" % "1.4.3",
+      // force netty versions -> without this we conflict with the versions pulled in from
+      // our online module's spark deps which causes the web-app to not serve up content
+      "io.netty" % "netty-all" % "4.1.111.Final",
+      // wire up metrics using micro meter and statsd
+      "io.vertx" % "vertx-micrometer-metrics" % "4.5.10",
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+      "junit" % "junit" % "4.13.2" % Test,
+      "com.novocode" % "junit-interface" % "0.11" % Test,
+      "org.mockito" % "mockito-core" % "5.12.0" % Test,
+      "io.vertx" % "vertx-unit" % "4.5.10" % Test,
+    ),
+    // Assembly settings
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+
+    // Main class configuration
+    // We use a custom launcher to help us wire up our statsd metrics
+    Compile / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+    assembly / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+
+    // Merge strategy for assembly
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+      case PathList("META-INF", xs @ _*) => MergeStrategy.first
+      case PathList("javax", "activation", xs @ _*) => MergeStrategy.first
+      case PathList("org", "apache", "logging", xs @ _*) => MergeStrategy.first
+      case PathList("org", "slf4j", xs @ _*) => MergeStrategy.first
+      case "application.conf" => MergeStrategy.concat
+      case "reference.conf" => MergeStrategy.concat
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
   )
 
 ThisBuild / assemblyMergeStrategy := {
