@@ -18,6 +18,13 @@ const config = {
 			return;
 		}
 		handler(warning);
+	},
+
+	vitePlugin: {
+		inspector: {
+			toggleKeyCombo: 'alt-shift',
+			toggleButtonPos: 'bottom-right'
+		}
 	}
 };
 
