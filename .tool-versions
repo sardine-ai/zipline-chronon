@@ -1,4 +1,4 @@
-java corretto-17.0.13.11.1
+java corretto-11.0.25.9.1
 scala 2.12.20
 asdf-plugin-manager 1.4.0
 sbt 1.10.5
