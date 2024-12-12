@@ -3,8 +3,10 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
+		"prepare": "npm run codegen",
+		"dev": "npm run codegen && vite dev",
+		"build": "npm run codegen && vite build",
+		"codegen": "thrift-typescript --target thrift-server --rootDir .. --sourceDir api/thrift --outDir frontend/src/lib/types/codegen api.thrift",
 		"preview": "vite preview",
 		"test": "npm run test:integration:once && npm run test:unit:once",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -53,7 +55,10 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@creditkarma/thrift-server-core": "^1.0.4",
+		"@creditkarma/thrift-typescript": "^3.7.6",
 		"@types/echarts": "^4.9.22",
+		"@types/thrift": "^0.10.17",
 		"@zipline-ai/icons": "^1.0.2",
 		"clsx": "^2.1.1",
 		"d3": "^7.9.0",
@@ -61,10 +66,12 @@
 		"echarts": "^5.5.1",
 		"lodash": "^4.17.21",
 		"tailwind-merge": "^2.5.4",
-		"tailwind-variants": "^0.3.0"
+		"tailwind-variants": "^0.3.0",
+		"thrift": "^0.21.0"
 	},
 	"overrides": {
 		"cross-spawn": "^7.0.6",
-		"cookie": "^0.7.0"
+		"cookie": "^0.7.0",
+		"glob": "^9.0.0"
 	}
 }
