@@ -148,8 +148,8 @@
 	</ul>
 	<div class="flex items-center mt-auto">
 		<DropdownMenu>
-			<DropdownMenuTrigger>
-				<Button variant="ghost" class="flex items-center cursor-pointer">
+			<DropdownMenuTrigger asChild let:builder>
+				<Button variant="ghost" class="flex items-center cursor-pointer" builders={[builder]}>
 					<Avatar class="h-4 w-4">
 						<AvatarImage src={user.avatar} alt={user.name} />
 						<AvatarFallback>

@@ -13,7 +13,7 @@
 	// TODO: Replace with actual user data when implemented
 	const user = {
 		name: 'Demo User',
-		avatar: '/path/to/avatar.jpg'
+		avatar: ''
 	};
 
 	const breadcrumbs = $derived($page.url.pathname.split('/').filter(Boolean));
