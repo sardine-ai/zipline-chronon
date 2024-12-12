@@ -1,8 +1,8 @@
 import type {
 	FeatureResponse,
+	JoinsResponse,
 	JoinTimeSeriesResponse,
-	ModelsResponse,
-	TimeSeriesResponse
+	ModelsResponse
 } from '$lib/types/Model/Model';
 import { error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
@@ -34,20 +34,12 @@ export async function getModels(): Promise<ModelsResponse> {
 	return get('models');
 }
 
-export async function getModelTimeseries(
-	name: string,
-	startTs: number,
-	endTs: number,
-	offset: string = '10h',
-	algorithm: string = 'psi'
-): Promise<TimeSeriesResponse> {
+export async function getJoins(offset: number = 0, limit: number = 10): Promise<JoinsResponse> {
 	const params = new URLSearchParams({
-		startTs: startTs.toString(),
-		endTs: endTs.toString(),
-		offset,
-		algorithm
+		offset: offset.toString(),
+		limit: limit.toString()
 	});
-	return get(`model/${name}/timeseries?${params.toString()}`);
+	return get(`joins?${params.toString()}`);
 }
 
 export async function search(term: string, limit: number = 20): Promise<ModelsResponse> {
@@ -58,15 +50,23 @@ export async function search(term: string, limit: number = 20): Promise<ModelsRe
 	return get(`search?${params.toString()}`);
 }
 
-export async function getJoinTimeseries(
-	joinId: string,
-	startTs: number,
-	endTs: number,
-	metricType: string = 'drift',
-	metrics: string = 'null',
-	offset: string = '10h',
-	algorithm: string = 'psi'
-): Promise<JoinTimeSeriesResponse> {
+export async function getJoinTimeseries({
+	joinId,
+	startTs,
+	endTs,
+	metricType = 'drift',
+	metrics = 'null',
+	offset = '10h',
+	algorithm = 'psi'
+}: {
+	joinId: string;
+	startTs: number;
+	endTs: number;
+	metricType?: string;
+	metrics?: string;
+	offset?: string;
+	algorithm?: string;
+}): Promise<JoinTimeSeriesResponse> {
 	const params = new URLSearchParams({
 		startTs: startTs.toString(),
 		endTs: endTs.toString(),
@@ -79,16 +79,27 @@ export async function getJoinTimeseries(
 	return get(`join/${joinId}/timeseries?${params.toString()}`);
 }
 
-export async function getFeatureTimeseries(
-	featureName: string,
-	startTs: number,
-	endTs: number,
-	metricType: string = 'drift',
-	metrics: string = 'null',
-	offset: string = '10h',
-	algorithm: string = 'psi',
-	granularity: string = 'percentile'
-): Promise<FeatureResponse> {
+export async function getFeatureTimeseries({
+	joinId,
+	featureName,
+	startTs,
+	endTs,
+	metricType = 'drift',
+	metrics = 'null',
+	offset = '10h',
+	algorithm = 'psi',
+	granularity = 'aggregates'
+}: {
+	joinId: string;
+	featureName: string;
+	startTs: number;
+	endTs: number;
+	metricType?: string;
+	metrics?: string;
+	offset?: string;
+	algorithm?: string;
+	granularity?: string;
+}): Promise<FeatureResponse> {
 	const params = new URLSearchParams({
 		startTs: startTs.toString(),
 		endTs: endTs.toString(),
@@ -98,5 +109,5 @@ export async function getFeatureTimeseries(
 		algorithm,
 		granularity
 	});
-	return get(`feature/${featureName}/timeseries?${params.toString()}`);
+	return get(`join/${joinId}/feature/${featureName}/timeseries?${params.toString()}`);
 }

@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as api from '$lib/api/api';
-import type {
-	ModelsResponse,
-	TimeSeriesResponse,
-	Model,
-	JoinTimeSeriesResponse,
-	FeatureResponse
-} from '$lib/types/Model/Model';
+import type { ModelsResponse, Model, JoinTimeSeriesResponse } from '$lib/types/Model/Model';
 
 describe('Model types', () => {
 	it('should match ModelsResponse type', async () => {
@@ -41,45 +35,6 @@ describe('Model types', () => {
 			);
 			if (additionalModelKeys.length > 0) {
 				console.warn(`Additional fields found in Model: ${additionalModelKeys.join(', ')}`);
-			}
-		}
-	});
-
-	it('should match TimeSeriesResponse type', async () => {
-		const result = (await api.getModels()) as ModelsResponse;
-		expect(result.items.length).toBeGreaterThan(0);
-
-		const modelName = result.items[0].name;
-		const timeseriesResult = (await api.getModelTimeseries(
-			modelName,
-			1725926400000,
-			1726106400000
-		)) as TimeSeriesResponse;
-
-		const expectedKeys = ['id', 'items'];
-		expect(Object.keys(timeseriesResult)).toEqual(expect.arrayContaining(expectedKeys));
-
-		// Log a warning if there are additional fields
-		const additionalKeys = Object.keys(timeseriesResult).filter(
-			(key) => !expectedKeys.includes(key)
-		);
-		if (additionalKeys.length > 0) {
-			console.warn(`Additional fields found in TimeSeriesResponse: ${additionalKeys.join(', ')}`);
-		}
-
-		expect(Array.isArray(timeseriesResult.items)).toBe(true);
-
-		if (timeseriesResult.items.length > 0) {
-			const item = timeseriesResult.items[0];
-			const expectedItemKeys = ['value', 'ts', 'label', 'nullValue'];
-			expect(Object.keys(item)).toEqual(expect.arrayContaining(expectedItemKeys));
-
-			// Log a warning if there are additional fields
-			const additionalItemKeys = Object.keys(item).filter((key) => !expectedItemKeys.includes(key));
-			if (additionalItemKeys.length > 0) {
-				console.warn(
-					`Additional fields found in TimeSeriesResponse item: ${additionalItemKeys.join(', ')}`
-				);
 			}
 		}
 	});
@@ -132,12 +87,12 @@ describe('Model types', () => {
 		const result = (await api.getModels()) as ModelsResponse;
 		expect(result.items.length).toBeGreaterThan(0);
 
-		const modelName = result.items[0].name;
-		const joinResult = (await api.getJoinTimeseries(
-			modelName,
-			1725926400000,
-			1726106400000
-		)) as JoinTimeSeriesResponse;
+		const modelName = 'risk.user_transactions.txn_join';
+		const joinResult = (await api.getJoinTimeseries({
+			joinId: modelName,
+			startTs: 1673308800000,
+			endTs: 1674172800000
+		})) as JoinTimeSeriesResponse;
 
 		const expectedKeys = ['name', 'items'];
 		expect(Object.keys(joinResult)).toEqual(expect.arrayContaining(expectedKeys));
@@ -202,12 +157,12 @@ describe('Model types', () => {
 	});
 
 	it('should match FeatureResponse type', async () => {
-		const featureName = 'test_feature';
-		const featureResult = (await api.getFeatureTimeseries(
-			featureName,
-			1725926400000,
-			1726106400000
-		)) as FeatureResponse;
+		const featureResult = await api.getFeatureTimeseries({
+			joinId: 'risk.user_transactions.txn_join',
+			featureName: 'dim_user_account_type',
+			startTs: 1673308800000,
+			endTs: 1674172800000
+		});
 
 		const expectedKeys = ['feature', 'points'];
 		expect(Object.keys(featureResult)).toEqual(expect.arrayContaining(expectedKeys));
@@ -220,7 +175,7 @@ describe('Model types', () => {
 
 		expect(Array.isArray(featureResult.points)).toBe(true);
 
-		if (featureResult.points.length > 0) {
+		if (featureResult.points && featureResult.points?.length > 0) {
 			const point = featureResult.points[0];
 			const expectedPointKeys = ['value', 'ts', 'label', 'nullValue'];
 			expect(Object.keys(point)).toEqual(expect.arrayContaining(expectedPointKeys));

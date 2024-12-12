@@ -4,7 +4,7 @@
 	import type { ECElementEvent, EChartOption } from 'echarts';
 	import merge from 'lodash/merge';
 	import EChartTooltip from '$lib/components/EChartTooltip/EChartTooltip.svelte';
-	import { getCssColorAsHex } from '$lib/util/colors';
+	import CustomEChartLegend from '$lib/components/CustomEChartLegend/CustomEChartLegend.svelte';
 
 	let {
 		option,
@@ -15,6 +15,8 @@
 		height = '230px',
 		enableCustomTooltip = false,
 		enableTooltipClick = false,
+		showCustomLegend = false,
+		legendGroup = undefined,
 		markPoint = undefined
 	}: {
 		option: EChartOption;
@@ -25,6 +27,8 @@
 		height?: string;
 		enableCustomTooltip?: boolean;
 		enableTooltipClick?: boolean;
+		showCustomLegend?: boolean;
+		legendGroup?: { name: string; items: Array<{ feature: string }> };
 		markPoint?: ECElementEvent;
 	} = $props();
 	const dispatch = createEventDispatcher();
@@ -87,17 +91,48 @@
 	let isCommandPressed = $state(false);
 	let isMouseOverTooltip = $state(false);
 	let hideTimeoutId: ReturnType<typeof setTimeout>;
-	let isBarChart = $state(false);
+
+	const isBarChart = $derived.by(() => {
+		const series = mergedOption.series as EChartOption.Series[];
+		return series?.some((s) => s.type === 'bar');
+	});
 
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.metaKey || event.ctrlKey) {
+		if ((event.metaKey || event.ctrlKey) && event.type === 'keydown') {
 			isCommandPressed = true;
 			disableChartInteractions();
+
+			if (exactX !== null && chartInstance) {
+				const option = chartInstance.getOption();
+				const series = option.series as EChartOption.Series[];
+				const firstSeries = series[0];
+
+				if (Array.isArray(firstSeries.data)) {
+					// Find the index of the point with matching x-value
+					const dataIndex = firstSeries.data.findIndex(
+						(point) => (point as [number, number])[0] === exactX
+					);
+
+					if (dataIndex !== -1) {
+						// for some reason, we need to showTip somewhere else first
+						chartInstance.dispatchAction({
+							type: 'showTip',
+							seriesIndex: 0,
+							dataIndex: -1
+						});
+						chartInstance.dispatchAction({
+							type: 'showTip',
+							seriesIndex: 0,
+							dataIndex: dataIndex
+						});
+					}
+				}
+			}
 		}
 	}
 
 	function handleKeyUp(event: KeyboardEvent) {
-		if (!event.metaKey && !event.ctrlKey) {
+		if (event.key === 'Meta' || event.key === 'Control') {
 			isCommandPressed = false;
 			enableChartInteractions();
 			if (!isMouseOverTooltip) {
@@ -108,13 +143,13 @@
 
 	function disableChartInteractions() {
 		chartInstance?.setOption({
-			silent: true
+			triggerOn: 'none'
 		} as EChartOption);
 	}
 
 	function enableChartInteractions() {
 		chartInstance?.setOption({
-			silent: false
+			triggerOn: 'mousemove'
 		} as EChartOption);
 	}
 
@@ -137,10 +172,6 @@
 		chartInstance?.dispose();
 		chartInstance = echarts.init(chartDiv, theme);
 		chartInstance.setOption(mergedOption);
-
-		// Set chart type
-		const series = mergedOption.series as EChartOption.Series[];
-		isBarChart = series?.[0]?.type === 'bar';
 
 		chartInstance.on('click', (params: ECElementEvent) => {
 			dispatch('click', {
@@ -203,6 +234,8 @@
 		zr.on('mousemove', showTooltip);
 		zr.on('globalout', hideTooltip);
 	}
+
+	let exactX = $state<number | null>(null);
 
 	function showTooltip(params: { offsetX: number; offsetY: number }) {
 		if (isCommandPressed) return;
@@ -270,7 +303,7 @@
 				return Math.abs(currX - pointInGrid[0]) < Math.abs(prevX - pointInGrid[0]) ? curr : prev;
 			});
 
-			const exactX = (nearestPoint as [number, number])[0];
+			exactX = (nearestPoint as [number, number])[0];
 
 			// Get values for all series at this exact x-coordinate
 			const seriesData = series
@@ -336,7 +369,7 @@
 					silent: true,
 					symbol: [false, 'circle'],
 					lineStyle: {
-						color: getCssColorAsHex('--neutral-700'),
+						color: '#ffffff',
 						type: [8, 8],
 						width: 1
 					},
@@ -401,6 +434,7 @@
 				xAxisCategories={isBarChart && chartInstance
 					? ((chartInstance.getOption()?.xAxis as EChartOption.XAxis[])?.[0]?.data as string[])
 					: undefined}
+				chart={chartInstance}
 				on:click={(event) =>
 					dispatch('click', {
 						detail: event.detail,
@@ -410,3 +444,10 @@
 		</div>
 	{/if}
 </div>
+{#if showCustomLegend && legendGroup && chartInstance}
+	<CustomEChartLegend
+		groupName={legendGroup.name}
+		items={legendGroup.items}
+		chart={chartInstance}
+	/>
+{/if}

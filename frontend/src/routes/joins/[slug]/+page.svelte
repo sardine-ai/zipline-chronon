@@ -1,229 +1,70 @@
 <script lang="ts">
 	import EChart from '$lib/components/EChart/EChart.svelte';
 	import type { EChartOption, EChartsType, ECElementEvent } from 'echarts';
-	import merge from 'lodash/merge';
 
 	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
 	import { Icon, TableCells } from 'svelte-hero-icons';
 	import { ChartLine } from '@zipline-ai/icons';
 	import CollapsibleSection from '$lib/components/CollapsibleSection/CollapsibleSection.svelte';
 	import { connect } from 'echarts';
-	import type {
-		FeatureResponse,
-		NullComparedFeatureResponse,
-		RawComparedFeatureResponse,
-		TimeSeriesItem
-	} from '$lib/types/Model/Model';
+	import type { FeatureResponse, TimeSeriesItem } from '$lib/types/Model/Model';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { untrack } from 'svelte';
 	import PageHeader from '$lib/components/PageHeader/PageHeader.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import DriftSkewToggle from '$lib/components/DriftSkewToggle/DriftSkewToggle.svelte';
 	import ResetZoomButton from '$lib/components/ResetZoomButton/ResetZoomButton.svelte';
-	import DateRangeSelector from '$lib/components/DateRangeSelector/DateRangeSelector.svelte';
 	import IntersectionObserver from 'svelte-intersection-observer';
 	import { fade } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button';
-	import { parseDateRangeParams } from '$lib/util/date-ranges';
 	import { getFeatureTimeseries } from '$lib/api/api';
-	import { page } from '$app/stores';
-	import { comparedFeatureNumericalSampleData, nullCountSampleData } from '$lib/util/sample-data';
-	import { getCssColorAsHex } from '$lib/util/colors.js';
 	import InfoTooltip from '$lib/components/InfoTooltip/InfoTooltip.svelte';
 	import { Table, TableBody, TableCell, TableRow } from '$lib/components/ui/table/index.js';
 	import TrueFalseBadge from '$lib/components/TrueFalseBadge/TrueFalseBadge.svelte';
-	import CustomEChartLegend from '$lib/components/CustomEChartLegend/CustomEChartLegend.svelte';
-	import ActionButtons from '$lib/components/ActionButtons/ActionButtons.svelte';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { formatDate, formatValue } from '$lib/util/format';
+	import PercentileChart from '$lib/components/PercentileChart/PercentileChart.svelte';
+	import { createChartOption } from '$lib/util/chart-options.svelte';
+	import { METRIC_SCALES } from '$lib/types/MetricType/MetricType';
+	import { getSeriesColor } from '$lib/util/chart';
+	import { handleChartHighlight } from '$lib/util/chart';
+	import ChartControls from '$lib/components/ChartControls/ChartControls.svelte';
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { getSortDirection, sortDistributions, type SortContext } from '$lib/util/sort';
 
 	const { data } = $props();
-	let selectedDriftSkew = $state<'drift' | 'skew'>('drift');
+	let scale = $derived(METRIC_SCALES[data.metricType]);
 	const joinTimeseries = $derived(data.joinTimeseries);
-	const timeseries = $derived(data.timeseries);
 	const model = $derived(data.model);
-	let isModelPerformanceOpen = $state(true);
-	let isModelDriftOpen = $state(true);
+	const isUsingFallbackDates = $derived(data.dateRange.isUsingFallback);
 	let isFeatureMonitoringOpen = $state(true);
 	let isSheetOpen = $state(false);
 	let selectedEvents = $state<ECElementEvent[]>([]);
 	let selectedSeries: string | undefined = $state(undefined);
 	let isZoomed = $state(false);
 	let currentZoomState = $state({ start: 0, end: 100 });
-	const chartData = $derived(timeseries.items.map((item) => [item.ts, item.value]));
 
-	let driftSkewIntersectionElement: HTMLElement | null = $state(null);
 	let dateRangeSelectorIntersectionElement: HTMLElement | null = $state(null);
-	let isDriftSkewVisible = $state(true);
 	let isDateRangeSelectorVisible = $state(true);
 
 	let percentileData: FeatureResponse | null = $state(null);
 
 	let isComparedFeatureZoomed = $state(false);
 
-	function createChartOption(
-		customOption: Partial<EChartOption> = {},
-		customColors = false
-	): EChartOption {
-		const defaultOption: EChartOption = {
-			color: customColors
-				? [
-						'#E5174B',
-						'#E54D4A',
-						'#E17545',
-						'#E3994C',
-						'#DFAF4F',
-						'#87BE52',
-						'#53B167',
-						'#4DA67D',
-						'#4EA797',
-						'#4491CE',
-						'#4592CC',
-						'#4172D2',
-						'#5B5AD1',
-						'#785AD4',
-						'#9055D5',
-						'#BF50D3',
-						'#CB5587'
-					]
-				: undefined,
-			tooltip: {
-				trigger: 'axis',
-				axisPointer: {
-					type: 'line',
-					lineStyle: {
-						color: neutral700,
-						type: 'solid'
-					}
-				},
-				position: 'top',
-				confine: true
-			},
-			xAxis: {
-				type: 'time',
-				axisLabel: {
-					formatter: {
-						month: '{MMM} {d}',
-						day: '{MMM} {d}'
-					} as unknown as string,
-					color: neutral700
-				},
-				splitLine: {
-					show: true,
-					lineStyle: {
-						color: neutral300
-					}
-				},
-				axisLine: {
-					lineStyle: {
-						color: neutral300
-					}
-				}
-			},
-			yAxis: {
-				type: 'value',
-				axisLabel: {
-					formatter: (value: number) => (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)),
-					color: neutral700
-				},
-				splitLine: {
-					show: true,
-					lineStyle: {
-						color: neutral300
-					}
-				},
-				axisLine: {
-					lineStyle: {
-						color: neutral300
-					}
-				}
-			},
-			grid: {
-				top: 5,
-				right: 1,
-				bottom: 0,
-				left: 0,
-				containLabel: true
-			}
-		};
-
-		const baseSeriesStyle = {
-			showSymbol: false,
-			lineStyle: {
-				width: 1
-			},
-			symbolSize: 7
-		};
-
-		if (customOption.series) {
-			const series = Array.isArray(customOption.series)
-				? customOption.series
-				: [customOption.series];
-			customOption.series = series.map((s) => merge({}, baseSeriesStyle, s));
-		}
-
-		return merge({}, defaultOption, customOption);
-	}
-
-	let neutral300 = $state('');
-	let neutral700 = $state('');
-
-	$effect(() => {
-		neutral300 = getCssColorAsHex('--neutral-300');
-		neutral700 = getCssColorAsHex('--neutral-700');
-	});
+	let distributionCharts: { [key: string]: EChartsType } = $state({});
 
 	let groupByCharts: { [key: string]: EChartsType } = $state({});
-	let performanceChart: EChartsType | null = $state(null);
 	let percentileChart: EChartsType | null = $state(null);
 	let comparedFeatureChart: EChartsType | null = $state(null);
 	let nullRatioChart: EChartsType | null = $state(null);
-	let driftChart: EChartsType | null = $state(null);
 	let dialogGroupChart: EChartsType | null = $state(null);
-	const performanceChartOption = $derived(
-		createChartOption(
-			{
-				yAxis: {
-					min: 0,
-					max: 1,
-					interval: 0.2
-				},
-				series: [
-					{
-						data: chartData,
-						type: 'line'
-					}
-				]
-			},
-			true
-		)
-	);
-	const driftChartOption = $derived(
-		createChartOption(
-			{
-				yAxis: {
-					min: 0,
-					max: 1,
-					interval: 0.2
-				},
-				series: [
-					{
-						data: chartData,
-						type: 'line'
-					}
-				]
-			},
-			true
-		)
-	);
 
 	const allCharts = $derived.by(() => {
 		const charts: EChartsType[] = [];
-		if (performanceChart) charts.push(performanceChart);
-		if (driftChart) charts.push(driftChart);
 		if (dialogGroupChart) charts.push(dialogGroupChart);
 		if (percentileChart) charts.push(percentileChart);
 		charts.push(...Object.values(groupByCharts));
+		charts.push(...Object.values(distributionCharts));
 		return charts.filter((chart): chart is EChartsType => chart !== null);
 	});
 
@@ -234,17 +75,21 @@
 			name: feature,
 			type: 'line',
 			data: points.map((point) => [point.ts, point.value]),
+			symbolSize: 16,
 			emphasis: {
-				focus: 'series'
+				focus: 'series',
+				itemStyle: {
+					borderWidth: 2,
+					borderColor: '#fff'
+				}
 			}
 		})) as EChartOption.Series[];
 
 		return createChartOption(
 			{
 				yAxis: {
-					min: 0,
-					max: 1,
-					interval: 0.2
+					min: scale.min,
+					max: scale.max
 				},
 				series: series as EChartOption.Series[]
 			},
@@ -258,14 +103,6 @@
 
 	$effect(() => {
 		connectCharts();
-	});
-
-	$effect(() => {
-		if (timeseries) {
-			untrack(() => {
-				resetZoom();
-			});
-		}
 	});
 
 	function connectCharts() {
@@ -338,7 +175,7 @@
 		currentZoomState = { start, end };
 	}
 
-	const shouldShowStickyHeader = $derived(!isDriftSkewVisible && !isDateRangeSelectorVisible);
+	const shouldShowStickyHeader = $derived(!isDateRangeSelectorVisible);
 
 	function formatEventDate(): string {
 		if (!(selectedEvents.length > 0 && selectedEvents[0]?.data !== undefined)) {
@@ -356,141 +193,173 @@
 	}
 
 	async function selectSeries(seriesName: string | undefined) {
+		// Reset all data states
 		selectedSeries = seriesName;
+
 		if (seriesName) {
-			const { startTimestamp, endTimestamp } = parseDateRangeParams(
-				new URL($page.url).searchParams
-			);
 			try {
-				percentileData = await getFeatureTimeseries(seriesName, startTimestamp, endTimestamp);
+				const [featureData, nullFeatureData] = await Promise.all([
+					getFeatureTimeseries({
+						joinId: joinTimeseries.name,
+						featureName: seriesName,
+						startTs: data.dateRange.startTimestamp,
+						endTs: data.dateRange.endTimestamp,
+						granularity: 'percentile',
+						metricType: 'drift',
+						metrics: 'value',
+						offset: '1D',
+						algorithm: 'psi'
+					}),
+					getFeatureTimeseries({
+						joinId: joinTimeseries.name,
+						featureName: seriesName,
+						startTs: data.dateRange.startTimestamp,
+						endTs: data.dateRange.endTimestamp,
+						metricType: 'drift',
+						metrics: 'null',
+						offset: '1D',
+						algorithm: 'psi',
+						granularity: 'percentile'
+					})
+				]);
+
+				if (featureData.isNumeric) {
+					percentileData = featureData;
+					comparedFeatureData = null;
+				} else {
+					percentileData = null;
+					comparedFeatureData = featureData;
+				}
+
+				nullData = nullFeatureData;
 			} catch (error) {
-				console.error('Error fetching percentile data:', error);
+				console.error('Error fetching data:', error);
 				percentileData = null;
+				comparedFeatureData = null;
+				nullData = null;
 			}
 		}
 	}
 
-	function getPercentileChartSeries(data: FeatureResponse): EChartOption.Series[] {
-		const targetLabels = ['p5', 'p50', 'p95'];
-		return targetLabels
-			.filter((label) => data.points.some((point) => point.label === label))
-			.map((label) => ({
-				name: label,
-				type: 'line',
-				stack: 'Total',
-				emphasis: {
-					focus: 'series'
-				},
-				data: data.points
-					.filter((point) => point.label === label)
-					.map((point) => [point.ts, point.value])
-			})) as EChartOption.Series[];
-	}
+	let comparedFeatureData: FeatureResponse | null = $state(null);
+	let comparedFeatureChartOption = $state({});
 
-	function getPercentileChartOption(data: FeatureResponse): EChartOption {
-		const processedData = getPercentileChartSeries(data);
+	$effect(() => {
+		if (selectedSeries && selectedEvents[0]?.data) {
+			const timestamp = (selectedEvents[0].data as [number, number])[0];
+			comparedFeatureChartOption = createComparedFeatureChartOption(comparedFeatureData, timestamp);
+		} else {
+			comparedFeatureChartOption = {};
+		}
+	});
+
+	function createComparedFeatureChartOption(
+		data: FeatureResponse | null,
+		timestamp: number
+	): EChartOption {
+		if (!data?.current || !data?.baseline) return {};
+
+		// Get all points at the selected timestamp
+		const currentPoints = data.current.filter((point) => point.ts === timestamp);
+		const baselinePoints = data.baseline.filter((point) => point.ts === timestamp);
+
+		// Create pairs of current and baseline points by label
+		const labels = [
+			...new Set([...currentPoints.map((p) => p.label), ...baselinePoints.map((p) => p.label)])
+		];
+
 		return createChartOption({
 			xAxis: {
-				type: 'time',
-				splitLine: {
-					show: true
-				}
+				type: 'category',
+				data: labels.filter((label): label is string | number => label !== undefined)
+			},
+			yAxis: {
+				type: 'value'
+			},
+			series: [
+				{
+					name: 'Baseline',
+					type: 'bar',
+					emphasis: {
+						focus: 'series'
+					},
+					data: labels.map((label) => {
+						const point = baselinePoints.find((p) => p.label === label);
+						return point?.value ?? 0;
+					})
+				} as EChartOption.Series,
+				{
+					name: 'Current',
+					type: 'bar',
+					emphasis: {
+						focus: 'series'
+					},
+					data: labels.map((label) => {
+						const point = currentPoints.find((p) => p.label === label);
+						return point?.value ?? 0;
+					})
+				} as EChartOption.Series
+			]
+		});
+	}
+
+	let nullData: FeatureResponse | null = $state(null);
+	let nullRatioChartOption = $state({});
+
+	$effect(() => {
+		if (selectedSeries && selectedEvents[0]?.data) {
+			const timestamp = (selectedEvents[0].data as [number, number])[0];
+			nullRatioChartOption = createNullRatioChartOption(nullData, timestamp);
+		} else {
+			nullRatioChartOption = {};
+		}
+	});
+
+	function createNullRatioChartOption(
+		data: FeatureResponse | null,
+		timestamp: number
+	): EChartOption {
+		if (!data?.current || !data?.baseline) return {};
+
+		// Get points at the selected timestamp
+		const currentPoint = data.current.find((point) => point.ts === timestamp);
+		const baselinePoint = data.baseline.find((point) => point.ts === timestamp);
+
+		if (!currentPoint || !baselinePoint) return {};
+
+		return createChartOption({
+			xAxis: {
+				type: 'category',
+				data: ['Baseline', 'Current']
 			},
 			yAxis: {
 				type: 'value',
-
-				splitLine: {
-					show: true
+				axisLabel: {
+					formatter: '{value}%'
 				}
 			},
-			series: processedData
-		});
-	}
-
-	const percentileChartOption = $derived.by(() => {
-		if (!percentileData) return {};
-		return getPercentileChartOption(percentileData);
-	});
-
-	$effect(() => {
-		selectSeries(selectedSeries);
-	});
-
-	function createComparedFeatureChartOption(data: RawComparedFeatureResponse): EChartOption {
-		return createChartOption({
-			xAxis: {
-				type: 'category',
-				data: data.x
-			},
-			yAxis: {
-				type: 'value'
-			},
 			series: [
 				{
-					name: 'Baseline',
+					name: 'Null Value Percentage',
 					type: 'bar',
 					stack: 'total',
 					emphasis: {
 						focus: 'series'
 					},
-					data: data.old
+					data: [baselinePoint.nullValue, currentPoint.nullValue]
 				} as EChartOption.Series,
 				{
-					name: 'Current',
+					name: 'Non-null Value Percentage',
 					type: 'bar',
 					stack: 'total',
 					emphasis: {
 						focus: 'series'
 					},
-					data: data.new
+					data: [100 - baselinePoint.nullValue, 100 - currentPoint.nullValue]
 				} as EChartOption.Series
 			]
 		});
 	}
-
-	function createNullRatioChartOption(data: NullComparedFeatureResponse): EChartOption {
-		return createChartOption({
-			xAxis: {
-				type: 'category',
-				data: ['Null Values', 'Non-null Values']
-			},
-			yAxis: {
-				type: 'value'
-			},
-			series: [
-				{
-					name: 'Baseline',
-					type: 'bar',
-					stack: 'total',
-					emphasis: {
-						focus: 'series'
-					},
-					data: [data.oldNullCount, data.oldValueCount]
-				} as EChartOption.Series,
-				{
-					name: 'Current',
-					type: 'bar',
-					stack: 'total',
-					emphasis: {
-						focus: 'series'
-					},
-					data: [data.newNullCount, data.newValueCount]
-				} as EChartOption.Series
-			]
-		});
-	}
-
-	let comparedFeatureChartOption = $state({});
-	$effect(() => {
-		comparedFeatureChartOption = createComparedFeatureChartOption(
-			comparedFeatureNumericalSampleData
-		);
-	});
-
-	let nullRatioChartOption = $state({});
-	$effect(() => {
-		nullRatioChartOption = createNullRatioChartOption(nullCountSampleData);
-	});
 
 	$effect(() => {
 		if (allCharts.length) {
@@ -525,17 +394,97 @@
 		isComparedFeatureZoomed = false;
 	}
 
-	function getSeriesColor(seriesName: string, chart: EChartsType | null): string | undefined {
-		if (!chart) return undefined;
-
-		const options = chart.getOption();
-		if (!options || !options.color || !options.series) return undefined;
-
-		const seriesIndex = options.series.findIndex((s) => s.name === seriesName);
-		if (seriesIndex === -1) return undefined;
-
-		return options.color[seriesIndex];
+	function highlightSeries(
+		seriesName: string,
+		chart: EChartsType | null,
+		type: 'highlight' | 'downplay'
+	) {
+		if (chart && seriesName) {
+			handleChartHighlight(chart, seriesName, type);
+		}
 	}
+
+	let distributions: FeatureResponse[] = $state([]);
+	let isLoadingDistributions = $state(false);
+
+	async function loadDistributions() {
+		if (distributions.length > 0 || isLoadingDistributions) return;
+
+		isLoadingDistributions = true;
+		try {
+			// Get all unique feature names across all groups
+			const allFeatures = Array.from(
+				new Set(joinTimeseries.items.flatMap((group) => group.items.map((item) => item.feature)))
+			);
+
+			// Fetch percentile data for each feature
+			const distributionsPromises = allFeatures.map((featureName) =>
+				getFeatureTimeseries({
+					joinId: joinTimeseries.name,
+					featureName,
+					startTs: data.dateRange.startTimestamp,
+					endTs: data.dateRange.endTimestamp,
+					granularity: 'percentile',
+					metricType: 'drift',
+					metrics: 'value',
+					offset: '1D',
+					algorithm: 'psi'
+				})
+			);
+
+			const responses = await Promise.all(distributionsPromises);
+			distributions = responses.filter((response) => response.isNumeric);
+		} catch (error) {
+			console.error('Error loading distributions:', error);
+		} finally {
+			isLoadingDistributions = false;
+		}
+	}
+
+	onMount(() => {
+		loadDistributions();
+	});
+
+	const sortedDistributions = $derived.by(() => {
+		const distributionsSort = getSortDirection($page.url.searchParams, 'distributions');
+		return sortDistributions(distributions, distributionsSort);
+	});
+
+	let selectedTab = $state<SortContext>('drift');
+
+	// update selectedEvents when joinTimeseries changes
+	$effect(() => {
+		if (joinTimeseries) {
+			untrack(() => {
+				// Only update selectedEvents if we have a previously selected point
+				if (selectedEvents.length > 0 && selectedEvents[0]?.data && dialogGroupChart) {
+					const [timestamp] = selectedEvents[0].data as [number, number];
+					const seriesName = selectedEvents[0].seriesName;
+
+					// Get the updated series data from the chart
+					const series = dialogGroupChart.getOption().series as EChartOption.Series[];
+					const updatedSeries = series.find((s) => s.name === seriesName);
+
+					if (updatedSeries && Array.isArray(updatedSeries.data)) {
+						// Find the point at the same timestamp
+						const updatedPoint = updatedSeries.data.find((point) => {
+							const [pointTimestamp] = point as [number, number];
+							return pointTimestamp === timestamp;
+						}) as [number, number] | undefined;
+
+						if (updatedPoint) {
+							selectedEvents = [
+								{
+									...selectedEvents[0],
+									data: updatedPoint
+								}
+							];
+						}
+					}
+				}
+			});
+		}
+	});
 </script>
 
 {#if shouldShowStickyHeader}
@@ -543,17 +492,23 @@
 		class="sticky top-0 z-20 bg-neutral-200 border-b border-border -mx-8 py-2 px-8 border-l"
 		transition:fade={{ duration: 150 }}
 	>
-		<div class="flex items-center justify-end space-x-6">
-			{#if isZoomed}
-				<ResetZoomButton onClick={resetZoom} />
-			{/if}
-			<DriftSkewToggle bind:selected={selectedDriftSkew} />
-			<DateRangeSelector />
-		</div>
+		<ChartControls
+			{isZoomed}
+			onResetZoom={resetZoom}
+			{isUsingFallbackDates}
+			dateRange={{
+				startTimestamp: data.dateRange.startTimestamp,
+				endTimestamp: data.dateRange.endTimestamp
+			}}
+			showActionButtons={true}
+			showCluster={selectedTab === 'drift'}
+			showSort={true}
+			context={selectedTab}
+		/>
 	</div>
 {/if}
 
-<PageHeader title={timeseries.id}></PageHeader>
+<PageHeader title={joinTimeseries.name}></PageHeader>
 
 {#if model}
 	<div class="border rounded-md w-1/2 mb-6">
@@ -578,91 +533,47 @@
 	</div>
 {/if}
 
-<Separator fullWidthExtend={true} wide={true} />
+<div class="mb-4">
+	<IntersectionObserver
+		element={dateRangeSelectorIntersectionElement}
+		bind:intersecting={isDateRangeSelectorVisible}
+	>
+		<div bind:this={dateRangeSelectorIntersectionElement}></div>
+	</IntersectionObserver>
 
-<CollapsibleSection title="Model Performance" bind:open={isModelPerformanceOpen}>
-	{#snippet headerContentLeft()}
-		<InfoTooltip text="Model performance compares predictions to labels or ground truth." />
-	{/snippet}
-	{#snippet headerContentRight()}
-		<div class="flex items-center justify-between">
-			{#if isZoomed}
-				<ResetZoomButton onClick={resetZoom} class="mr-4" />
-			{/if}
-			<IntersectionObserver
-				element={dateRangeSelectorIntersectionElement}
-				bind:intersecting={isDateRangeSelectorVisible}
-			>
-				<div bind:this={dateRangeSelectorIntersectionElement}></div>
-			</IntersectionObserver>
-			<DateRangeSelector />
-		</div>
-	{/snippet}
-	{#snippet collapsibleContent()}
-		<EChart
-			option={performanceChartOption}
-			bind:chartInstance={performanceChart}
-			on:datazoom={handleZoom}
-			enableMousemove={false}
-			enableCustomZoom={true}
-			enableCustomTooltip={true}
-		/>
-	{/snippet}
-</CollapsibleSection>
-
-<Separator fullWidthExtend={true} wide={true} />
-<CollapsibleSection title="Model Drift trends" bind:open={isModelDriftOpen}>
-	{#snippet headerContentLeft()}
-		<InfoTooltip
-			text="Model drift occurs when a model's accuracy decreases over time as the data it was trained on differs from new data."
-		/>
-	{/snippet}
-	{#snippet headerContentRight()}
-		<IntersectionObserver
-			element={driftSkewIntersectionElement}
-			bind:intersecting={isDriftSkewVisible}
-		>
-			<div bind:this={driftSkewIntersectionElement}></div>
-		</IntersectionObserver>
-		<DriftSkewToggle bind:selected={selectedDriftSkew} />
-	{/snippet}
-	{#snippet collapsibleContent()}
-		<EChart
-			option={driftChartOption}
-			bind:chartInstance={driftChart}
-			on:datazoom={handleZoom}
-			enableMousemove={false}
-			enableCustomZoom={true}
-			enableCustomTooltip={true}
-		/>
-	{/snippet}
-</CollapsibleSection>
+	<ChartControls
+		{isZoomed}
+		onResetZoom={resetZoom}
+		{isUsingFallbackDates}
+		dateRange={{
+			startTimestamp: data.dateRange.startTimestamp,
+			endTimestamp: data.dateRange.endTimestamp
+		}}
+		showActionButtons={true}
+		showCluster={selectedTab === 'drift'}
+		showSort={true}
+		context={selectedTab}
+	/>
+</div>
 
 <Separator fullWidthExtend={true} wide={true} />
 <CollapsibleSection title="Feature Monitoring" bind:open={isFeatureMonitoringOpen}>
 	{#snippet collapsibleContent()}
-		<Tabs value="monitoring" class="w-full">
+		<Tabs bind:value={selectedTab} class="w-full">
 			<TabsList>
-				<TabsTrigger value="features" class="flex items-center">
-					<Icon src={TableCells} micro size="16" class="mr-2" />
-					Features
-				</TabsTrigger>
-				<TabsTrigger value="monitoring" class="flex items-center">
+				<TabsTrigger value="drift" class="flex items-center">
 					<Icon src={ChartLine} size="16" class="mr-2" />
-					Monitoring
+					Drift
+				</TabsTrigger>
+				<TabsTrigger value="distributions" class="flex items-center">
+					<Icon src={TableCells} micro size="16" class="mr-2" />
+					Distributions
 				</TabsTrigger>
 			</TabsList>
 			<Separator fullWidthExtend={true} />
 
-			<TabsContent value="features">
-				<div class="p-4">
-					<h3 class="text-lg font-semibold">Features Content</h3>
-				</div>
-			</TabsContent>
-			<TabsContent value="monitoring">
-				<ActionButtons showCluster={true} class="mt-8" />
-
-				{#each joinTimeseries.items as group}
+			<TabsContent value="drift">
+				{#each joinTimeseries.items as group (group.name)}
 					<CollapsibleSection
 						title={group.name}
 						size="small"
@@ -683,15 +594,30 @@
 								enableCustomZoom={true}
 								enableCustomTooltip={true}
 								enableTooltipClick={true}
-							/>
-							<CustomEChartLegend
-								groupName={group.name}
-								items={group.items}
-								chart={groupByCharts[group.name]}
+								showCustomLegend={true}
+								legendGroup={group}
 							/>
 						{/snippet}
 					</CollapsibleSection>
 				{/each}
+			</TabsContent>
+			<TabsContent value="distributions">
+				{#if isLoadingDistributions}
+					<div class="mt-6">Loading distributions...</div>
+				{:else if distributions.length === 0}
+					<div class="mt-6">No distribution data available</div>
+				{:else}
+					{#each sortedDistributions as feature}
+						<CollapsibleSection title={feature.feature} size="small" open={true}>
+							{#snippet collapsibleContent()}
+								<PercentileChart
+									data={feature.current ?? null}
+									bind:chartInstance={distributionCharts[feature.feature]}
+								/>
+							{/snippet}
+						</CollapsibleSection>
+					{/each}
+				{/if}
 			</TabsContent>
 		</Tabs>
 	{/snippet}
@@ -700,18 +626,35 @@
 <Dialog bind:open={isSheetOpen}>
 	<DialogContent class="max-w-[85vw] h-[95vh] flex flex-col p-0">
 		<DialogHeader class="pt-8 px-7 pb-0">
-			<span class="ml-2 text-xl-medium flex items-center gap-2">
+			<span
+				class="mb-4 ml-2 text-xl-medium flex items-center gap-2 w-fit"
+				role="presentation"
+				onmouseenter={() => highlightSeries(selectedSeries ?? '', dialogGroupChart, 'highlight')}
+				onmouseleave={() => highlightSeries(selectedSeries ?? '', dialogGroupChart, 'downplay')}
+			>
 				{#if selectedSeries && dialogGroupChart}
 					<div
 						class="w-3 h-3 rounded-full"
-						style:background-color={getSeriesColor(selectedSeries, dialogGroupChart)}
+						style:background-color={getSeriesColor(dialogGroupChart, selectedSeries)}
 					></div>
 				{/if}
 				<div>
-					{selectedSeries && selectedSeries + ' at'}
+					{selectedSeries ? `${selectedSeries} at ` : ''}{formatEventDate()}
 				</div>
-				{formatEventDate()}
 			</span>
+			<ChartControls
+				{isZoomed}
+				onResetZoom={resetZoom}
+				{isUsingFallbackDates}
+				dateRange={{
+					startTimestamp: data.dateRange.startTimestamp,
+					endTimestamp: data.dateRange.endTimestamp
+				}}
+				showActionButtons={false}
+				showCluster={selectedTab === 'drift'}
+				showSort={false}
+				context={selectedTab}
+			/>
 		</DialogHeader>
 
 		<ScrollArea class="flex-grow px-7">
@@ -721,16 +664,6 @@
 				)}
 				{#if selectedGroup}
 					<CollapsibleSection title={selectedGroup.name} open={true}>
-						{#snippet headerContentRight()}
-							<div class="flex items-center justify-between space-x-6">
-								<div class="flex justify-end">
-									{#if isZoomed}
-										<ResetZoomButton onClick={resetZoom} />
-									{/if}
-								</div>
-								<DateRangeSelector />
-							</div>
-						{/snippet}
 						{#snippet collapsibleContent()}
 							<EChart
 								option={createGroupByChartOption(selectedGroup.items)}
@@ -746,52 +679,47 @@
 								enableCustomZoom={true}
 								enableCustomTooltip={true}
 								enableTooltipClick={true}
+								showCustomLegend={true}
+								legendGroup={selectedGroup}
 							/>
-							{#if dialogGroupChart}
-								<CustomEChartLegend
-									groupName={selectedGroup.name}
-									items={selectedGroup.items}
-									chart={dialogGroupChart}
-								/>
-							{/if}
 						{/snippet}
 					</CollapsibleSection>
 				{/if}
 			{/if}
 
 			{#if selectedSeries}
-				<CollapsibleSection title="Percentiles" open={true}>
-					{#snippet collapsibleContent()}
-						<EChart
-							option={percentileChartOption}
-							bind:chartInstance={percentileChart}
-							enableMousemove={false}
-							enableCustomZoom={true}
-							enableCustomTooltip={true}
-						/>
-					{/snippet}
-				</CollapsibleSection>
+				{#if percentileData}
+					<CollapsibleSection title="Percentiles" open={true}>
+						{#snippet collapsibleContent()}
+							<PercentileChart
+								data={percentileData?.current ?? null}
+								bind:chartInstance={percentileChart}
+							/>
+						{/snippet}
+					</CollapsibleSection>
+				{/if}
 
-				<CollapsibleSection title="Data Distribution" open={true}>
-					{#snippet headerContentRight()}
-						{#if isComparedFeatureZoomed}
-							<div class="flex justify-end h-6">
-								<ResetZoomButton onClick={resetComparedFeatureZoom} />
-							</div>
-						{/if}
-					{/snippet}
-					{#snippet collapsibleContent()}
-						<EChart
-							option={comparedFeatureChartOption}
-							bind:chartInstance={comparedFeatureChart}
-							enableMousemove={false}
-							enableCustomZoom={true}
-							on:datazoom={handleComparedFeatureZoom}
-							enableCustomTooltip={true}
-						/>
-					{/snippet}
-				</CollapsibleSection>
-
+				{#if comparedFeatureData}
+					<CollapsibleSection title="Data Distribution" open={true}>
+						{#snippet headerContentRight()}
+							{#if isComparedFeatureZoomed}
+								<div class="flex justify-end h-6">
+									<ResetZoomButton onClick={resetComparedFeatureZoom} />
+								</div>
+							{/if}
+						{/snippet}
+						{#snippet collapsibleContent()}
+							<EChart
+								option={comparedFeatureChartOption}
+								bind:chartInstance={comparedFeatureChart}
+								enableMousemove={false}
+								enableCustomZoom={true}
+								on:datazoom={handleComparedFeatureZoom}
+								enableCustomTooltip={true}
+							/>
+						{/snippet}
+					</CollapsibleSection>
+				{/if}
 				<CollapsibleSection title="Null Ratio" open={true}>
 					{#snippet collapsibleContent()}
 						<EChart
@@ -817,14 +745,18 @@
 							class="p-2 [&:not(:last-child)]:border-b w-full"
 							on:click={() => selectSeries(event.seriesName)}
 							autofocus={true}
+							onmouseenter={() =>
+								highlightSeries(event.seriesName ?? '', dialogGroupChart, 'highlight')}
+							onmouseleave={() =>
+								highlightSeries(event.seriesName ?? '', dialogGroupChart, 'downplay')}
 						>
 							<span class="flex justify-between items-center w-full">
 								<span class="text-neutral-800 truncate flex items-center gap-2">
 									<div
 										class="w-3 h-3 rounded-full"
 										style:background-color={getSeriesColor(
-											event.seriesName ?? '',
-											dialogGroupChart
+											dialogGroupChart,
+											event.seriesName ?? ''
 										)}
 									></div>
 									{event.seriesName ?? ''}

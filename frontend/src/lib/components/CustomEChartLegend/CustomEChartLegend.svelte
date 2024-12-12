@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import type { EChartsType } from 'echarts';
 	import { Icon, ChevronDown, ChevronUp } from 'svelte-hero-icons';
+	import { getSeriesColor, handleChartHighlight } from '$lib/util/chart';
 
 	type LegendItem = { feature: string };
 	type Props = {
@@ -26,6 +27,10 @@
 			groupSet.delete(seriesName);
 		} else {
 			groupSet.add(seriesName);
+			chart.dispatchAction({
+				type: 'downplay',
+				seriesName
+			});
 		}
 
 		hiddenSeries = {
@@ -38,10 +43,6 @@
 			type: 'legendToggleSelect',
 			name: seriesName
 		});
-	}
-
-	function getSeriesColor(index: number, colors: string[]): string {
-		return colors[index % colors.length] || '#000000';
 	}
 
 	function checkOverflow() {
@@ -65,25 +66,34 @@
 
 		return () => resizeObserver.disconnect();
 	});
+
+	function handleMouseEnter(seriesName: string) {
+		handleChartHighlight(chart, seriesName, 'highlight');
+	}
+
+	function handleMouseLeave(seriesName: string) {
+		handleChartHighlight(chart, seriesName, 'downplay');
+	}
 </script>
 
 <div class="relative mt-5">
 	<div class="flex">
 		<div
 			bind:this={itemsContainer}
-			class={`flex flex-wrap gap-x-8 gap-y-2 flex-1 transition-all duration-150 ease-in-out ${!isExpanded ? 'overflow-hidden' : ''}`}
+			class={`flex flex-wrap gap-x-4 gap-y-2 flex-1 transition-all duration-150 ease-in-out ${!isExpanded ? 'overflow-hidden' : ''}`}
 			style="height: {isExpanded ? containerHeight + 'px' : containerHeightLine + 'px'};"
 		>
-			{#each items as { feature }, index}
-				{@const colors = chart?.getOption()?.color || []}
-				{@const color = getSeriesColor(index, colors)}
+			{#each items as { feature } (feature)}
 				{@const isHidden = hiddenSeries[groupName]?.has(feature)}
+				{@const color = getSeriesColor(chart, feature)}
 
 				<Button
-					class="legend-btn gap-x-2 max-w-[148px]"
+					class="legend-btn gap-x-2"
 					variant="ghost"
 					on:click={() => toggleSeries(feature)}
 					title={feature}
+					on:mouseenter={() => handleMouseEnter(feature)}
+					on:mouseleave={() => handleMouseLeave(feature)}
 				>
 					<div
 						class="w-2 h-2 rounded-full flex-shrink-0"

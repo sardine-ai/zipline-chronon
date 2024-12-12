@@ -93,7 +93,7 @@
 				<span>{selectDateRange?.label || 'Select range'}</span>
 				<span class="border-input border-l mx-2 h-full"></span>
 				<span>
-					{#if calendarDateRange && calendarDateRange.start}
+					{#if !calendarDateRangePopoverOpen && calendarDateRange && calendarDateRange.start}
 						{#if calendarDateRange.end}
 							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
 								calendarDateRange.end.toDate(getLocalTimeZone())

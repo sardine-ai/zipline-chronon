@@ -2,11 +2,38 @@
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 	import { Icon, Plus, ArrowsUpDown, Square3Stack3d, XMark } from 'svelte-hero-icons';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import {
+		getSortDirection,
+		updateContextSort,
+		type SortDirection,
+		type SortContext
+	} from '$lib/util/sort';
 
-	let { showCluster = false, class: className }: { showCluster?: boolean; class?: string } =
-		$props();
+	let {
+		showCluster = false,
+		class: className,
+		showSort = false,
+		context = 'drift'
+	}: {
+		showCluster?: boolean;
+		class?: string;
+		showSort?: boolean;
+		context?: SortContext;
+	} = $props();
 
 	let activeCluster = showCluster ? 'GroupBys' : null;
+
+	let currentSort: SortDirection = $derived.by(() =>
+		getSortDirection($page.url.searchParams, context)
+	);
+
+	function handleSort() {
+		const newSort: SortDirection = currentSort === 'asc' ? 'desc' : 'asc';
+		const url = updateContextSort($page.url, context, newSort);
+		goto(url, { replaceState: true });
+	}
 </script>
 
 <div class={cn('flex flex-wrap gap-3', className)}>
@@ -28,16 +55,18 @@
 
 	<!-- Action Buttons Section -->
 	<div class="flex gap-3">
-		<Button variant="secondary" size="sm" icon="leading">
+		{#if showSort}
+			<Button variant="secondary" size="sm" icon="leading" on:click={handleSort}>
+				<Icon src={ArrowsUpDown} micro size="16" />
+				Sort {currentSort === 'asc' ? 'A-Z' : 'Z-A'}
+			</Button>
+		{/if}
+		<Button variant="secondary" size="sm" icon="leading" disabled>
 			<Icon src={Plus} micro size="16" />
 			Filter
 		</Button>
-		<Button variant="secondary" size="sm" icon="leading">
-			<Icon src={ArrowsUpDown} micro size="16" />
-			Sort
-		</Button>
 		{#if showCluster}
-			<Button variant="secondary" size="sm" icon="leading">
+			<Button variant="secondary" size="sm" icon="leading" disabled>
 				<Icon src={Square3Stack3d} micro size="16" />
 				Cluster
 			</Button>
