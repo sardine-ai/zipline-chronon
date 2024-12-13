@@ -1,0 +1,5 @@
+{
+  "online.jar": "./cloud_aws/target/scala-2.12/cloud_aws-assembly-0.1.0-SNAPSHOT.jar",
+  "online.class": "ai.chronon.integrations.aws.AwsApiImpl",
+  "online.api.props": {}
+}

@@ -32,6 +32,7 @@ lazy val circeVersion = "0.14.9"
 lazy val deltaVersion = "3.2.0"
 lazy val slf4jApiVersion = "2.0.12"
 lazy val logbackClassicVersion = "1.5.6"
+lazy val vertxVersion = "4.5.10"
 
 // skip tests on assembly - uncomment if builds become slow
 // ThisBuild / assembly / test := {}
@@ -55,7 +56,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, hub, service)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, service_commons, service, hub)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -99,6 +100,14 @@ val flink_all = Seq(
   "org.apache.flink" % "flink-metrics-dropwizard",
   "org.apache.flink" % "flink-clients"
 ).map(_ % flink_1_17)
+
+val vertx_java = Seq(
+  "io.vertx" % "vertx-core",
+  "io.vertx" % "vertx-web",
+  "io.vertx" % "vertx-config",
+  // wire up metrics using micro meter and statsd
+  "io.vertx" % "vertx-micrometer-metrics",
+).map(_ % vertxVersion)
 
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
 
@@ -249,55 +258,11 @@ lazy val frontend = (project in file("frontend"))
     }
   )
 
-// We use Play 2.x (version defined in plugins.sbt) as many of our modules are still on Scala 2.12
-// build interop between one module solely on 2.13 and others on 2.12 is painful
-lazy val hub = (project in file("hub"))
-  .enablePlugins(PlayScala)
-  .dependsOn(cloud_aws, spark)
-  .settings(
-    name := "hub",
-    libraryDependencies ++= Seq(
-      guice,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
-      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0",
-      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.3.0",
-      "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
-    ),
-    libraryDependencies ++= circe,
-    libraryDependencySchemes ++= Seq(
-      "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
-      "org.scala-lang.modules" %% "scala-parser-combinators" % VersionScheme.Always,
-      "org.scala-lang.modules" %% "scala-java8-compat" % VersionScheme.Always
-    ),
-    excludeDependencies ++= Seq(
-      ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
-      ExclusionRule(organization = "log4j", name = "log4j"),
-      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-to-slf4j"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-core"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-api")
-    ),
-    // Ensure consistent versions of logging libraries
-    dependencyOverrides ++= Seq(
-      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
-      "ch.qos.logback" % "logback-classic" % logbackClassicVersion
-    )
-  )
-
-lazy val service = (project in file("service"))
+lazy val service_commons = (project in file("service_commons"))
   .dependsOn(online)
   .settings(
-    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
-    assembly / artifact := {
-      val art = (assembly / artifact).value
-      art.withClassifier(Some("assembly"))
-    },
-    addArtifact(assembly / artifact, assembly),
+    libraryDependencies ++= vertx_java,
     libraryDependencies ++= Seq(
-      "io.vertx" % "vertx-core" % "4.5.10",
-      "io.vertx" % "vertx-web" % "4.5.10",
-      "io.vertx" % "vertx-config" % "4.5.10",
       "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
       "org.slf4j" % "slf4j-api" % slf4jApiVersion,
       "com.typesafe" % "config" % "1.4.3",
@@ -305,12 +270,87 @@ lazy val service = (project in file("service"))
       // our online module's spark deps which causes the web-app to not serve up content
       "io.netty" % "netty-all" % "4.1.111.Final",
       // wire up metrics using micro meter and statsd
-      "io.vertx" % "vertx-micrometer-metrics" % "4.5.10",
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+    ),
+  )
+
+lazy val service = (project in file("service"))
+  .dependsOn(online, service_commons)
+  .settings(
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    assembly / artifact := {
+      val art = (assembly / artifact).value
+      art.withClassifier(Some("assembly"))
+    },
+    addArtifact(assembly / artifact, assembly),
+    libraryDependencies ++= vertx_java,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "com.typesafe" % "config" % "1.4.3",
+      // force netty versions -> without this we conflict with the versions pulled in from
+      // our online module's spark deps which causes the web-app to not serve up content
+      "io.netty" % "netty-all" % "4.1.111.Final",
+      // wire up metrics using micro meter and statsd
       "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
       "junit" % "junit" % "4.13.2" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test,
       "org.mockito" % "mockito-core" % "5.12.0" % Test,
-      "io.vertx" % "vertx-unit" % "4.5.10" % Test,
+      "io.vertx" % "vertx-unit" % vertxVersion % Test,
+    ),
+    // Assembly settings
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+
+    // Main class configuration
+    // We use a custom launcher to help us wire up our statsd metrics
+    Compile / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+    assembly / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+
+    // Merge strategy for assembly
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+      case PathList("META-INF", xs @ _*) => MergeStrategy.first
+      case PathList("javax", "activation", xs @ _*) => MergeStrategy.first
+      case PathList("org", "apache", "logging", xs @ _*) => MergeStrategy.first
+      case PathList("org", "slf4j", xs @ _*) => MergeStrategy.first
+      case "application.conf" => MergeStrategy.concat
+      case "reference.conf" => MergeStrategy.concat
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
+  )
+
+lazy val hub = (project in file("hub"))
+  .dependsOn(online, service_commons, spark)
+  .settings(
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    assembly / artifact := {
+      val art = (assembly / artifact).value
+      art.withClassifier(Some("assembly"))
+    },
+    addArtifact(assembly / artifact, assembly),
+    libraryDependencies ++= vertx_java,
+    libraryDependencies ++= circe,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "com.typesafe" % "config" % "1.4.3",
+      // force netty versions -> without this we conflict with the versions pulled in from
+      // our online module's spark deps which causes the web-app to not serve up content
+      "io.netty" % "netty-all" % "4.1.111.Final",
+      // wire up metrics using micro meter and statsd
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+
+      // need this to prevent a NoClassDef error on org/json4s/Formats
+      "org.json4s" %% "json4s-core" % "3.7.0-M11",
+
+      "junit" % "junit" % "4.13.2" % Test,
+      "com.novocode" % "junit-interface" % "0.11" % Test,
+      "org.mockito" % "mockito-core" % "5.12.0" % Test,
+      "io.vertx" % "vertx-unit" % vertxVersion % Test,
+      "org.scalatest" %% "scalatest" % "3.2.19" % "test",
+      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
     ),
     // Assembly settings
     assembly / assemblyJarName := s"${name.value}-${version.value}.jar",

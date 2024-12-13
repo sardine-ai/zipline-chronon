@@ -7,7 +7,6 @@ function print_usage() {
     echo "  --clean     Clean and build all modules"
     echo "  --spark     Build Spark modules only"
     echo "  --frontend  Build frontend modules only"
-    echo "  --hub       Build Hub modules only"
     echo "  -h, --help  Show this help message"
 }
 
@@ -63,7 +62,6 @@ fi
 if [ "$BUILD_ALL" = true ]; then
     echo "Building all modules..."
     sbt assembly
-    sbt dist
     sbt "project frontend" buildFrontend
 fi
 
@@ -71,12 +69,6 @@ fi
 if [ "$BUILD_SPARK" = true ]; then
     echo "Building Spark modules..."
     sbt assembly
-fi
-
-# Build Hub modules
-if [ "$BUILD_HUB" = true ]; then
-    echo "Building Hub distribution..."
-    sbt dist
 fi
 
 # Build frontend

@@ -38,10 +38,8 @@ COPY --from=spark-source /opt/bitnami/spark/bin /opt/spark/bin
 ENV CLASSPATH=/opt/spark/jars/*
 
 # Copy frontend + play zipped dist and set up app directory structure
-COPY ./hub/target/universal/hub-0.1.0-SNAPSHOT.zip /app
-RUN unzip hub-0.1.0-SNAPSHOT.zip -d /app/hub && \
-    cp -r hub/hub-0.1.0-SNAPSHOT/* hub/. && \
-    rm -rf hub/hub-0.1.0-SNAPSHOT hub-0.1.0-SNAPSHOT.zip
+COPY ./hub/target/scala-2.12/hub-0.1.0-SNAPSHOT.jar /app
+COPY ./docker-init/hub/config.json /app
 
 EXPOSE 9000
 
