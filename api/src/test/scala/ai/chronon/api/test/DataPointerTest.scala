@@ -13,7 +13,16 @@ class DataPointerTest extends AnyFlatSpec with Matchers {
 
   it should "parse a bigquery table with options" in {
     val result = DataPointer("bigquery(option1=value1,option2=value2)://project-id.dataset.table")
-    result should be(DataPointer(Some("bigquery"), "project-id.dataset.table", None, Map("option1" -> "value1", "option2" -> "value2")))
+    result should be(
+      DataPointer(Some("bigquery"),
+                  "project-id.dataset.table",
+                  None,
+                  Map("option1" -> "value1", "option2" -> "value2")))
+  }
+
+  it should "parse a bigquery table without options" in {
+    val result = DataPointer("bigquery://project-id.dataset.table")
+    result should be(DataPointer(Some("bigquery"), "project-id.dataset.table", None, Map.empty))
   }
 
   it should "parse a kafka topic" in {
