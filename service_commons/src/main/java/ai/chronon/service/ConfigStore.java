@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * Helps keep track of the various Chronon fetcher service configs.
+ * Helps keep track of the various Chronon service configs.
  * We currently read configs once at startup - this makes sense for configs
  * such as the server port and we can revisit / extend things in the future to
  * be able to hot-refresh configs like Vertx supports under the hood.
