@@ -1,4 +1,5 @@
 package ai.chronon.spark.stats.drift
+import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore
@@ -8,8 +9,11 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types
 
+import java.util.concurrent.TimeUnit
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 import scala.util.Failure
 import scala.util.Success
 
@@ -64,10 +68,14 @@ class SummaryUploader(summaryDF: DataFrame,
 
       val aggregatedFuture = Future.sequence(putResponses.toSeq).map(_.flatten)
       aggregatedFuture.onComplete {
-        case Success(_) => // All operations completed successfully
+        case Success(s) =>
+          val failures = s.filter(_ == false)
+          if (failures.nonEmpty) println(s"Hit some multiput failures. ${failures.size} / ${s.size}".red)
         case Failure(e) =>
           throw new RuntimeException(s"Failed to upload summary statistics: ${e.getMessage}", e)
       }
+      // wait for futures to wrap up
+      Await.result(aggregatedFuture, Duration(10L, TimeUnit.SECONDS))
     })
   }
 }
