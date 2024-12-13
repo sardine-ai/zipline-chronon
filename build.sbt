@@ -106,7 +106,7 @@ val vertx_java = Seq(
   "io.vertx" % "vertx-web",
   "io.vertx" % "vertx-config",
   // wire up metrics using micro meter and statsd
-  "io.vertx" % "vertx-micrometer-metrics",
+  "io.vertx" % "vertx-micrometer-metrics"
 ).map(_ % vertxVersion)
 
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
@@ -204,12 +204,19 @@ lazy val flink = project
     )
   )
 
+// GCP requires java 11, can't cross compile higher
 lazy val cloud_gcp = project
-  .dependsOn(api.%("compile->compile;test->test"), online)
+  .dependsOn(api.%("compile->compile;test->test"), online, spark)
   .settings(
     libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
+    libraryDependencies += "com.google.cloud" % "google-cloud-dataproc" % "4.51.0",
+    libraryDependencies += "io.circe" %% "circe-yaml" % "1.15.0",
+    libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
+    libraryDependencies += "com.google.cloud.spark" %% s"spark-bigquery-with-dependencies" % "0.41.0",
+    libraryDependencies ++= circe,
+    libraryDependencies ++= avro,
     libraryDependencies ++= spark_all
   )
 
@@ -270,8 +277,8 @@ lazy val service_commons = (project in file("service_commons"))
       // our online module's spark deps which causes the web-app to not serve up content
       "io.netty" % "netty-all" % "4.1.111.Final",
       // wire up metrics using micro meter and statsd
-      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
-    ),
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6"
+    )
   )
 
 lazy val service = (project in file("service"))
@@ -296,25 +303,23 @@ lazy val service = (project in file("service"))
       "junit" % "junit" % "4.13.2" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test,
       "org.mockito" % "mockito-core" % "5.12.0" % Test,
-      "io.vertx" % "vertx-unit" % vertxVersion % Test,
+      "io.vertx" % "vertx-unit" % vertxVersion % Test
     ),
     // Assembly settings
     assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
-
     // Main class configuration
     // We use a custom launcher to help us wire up our statsd metrics
     Compile / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
     assembly / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
-
     // Merge strategy for assembly
     assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
-      case PathList("META-INF", xs @ _*) => MergeStrategy.first
-      case PathList("javax", "activation", xs @ _*) => MergeStrategy.first
+      case PathList("META-INF", "MANIFEST.MF")           => MergeStrategy.discard
+      case PathList("META-INF", xs @ _*)                 => MergeStrategy.first
+      case PathList("javax", "activation", xs @ _*)      => MergeStrategy.first
       case PathList("org", "apache", "logging", xs @ _*) => MergeStrategy.first
-      case PathList("org", "slf4j", xs @ _*) => MergeStrategy.first
-      case "application.conf" => MergeStrategy.concat
-      case "reference.conf" => MergeStrategy.concat
+      case PathList("org", "slf4j", xs @ _*)             => MergeStrategy.first
+      case "application.conf"                            => MergeStrategy.concat
+      case "reference.conf"                              => MergeStrategy.concat
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
@@ -341,34 +346,31 @@ lazy val hub = (project in file("hub"))
       "io.netty" % "netty-all" % "4.1.111.Final",
       // wire up metrics using micro meter and statsd
       "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
-
       // need this to prevent a NoClassDef error on org/json4s/Formats
       "org.json4s" %% "json4s-core" % "3.7.0-M11",
-
       "junit" % "junit" % "4.13.2" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test,
       "org.mockito" % "mockito-core" % "5.12.0" % Test,
       "io.vertx" % "vertx-unit" % vertxVersion % Test,
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
       "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
+      "io.vertx" % "vertx-unit" % "4.5.10" % Test
     ),
     // Assembly settings
     assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
-
     // Main class configuration
     // We use a custom launcher to help us wire up our statsd metrics
     Compile / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
     assembly / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
-
     // Merge strategy for assembly
     assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
-      case PathList("META-INF", xs @ _*) => MergeStrategy.first
-      case PathList("javax", "activation", xs @ _*) => MergeStrategy.first
+      case PathList("META-INF", "MANIFEST.MF")           => MergeStrategy.discard
+      case PathList("META-INF", xs @ _*)                 => MergeStrategy.first
+      case PathList("javax", "activation", xs @ _*)      => MergeStrategy.first
       case PathList("org", "apache", "logging", xs @ _*) => MergeStrategy.first
-      case PathList("org", "slf4j", xs @ _*) => MergeStrategy.first
-      case "application.conf" => MergeStrategy.concat
-      case "reference.conf" => MergeStrategy.concat
+      case PathList("org", "slf4j", xs @ _*)             => MergeStrategy.first
+      case "application.conf"                            => MergeStrategy.concat
+      case "reference.conf"                              => MergeStrategy.concat
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
