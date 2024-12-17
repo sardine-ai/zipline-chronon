@@ -71,7 +71,9 @@ object SparkSessionBuilder {
     baseBuilder = baseBuilder
       .config("spark.sql.session.timeZone", "UTC")
       //otherwise overwrite will delete ALL partitions, not just the ones it touches
-      .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
+      .config("spark.sql.sources.partitionOverwriteMode",
+              "DYNAMIC"
+      ) // needs to be uppercase until https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1313 is available
       .config("hive.exec.dynamic.partition", "true")
       .config("hive.exec.dynamic.partition.mode", "nonstrict")
       .config("spark.sql.catalogImplementation", "hive")
