@@ -36,7 +36,6 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.types.{StringType => SparkStringType}
 import org.junit.Assert._
 import org.scalatest.funsuite.AnyFunSuite
@@ -44,6 +43,16 @@ import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.JavaConverters._
 import scala.util.ScalaJavaConversions.ListOps
 
+case class TestRow(ds: String, value: String) {}
+
+object TestRow {
+  implicit def ordering[A <: TestRow]: Ordering[A] =
+    new Ordering[A] {
+      override def compare(x: A, y: A): Int = {
+        x.ds.compareTo(y.ds)
+      }
+    }
+}
 // Run as follows: sbt "spark/testOnly -- -n jointest"
 class JoinTest extends AnyFunSuite with TaggedFilterSuite {
 
@@ -59,6 +68,45 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
   tableUtils.createDatabase(namespace)
 
   override def tagName: String = "jointest"
+
+  test("testing basic spark dynamic partition overwrite") {
+    import org.apache.spark.sql.SaveMode
+    import spark.implicits._
+
+    val rows = List(
+      TestRow("1", "a"),
+      TestRow("2", "b"),
+      TestRow("3", "c"),
+      TestRow("4", "d"),
+      TestRow("5", "e")
+    )
+    val data = spark.createDataFrame(rows) toDF ("ds", "value")
+    data.write.mode(SaveMode.Overwrite).format("hive").partitionBy("ds").saveAsTable(f"${namespace}.table")
+    assertEquals(spark.table(f"${namespace}.table").as[TestRow].collect().toList.sorted, rows.sorted)
+
+    spark.table(f"${namespace}.table").show(truncate = false)
+
+    val dynamicPartitions = List(
+      TestRow("4", "y"),
+      TestRow("5", "z")
+    )
+    val dynamicPartitionsDF = spark.createDataset(dynamicPartitions).select("value", "ds")
+
+    dynamicPartitionsDF.write
+      .format("hive")
+      .mode(SaveMode.Overwrite)
+      .insertInto(f"${namespace}.table")
+
+    spark.table(f"${namespace}.table").show(truncate = false)
+
+    val updatedExpected =
+      (rows.map((r) => r.ds -> r.value).toMap ++ dynamicPartitions.map((r) => r.ds -> r.value).toMap).map {
+        case (k, v) => TestRow(k, v)
+      }.toList
+
+    assertEquals(updatedExpected.sorted, spark.table(f"${namespace}.table").as[TestRow].collect().toList.sorted)
+
+  }
 
   test("test events entities snapshot") {
     val dollarTransactions = List(

@@ -27,7 +27,7 @@ and timestamps for which features will be computed.
 """
 source = Source(
     events=EventSource(
-        table="data.checkouts", 
+        table="data.checkouts",
         query=Query(
             selects=select("user_id"), # The primary key used to join various GroupBys together
             time_column="ts",
