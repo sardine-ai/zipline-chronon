@@ -49,7 +49,6 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       .newBuilder()
       .setMainClass(conf.mainClass)
       .addJarFileUris(conf.jarUri)
-      // .addJarFileUris("gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.41.0.jar")
       .addAllFileUris(files.asJava)
       .addAllArgs(args.toIterable.asJava)
       .build()

@@ -2,5 +2,5 @@
 projectId: "canary-443022"
 region: "us-central1"
 clusterName: "canary-2"
-jarUri: "gs://dataproc-temp-us-central1-703996152583-pqtvfptb/jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+jarUri: "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
 mainClass: "ai.chronon.spark.Driver"
