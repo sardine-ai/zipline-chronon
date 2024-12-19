@@ -7,7 +7,7 @@ The frontend for Chronon.
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/en/) (LTS version recommended)
-- npm (comes with Node.js)
+- [pnpm](https://pnpm.io/installation) - fast and disk space efficient package manager
 
 ### Installation
 
@@ -26,7 +26,7 @@ The frontend for Chronon.
 
 3. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 ### Development
@@ -53,7 +53,7 @@ Done uploading summaries! 🥳
 3. Then, start the development server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 This will start a local server. The app will automatically reload if you make changes to the code.
@@ -63,7 +63,7 @@ This will start a local server. The app will automatically reload if you make ch
 To create an optimized production build:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 This will create an optimized version of your project in the `build` directory.
@@ -73,7 +73,7 @@ This will create an optimized version of your project in the `build` directory.
 To preview the production build locally:
 
 ```bash
-npm run preview
+pnpm preview
 ```
 
 ### Running Tests
@@ -85,7 +85,7 @@ npm run preview
 To run both unit and integration tests together:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 #### Unit Tests
@@ -93,13 +93,13 @@ npm run test
 To run unit tests using Vitest:
 
 ```bash
-npm run test:unit
+pnpm test:unit
 ```
 
 To run unit tests once:
 
 ```bash
-npm run test:unit:once
+pnpm test:unit:once
 ```
 
 #### Integration Tests
@@ -107,19 +107,19 @@ npm run test:unit:once
 To run integration tests using Playwright:
 
 ```bash
-npm run test:integration
+pnpm test:integration
 ```
 
 To run integration tests once:
 
 ```bash
-npm run test:integration:once
+pnpm test:integration:once
 ```
 
 For the Playwright UI to explore test results:
 
 ```bash
-npm run test:integration:ui
+pnpm test:integration:ui
 ```
 
 ### Linting and Formatting
@@ -127,13 +127,13 @@ npm run test:integration:ui
 To check code formatting and linting issues:
 
 ```bash
-npm run lint
+pnpm lint
 ```
 
 To format the codebase:
 
 ```bash
-npm run format
+pnpm format
 ```
 
 ### Type Checking
@@ -141,16 +141,16 @@ npm run format
 To check the TypeScript types:
 
 ```bash
-npm run check
+pnpm check
 ```
 
 To continuously check types while developing:
 
 ```bash
-npm run check:watch
+pnpm check:watch
 ```
 
 ## Best Practices
 
-1. **Code Style**: This project uses Prettier and ESLint for code formatting and linting. Please run `npm run lint` and `npm run format` before committing changes.
+1. **Code Style**: This project uses Prettier and ESLint for code formatting and linting. Please run `pnpm lint` and `pnpm format` before committing changes.
 2. **Testing**: Ensure all changes are covered with unit and integration tests. Use Vitest for unit tests and Playwright for integration tests.
