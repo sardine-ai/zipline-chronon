@@ -2,3 +2,13 @@
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# SvelteKit build
+.svelte-kit
+build
+
+# Playwright test results
+test-results
+
+# Thift types
+src/lib/types/codegen
