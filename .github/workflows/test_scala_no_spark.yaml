@@ -9,7 +9,7 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
-      - '.github/workflows/**'
+      - '.github/workflows/test_scala_no_spark.yaml'
       - 'build.sbt'
   pull_request:
     branches:
@@ -19,7 +19,7 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
-      - '.github/workflows/**'
+      - '.github/workflows/test_scala_no_spark.yaml'
       - 'build.sbt'
 
 
