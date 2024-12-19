@@ -240,14 +240,14 @@ lazy val frontend = (project in file("frontend"))
     buildFrontend := {
       println("Installing frontend dependencies...")
       import scala.sys.process._
-      val pnpmCiResult = Process("pnpm install --frozen-lockfile", file("frontend")).!
+      val npmCiResult = Process("npm ci", file("frontend")).!
 
-      if (pnpmCiResult != 0) {
-        sys.error("pnpm install failed!")
+      if (npmCiResult != 0) {
+        sys.error("npm ci failed!")
       }
 
       println("Building frontend...")
-      val buildResult = Process("pnpm run build", file("frontend")).!
+      val buildResult = Process("npm run build", file("frontend")).!
 
       if (buildResult == 0) {
         println("Copying frontend assets to /hub/public...")
