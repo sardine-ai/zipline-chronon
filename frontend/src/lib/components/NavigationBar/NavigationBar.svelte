@@ -201,32 +201,16 @@
 			{/if}
 		{:else}
 			<CommandGroup heading={`Search for "${input}"`}>
-				{#each searchResults as model}
+				{#each searchResults as entity}
+					<!-- todo: enable this once we have data for all joins -->
 					<CommandItem
-						disabled
+						disabled={entity.name !== 'risk.user_transactions.txn_join'}
 						onSelect={() =>
-							handleSelect(`${getEntity('models').path}/${encodeURIComponent(model.name)}`)}
-					>
-						<Icon src={getEntity('models').icon} micro size="16" />
-						{model.name}
-					</CommandItem>
-					<CommandItem
-						onSelect={() =>
-							handleSelect(`${getEntity('joins').path}/${encodeURIComponent(model.join.name)}`)}
+							handleSelect(`${getEntity('joins').path}/${encodeURIComponent(entity.name)}`)}
 					>
 						<Icon src={getEntity('joins').icon} micro size="16" />
-						{model.join.name}
+						{entity.name}
 					</CommandItem>
-					{#each model.join.groupBys as groupBy}
-						<CommandItem
-							disabled
-							onSelect={() =>
-								handleSelect(`${getEntity('groupbys').path}/${encodeURIComponent(groupBy.name)}`)}
-						>
-							<Icon src={getEntity('groupbys').icon} micro size="16" />
-							{groupBy.name}
-						</CommandItem>
-					{/each}
 				{/each}
 			</CommandGroup>
 		{/if}
