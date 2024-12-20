@@ -1,5 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.integrations.cloud_gcp.DataprocSubmitter
+import ai.chronon.integrations.cloud_gcp.SubmitterConf
+import ai.chronon.spark
+import ai.chronon.spark.JobSubmitterConstants.{JarURI, MainClass}
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
@@ -37,9 +41,9 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
 
     val submitter = new DataprocSubmitter(
       mockJobControllerClient,
-      SubmitterConf("test-project", "test-region", "test-cluster", "test-jar-uri", "test-main-class"))
+      SubmitterConf("test-project", "test-region", "test-cluster"))
 
-    val submittedJobId = submitter.submit(List.empty)
+    val submittedJobId = submitter.submit(spark.SparkJob, Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"), List.empty)
     assertEquals(submittedJobId, jobId)
   }
 
@@ -52,6 +56,9 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(
+        spark.SparkJob,
+        Map(MainClass -> "ai.chronon.spark.Driver",
+              JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         List("gs://zipline-jars/training_set.v1",
              "gs://zipline-jars/dataproc-submitter-conf.yaml",
              "gs://zipline-jars/additional-confs.yaml"),

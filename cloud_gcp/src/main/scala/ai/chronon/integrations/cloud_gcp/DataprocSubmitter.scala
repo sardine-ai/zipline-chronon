@@ -1,6 +1,8 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.JobAuth
-import ai.chronon.spark.JobSubmitter
+import ai.chronon.spark.JobSubmitterConstants.{FlinkMainJarURI, JarURI, MainClass}
+import ai.chronon.spark.{JobAuth, JobSubmitter, JobType}
+import ai.chronon.spark.{SparkJob => TypeSparkJob}
+import ai.chronon.spark.{FlinkJob => TypeFlinkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import org.json4s._
@@ -8,15 +10,12 @@ import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
-
 import collection.JavaConverters._
 
 case class SubmitterConf(
     projectId: String,
     region: String,
-    clusterName: String,
-    jarUri: String,
-    mainClass: String
+    clusterName: String
 ) {
 
   def endPoint: String = s"${region}-dataproc.googleapis.com:443"
@@ -45,14 +44,16 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     job.getDone
   }
 
-  override def submit(files: List[String], args: String*): String = {
-    val sparkJob = SparkJob
-      .newBuilder()
-      .setMainClass(conf.mainClass)
-      .addJarFileUris(conf.jarUri)
-      .addAllFileUris(files.asJava)
-      .addAllArgs(args.toIterable.asJava)
-      .build()
+  override def submit(jobType: JobType, jobProperties: Map[String, String], files: List[String], args: String*): String = {
+    val mainClass = jobProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
+    val jarUri = jobProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
+
+    val jobBuilder = jobType match {
+      case TypeSparkJob => buildSparkJob(mainClass, jarUri, files, args: _*)
+      case TypeFlinkJob =>
+        val mainJarUri = jobProperties.getOrElse(FlinkMainJarURI, throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
+        buildFlinkJob(mainClass, mainJarUri, jarUri, args: _*)
+    }
 
     val jobPlacement = JobPlacement
       .newBuilder()
@@ -60,11 +61,9 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       .build()
 
     try {
-      val job = Job
-        .newBuilder()
+      val job = jobBuilder
         .setReference(jobReference)
         .setPlacement(jobPlacement)
-        .setSparkJob(sparkJob)
         .build()
 
       val submittedJob = jobControllerClient.submitJob(conf.projectId, conf.region, job)
@@ -72,8 +71,30 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
 
     } catch {
       case e: ApiException =>
-        throw new RuntimeException(s"Failed to submit job: ${e.getMessage}")
+        throw new RuntimeException(s"Failed to submit job: ${e.getMessage}", e)
     }
+  }
+
+    private def buildSparkJob(mainClass: String, jarUri: String, files: List[String], args: String*): Job.Builder = {
+      val sparkJob = SparkJob
+        .newBuilder()
+        .setMainClass(mainClass)
+        .addJarFileUris(jarUri)
+        .addAllFileUris(files.asJava)
+        .addAllArgs(args.toIterable.asJava)
+        .build()
+      Job.newBuilder().setSparkJob(sparkJob)
+    }
+
+  private def buildFlinkJob(mainClass: String, mainJarUri: String, jarUri: String, args: String*): Job.Builder = {
+    val flinkJob = FlinkJob
+      .newBuilder()
+      .setMainClass(mainClass)
+      .setMainJarFileUri(mainJarUri)
+      .addJarFileUris(jarUri)
+      .addAllArgs(args.toIterable.asJava)
+      .build()
+    Job.newBuilder().setFlinkJob(flinkJob)
   }
 
   def jobReference: JobReference = JobReference.newBuilder().build()
