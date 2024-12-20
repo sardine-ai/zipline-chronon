@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'frontend/src/**'
+      - 'frontend/**'
       - '.github/workflows/test_frontend.yaml'
   pull_request:
     branches:
       - main
     paths:
-      - 'frontend/src/**'
+      - 'frontend/**'
       - '.github/workflows/test_frontend.yaml'
 
 concurrency:
