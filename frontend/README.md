@@ -25,8 +25,15 @@ The frontend for Chronon.
    ```
 
 3. Install dependencies:
+
    ```bash
    npm install
+   ```
+
+4. Create `.env` file in frontend directory with the follow
+
+   ```
+   API_BASE_URL=http://localhost:9000
    ```
 
 ### Development

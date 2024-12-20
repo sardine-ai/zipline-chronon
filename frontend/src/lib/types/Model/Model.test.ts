@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import * as api from '$lib/api/api';
+import { Api } from '$lib/api/api';
 import type { ModelsResponse, Model, JoinTimeSeriesResponse } from '$lib/types/Model/Model';
+
+const api = new Api({ base: 'http://localhost:9000/api/v1' });
 
 describe('Model types', () => {
 	it('should match ModelsResponse type', async () => {

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import * as api from '$lib/api/api';
+import { Api } from '$lib/api/api';
 import type { JoinTimeSeriesResponse, Model } from '$lib/types/Model/Model';
 import { parseDateRangeParams } from '$lib/util/date-ranges';
 import { getMetricTypeFromParams, type MetricType } from '$lib/types/MetricType/MetricType';
@@ -10,7 +10,8 @@ const FALLBACK_END_TS = 1677628800000; // 2023-03-01
 
 export const load: PageServerLoad = async ({
 	params,
-	url
+	url,
+	fetch
 }): Promise<{
 	joinTimeseries: JoinTimeSeriesResponse;
 	model?: Model;
@@ -22,6 +23,7 @@ export const load: PageServerLoad = async ({
 		isUsingFallback: boolean;
 	};
 }> => {
+	const api = new Api({ fetch });
 	const requestedDateRange = parseDateRangeParams(url.searchParams);
 	const joinName = params.slug;
 	const metricType = getMetricTypeFromParams(url.searchParams);
@@ -30,6 +32,7 @@ export const load: PageServerLoad = async ({
 	// Try with requested date range first
 	try {
 		const { joinTimeseries, model } = await fetchInitialData(
+			api,
 			joinName,
 			requestedDateRange.startTimestamp,
 			requestedDateRange.endTimestamp,
@@ -50,6 +53,7 @@ export const load: PageServerLoad = async ({
 		console.error('Error fetching data:', error);
 		// If the requested range fails, fall back to the known working range
 		const { joinTimeseries, model } = await fetchInitialData(
+			api,
 			joinName,
 			FALLBACK_START_TS,
 			FALLBACK_END_TS,
@@ -72,6 +76,7 @@ export const load: PageServerLoad = async ({
 };
 
 async function fetchInitialData(
+	api: Api,
 	joinName: string,
 	startTs: number,
 	endTs: number,

@@ -16,7 +16,7 @@
 	import IntersectionObserver from 'svelte-intersection-observer';
 	import { fade } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button';
-	import { getFeatureTimeseries } from '$lib/api/api';
+	import { Api } from '$lib/api/api';
 	import InfoTooltip from '$lib/components/InfoTooltip/InfoTooltip.svelte';
 	import { Table, TableBody, TableCell, TableRow } from '$lib/components/ui/table/index.js';
 	import TrueFalseBadge from '$lib/components/TrueFalseBadge/TrueFalseBadge.svelte';
@@ -31,6 +31,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { getSortDirection, sortDistributions, type SortContext } from '$lib/util/sort';
+
+	const api = new Api();
 
 	const { data } = $props();
 	let scale = $derived(METRIC_SCALES[data.metricType]);
@@ -199,7 +201,7 @@
 		if (seriesName) {
 			try {
 				const [featureData, nullFeatureData] = await Promise.all([
-					getFeatureTimeseries({
+					api.getFeatureTimeseries({
 						joinId: joinTimeseries.name,
 						featureName: seriesName,
 						startTs: data.dateRange.startTimestamp,
@@ -210,7 +212,7 @@
 						offset: '1D',
 						algorithm: 'psi'
 					}),
-					getFeatureTimeseries({
+					api.getFeatureTimeseries({
 						joinId: joinTimeseries.name,
 						featureName: seriesName,
 						startTs: data.dateRange.startTimestamp,
@@ -419,7 +421,7 @@
 
 			// Fetch percentile data for each feature
 			const distributionsPromises = allFeatures.map((featureName) =>
-				getFeatureTimeseries({
+				api.getFeatureTimeseries({
 					joinId: joinTimeseries.name,
 					featureName,
 					startTs: data.dateRange.startTimestamp,

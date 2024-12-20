@@ -10,7 +10,7 @@
 		CommandItem,
 		CommandEmpty
 	} from '$lib/components/ui/command/';
-	import { search } from '$lib/api/api';
+	import { Api } from '$lib/api/api';
 	import type { Model } from '$lib/types/Model/Model';
 	import debounce from 'lodash/debounce';
 	import { onDestroy, onMount } from 'svelte';
@@ -46,9 +46,11 @@
 	let searchResults: Model[] = $state([]);
 	let isMac: boolean | undefined = $state(undefined);
 
+	const api = new Api();
+
 	const debouncedSearch = debounce(async () => {
 		if (input.length > 0) {
-			const response = await search(input);
+			const response = await api.search(input);
 			searchResults = response.items;
 		} else {
 			searchResults = [];
