@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
-	import { Icon, Plus, ArrowsUpDown, Square3Stack3d, XMark } from 'svelte-hero-icons';
+
+	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
+	import IconPlus from '~icons/heroicons/plus-16-solid';
+	import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
+	import IconXMark from '~icons/heroicons/x-mark-16-solid';
+
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
@@ -41,14 +46,14 @@
 	{#if activeCluster}
 		<div class="flex flex-wrap gap-[1px]">
 			<Button variant="secondaryAlt" size="sm" icon="leading" disabled>
-				<Icon src={Square3Stack3d} micro size="16" />
+				<IconSquare3Stack3d />
 				Cluster by
 			</Button>
 			<Button variant="secondaryAlt" size="sm" disabled>
 				{activeCluster}
 			</Button>
 			<Button variant="secondaryAlt" size="sm" class="p-2" disabled>
-				<Icon src={XMark} micro size="16" />
+				<IconXMark />
 			</Button>
 		</div>
 	{/if}
@@ -57,17 +62,17 @@
 	<div class="flex gap-3">
 		{#if showSort}
 			<Button variant="secondary" size="sm" icon="leading" on:click={handleSort}>
-				<Icon src={ArrowsUpDown} micro size="16" />
+				<IconArrowsUpDown />
 				Sort {currentSort === 'asc' ? 'A-Z' : 'Z-A'}
 			</Button>
 		{/if}
 		<Button variant="secondary" size="sm" icon="leading" disabled>
-			<Icon src={Plus} micro size="16" />
+			<IconPlus />
 			Filter
 		</Button>
 		{#if showCluster}
 			<Button variant="secondary" size="sm" icon="leading" disabled>
-				<Icon src={Square3Stack3d} micro size="16" />
+				<IconSquare3Stack3d />
 				Cluster
 			</Button>
 		{/if}

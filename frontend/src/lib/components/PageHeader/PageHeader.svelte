@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { Icon, BookOpen } from 'svelte-hero-icons';
+	import IconBookOpen from '~icons/heroicons/book-open-16-solid';
 
 	let { title, children }: { title: string; children?: Snippet } = $props();
 
@@ -17,7 +17,7 @@
 			{@render children()}
 		{/if}
 		<Button variant="outline" onclick={openChronon} icon="leading" size="sm">
-			<Icon src={BookOpen} micro size="16" class="text-neutral-800" />
+			<IconBookOpen class="text-neutral-800" />
 			<span class="text-neutral-800">Learn</span>
 		</Button>
 	</div>

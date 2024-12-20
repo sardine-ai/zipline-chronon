@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { quintOut } from 'svelte/easing';
-	import { Icon, XMark } from 'svelte-hero-icons';
+	import IconXMark from '~icons/heroicons/x-mark';
 
 	import { tweened } from 'svelte/motion';
 	import type { Snippet } from 'svelte';
@@ -59,7 +59,7 @@
 				class="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none"
 				onclick={() => (sidebarOpen = false)}
 			>
-				<Icon src={XMark} size="16" />
+				<IconXMark class="text-sm" />
 				<span class="sr-only">Close</span>
 			</button>
 			<div class="overflow-hidden">

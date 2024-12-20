@@ -10,7 +10,7 @@
 	} from '$lib/constants/date-ranges';
 	import { Button } from '$lib/components/ui/button';
 	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
-	import { Icon, CalendarDateRange } from 'svelte-hero-icons';
+	import IconCalendarDateRange from '~icons/heroicons/calendar-date-range-16-solid';
 	import type { DateRange } from 'bits-ui';
 	import { DateFormatter, getLocalTimeZone, fromAbsolute } from '@internationalized/date';
 	import { cn } from '$lib/utils';
@@ -131,7 +131,7 @@
 				)}
 				builders={[builder]}
 			>
-				<Icon src={CalendarDateRange} micro size="16" />
+				<IconCalendarDateRange />
 			</Button>
 		</PopoverTrigger>
 		<PopoverContent class="w-auto p-0" align="start">

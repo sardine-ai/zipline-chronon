@@ -5,7 +5,8 @@
 		CollapsibleTrigger
 	} from '$lib/components/ui/collapsible';
 	import type { Snippet } from 'svelte';
-	import { Icon, ChevronDown } from 'svelte-hero-icons';
+	import IconChevronDown from '~icons/heroicons/chevron-down-16-solid';
+
 	let {
 		collapsibleContent,
 		headerContentLeft,
@@ -41,11 +42,8 @@
 <Collapsible bind:open class={sizeClasses.wrapper}>
 	<div class="flex mb-3">
 		<CollapsibleTrigger class="flex items-center space-x-4">
-			<Icon
-				src={ChevronDown}
-				micro
-				size="16"
-				class="transition-transform duration-200 {open ? '' : 'rotate-180'}"
+			<IconChevronDown
+				class="size-4 transition-transform duration-200 {open ? '' : 'rotate-180'}"
 			/>
 			<h2 class="{sizeClasses.title} !ml-2 select-text">{title}</h2>
 		</CollapsibleTrigger>

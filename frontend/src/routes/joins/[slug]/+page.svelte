@@ -3,8 +3,8 @@
 	import type { EChartOption, EChartsType, ECElementEvent } from 'echarts';
 
 	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
-	import { Icon, TableCells } from 'svelte-hero-icons';
-	import { ChartLine } from '@zipline-ai/icons';
+	import IconTableCells from '~icons/heroicons/table-cells-16-solid';
+	import IconChartLine from '~icons/zipline-ai/chart-line';
 	import CollapsibleSection from '$lib/components/CollapsibleSection/CollapsibleSection.svelte';
 	import { connect } from 'echarts';
 	import type { FeatureResponse, TimeSeriesItem } from '$lib/types/Model/Model';
@@ -564,11 +564,11 @@
 		<Tabs bind:value={selectedTab} class="w-full">
 			<TabsList>
 				<TabsTrigger value="drift" class="flex items-center">
-					<Icon src={ChartLine} size="16" class="mr-2" />
+					<IconChartLine class="mr-2 size-4" />
 					Drift
 				</TabsTrigger>
 				<TabsTrigger value="distributions" class="flex items-center">
-					<Icon src={TableCells} micro size="16" class="mr-2" />
+					<IconTableCells class="mr-2" />
 					Distributions
 				</TabsTrigger>
 			</TabsList>

@@ -20,20 +20,18 @@
 		DropdownMenuContent,
 		DropdownMenuItem
 	} from '$lib/components/ui/dropdown-menu/';
-	import {
-		Icon,
-		ChevronDown,
-		MagnifyingGlass,
-		User,
-		DocumentText,
-		ExclamationTriangle,
-		AdjustmentsHorizontal,
-		ArrowsUpDown
-	} from 'svelte-hero-icons';
 	import { goto } from '$app/navigation';
 	import { isMacOS } from '$lib/util/browser';
 	import { Badge } from '$lib/components/ui/badge';
 	import { getEntity, type Entity } from '$lib/types/Entity/Entity';
+
+	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
+	import IconAdjustmentsHorizontal from '~icons/heroicons/adjustments-horizontal-16-solid';
+	import IconChevronDown from '~icons/heroicons/chevron-down';
+	import IconDocumentText from '~icons/heroicons/document-text-16-solid';
+	import IconExclamationTriangle from '~icons/heroicons/exclamation-triangle-16-solid';
+	import IconMagnifyingGlass from '~icons/heroicons/magnifying-glass-16-solid';
+	import IconUser from '~icons/heroicons/user';
 
 	type Props = {
 		navItems: Entity[];
@@ -101,7 +99,7 @@
 		onclick={() => (open = true)}
 		icon="leading"
 	>
-		<Icon src={MagnifyingGlass} micro size="16" class="text-foreground" />
+		<IconMagnifyingGlass class="text-foreground" />
 		<span class="text-muted-foreground">Search</span>
 		{#if isMac !== undefined}
 			<span class="ml-auto text-xs text-muted-foreground">
@@ -124,7 +122,7 @@
 		rel="noopener noreferrer"
 		icon="leading"
 	>
-		<Icon src={DocumentText} micro size="16" class="text-muted-icon-neutral" />
+		<IconDocumentText class="text-muted-icon-neutral" />
 		<span class="text-muted-foreground">Chronon docs</span>
 	</Button>
 	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Observability</span>
@@ -137,10 +135,7 @@
 					href={item.path}
 					icon="leading"
 				>
-					<Icon
-						src={item.icon}
-						micro
-						size="16"
+					<item.icon
 						class={isActiveRoute(item.path) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}
 					/>
 					{item.label}
@@ -155,11 +150,11 @@
 					<Avatar class="h-4 w-4">
 						<AvatarImage src={user.avatar} alt={user.name} />
 						<AvatarFallback>
-							<Icon src={User} />
+							<IconUser />
 						</AvatarFallback>
 					</Avatar>
 					<span class="ml-3">{user.name}</span>
-					<Icon src={ChevronDown} size="16" class="ml-3" />
+					<IconChevronDown class="ml-3" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent>
@@ -182,21 +177,21 @@
 			{#if input === ''}
 				<CommandGroup heading="Quick actions">
 					<CommandItem disabled>
-						<Icon src={ExclamationTriangle} micro size="16" />
+						<IconExclamationTriangle />
 						Show only models with alerts</CommandItem
 					>
 					<CommandItem disabled>
-						<Icon src={AdjustmentsHorizontal} micro size="16" />
+						<IconAdjustmentsHorizontal />
 						Filter by...</CommandItem
 					>
 					<CommandItem disabled>
-						<Icon src={ArrowsUpDown} micro size="16" />
+						<IconArrowsUpDown />
 						Sort by...</CommandItem
 					>
 				</CommandGroup>
 				<CommandGroup heading="Learn">
 					<CommandItem onSelect={() => window.open('https://docs.chronon.ai', '_blank')}>
-						<Icon src={DocumentText} micro size="16" />
+						<IconDocumentText />
 						Chronon docs</CommandItem
 					>
 				</CommandGroup>
@@ -210,8 +205,8 @@
 						onSelect={() =>
 							handleSelect(`${getEntity('joins').path}/${encodeURIComponent(entity.name)}`)}
 					>
-						<Icon src={getEntity('joins').icon} micro size="16" />
-						{entity.name}
+						{@const IconJoins = getEntity('joins').icon}
+						<IconJoins />
 					</CommandItem>
 				{/each}
 			</CommandGroup>

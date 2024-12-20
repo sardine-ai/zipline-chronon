@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import type { EChartsType } from 'echarts';
-	import { Icon, ChevronDown, ChevronUp } from 'svelte-hero-icons';
+	import IconChevronDown from '~icons/heroicons/chevron-down-16-solid';
+
 	import { getSeriesColor, handleChartHighlight } from '$lib/util/chart';
+	import { cn } from '$lib/utils';
 
 	type LegendItem = { feature: string };
 	type Props = {
@@ -118,7 +120,9 @@
 				<div class="transition-opacity duration-150 absolute" class:opacity-0={!isExpanded}>
 					collapse
 				</div>
-				<Icon src={isExpanded ? ChevronUp : ChevronDown} micro size="16" class="ml-2" />
+				<IconChevronDown
+					class={cn('ml-2 transition-transform duration-200', isExpanded && '-rotate-180')}
+				/>
 			</Button>
 		{/if}
 	</div>
