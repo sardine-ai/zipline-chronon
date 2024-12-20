@@ -6,6 +6,7 @@ import ai.chronon.api.LongType
 import ai.chronon.api.StringType
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
+import ai.chronon.spark.DefaultFormatProvider
 import ai.chronon.spark.IncompatibleSchemaException
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.SparkSessionBuilder.FormatTestEnvVar
@@ -30,6 +31,10 @@ class TableUtilsFormatTest extends AnyFunSuite {
   val format: String = sys.env.getOrElse(FormatTestEnvVar, "hive")
   val spark: SparkSession = SparkSessionBuilder.build("TableUtilsFormatTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
+
+  test("testing dynamic classloading") {
+    assertTrue(tableUtils.tableFormatProvider.isInstanceOf[DefaultFormatProvider])
+  }
 
   test("test insertion of partitioned data and adding of columns") {
     val dbName = s"db_${System.currentTimeMillis()}"
