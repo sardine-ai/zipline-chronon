@@ -198,7 +198,7 @@
 			{/if}
 		{:else}
 			<CommandGroup heading={`Search for "${input}"`}>
-				{#each searchResults as entity}
+				{#each searchResults as entity (entity.name)}
 					<!-- todo: enable this once we have data for all joins -->
 					<CommandItem
 						disabled={entity.name !== 'risk.user_transactions.txn_join'}
