@@ -3,36 +3,59 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.Format
 import ai.chronon.spark.FormatProvider
 import ai.chronon.spark.Hive
+import com.google.cloud.bigquery.BigQueryOptions
+import com.google.cloud.bigquery.ExternalTableDefinition
+import com.google.cloud.bigquery.StandardTableDefinition
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
+import com.google.cloud.bigquery.{TableId => BTableId}
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
 
-case class GCPFormatProvider(sparkSession: SparkSession) extends FormatProvider {
+case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
+  lazy val bigQueryClient = BigQueryOptions.getDefaultInstance.getService
   def readFormat(tableName: String): Format = {
 
-    val tableIdentifier = sparkSession.sessionState.sqlParser.parseTableIdentifier(tableName)
-    val tableMeta = sparkSession.sessionState.catalog.getTableRawMetadata(tableIdentifier)
+    val btTableIdentifier: TableId = BigQueryUtil.parseTableId(tableName)
+    val unshadedTI: BTableId =
+      BTableId.of(btTableIdentifier.getProject, btTableIdentifier.getDataset, btTableIdentifier.getTable)
 
+    val tableOpt = Option(bigQueryClient.getTable(unshadedTI))
+
+    tableOpt match {
+      case Some(table) => {
+        table.getDefinition match {
+          case _: ExternalTableDefinition => BQuery(unshadedTI.getProject)
+          case _: StandardTableDefinition => GCS(unshadedTI.getProject)
+        }
+      }
+      case None => Hive
+    }
+
+    /**
+    Using federation
+     val tableIdentifier = sparkSession.sessionState.sqlParser.parseTableIdentifier(tableName)
+     val tableMeta = sparkSession.sessionState.catalog.getTableRawMetadata(tableIdentifier)
     val storageProvider = tableMeta.provider
     storageProvider match {
       case Some("com.google.cloud.spark.bigquery") => {
-
         val tableProperties = tableMeta.properties
         val project = tableProperties
           .get("FEDERATION_BIGQUERY_TABLE_PROPERTY")
           .map(BigQueryUtil.parseTableId)
           .map(_.getProject)
           .getOrElse(throw new IllegalStateException("bigquery project required!"))
-
         val bigQueryTableType = tableProperties.get("federation.bigquery.table.type")
         bigQueryTableType.map(_.toUpperCase) match {
-          case Some("EXTERNAL") => throw new IllegalStateException("External tables not yet supported.")
+          case Some("EXTERNAL") => GCS(project)
           case Some("MANAGED")  => BQuery(project)
           case None             => throw new IllegalStateException("Dataproc federation service must be available.")
+
         }
       }
 
       case Some("hive") | None => Hive
     }
+      * */
 
   }
 
@@ -103,7 +126,6 @@ case class BQuery(project: String) extends Format {
       sparkSession.conf.set("viewsEnabled", originalViewsEnabled)
       sparkSession.conf.set("materializationDataset", originalMaterializationDataset)
     }
-
   }
 
   def createTableTypeString: String = "BIGQUERY"
