@@ -12,6 +12,7 @@ import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.Tabl
 import org.apache.spark.sql.SparkSession
 
 case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
+
   lazy val bigQueryClient = BigQueryOptions.getDefaultInstance.getService
   def readFormat(tableName: String): Format = {
 
@@ -126,6 +127,7 @@ case class BQuery(project: String) extends Format {
       sparkSession.conf.set("viewsEnabled", originalViewsEnabled)
       sparkSession.conf.set("materializationDataset", originalMaterializationDataset)
     }
+
   }
 
   def createTableTypeString: String = "BIGQUERY"

@@ -22,7 +22,6 @@ import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.IncompatibleSchemaException
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
 import ai.chronon.spark._
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
@@ -38,8 +37,6 @@ import org.junit.Test
 
 import scala.util.Try
 
-
-
 class SimpleAddUDF extends UDF {
   def evaluate(value: Int): Int = {
     value + 20
@@ -48,7 +45,7 @@ class SimpleAddUDF extends UDF {
 
 class TableUtilsTest {
   lazy val spark: SparkSession = SparkSessionBuilder.build("TableUtilsTest", local = true)
-  private val tableUtils = TableUtils(spark)
+  private val tableUtils = TableTestUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
   @Test
@@ -83,10 +80,12 @@ class TableUtilsTest {
       Seq(
         types.StructField("name", types.StringType, nullable = true),
         types.StructField("age", types.IntegerType, nullable = false),
-        types.StructField("address", types.StructType(Seq(
-          types.StructField("street", types.StringType, nullable = true),
-          types.StructField("city", types.StringType, nullable = true)
-        )))
+        types.StructField("address",
+                          types.StructType(
+                            Seq(
+                              types.StructField("street", types.StringType, nullable = true),
+                              types.StructField("city", types.StringType, nullable = true)
+                            )))
       )
     )
     val expectedFieldNames = Seq("name", "age", "address", "address.street", "address.city")
@@ -344,8 +343,7 @@ class TableUtilsTest {
     // verify the latest label version
     val labels = JoinUtils.getLatestLabelMapping(tableName, tableUtils)
     assertEquals(labels("2022-11-09"),
-                 List(PartitionRange("2022-10-01", "2022-10-02"),
-                      PartitionRange("2022-10-05", "2022-10-05")))
+                 List(PartitionRange("2022-10-01", "2022-10-02"), PartitionRange("2022-10-05", "2022-10-05")))
   }
 
   private def prepareTestDataWithSubPartitions(tableName: String): Unit = {
