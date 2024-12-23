@@ -65,13 +65,12 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
   private[flink] def getOutputSchema: StructType = {
     // before we do anything, run our setup statements.
     // in order to create the output schema, we'll evaluate expressions
-    // TODO handle UDFs
-    new CatalystUtil(chrononSchema, transforms, filters).getOutputSparkSchema
+    new CatalystUtil(chrononSchema, transforms, filters, groupBy.setups).getOutputSparkSchema
   }
 
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
-    catalystUtil = new CatalystUtil(chrononSchema, transforms, filters)
+    catalystUtil = new CatalystUtil(chrononSchema, transforms, filters, groupBy.setups)
     val eventExprEncoder = encoder.asInstanceOf[ExpressionEncoder[T]]
     rowSerializer = eventExprEncoder.createSerializer()
 
