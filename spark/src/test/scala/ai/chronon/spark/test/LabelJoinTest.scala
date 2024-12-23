@@ -37,7 +37,7 @@ class LabelJoinTest {
   private val namespace = "label_join"
   private val tableName = "test_label_join"
   private val labelDS = "2022-10-30"
-  private val tableUtils = TableUtils(spark)
+  private val tableUtils = TableTestUtils(spark)
   tableUtils.createDatabase(namespace)
 
   private val viewsGroupBy = TestUtils.createViewsGroupBy(namespace, spark)
