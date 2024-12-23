@@ -677,7 +677,8 @@ object GroupBy {
     tableUtils.scanDfBase(
       selects,
       if (mutations) source.getEntities.mutationTable.cleanSpec else source.table,
-      Option(source.query.wheres).map(_.toScala).getOrElse(Seq.empty[String]) ++ partitionConditions,
+      Option(source.query.wheres).map(_.toScala).getOrElse(Seq.empty[String]),
+      partitionConditions,
       Some(metaColumns ++ keys.map(_ -> null))
     )
   }
