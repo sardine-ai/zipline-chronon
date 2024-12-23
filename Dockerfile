@@ -6,6 +6,7 @@ FROM openjdk:17-jdk-slim
 ENV CHRONON_JAR_PATH=spark/target/scala-2.12/spark-assembly-0.1.0-SNAPSHOT.jar
 ENV CLOUD_AWS_JAR_PATH=cloud_aws/target/scala-2.12/cloud_aws-assembly-0.1.0-SNAPSHOT.jar
 ENV CLOUD_GCP_JAR_PATH=cloud_gcp/target/scala-2.12/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar
+ENV FETCHER_SVC_JAR_PATH=service/target/scala-2.12/service-0.1.0-SNAPSHOT.jar
 
 # Update package lists and install necessary tools
 RUN apt-get update && apt-get install -y \
@@ -78,12 +79,14 @@ WORKDIR /srv/chronon
 ENV DRIVER_JAR_PATH="/srv/spark/spark_embedded.jar"
 ENV CLOUD_AWS_JAR=${CLOUD_AWS_JAR:-"/srv/cloud_aws/cloud_aws.jar"}
 ENV CLOUD_GCP_JAR=${CLOUD_GCP_JAR:-"/srv/cloud_gcp/cloud_gcp.jar"}
+ENV FETCHER_JAR=${FETCHER_JAR:-"/srv/fetcher/service.jar"}
 
 COPY api/py/test/sample ./
 COPY quickstart/mongo-online-impl /srv/onlineImpl
 COPY $CHRONON_JAR_PATH "$DRIVER_JAR_PATH"
 COPY $CLOUD_AWS_JAR_PATH "$CLOUD_AWS_JAR"
 COPY $CLOUD_GCP_JAR_PATH "$CLOUD_GCP_JAR"
+COPY $FETCHER_SVC_JAR_PATH "$FETCHER_JAR"
 
 ENV CHRONON_DRIVER_JAR="$DRIVER_JAR_PATH"
 
