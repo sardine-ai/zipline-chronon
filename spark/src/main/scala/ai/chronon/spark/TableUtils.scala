@@ -785,7 +785,8 @@ case class TableUtils(sparkSession: SparkSession) {
 
   def scanDfBase(selectMap: Map[String, String],
                  table: String,
-                 wheres: scala.collection.Seq[String],
+                 wheres: Seq[String],
+                 rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
     val dp = DataPointer(table)
     var df = dp.toDf(sparkSession)
@@ -798,9 +799,12 @@ case class TableUtils(sparkSession: SparkSession) {
          |    ${selects.mkString("\n    ").green}
          |  wheres:
          |    ${wheres.mkString(",\n    ").green}
+         |  partition filters:
+         |    ${rangeWheres.mkString(",\n    ").green}
          |""".stripMargin.yellow)
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
     if (wheres.nonEmpty) df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
+    if (rangeWheres.nonEmpty) df = df.where(rangeWheres.map(w => s"($w)").mkString(" AND "))
     df
   }
 
@@ -822,7 +826,7 @@ case class TableUtils(sparkSession: SparkSession) {
 
     val selects = Option(query).flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
 
-    scanDfBase(selects, table, wheres, fallbackSelects)
+    scanDfBase(selects, table, wheres, rangeWheres, fallbackSelects)
   }
 
   def partitionRange(table: String): PartitionRange = {
