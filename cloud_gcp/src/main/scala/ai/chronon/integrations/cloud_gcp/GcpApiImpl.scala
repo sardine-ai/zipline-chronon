@@ -6,28 +6,59 @@ import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import ai.chronon.online.LoggableResponse
 import ai.chronon.online.Serde
+import com.google.api.gax.core.NoCredentialsProvider
+import com.google.cloud.bigquery.BigQueryOptions
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings
+import com.google.cloud.bigtable.data.v2.BigtableDataClient
+import com.google.cloud.bigtable.data.v2.BigtableDataSettings
+import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 
-class GcpApiImpl(projectId: String, instanceId: String, conf: Map[String, String]) extends Api(conf) {
+class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde =
     new AvroStreamDecoder(groupByServingInfoParsed.streamChrononSchema)
 
-  override def genKvStore: KVStore = new BigTableKVStoreImpl(projectId, instanceId)
+  override def genKvStore: KVStore = {
+    val projectId = sys.env
+      .getOrElse("GCP_PROJECT_ID", throw new IllegalArgumentException("GCP_PROJECT_ID environment variable not set"))
+    val instanceId = sys.env
+      .getOrElse("GCP_INSTANCE_ID", throw new IllegalArgumentException("GCP_INSTANCE_ID environment variable not set"))
+
+    // Create settings builder based on whether we're in emulator mode (e.g. docker) or not
+    val (dataSettingsBuilder, adminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
+      case Some(emulatorHostPort) =>
+        val (emulatorHost, emulatorPort) = (emulatorHostPort.split(":")(0), emulatorHostPort.split(":")(1).toInt)
+        val dataSettingsBuilder =
+          BigtableDataSettings
+            .newBuilderForEmulator(emulatorHost, emulatorPort)
+            .setCredentialsProvider(NoCredentialsProvider.create())
+            .setMetricsProvider(NoopMetricsProvider.INSTANCE) // opt out of metrics in emulator
+        val adminSettingsBuilder =
+          BigtableTableAdminSettings
+            .newBuilderForEmulator(emulatorHost, emulatorPort)
+            .setCredentialsProvider(NoCredentialsProvider.create())
+
+        (dataSettingsBuilder, adminSettingsBuilder, None)
+      case None =>
+        val dataSettingsBuilder = BigtableDataSettings.newBuilder()
+        val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
+        val bigQueryClient = Some(BigQueryOptions.getDefaultInstance.getService)
+        (dataSettingsBuilder, adminSettingsBuilder, bigQueryClient)
+    }
+
+    val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
+    val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
+    val dataClient = BigtableDataClient.create(dataSettings)
+    val adminClient = BigtableTableAdminClient.create(adminSettings)
+
+    new BigTableKVStoreImpl(dataClient, adminClient, maybeBQClient)
+  }
 
   // TODO: Load from user jar.
-  override def externalRegistry: ExternalSourceRegistry = ???
+  @transient lazy val registry: ExternalSourceRegistry = new ExternalSourceRegistry()
+  override def externalRegistry: ExternalSourceRegistry = registry
 
-  /** logged responses should be made available to an offline log table in Hive
-    * with columns
-    * key_bytes, value_bytes, ts_millis, join_name, schema_hash and ds (date string)
-    * partitioned by `join_name` and `ds`
-    * Note the camel case to snake case conversion: Hive doesn't like camel case.
-    * The key bytes and value bytes will be transformed by chronon to human readable columns for each join.
-    * <team_namespace>.<join_name>_logged
-    * To measure consistency - a Side-by-Side comparison table will be created at
-    * <team_namespace>.<join_name>_comparison
-    * Consistency summary will be available in
-    * <logTable>_consistency_summary
-    */
-  override def logResponse(resp: LoggableResponse): Unit = ???
+  //TODO - Implement this
+  override def logResponse(resp: LoggableResponse): Unit = {}
 }

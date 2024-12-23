@@ -182,6 +182,8 @@ object Metrics {
 
     def increment(metric: String): Unit = stats.increment(prefix(metric), tags)
 
+    def increment(metric: String, tag: String): Unit = stats.increment(prefix(metric), s"$tags,$tag")
+
     def incrementException(exception: Throwable)(implicit logger: org.slf4j.Logger): Unit = {
       val stackTrace = exception.getStackTrace
       val exceptionSignature = if (stackTrace.isEmpty) {

@@ -216,12 +216,17 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop3-2.2.26",
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcsio" % "3.0.3", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/gcsio/src/main/java/com/google/cloud/hadoop/gcsio/GoogleCloudStorageFileSystem.java
     libraryDependencies += "io.circe" %% "circe-yaml" % "1.15.0",
-    libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
     libraryDependencies += "com.google.cloud.spark" %% s"spark-bigquery-with-dependencies" % "0.41.0",
+    libraryDependencies += "com.google.cloud.spark.bigtable" %% "spark-bigtable" % "0.2.1",
+    libraryDependencies += "com.google.cloud.bigtable" % "bigtable-hbase-2.x" % "2.14.2",
     libraryDependencies ++= circe,
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
-    dependencyOverrides ++= jackson
+    dependencyOverrides ++= jackson,
+    libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
+    libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
+    // force a newer version of reload4j to sidestep: https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
+    dependencyOverrides += "ch.qos.reload4j" % "reload4j" % "1.2.25"
   )
 
 lazy val cloud_aws = project
@@ -295,6 +300,7 @@ lazy val service = (project in file("service"))
     },
     addArtifact(assembly / artifact, assembly),
     libraryDependencies ++= vertx_java,
+    libraryDependencies ++= avro,
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
       "org.slf4j" % "slf4j-api" % slf4jApiVersion,
@@ -304,6 +310,9 @@ lazy val service = (project in file("service"))
       "io.netty" % "netty-all" % "4.1.111.Final",
       // wire up metrics using micro meter and statsd
       "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+      // need this to prevent a NoClassDef error on org/json4s/Formats
+      "org.json4s" %% "json4s-core" % "3.7.0-M11",
+      "org.apache.commons" % "commons-lang3" % "3.8.1",
       "junit" % "junit" % "4.13.2" % Test,
       "com.novocode" % "junit-interface" % "0.11" % Test,
       "org.mockito" % "mockito-core" % "5.12.0" % Test,
