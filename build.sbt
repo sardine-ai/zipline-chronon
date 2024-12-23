@@ -206,7 +206,7 @@ lazy val flink = project
 
 // GCP requires java 11, can't cross compile higher
 lazy val cloud_gcp = project
-  .dependsOn(api.%("compile->compile;test->test"), online, spark)
+  .dependsOn(api % ("compile->compile;test->test"), online, spark % ("compile->compile;test->test"))
   .settings(
     libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
@@ -217,7 +217,8 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud.spark" %% s"spark-bigquery-with-dependencies" % "0.41.0",
     libraryDependencies ++= circe,
     libraryDependencies ++= avro,
-    libraryDependencies ++= spark_all
+    libraryDependencies ++= spark_all_provided,
+    dependencyOverrides ++= jackson
   )
 
 lazy val cloud_aws = project
