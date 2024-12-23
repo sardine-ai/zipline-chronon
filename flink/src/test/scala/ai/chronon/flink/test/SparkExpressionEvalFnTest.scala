@@ -36,5 +36,4 @@ class SparkExpressionEvalFnTest {
     // let's check the id field
     assert(result.map(_.apply("id")).toSet == Set("test1", "test2", "test3"))
   }
-
 }

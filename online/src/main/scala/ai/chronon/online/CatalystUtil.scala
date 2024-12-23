@@ -24,6 +24,7 @@ import ai.chronon.online.CatalystUtil.poolMap
 import ai.chronon.online.Extensions.StructTypeOps
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.analysis.FunctionAlreadyExistsException
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
 import org.apache.spark.sql.execution.BufferedRowIterator
@@ -60,6 +61,7 @@ object CatalystUtil {
       .config("spark.sql.adaptive.enabled", "false")
       .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
       .config("spark.ui.enabled", "false")
+      .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
     assert(spark.sessionState.conf.wholeStageEnabled)
     spark
@@ -113,7 +115,10 @@ class PooledCatalystUtil(expressions: collection.Seq[(String, String)], inputSch
 }
 
 // This class by itself it not thread safe because of the transformBuffer
-class CatalystUtil(inputSchema: StructType, selects: Seq[(String, String)], wheres: Seq[String] = Seq.empty) {
+class CatalystUtil(inputSchema: StructType,
+                   selects: Seq[(String, String)],
+                   wheres: Seq[String] = Seq.empty,
+                   setups: Seq[String] = Seq.empty) {
   private val selectClauses = selects.map { case (name, expr) => s"$expr as $name" }
   private val sessionTable =
     s"q${math.abs(selectClauses.mkString(", ").hashCode)}_f${math.abs(inputSparkSchema.pretty.hashCode)}"
@@ -154,6 +159,18 @@ class CatalystUtil(inputSchema: StructType, selects: Seq[(String, String)], wher
 
   private def initialize(): (InternalRow => Option[InternalRow], types.StructType) = {
     val session = CatalystUtil.session
+
+    // run through and execute the setup statements
+    setups.foreach { statement =>
+      try {
+        session.sql(statement)
+      } catch {
+        case _: FunctionAlreadyExistsException =>
+        // ignore - this crops up in unit tests on occasion
+        case e: Exception =>
+          throw new RuntimeException(s"Error executing setup statement: $statement", e)
+      }
+    }
 
     // create dummy df with sql query and schema
     val emptyRowRdd = session.emptyDataFrame.rdd
