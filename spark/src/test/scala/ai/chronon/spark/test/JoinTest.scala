@@ -57,7 +57,7 @@ object TestRow {
 class JoinTest extends AnyFunSuite with TaggedFilterSuite {
 
   val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
-  private implicit val tableUtils = TableUtils(spark)
+  private implicit val tableUtils = TableTestUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
