@@ -17,8 +17,7 @@ from sources import test_sources
 from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
-    Operation,
-    Derivation
+    Operation
 )
 from ai.chronon import utils
 from group_bys.sample_team.sample_group_by import require_backfill

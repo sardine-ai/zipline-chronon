@@ -224,7 +224,7 @@ def download_jar(
                 for node in meta_tree.findall("./versioning/versions/")
                 if re.search(
                     r"^\d+\.\d+\.\d+{}$".format(
-                        "\_{}\d*".format(release_tag) if release_tag else ""
+                        r"\_{}\d*".format(release_tag) if release_tag else ""
                     ),
                     node.text,
                 )
@@ -309,10 +309,14 @@ def set_runtime_env(args):
                         .get(effective_mode, {})
                     )
                     # Load additional args used on backfill.
-                    if custom_json(conf_json) and effective_mode in ["backfill", "backfill-left", "backfill-final"]:
-                        environment["conf_env"][
-                            "CHRONON_CONFIG_ADDITIONAL_ARGS"
-                        ] = " ".join(custom_json(conf_json).get("additional_args", []))
+                    if custom_json(conf_json) and effective_mode in [
+                        "backfill",
+                        "backfill-left",
+                        "backfill-final",
+                    ]:
+                        environment["conf_env"]["CHRONON_CONFIG_ADDITIONAL_ARGS"] = (
+                            " ".join(custom_json(conf_json).get("additional_args", []))
+                        )
                     environment["cli_args"]["APP_NAME"] = APP_NAME_TEMPLATE.format(
                         mode=effective_mode,
                         conf_type=conf_type,

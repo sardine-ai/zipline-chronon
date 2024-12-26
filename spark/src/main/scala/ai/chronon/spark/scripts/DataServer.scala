@@ -1,9 +1,9 @@
 package ai.chronon.spark.scripts
 
-import ai.chronon.api.TileDriftSeries
-import ai.chronon.api.TileSeriesKey
-import ai.chronon.api.TileSummarySeries
 import ai.chronon.api.thrift.TBase
+import ai.chronon.observability.TileDriftSeries
+import ai.chronon.observability.TileSeriesKey
+import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.stats.DriftStore
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature

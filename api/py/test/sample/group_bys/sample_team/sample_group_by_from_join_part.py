@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,21 +17,22 @@ from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Derivation,
     Accuracy,
 )
 from joins.sample_team.sample_join import v1
 from ai.chronon.utils import join_part_output_table_name
 
 
-v1 = GroupBy(
-    sources=test_sources.basic_event_source(join_part_output_table_name(v1, v1.joinParts[0], True)),
+v2 = GroupBy(
+    sources=test_sources.basic_event_source(
+        join_part_output_table_name(v1, v1.joinParts[0], True)
+    ),
     keys=["s2CellId", "place_id"],
     aggregations=[Aggregation("some_column", operation=Operation.LAST)],
     production=False,
     table_properties={
         "sample_config_json": """{"sample_key": "sample_value"}""",
-        "description": "sample description"
+        "description": "sample description",
     },
     accuracy=Accuracy.SNAPSHOT,
     output_namespace="sample_namespace",

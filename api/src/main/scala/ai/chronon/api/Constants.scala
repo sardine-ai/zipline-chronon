@@ -74,4 +74,6 @@ object Constants {
   val FetchTimeout: Duration = Duration(10, concurrent.TimeUnit.MINUTES)
   val DefaultCharset: Charset = Charset.forName("UTF-8")
 
+  val extensionsToIgnore: Array[String] = Array(".class", ".csv", ".java", ".scala", ".py", ".DS_Store")
+  val foldersToIgnore: Array[String] = Array(".git")
 }

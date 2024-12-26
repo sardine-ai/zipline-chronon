@@ -1,7 +1,7 @@
 package ai.chronon.online.test.stats
 
-import ai.chronon.api.TileDrift
-import ai.chronon.api.TileSummary
+import ai.chronon.observability.TileDrift
+import ai.chronon.observability.TileSummary
 import ai.chronon.online.stats.PivotUtils.pivot
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

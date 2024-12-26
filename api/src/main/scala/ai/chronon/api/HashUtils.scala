@@ -26,6 +26,10 @@ object HashUtils {
     md5Base64(string.getBytes)
   }
 
+  def md5Hex(string: String): String = {
+    md5Bytes(string.getBytes).map("%02x".format(_)).mkString.take(6)
+  }
+
   def md5Base64(bytes: Array[Byte]): String = {
     Base64.getEncoder.encodeToString(md5Bytes(bytes)).take(10)
   }

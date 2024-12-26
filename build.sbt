@@ -56,7 +56,7 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, service_commons, service, hub)
+  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, service_commons, service, hub, orchestration)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -79,8 +79,8 @@ val spark_all = Seq(
   "javax.servlet" % "javax.servlet-api" % "3.1.0",
 )
 val spark_all_provided = spark_all.map(_ % "provided")
-
-val log4j2 = Seq("org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.20.0")
+val log4j2_version = "2.20.0"
+val log4j2 = Seq("org.apache.logging.log4j" % "log4j-slf4j-impl" % log4j2_version)
 
 val jackson = Seq(
   "com.fasterxml.jackson.core" % "jackson-core",
@@ -114,9 +114,9 @@ val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
 lazy val api = project
   .settings(
     Compile / sourceGenerators += Def.task {
-      val inputThrift = baseDirectory.value / "thrift" / "api.thrift"
+      val thriftFolder = baseDirectory.value / "thrift"
       val outputJava = (Compile / sourceManaged).value
-      Thrift.gen(inputThrift.getPath, outputJava.getPath, "java")
+      ThriftGen.gen(thriftFolder, outputJava.getPath, "java")
     }.taskValue,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_sql_provided,
@@ -389,6 +389,39 @@ lazy val hub = (project in file("hub"))
         oldStrategy(x)
     }
   )
+
+
+val scala_test = "org.scalatest" %% "scalatest" % "3.2.19" % "test"
+val sl4j = "org.slf4j" % "slf4j-api" % slf4jApiVersion
+val logback = "ch.qos.logback" % "logback-classic" % logbackClassicVersion
+val commonDependencies = Seq(
+  scala_test,
+  sl4j,
+  logback
+)
+
+// orchestrator
+lazy val orchestration = project
+  .dependsOn(online.%("compile->compile;test->test"))
+  .settings(
+
+    assembly / mainClass := Some("ai.chronon.orchestration.RepoParser"),
+    Compile / run / mainClass := Some("ai.chronon.orchestration.RepoParser"),
+
+    assembly / assemblyMergeStrategy := {
+      case "log4j2.properties" => MergeStrategy.first
+      case "META-INF/log4j-provider.properties" => MergeStrategy.first
+      case PathList("org", "apache", "logging", "log4j", "core", "config", "plugins", "Log4j2Plugins.dat") => MergeStrategy.first
+      case x => (assembly / assemblyMergeStrategy).value(x)
+    },
+
+    libraryDependencies ++= commonDependencies ++ Seq(
+      "org.apache.logging.log4j" % "log4j-api" % log4j2_version,
+      "org.apache.logging.log4j" % "log4j-core" % log4j2_version,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4j2_version,
+    ),
+  )
+
 
 ThisBuild / assemblyMergeStrategy := {
   case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard

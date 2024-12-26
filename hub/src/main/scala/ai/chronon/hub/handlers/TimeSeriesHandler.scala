@@ -1,9 +1,6 @@
 package ai.chronon.hub.handlers
 
-import ai.chronon.api.DriftMetric
 import ai.chronon.api.Extensions.WindowOps
-import ai.chronon.api.TileDriftSeries
-import ai.chronon.api.TileSummarySeries
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.hub.model.Aggregates
@@ -20,6 +17,9 @@ import ai.chronon.hub.model.Percentile
 import ai.chronon.hub.model.Raw
 import ai.chronon.hub.model.TimeSeriesPoint
 import ai.chronon.hub.model.ValuesMetric
+import ai.chronon.observability.DriftMetric
+import ai.chronon.observability.TileDriftSeries
+import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.stats.DriftStore
 import io.circe.generic.auto._
 import io.circe.syntax._

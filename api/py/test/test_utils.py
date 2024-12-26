@@ -14,7 +14,6 @@
 #     limitations under the License.
 
 import os
-import json
 from ai.chronon.repo.serializer import json2thrift, file2thrift
 from ai.chronon import utils
 import ai.chronon.api.ttypes as api

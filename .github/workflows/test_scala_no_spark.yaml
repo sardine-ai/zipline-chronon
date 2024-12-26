@@ -71,3 +71,10 @@ jobs:
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 service/test"
+
+      - name: Run orchestrator tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 orchestration/test"
+          
+    
