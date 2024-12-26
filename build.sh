@@ -17,6 +17,7 @@ if [[ "$BRANCH" != "main" ]]; then
   fi
 fi
 
+thrift --gen py -out api/py/ai/chronon api/thrift/common.thrift
 thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
 
 DOC_BUILD=docs/build

@@ -1,5 +1,8 @@
-namespace py api
+namespace py ai.chronon.api
 namespace java ai.chronon.api
+
+include "common.thrift"
+include "observability.thrift"
 
 // cd /path/to/chronon
 // thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
@@ -163,17 +166,7 @@ enum Operation {
     APPROX_HISTOGRAM_K = 18
 }
 
-// integers map to milliseconds in the timeunit
-enum TimeUnit {
-    HOURS = 0
-    DAYS = 1
-    MINUTES = 2
-}
 
-struct Window {
-    1: i32 length
-    2: TimeUnit timeUnit
-}
 
 /**
     Chronon provides a powerful aggregations primitive - that takes the familiar aggregation operation, via groupBy in
@@ -199,7 +192,7 @@ struct Aggregation {
       - Window > 12 hours -> Hop Size = 1 hr
       - Window > 1hr      -> Hop Size = 5 minutes
     */
-    4: optional list<Window> windows
+    4: optional list<common.Window> windows
 
     /**
     This is an additional layer of aggregation. You can key a group_by by user, and bucket a “item_view” count by “item_category”. This will produce one row per user, with column containing map of “item_category” to “view_count”. You can specify multiple such buckets at once
@@ -212,151 +205,13 @@ struct AggregationPart {
     1: optional string inputColumn
     2: optional Operation operation
     3: optional map<string, string> argMap
-    4: optional Window window
+    4: optional common.Window window
     5: optional string bucket
 }
 
 enum Accuracy {
     TEMPORAL = 0,
     SNAPSHOT = 1
-}
-
-enum Cardinality {
-    LOW = 0,
-    HIGH = 1
-}
-
-/**
-+----------------------------------+-------------------+----------------+----------------------------------+
-| Metric                           | Moderate Drift    | Severe Drift   | Notes                            |
-+----------------------------------+-------------------+----------------+----------------------------------+
-| Jensen-Shannon Divergence        | 0.05 - 0.1        | > 0.1          | Max value is ln(2) ≈ 0.69        |
-+----------------------------------+-------------------+----------------+----------------------------------+
-| Hellinger Distance               | 0.1 - 0.25        | > 0.25         | Ranges from 0 to 1               |
-+----------------------------------+-------------------+----------------+----------------------------------+
-| Population Stability Index (PSI) | 0.1 - 0.2         | > 0.2          | Industry standard in some fields |
-+----------------------------------+-------------------+----------------+----------------------------------+
-**/
-enum DriftMetric {
-    JENSEN_SHANNON = 0,
-    HELLINGER = 1,
-    PSI = 3
-}
-
-struct TileKey {
-  1: optional string column
-  2: optional string slice
-  3: optional string name // name of the join, groupBy, stagingQuery etc
-  4: optional i64 sizeMillis
-}
-
-// summary of distribution & coverage etc for a given (table, column, slice, tileWindow)
-// for categorical types, distribution is histogram, otherwise percentiles
-// we also handle container types by counting inner value distribution and inner value coverage
-struct TileSummary {
-  1: optional list<double> percentiles
-  2: optional map<string, i64> histogram
-  3: optional i64 count
-  4: optional i64 nullCount
-
-  // for container types
-  5: optional i64 innerCount // total of number of entries within all containers of this column
-  6: optional i64 innerNullCount
-  7: optional list<i32> lengthPercentiles
-
-  // high cardinality string type
-  8: optional list<i32> stringLengthPercentiles
-}
-
-struct TileSeriesKey {
-    1: optional string column // name of the column - avg_txns
-    2: optional string slice // value of the slice - merchant_category
-    3: optional string groupName // name of the columnGroup within node, for join - joinPart name, externalPart name etc
-    4: optional string nodeName // name of the node - join name etc
-}
-
-// array of tuples of (TileSummary, timestamp) ==(pivot)==> TileSummarySeries
-struct TileSummarySeries {
-  1: optional list<list<double>> percentiles
-  2: optional map<string, list<i64>> histogram
-  3: optional list<i64> count
-  4: optional list<i64> nullCount
-
-  // for container types
-  5: optional list<i64> innerCount // total of number of entries within all containers of this column
-  6: optional list<i64> innerNullCount
-  7: optional list<list<i32>> lengthPercentiles
-
-  // high cardinality string type
-  8: optional list<list<i32>> stringLengthPercentiles
-
-  200: optional list<i64> timestamps
-  300: optional TileSeriesKey key
-}
-
-// (DriftMetric + old TileSummary + new TileSummary) = TileDrift
-struct TileDrift {
-
-  // for continuous values - scalar values or within containers
-  // (lists - for eg. via last_k or maps for eg. via bucketing)
-  1: optional double percentileDrift
-  // for categorical values - scalar values or within containers
-  2: optional double histogramDrift
-
-  // for all types
-  3: optional double countChangePercent
-  4: optional double nullRatioChangePercent
-
-  // additional tracking for container types
-  5: optional double innerCountChangePercent // total of number of entries within all containers of this column
-  6: optional double innerNullCountChangePercent
-  7: optional double lengthPercentilesDrift
-
-  // additional tracking for string types
-  8: optional double stringLengthPercentilesDrift
-}
-
-// PivotUtils.pivot(Array[(Long, TileDrift)])  = TileDriftSeries
-// used in front end after this is computed
-struct TileDriftSeries {
-  1: optional list<double> percentileDriftSeries
-  2: optional list<double> histogramDriftSeries
-  3: optional list<double> countChangePercentSeries
-  4: optional list<double> nullRatioChangePercentSeries
-
-  5: optional list<double> innerCountChangePercentSeries
-  6: optional list<double> innerNullCountChangePercentSeries
-  7: optional list<double> lengthPercentilesDriftSeries
-  8: optional list<double> stringLengthPercentilesDriftSeries
-
-  200: optional list<i64> timestamps
-
-  300: optional TileSeriesKey key
-}
-
-struct DriftSpec {
-    // slices is another key to summarize the data with - besides the column & slice
-    // currently supports only one slice
-    1: optional list<string> slices
-    // additional things you want us to monitor drift on
-    // eg., specific column values or specific invariants
-    // shopify_txns = IF(merchant = 'shopify', txn_amount, NULL)
-    // likes_over_dislines = IF(dislikes > likes, 1, 0)
-    // or any other expression that you care about
-    2: optional map<string, string> derivations
-
-    // we measure the unique counts of the columns and decide if they are categorical and numeric
-    // you can use this to override that decision by setting cardinality hints
-    3: optional map<string, Cardinality> columnCardinalityHints
-
-    4: optional Window tileSize
-
-    // the current tile summary will be compared with older summaries using the metric
-    // if the drift is more than the threshold, we will raise an alert
-    5: optional list<Window> lookbackWindows
-
-    // default drift metric to use
-    6: optional DriftMetric driftMetric = DriftMetric.JENSEN_SHANNON
 }
 
 struct MetaData {
@@ -392,7 +247,7 @@ struct MetaData {
     14: optional bool historicalBackfill
 
     // specify how to compute drift
-    15: optional DriftSpec driftSpec
+    15: optional observability.DriftSpec driftSpec
 }
 
 
@@ -418,7 +273,7 @@ struct GroupBy {
 struct JoinPart {
     1: optional GroupBy groupBy
     2: optional map<string, string> keyMapping
-    4: optional string prefix
+    3: optional string prefix
 }
 
 struct ExternalPart {
@@ -447,7 +302,7 @@ struct Join {
     // users can register external sources into Api implementation. Chronon fetcher can invoke the implementation.
     // This is applicable only for online fetching. Offline this will not be produce any values.
     5: optional list<ExternalPart> onlineExternalParts
-    6: optional LabelPart labelPart
+    6: optional LabelParts labelParts
     7: optional list<BootstrapPart> bootstrapParts
     // Fields on left that uniquely identifies a single record
     8: optional list<string> rowIds
@@ -478,8 +333,9 @@ struct BootstrapPart {
     4: optional list<string> keyColumns
 }
 
-// Label join parts and params
-struct LabelPart {
+// Labels look ahead relative to the join's left ds. (rightParts look back)
+struct LabelParts {
+    // labels are used to compute
     1: optional list<JoinPart> labels
     // The earliest date label should be refreshed
     2: optional i32 leftStartOffset
@@ -559,15 +415,21 @@ struct DataSpec {
     4: optional map<string, string> props
 }
 
-enum ModelType {
+// ====================== Model related concepts ======================
+enum ModelType { // don't plan to do much with this anytime soon
     XGBoost = 0
     PyTorch = 1
+    TensorFlow = 2
+    ScikitLearn = 3
+    LightGBM = 4
+
+    Other = 100
 }
 
 struct Model {
-    1: optional TDataType outputSchema
+    1: optional MetaData metaData
     2: optional ModelType modelType
-    3: optional MetaData metaData
+    3: optional TDataType outputSchema
     4: optional Source source
     5: optional map<string, string> modelParams
 }

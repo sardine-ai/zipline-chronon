@@ -26,10 +26,8 @@
 #     limitations under the License.
 
 import json
-import os
 import subprocess
 from shlex import split
-import sys
 
 
 ACTIVE_APP_STATUS = ['SUBMITTED', 'ACCEPTED', 'RUNNING']

@@ -1,6 +1,6 @@
 package ai.chronon.online.test.stats
 
-import ai.chronon.api.DriftMetric
+import ai.chronon.observability.DriftMetric
 import ai.chronon.online.stats.DriftMetrics.histogramDistance
 import ai.chronon.online.stats.DriftMetrics.percentileDistance
 import org.scalatest.funsuite.AnyFunSuite

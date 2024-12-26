@@ -18,6 +18,7 @@ package ai.chronon.api
 
 import ai.chronon.api.DataType.toTDataType
 import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.observability.DriftSpec
 
 import scala.collection.Seq
 import scala.util.ScalaJavaConversions._
@@ -169,7 +170,7 @@ object Builders {
               left: Source = null,
               joinParts: Seq[JoinPart] = null,
               externalParts: Seq[ExternalPart] = null,
-              labelPart: LabelPart = null,
+              labelParts: LabelParts = null,
               bootstrapParts: Seq[BootstrapPart] = null,
               rowIds: Seq[String] = null,
               derivations: Seq[Derivation] = null,
@@ -181,8 +182,8 @@ object Builders {
         result.setJoinParts(joinParts.toJava)
       if (externalParts != null)
         result.setOnlineExternalParts(externalParts.toJava)
-      if (labelPart != null)
-        result.setLabelPart(labelPart)
+      if (labelParts != null)
+        result.setLabelParts(labelParts)
       if (bootstrapParts != null)
         result.setBootstrapParts(bootstrapParts.toJava)
       if (rowIds != null)
@@ -230,8 +231,8 @@ object Builders {
   }
 
   object LabelPart {
-    def apply(labels: Seq[JoinPart] = null, leftStartOffset: Int = 0, leftEndOffset: Int = 0): LabelPart = {
-      val result = new LabelPart()
+    def apply(labels: Seq[JoinPart] = null, leftStartOffset: Int = 0, leftEndOffset: Int = 0): LabelParts = {
+      val result = new LabelParts()
       result.setLeftStartOffset(leftStartOffset)
       result.setLeftEndOffset(leftEndOffset)
       if (labels != null)

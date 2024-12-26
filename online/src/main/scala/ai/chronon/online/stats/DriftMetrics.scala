@@ -1,5 +1,5 @@
 package ai.chronon.online.stats
-import ai.chronon.api.DriftMetric
+import ai.chronon.observability.DriftMetric
 
 import scala.math._
 

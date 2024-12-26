@@ -21,7 +21,6 @@ from ai.chronon.group_by import (
     Operation,
     Window,
     TimeUnit,
-    Accuracy,
 )
 
 """

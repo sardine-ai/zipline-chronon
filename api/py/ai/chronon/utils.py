@@ -25,7 +25,16 @@ from typing import List, Optional, Union, cast
 
 import ai.chronon.api.ttypes as api
 import ai.chronon.repo.extract_objects as eo
-from ai.chronon.repo import TEAMS_FILE_PATH, teams
+from ai.chronon.repo import (
+    # GROUP_BY_FOLDER_NAME,
+    # JOIN_FOLDER_NAME,
+    # STAGING_QUERY_FOLDER_NAME,
+    # MODEL_FOLDER_NAME,
+    FOLDER_NAME_TO_CLASS,
+    TEAMS_FILE_PATH,
+    teams,
+)
+
 
 ChrononJobTypes = Union[api.GroupBy, api.Join, api.StagingQuery]
 
@@ -56,15 +65,21 @@ class JsonDiffer:
         self.old_name = "old.json"
 
     def diff(self, new_json_str: object, old_json_str: object, skipped_keys=[]) -> str:
-        new_json = {k: v for k, v in json.loads(new_json_str).items() if k not in skipped_keys}
-        old_json = {k: v for k, v in json.loads(old_json_str).items() if k not in skipped_keys}
+        new_json = {
+            k: v for k, v in json.loads(new_json_str).items() if k not in skipped_keys
+        }
+        old_json = {
+            k: v for k, v in json.loads(old_json_str).items() if k not in skipped_keys
+        }
 
         with open(os.path.join(self.temp_dir, self.old_name), mode="w") as old, open(
             os.path.join(self.temp_dir, self.new_name), mode="w"
         ) as new:
             old.write(json.dumps(old_json, sort_keys=True, indent=2))
             new.write(json.dumps(new_json, sort_keys=True, indent=2))
-        diff_str = subprocess.run(["diff", old.name, new.name], stdout=subprocess.PIPE).stdout.decode("utf-8")
+        diff_str = subprocess.run(
+            ["diff", old.name, new.name], stdout=subprocess.PIPE
+        ).stdout.decode("utf-8")
         return diff_str
 
     def clean(self):
@@ -151,15 +166,28 @@ def get_mod_name_from_gc(obj, mod_prefix):
     mod_name = None
     # get obj's module info from garbage collector
     gc.collect()
-    for ref in gc.get_referrers(obj):
-        if "__name__" in ref and ref["__name__"].startswith(mod_prefix):
+
+    referrers = gc.get_referrers(obj)
+
+    valid_referrers = [
+        ref for ref in referrers if (isinstance(ref, Iterable) and "__name__" in ref)
+    ]
+
+    if len(valid_referrers) == 1:
+        return valid_referrers[0]["__name__"]
+
+    for ref in valid_referrers:
+        if ref["__name__"].startswith(mod_prefix):
             mod_name = ref["__name__"]
             break
+
     return mod_name
 
 
 def __set_name(obj, cls, mod_prefix):
-    module = importlib.import_module(get_mod_name_from_gc(obj, mod_prefix))
+    module_qualifier = get_mod_name_from_gc(obj, mod_prefix)
+
+    module = importlib.import_module(module_qualifier)
     eo.import_module_set_name(module, cls)
 
 
@@ -181,7 +209,11 @@ def dict_to_bash_commands(d):
         return ""
     bash_commands = []
     for key, value in d.items():
-        cmd = f"--{key.replace('_', '-')}={value}" if value else f"--{key.replace('_', '-')}"
+        cmd = (
+            f"--{key.replace('_', '-')}={value}"
+            if value
+            else f"--{key.replace('_', '-')}"
+        )
         bash_commands.append(cmd)
     return " ".join(bash_commands)
 
@@ -207,11 +239,17 @@ def output_table_name(obj, full_name: bool):
 
 def join_part_name(jp):
     if jp.groupBy is None:
-        raise NotImplementedError("Join Part names for non group bys is not implemented.")
+        raise NotImplementedError(
+            "Join Part names for non group bys is not implemented."
+        )
     if not jp.groupBy.metaData.name and isinstance(jp.groupBy, api.GroupBy):
         __set_name(jp.groupBy, api.GroupBy, "group_bys")
     return "_".join(
-        [component for component in [jp.prefix, sanitize(jp.groupBy.metaData.name)] if component is not None]
+        [
+            component
+            for component in [jp.prefix, sanitize(jp.groupBy.metaData.name)]
+            if component is not None
+        ]
     )
 
 
@@ -224,6 +262,8 @@ def join_part_output_table_name(join, jp, full_name: bool = False):
     def partOutputTable(jp: JoinPart): String = (Seq(join.metaData.outputTable) ++ Option(jp.prefix) :+
       jp.groupBy.metaData.cleanName).mkString("_")
     """
+    if not join.metaData.name and isinstance(join, api.Join):
+        __set_name(join, api.Join, "joins")
     return "_".join(
         [
             component
@@ -250,7 +290,9 @@ def log_table_name(obj, full_name: bool = False):
     return output_table_name(obj, full_name=full_name) + "_logged"
 
 
-def get_staging_query_output_table_name(staging_query: api.StagingQuery, full_name: bool = False):
+def get_staging_query_output_table_name(
+    staging_query: api.StagingQuery, full_name: bool = False
+):
     """generate output table name for staging query job"""
     __set_name(staging_query, api.StagingQuery, "staging_queries")
     return output_table_name(staging_query, full_name=full_name)
@@ -258,12 +300,16 @@ def get_staging_query_output_table_name(staging_query: api.StagingQuery, full_na
 
 def get_join_output_table_name(join: api.Join, full_name: bool = False):
     """generate output table name for join backfill job"""
+    # join sources could also be created inline alongside groupBy file
+    # so we specify fallback module as group_bys
     if isinstance(join, api.Join):
         __set_name(join, api.Join, "joins")
     # set output namespace
     if not join.metaData.outputNamespace:
         team_name = join.metaData.name.split(".")[0]
-        namespace = teams.get_team_conf(os.path.join(chronon_root_path, TEAMS_FILE_PATH), team_name, "namespace")
+        namespace = teams.get_team_conf(
+            os.path.join(chronon_root_path, TEAMS_FILE_PATH), team_name, "namespace"
+        )
         join.metaData.outputNamespace = namespace
     return output_table_name(join, full_name=full_name)
 
@@ -280,7 +326,10 @@ def get_dependencies(
     if meta_data is not None:
         result = [json.loads(dep) for dep in meta_data.dependencies]
     elif dependencies:
-        result = [{"name": wait_for_name(dep), "spec": dep, "start": start, "end": end} for dep in dependencies]
+        result = [
+            {"name": wait_for_name(dep), "spec": dep, "start": start, "end": end}
+            for dep in dependencies
+        ]
     else:
         if src.entities and src.entities.mutationTable:
             # Opting to use no lag for all use cases because that the "safe catch-all" case when
@@ -290,15 +339,23 @@ def get_dependencies(
                 filter(
                     None,
                     [
-                        wait_for_simple_schema(src.entities.snapshotTable, lag, start, end),
-                        wait_for_simple_schema(src.entities.mutationTable, lag, start, end),
+                        wait_for_simple_schema(
+                            src.entities.snapshotTable, lag, start, end
+                        ),
+                        wait_for_simple_schema(
+                            src.entities.mutationTable, lag, start, end
+                        ),
                     ],
                 )
             )
         elif src.entities:
-            result = [wait_for_simple_schema(src.entities.snapshotTable, lag, start, end)]
+            result = [
+                wait_for_simple_schema(src.entities.snapshotTable, lag, start, end)
+            ]
         elif src.joinSource:
-            parentJoinOutputTable = get_join_output_table_name(src.joinSource.join, True)
+            parentJoinOutputTable = get_join_output_table_name(
+                src.joinSource.join, True
+            )
             result = [wait_for_simple_schema(parentJoinOutputTable, lag, start, end)]
         else:
             result = [wait_for_simple_schema(src.events.table, lag, start, end)]
@@ -312,17 +369,31 @@ def get_bootstrap_dependencies(bootstrap_parts) -> List[str]:
     dependencies = []
     for bootstrap_part in bootstrap_parts:
         table = bootstrap_part.table
-        start = bootstrap_part.query.startPartition if bootstrap_part.query is not None else None
-        end = bootstrap_part.query.endPartition if bootstrap_part.query is not None else None
+        start = (
+            bootstrap_part.query.startPartition
+            if bootstrap_part.query is not None
+            else None
+        )
+        end = (
+            bootstrap_part.query.endPartition
+            if bootstrap_part.query is not None
+            else None
+        )
         dependencies.append(wait_for_simple_schema(table, 0, start, end))
     return [json.dumps(dep) for dep in dependencies]
 
 
 def get_label_table_dependencies(label_part) -> List[str]:
-    label_info = [(label.groupBy.sources, label.groupBy.metaData) for label in label_part.labels]
-    label_info = [(source, meta_data) for (sources, meta_data) in label_info for source in sources]
+    label_info = [
+        (label.groupBy.sources, label.groupBy.metaData) for label in label_part.labels
+    ]
+    label_info = [
+        (source, meta_data) for (sources, meta_data) in label_info for source in sources
+    ]
     label_dependencies = [
-        dep for (source, meta_data) in label_info for dep in get_dependencies(src=source, meta_data=meta_data)
+        dep
+        for (source, meta_data) in label_info
+        for dep in get_dependencies(src=source, meta_data=meta_data)
     ]
     label_dependencies.append(
         json.dumps(
@@ -342,7 +413,9 @@ def wait_for_simple_schema(table, lag, start, end):
     clean_name = table_tokens[0]
     subpartition_spec = "/".join(table_tokens[1:]) if len(table_tokens) > 1 else ""
     return {
-        "name": "wait_for_{}_ds{}".format(clean_name, "" if lag == 0 else f"_minus_{lag}"),
+        "name": "wait_for_{}_ds{}".format(
+            clean_name, "" if lag == 0 else f"_minus_{lag}"
+        ),
         "spec": "{}/ds={}{}".format(
             clean_name,
             "{{ ds }}" if lag == 0 else "{{{{ macros.ds_add(ds, -{}) }}}}".format(lag),
@@ -368,7 +441,8 @@ def dedupe_in_order(seq):
 def has_topic(group_by: api.GroupBy) -> bool:
     """Find if there's topic or mutationTopic for a source helps define streaming tasks"""
     return any(
-        (source.entities and source.entities.mutationTopic) or (source.events and source.events.topic)
+        (source.entities and source.entities.mutationTopic)
+        or (source.events and source.events.topic)
         for source in group_by.sources
     )
 
@@ -414,7 +488,7 @@ def get_applicable_modes(conf: ChrononJobTypes) -> List[str]:
             modes.append("consistency-metrics-compute")
         if requires_log_flattening_task(join):
             modes.append("log-flattener")
-        if join.labelPart is not None:
+        if join.labelParts is not None:
             modes.append("label-join")
     elif isinstance(conf, api.StagingQuery):
         modes.append("backfill")
@@ -464,3 +538,24 @@ def convert_json_to_obj(d):
         return [convert_json_to_obj(item) for item in d]
     else:
         return d
+
+
+def chronon_path(file_path: str) -> str:
+    conf_types = FOLDER_NAME_TO_CLASS.keys()
+    splits = file_path.split("/")
+    conf_occurences = [splits.index(typ) for typ in conf_types if typ in splits]
+    assert (
+        len(conf_occurences) > 0
+    ), f"Path: {file_path} doesn't contain folder with name among {conf_types}"
+
+    index = min([splits.index(typ) for typ in conf_types if typ in splits])
+    rel_path = "/".join(splits[index:])
+    return rel_path
+
+
+def module_path(file_path: str) -> str:
+    adjusted_path = chronon_path(file_path)
+    assert adjusted_path.endswith(".py"), f"Path: {file_path} doesn't end with '.py'"
+    without_extension = adjusted_path[:-3]
+    mod_path = without_extension.replace("/", ".")
+    return mod_path

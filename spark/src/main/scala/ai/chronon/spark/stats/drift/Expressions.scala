@@ -1,9 +1,9 @@
 package ai.chronon.spark.stats.drift
 
-import ai.chronon.api.Cardinality
 import ai.chronon.api.Constants
-import ai.chronon.api.TileKey
-import ai.chronon.api.TileSummary
+import ai.chronon.observability.Cardinality
+import ai.chronon.observability.TileKey
+import ai.chronon.observability.TileSummary
 import org.apache.spark.sql
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types
