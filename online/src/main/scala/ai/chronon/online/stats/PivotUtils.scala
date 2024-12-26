@@ -1,9 +1,9 @@
 package ai.chronon.online.stats
 
-import ai.chronon.api.TileDrift
-import ai.chronon.api.TileDriftSeries
-import ai.chronon.api.TileSummary
-import ai.chronon.api.TileSummarySeries
+import ai.chronon.observability.TileDrift
+import ai.chronon.observability.TileDriftSeries
+import ai.chronon.observability.TileSummary
+import ai.chronon.observability.TileSummarySeries
 
 import java.lang.{Double => JDouble}
 import java.lang.{Long => JLong}

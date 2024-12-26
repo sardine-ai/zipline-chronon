@@ -14,6 +14,7 @@
 
 from collections import Counter
 import ai.chronon.api.ttypes as api
+import ai.chronon.api.common.ttypes as common
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
 from ai.chronon.group_by import validate_group_by
@@ -56,15 +57,20 @@ def JoinPart(
         JoinPart specifies how the left side of a join, or the query in online setting, would join with the right side
         components like GroupBys.
     """
+    assert isinstance(
+        group_by, api.GroupBy
+    ), f"Expecting GroupBy. But found {type(group_by).__name__}"
     # used for reset for next run
     import_copy = __builtins__["__import__"]
     # get group_by's module info from garbage collector
     gc.collect()
+
     group_by_module_name = None
     for ref in gc.get_referrers(group_by):
         if "__name__" in ref and ref["__name__"].startswith("group_bys"):
             group_by_module_name = ref["__name__"]
             break
+
     if group_by_module_name:
         logging.debug(
             "group_by's module info from garbage collector {}".format(
@@ -72,6 +78,7 @@ def JoinPart(
             )
         )
         group_by_module = importlib.import_module(group_by_module_name)
+
         __builtins__["__import__"] = eo.import_module_set_name(
             group_by_module, api.GroupBy
         )
@@ -238,12 +245,12 @@ def ExternalPart(
     return api.ExternalPart(source=source, keyMapping=key_mapping, prefix=prefix)
 
 
-def LabelPart(
+def LabelParts(
     labels: List[api.JoinPart],
     left_start_offset: int,
     left_end_offset: int,
     label_offline_schedule: str = "@daily",
-) -> api.LabelPart:
+) -> api.LabelParts:
     """
     Used to describe labels in join. Label part can be viewed as regular join part but represent
     label data instead of regular feature data. Once labels are mature, label join job would join
@@ -260,7 +267,7 @@ def LabelPart(
     different label_ds or label version. Label join job would have all computed label versions available, as well as
     a view of latest version for easy label retrieval.
 
-    LabelPart definition can be updated along the way, but label join job can only accommodate these changes going
+    LabelParts definition can be updated along the way, but label join job can only accommodate these changes going
     forward unless a backfill is manually triggered.
 
     Label aggregation is also supported but with conditions applied. Single aggregation with one window is allowed
@@ -294,7 +301,8 @@ def LabelPart(
                 "Single aggregation with one window allowed."
             )
             valid_time_unit = (
-                label.groupBy.aggregations[0].windows[0].timeUnit == api.TimeUnit.DAYS
+                label.groupBy.aggregations[0].windows[0].timeUnit
+                == common.TimeUnit.DAYS
             )
             assert valid_time_unit, "Label aggregation window unit must be DAYS"
             window_size = label.groupBy.aggregations[0].windows[0].length
@@ -306,7 +314,7 @@ def LabelPart(
                     "window {window_size} and the incorrect values will be ignored. "
                 )
 
-    return api.LabelPart(
+    return api.LabelParts(
         labels=labels,
         leftStartOffset=left_start_offset,
         leftEndOffset=left_end_offset,
@@ -403,7 +411,7 @@ def Join(
     row_ids: List[str] = None,
     bootstrap_parts: List[api.BootstrapPart] = None,
     bootstrap_from_log: bool = False,
-    label_part: api.LabelPart = None,
+    label_part: api.LabelParts = None,
     derivations: List[api.Derivation] = None,
     tags: Dict[str, str] = None,
     **kwargs,
@@ -553,7 +561,7 @@ def Join(
             dependencies=utils.dedupe_in_order(left_dependencies + label_dependencies),
             offlineSchedule=label_part.metaData.offlineSchedule,
         )
-        label_part = api.LabelPart(
+        label_part = api.LabelParts(
             labels=label_part.labels,
             leftStartOffset=label_part.leftStartOffset,
             leftEndOffset=label_part.leftEndOffset,
@@ -641,6 +649,6 @@ def Join(
         onlineExternalParts=online_external_parts,
         bootstrapParts=bootstrap_parts,
         rowIds=row_ids,
-        labelPart=label_part,
+        labelParts=label_part,
         derivations=derivations,
     )

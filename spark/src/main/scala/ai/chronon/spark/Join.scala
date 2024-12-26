@@ -392,11 +392,11 @@ class Join(joinConf: api.Join,
     val finalOutputColumns =
       /*
        * Loop through all columns in the base join output:
-       * 1. If it is one of the value columns, then skip it here and it will be handled later as we loop through
+       * 1. If it is one of the value columns, then skip it here, and it will be handled later as we loop through
        *    derived columns again - derivation is a projection from all value columns to desired derived columns
-       * 2.  (see case 2 below) If it is matching one of the projected output columns, then there are 2 sub-cases
-       *     a. matching with a left column, then we handle the coalesce here to make sure left columns show on top
-       *     b. a bootstrapped derivation case, the skip it here and it will be handled later as
+       * 2.  (see case 2 below) If it is matching one of the projected output columns, then there are 2 subcases
+       *     a. matching with a left column, then we handle the "coalesce" here to make sure left columns show on top
+       *     b. a bootstrapped derivation case, the skip it here, and it will be handled later as
        *        loop through derivations to perform coalescing
        * 3. Else, we keep it in the final output - cases falling here are either (1) key columns, or (2)
        *    arbitrary columns selected from left.

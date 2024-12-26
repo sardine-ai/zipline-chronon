@@ -17,7 +17,7 @@
 package ai.chronon.spark.test
 
 import ai.chronon.api.Builders
-import ai.chronon.api.Extensions.LabelPartOps
+import ai.chronon.api.Extensions.LabelPartsOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.LongType
 import ai.chronon.api.StringType
@@ -61,7 +61,7 @@ class FeatureWithLabelJoinTest {
       Builders.MetaData(name = tableName, namespace = namespace, team = "chronon"),
       left,
       joinParts = Seq.empty,
-      labelPart = labelJoinConf
+      labelParts = labelJoinConf
     )
 
     val runner = new LabelJoin(joinConf, tableUtils, labelDS)
@@ -146,7 +146,7 @@ class FeatureWithLabelJoinTest {
       Builders.MetaData(name = tableName, namespace = namespace, team = "chronon"),
       leftSource,
       joinParts = Seq.empty,
-      labelPart = labelJoinConf
+      labelParts = labelJoinConf
     )
 
     val runner = new LabelJoin(joinConf, tableUtils, "2022-10-06")
@@ -227,7 +227,7 @@ class FeatureWithLabelJoinTest {
 
   def createTestLabelJoin(startOffset: Int,
                           endOffset: Int,
-                          groupByTableName: String = "listing_labels"): ai.chronon.api.LabelPart = {
+                          groupByTableName: String = "listing_labels"): ai.chronon.api.LabelParts = {
     val labelGroupBy = TestUtils.createRoomTypeGroupBy(namespace, spark, groupByTableName)
     Builders.LabelPart(
       labels = Seq(
@@ -239,7 +239,7 @@ class FeatureWithLabelJoinTest {
   }
 
   def createTestAggLabelJoin(windowSize: Int,
-                             groupByTableName: String = "listing_labels_agg"): ai.chronon.api.LabelPart = {
+                             groupByTableName: String = "listing_labels_agg"): ai.chronon.api.LabelParts = {
     val labelGroupBy = TestUtils.createOrUpdateLabelGroupByWithAgg(namespace, spark, windowSize, groupByTableName)
     Builders.LabelPart(
       labels = Seq(

@@ -75,7 +75,7 @@ case class JoinCodec(conf: JoinOps,
    * {"join_name":"unit_test/test_join","key_schema":"{\"type\":\"record\",\"name\":\"unit_test_test_join_key\",\"namespace\":\"ai.chronon.data\",\"doc\":\"\",\"fields\":[{\"name\":\"listing\",\"type\":[\"null\",\"long\"],\"doc\":\"\"}]}","value_schema":"{\"type\":\"record\",\"name\":\"unit_test_test_join_value\",\"namespace\":\"ai.chronon.data\",\"doc\":\"\",\"fields\":[{\"name\":\"unit_test_listing_views_v1_m_guests_sum\",\"type\":[\"null\",\"long\"],\"doc\":\"\"},{\"name\":\"unit_test_listing_views_v1_m_views_sum\",\"type\":[\"null\",\"long\"],\"doc\":\"\"}]}"}
    */
   lazy val loggingSchema: String = JoinCodec.buildLoggingSchema(conf.join.metaData.name, keyCodec, valueCodec)
-  lazy val loggingSchemaHash: String = HashUtils.md5Base64(loggingSchema)
+  lazy val loggingSchemaHash: String = HashUtils.md5Hex(loggingSchema)
 
   val keys: Array[String] = keySchema.fields.iterator.map(_.name).toArray
   val values: Array[String] = valueSchema.fields.iterator.map(_.name).toArray

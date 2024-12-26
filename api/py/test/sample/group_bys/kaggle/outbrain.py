@@ -14,8 +14,6 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
 from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
@@ -26,8 +24,6 @@ from ai.chronon.group_by import (
 )
 
 from sources.kaggle.outbrain import outbrain_left_events
-from ai.chronon.utils import get_staging_query_output_table_name
-from staging_queries.kaggle.outbrain import base_table
 
 """
 This file defines a number of GroupBys in a more programatic way, leveraging helper functions that act
