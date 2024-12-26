@@ -4,13 +4,13 @@ import ai.chronon.api
 import ai.chronon.api.Builders
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
-import ai.chronon.api.DriftMetric
-import ai.chronon.api.DriftSpec
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Operation
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.observability.DriftMetric
+import ai.chronon.observability.DriftSpec
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import com.google.gson.GsonBuilder

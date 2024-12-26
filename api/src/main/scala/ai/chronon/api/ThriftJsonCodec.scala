@@ -29,8 +29,10 @@ import com.google.gson.GsonBuilder
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import java.io.File
 import java.util
 import java.util.Base64
+import scala.io.BufferedSource
 import scala.io.Source._
 import scala.reflect.ClassTag
 import scala.util.ScalaJavaConversions.ListOps
@@ -99,8 +101,7 @@ object ThriftJsonCodec {
       val reSerializedInput: JsonNode = mapper.readTree(toJsonStr(obj))
       assert(
         inputNode.equals(reSerializedInput),
-        message = s"""
-     Parsed Json object isn't reversible.
+        message = s"""Parsed Json object isn't reversible.
      Original JSON String:  $jsonStr
      JSON produced by serializing object: $reSerializedInput"""
       )
@@ -109,10 +110,21 @@ object ThriftJsonCodec {
   }
 
   def fromJsonFile[T <: TBase[_, _]: Manifest: ClassTag](fileName: String, check: Boolean): T = {
-    val src = fromFile(fileName)
+    fromJsonFile(fromFile(fileName), check)
+  }
+
+  def fromJsonFile[T <: TBase[_, _]: Manifest: ClassTag](file: File, check: Boolean): T = {
+    fromJsonFile(fromFile(file), check)
+  }
+
+  def fromJsonFile[T <: TBase[_, _]: Manifest: ClassTag](src: BufferedSource, check: Boolean): T = {
     val jsonStr =
       try src.mkString
       finally src.close()
+    fromJson[T](jsonStr, check)
+  }
+
+  def fromJson[T <: TBase[_, _]: Manifest: ClassTag](jsonStr: String, check: Boolean): T = {
     val obj: T = fromJsonStr[T](jsonStr, check, clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]])
     obj
   }

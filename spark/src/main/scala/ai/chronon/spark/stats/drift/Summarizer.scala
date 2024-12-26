@@ -3,6 +3,8 @@ package ai.chronon.spark.stats.drift
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.observability.Cardinality
+import ai.chronon.observability.TileKey
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.PutRequest

@@ -182,7 +182,7 @@
       }
     }
   ],
-  "labelPart": {
+  "labelParts": {
     "labels": [
       {
         "groupBy": {

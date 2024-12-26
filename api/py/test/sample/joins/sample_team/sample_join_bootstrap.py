@@ -25,7 +25,7 @@ from group_bys.sample_team import (
 
 from ai.chronon.join import Join, JoinPart, BootstrapPart
 from ai.chronon.query import Query, select
-from ai.chronon.utils import get_join_output_table_name, get_staging_query_output_table_name
+from ai.chronon.utils import get_join_output_table_name
 
 v1_join_parts = [
     JoinPart(
