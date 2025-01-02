@@ -3,7 +3,7 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.integrations.cloud_gcp.DataprocSubmitter
 import ai.chronon.integrations.cloud_gcp.SubmitterConf
 import ai.chronon.spark
-import ai.chronon.spark.JobSubmitterConstants.{JarURI, MainClass}
+import ai.chronon.spark.JobSubmitterConstants.{FlinkMainJarURI, JarURI, MainClass}
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
@@ -51,7 +51,19 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     BigQueryUtilScala.validateScalaVersionCompatibility()
   }
 
-  ignore("Used to iterate locally. Do not enable this in CI/CD!") {
+  ignore("test flink job locally") {
+    val submitter = DataprocSubmitter()
+    // flink-assembly-0.1.0-SNAPSHOT.jar
+    val submittedJobId =
+      submitter.submit(spark.FlinkJob,
+        Map(MainClass -> "ai.chronon.flink.FlinkJob",
+          FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
+          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
+        List.empty)
+    println(submittedJobId)
+  }
+
+  test("Used to iterate locally. Do not enable this in CI/CD!") {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =

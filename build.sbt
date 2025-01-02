@@ -230,7 +230,30 @@ lazy val cloud_gcp = project
     libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
     // force a newer version of reload4j to sidestep: https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
-    dependencyOverrides += "ch.qos.reload4j" % "reload4j" % "1.2.25"
+    dependencyOverrides ++= Seq(
+      "ch.qos.reload4j" % "reload4j" % "1.2.25",
+      "io.opencensus" % "opencensus-api" % "0.31.1",
+      "io.opencensus" % "opencensus-impl" % "0.31.1",
+//      "io.opencensus" % "opencensus-impl-core" % "0.31.1",
+//      "io.opencensus" % "opencensus-contrib-http-util" % "0.31.1",
+//      "io.opencensus" % "opencensus-exporter-stats-stackdriver" % "0.31.1",
+//      "io.opencensus" % "opencensus-contrib-grpc-metrics" % "0.31.1",
+//      "io.opencensus" % "opencensus-contrib-grpc-util" % "0.31.1",
+//      "io.opencensus" % "opencensus-contrib-exemplar-util" % "0.31.1",
+//      "io.opencensus" % "opencensus-contrib-agent" % "0.31.1",
+//      // GRPC overrides// GRPC overrides
+//      "io.grpc" % "grpc-api" % grpcVersion,
+//      "io.grpc" % "grpc-context" % grpcVersion,
+//      "io.grpc" % "grpc-core" % grpcVersion,
+//      "io.grpc" % "grpc-protobuf" % grpcVersion,
+//      "io.grpc" % "grpc-stub" % grpcVersion,
+//      "io.grpc" % "grpc-auth" % grpcVersion,
+//      "io.grpc" % "grpc-netty" % grpcVersion,
+//      "io.grpc" % "grpc-netty-shaded" % grpcVersion,
+//      "io.grpc" % "grpc-grpclb" % grpcVersion,
+//      "io.grpc" % "grpc-services" % grpcVersion,
+//      "io.grpc" % "grpc-census" % grpcVersion
+    )
   )
 
 lazy val cloud_aws = project

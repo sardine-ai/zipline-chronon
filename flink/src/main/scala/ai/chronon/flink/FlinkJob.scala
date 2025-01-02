@@ -4,15 +4,14 @@ import ai.chronon.aggregator.windowing.ResolutionUtils
 import ai.chronon.api.DataType
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.flink.FlinkUtils.{makeGroupBy, makeTestGroupByServingInfoParsed}
 import ai.chronon.flink.window.AlwaysFireOnElementTrigger
 import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.flink.window.KeySelector
 import ai.chronon.flink.window.TimestampedTile
-import ai.chronon.online.FlinkSource
-import ai.chronon.online.GroupByServingInfoParsed
+import ai.chronon.online.{Api, FlinkSource, GroupByServingInfoParsed, SparkConversions}
 import ai.chronon.online.KVStore.PutRequest
-import ai.chronon.online.SparkConversions
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.scala.DataStream
@@ -22,8 +21,10 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
-import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.{Encoder, Encoders}
 import org.slf4j.LoggerFactory
+
+import scala.reflect.internal.util.ScalaClassLoader
 
 /**
   * Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
@@ -195,5 +196,46 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       sinkFn,
       groupByName
     )
+  }
+}
+
+object FlinkJob {
+  def main(args: Array[String]): Unit = {
+
+    val eventSrc = makeSource()
+    val groupBy = makeGroupBy(Seq("id")) // TODO - take groupBy name as job param + read from BigTable via GBServingInfo
+    val encoder = Encoders.product[E2ETestEvent] // TODO - wire encoder support up
+    val parallelism = 2 // TODO - take parallelism as a job param
+
+    val outputSchema = new SparkExpressionEvalFn(encoder, groupBy).getOutputSchema
+    val groupByServingInfoParsed = makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
+    val api = buildApi("ai.chronon.integrations.cloud_gcp.GcpApiImpl", Map.empty) // TODO - take online class as job param
+
+    val flinkJob = new FlinkJob(
+      eventSrc = eventSrc,
+      sinkFn = new AsyncKVStoreWriter(api, groupBy.metaData.name),
+      groupByServingInfoParsed = groupByServingInfoParsed,
+      encoder = encoder,
+      parallelism = parallelism
+    )
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    // TODO add useful configs
+    flinkJob.runGroupByJob(env).addSink(new PrintSink) // TODO wire up a metrics sink / such
+    env.execute(s"{groupByServingInfoParsed.groupBy.getMetaData.getName}")
+  }
+
+  // TODO - we need to swap this for a Kafka source
+  def makeSource(): FlinkSource[E2ETestEvent] = {
+    val elements = (0 until 100000).map(i => E2ETestEvent(s"test$i", i, i.toDouble, 1699366993123L + i/100))
+    new E2EEventSource(elements)
+  }
+
+  def buildApi(onlineClass: String, props: Map[String, String]): Api = {
+    val cl = ScalaClassLoader(this.getClass.getClassLoader)
+    val cls = cl.loadClass(onlineClass)
+    val constructor = cls.getConstructors.apply(0)
+    val onlineImpl = constructor.newInstance(props)
+    onlineImpl.asInstanceOf[Api]
   }
 }

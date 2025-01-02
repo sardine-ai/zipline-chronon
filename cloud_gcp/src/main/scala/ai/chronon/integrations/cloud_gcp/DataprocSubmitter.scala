@@ -87,10 +87,18 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     }
 
   private def buildFlinkJob(mainClass: String, mainJarUri: String, jarUri: String, args: String*): Job.Builder = {
+    // TODO no hardcoding of instance id
+    val envProps =
+        Map("containerized.master.env.GCP_PROJECT_ID" -> conf.projectId,
+            "containerized.master.env.GCP_INSTANCE_ID" -> "zipline-canary-instance",
+            "containerized.taskmanager.env.GCP_PROJECT_ID" -> conf.projectId,
+            "containerized.taskmanager.env.GCP_INSTANCE_ID" -> "zipline-canary-instance")
+
     val flinkJob = FlinkJob
       .newBuilder()
       .setMainClass(mainClass)
       .setMainJarFileUri(mainJarUri)
+      .putAllProperties(envProps.asJava)
       .addJarFileUris(jarUri)
       .addAllArgs(args.toIterable.asJava)
       .build()
