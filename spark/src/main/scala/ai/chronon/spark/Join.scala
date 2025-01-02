@@ -274,9 +274,12 @@ class Join(joinConf: api.Join,
       if (skipBloomFilter) {
         None
       } else {
-        val leftBlooms = joinConf.leftKeyCols.iterator.map { key =>
-          key -> bootstrapDf.generateBloomFilter(key, leftRowCount, joinConf.left.table, leftRange)
-        }.toJMap
+        val leftBlooms = joinConf.leftKeyCols.iterator
+          .map { key =>
+            key -> bootstrapDf.generateBloomFilter(key, leftRowCount, joinConf.left.table, leftRange)
+          }
+          .toMap
+          .asJava
         Some(leftBlooms)
       }
     }

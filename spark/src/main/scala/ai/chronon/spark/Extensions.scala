@@ -26,9 +26,7 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.online.TimeRange
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.LongType
@@ -295,30 +293,6 @@ object Extensions {
         idx += 1
       }
       result
-    }
-  }
-
-  implicit class InternalRowOps(internalRow: InternalRow) {
-    def toRow: Row = {
-      new Row() {
-        override def length: Int = {
-          internalRow.numFields
-        }
-
-        override def get(i: Int): Any = {
-          internalRow.get(i, schema.fields(i).dataType)
-        }
-
-        override def copy(): Row = internalRow.copy().toRow
-      }
-    }
-  }
-
-  implicit class TupleToJMapOps[K, V](tuples: Iterator[(K, V)]) {
-    def toJMap: util.Map[K, V] = {
-      val map = new util.HashMap[K, V]()
-      tuples.foreach { case (k, v) => map.put(k, v) }
-      map
     }
   }
 
