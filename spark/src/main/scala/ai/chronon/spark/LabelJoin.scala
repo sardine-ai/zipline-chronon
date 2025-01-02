@@ -156,9 +156,12 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
 
   def computeRange(leftDf: DataFrame, leftRange: PartitionRange, sanitizedLabelDs: String): DataFrame = {
     val leftDfCount = leftDf.count()
-    val leftBlooms = labelJoinConf.leftKeyCols.iterator.map { key =>
-      key -> leftDf.generateBloomFilter(key, leftDfCount, joinConf.left.table, leftRange)
-    }.toJMap
+    val leftBlooms = labelJoinConf.leftKeyCols.iterator
+      .map { key =>
+        key -> leftDf.generateBloomFilter(key, leftDfCount, joinConf.left.table, leftRange)
+      }
+      .toMap
+      .asJava
 
     // compute joinParts in parallel
     val rightDfs = labelJoinConf.labels.asScala.map { labelJoinPart =>
@@ -241,7 +244,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                                PartitionRange(labelDS, labelDS),
                                tableUtils,
                                computeDependency = true,
-                               Option(rightBloomMap.iterator.toJMap),
+                               Option(rightBloomMap.toMap.asJava),
                                rightSkewFilter)
 
     val df = (joinConf.left.dataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {
