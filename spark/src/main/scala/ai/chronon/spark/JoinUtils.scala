@@ -304,10 +304,13 @@ object JoinUtils {
       joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]]): Option[util.Map[String, BloomFilter]] = {
 
     val rightBlooms = joinLevelBloomMapOpt.map { joinBlooms =>
-      joinPart.rightToLeft.iterator.map {
-        case (rightCol, leftCol) =>
-          rightCol -> joinBlooms.get(leftCol)
-      }.toJMap
+      joinPart.rightToLeft.iterator
+        .map {
+          case (rightCol, leftCol) =>
+            rightCol -> joinBlooms.get(leftCol)
+        }
+        .toMap
+        .asJava
     }
 
     // print bloom sizes
