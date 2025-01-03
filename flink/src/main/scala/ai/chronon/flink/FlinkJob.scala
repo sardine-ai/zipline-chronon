@@ -207,8 +207,7 @@ object FlinkJob {
     val encoder = Encoders.product[E2ETestEvent] // TODO - wire encoder support up
     val parallelism = 2 // TODO - take parallelism as a job param
 
-    val outputSchema = new SparkExpressionEvalFn(encoder, groupBy).getOutputSchema
-    val groupByServingInfoParsed = makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
+    val groupByServingInfoParsed = makeTestGroupByServingInfoParsed(groupBy, encoder.schema)
     val api = buildApi("ai.chronon.integrations.cloud_gcp.GcpApiImpl", Map.empty) // TODO - take online class as job param
 
     val flinkJob = new FlinkJob(
@@ -232,7 +231,7 @@ object FlinkJob {
   }
 
   def buildApi(onlineClass: String, props: Map[String, String]): Api = {
-    val cl = ScalaClassLoader(this.getClass.getClassLoader)
+    val cl = Thread.currentThread().getContextClassLoader // Use Flink's classloader
     val cls = cl.loadClass(onlineClass)
     val constructor = cls.getConstructors.apply(0)
     val onlineImpl = constructor.newInstance(props)

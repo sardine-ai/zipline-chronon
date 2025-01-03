@@ -98,7 +98,8 @@ val circe = Seq(
 val flink_all = Seq(
   "org.apache.flink" %% "flink-streaming-scala",
   "org.apache.flink" % "flink-metrics-dropwizard",
-  "org.apache.flink" % "flink-clients"
+  "org.apache.flink" % "flink-clients",
+  "org.apache.flink" % "flink-yarn"
 ).map(_ % flink_1_17)
 
 val vertx_java = Seq(
@@ -201,6 +202,23 @@ lazy val flink = project
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
+    // Add specific assembly settings for Hadoop/YARN
+    assembly / assemblyMergeStrategy := {
+      case PathList("org", "apache", "spark", "unused", "protobuf", xs @ _*) => MergeStrategy.first
+      case PathList("org", "apache", "orc", "protobuf", xs @ _*) => MergeStrategy.first
+      case PathList("com", "google", "protobuf", xs @ _*) => MergeStrategy.first
+      case PathList("google", "protobuf", xs @ _*) => MergeStrategy.first
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
+      case "reference.conf" => MergeStrategy.concat
+      case "application.conf" => MergeStrategy.concat
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case _ => MergeStrategy.first
+    },
+    // Exclude Hadoop from the assembled JAR
+    assembly / assemblyExcludedJars := {
+      val cp = (assembly / fullClasspath).value
+      cp filter { jar =>  jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("protobuf-") }
+    },
     libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),
@@ -227,32 +245,21 @@ lazy val cloud_gcp = project
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
     dependencyOverrides ++= jackson,
+    // Exclude Hadoop + Hadoop ipc from the assembled JAR as this results in errors while launching Flink jobs
+    // These jars are pulled in by the bigtable-hbase library
+    assembly / assemblyMergeStrategy := {
+      case PathList("org", "apache", "hadoop", "ipc", xs @ _*) => MergeStrategy.discard  // Explicitly discard Hadoop IPC classes
+      case PathList("org", "apache", "hadoop", xs @ _*) => MergeStrategy.first
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case "reference.conf" => MergeStrategy.concat
+      case "application.conf" => MergeStrategy.concat
+      case _ => MergeStrategy.first
+    },
     libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
     // force a newer version of reload4j to sidestep: https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
     dependencyOverrides ++= Seq(
       "ch.qos.reload4j" % "reload4j" % "1.2.25",
-      "io.opencensus" % "opencensus-api" % "0.31.1",
-      "io.opencensus" % "opencensus-impl" % "0.31.1",
-//      "io.opencensus" % "opencensus-impl-core" % "0.31.1",
-//      "io.opencensus" % "opencensus-contrib-http-util" % "0.31.1",
-//      "io.opencensus" % "opencensus-exporter-stats-stackdriver" % "0.31.1",
-//      "io.opencensus" % "opencensus-contrib-grpc-metrics" % "0.31.1",
-//      "io.opencensus" % "opencensus-contrib-grpc-util" % "0.31.1",
-//      "io.opencensus" % "opencensus-contrib-exemplar-util" % "0.31.1",
-//      "io.opencensus" % "opencensus-contrib-agent" % "0.31.1",
-//      // GRPC overrides// GRPC overrides
-//      "io.grpc" % "grpc-api" % grpcVersion,
-//      "io.grpc" % "grpc-context" % grpcVersion,
-//      "io.grpc" % "grpc-core" % grpcVersion,
-//      "io.grpc" % "grpc-protobuf" % grpcVersion,
-//      "io.grpc" % "grpc-stub" % grpcVersion,
-//      "io.grpc" % "grpc-auth" % grpcVersion,
-//      "io.grpc" % "grpc-netty" % grpcVersion,
-//      "io.grpc" % "grpc-netty-shaded" % grpcVersion,
-//      "io.grpc" % "grpc-grpclb" % grpcVersion,
-//      "io.grpc" % "grpc-services" % grpcVersion,
-//      "io.grpc" % "grpc-census" % grpcVersion
     )
   )
 

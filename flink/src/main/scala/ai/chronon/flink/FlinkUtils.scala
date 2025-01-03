@@ -10,8 +10,6 @@ import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironm
 import org.apache.spark.sql.types.StructType
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.jdk.CollectionConverters.asScalaBufferConverter
-
 case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: Long)
 
 class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestEvent] {
@@ -33,8 +31,7 @@ class PrintSink extends SinkFunction[WriteResponse] {
 
 object FlinkUtils {
   def makeTestGroupByServingInfoParsed(groupBy: GroupBy,
-                                       inputSchema: StructType,
-                                       outputSchema: StructType): GroupByServingInfoParsed = {
+                                       inputSchema: StructType): GroupByServingInfoParsed = {
     val groupByServingInfo = new GroupByServingInfo()
     groupByServingInfo.setGroupBy(groupBy)
 
@@ -43,28 +40,6 @@ object FlinkUtils {
       inputSchema.toAvroSchema("Input").toString(true)
     )
 
-    // Set key avro schema for groupByServingInfo
-    groupByServingInfo.setKeyAvroSchema(
-      StructType(
-        groupBy.keyColumns.asScala.map { keyCol =>
-          val keyColStructType = outputSchema.fields.find(field => field.name == keyCol)
-          keyColStructType match {
-            case Some(col) => col
-            case None =>
-              throw new IllegalArgumentException(s"Missing key col from output schema: $keyCol")
-          }
-        }
-      ).toAvroSchema("Key")
-        .toString(true)
-    )
-
-    // Set value avro schema for groupByServingInfo
-    val aggInputColNames = groupBy.aggregations.asScala.map(_.inputColumn).toList
-    groupByServingInfo.setSelectedAvroSchema(
-      StructType(outputSchema.fields.filter(field => aggInputColNames.contains(field.name)))
-        .toAvroSchema("Value")
-        .toString(true)
-    )
     new GroupByServingInfoParsed(
       groupByServingInfo,
       PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
