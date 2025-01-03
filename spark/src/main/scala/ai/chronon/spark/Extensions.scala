@@ -299,8 +299,8 @@ object Extensions {
   implicit class DataPointerOps(dataPointer: DataPointer) {
     def toDf(implicit sparkSession: SparkSession): DataFrame = {
       val tableOrPath = dataPointer.tableOrPath
-      val format = dataPointer.format.getOrElse("parquet")
-      dataPointer.catalog.map(_.toLowerCase) match {
+      val format = dataPointer.readFormat.getOrElse("parquet")
+      dataPointer.readFormat.map(_.toLowerCase) match {
         case Some("bigquery") | Some("bq") =>
           // https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file#reading-data-from-a-bigquery-table
           sparkSession.read
@@ -341,7 +341,7 @@ object Extensions {
           sparkSession.table(tableOrPath)
 
         case _ =>
-          throw new UnsupportedOperationException(s"Unsupported catalog: ${dataPointer.catalog}")
+          throw new UnsupportedOperationException(s"Unsupported catalog: ${dataPointer.readFormat}")
       }
     }
   }

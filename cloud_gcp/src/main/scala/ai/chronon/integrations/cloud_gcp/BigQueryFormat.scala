@@ -66,6 +66,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
 
 case class BQuery(project: String) extends Format {
 
+  override def name: String = "bigquery"
+
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
