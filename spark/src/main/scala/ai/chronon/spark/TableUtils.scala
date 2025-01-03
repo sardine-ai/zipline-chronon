@@ -19,7 +19,6 @@ package ai.chronon.spark
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
-import ai.chronon.api.DataPointer
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Query
@@ -747,13 +746,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  wheres: Seq[String],
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
-    val dp = DataPointer(table)
+    val dp = ai.chronon.api.DataPointer.apply(table)
     var df = dp.toDf(sparkSession)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
     logger.info(s""" Scanning data:
          |  table: ${dp.tableOrPath.green}
          |  options: ${dp.options}
-         |  format: ${dp.format}
+         |  format: ${dp.readFormat}
          |  selects:
          |    ${selects.mkString("\n    ").green}
          |  wheres:

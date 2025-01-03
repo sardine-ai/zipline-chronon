@@ -10,6 +10,8 @@ import scala.util.Try
 
 trait Format {
 
+  def name: String
+
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,
@@ -45,6 +47,7 @@ trait Format {
 
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean
+
 }
 
 /**
@@ -58,6 +61,8 @@ trait FormatProvider extends Serializable {
   def sparkSession: SparkSession
   def readFormat(tableName: String): Format
   def writeFormat(tableName: String): Format
+
+  def resolveTableName(tableName: String) = tableName
 }
 
 /**
@@ -134,6 +139,8 @@ case class DefaultFormatProvider(sparkSession: SparkSession) extends FormatProvi
 }
 
 case object Hive extends Format {
+
+  override def name: String = "hive"
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
@@ -167,6 +174,8 @@ case object Hive extends Format {
 }
 
 case object Iceberg extends Format {
+
+  override def name: String = "iceberg"
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] = {
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
@@ -215,6 +224,8 @@ case object Iceberg extends Format {
 // java.lang.NoSuchMethodError: 'org.apache.spark.sql.delta.Snapshot org.apache.spark.sql.delta.DeltaLog.update(boolean)'
 // In such cases, you should implement your own FormatProvider built on the newer Delta lake version
 case object DeltaLake extends Format {
+
+  override def name: String = "delta"
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =

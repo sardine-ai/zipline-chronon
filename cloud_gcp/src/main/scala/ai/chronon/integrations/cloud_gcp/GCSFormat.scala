@@ -10,6 +10,8 @@ import org.apache.spark.sql.functions.url_decode
 
 case class GCS(project: String) extends Format {
 
+  override def name: String = ""
+
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
