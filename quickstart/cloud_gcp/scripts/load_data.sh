@@ -33,7 +33,9 @@ echo "GroupBy upload batch jobs completed successfully!"
 
 echo "Uploading tables to KV Store"
 for dataset in purchases returns; do
-  if ! spark-submit --driver-class-path "$CLASSPATH" --class ai.chronon.integrations.cloud_gcp.Spark2BigTableLoader \
+  if ! spark-submit --driver-class-path "$CLASSPATH:/opt/custom-jars/*" \
+    --jars "/opt/custom-jars/spark-bigtable_2.12-0.2.1.jar,/opt/custom-jars/log4j-slf4j-impl-2.20.0.jar" \
+    --class ai.chronon.integrations.cloud_gcp.Spark2BigTableLoader \
     --master local[*] $CLOUD_GCP_JAR --table-name default.quickstart_${dataset}_v1_upload --dataset quickstart.${dataset}.v1 \
     --end-ds 2023-11-30 --project-id $GCP_PROJECT_ID --instance-id $GCP_INSTANCE_ID; then
     echo "Error: Failed to upload table to KV Store" >&2

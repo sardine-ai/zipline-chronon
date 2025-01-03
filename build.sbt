@@ -217,7 +217,6 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcsio" % "3.0.3", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/gcsio/src/main/java/com/google/cloud/hadoop/gcsio/GoogleCloudStorageFileSystem.java
     libraryDependencies += "io.circe" %% "circe-yaml" % "1.15.0",
     libraryDependencies += "com.google.cloud.spark" %% s"spark-bigquery-with-dependencies" % "0.41.0",
-    libraryDependencies += "com.google.cloud.spark.bigtable" %% "spark-bigtable" % "0.2.1",
     libraryDependencies += "com.google.cloud.bigtable" % "bigtable-hbase-2.x" % "2.14.2",
     libraryDependencies ++= circe,
     libraryDependencies ++= avro,

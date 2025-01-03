@@ -57,6 +57,13 @@ RUN curl https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SP
  && tar xvzf spark.tgz --directory /opt/spark --strip-components 1 \
  && rm -rf spark.tgz
 
+# Add some additional custom jars for other connectors like BigTable etc
+RUN mkdir -p /opt/custom-jars && \
+    curl -L "https://repo1.maven.org/maven2/com/google/cloud/spark/bigtable/spark-bigtable_2.12/0.2.1/spark-bigtable_2.12-0.2.1.jar" \
+    -o /opt/custom-jars/spark-bigtable_2.12-0.2.1.jar && \
+    curl -L "https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-slf4j-impl/2.20.0/log4j-slf4j-impl-2.20.0.jar" \
+    -o /opt/custom-jars/log4j-slf4j-impl-2.20.0.jar
+
 # Install python deps
 COPY quickstart/requirements.txt .
 RUN pip3 install -r requirements.txt
