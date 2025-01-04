@@ -6,6 +6,8 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
+import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystemConfiguration
+import com.google.cloud.hadoop.util.HadoopConfigurationProperty
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,14 +26,20 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
         "spark.chronon.partition.column" -> "c",
         "spark.hadoop.fs.gs.impl" -> classOf[GoogleHadoopFileSystem].getName,
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> classOf[GoogleHadoopFS].getName,
-        "spark.hadoop.google.cloud.auth.service.account.enable" -> true.toString,
-        "spark.hadoop.fs.gs.impl" -> classOf[GoogleHadoopFileSystem].getName
+        "spark.hadoop.google.cloud.auth.service.account.enable" -> true.toString
       ))
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
 
   test("hive uris are set") {
     assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
+  }
+
+  test("google runtime classes are available") {
+    assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[Long]])
+    assertCompiles("classOf[GoogleHadoopFileSystem]")
+    assertCompiles("classOf[GoogleHadoopFS]")
+
   }
 
   test("verify dynamic classloading of GCP providers") {
@@ -41,13 +49,29 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
     })
   }
 
-  ignore("integration testing bigquery load table") {
-    val externalTable = "data.checkouts_parquet"
-    val table = tableUtils.loadTable(externalTable)
-    tableUtils.isPartitioned(externalTable)
-    tableUtils.createDatabase("test_database")
-    tableUtils.allPartitions(externalTable)
+  ignore("integration testing bigquery native table") {
+    val nativeTable = "data.sample_native"
+    val table = tableUtils.loadTable(nativeTable)
     table.show
+    val partitioned = tableUtils.isPartitioned(nativeTable)
+    println(partitioned)
+    // val database = tableUtils.createDatabase("test_database")
+    val allParts = tableUtils.allPartitions(nativeTable)
+    println(allParts)
+  }
+
+  ignore("integration testing bigquery external table") {
+    val externalTable = "data.checkouts_parquet"
+
+    val bs = GoogleHadoopFileSystemConfiguration.BLOCK_SIZE
+    println(bs)
+    val table = tableUtils.loadTable(externalTable)
+    table.show
+    val partitioned = tableUtils.isPartitioned(externalTable)
+    println(partitioned)
+    // val database = tableUtils.createDatabase("test_database")
+    val allParts = tableUtils.allPartitions(externalTable)
+    println(allParts)
   }
 
   ignore("integration testing bigquery partitions") {
