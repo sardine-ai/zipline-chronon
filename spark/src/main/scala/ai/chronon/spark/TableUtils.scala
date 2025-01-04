@@ -24,14 +24,11 @@ import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Query
 import ai.chronon.api.QueryUtils
 import ai.chronon.online.PartitionRange
-import ai.chronon.spark.Extensions.DataPointerOps
-import ai.chronon.spark.Extensions.DfStats
+import ai.chronon.spark.Extensions._
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.SparkException
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
@@ -133,24 +130,17 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
       df
     }
-  def preAggRepartition(rdd: RDD[Row]): RDD[Row] =
-    if (rdd.getNumPartitions < aggregationParallelism) {
-      rdd.repartition(aggregationParallelism)
-    } else {
-      rdd
-    }
 
   // Needs provider
   def tableExists(tableName: String): Boolean = {
-    sparkSession.catalog.tableExists(tableName)
+    Try(loadTable(tableName)).isSuccess
   }
 
   // Needs provider
   def loadTable(tableName: String): DataFrame = {
-    sparkSession.table(tableName)
+    sparkSession.read.load(DataPointer(tableName, sparkSession))
   }
 
-  // Needs provider
   def isPartitioned(tableName: String): Boolean = {
     // TODO: use proper way to detect if a table is partitioned or not
     val schema = getSchemaFromTable(tableName)
@@ -190,7 +180,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  // Needs provider
   def partitions(tableName: String, subPartitionsFilter: Map[String, String] = Map.empty): Seq[String] = {
     if (!tableExists(tableName)) return Seq.empty[String]
     val format = tableReadFormat(tableName)
@@ -231,9 +220,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  // Needs provider
   def getSchemaFromTable(tableName: String): StructType = {
-    sparkSession.sql(s"SELECT * FROM $tableName LIMIT 1").schema
+    sparkSession.read.load(DataPointer(tableName, sparkSession)).limit(1).schema
   }
 
   // method to check if a user has access to a table
@@ -245,7 +233,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     try {
       // retrieve one row from the table
       val partitionFilter = lastAvailablePartition(tableName).getOrElse(fallbackPartition)
-      sparkSession.sql(s"SELECT * FROM $tableName where $partitionColumn='$partitionFilter' LIMIT 1").collect()
+      sparkSession.read
+        .load(DataPointer(tableName, sparkSession))
+        .where(s"$partitionColumn='$partitionFilter'")
+        .limit(1)
+        .collect()
       true
     } catch {
       case e: SparkException =>
@@ -263,11 +255,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  // Needs provider
   def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
     partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].max(x, y))
 
-  // Needs provider
   def firstAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
     partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].min(x, y))
 
@@ -427,7 +417,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }.get
   }
 
-  // Needs provider
   private def repartitionAndWriteInternal(df: DataFrame,
                                           tableName: String,
                                           saveMode: SaveMode,
@@ -499,7 +488,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         .sortWithinPartitions(partitionSortCols.map(col): _*)
         .write
         .mode(saveMode)
-        .insertInto(tableName)
+        .save(DataPointer(tableName, sparkSession))
       logger.info(s"Finished writing to $tableName")
     }
   }
@@ -658,6 +647,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
+  // Needs provider
   private def archiveTableIfExists(tableName: String, timestamp: Option[Instant]): Unit = {
     if (tableExists(tableName)) {
       val humanReadableTimestamp = archiveTimestampFormatter.format(timestamp.getOrElse(Instant.now()))
@@ -746,8 +736,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  wheres: Seq[String],
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
-    val dp = ai.chronon.api.DataPointer.apply(table)
-    var df = dp.toDf(sparkSession)
+    val dp = DataPointer(table, sparkSession)
+    var df = sparkSession.read.load(dp)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
     logger.info(s""" Scanning data:
          |  table: ${dp.tableOrPath.green}
@@ -796,9 +786,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 }
 
 object TableUtils {
-  def apply(sparkSession: SparkSession): TableUtils = {
-    new TableUtils(sparkSession)
-  }
+  def apply(sparkSession: SparkSession) = new TableUtils(sparkSession)
 }
 
 sealed case class IncompatibleSchemaException(inconsistencies: Seq[(String, DataType, DataType)]) extends Exception {

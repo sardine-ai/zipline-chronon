@@ -215,6 +215,7 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcs-connector" % "3.0.3", // it's what's on the cluster
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop3-2.2.26",
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcsio" % "3.0.3", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/gcsio/src/main/java/com/google/cloud/hadoop/gcsio/GoogleCloudStorageFileSystem.java
+    libraryDependencies += "com.google.cloud.bigdataoss" % "util-hadoop" % "3.0.0", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/util-hadoop/src/main/java/com/google/cloud/hadoop/util/HadoopConfigurationProperty.java
     libraryDependencies += "io.circe" %% "circe-yaml" % "1.15.0",
     libraryDependencies += "com.google.cloud.spark" %% s"spark-bigquery-with-dependencies" % "0.41.0",
     libraryDependencies += "com.google.cloud.bigtable" % "bigtable-hbase-2.x" % "2.14.2",
@@ -389,7 +390,6 @@ lazy val hub = (project in file("hub"))
     }
   )
 
-
 val scala_test = "org.scalatest" %% "scalatest" % "3.2.19" % "test"
 val sl4j = "org.slf4j" % "slf4j-api" % slf4jApiVersion
 val logback = "ch.qos.logback" % "logback-classic" % logbackClassicVersion
@@ -403,24 +403,21 @@ val commonDependencies = Seq(
 lazy val orchestration = project
   .dependsOn(online.%("compile->compile;test->test"))
   .settings(
-
     assembly / mainClass := Some("ai.chronon.orchestration.RepoParser"),
     Compile / run / mainClass := Some("ai.chronon.orchestration.RepoParser"),
-
     assembly / assemblyMergeStrategy := {
-      case "log4j2.properties" => MergeStrategy.first
+      case "log4j2.properties"                  => MergeStrategy.first
       case "META-INF/log4j-provider.properties" => MergeStrategy.first
-      case PathList("org", "apache", "logging", "log4j", "core", "config", "plugins", "Log4j2Plugins.dat") => MergeStrategy.first
+      case PathList("org", "apache", "logging", "log4j", "core", "config", "plugins", "Log4j2Plugins.dat") =>
+        MergeStrategy.first
       case x => (assembly / assemblyMergeStrategy).value(x)
     },
-
     libraryDependencies ++= commonDependencies ++ Seq(
       "org.apache.logging.log4j" % "log4j-api" % log4j2_version,
       "org.apache.logging.log4j" % "log4j-core" % log4j2_version,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4j2_version,
-    ),
+      "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4j2_version
+    )
   )
-
 
 ThisBuild / assemblyMergeStrategy := {
   case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard

@@ -5,63 +5,94 @@ import ai.chronon.spark.FormatProvider
 import ai.chronon.spark.Hive
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.ExternalTableDefinition
+import com.google.cloud.bigquery.FormatOptions
 import com.google.cloud.bigquery.StandardTableDefinition
+import com.google.cloud.bigquery.Table
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.bigquery.{TableId => BTableId}
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, to_date}
+
+import scala.collection.JavaConverters._
 
 case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
+  // Order of Precedence for Default Project
+  // Explicitly configured project in code (e.g., setProjectId()).
+  // GOOGLE_CLOUD_PROJECT environment variable.
+  // project_id from the ADC service account JSON file.
+  // Active project in the gcloud CLI configuration.
+  // No default project: An error will occur if no project ID is available.
+  lazy val bqOptions = BigQueryOptions.getDefaultInstance
+  lazy val bigQueryClient = bqOptions.getService
 
-  lazy val bigQueryClient = BigQueryOptions.getDefaultInstance.getService
-  def readFormat(tableName: String): Format = {
-
-    val btTableIdentifier: TableId = BigQueryUtil.parseTableId(tableName)
-    val unshadedTI: BTableId =
-      BTableId.of(btTableIdentifier.getProject, btTableIdentifier.getDataset, btTableIdentifier.getTable)
-
-    val tableOpt = Option(bigQueryClient.getTable(unshadedTI))
-
-    tableOpt match {
-      case Some(table) => {
-        table.getDefinition match {
-          case _: ExternalTableDefinition => BQuery(unshadedTI.getProject)
-          case _: StandardTableDefinition => GCS(unshadedTI.getProject)
-        }
-      }
-      case None => Hive
+  override def resolveTableName(tableName: String): String = {
+    format(tableName: String) match {
+      case GCS(_, uri, _) => uri
+      case _              => tableName
     }
-
-    /**
-    Using federation
-     val tableIdentifier = sparkSession.sessionState.sqlParser.parseTableIdentifier(tableName)
-     val tableMeta = sparkSession.sessionState.catalog.getTableRawMetadata(tableIdentifier)
-    val storageProvider = tableMeta.provider
-    storageProvider match {
-      case Some("com.google.cloud.spark.bigquery") => {
-        val tableProperties = tableMeta.properties
-        val project = tableProperties
-          .get("FEDERATION_BIGQUERY_TABLE_PROPERTY")
-          .map(BigQueryUtil.parseTableId)
-          .map(_.getProject)
-          .getOrElse(throw new IllegalStateException("bigquery project required!"))
-        val bigQueryTableType = tableProperties.get("federation.bigquery.table.type")
-        bigQueryTableType.map(_.toUpperCase) match {
-          case Some("EXTERNAL") => GCS(project)
-          case Some("MANAGED")  => BQuery(project)
-          case None             => throw new IllegalStateException("Dataproc federation service must be available.")
-
-        }
-      }
-
-      case Some("hive") | None => Hive
-    }
-      * */
-
   }
 
-  // For now, fix to BigQuery. We'll clean this up.
-  def writeFormat(tableName: String): Format = ???
+  override def readFormat(tableName: String): Format = format(tableName)
+
+  // Fixed to BigQuery for now.
+  override def writeFormat(tableName: String): Format = BQuery(bqOptions.getProjectId)
+
+  private def format(tableName: String): Format = {
+
+    val btTableIdentifier: TableId = BigQueryUtil.parseTableId(tableName)
+
+    val tableOpt: Option[Table] = Option(
+      bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable))
+    tableOpt
+      .map((table) => {
+
+        if (table.getDefinition.isInstanceOf[ExternalTableDefinition]) {
+          val uris = table.getDefinition
+            .asInstanceOf[ExternalTableDefinition]
+            .getSourceUris
+            .asScala
+            .toList
+            .map((uri) => uri.stripSuffix("/*") + "/")
+
+          assert(uris.length == 1, s"External table ${tableName} can be backed by only one URI.")
+
+          val formatStr = table.getDefinition
+            .asInstanceOf[ExternalTableDefinition]
+            .getFormatOptions
+            .asInstanceOf[FormatOptions]
+            .getType
+
+          GCS(table.getTableId.getProject, uris.head, formatStr)
+        } else if (table.getDefinition.isInstanceOf[StandardTableDefinition]) BQuery(table.getTableId.getProject)
+        else throw new IllegalStateException(s"Cannot support table of type: ${table.getDefinition}")
+      })
+      .getOrElse(Hive)
+
+    /**
+      * Using federation
+      * val tableIdentifier = sparkSession.sessionState.sqlParser.parseTableIdentifier(tableName)
+      * val tableMeta = sparkSession.sessionState.catalog.getTableRawMetadata(tableIdentifier)
+      * val storageProvider = tableMeta.provider
+      * storageProvider match {
+      * case Some("com.google.cloud.spark.bigquery") => {
+      * val tableProperties = tableMeta.properties
+      * val project = tableProperties
+      * .get("FEDERATION_BIGQUERY_TABLE_PROPERTY")
+      * .map(BigQueryUtil.parseTableId)
+      * .map(_.getProject)
+      * .getOrElse(throw new IllegalStateException("bigquery project required!"))
+      * val bigQueryTableType = tableProperties.get("federation.bigquery.table.type")
+      * bigQueryTableType.map(_.toUpperCase) match {
+      * case Some("EXTERNAL") => GCS(project)
+      * case Some("MANAGED")  => BQuery(project)
+      * case None             => throw new IllegalStateException("Dataproc federation service must be available.")
+      *
+      * }
+      *
+      * case Some("hive") | None => Hive
+      * }
+      * */
+  }
 }
 
 case class BQuery(project: String) extends Format {
@@ -120,6 +151,13 @@ case class BQuery(project: String) extends Format {
         .option("project", project)
         .option("query", partValsSql)
         .load()
+        .select(
+          to_date(col("partition_id"),
+                  "yyyyMMdd"
+          ) // Note: this "yyyyMMdd" format is hardcoded but we need to change it to be something else.
+            .as("partition_id"))
+        .na // Should filter out '__NULL__' and '__UNPARTITIONED__'. See: https://cloud.google.com/bigquery/docs/partitioned-tables#date_timestamp_partitioned_tables
+        .drop()
         .as[String]
         .collect
         .toList
