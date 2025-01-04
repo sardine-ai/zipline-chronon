@@ -11,7 +11,8 @@ import com.google.cloud.bigquery.Table
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, to_date}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.to_date
 
 import scala.collection.JavaConverters._
 

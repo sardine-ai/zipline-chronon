@@ -1,7 +1,5 @@
-package ai.chronon.integrations.cloud_gcp.test
+package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.integrations.cloud_gcp.DataprocSubmitter
-import ai.chronon.integrations.cloud_gcp.SubmitterConf
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
