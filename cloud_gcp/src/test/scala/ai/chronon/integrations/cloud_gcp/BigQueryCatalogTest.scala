@@ -1,7 +1,5 @@
-package ai.chronon.integrations.cloud_gcp.test
+package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.integrations.cloud_gcp.BQuery
-import ai.chronon.integrations.cloud_gcp.GcpFormatProvider
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
