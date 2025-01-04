@@ -278,7 +278,7 @@ object Driver {
       val join = new Join(
         args.joinConf,
         args.endDate(),
-        args.buildTableUtils(),
+        tableUtils,
         !args.runFirstHole(),
         selectedJoinParts = args.selectedJoinParts.toOption
       )
