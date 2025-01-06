@@ -325,7 +325,7 @@ object Extensions {
             case "hive" | "delta" | "iceberg" =>
               dfw
                 .format(normalized)
-                .saveAsTable(dataPointer.tableOrPath)
+                .insertInto(dataPointer.tableOrPath)
             case _ =>
               throw new UnsupportedOperationException(s"Unsupported write catalog: ${normalized}")
           }
@@ -334,7 +334,7 @@ object Extensions {
           // None case is just table against default catalog
           dfw
             .format("hive")
-            .saveAsTable(dataPointer.tableOrPath))
+            .insertInto(dataPointer.tableOrPath))
     }
   }
 
