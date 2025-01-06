@@ -131,10 +131,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
       logger.info("Saving output.")
       val outputDf = metricsKvRdd.toFlatDf.withTimeBasedColumn("ds")
       logger.info(s"output schema ${outputDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
-      tableUtils.insertPartitions(outputDf,
-                                  joinConf.metaData.consistencyTable,
-                                  tableProperties = tblProperties,
-                                  autoExpand = true)
+      outputDf.save(joinConf.metaData.consistencyTable, tableProperties = tblProperties, autoExpand = true)
       metricsKvRdd.toAvroDf
         .withTimeBasedColumn(tableUtils.partitionColumn)
         .save(joinConf.metaData.consistencyUploadTable, tblProperties)
