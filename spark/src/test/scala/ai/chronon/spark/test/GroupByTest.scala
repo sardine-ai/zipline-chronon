@@ -170,7 +170,8 @@ class GroupByTest {
     val computed = resultDf.select("user", "ts", "listing_view_last30", "listing_view_count")
     computed.show()
 
-    val expected = eventDf.sqlContext.sql("""
+    val expected = eventDf.sqlContext.sql(
+      """
          |SELECT
          |      events_last_k.user as user,
          |      queries_last_k.ts as ts,
@@ -351,9 +352,10 @@ class GroupByTest {
 
     val columns = aggregationsMetadata.map(a => a.name -> a.columnType).toMap
     assertEquals(Map(
-      "time_spent_ms" -> LongType,
-      "price" -> DoubleType
-    ), columns)
+                   "time_spent_ms" -> LongType,
+                   "price" -> DoubleType
+                 ),
+                 columns)
   }
 
   // test that OrderByLimit and OrderByLimitTimed serialization works well with Spark's data type
@@ -423,8 +425,8 @@ class GroupByTest {
     tableUtils.createDatabase(namespace)
     DataFrameGen.events(spark, sourceSchema, count = 1000, partitions = 200).save(sourceTable)
     val source = Builders.Source.events(
-      query =
-        Builders.Query(selects = Builders.Selects("ts", "item", "time_spent_ms", "price"), startPartition = startPartition),
+      query = Builders.Query(selects = Builders.Selects("ts", "item", "time_spent_ms", "price"),
+                             startPartition = startPartition),
       table = sourceTable
     )
     (source, endPartition)
@@ -560,7 +562,8 @@ class GroupByTest {
     val joinSource = TestUtils.getParentJoin(spark, namespace, "parent_join_table", "parent_gb")
     val query = Builders.Query(startPartition = today)
     val chainingGroupBy = TestUtils.getTestGBWithJoinSource(joinSource, query, namespace, "chaining_gb")
-    val newGroupBy = GroupBy.replaceJoinSource(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = false)
+    val newGroupBy =
+      GroupBy.replaceJoinSource(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = false)
 
     assertEquals(joinSource.metaData.outputTable, newGroupBy.sources.get(0).table)
     assertEquals(joinSource.left.topic + Constants.TopicInvalidSuffix, newGroupBy.sources.get(0).topic)
@@ -656,13 +659,13 @@ class GroupByTest {
           new Window(15, TimeUnit.DAYS),
           new Window(60, TimeUnit.DAYS)
         )
-      ),
+      )
     )
     backfill(name = "unit_test_group_by_descriptive_stats",
-      source = source,
-      endPartition = endPartition,
-      namespace = namespace,
-      tableUtils = tableUtils,
-      additionalAgg = aggs)
+             source = source,
+             endPartition = endPartition,
+             namespace = namespace,
+             tableUtils = tableUtils,
+             additionalAgg = aggs)
   }
 }
