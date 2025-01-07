@@ -51,10 +51,15 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
-      submitter.submit(List("gs://dataproc-temp-us-central1-703996152583-pqtvfptb/jars/training_set.v1"),
-                       "join",
-                       "--end-date=2024-12-10",
-                       "--conf-path=training_set.v1")
+      submitter.submit(
+        List("gs://zipline-jars/training_set.v1",
+             "gs://zipline-jars/dataproc-submitter-conf.yaml",
+             "gs://zipline-jars/additional-confs.yaml"),
+        "join",
+        "--end-date=2024-12-10",
+        "--additional-conf-path=additional-confs.yaml",
+        "--conf-path=training_set.v1"
+      )
     println(submittedJobId)
   }
 
