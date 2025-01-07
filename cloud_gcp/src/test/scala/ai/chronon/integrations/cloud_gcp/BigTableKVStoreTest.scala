@@ -52,13 +52,15 @@ class BigTableKVStoreTest {
   @Before
   def setup(): Unit = {
     // Configure settings to use emulator
-    val dataSettings = BigtableDataSettings.newBuilderForEmulator(bigtableEmulator.getPort)
+    val dataSettings = BigtableDataSettings
+      .newBuilderForEmulator(bigtableEmulator.getPort)
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .setCredentialsProvider(NoCredentialsProvider.create())
       .build()
 
-    val adminSettings = BigtableTableAdminSettings.newBuilderForEmulator(bigtableEmulator.getPort)
+    val adminSettings = BigtableTableAdminSettings
+      .newBuilderForEmulator(bigtableEmulator.getPort)
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .setCredentialsProvider(NoCredentialsProvider.create())
@@ -153,11 +155,10 @@ class BigTableKVStoreTest {
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
-    val putReqs = (0 until 100).map {
-      i =>
-        val key = s"key-$i"
-        val value = s"""{"name": "name-$i", "age": $i}"""
-        PutRequest(key.getBytes, value.getBytes, dataset, None)
+    val putReqs = (0 until 100).map { i =>
+      val key = s"key-$i"
+      val value = s"""{"name": "name-$i", "age": $i}"""
+      PutRequest(key.getBytes, value.getBytes, dataset, None)
     }
 
     val putResults = Await.result(kvStore.multiPut(putReqs), 1.second)
@@ -185,7 +186,9 @@ class BigTableKVStoreTest {
 
     // lets collect all the keys and confirm we got everything
     val allKeys = (listValues1 ++ listValues2).map(v => new String(v.keyBytes, StandardCharsets.UTF_8))
-    allKeys.toSet shouldBe putReqs.map(r => new String(buildRowKey(r.keyBytes, r.dataset), StandardCharsets.UTF_8)).toSet
+    allKeys.toSet shouldBe putReqs
+      .map(r => new String(buildRowKey(r.keyBytes, r.dataset), StandardCharsets.UTF_8))
+      .toSet
   }
 
   @Test
@@ -227,7 +230,8 @@ class BigTableKVStoreTest {
 
     when(mockDataClient.readRowsCallable()).thenReturn(serverStreamingCallable)
     when(serverStreamingCallable.all()).thenReturn(unaryCallable)
-    val failedFuture = ApiFutures.immediateFailedFuture[util.List[Row]](new RuntimeException("some BT exception on read"))
+    val failedFuture =
+      ApiFutures.immediateFailedFuture[util.List[Row]](new RuntimeException("some BT exception on read"))
     when(unaryCallable.futureCall(any[Query])).thenReturn(failedFuture)
 
     val getResult = Await.result(kvStoreWithMocks.multiGet(Seq(getReq1, getReq2)), 1.second)
@@ -323,11 +327,15 @@ class BigTableKVStoreTest {
     val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
     getResult1.size shouldBe 1
     // we expect results to only cover the time range where we have data
-    val expectedTimeSeriesPoints = (queryStartsTs until  dataEndTs by 1.hour.toMillis).toSeq
+    val expectedTimeSeriesPoints = (queryStartsTs until dataEndTs by 1.hour.toMillis).toSeq
     validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTimeSeriesPoints, fakePayload)
   }
 
-  private def writeGeneratedTimeSeriesData(kvStore: BigTableKVStoreImpl, dataset: String, key: String, tsRange: Seq[Long], payload: String): Unit = {
+  private def writeGeneratedTimeSeriesData(kvStore: BigTableKVStoreImpl,
+                                           dataset: String,
+                                           key: String,
+                                           tsRange: Seq[Long],
+                                           payload: String): Unit = {
     val points = Seq.fill(tsRange.size)(payload)
     val putRequests = tsRange.zip(points).map {
       case (ts, point) =>
@@ -350,10 +358,10 @@ class BigTableKVStoreTest {
     }
   }
 
-  private def validateTimeSeriesValueExpectedPayload(response: GetResponse, expectedTimestamps: Seq[Long], expectedPayload: String): Unit = {
-    for (
-      tSeq <- response.values
-    ) {
+  private def validateTimeSeriesValueExpectedPayload(response: GetResponse,
+                                                     expectedTimestamps: Seq[Long],
+                                                     expectedPayload: String): Unit = {
+    for (tSeq <- response.values) {
       tSeq.map(_.millis).toSet shouldBe expectedTimestamps.toSet
       tSeq.map(v => new String(v.bytes, StandardCharsets.UTF_8)).foreach(v => v shouldBe expectedPayload)
       tSeq.length shouldBe expectedTimestamps.length

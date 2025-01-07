@@ -17,12 +17,18 @@
 package ai.chronon.spark.test
 
 import ai.chronon.spark.Driver.OfflineSubcommand
-import ai.chronon.spark.SparkSessionBuilder
 import org.apache.spark.sql.SparkSession
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.rogach.scallop.ScallopConf
+import org.yaml.snakeyaml.Yaml
+
+import scala.io.Source
+
+import collection.JavaConverters._
 
 class OfflineSubcommandTest {
 
@@ -31,7 +37,9 @@ class OfflineSubcommandTest {
 
     override def subcommandName: String = "test"
 
-    override def buildSparkSession(): SparkSession = SparkSessionBuilder.build(subcommandName, local = true)
+    override def buildSparkSession(): SparkSession = super.buildSparkSession()
+
+    override def isLocal: Boolean = true
   }
 
   @Test
@@ -53,5 +61,34 @@ class OfflineSubcommandTest {
     assertEquals("d", args.localTableMapping("c"))
     assertEquals(confPath, args.confPath())
     assertEquals(endData, args.endDate())
+  }
+
+  @Test
+  def additionalConfsParsedCorrectly(): Unit = {
+    implicit val formats: Formats = DefaultFormats
+
+    val url = getClass.getClassLoader.getResource("test-driver-additional-confs.yaml")
+
+    val args = new TestArgs(Seq("--conf-path", "does_not_exist", "--additional-conf-path", url.toURI.getPath).toArray)
+    val sparkSession = args.buildSparkSession()
+    val yamlLoader = new Yaml()
+
+    val confs = Option(getClass.getClassLoader
+      .getResourceAsStream("test-driver-additional-confs.yaml"))
+      .map(Source.fromInputStream)
+      .map((is) =>
+        try { is.mkString }
+        finally { is.close })
+      .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
+      .map((jMap) => Extraction.decompose(jMap.asScala.toMap))
+      .map((jVal) => render(jVal))
+      .map(compact)
+      .map(parse(_).extract[Map[String, String]])
+      .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
+
+    val confKey = "test.yaml.key"
+    assertEquals(confs.get(confKey), sparkSession.conf.getOption(confKey))
+    assertEquals(Some("test_yaml_key"), sparkSession.conf.getOption(confKey))
+    assertTrue(sparkSession.conf.getOption("nonexistent_key").isEmpty)
   }
 }

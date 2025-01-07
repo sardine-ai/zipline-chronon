@@ -1,10 +1,11 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.SparkAuth
-import ai.chronon.spark.SparkSubmitter
+import ai.chronon.spark.JobAuth
+import ai.chronon.spark.JobSubmitter
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
-import io.circe.generic.auto._
-import io.circe.yaml.parser
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
+import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
 
@@ -27,7 +28,7 @@ case class GeneralJob(
     mainClass: String
 )
 
-class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: SubmitterConf) extends SparkSubmitter {
+class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: SubmitterConf) extends JobSubmitter {
 
   override def status(jobId: String): Unit = {
     try {
@@ -87,18 +88,23 @@ object DataprocSubmitter {
     new DataprocSubmitter(jobControllerClient, conf)
   }
 
-  def loadConfig: SubmitterConf = {
-    val is = getClass.getClassLoader.getResourceAsStream("dataproc-submitter-conf.yaml")
-    val confStr = Source.fromInputStream(is).mkString
-    val res: Either[io.circe.Error, SubmitterConf] = parser
-      .parse(confStr)
-      .flatMap(_.as[SubmitterConf])
-    res match {
+  private[cloud_gcp] def loadConfig: SubmitterConf = {
+    val inputStreamOption = Option(getClass.getClassLoader.getResourceAsStream("dataproc-submitter-conf.yaml"))
+    val yamlLoader = new Yaml()
+    implicit val formats: Formats = DefaultFormats
+    inputStreamOption
+      .map(Source.fromInputStream)
+      .map((is) =>
+        try { is.mkString }
+        finally { is.close })
+      .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
+      .map((jMap) => Extraction.decompose(jMap.asScala.toMap))
+      .map((jVal) => render(jVal))
+      .map(compact)
+      .map(parse(_).extract[SubmitterConf])
+      .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
 
-      case Right(v) => v
-      case Left(e)  => throw e
-    }
   }
 }
 
-object DataprocAuth extends SparkAuth {}
+object DataprocAuth extends JobAuth {}

@@ -1,6 +1,6 @@
 package ai.chronon.spark
 
-trait SparkSubmitter {
+trait JobSubmitter {
 
   def submit(files: List[String], args: String*): String
 
@@ -9,6 +9,6 @@ trait SparkSubmitter {
   def kill(jobId: String): Unit
 }
 
-abstract class SparkAuth {
+abstract class JobAuth {
   def token(): Unit = {}
 }
