@@ -84,11 +84,12 @@ class MigrationCompareTest {
 
     //--------------------------------Staging Query-----------------------------
     val stagingQueryConf = Builders.StagingQuery(
-      query = s"select * from ${joinConf.metaData.outputTable} WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
+      query =
+        s"select * from ${joinConf.metaData.outputTable} WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_3",
-        namespace = namespace,
-        tableProperties = Map("key" -> "val"))
+                                   namespace = namespace,
+                                   tableProperties = Map("key" -> "val"))
     )
 
     (joinConf, stagingQueryConf)
@@ -113,8 +114,8 @@ class MigrationCompareTest {
       query = s"select item, ts, ds from ${joinConf.metaData.outputTable}",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_4",
-        namespace = namespace,
-        tableProperties = Map("key" -> "val"))
+                                   namespace = namespace,
+                                   tableProperties = Map("key" -> "val"))
     )
 
     val (compareDf, metricsDf, metrics: DataMetrics) =
@@ -141,8 +142,8 @@ class MigrationCompareTest {
       query = s"select * from ${joinConf.metaData.outputTable} where ds BETWEEN '${monthAgo}' AND '${today}'",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_5",
-        namespace = namespace,
-        tableProperties = Map("key" -> "val"))
+                                   namespace = namespace,
+                                   tableProperties = Map("key" -> "val"))
     )
 
     val (compareDf, metricsDf, metrics: DataMetrics) =

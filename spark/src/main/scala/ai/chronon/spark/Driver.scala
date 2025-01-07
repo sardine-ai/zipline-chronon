@@ -49,11 +49,14 @@ import org.apache.spark.sql.streaming.StreamingQueryListener
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryProgressEvent
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryStartedEvent
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryTerminatedEvent
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Subcommand
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.yaml.snakeyaml.Yaml
 
 import java.io.File
 import java.nio.file.Files
@@ -86,6 +89,9 @@ object Driver {
   trait OfflineSubcommand {
     this: ScallopConf =>
     val confPath: ScallopOption[String] = opt[String](required = true, descr = "Path to conf")
+
+    val additionalConfPath: ScallopOption[String] =
+      opt[String](required = false, descr = "Path to additional driver job configurations")
 
     val runFirstHole: ScallopOption[Boolean] =
       opt[Boolean](required = false,
@@ -144,33 +150,44 @@ object Driver {
 
     def subcommandName(): String
 
-    def isLocal: Boolean = localTableMapping.nonEmpty || localDataPath.isDefined
+    protected def isLocal: Boolean = localTableMapping.nonEmpty || localDataPath.isDefined
 
     protected def buildSparkSession(): SparkSession = {
+      implicit val formats: Formats = DefaultFormats
+      val yamlLoader = new Yaml()
+      val additionalConfs = additionalConfPath.toOption
+        .map(Source.fromFile)
+        .map((src) =>
+          try { src.mkString }
+          finally { src.close })
+        .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
+        .map((map) => Extraction.decompose(map.asScala.toMap))
+        .map((v) => render(v))
+        .map(compact)
+        .map((str) => parse(str).extract[Map[String, String]])
+
+      // We use the KryoSerializer for group bys and joins since we serialize the IRs.
+      // But since staging query is fairly freeform, it's better to stick to the java serializer.
+      val session =
+        SparkSessionBuilder.build(
+          subcommandName(),
+          local = isLocal,
+          localWarehouseLocation = localWarehouseLocation.toOption,
+          enforceKryoSerializer = !subcommandName().contains("staging_query"),
+          additionalConfig = additionalConfs
+        )
       if (localTableMapping.nonEmpty) {
-        val localSession = SparkSessionBuilder.build(subcommandName(),
-                                                     local = true,
-                                                     localWarehouseLocation = localWarehouseLocation.toOption)
         localTableMapping.foreach {
           case (table, filePath) =>
             val file = new File(filePath)
-            LocalDataLoader.loadDataFileAsTable(file, localSession, table)
+            LocalDataLoader.loadDataFileAsTable(file, session, table)
         }
-        localSession
       } else if (localDataPath.isDefined) {
         val dir = new File(localDataPath())
         assert(dir.exists, s"Provided local data path: ${localDataPath()} doesn't exist")
-        val localSession =
-          SparkSessionBuilder.build(subcommandName(),
-                                    local = true,
-                                    localWarehouseLocation = localWarehouseLocation.toOption)
-        LocalDataLoader.loadDataRecursively(dir, localSession)
-        localSession
-      } else {
-        // We use the KryoSerializer for group bys and joins since we serialize the IRs.
-        // But since staging query is fairly freeform, it's better to stick to the java serializer.
-        SparkSessionBuilder.build(subcommandName(), enforceKryoSerializer = !subcommandName().contains("staging_query"))
+        LocalDataLoader.loadDataRecursively(dir, session)
       }
+      session
     }
 
     def buildTableUtils(): TableUtils = {
