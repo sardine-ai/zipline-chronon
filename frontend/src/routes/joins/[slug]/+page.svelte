@@ -1,20 +1,22 @@
 <script lang="ts">
+	import { untrack, onMount } from 'svelte';
 	import EChart from '$lib/components/EChart/EChart.svelte';
+	import { connect } from 'echarts';
 	import type { EChartOption, EChartsType, ECElementEvent } from 'echarts';
+	import { queryParameters } from 'sveltekit-search-params';
+	import IntersectionObserver from 'svelte-intersection-observer';
+	import { fade } from 'svelte/transition';
 
-	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
 	import IconTableCells from '~icons/heroicons/table-cells-16-solid';
 	import IconChartLine from '~icons/zipline-ai/chart-line';
+
+	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
 	import CollapsibleSection from '$lib/components/CollapsibleSection/CollapsibleSection.svelte';
-	import { connect } from 'echarts';
 	import type { FeatureResponse, TimeSeriesItem } from '$lib/types/Model/Model';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { untrack } from 'svelte';
 	import PageHeader from '$lib/components/PageHeader/PageHeader.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import ResetZoomButton from '$lib/components/ResetZoomButton/ResetZoomButton.svelte';
-	import IntersectionObserver from 'svelte-intersection-observer';
-	import { fade } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button';
 	import { Api } from '$lib/api/api';
 	import InfoTooltip from '$lib/components/InfoTooltip/InfoTooltip.svelte';
@@ -28,9 +30,12 @@
 	import { getSeriesColor } from '$lib/util/chart';
 	import { handleChartHighlight } from '$lib/util/chart';
 	import ChartControls from '$lib/components/ChartControls/ChartControls.svelte';
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { getSortDirection, sortDistributions, type SortContext } from '$lib/util/sort';
+	import {
+		getSortParamsConfig,
+		getSortParamKey,
+		sortDistributions,
+		type SortContext
+	} from '$lib/util/sort';
 
 	const api = new Api();
 
@@ -447,10 +452,13 @@
 		loadDistributions();
 	});
 
-	const sortedDistributions = $derived.by(() => {
-		const distributionsSort = getSortDirection($page.url.searchParams, 'distributions');
-		return sortDistributions(distributions, distributionsSort);
+	const sortContext = 'distributions';
+	const sortKey = getSortParamKey(sortContext);
+	const params = queryParameters(getSortParamsConfig(sortContext), {
+		pushHistory: false,
+		showDefaults: false
 	});
+	const sortedDistributions = $derived(sortDistributions(distributions, params[sortKey]));
 
 	let selectedTab = $state<SortContext>('drift');
 

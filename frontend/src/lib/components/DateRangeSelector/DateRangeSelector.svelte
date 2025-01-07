@@ -1,33 +1,57 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
+	import { queryParameters } from 'sveltekit-search-params';
+	import type { DateRange } from 'bits-ui';
+	import { DateFormatter, getLocalTimeZone, fromAbsolute } from '@internationalized/date';
+
 	import {
 		DATE_RANGE_PARAM,
 		DATE_RANGES,
 		CUSTOM,
 		DATE_RANGE_START_PARAM,
 		DATE_RANGE_END_PARAM,
-		type DateRangeOption,
 		getDateRangeByValue
 	} from '$lib/constants/date-ranges';
 	import { Button } from '$lib/components/ui/button';
 	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
 	import IconCalendarDateRange from '~icons/heroicons/calendar-date-range-16-solid';
-	import type { DateRange } from 'bits-ui';
-	import { DateFormatter, getLocalTimeZone, fromAbsolute } from '@internationalized/date';
+
 	import { cn } from '$lib/utils';
 	import { RangeCalendar } from '$lib/components/ui/range-calendar/index';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { untrack } from 'svelte';
-	import { parseDateRangeParams } from '$lib/util/date-ranges';
+	import { getDateRangeParamsConfig } from '$lib/util/date-ranges';
+
+	const params = queryParameters(getDateRangeParamsConfig(), {
+		pushHistory: false,
+		showDefaults: false
+	});
 
 	const df = new DateFormatter('en-US', {
 		dateStyle: 'medium'
 	});
 
-	let selectDateRange: DateRangeOption | undefined = $state(undefined);
+	let selectDateRange = $derived(getDateRangeByValue(params[DATE_RANGE_PARAM]));
+
 	let calendarDateRange: DateRange | undefined = $state({
 		start: undefined,
 		end: undefined
+	});
+
+	// Update `calendarDateRange` when `selectDateRange` (preset selection) changes
+	$effect(() => {
+		const selectedRange = selectDateRange?.getRange();
+		const isCustomPreset = selectDateRange?.value === CUSTOM;
+		untrack(() => {
+			calendarDateRange = {
+				start: fromAbsolute(
+					isCustomPreset ? params[DATE_RANGE_START_PARAM] : selectedRange?.[0],
+					getLocalTimeZone()
+				),
+				end: fromAbsolute(
+					isCustomPreset ? params[DATE_RANGE_END_PARAM] : selectedRange?.[1],
+					getLocalTimeZone()
+				)
+			};
+		});
 	});
 
 	let dateRangePopoverOpen = $state(false);
@@ -42,39 +66,22 @@
 		if (newSelectedDateRange && newSelectedDateRange.start && newSelectedDateRange.end) {
 			const startDate = newSelectedDateRange.start.toDate(getLocalTimeZone()).getTime();
 			const endDate = newSelectedDateRange.end.toDate(getLocalTimeZone()).getTime();
-			updateURLParams(CUSTOM, startDate.toString(), endDate.toString());
+			updateURLParams(CUSTOM, startDate, endDate);
 			calendarDateRangePopoverOpen = false;
 		}
 	}
 
-	function updateURLParams(range: string, start?: string, end?: string) {
-		const url = new URL($page.url);
-		url.searchParams.set(DATE_RANGE_PARAM, range);
+	function updateURLParams(range: string, start?: number, end?: number) {
+		params[DATE_RANGE_PARAM] = range;
 
 		if (range === CUSTOM && start && end) {
-			url.searchParams.set(DATE_RANGE_START_PARAM, start);
-			url.searchParams.set(DATE_RANGE_END_PARAM, end);
+			params[DATE_RANGE_START_PARAM] = start;
+			params[DATE_RANGE_END_PARAM] = end;
 		} else {
-			url.searchParams.delete(DATE_RANGE_START_PARAM);
-			url.searchParams.delete(DATE_RANGE_END_PARAM);
+			params[DATE_RANGE_START_PARAM] = null;
+			params[DATE_RANGE_END_PARAM] = null;
 		}
-
-		goto(url.toString(), { replaceState: true });
 	}
-
-	$effect(() => {
-		const url = new URL($page.url);
-		untrack(() => {
-			const { dateRangeValue, startTimestamp, endTimestamp } = parseDateRangeParams(
-				url.searchParams
-			);
-			selectDateRange = getDateRangeByValue(dateRangeValue);
-			calendarDateRange = {
-				start: fromAbsolute(Number(startTimestamp), getLocalTimeZone()),
-				end: fromAbsolute(Number(endTimestamp), getLocalTimeZone())
-			};
-		});
-	});
 
 	function getNonCustomDateRanges() {
 		return DATE_RANGES.filter((range) => range.value !== CUSTOM);

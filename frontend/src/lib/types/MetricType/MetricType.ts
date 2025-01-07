@@ -1,3 +1,6 @@
+import type { EncodeAndDecodeOptions } from 'sveltekit-search-params/sveltekit-search-params';
+import { getSearchParamValues } from '$lib/util/search-params';
+
 export const METRIC_TYPES = ['jsd', 'hellinger', 'psi'] as const;
 export type MetricType = (typeof METRIC_TYPES)[number];
 
@@ -15,7 +18,18 @@ export const METRIC_SCALES: Record<MetricType, { min: number; max: number }> = {
 	psi: { min: 0, max: 25 }
 };
 
+export function getMetricTypeParamsConfig() {
+	return {
+		metric: {
+			encode: (value) => value,
+			decode: (value) =>
+				METRIC_TYPES.includes(value as MetricType) ? (value as MetricType) : null,
+			defaultValue: DEFAULT_METRIC_TYPE
+		} satisfies EncodeAndDecodeOptions<MetricType>
+	};
+}
+
 export function getMetricTypeFromParams(searchParams: URLSearchParams): MetricType {
-	const metric = searchParams.get('metric');
-	return METRIC_TYPES.includes(metric as MetricType) ? (metric as MetricType) : DEFAULT_METRIC_TYPE;
+	const paramsConfig = getMetricTypeParamsConfig();
+	return getSearchParamValues(searchParams, paramsConfig).metric;
 }

@@ -1,3 +1,5 @@
+import { ssp } from 'sveltekit-search-params';
+
 import {
 	DATE_RANGE_PARAM,
 	DATE_RANGE_START_PARAM,
@@ -5,30 +7,34 @@ import {
 	PAST_1_WEEK,
 	getDateRangeByValue
 } from '$lib/constants/date-ranges';
+import { getSearchParamValues } from './search-params';
 
 export function getDateRange(range: string): [number, number] {
 	const dateRange = getDateRangeByValue(range);
 	return dateRange ? dateRange.getRange() : getDateRangeByValue(PAST_1_WEEK)!.getRange();
 }
 
+export function getDateRangeParamsConfig() {
+	return {
+		[DATE_RANGE_PARAM]: ssp.string(PAST_1_WEEK),
+		[DATE_RANGE_START_PARAM]: ssp.number(),
+		[DATE_RANGE_END_PARAM]: ssp.number()
+	};
+}
+
 export function parseDateRangeParams(searchParams: URLSearchParams) {
-	const dateRangeValue = searchParams.get(DATE_RANGE_PARAM);
-	const startParam = searchParams.get(DATE_RANGE_START_PARAM);
-	const endParam = searchParams.get(DATE_RANGE_END_PARAM);
+	const paramsConfig = getDateRangeParamsConfig();
+	const paramValues = getSearchParamValues(searchParams, paramsConfig);
 
-	let startTimestamp: number;
-	let endTimestamp: number;
-
-	if (startParam && endParam) {
-		startTimestamp = Number(startParam);
-		endTimestamp = Number(endParam);
-	} else {
-		[startTimestamp, endTimestamp] = getDateRange(dateRangeValue || PAST_1_WEEK);
+	if (paramValues[DATE_RANGE_START_PARAM] == null || paramValues[DATE_RANGE_END_PARAM] == null) {
+		const [start, end] = getDateRange(paramValues[DATE_RANGE_PARAM] || PAST_1_WEEK);
+		paramValues[DATE_RANGE_START_PARAM] = start;
+		paramValues[DATE_RANGE_END_PARAM] = end;
 	}
 
 	return {
-		dateRangeValue: dateRangeValue || PAST_1_WEEK,
-		startTimestamp,
-		endTimestamp
+		dateRangeValue: paramValues[DATE_RANGE_PARAM],
+		startTimestamp: paramValues[DATE_RANGE_START_PARAM],
+		endTimestamp: paramValues[DATE_RANGE_END_PARAM]
 	};
 }

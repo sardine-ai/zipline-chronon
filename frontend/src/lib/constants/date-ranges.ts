@@ -61,6 +61,6 @@ export const DATE_RANGES: DateRange[] = [
 
 export type DateRangeOption = (typeof DATE_RANGES)[number];
 
-export function getDateRangeByValue(value: string): DateRange | undefined {
+export function getDateRangeByValue(value: string | null): DateRange | undefined {
 	return DATE_RANGES.find((range) => range.value === value);
 }

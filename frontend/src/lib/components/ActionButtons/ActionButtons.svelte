@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { queryParameters } from 'sveltekit-search-params';
+
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 
@@ -7,14 +9,7 @@
 	import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
 	import IconXMark from '~icons/heroicons/x-mark-16-solid';
 
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import {
-		getSortDirection,
-		updateContextSort,
-		type SortDirection,
-		type SortContext
-	} from '$lib/util/sort';
+	import { getSortParamKey, type SortContext, getSortParamsConfig } from '$lib/util/sort';
 
 	let {
 		showCluster = false,
@@ -30,14 +25,13 @@
 
 	let activeCluster = showCluster ? 'GroupBys' : null;
 
-	let currentSort: SortDirection = $derived.by(() =>
-		getSortDirection($page.url.searchParams, context)
+	const sortKey = $derived(getSortParamKey(context));
+	const params = $derived(
+		queryParameters(getSortParamsConfig(context), { pushHistory: false, showDefaults: false })
 	);
 
-	function handleSort() {
-		const newSort: SortDirection = currentSort === 'asc' ? 'desc' : 'asc';
-		const url = updateContextSort($page.url, context, newSort);
-		goto(url, { replaceState: true });
+	function toggleSort() {
+		params[sortKey] = params[sortKey] === 'asc' ? 'desc' : 'asc';
 	}
 </script>
 
@@ -61,9 +55,9 @@
 	<!-- Action Buttons Section -->
 	<div class="flex gap-3">
 		{#if showSort}
-			<Button variant="secondary" size="sm" icon="leading" on:click={handleSort}>
+			<Button variant="secondary" size="sm" icon="leading" on:click={toggleSort}>
 				<IconArrowsUpDown />
-				Sort {currentSort === 'asc' ? 'A-Z' : 'Z-A'}
+				Sort {params[sortKey] === 'asc' ? 'A-Z' : 'Z-A'}
 			</Button>
 		{/if}
 		<Button variant="secondary" size="sm" icon="leading" disabled>
