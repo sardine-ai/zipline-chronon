@@ -9,7 +9,7 @@ export function getSearchParamValues(
 ) {
 	const paramEntries = Object.entries(paramsConfig).map(([paramName, paramConfig]) => {
 		const value = searchParams.get(paramName);
-		let decodedValue = paramConfig.decode(value) ?? paramConfig.defaultValue;
+		const decodedValue = paramConfig.decode(value) ?? paramConfig.defaultValue;
 		return [paramName, decodedValue];
 	});
 	return Object.fromEntries(paramEntries);
