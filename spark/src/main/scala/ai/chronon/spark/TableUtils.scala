@@ -82,6 +82,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val bloomFilterThreshold: Long =
     sparkSession.conf.get("spark.chronon.backfill.bloomfilter.threshold", "1000000").toLong
 
+  val minWriteShuffleParallelism = 200
+
   // see what's allowed and explanations here: https://sparkbyexamples.com/spark/spark-persistence-storage-levels/
   private val cacheLevelString: String =
     sparkSession.conf.get("spark.chronon.table_write.cache.level", "NONE").toUpperCase()
@@ -471,7 +473,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val dailyFileCount = outputParallelism.getOrElse(dailyFileCountBounded)
 
       // finalized shuffle parallelism
-      val shuffleParallelism = dailyFileCount * nonZeroTablePartitionCount
+      val shuffleParallelism = Math.max(dailyFileCount * nonZeroTablePartitionCount, minWriteShuffleParallelism)
       val saltCol = "random_partition_salt"
       val saltedDf = df.withColumn(saltCol, round(rand() * (dailyFileCount + 1)))
 
