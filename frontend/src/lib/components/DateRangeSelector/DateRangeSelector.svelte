@@ -41,16 +41,15 @@
 		const selectedRange = selectDateRange?.getRange();
 		const isCustomPreset = selectDateRange?.value === CUSTOM;
 		untrack(() => {
-			calendarDateRange = {
-				start: fromAbsolute(
-					isCustomPreset ? params[DATE_RANGE_START_PARAM] : selectedRange?.[0],
-					getLocalTimeZone()
-				),
-				end: fromAbsolute(
-					isCustomPreset ? params[DATE_RANGE_END_PARAM] : selectedRange?.[1],
-					getLocalTimeZone()
-				)
-			};
+			const startRange = isCustomPreset ? params[DATE_RANGE_START_PARAM] : selectedRange?.[0];
+			const endRange = isCustomPreset ? params[DATE_RANGE_END_PARAM] : selectedRange?.[1];
+
+			if (startRange && endRange) {
+				calendarDateRange = {
+					start: fromAbsolute(startRange, getLocalTimeZone()),
+					end: fromAbsolute(endRange, getLocalTimeZone())
+				};
+			}
 		});
 	});
 
