@@ -63,4 +63,21 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     println(submittedJobId)
   }
 
+  ignore("Used to test GBU bulk load locally. Do not enable this in CI/CD!") {
+
+    val submitter = DataprocSubmitter()
+    val submittedJobId =
+      submitter.submit(List.empty,
+        "groupby-upload-bulk-load",
+        "-ZGCP_PROJECT_ID=bigtable-project-id",
+        "-ZGCP_INSTANCE_ID=bigtable-instance-id",
+        "--online-jar=cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
+        "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
+        "--src-offline-table=data.test_gbu",
+        "--groupby-name=quickstart.purchases.v1",
+        "--partition-string=2024-01-01")
+    println(submittedJobId)
+    assertEquals(submittedJobId, "mock-job-id")
+  }
+
 }
