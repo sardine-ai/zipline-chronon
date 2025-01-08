@@ -12,6 +12,7 @@ import com.google.cloud.bigquery.connector.common.BigQueryUtil
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.date_format
 import org.apache.spark.sql.functions.to_date
 
 import scala.collection.JavaConverters._
@@ -147,15 +148,23 @@ case class BQuery(project: String) extends Format {
            |
            |""".stripMargin
 
+      // TODO: remove temporary hack. this is done because the existing raw data is in the date format yyyy-MM-dd
+      //  but partition values in bigquery's INFORMATION_SCHEMA.PARTITIONS are in yyyyMMdd format.
+      //  moving forward, for bigquery gcp we should default to storing raw data in yyyyMMdd format.
+      val partitionFormat = sparkSession.conf.get("spark.chronon.partition.format", "yyyyMMdd")
+
       val partitionVals = sparkSession.read
         .format("bigquery")
         .option("project", project)
         .option("query", partValsSql)
         .load()
         .select(
-          to_date(col("partition_id"),
-                  "yyyyMMdd"
-          ) // Note: this "yyyyMMdd" format is hardcoded but we need to change it to be something else.
+          date_format(
+            to_date(
+              col("partition_id"),
+              "yyyyMMdd" // Note: this "yyyyMMdd" format is hardcoded but we need to change it to be something else.
+            ),
+            partitionFormat)
             .as("partition_id"))
         .na // Should filter out '__NULL__' and '__UNPARTITIONED__'. See: https://cloud.google.com/bigquery/docs/partitioned-tables#date_timestamp_partitioned_tables
         .drop()
