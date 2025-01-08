@@ -19,6 +19,7 @@ package ai.chronon.spark.utils
 import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructType
 import ai.chronon.online.Fetcher.Response
 import ai.chronon.online._
@@ -40,9 +41,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.Seq
 import scala.concurrent.Future
-import scala.util.ScalaJavaConversions.IteratorOps
-import scala.util.ScalaJavaConversions.JListOps
-import scala.util.ScalaJavaConversions.JMapOps
 import scala.util.Success
 
 class MockDecoder(inputSchema: StructType) extends Serde {

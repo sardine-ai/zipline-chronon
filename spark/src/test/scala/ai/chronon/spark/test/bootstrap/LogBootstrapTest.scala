@@ -17,6 +17,7 @@
 package ai.chronon.spark.test.bootstrap
 
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
@@ -37,7 +38,6 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions._
 
 class LogBootstrapTest {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

@@ -21,6 +21,7 @@ import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
@@ -44,7 +45,6 @@ import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.collection.Seq
 import scala.concurrent.ExecutionContext
-import scala.util.ScalaJavaConversions._
 
 class ChainingFetcherTest extends TestCase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

@@ -16,10 +16,11 @@ class NullnessCountersAggregatorTest extends AnyFlatSpec with Matchers with Befo
   override def beforeAll(): Unit = {
     super.beforeAll()
 
-    val schema = StructType(Seq(
-      StructField("id", IntegerType, nullable = false),
-      StructField("string_array", ArrayType(StringType, containsNull = true), nullable = true)
-    ))
+    val schema = StructType(
+      Seq(
+        StructField("id", IntegerType, nullable = false),
+        StructField("string_array", ArrayType(StringType, containsNull = true), nullable = true)
+      ))
 
     val data = Seq(
       Row(1, Array("a", null, "c", null)),
@@ -50,7 +51,8 @@ class NullnessCountersAggregatorTest extends AnyFlatSpec with Matchers with Befo
         |""".stripMargin
     )
     innerDf.show()
-    val resultDf = spark.sql("""
+    val resultDf =
+      spark.sql("""
       WITH array_counts AS (
         SELECT
           id,
@@ -71,7 +73,7 @@ class NullnessCountersAggregatorTest extends AnyFlatSpec with Matchers with Befo
     resultDf.printSchema()
 
     val result = resultDf.collect().head
-    result.getLong(0) shouldBe 4  // Total nulls
+    result.getLong(0) shouldBe 4 // Total nulls
     result.getLong(1) shouldBe 12 // Total size (including nulls)
   }
 }

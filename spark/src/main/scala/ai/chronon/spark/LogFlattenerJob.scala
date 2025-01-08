@@ -18,6 +18,7 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
@@ -37,7 +38,6 @@ import java.util.Base64
 import scala.collection.Seq
 import scala.collection.mutable
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 

@@ -1,14 +1,13 @@
 package ai.chronon.online.stats
 
 import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Window
 import ai.chronon.observability.DriftMetric
 import ai.chronon.observability.TileDrift
 import ai.chronon.observability.TileSummary
 import ai.chronon.online.stats.DriftMetrics.histogramDistance
 import ai.chronon.online.stats.DriftMetrics.percentileDistance
-
-import scala.util.ScalaJavaConversions.IteratorOps
 
 object TileDriftCalculator {
 

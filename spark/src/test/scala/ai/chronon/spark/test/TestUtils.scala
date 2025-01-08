@@ -18,6 +18,7 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
@@ -26,8 +27,6 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
-
-import scala.util.ScalaJavaConversions.JListOps
 
 object TestUtils {
   def createViewsGroupBy(namespace: String,

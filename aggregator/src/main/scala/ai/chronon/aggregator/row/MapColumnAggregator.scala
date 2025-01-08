@@ -18,9 +18,9 @@ package ai.chronon.aggregator.row
 
 import ai.chronon.aggregator.base.SimpleAggregator
 import ai.chronon.api.Row
+import ai.chronon.api.ScalaJavaConversions._
 
 import java.util
-import scala.util.ScalaJavaConversions.IteratorOps
 
 class MapColumnAggregator[Input, IR, Output](agg: SimpleAggregator[Input, IR, Output],
                                              columnIndices: ColumnIndices,

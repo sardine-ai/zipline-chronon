@@ -19,6 +19,7 @@ package ai.chronon.spark.streaming
 import ai.chronon.api
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.KVStore.PutRequest
@@ -52,10 +53,6 @@ import java.util
 import java.util.Base64
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.util.ScalaJavaConversions.IteratorOps
-import scala.util.ScalaJavaConversions.JIteratorOps
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 
 // micro batching destroys and re-creates these objects repeatedly through ForeachBatchWriter and MapFunction
 // this allows for re-use

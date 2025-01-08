@@ -1,0 +1,8 @@
+# Contains default rules and functions available to all BUILD files
+
+load(
+    "//tools/build_rules:common.bzl",
+    "jar",
+    "scala_jar")
+
+load("//tools/build_rules:maven_artifact.bzl", "maven_artifact", "scala_artifact")
