@@ -56,23 +56,29 @@ def extract_and_convert(
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
-    
+
     if not output_root:
         output_root = chronon_root
 
     _print_highlighted("Using chronon root path", chronon_root)
-    
+
     chronon_root_path = os.path.expanduser(chronon_root)
     utils.chronon_root_path = chronon_root_path
 
-    
     # Get list of subdirectories in input_path that match FOLDER_NAME_TO_CLASS keys
-    obj_folder_names = [d for d in os.listdir(chronon_root) if d in FOLDER_NAME_TO_CLASS.keys()]
-    assert obj_folder_names, f"No valid chronon subdirs {FOLDER_NAME_TO_CLASS.keys()} found within {chronon_root}"
-    _print_highlighted(f"Compiling the following directories within {chronon_root_path}:", f"\n {obj_folder_names} ")
+    obj_folder_names = [
+        d for d in os.listdir(chronon_root) if d in FOLDER_NAME_TO_CLASS.keys()
+    ]
+    assert (
+        obj_folder_names
+    ), f"No valid chronon subdirs {FOLDER_NAME_TO_CLASS.keys()} found within {chronon_root}"
+    _print_highlighted(
+        f"Compiling the following directories within {chronon_root_path}:",
+        f"\n {obj_folder_names} ",
+    )
 
     validator = ChrononRepoValidator(
-            chronon_root, os.path.join(chronon_root_path, "production"), log_level=log_level
+        chronon_root, os.path.join(chronon_root_path, "production"), log_level=log_level
     )
 
     compile_errors = {}
@@ -81,16 +87,18 @@ def extract_and_convert(
 
         obj_class = FOLDER_NAME_TO_CLASS[obj_folder_name]
         object_input_path = os.path.join(chronon_root_path, obj_folder_name)
-        
+
         results, obj_folder_errors, target_file_error = eo.from_folderV2(
             object_input_path, target_object_file, obj_class
         )
-        
+
         if target_file_error:
-            raise ValueError(f"Error in file {target_object_file}: \n {target_file_error}")
-            
+            raise ValueError(
+                f"Error in file {target_object_file}: \n {target_file_error}"
+            )
+
         compile_errors.update(obj_folder_errors)
-        
+
         full_output_root = os.path.join(chronon_root_path, output_root)
         teams_path = os.path.join(chronon_root_path, TEAMS_FILE_PATH)
 
@@ -98,12 +106,7 @@ def extract_and_convert(
             team_name = name.split(".")[0]
             _set_team_level_metadata(obj, teams_path, team_name)
             _set_templated_values(obj, obj_class, teams_path, team_name)
-            obj_write_errors = _write_obj(
-                full_output_root,
-                validator,
-                name,
-                obj
-            )
+            obj_write_errors = _write_obj(full_output_root, validator, name, obj)
             if obj_write_errors:
                 compile_errors[origin_file] = obj_write_errors
             else:
@@ -132,7 +135,7 @@ def show_lineage_and_schema(target_object):
     """
     Shows useful information to the user about their compiled object
     """
-    
+
     try:
         """
         Talk to ZiplineHub and get back somemething to display.
@@ -145,34 +148,38 @@ def show_lineage_and_schema(target_object):
         """
         raise NotImplementedError("TODO")
     except Exception as e:
-        
-        _print_warning(f"Failed to connect to ZiplineHub: {str(e)}\n\n" + 
-            "Showing output column names, but cannot show schema/lineage without ZiplineHub.\n\n")
-        
+
+        _print_warning(
+            f"Failed to connect to ZiplineHub: {str(e)}\n\n"
+            + "Showing output column names, but cannot show schema/lineage without ZiplineHub.\n\n"
+        )
+
         obj_class = target_object.__class__
 
         if obj_class is Join:
             _print_features_names(
-                f"Output Features for {target_object.metaData.name} (Join):", "\n - " + "\n - ".join(get_join_output_columns(target_object))
+                f"Output Features for {target_object.metaData.name} (Join):",
+                "\n - " + "\n - ".join(get_join_output_columns(target_object)),
             )
 
         if obj_class is GroupBy:
             _print_features_names(
-                f"Output GroupBy Features for {target_object.metaData.name} (GroupBy)", "\n - " + "\n - ".join(get_group_by_output_columns(target_object))
+                f"Output GroupBy Features for {target_object.metaData.name} (GroupBy)",
+                "\n - " + "\n - ".join(get_group_by_output_columns(target_object)),
             )
-    
+
 
 def create_error_logs(compile_errors, chronon_root_path: str):
     """
     Creates an error log file containing compilation errors for each file.
-    
+
     Args:
         errors: Dict mapping filenames to exception strings
         chronon_root_path: Path to chronon root directory
     """
-        
+
     error_log_path = os.path.join(chronon_root_path, "errors.log")
-    
+
     with open(error_log_path, "w") as f:
         f.write("Compilation errors: \n\n")
         for filename, error in compile_errors.items():
@@ -180,10 +187,16 @@ def create_error_logs(compile_errors, chronon_root_path: str):
             f.write(f"{str(error)}\n\n")
 
     _print_warning(
-        "\n\n Warning -- The following files have errors preventing the compilation of Zipline objects:\n\n" +
-        "\n".join([f"- {os.path.relpath(file, chronon_root_path)}" for file in compile_errors.keys()]) + 
-        f"\n\n\nSee {error_log_path} for more details.\n"
+        "\n\n Warning -- The following files have errors preventing the compilation of Zipline objects:\n\n"
+        + "\n".join(
+            [
+                f"- {os.path.relpath(file, chronon_root_path)}"
+                for file in compile_errors.keys()
+            ]
+        )
+        + f"\n\n\nSee {error_log_path} for more details.\n"
     )
+
 
 def _set_team_level_metadata(obj: object, teams_path: str, team_name: str):
     namespace = teams.get_team_conf(teams_path, team_name, "namespace")
@@ -229,10 +242,7 @@ def _set_templated_values(obj, cls, teams_path, team_name):
 
 
 def _write_obj(
-    full_output_root: str,
-    validator: ChrononRepoValidator,
-    name: str,
-    obj: object
+    full_output_root: str, validator: ChrononRepoValidator, name: str, obj: object
 ) -> str:
     """
     Returns errors if failed to write, else None for success
@@ -254,7 +264,6 @@ def _write_obj(
 
 
 def _write_obj_as_json(name: str, obj: object, output_file: str, obj_class: type):
-    class_name = obj_class.__name__
     output_folder = os.path.dirname(output_file)
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)

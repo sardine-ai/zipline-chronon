@@ -40,9 +40,10 @@ def from_folder(full_path: str, cls: type, log_level=logging.INFO):
             logging.exception(e)
     return result
 
+
 def from_folderV2(full_path: str, target_file: str, cls: type):
     """
-    Recursively consumes a folder, and constructs a map of 
+    Recursively consumes a folder, and constructs a map of
     object qualifier to StagingQuery, GroupBy, or Join
     """
     if full_path.endswith("/"):
