@@ -32,6 +32,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -429,6 +430,130 @@ class TableUtilsTest {
   def testDoubleUDFRegistration(): Unit = {
     tableUtils.sql("CREATE TEMPORARY FUNCTION test AS 'ai.chronon.spark.test.SimpleAddUDF'")
     tableUtils.sql("CREATE TEMPORARY FUNCTION test AS 'ai.chronon.spark.test.SimpleAddUDF'")
+  }
+
+  @Test
+  def testInsertPartitionsTableExistsAlready(): Unit = {
+    val tableName = "db.test_table_exists_already"
+
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+    val columns = Array(
+      StructField("long_field", LongType),
+      StructField("int_field", IntType),
+      StructField("string_field", StringType),
+      StructField("ds", StringType)
+    )
+
+    // Create the table beforehand
+    spark.sql(s"CREATE TABLE IF NOT EXISTS $tableName (long_field LONG, int_field INT, string_field STRING, ds STRING)")
+
+    val df1 = makeDf(
+      spark,
+      StructType(
+        tableName,
+        columns
+      ),
+      List(
+        Row(1L, 2, "3", "2022-10-01")
+      )
+    )
+    val df2 = makeDf(
+      spark,
+      StructType(
+        tableName,
+        columns
+      ),
+      List(
+        Row(1L, 2, "3", "2022-10-02")
+      )
+    )
+
+    // check if insertion still works
+    testInsertPartitions(tableName, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
+  }
+
+  @Test
+  def testCreateTableAlreadyExists(): Unit = {
+    val tableName = "db.test_create_table_already_exists"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+
+    val columns = Array(
+      StructField("long_field", LongType),
+      StructField("int_field", IntType),
+      StructField("string_field", StringType)
+    )
+
+    spark.sql(
+      "CREATE TABLE IF NOT EXISTS db.test_create_table_already_exists (long_field LONG, int_field INT, string_field STRING)")
+
+    try {
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(
+          Row(1L, 2, "3")
+        )
+      )
+      assertTrue(tableUtils.createTable(df, tableName))
+      assertTrue(spark.catalog.tableExists(tableName))
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
+  }
+
+  @Test
+  def testCreateTable(): Unit = {
+    val tableName = "db.test_create_table"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+    try {
+      val columns = Array(
+        StructField("long_field", LongType),
+        StructField("int_field", IntType),
+        StructField("string_field", StringType)
+      )
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(
+          Row(1L, 2, "3")
+        )
+      )
+      assertTrue(tableUtils.createTable(df, tableName))
+      assertTrue(spark.catalog.tableExists(tableName))
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
+  }
+
+  @Test
+  def testCreateTableBigQuery(): Unit = {
+    val tableName = "db.test_create_table_bigquery"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+    try {
+      val columns = Array(
+        StructField("long_field", LongType),
+        StructField("int_field", IntType),
+        StructField("string_field", StringType)
+      )
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(Row(1L, 2, "3"))
+      )
+      assertFalse(tableUtils.createTable(df, tableName, writeFormatTypeString = "BIGQUERY"))
+      assertFalse(spark.catalog.tableExists(tableName))
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
   }
 
 }
