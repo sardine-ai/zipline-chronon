@@ -195,8 +195,9 @@ def get_mod_and_var_name_from_gc(obj, mod_prefix):
     for var_name, value in vars(module).items():
         if value is obj:
             return mod_name, var_name
-        
+
     return mod_name, None
+
 
 def __set_name(obj, cls, mod_prefix):
     module_qualifier = get_mod_name_from_gc(obj, mod_prefix)

@@ -42,7 +42,7 @@ class ConfigDetails:
                 f"""
                                 Could not determine file location for module {self.module}, {self.variable}.\n
                                 Runner currently only supports working on files saved within a valid Chronon
-                                root directory.\n Make sure you have your Zipline python files within the 
+                                root directory.\n Make sure you have your Zipline python files within the
                                 right directory, and then you can import them to your desired runtime.
                              """
             )
