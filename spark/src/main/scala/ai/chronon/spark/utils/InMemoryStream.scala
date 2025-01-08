@@ -100,7 +100,9 @@ class InMemoryStream {
     input.addData(inputDf.collect.map { row: Row =>
       val bytes =
         encodeRecord(avroSchema)(
-          AvroConversions.fromChrononRow(row, schema, GenericRowHandler.func).asInstanceOf[GenericData.Record])
+          AvroConversions
+            .fromChrononRow(row, schema, avroSchema, GenericRowHandler.func)
+            .asInstanceOf[GenericData.Record])
       bytes
     })
     input.toDF
