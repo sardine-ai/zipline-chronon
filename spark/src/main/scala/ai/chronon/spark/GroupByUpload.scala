@@ -30,6 +30,7 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.GroupByServingInfo
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.QueryUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.Extensions.ChrononStructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
@@ -50,8 +51,6 @@ import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Try
 
 class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable {

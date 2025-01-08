@@ -20,6 +20,7 @@ import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataPointer
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
@@ -39,7 +40,6 @@ import org.slf4j.LoggerFactory
 import java.util
 import scala.collection.Seq
 import scala.reflect.ClassTag
-import scala.util.ScalaJavaConversions.IteratorOps
 
 object Extensions {
 

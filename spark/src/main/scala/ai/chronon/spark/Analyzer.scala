@@ -26,6 +26,7 @@ import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.DataType
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.online.PartitionRange
@@ -52,7 +53,6 @@ import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.util.ScalaJavaConversions.ListOps
 
 //@SerialVersionUID(3457890987L)
 //class ItemSketchSerializable(var mapSize: Int) extends ItemsSketch[String](mapSize) with Serializable {}

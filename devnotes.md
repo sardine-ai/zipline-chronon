@@ -15,13 +15,12 @@ export CHRONON_API=$CHRONON_OS/api/py
 alias materialize="PYTHONPATH=$CHRONON_API:$PYTHONPATH $CHRONON_API/ai/chronon/repo/compile.py"
 ```
 
-### Install specific version of thrift
+### Install latest version of thrift
 
-Thrift is a dependency for compile. The latest version 0.14 is very new - feb 2021, and incompatible with hive metastore. So we force 0.13.
+Thrift is a dependency for compile. The latest version is 0.22 jan 2025.
 
 ```shell
-brew tap cartman-kai/thrift
-brew install thrift@0.13
+brew install thrift
 ```
 
 ### Install Python dependency packages for API
@@ -39,7 +38,7 @@ python3 -m pip install -U tox build
 * ```asdf install``` (see `.tool-versions` for required runtimes and versions)
 
 
-> NOTE: Use scala `2.12.18` and java `corretto-8` for the OSS Chronon distribution.
+> NOTE: Use scala `2.12.18` and java `corretto-17` for Zipline distribution. older java `corretto-8` is used for OSS Chronon distribution.
 
 
 
@@ -107,6 +106,8 @@ materialize  --input_path=<path/to/conf>
 ```
 
 ### Testing
+We are currently migrating our build tool to bazel from sbt.
+#### Using sbt
 All tests
 ```shell
 sbt test
@@ -130,9 +131,22 @@ sbt dependencyBrowseGraph
 sbt dependencyBrowseTree
 ```
 
+#### Using bazel
+All tests for a specific module
+```shell
+# Example: bazel test //api:api-test
+bazel test //{module}:{test_target}
+```
+Specific submodule tests
+```shell
+# Example: bazel test //api:api-test_test_suite_src_test_scala_ai_chronon_api_test_DataPointerTest.scala
+bazel test //{module}:{test_target}_test_suite_{submodule_test_path}
+```
+
 # Chronon Build Process
 * Inside the `$CHRONON_OS` directory.
 
+## Using sbt
 ### To build all of the Chronon artifacts locally (builds all the JARs, and Python API)
 ```shell
 sbt package
@@ -165,6 +179,21 @@ sbt assembly
 ### Building a fat jar for just one submodule
 ```shell
 sbt 'spark/assembly'
+```
+## Using bazel
+
+### To clean the repository for a fresh build
+```shell
+# Removes build outputs and action cache.
+bazel clean
+# This leaves workspace as if Bazel was never run.
+# Does additional cleanup compared to above command and should also be generally faster
+bazel clean --expunge
+```
+### Build a fat jar for just one module
+```shell
+# Example: bazel build //api:api-lib
+bazel build //{module}:{build_target}
 ```
 
 # Chronon Artifacts Publish Process

@@ -17,7 +17,7 @@
 package ai.chronon.online;
 
 import scala.Option;
-import scala.util.ScalaVersionSpecificCollectionsConverter;
+import ai.chronon.api.ScalaJavaConversions;
 
 import java.util.Map;
 

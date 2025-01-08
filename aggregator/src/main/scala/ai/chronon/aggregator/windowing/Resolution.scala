@@ -19,10 +19,9 @@ package ai.chronon.aggregator.windowing
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.GroupBy
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-
-import scala.util.ScalaJavaConversions.ListOps
 
 trait Resolution extends Serializable {
   // For a given window what is the resolution of the tail

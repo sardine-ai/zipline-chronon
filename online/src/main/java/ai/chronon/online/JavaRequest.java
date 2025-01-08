@@ -17,7 +17,7 @@
 package ai.chronon.online;
 
 import scala.Option;
-import scala.util.ScalaVersionSpecificCollectionsConverter;
+import ai.chronon.api.ScalaJavaConversions;
 
 import java.util.Map;
 
@@ -38,7 +38,7 @@ public class JavaRequest {
 
   public JavaRequest(Fetcher.Request scalaRequest) {
     this.name = scalaRequest.name();
-    this.keys = ScalaVersionSpecificCollectionsConverter.convertScalaMapToJava(scalaRequest.keys());
+    this.keys = ScalaJavaConversions.toJava(scalaRequest.keys());
     Option<Object> millisOpt = scalaRequest.atMillis();
     if (millisOpt.isDefined()) {
       this.atMillis = (Long) millisOpt.get();
@@ -52,7 +52,7 @@ public class JavaRequest {
   public Fetcher.Request toScalaRequest() {
     scala.collection.immutable.Map<String, Object> scalaKeys = null;
     if (keys != null) {
-      scalaKeys = ScalaVersionSpecificCollectionsConverter.convertJavaMapToScala(keys);
+      scalaKeys = ScalaJavaConversions.toScala(keys);
     }
 
     return new Fetcher.Request(

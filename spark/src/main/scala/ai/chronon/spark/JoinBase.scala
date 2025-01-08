@@ -24,6 +24,7 @@ import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.JoinPart
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.Metrics
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
@@ -42,7 +43,6 @@ import java.time.Instant
 import java.util
 import scala.collection.JavaConverters._
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.ListOps
 
 abstract class JoinBase(joinConf: api.Join,
                         endPartition: String,

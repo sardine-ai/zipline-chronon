@@ -19,6 +19,7 @@ package ai.chronon.api
 import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
 import ai.chronon.api.QueryUtils.buildSelects
+import ai.chronon.api.ScalaJavaConversions._
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.spark.sql.Column
@@ -33,10 +34,6 @@ import java.util.regex.Pattern
 import scala.collection.Seq
 import scala.collection.mutable
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.IteratorOps
-import scala.util.ScalaJavaConversions.JMapOps
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 

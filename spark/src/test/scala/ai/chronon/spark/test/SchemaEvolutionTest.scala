@@ -18,6 +18,7 @@ package ai.chronon.spark.test
 
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online._
@@ -46,8 +47,6 @@ import scala.collection.Seq
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.SECONDS
-import scala.util.ScalaJavaConversions.JListOps
-import scala.util.ScalaJavaConversions.ListOps
 
 case class GroupByTestSuite(
     name: String,

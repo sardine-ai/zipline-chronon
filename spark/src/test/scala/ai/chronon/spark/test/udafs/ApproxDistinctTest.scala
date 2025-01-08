@@ -27,22 +27,23 @@ class ApproxDistinctTest extends AnyFlatSpec with Matchers {
     val result = ApproxDistinct.columnCardinality(df)
 
     // Check if all columns are present in the result
-    result.keySet should contain allOf("int_col", "string_col", "double_col", "array_col", "map_col")
+    result.keySet should contain allOf ("int_col", "string_col", "double_col", "array_col", "map_col")
 
     // Check if the cardinality estimates are reasonable
-    result("int_col") should be(4L +- 1L)  // Exact: 4
-    result("string_col") should be(4L +- 1L)  // Exact: 4
-    result("double_col") should be(4L +- 1L)  // Exact: 4
-    result("array_col") should be(6L +- 1L)  // Exact: 6 (unique elements in all arrays)
-    result("map_col") should be(4L +- 1L)  // Exact: 4 (unique values in all maps)
+    result("int_col") should be(4L +- 1L) // Exact: 4
+    result("string_col") should be(4L +- 1L) // Exact: 4
+    result("double_col") should be(4L +- 1L) // Exact: 4
+    result("array_col") should be(6L +- 1L) // Exact: 6 (unique elements in all arrays)
+    result("map_col") should be(4L +- 1L) // Exact: 4 (unique values in all maps)
   }
 
   it should "handle null values correctly" in {
-    val schema = types.StructType(Seq(
-      types.StructField("int_col", types.IntegerType, nullable = true),
-      types.StructField("string_col", types.StringType, nullable = true),
-      types.StructField("double_col", types.DoubleType, nullable = true)
-    ))
+    val schema = types.StructType(
+      Seq(
+        types.StructField("int_col", types.IntegerType, nullable = true),
+        types.StructField("string_col", types.StringType, nullable = true),
+        types.StructField("double_col", types.DoubleType, nullable = true)
+      ))
 
     val data = Seq(
       Row(1, "A", null),
@@ -56,9 +57,9 @@ class ApproxDistinctTest extends AnyFlatSpec with Matchers {
     val df = spark.createDataFrame(rdd, schema)
     val result = ApproxDistinct.columnCardinality(df)
 
-    result("int_col") should be(3L +- 1L)  // Exact: 3 (null is not counted)
-    result("string_col") should be(3L +- 1L)  // Exact: 3 (null is not counted)
-    result("double_col") should be(3L +- 1L)  // Exact: 3 (null is not counted)
+    result("int_col") should be(3L +- 1L) // Exact: 3 (null is not counted)
+    result("string_col") should be(3L +- 1L) // Exact: 3 (null is not counted)
+    result("double_col") should be(3L +- 1L) // Exact: 3 (null is not counted)
   }
 
   it should "handle empty DataFrame" in {

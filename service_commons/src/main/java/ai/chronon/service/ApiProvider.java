@@ -3,7 +3,7 @@ package ai.chronon.service;
 import ai.chronon.online.Api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.util.ScalaVersionSpecificCollectionsConverter;
+import ai.chronon.api.ScalaJavaConversions;
 
 import java.io.File;
 import java.net.URL;
@@ -52,7 +52,7 @@ public class ApiProvider {
         }
 
         Map<String, String> propsMap = configStore.getOnlineApiProps();
-        scala.collection.immutable.Map<String, String> scalaPropsMap = ScalaVersionSpecificCollectionsConverter.convertJavaMapToScala(propsMap);
+        scala.collection.immutable.Map<String, String> scalaPropsMap = ScalaJavaConversions.toScala(propsMap);
 
         return (Api) apiClass.getConstructors()[0].newInstance(scalaPropsMap);
     }

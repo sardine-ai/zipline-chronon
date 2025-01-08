@@ -16,7 +16,7 @@
 
 package ai.chronon.online;
 
-import scala.util.ScalaVersionSpecificCollectionsConverter;
+import ai.chronon.api.ScalaJavaConversions;
 
 import java.util.Map;
 
@@ -36,7 +36,7 @@ public class JavaResponse {
                 .fromScala(scalaResponse.values())
                 .map(v -> {
                     if (v != null)
-                        return ScalaVersionSpecificCollectionsConverter.convertScalaMapToJava(v);
+                        return ScalaJavaConversions.toJava(v);
                     else
                         return null;
                 });
@@ -45,6 +45,6 @@ public class JavaResponse {
     public Fetcher.Response toScala() {
         return new Fetcher.Response(
                 request.toScalaRequest(),
-                values.map(ScalaVersionSpecificCollectionsConverter::convertJavaMapToScala).toScala());
+                values.map(ScalaJavaConversions::toScala).toScala());
     }
 }

@@ -21,6 +21,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory
 
 import java.util
 import scala.jdk.CollectionConverters._
-import scala.util.ScalaJavaConversions.MapOps
 
 object JoinUtils {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

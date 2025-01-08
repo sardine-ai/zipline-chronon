@@ -1,0 +1,59 @@
+load("@io_bazel_rules_scala//scala:scala.bzl", "scala_library", "scala_test_suite")
+load("//tools/build_rules/thrift:thrift.bzl", "thrift_java_library")
+
+scala_library(
+    name = "api-lib",
+    srcs = glob(["src/main/**/*.scala", "src/main/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":api-models",
+        "//tools/build_rules/spark:spark-exec",
+        maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.slf4j:slf4j-log4j12"),
+        maven_artifact("org.apache.commons:commons-lang3"),
+        maven_artifact("com.google.code.gson:gson"),
+        scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+        scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
+    ],
+)
+
+scala_test_suite(
+    name = "api-test",
+    srcs = glob(["src/test/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":api-models",
+        ":api-lib",
+        "//tools/build_rules/spark:spark-exec",
+        maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("org.apache.thrift:libthrift"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.slf4j:slf4j-log4j12"),
+        maven_artifact("junit:junit"),
+        maven_artifact("com.novocode:junit-interface"),
+        maven_artifact("org.mockito:mockito-core"),
+        scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
+        scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+    ],
+)
+
+thrift_java_library(
+    name = "api-models-java",
+    srcs = glob(["thrift/*.thrift"]),
+)
+
+java_library(
+    name = "api-models",
+    srcs = [":api-models-java"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        maven_artifact("javax.annotation:javax.annotation.api"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.slf4j:slf4j-log4j12"),
+        maven_artifact("org.apache.commons:commons-lang3"),
+        maven_artifact("com.google.code.gson:gson"),
+    ],
+)

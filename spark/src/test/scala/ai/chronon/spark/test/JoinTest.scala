@@ -24,6 +24,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
 import ai.chronon.api.LongType
 import ai.chronon.api.Operation
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
@@ -41,7 +42,6 @@ import org.junit.Assert._
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.JavaConverters._
-import scala.util.ScalaJavaConversions.ListOps
 
 case class TestRow(ds: String, value: String) {}
 
