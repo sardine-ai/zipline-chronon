@@ -202,22 +202,21 @@ lazy val flink = project
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
-    // Add specific assembly settings for Hadoop/YARN
     assembly / assemblyMergeStrategy := {
-      case PathList("org", "apache", "spark", "unused", "protobuf", xs @ _*) => MergeStrategy.first
-      case PathList("org", "apache", "orc", "protobuf", xs @ _*) => MergeStrategy.first
-      case PathList("com", "google", "protobuf", xs @ _*) => MergeStrategy.first
-      case PathList("google", "protobuf", xs @ _*) => MergeStrategy.first
       case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
       case "reference.conf" => MergeStrategy.concat
       case "application.conf" => MergeStrategy.concat
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case _ => MergeStrategy.first
     },
-    // Exclude Hadoop from the assembled JAR
+    // Exclude Hadoop & Guava from the assembled JAR
+    // Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
+    // superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
+    // Or: java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument(...)
+    // Or: 'com/google/protobuf/MapField' is not assignable to 'com/google/protobuf/MapFieldReflectionAccessor'
     assembly / assemblyExcludedJars := {
       val cp = (assembly / fullClasspath).value
-      cp filter { jar =>  jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("protobuf-") }
+      cp filter { jar =>  jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("guava") || jar.data.getName.startsWith("protobuf")}
     },
     libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
@@ -242,14 +241,13 @@ lazy val cloud_gcp = project
     libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
     libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
+    libraryDependencies += "io.grpc" % "grpc-netty-shaded" % "1.62.2",
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
     dependencyOverrides ++= jackson,
-    // Exclude Hadoop + Hadoop ipc from the assembled JAR as this results in errors while launching Flink jobs
-    // These jars are pulled in by the bigtable-hbase library
+    // assembly merge settings to allow Flink jobs to kick off
     assembly / assemblyMergeStrategy := {
-      case PathList("org", "apache", "hadoop", "ipc", xs @ _*) => MergeStrategy.discard  // Explicitly discard Hadoop IPC classes
-      case PathList("org", "apache", "hadoop", xs @ _*) => MergeStrategy.first
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat // Add to include channel provider
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case "reference.conf" => MergeStrategy.concat
       case "application.conf" => MergeStrategy.concat

@@ -93,6 +93,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
             "containerized.master.env.GCP_INSTANCE_ID" -> "zipline-canary-instance",
             "containerized.taskmanager.env.GCP_PROJECT_ID" -> conf.projectId,
             "jobmanager.memory.process.size" -> "4G",
+            "yarn.classpath.include-user-jar" -> "FIRST",
             "containerized.taskmanager.env.GCP_INSTANCE_ID" -> "zipline-canary-instance")
 
     val flinkJob = FlinkJob
