@@ -21,6 +21,7 @@ import ai.chronon.api.Builders
 import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
 import ai.chronon.api.GroupBy
+import ai.chronon.api.ScalaJavaConversions._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,7 +30,6 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.when
 
 import java.util.Arrays
-import scala.util.ScalaJavaConversions.JListOps
 
 class ExtensionsTest {
 

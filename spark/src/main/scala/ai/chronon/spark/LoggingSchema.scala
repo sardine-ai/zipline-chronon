@@ -17,13 +17,12 @@
 package ai.chronon.spark
 
 import ai.chronon.api.HashUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
 import ai.chronon.online.AvroCodec
 import ai.chronon.online.JoinCodec
 import com.google.gson.Gson
-
-import scala.util.ScalaJavaConversions.MapOps
 
 /*
  * Schema of a published log event. valueCodec includes both base and derived columns.

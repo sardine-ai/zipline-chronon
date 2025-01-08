@@ -1,6 +1,7 @@
 package ai.chronon.spark.stats.drift
 
 import ai.chronon.api.Constants
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.observability.Cardinality
 import ai.chronon.observability.TileKey
 import ai.chronon.observability.TileSummary
@@ -12,7 +13,6 @@ import org.apache.spark.sql.types.StructType
 import java.lang
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.mapAsJavaMapConverter
-import scala.util.ScalaJavaConversions.JListOps
 
 object Expressions {
 

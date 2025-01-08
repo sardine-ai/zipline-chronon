@@ -21,6 +21,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.DataMetrics
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
@@ -33,9 +34,6 @@ import ai.chronon.spark.stats.CompareJob.getJoinKeys
 import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 
 /**
   * Compare Job for comparing data between joins, staging queries and raw queries.

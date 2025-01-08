@@ -17,12 +17,11 @@
 package ai.chronon.online
 
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import com.timgroup.statsd.Event
 import com.timgroup.statsd.NonBlockingStatsDClient
 import com.timgroup.statsd.NonBlockingStatsDClientBuilder
-
-import scala.util.ScalaJavaConversions.ListOps
 
 object Metrics {
   object Environment extends Enumeration {

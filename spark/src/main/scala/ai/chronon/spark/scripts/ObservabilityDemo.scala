@@ -6,6 +6,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Window
 import ai.chronon.observability.DriftMetric
 import ai.chronon.observability.TileDriftSeries
@@ -27,7 +28,6 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions.IteratorOps
 
 object ObservabilityDemo {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

@@ -19,7 +19,7 @@ package ai.chronon.online;
 import scala.collection.Seq;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
-import scala.util.ScalaVersionSpecificCollectionsConverter;
+import ai.chronon.api.ScalaJavaConversions;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -38,8 +38,7 @@ public abstract class JavaExternalSourceHandler extends ExternalSourceHandler {
     @Override
     public Future<Seq<Fetcher.Response>> fetch(Seq<Fetcher.Request> requests) {
         // TODO: deprecate ScalaVersionSpecificCollectionsConverter in java
-        java.util.List<JavaRequest> javaRequests = ScalaVersionSpecificCollectionsConverter
-                .convertScalaListToJava(requests.toList())
+        java.util.List<JavaRequest> javaRequests = ScalaJavaConversions.toJava(requests.toList())
                 .stream()
                 .map(JavaRequest::fromScalaRequest)
                 .collect(Collectors.toList());
@@ -50,7 +49,7 @@ public abstract class JavaExternalSourceHandler extends ExternalSourceHandler {
                             .stream()
                             .map(JavaResponse::toScala)
                             .collect(Collectors.toList());
-                    return ScalaVersionSpecificCollectionsConverter.convertJavaListToScala(jListSMap).toSeq();
+                    return ScalaJavaConversions.toScala(jListSMap);
                 }
         );
         return FutureConverters.toScala(mapJFuture);

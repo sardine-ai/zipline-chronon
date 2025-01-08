@@ -1,12 +1,11 @@
 package ai.chronon.online.test.stats
 
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.observability.DriftMetric
 import ai.chronon.online.stats.DriftMetrics.histogramDistance
 import ai.chronon.online.stats.DriftMetrics.percentileDistance
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
-import scala.util.ScalaJavaConversions.JMapOps
 
 class DriftMetricsTest extends AnyFunSuite with Matchers {
 

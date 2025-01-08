@@ -6,6 +6,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Window
 import ai.chronon.observability.DriftMetric
 import ai.chronon.observability.TileSummarySeries
@@ -26,9 +27,6 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions.IteratorOps
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 
 class DriftTest extends AnyFlatSpec with Matchers {
@@ -82,7 +80,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     api.buildFetcher().putJoinConf(join)
 
     // upload summaries
-    val uploader = new SummaryUploader(tableUtils.loadTable(packedTable),api)
+    val uploader = new SummaryUploader(tableUtils.loadTable(packedTable), api)
     uploader.run()
 
     // test drift store methods
@@ -116,8 +114,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
         (nulls + currentNulls, total + currentCount)
     }
 
-    println(
-      s"""drift totals: $totals
+    println(s"""drift totals: $totals
          |drift nulls: $nulls
          |""".stripMargin.red)
 
@@ -142,8 +139,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
           (nulls + currentNulls, total + currentCount)
         }
     }
-    println(
-      s"""summary ptile totals: $summaryTotals
+    println(s"""summary ptile totals: $summaryTotals
          |summary ptile nulls: $summaryNulls
          |""".stripMargin)
 
@@ -151,8 +147,8 @@ class DriftTest extends AnyFlatSpec with Matchers {
     summaryNulls.toDouble / summaryTotals.toDouble should be < 0.1
     println("Summary series fetched successfully".green)
 
-    val startTs=1673308800000L
-    val endTs=1674172800000L
+    val startTs = 1673308800000L
+    val endTs = 1674172800000L
     val joinName = "risk.user_transactions.txn_join"
     val name = "dim_user_account_type"
     val window = new Window(10, ai.chronon.api.TimeUnit.HOURS)
@@ -172,7 +168,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
           val isCurrentNumeric = currentSummarySeries.headOption.forall(checkIfNumeric)
           val isBaselineNumeric = baselineSummarySeries.headOption.forall(checkIfNumeric)
 
-           val currentFeatureTs = {
+          val currentFeatureTs = {
             if (currentSummarySeries.isEmpty) Seq.empty
             else convertTileSummarySeriesToTimeSeries(currentSummarySeries.head, isCurrentNumeric, metric)
           }
@@ -202,15 +198,12 @@ class DriftTest extends AnyFlatSpec with Matchers {
   /** Roll up over raw values */
   case object ValuesMetric extends Metric
 
-
   case class TimeSeriesPoint(value: Double, ts: Long, label: Option[String] = None, nullValue: Option[Int] = None)
 
   def checkIfNumeric(summarySeries: TileSummarySeries): Boolean = {
     val ptiles = summarySeries.percentiles.toScala
     ptiles != null && ptiles.exists(_ != null)
   }
-
-
 
   private def convertTileSummarySeriesToTimeSeries(summarySeries: TileSummarySeries,
                                                    isNumeric: Boolean,
@@ -224,14 +217,16 @@ class DriftTest extends AnyFlatSpec with Matchers {
         val percentileSeriesPerBreak = summarySeries.percentiles.toScala
         val timeStamps = summarySeries.timestamps.toScala
         val breaks = DriftStore.breaks(20)
-        percentileSeriesPerBreak.zip(breaks).flatMap{ case (percentileSeries, break) =>
-            percentileSeries.toScala.zip(timeStamps).map{case (value, ts) => TimeSeriesPoint(value, ts, Some(break))}
+        percentileSeriesPerBreak.zip(breaks).flatMap {
+          case (percentileSeries, break) =>
+            percentileSeries.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value, ts, Some(break)) }
         }
       } else {
         val histogramOfSeries = summarySeries.histogram.toScala
         val timeStamps = summarySeries.timestamps.toScala
-        histogramOfSeries.flatMap{ case (label, values) =>
-          values.toScala.zip(timeStamps).map{case (value, ts) => TimeSeriesPoint(value.toDouble, ts, Some(label))}
+        histogramOfSeries.flatMap {
+          case (label, values) =>
+            values.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value.toDouble, ts, Some(label)) }
         }.toSeq
       }
     }

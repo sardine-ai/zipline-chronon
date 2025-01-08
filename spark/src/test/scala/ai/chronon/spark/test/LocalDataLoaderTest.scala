@@ -32,10 +32,8 @@ object LocalDataLoaderTest {
 
   val tmpDir: File = Files.createTempDir()
 
-  val spark: SparkSession = SparkSessionBuilder.build(
-    "LocalDataLoaderTest",
-    local = true,
-    localWarehouseLocation = Some(tmpDir.getPath))
+  val spark: SparkSession =
+    SparkSessionBuilder.build("LocalDataLoaderTest", local = true, localWarehouseLocation = Some(tmpDir.getPath))
 
   @AfterClass
   def teardown(): Unit = {

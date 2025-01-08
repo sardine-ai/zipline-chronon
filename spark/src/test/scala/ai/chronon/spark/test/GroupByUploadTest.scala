@@ -19,6 +19,7 @@ package ai.chronon.spark.test
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
@@ -35,8 +36,6 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.util.ScalaJavaConversions.JMapOps
-import scala.util.ScalaJavaConversions.ListOps
 
 class GroupByUploadTest {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

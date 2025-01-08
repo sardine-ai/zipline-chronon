@@ -88,3 +88,6 @@ releases
 # Metals-generated sbt files
 /project/**/metals.sbt
 /project/**/metals.sbt.lock
+
+# Bazel temporary output
+/bazel-*

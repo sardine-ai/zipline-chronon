@@ -17,6 +17,7 @@
 package ai.chronon.api
 
 import ai.chronon.api.Extensions.StringsOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.thrift.TDeserializer
 import ai.chronon.api.thrift.TSerializer
@@ -35,7 +36,6 @@ import java.util.Base64
 import scala.io.BufferedSource
 import scala.io.Source._
 import scala.reflect.ClassTag
-import scala.util.ScalaJavaConversions.ListOps
 
 object ThriftJsonCodec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

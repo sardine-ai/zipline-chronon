@@ -22,6 +22,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ExternalPart
 import ai.chronon.api.JoinPart
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructField
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
@@ -36,7 +37,6 @@ import org.slf4j.LoggerFactory
 import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
-import scala.util.ScalaJavaConversions.ListOps
 import scala.util.Try
 
 case class JoinPartMetadata(

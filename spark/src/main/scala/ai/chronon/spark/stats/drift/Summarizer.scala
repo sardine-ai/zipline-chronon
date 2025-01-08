@@ -2,6 +2,7 @@ package ai.chronon.spark.stats.drift
 
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.observability.Cardinality
 import ai.chronon.observability.TileKey
@@ -31,8 +32,6 @@ import java.io.Serializable
 import java.nio.charset.Charset
 import scala.concurrent.Await
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.JMapOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 

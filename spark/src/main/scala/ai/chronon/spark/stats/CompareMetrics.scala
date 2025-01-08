@@ -19,6 +19,7 @@ package ai.chronon.spark.stats
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.api.Extensions.AggregationPartOps
 import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.DataMetrics
 import ai.chronon.online.SparkConversions
@@ -32,7 +33,6 @@ import org.apache.spark.sql.functions
 import org.apache.spark.sql.types
 
 import scala.collection.immutable.SortedMap
-import scala.util.ScalaJavaConversions.JMapOps
 
 object CompareMetrics {
   val leftSuffix = "_left"

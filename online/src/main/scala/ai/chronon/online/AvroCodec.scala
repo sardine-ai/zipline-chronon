@@ -18,6 +18,7 @@ package ai.chronon.online
 
 import ai.chronon.api.DataType
 import ai.chronon.api.Row
+import ai.chronon.api.ScalaJavaConversions._
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
 import org.apache.avro.file.SeekableByteArrayInput
@@ -29,7 +30,6 @@ import org.apache.avro.io._
 
 import java.io.ByteArrayOutputStream
 import scala.collection.mutable
-import scala.util.ScalaJavaConversions.ListOps
 
 class AvroCodec(val schemaStr: String) extends Serializable {
   @transient private lazy val parser = new Schema.Parser()
