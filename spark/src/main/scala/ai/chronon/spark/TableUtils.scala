@@ -89,7 +89,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   private val blockingCacheEviction: Boolean =
     sparkSession.conf.get("spark.chronon.table_write.cache.blocking", "false").toBoolean
 
-  private[spark] lazy val tableFormatProvider: FormatProvider = {
+  // Add transient here because the format provider can sometimes not be serializable.
+  // for example, BigQueryImpl during reflecting with bq flavor
+  @transient private[spark] lazy val tableFormatProvider: FormatProvider = {
     val clazzName =
       sparkSession.conf.get("spark.chronon.table.format_provider.class", classOf[DefaultFormatProvider].getName)
     val mirror = runtimeMirror(getClass.getClassLoader)
@@ -262,6 +264,48 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def firstAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
     partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].min(x, y))
 
+  def createTable(df: DataFrame,
+                  tableName: String,
+                  partitionColumns: Seq[String] = Seq.empty,
+                  writeFormatTypeString: String = "",
+                  tableProperties: Map[String, String] = null,
+                  fileFormat: String = "PARQUET",
+                  autoExpand: Boolean = false): Boolean = {
+    val doesTableExist = tableExists(tableName)
+
+    // create table sql doesn't work for bigquery here. instead of creating the table explicitly, we can rely on the
+    // bq connector to indirectly create the table and eventually write the data
+    if (writeFormatTypeString.toUpperCase == "BIGQUERY") {
+      logger.info(s"Skipping table creation in BigQuery for $tableName. tableExists=$doesTableExist")
+
+      return doesTableExist
+    }
+
+    if (!doesTableExist) {
+      val creationSql = createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormat)
+      try {
+        sql(creationSql)
+      } catch {
+        case _: TableAlreadyExistsException =>
+          logger.info(s"Table $tableName already exists, skipping creation")
+        case e: Exception =>
+          logger.error(s"Failed to create table $tableName", e)
+          throw e
+      }
+    }
+
+    // TODO: we need to also allow for bigquery tables to have their table properties (or tags) to be persisted too.
+    //  https://app.asana.com/0/1208949807589885/1209111629687568/f
+    if (tableProperties != null && tableProperties.nonEmpty) {
+      sql(alterTablePropertiesSql(tableName, tableProperties))
+    }
+    if (autoExpand) {
+      expandTable(tableName, df.schema)
+    }
+
+    true
+  }
+
   // Needs provider
   def insertPartitions(df: DataFrame,
                        tableName: String,
@@ -280,30 +324,18 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       df
     }
 
-    if (!tableExists(tableName)) {
-      val creationSql = createTableSql(tableName, dfRearranged.schema, partitionColumns, tableProperties, fileFormat)
-      try {
-        sql(creationSql)
-      } catch {
-        case _: TableAlreadyExistsException =>
-          logger.info(s"Table $tableName already exists, skipping creation")
-        case e: Exception =>
-          logger.error(s"Failed to create table $tableName", e)
-          throw e
-      }
-    }
-    if (tableProperties != null && tableProperties.nonEmpty) {
-      sql(alterTablePropertiesSql(tableName, tableProperties))
-    }
+    val isTableCreated = createTable(dfRearranged,
+                                     tableName,
+                                     partitionColumns,
+                                     tableFormatProvider.writeFormat(tableName).createTableTypeString,
+                                     tableProperties,
+                                     fileFormat,
+                                     autoExpand)
 
-    if (autoExpand) {
-      expandTable(tableName, dfRearranged.schema)
-    }
-
-    val finalizedDf = if (autoExpand) {
+    val finalizedDf = if (autoExpand && isTableCreated) {
       // reselect the columns so that an deprecated columns will be selected as NULL before write
-      val updatedSchema = getSchemaFromTable(tableName)
-      val finalColumns = updatedSchema.fieldNames.map(fieldName => {
+      val tableSchema = getSchemaFromTable(tableName)
+      val finalColumns = tableSchema.fieldNames.map(fieldName => {
         if (dfRearranged.schema.fieldNames.contains(fieldName)) {
           col(fieldName)
         } else {
@@ -363,13 +395,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                           saveMode: SaveMode = SaveMode.Overwrite,
                           fileFormat: String = "PARQUET"): Unit = {
 
-    if (!tableExists(tableName)) {
-      sql(createTableSql(tableName, df.schema, Seq.empty[String], tableProperties, fileFormat))
-    } else {
-      if (tableProperties != null && tableProperties.nonEmpty) {
-        sql(alterTablePropertiesSql(tableName, tableProperties))
-      }
-    }
+    createTable(df,
+                tableName,
+                Seq.empty[String],
+                tableFormatProvider.writeFormat(tableName).createTableTypeString,
+                tableProperties,
+                fileFormat)
 
     repartitionAndWrite(df, tableName, saveMode, None)
   }
