@@ -731,6 +731,38 @@ object Driver {
     }
   }
 
+  object GroupByUploadToKVBulkLoad {
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("groupby-upload-bulk-load") with OnlineSubcommand {
+      val srcOfflineTable: ScallopOption[String] =
+        opt[String](required = true, descr = "Name of the source GroupBy Upload table")
+
+      val groupbyName: ScallopOption[String] =
+        opt[String](required = true, descr = "Name of the GroupBy that we're triggering this upload for")
+
+      val partitionString: ScallopOption[String] =
+        opt[String](required = true, descr = "Partition string (in 'yyyy-MM-dd' format) that we are uploading")
+    }
+
+    def run(args: Args): Unit = {
+      logger.info(s"Triggering bulk load for GroupBy: ${args.groupbyName()} for partition: ${args
+        .partitionString()} from table: ${args.srcOfflineTable()}")
+      val kvStore = args.api.genKvStore
+      val startTime = System.currentTimeMillis()
+      try {
+        kvStore.bulkPut(args.srcOfflineTable(), args.groupbyName(), args.partitionString())
+      } catch {
+        case e: Exception =>
+          logger.error(s"Failed to upload GroupBy: ${args.groupbyName()} for partition: ${args
+                         .partitionString()} from table: ${args.srcOfflineTable()}",
+                       e)
+          throw e
+      }
+      logger.info(s"Uploaded GroupByUpload data to KV store for GroupBy: ${args.groupbyName()}; partition: ${args
+        .partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
+    }
+  }
+
   object LogFlattener {
     class Args extends Subcommand("log-flattener") with OfflineSubcommand {
       val logTable: ScallopOption[String] =
@@ -930,6 +962,8 @@ object Driver {
     addSubcommand(FetcherCliArgs)
     object MetadataUploaderArgs extends MetadataUploader.Args
     addSubcommand(MetadataUploaderArgs)
+    object GroupByUploadToKVBulkLoadArgs extends GroupByUploadToKVBulkLoad.Args
+    addSubcommand(GroupByUploadToKVBulkLoadArgs)
     object GroupByStreamingArgs extends GroupByStreaming.Args
     addSubcommand(GroupByStreamingArgs)
     object AnalyzerArgs extends Analyzer.Args
@@ -975,7 +1009,9 @@ object Driver {
             shouldExit = false
             GroupByStreaming.run(args.GroupByStreamingArgs)
 
-          case args.MetadataUploaderArgs   => MetadataUploader.run(args.MetadataUploaderArgs)
+          case args.MetadataUploaderArgs => MetadataUploader.run(args.MetadataUploaderArgs)
+          case args.GroupByUploadToKVBulkLoadArgs =>
+            GroupByUploadToKVBulkLoad.run(args.GroupByUploadToKVBulkLoadArgs)
           case args.FetcherCliArgs         => FetcherCli.run(args.FetcherCliArgs)
           case args.LogFlattenerArgs       => LogFlattener.run(args.LogFlattenerArgs)
           case args.ConsistencyMetricsArgs => ConsistencyMetricsCompute.run(args.ConsistencyMetricsArgs)
