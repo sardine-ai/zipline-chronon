@@ -41,8 +41,9 @@ class ConfigDetails:
             raise ValueError(
                 f"""
                                 Could not determine file location for module {self.module}, {self.variable}.\n
-                                Runner currently only supports working on files saved within a valid Chronon root directory.\n
-                                Make sure you have your Zipline python files within the right directory, and then you can import them to your desired runtime.
+                                Runner currently only supports working on files saved within a valid Chronon
+                                root directory.\n Make sure you have your Zipline python files within the 
+                                right directory, and then you can import them to your desired runtime.
                              """
             )
 
@@ -108,7 +109,8 @@ def upload(zipline_obj, date, force_recompute=False, plan=False):
     Computes and uploads values for a Zipline for the specified date.
 
     Args:
-        zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then runs upload for all JoinParts.
+        zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then
+          runs upload for all JoinParts.
         date: The date to upload data for (default: 2 days ago UTC)
         force_recompute: If True, recomputes data even if it already exists (default: False)
         plan: If True, only shows execution plan without running upload (default: False)
@@ -127,7 +129,8 @@ def stream(zipline_obj):
     Starts a streaming job for this Zipline object.
 
     Args:
-        zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then runs streaming job for all JoinParts.
+        zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then
+          runs streaming job for all JoinParts.
 
     Returns:
         None
@@ -140,11 +143,13 @@ def stream(zipline_obj):
 
 def info(zipline_obj, branch=None):
     """
-    Prints information about a zipline object, including a link to the ZiplineHub page which shows additional information
+    Prints information about a zipline object, including a link to the ZiplineHub page which
+    shows additional information
 
     Args:
         zipline_obj: The Chronon object (GroupBy, Join, StagingQuery) to get info for
-        branch: Optional git branch to use for getting object info, if none is provided will use the user's dev branch (default: None)
+        branch: Optional git branch to use for getting object info, if none is provided
+            will use the user's dev branch (default: None)
 
     Returns:
         None
