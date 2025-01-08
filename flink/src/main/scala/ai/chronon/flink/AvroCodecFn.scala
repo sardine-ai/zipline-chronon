@@ -108,7 +108,7 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
       case e: Exception =>
         // To improve availability, we don't rethrow the exception. We just drop the event
         // and track the errors in a metric. Alerts should be set up on this metric.
-        logger.error(s"Error converting to Avro bytes - $e")
+        logger.error(s"Error converting to Avro bytes", e)
         eventProcessingErrorCounter.inc()
         avroConversionErrorCounter.inc()
     }
