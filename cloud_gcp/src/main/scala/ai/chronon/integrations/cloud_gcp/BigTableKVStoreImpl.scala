@@ -304,7 +304,6 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       s"""
          |EXPORT DATA OPTIONS (
          |  format='CLOUD_BIGTABLE',
-         |  auto_create_column_families=true,
          |  overwrite=true,
          |  uri="https://bigtable.googleapis.com/projects/${adminClient.getProjectId}/instances/${adminClient.getInstanceId}/appProfiles/GROUPBY_INGEST/tables/$batchTable",
          |  bigtable_options='''{
@@ -313,8 +312,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
          |        "familyId": "cf",
          |        "encoding": "BINARY",
          |        "columns": [
-         |           {"qualifierString": "value", "fieldName": "value_bytes"}
-         |
+         |           {"qualifierString": "value", "fieldName": ""}
          |        ]
          |      }
          |   ]
@@ -322,7 +320,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
          |) AS
          |SELECT
          |  CONCAT(CAST(CONCAT('$datasetName', '#') AS BYTES), key_bytes) as rowkey,
-         |  value_bytes as value,
+         |  value_bytes as cf,
          |  TIMESTAMP_MILLIS($endDsPlusOne) as _CHANGE_TIMESTAMP
          |FROM $sourceOfflineTable
          |WHERE ds = '$partition'
@@ -334,8 +332,10 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         .newBuilder(exportQuery)
         .build()
 
-      val jobId = JobId.of(adminClient.getProjectId, s"export_${sourceOfflineTable.sanitize}_to_bigtable_$partition")
       val startTs = System.currentTimeMillis()
+      // we append the timestamp to the jobID as BigQuery doesn't allow us to re-run the same job
+      val jobId =
+        JobId.of(adminClient.getProjectId, s"export_${sourceOfflineTable.sanitize}_to_bigtable_${partition}_$startTs")
       val job: Job = bigQueryClient.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build())
       logger.info(s"Export job started with Id: $jobId and link: ${job.getSelfLink}")
       val retryConfig =
