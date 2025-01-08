@@ -19,6 +19,7 @@ package ai.chronon.online.test
 import ai.chronon.api.Builders
 import ai.chronon.api.DataModel
 import ai.chronon.api.LongType
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StringType
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
@@ -33,8 +34,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.util.ScalaJavaConversions.JListOps
 
 class DataStreamBuilderTest {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

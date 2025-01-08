@@ -22,6 +22,7 @@ import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.Fetcher.Response
@@ -63,7 +64,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.SECONDS
 import scala.io.Source
-import scala.util.ScalaJavaConversions._
 
 // Run as follows: sbt "spark/testOnly -- -n fetchertest"
 class FetcherTest extends AnyFunSuite with TaggedFilterSuite {

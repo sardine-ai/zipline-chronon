@@ -1,6 +1,7 @@
 package ai.chronon.hub.handlers
 
 import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.hub.model.Aggregates
@@ -36,8 +37,6 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Future => ScalaFuture}
 import scala.jdk.CollectionConverters._
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 
 /**

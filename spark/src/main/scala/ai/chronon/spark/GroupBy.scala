@@ -29,6 +29,7 @@ import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ParametricMacro
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.RowWrapper
 import ai.chronon.online.SparkConversions
@@ -46,9 +47,6 @@ import org.slf4j.LoggerFactory
 import java.util
 import scala.collection.Seq
 import scala.collection.mutable
-import scala.util.ScalaJavaConversions.JListOps
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 
 class GroupBy(val aggregations: Seq[api.Aggregation],
               val keyColumns: Seq[String],

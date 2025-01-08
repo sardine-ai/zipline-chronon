@@ -23,6 +23,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Query
 import ai.chronon.api.QueryUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
@@ -50,8 +51,6 @@ import scala.collection.immutable
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Try
 
 /**

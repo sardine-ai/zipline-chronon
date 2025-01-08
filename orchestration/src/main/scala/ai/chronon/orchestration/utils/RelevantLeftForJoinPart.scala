@@ -4,11 +4,10 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.JoinPartOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.Extensions.StringOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.orchestration.utils.CollectionExtensions.JMapExtension
 import ai.chronon.orchestration.utils.ColumnExpression.getTimeExpression
-
-import scala.util.ScalaJavaConversions.ListOps
 
 // TODO(phase-2): This is not wired into the planner yet
 // computes subset of the left source that is relevant for a join part

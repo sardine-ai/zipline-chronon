@@ -19,6 +19,7 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
@@ -38,8 +39,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters._
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 

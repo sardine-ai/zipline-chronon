@@ -17,6 +17,7 @@
 package ai.chronon.spark.test.bootstrap
 
 import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
@@ -30,8 +31,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.util.ScalaJavaConversions.JListOps
 
 class TableBootstrapTest {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
