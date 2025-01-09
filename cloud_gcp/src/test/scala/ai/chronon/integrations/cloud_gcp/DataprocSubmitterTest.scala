@@ -59,7 +59,11 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
         Map(MainClass -> "ai.chronon.flink.FlinkJob",
           FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
           JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
-        List.empty)
+        List.empty,
+        "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
+        "--groupby-name=e2e-count",
+        "-ZGCP_PROJECT_ID=canary-443022",
+        "-ZGCP_INSTANCE_ID=zipline-canary-instance")
     println(submittedJobId)
   }
 

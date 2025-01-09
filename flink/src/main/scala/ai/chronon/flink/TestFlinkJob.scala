@@ -9,6 +9,7 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.types.StructType
+import org.rogach.scallop.{ScallopConf, ScallopOption, Serialization}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
@@ -39,7 +40,24 @@ class PrintSink extends SinkFunction[WriteResponse] {
 }
 
 object TestFlinkJob {
+  // Pull in the Serialization trait to sidestep: https://github.com/scallop/scallop/issues/137
+  class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
+    val onlineClass: ScallopOption[String] =
+      opt[String](required = true,
+        descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
+    val groupbyName: ScallopOption[String] =
+      opt[String](required = true, descr = "The name of the groupBy to process")
+    val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API / KV Store")
+
+    verify()
+  }
+
   def main(args: Array[String]): Unit = {
+
+    val jobArgs = new JobArgs(args)
+    val groupByName = jobArgs.groupbyName()
+    val onlineClassName = jobArgs.onlineClass()
+    val props = jobArgs.apiProps.map(identity)
 
     val eventSrc = makeSource()
     val groupBy = makeGroupBy(Seq("id")) // TODO - take groupBy name as job param + read from BigTable via GBServingInfo
@@ -48,7 +66,7 @@ object TestFlinkJob {
 
     val outputSchema = new SparkExpressionEvalFn(encoder, groupBy).getOutputSchema
     val groupByServingInfoParsed = makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
-    val api = buildApi("ai.chronon.integrations.cloud_gcp.GcpApiImpl", Map.empty) // TODO - take online class as job param
+    val api = buildApi(onlineClassName, props)
 
     val flinkJob = new FlinkJob(
       eventSrc = eventSrc,
