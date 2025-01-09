@@ -67,7 +67,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     .withZone(ZoneId.systemDefault())
   val partitionColumn: String =
     sparkSession.conf.get("spark.chronon.partition.column", "ds")
-  private val partitionFormat: String =
+  private[spark] val partitionFormat: String =
     sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
   val partitionSpec: PartitionSpec = PartitionSpec(partitionFormat, WindowUtils.Day.millis)
   val smallModelEnabled: Boolean =
@@ -102,15 +102,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val reflected = constructorMirror(sparkSession)
     reflected.asInstanceOf[FormatProvider]
   }
-
-  // write data using the relevant supported Chronon write format
-  val maybeWriteFormat: Option[Format] =
-    sparkSession.conf.getOption("spark.chronon.table_write.format").map(_.toLowerCase) match {
-      case Some("hive")    => Some(Hive)
-      case Some("iceberg") => Some(Iceberg)
-      case Some("delta")   => Some(DeltaLake)
-      case _               => None
-    }
 
   private val cacheLevel: Option[StorageLevel] = Try {
     if (cacheLevelString == "NONE") None
