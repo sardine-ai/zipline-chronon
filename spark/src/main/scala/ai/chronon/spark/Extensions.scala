@@ -86,8 +86,11 @@ object Extensions {
 
   object DfWithStats {
     def apply(dataFrame: DataFrame)(implicit partitionSpec: PartitionSpec): DfWithStats = {
+      val tu = TableUtils(dataFrame.sparkSession)
+      val pCol = tu.partitionColumn
+      val pFormat = tu.partitionFormat
       val partitionCounts = dataFrame
-        .groupBy(col(TableUtils(dataFrame.sparkSession).partitionColumn))
+        .groupBy(date_format(col(pCol), pFormat))
         .count()
         .collect()
         .map(row => row.getString(0) -> row.getLong(1))
@@ -309,7 +312,12 @@ object Extensions {
               dfw
                 .format("bigquery")
                 .options(dataPointer.options)
-                .option("writeMethod", "direct")
+                // todo(tchow): thread these through
+                // .option("partitionField", "ds")
+                // .option("temporaryGcsBucket", "zl-warehouse")
+                .option("writeMethod",
+                        "indirect"
+                ) // direct write does not support partitioned writes. See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file#properties
                 .save(dataPointer.tableOrPath)
             case "snowflake" | "sf" =>
               dfw
