@@ -25,9 +25,11 @@ maven_repository = repository(
         # Add other dependencies
         "org.slf4j:slf4j-api:1.7.30",
         "org.slf4j:slf4j-log4j12:1.7.30",
+        "org.apache.datasketches:datasketches-memory:3.0.2",
+        "org.apache.datasketches:datasketches-java:6.1.1",
         "com.fasterxml.jackson.core:jackson-core:2.12.5",
         "com.fasterxml.jackson.core:jackson-databind:2.12.5",
-        "com.google.code.gson:gson:2.8.6",
+        "com.google.code.gson:gson:2.10.1",
         "javax.annotation:javax.annotation-api:1.3.2",
     ],
     overrides = {
