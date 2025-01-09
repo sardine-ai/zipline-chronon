@@ -1,7 +1,5 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.integrations.cloud_gcp.DataprocSubmitter
-import ai.chronon.integrations.cloud_gcp.SubmitterConf
 import ai.chronon.spark
 import ai.chronon.spark.JobSubmitterConstants.{FlinkMainJarURI, JarURI, MainClass}
 import com.google.api.gax.rpc.UnaryCallable
@@ -89,7 +87,11 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
-      submitter.submit(List.empty,
+      submitter.submit(
+        spark.SparkJob,
+        Map(MainClass -> "ai.chronon.spark.Driver",
+          JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+        List.empty,
         "groupby-upload-bulk-load",
         "-ZGCP_PROJECT_ID=bigtable-project-id",
         "-ZGCP_INSTANCE_ID=bigtable-instance-id",
