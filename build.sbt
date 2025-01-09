@@ -224,7 +224,6 @@ lazy val cloud_gcp = project
     libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
     libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
-    libraryDependencies += "com.google.cloud.bigtable" % "bigtable-hbase-2.x" % "2.14.2",
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
     dependencyOverrides ++= jackson,
