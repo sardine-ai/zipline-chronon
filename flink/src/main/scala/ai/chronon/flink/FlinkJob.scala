@@ -9,7 +9,7 @@ import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.flink.window.KeySelector
 import ai.chronon.flink.window.TimestampedTile
-import ai.chronon.online.{FlinkSource, GroupByServingInfoParsed, SparkConversions}
+import ai.chronon.online.{Api, FlinkSource, GroupByServingInfoParsed, SparkConversions}
 import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
@@ -21,6 +21,7 @@ import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.spark.sql.Encoder
+import org.rogach.scallop.{ScallopConf, ScallopOption, Serialization}
 import org.slf4j.LoggerFactory
 
 /**
@@ -193,6 +194,59 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       sinkFn,
       groupByName
     )
+  }
+}
+
+object FlinkJob {
+  // Pull in the Serialization trait to sidestep: https://github.com/scallop/scallop/issues/137
+  class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
+    val onlineClass: ScallopOption[String] =
+      opt[String](required = true,
+        descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
+    val groupbyName: ScallopOption[String] =
+      opt[String](required = true, descr = "The name of the groupBy to process")
+    val mockSource: ScallopOption[Boolean] =
+      opt[Boolean](required = false, descr = "Use a mocked data source instead of a real source", default = Some(true))
+
+    val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API / KV Store")
+
+    verify()
+  }
+
+  def main(args: Array[String]): Unit = {
+    val jobArgs = new JobArgs(args)
+    val groupByName = jobArgs.groupbyName()
+    val onlineClassName = jobArgs.onlineClass()
+    val props = jobArgs.apiProps.map(identity)
+    val useMockedSource = jobArgs.mockSource()
+
+    val api = buildApi(onlineClassName, props)
+    val flinkJob =
+      if (useMockedSource) {
+        // We will yank this conditional block when we wire up our real sources etc.
+        TestFlinkJob.buildTestFlinkJob(api)
+      } else {
+        // TODO - what we need to do when we wire this up for real
+        // lookup groupByServingInfo by groupByName from the kv store
+        // based on the topic type (e.g. kafka / pubsub) and the schema class name:
+        // 1. lookup schema object using SchemaProvider (e.g SchemaRegistry / Jar based)
+        // 2. Create the appropriate Encoder for the given schema type
+        // 3. Invoke the appropriate source provider to get the source, encoder, parallelism
+        throw new IllegalArgumentException("We don't support non-mocked sources like Kafka / PubSub yet!")
+      }
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    // TODO add useful configs
+    flinkJob.runGroupByJob(env).addSink(new PrintSink) // TODO wire up a metrics sink / such
+    env.execute(s"${flinkJob.groupByName}")
+  }
+
+  def buildApi(onlineClass: String, props: Map[String, String]): Api = {
+    val cl = Thread.currentThread().getContextClassLoader // Use Flink's classloader
+    val cls = cl.loadClass(onlineClass)
+    val constructor = cls.getConstructors.apply(0)
+    val onlineImpl = constructor.newInstance(props)
+    onlineImpl.asInstanceOf[Api]
   }
 }
 

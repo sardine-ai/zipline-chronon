@@ -53,7 +53,6 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
 
   ignore("test flink job locally") {
     val submitter = DataprocSubmitter()
-    // flink-assembly-0.1.0-SNAPSHOT.jar
     val submittedJobId =
       submitter.submit(spark.FlinkJob,
         Map(MainClass -> "ai.chronon.flink.FlinkJob",
@@ -67,7 +66,7 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     println(submittedJobId)
   }
 
-  test("Used to iterate locally. Do not enable this in CI/CD!") {
+  ignore("Used to iterate locally. Do not enable this in CI/CD!") {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
