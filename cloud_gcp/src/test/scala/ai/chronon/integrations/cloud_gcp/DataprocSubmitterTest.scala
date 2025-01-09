@@ -61,8 +61,8 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
         List.empty,
         "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
         "--groupby-name=e2e-count",
-        "-ZGCP_PROJECT_ID=canary-443022",
-        "-ZGCP_INSTANCE_ID=zipline-canary-instance")
+        "-ZGCP_PROJECT_ID=bigtable-project-id",
+        "-ZGCP_INSTANCE_ID=bigtable-instance-id")
     println(submittedJobId)
   }
 
