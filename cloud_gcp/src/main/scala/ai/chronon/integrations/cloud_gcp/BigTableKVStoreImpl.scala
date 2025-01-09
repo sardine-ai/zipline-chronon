@@ -29,7 +29,6 @@ import com.google.cloud.bigtable.data.v2.models.Query
 import com.google.cloud.bigtable.data.v2.models.Range.ByteStringRange
 import com.google.cloud.bigtable.data.v2.models.RowMutation
 import com.google.cloud.bigtable.data.v2.models.{TableId => BTTableId}
-import com.google.cloud.bigtable.hbase2_x.ApiFutureUtils
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
