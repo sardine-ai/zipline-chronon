@@ -2,11 +2,11 @@ load("@io_bazel_rules_scala//scala:scala.bzl", "scala_library", "scala_test_suit
 load("//tools/build_rules/thrift:thrift.bzl", "thrift_java_library")
 
 scala_library(
-    name = "api-lib",
+    name = "lib",
     srcs = glob(["src/main/**/*.scala", "src/main/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = [
-        ":api-models",
+        ":thrift",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
@@ -20,16 +20,15 @@ scala_library(
 )
 
 scala_test_suite(
-    name = "api-test",
+    name = "test",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = [
-        ":api-models",
-        ":api-lib",
+        ":thrift",
+        ":lib",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
-        maven_artifact("org.apache.thrift:libthrift"),
         maven_artifact("org.slf4j:slf4j-api"),
         maven_artifact("org.slf4j:slf4j-log4j12"),
         maven_artifact("junit:junit"),
@@ -41,13 +40,13 @@ scala_test_suite(
 )
 
 thrift_java_library(
-    name = "api-models-java",
+    name = "thrift-java",
     srcs = glob(["thrift/*.thrift"]),
 )
 
 java_library(
-    name = "api-models",
-    srcs = [":api-models-java"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
+    name = "thrift",
+    srcs = [":thrift-java"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = [
         maven_artifact("javax.annotation:javax.annotation.api"),
