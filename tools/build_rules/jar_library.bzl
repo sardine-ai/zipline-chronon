@@ -4,6 +4,7 @@ load("@rules_jvm_external//:defs.bzl", "artifact")
 DEFAULT_PROVIDED_REPO = "maven"  # For backwards compatability
 
 def jar_library(name, jars = [], overrides = {}, visibility = ["//visibility:public"], **kwargs):
+
     def _get_jars(repo_name):
         return [artifact(jar, repository_name = repo_name) for jar in jars]
 

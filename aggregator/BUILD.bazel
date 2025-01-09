@@ -1,0 +1,63 @@
+load("@io_bazel_rules_scala//scala:scala.bzl", "scala_library", "scala_test_suite")
+
+scala_library(
+    name = "lib",
+    srcs = glob(["src/main/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api:lib",
+        "//api:thrift",
+        maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("com.google.code.gson:gson"),
+        maven_artifact("org.apache.datasketches:datasketches-memory"),
+        maven_artifact("org.apache.datasketches:datasketches-java"),
+        maven_artifact("org.apache.commons:commons-lang3"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.slf4j:slf4j-log4j12"),
+        scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+    ],
+)
+
+scala_library(
+    name = "test-lib",
+    srcs = glob(["src/test/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lib",
+        "//api:lib",
+        "//api:thrift",
+        maven_artifact("junit:junit"),
+        maven_artifact("com.novocode:junit-interface"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.slf4j:slf4j-log4j12"),
+        maven_artifact("com.google.code.gson:gson"),
+        maven_artifact("org.apache.datasketches:datasketches-memory"),
+        maven_artifact("org.apache.datasketches:datasketches-java"),
+        maven_artifact("org.apache.commons:commons-lang3"),
+        maven_artifact("org.apache.commons:commons-math3"),
+        maven_artifact("org.scala-lang.modules:scala-collection-compat_2.12"),
+    ],
+)
+
+scala_test_suite(
+    name = "test",
+    srcs = glob(["src/test/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = [
+       ":lib",
+       ":test-lib",
+       "//api:lib",
+       "//api:thrift",
+       maven_artifact("junit:junit"),
+       maven_artifact("com.novocode:junit-interface"),
+       maven_artifact("org.slf4j:slf4j-api"),
+       maven_artifact("org.slf4j:slf4j-log4j12"),
+       maven_artifact("com.google.code.gson:gson"),
+       maven_artifact("org.apache.datasketches:datasketches-memory"),
+       maven_artifact("org.apache.datasketches:datasketches-java"),
+       maven_artifact("org.apache.commons:commons-lang3"),
+       maven_artifact("org.apache.commons:commons-math3"),
+       maven_artifact("org.scala-lang.modules:scala-collection-compat_2.12"),
+   ],
+)
