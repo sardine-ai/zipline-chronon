@@ -1,15 +1,28 @@
 package ai.chronon.flink
 
-import ai.chronon.api.Extensions.{WindowOps, WindowUtils}
-import ai.chronon.api.{Accuracy, Builders, GroupBy, GroupByServingInfo, Operation, PartitionSpec, TimeUnit, Window}
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Builders
+import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.GroupBy
+import ai.chronon.api.GroupByServingInfo
+import ai.chronon.api.Operation
+import ai.chronon.api.PartitionSpec
+import ai.chronon.api.TimeUnit
+import ai.chronon.api.Window
+import ai.chronon.online.Api
 import ai.chronon.online.Extensions.StructTypeOps
-import ai.chronon.online.{Api, FlinkSource, GroupByServingInfoParsed}
+import ai.chronon.online.FlinkSource
+import ai.chronon.online.GroupByServingInfoParsed
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
-import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
-import org.apache.spark.sql.{Encoder, Encoders}
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.types.StructType
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
 

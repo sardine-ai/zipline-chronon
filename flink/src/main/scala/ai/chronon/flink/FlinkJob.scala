@@ -9,8 +9,11 @@ import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.flink.window.KeySelector
 import ai.chronon.flink.window.TimestampedTile
-import ai.chronon.online.{Api, FlinkSource, GroupByServingInfoParsed, SparkConversions}
+import ai.chronon.online.Api
+import ai.chronon.online.FlinkSource
+import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.SparkConversions
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.scala.DataStream
@@ -21,7 +24,9 @@ import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.spark.sql.Encoder
-import org.rogach.scallop.{ScallopConf, ScallopOption, Serialization}
+import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.ScallopOption
+import org.rogach.scallop.Serialization
 import org.slf4j.LoggerFactory
 
 /**
@@ -202,7 +207,7 @@ object FlinkJob {
   class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
     val onlineClass: ScallopOption[String] =
       opt[String](required = true,
-        descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
+                  descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
     val groupbyName: ScallopOption[String] =
       opt[String](required = true, descr = "The name of the groupBy to process")
     val mockSource: ScallopOption[Boolean] =
@@ -215,7 +220,7 @@ object FlinkJob {
 
   def main(args: Array[String]): Unit = {
     val jobArgs = new JobArgs(args)
-    val groupByName = jobArgs.groupbyName()
+    jobArgs.groupbyName()
     val onlineClassName = jobArgs.onlineClass()
     val props = jobArgs.apiProps.map(identity)
     val useMockedSource = jobArgs.mockSource()
@@ -249,4 +254,3 @@ object FlinkJob {
     onlineImpl.asInstanceOf[Api]
   }
 }
-

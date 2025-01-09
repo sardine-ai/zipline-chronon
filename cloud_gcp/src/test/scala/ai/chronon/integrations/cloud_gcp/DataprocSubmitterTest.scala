@@ -1,7 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark
-import ai.chronon.spark.JobSubmitterConstants.{FlinkMainJarURI, JarURI, MainClass}
+import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
+import ai.chronon.spark.JobSubmitterConstants.JarURI
+import ai.chronon.spark.JobSubmitterConstants.MainClass
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub

@@ -1,8 +1,12 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.JobSubmitterConstants.{FlinkMainJarURI, JarURI, MainClass}
-import ai.chronon.spark.{JobAuth, JobSubmitter, JobType}
-import ai.chronon.spark.{SparkJob => TypeSparkJob}
+import ai.chronon.spark.JobAuth
+import ai.chronon.spark.JobSubmitter
+import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
+import ai.chronon.spark.JobSubmitterConstants.JarURI
+import ai.chronon.spark.JobSubmitterConstants.MainClass
+import ai.chronon.spark.JobType
 import ai.chronon.spark.{FlinkJob => TypeFlinkJob}
+import ai.chronon.spark.{SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import org.json4s._
@@ -10,6 +14,7 @@ import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
+
 import collection.JavaConverters._
 
 case class SubmitterConf(
@@ -44,14 +49,18 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     job.getDone
   }
 
-  override def submit(jobType: JobType, jobProperties: Map[String, String], files: List[String], args: String*): String = {
+  override def submit(jobType: JobType,
+                      jobProperties: Map[String, String],
+                      files: List[String],
+                      args: String*): String = {
     val mainClass = jobProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
     val jarUri = jobProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
 
     val jobBuilder = jobType match {
       case TypeSparkJob => buildSparkJob(mainClass, jarUri, files, args: _*)
       case TypeFlinkJob =>
-        val mainJarUri = jobProperties.getOrElse(FlinkMainJarURI, throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
+        val mainJarUri =
+          jobProperties.getOrElse(FlinkMainJarURI, throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
         buildFlinkJob(mainClass, mainJarUri, jarUri, args: _*)
     }
 
@@ -75,21 +84,20 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     }
   }
 
-    private def buildSparkJob(mainClass: String, jarUri: String, files: List[String], args: String*): Job.Builder = {
-      val sparkJob = SparkJob
-        .newBuilder()
-        .setMainClass(mainClass)
-        .addJarFileUris(jarUri)
-        .addAllFileUris(files.asJava)
-        .addAllArgs(args.toIterable.asJava)
-        .build()
-      Job.newBuilder().setSparkJob(sparkJob)
-    }
+  private def buildSparkJob(mainClass: String, jarUri: String, files: List[String], args: String*): Job.Builder = {
+    val sparkJob = SparkJob
+      .newBuilder()
+      .setMainClass(mainClass)
+      .addJarFileUris(jarUri)
+      .addAllFileUris(files.asJava)
+      .addAllArgs(args.toIterable.asJava)
+      .build()
+    Job.newBuilder().setSparkJob(sparkJob)
+  }
 
   private def buildFlinkJob(mainClass: String, mainJarUri: String, jarUri: String, args: String*): Job.Builder = {
     val envProps =
-        Map("jobmanager.memory.process.size" -> "4G",
-            "yarn.classpath.include-user-jar" -> "FIRST")
+      Map("jobmanager.memory.process.size" -> "4G", "yarn.classpath.include-user-jar" -> "FIRST")
 
     val flinkJob = FlinkJob
       .newBuilder()
