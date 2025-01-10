@@ -97,7 +97,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
 
   private def buildFlinkJob(mainClass: String, mainJarUri: String, jarUri: String, args: String*): Job.Builder = {
     val checkpointsDir = "gs://chronon-checkpoints" // TODO choose the correct value!
-    
+
     // JobManager is primarily responsible for coordinating the job (task slots, checkpoint triggering) and not much else
     // so 4G should suffice.
     // We go with 64G TM containers (4 task slots per container)
@@ -110,14 +110,16 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     // managed mem + jvm heap
     // Good doc - https://nightlies.apache.org/flink/flink-docs-master/docs/deployment/memory/mem_setup_tm
     val envProps =
-      Map("jobmanager.memory.process.size" -> "4G",
-          "taskmanager.memory.process.size" -> "64G",
-          "taskmanager.memory.network.min" -> "1G",
-          "taskmanager.memory.network.max" -> "2G",
-          "taskmanager.memory.managed.fraction" -> "0.5f",
-          "yarn.classpath.include-user-jar" -> "FIRST",
-          "execution.checkpointing.savepoint-dir" -> checkpointsDir,
-          "execution.checkpointing.dir" -> checkpointsDir)
+      Map(
+        "jobmanager.memory.process.size" -> "4G",
+        "taskmanager.memory.process.size" -> "64G",
+        "taskmanager.memory.network.min" -> "1G",
+        "taskmanager.memory.network.max" -> "2G",
+        "taskmanager.memory.managed.fraction" -> "0.5f",
+        "yarn.classpath.include-user-jar" -> "FIRST",
+        "execution.checkpointing.savepoint-dir" -> checkpointsDir,
+        "execution.checkpointing.dir" -> checkpointsDir
+      )
 
     val flinkJob = FlinkJob
       .newBuilder()
