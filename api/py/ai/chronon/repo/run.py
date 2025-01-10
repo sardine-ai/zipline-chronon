@@ -807,7 +807,7 @@ def upload_gcs_blob(bucket_name, source_file_name, destination_blob_name):
                                    "Used for streaming and metadata-upload mode.")
 @click.option("--online-class", help="Class name of Online Impl. Used for streaming and metadata-upload mode.")
 @click.option("--version", help="Chronon version to use.")
-@click.option("--spark-version", help="Spark version to use for downloading jar.")
+@click.option("--spark-version", default="2.4.0", help="Spark version to use for downloading jar.")
 @click.option("--spark-submit-path", help="Path to spark-submit")
 @click.option("--spark-streaming-submit-path", help="Path to spark-submit for streaming")
 @click.option("--online-jar-fetch", help="Path to script that can pull online jar. This will run only "
