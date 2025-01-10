@@ -2,6 +2,7 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.JobAuth
 import ai.chronon.spark.JobSubmitter
 import com.google.api.gax.rpc.ApiException
+import com.google.cloud.dataproc.v1.LoggingConfig.Level
 import com.google.cloud.dataproc.v1._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
@@ -52,6 +53,11 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       .addJarFileUris(conf.jarUri)
       .addAllFileUris(files.asJava)
       .addAllArgs(args.toIterable.asJava)
+      .setLoggingConfig(
+        LoggingConfig
+          .newBuilder()
+          .putDriverLogLevels("ai.chronon.spark", Level.INFO)
+          .build())
       .build()
 
     val jobPlacement = JobPlacement
