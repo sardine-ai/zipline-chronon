@@ -52,11 +52,15 @@ setup(
     ],
     long_description=long_description,
     long_description_content_type="text/markdown",
-    scripts=['ai/chronon/repo/explore.py', 'ai/chronon/repo/compile.py', 'ai/chronon/repo/run.py'],
-    description="Chronon python API library",
+    entry_points={
+        "console_scripts": [
+            "zipline=ai.chronon.repo.zipline:zipline",
+        ]
+    },
+    description="Zipline python API library",
     include_package_data=True,
     install_requires=basic_requirements,
-    name="chronon-ai",
+    name="zipline-ai",
     packages=find_packages(),
     extras_require={
         # Extra requirement to have access to cli commands in python2 environments.

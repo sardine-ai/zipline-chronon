@@ -44,7 +44,7 @@ def get_folder_name_from_class_name(class_name):
     return {v.__name__: k for k, v in FOLDER_NAME_TO_CLASS.items()}[class_name]
 
 
-@click.command()
+@click.command(name='compile')
 @click.option(
     "--chronon_root",
     envvar="CHRONON_ROOT",
