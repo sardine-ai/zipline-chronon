@@ -82,18 +82,6 @@ struct NodeInfo {
     30: optional LogicalNode conf
 }
 
-
-/** First Pass
-* NodeInstance::(name, type, conf_hash) -> #[parent_nodes]
-* Node::(name, type) -> #[conf_hash]
-
-* Second Pass
-* Node::(name, type, compute_hash) -> #[parent_nodes]
-
-* different file_hashes but same lineage_hash should all go into the same orchestrator workflow
-* Node::(name, type, lineage_hash)
-**/
-
 struct NodeConnections {
     1: optional list<NodeKey> parents
     2: optional list<NodeKey> children
@@ -272,7 +260,7 @@ struct TableDependency {
     * JoinParts could use data from batch backfills or upload tables when available
     * When not available they shouldn't force computation of the backfills and upload tables.
     **/
-    21: optional bool forceComputae
+    21: optional bool forceCompute
 }
 
 union Dependency {
