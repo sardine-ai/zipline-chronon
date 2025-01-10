@@ -21,7 +21,7 @@ import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.expressions.Predicate
 
-object ScalaVersionSpecificCatalystHelper {
+object CatalystHelper {
 
   def evalFilterExec(row: InternalRow, condition: Expression, attributes: Seq[Attribute]): Boolean = {
     val predicate = Predicate.create(condition, attributes)
