@@ -1,4 +1,3 @@
-load("@io_bazel_rules_scala//scala:scala.bzl", "scala_library", "scala_test_suite")
 load("//tools/build_rules/thrift:thrift.bzl", "thrift_java_library")
 
 scala_library(

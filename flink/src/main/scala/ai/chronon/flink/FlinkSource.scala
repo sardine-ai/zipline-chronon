@@ -1,4 +1,4 @@
-package ai.chronon.online
+package ai.chronon.flink
 
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala.{DataStream => FlinkStream}
