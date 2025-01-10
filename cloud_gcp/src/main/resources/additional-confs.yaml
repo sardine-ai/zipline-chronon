@@ -1,2 +1,3 @@
 spark.chronon.table.format_provider.class: "ai.chronon.integrations.cloud_gcp.GcpFormatProvider"
 spark.chronon.partition.format: "yyyy-MM-dd"
+spark.chronon.table.gcs.temporary_gcs_bucket: "zl-warehouse"
