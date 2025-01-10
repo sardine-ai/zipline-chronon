@@ -88,6 +88,13 @@ object DataprocSubmitter {
     new DataprocSubmitter(jobControllerClient, conf)
   }
 
+  def apply(conf: SubmitterConf): DataprocSubmitter = {
+    val jobControllerClient = JobControllerClient.create(
+      JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
+    )
+    new DataprocSubmitter(jobControllerClient, conf)
+  }
+
   private[cloud_gcp] def loadConfig: SubmitterConf = {
     val inputStreamOption = Option(getClass.getClassLoader.getResourceAsStream("dataproc-submitter-conf.yaml"))
     val yamlLoader = new Yaml()
@@ -104,6 +111,48 @@ object DataprocSubmitter {
       .map(parse(_).extract[SubmitterConf])
       .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
 
+  }
+  def main(args: Array[String]): Unit = {
+    val chrononJarUri = args.filter(_.startsWith("--chronon_jar_uri"))(0).split("=")(1)
+
+    // search args array for prefix `--gcs_files`
+    val gcsFiles = args
+      .filter(_.startsWith("--gcs_files"))(0)
+      .split("=")(1)
+      .split(",")
+
+    val userArgs = args.filter(f => !f.startsWith("--gcs_files") && !f.startsWith("--chronon_jar_uri"))
+
+    val required_vars = List.apply(
+      "ZIPLINE_GCP_PROJECT_ID",
+      "ZIPLINE_GCP_REGION",
+      "ZIPLINE_GCP_DATAPROC_CLUSTER_NAME"
+    )
+    val missing_vars = required_vars.filter(!sys.env.contains(_))
+    if (missing_vars.nonEmpty) {
+      throw new Exception(s"Missing required environment variables: ${missing_vars.mkString(", ")}")
+    }
+
+    val projectId = sys.env.getOrElse("ZIPLINE_GCP_PROJECT_ID", throw new Exception("ZIPLINE_GCP_PROJECT_ID not set"))
+    val region = sys.env.getOrElse("ZIPLINE_GCP_REGION", throw new Exception("ZIPLINE_GCP_REGION not set"))
+    val clusterName = sys.env
+      .getOrElse("ZIPLINE_GCP_DATAPROC_CLUSTER_NAME", throw new Exception("ZIPLINE_GCP_DATAPROC_CLUSTER_NAME not set"))
+
+    val submitterConf = SubmitterConf(
+      projectId,
+      region,
+      clusterName,
+      chrononJarUri,
+      "ai.chronon.spark.Driver"
+    )
+
+    val a = DataprocSubmitter(submitterConf)
+
+    val jobId = a.submit(
+      gcsFiles.toList,
+      userArgs: _*
+    )
+    println("Dataproc submitter job id: " + jobId)
   }
 }
 
