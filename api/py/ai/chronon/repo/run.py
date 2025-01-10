@@ -18,7 +18,7 @@ run.py needs to only depend in python standard library to simplify execution req
 #     limitations under the License.
 
 from google.cloud import storage
-import argparse
+import click
 import json
 import logging
 import multiprocessing
@@ -61,8 +61,8 @@ SPARK_MODES = [
 MODES_USING_EMBEDDED = ["metadata-upload", "fetch", "local-streaming"]
 
 # Constants for supporting multiple spark versions.
-SUPPORTED_SPARK = ["2.4.0", "3.1.1", "3.2.1"]
-SCALA_VERSION_FOR_SPARK = {"2.4.0": "2.11", "3.1.1": "2.12", "3.2.1": "2.13"}
+SUPPORTED_SPARK = ["2.4.0", "3.1.1", "3.2.1", "3.5.1"]
+SCALA_VERSION_FOR_SPARK = {"2.4.0": "2.11", "3.1.1": "2.12", "3.2.1": "2.13", "3.5.1": "2.12"}
 
 MODE_ARGS = {
     "backfill": OFFLINE_ARGS,
@@ -246,7 +246,7 @@ def download_jar(
     return jar_path
 
 
-def set_runtime_env(args):
+def set_runtime_env(params):
     """
     Setting the runtime environment variables.
     These are extracted from the common env, the team env and the common env.
@@ -272,24 +272,24 @@ def set_runtime_env(args):
     }
     conf_type = None
     # Normalize modes that are effectively replacement of each other (streaming/local-streaming/streaming-client)
-    effective_mode = args.mode
+    effective_mode = params["mode"]
     if effective_mode and "streaming" in effective_mode:
         effective_mode = "streaming"
-    if args.repo:
-        teams_file = os.path.join(args.repo, "teams.json")
+    if params["repo"]:
+        teams_file = os.path.join(params["repo"], "teams.json")
         if os.path.exists(teams_file):
             with open(teams_file, "r") as infile:
                 teams_json = json.load(infile)
             environment["common_env"] = teams_json.get("default", {}).get(
                 "common_env", {}
             )
-            if args.conf and effective_mode:
+            if params["conf"] and effective_mode:
                 try:
-                    _, conf_type, team, _ = args.conf.split("/")[-4:]
+                    _, conf_type, team, _ = params["conf"].split("/")[-4:]
                 except Exception as e:
                     logging.error(
                         "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
-                            args.conf
+                            params["conf"]
                         )
                     )
                     raise e
@@ -297,14 +297,14 @@ def set_runtime_env(args):
                     team = "default"
                 # context is the environment in which the job is running, which is provided from the args,
                 # default to be dev.
-                if args.env:
-                    context = args.env
+                if params["env"]:
+                    context = params["env"]
                 else:
                     context = "dev"
                 logging.info(
                     f"Context: {context} -- conf_type: {conf_type} -- team: {team}"
                 )
-                conf_path = os.path.join(args.repo, args.conf)
+                conf_path = os.path.join(params["repo"], params["conf"])
                 if os.path.isfile(conf_path):
                     with open(conf_path, "r") as conf_file:
                         conf_json = json.load(conf_file)
@@ -342,10 +342,10 @@ def set_runtime_env(args):
                     .get(effective_mode, {})
                 )
                 environment["cli_args"]["CHRONON_CONF_PATH"] = conf_path
-    if args.app_name:
-        environment["cli_args"]["APP_NAME"] = args.app_name
+    if params["app_name"]:
+        environment["cli_args"]["APP_NAME"] = params["app_name"]
     else:
-        if not args.app_name and not environment["cli_args"].get("APP_NAME"):
+        if not params["app_name"] and not environment["cli_args"].get("APP_NAME"):
             # Provide basic app_name when no conf is defined.
             # Modes like metadata-upload and metadata-export can rely on conf-type or folder rather than a conf.
             environment["cli_args"]["APP_NAME"] = "_".join(
@@ -354,16 +354,16 @@ def set_runtime_env(args):
                     for k in [
                         "chronon",
                         conf_type,
-                        args.mode.replace("-", "_") if args.mode else None,
+                        params["mode"].replace("-", "_") if params["mode"] else None,
                     ]
                     if k is not None
                 ]
             )
 
     # Adding these to make sure they are printed if provided by the environment.
-    environment["cli_args"]["CHRONON_DRIVER_JAR"] = args.chronon_jar
-    environment["cli_args"]["CHRONON_ONLINE_JAR"] = args.online_jar
-    environment["cli_args"]["CHRONON_ONLINE_CLASS"] = args.online_class
+    environment["cli_args"]["CHRONON_DRIVER_JAR"] = params["chronon_jar"]
+    environment["cli_args"]["CHRONON_ONLINE_JAR"] = params["online_jar"]
+    environment["cli_args"]["CHRONON_ONLINE_CLASS"] = params["online_class"]
     order = [
         "conf_env",
         "team_env",
@@ -385,16 +385,16 @@ def set_runtime_env(args):
 
 class Runner:
     def __init__(self, args, jar_path):
-        self.repo = args.repo
-        self.conf = args.conf
-        self.sub_help = args.sub_help
-        self.mode = args.mode
-        self.online_jar = args.online_jar
-        valid_jar = args.online_jar and os.path.exists(args.online_jar)
+        self.repo = args["repo"]
+        self.conf = args["conf"]
+        self.sub_help = args["sub_help"]
+        self.mode = args["mode"]
+        self.online_jar = args["online_jar"]
+        valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
         # fetch online jar if necessary
-        if (self.mode in ONLINE_MODES) and (not args.sub_help) and not valid_jar:
+        if (self.mode in ONLINE_MODES) and (not args["sub_help"]) and not valid_jar:
             print("Downloading online_jar")
-            self.online_jar = check_output("{}".format(args.online_jar_fetch)).decode(
+            self.online_jar = check_output("{}".format(args["online_jar_fetch"])).decode(
                 "utf-8"
             )
             os.environ["CHRONON_ONLINE_JAR"] = self.online_jar
@@ -412,35 +412,36 @@ class Runner:
                 raise e
             possible_modes = list(ROUTES[self.conf_type].keys()) + UNIVERSAL_ROUTES
             assert (
-                args.mode in possible_modes
+                    args["mode"] in possible_modes
             ), "Invalid mode:{} for conf:{} of type:{}, please choose from {}".format(
-                args.mode, self.conf, self.conf_type, possible_modes
+                args["mode"], self.conf, self.conf_type, possible_modes
             )
         else:
-            self.conf_type = args.conf_type
-        self.ds = args.end_ds if hasattr(args, "end_ds") and args.end_ds else args.ds
+            self.conf_type = args["conf_type"]
+        self.ds = args.end_ds if "end_ds" in args and args["end_ds"] else args["ds"]
         self.start_ds = (
-            args.start_ds if hasattr(args, "start_ds") and args.start_ds else None
+            args.start_ds if "start_ds" in args and args["start_ds"] else None
         )
         self.parallelism = (
-            int(args.parallelism)
-            if hasattr(args, "parallelism") and args.parallelism
+            int(args["parallelism"])
+            if "parallelism" in args and args["parallelism"]
             else 1
         )
         self.jar_path = jar_path
-        self.args = args.args if args.args else ""
-        self.online_class = args.online_class
-        self.app_name = args.app_name
+        self.args = args["args"] if args["args"] else ""
+        self.online_class = args["online_class"]
+        self.app_name = args["app_name"]
         if self.mode == "streaming":
-            self.spark_submit = args.spark_streaming_submit_path
+            self.spark_submit = args["spark_streaming_submit_path"]
         elif self.mode == "info":
             assert os.path.exists(
-                args.render_info
-            ), "Invalid path for the render info script: {}".format(args.render_info)
-            self.render_info = args.render_info
+                args["render_info"]
+            ), "Invalid path for the render info script: {}".format(args["render_info"])
+            self.render_info = args["render_info"]
         else:
-            self.spark_submit = args.spark_submit_path
-        self.list_apps_cmd = args.list_apps
+            self.spark_submit = args["spark_submit_path"]
+        self.list_apps_cmd = args["list_apps"]
+        self.dataproc = args["dataproc"]
 
     def run(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -535,7 +536,7 @@ class Runner:
                             self.start_ds, self.ds, self.parallelism
                         )
                         for start_ds, end_ds in date_ranges:
-                            if not args.dataproc:
+                            if not self.dataproc:
                                 command = (
                                     "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} "
                                     + "{additional_args}"
@@ -578,7 +579,7 @@ class Runner:
                                 command = f"java -cp {dataproc_jar} {DATAPROC_ENTRY} {dataproc_command}"
                                 command_list.append(command)
                     else:
-                        if not args.dataproc:
+                        if not self.dataproc:
                             command = (
                                 "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} " +
                                 "{additional_args}"
@@ -671,30 +672,34 @@ def split_date_range(start_date, end_date, parallelism):
     return date_ranges
 
 
-def set_defaults(parser):
+def set_defaults(ctx):
     """Set default values based on environment"""
     chronon_repo_path = os.environ.get("CHRONON_REPO_PATH", ".")
     today = datetime.today().strftime("%Y-%m-%d")
-    parser.set_defaults(
-        mode="backfill",
-        ds=today,
-        app_name=os.environ.get("APP_NAME"),
-        online_jar=os.environ.get("CHRONON_ONLINE_JAR"),
-        repo=chronon_repo_path,
-        online_class=os.environ.get("CHRONON_ONLINE_CLASS"),
-        version=os.environ.get("VERSION"),
-        spark_version=os.environ.get("SPARK_VERSION", "2.4.0"),
-        spark_submit_path=os.path.join(chronon_repo_path, "scripts/spark_submit.sh"),
-        spark_streaming_submit_path=os.path.join(
+    defaults = {
+        "mode": "backfill",
+        "dataproc": False,
+        "ds": today,
+        "app_name": os.environ.get("APP_NAME"),
+        "online_jar": os.environ.get("CHRONON_ONLINE_JAR"),
+        "repo": chronon_repo_path,
+        "online_class": os.environ.get("CHRONON_ONLINE_CLASS"),
+        "version": os.environ.get("VERSION"),
+        "spark_version": os.environ.get("SPARK_VERSION", "2.4.0"),
+        "spark_submit_path": os.path.join(chronon_repo_path, "scripts/spark_submit.sh"),
+        "spark_streaming_submit_path": os.path.join(
             chronon_repo_path, "scripts/spark_streaming.sh"
         ),
-        online_jar_fetch=os.path.join(chronon_repo_path, "scripts/fetch_online_jar.py"),
-        conf_type="group_bys",
-        online_args=os.environ.get("CHRONON_ONLINE_ARGS", ""),
-        chronon_jar=os.environ.get("CHRONON_DRIVER_JAR"),
-        list_apps="python3 " + os.path.join(chronon_repo_path, "scripts/yarn_list.py"),
-        render_info=os.path.join(chronon_repo_path, RENDER_INFO_DEFAULT_SCRIPT),
-    )
+        "online_jar_fetch": os.path.join(chronon_repo_path, "scripts/fetch_online_jar.py"),
+        "conf_type": "group_bys",
+        "online_args": os.environ.get("CHRONON_ONLINE_ARGS", ""),
+        "chronon_jar": os.environ.get("CHRONON_DRIVER_JAR"),
+        "list_apps": "python3 " + os.path.join(chronon_repo_path, "scripts/yarn_list.py"),
+        "render_info": os.path.join(chronon_repo_path, RENDER_INFO_DEFAULT_SCRIPT),
+    }
+    for key, value in defaults.items():
+        if ctx.params.get(key) is None and value is not None:
+            ctx.params[key] = value
 
 
 def get_customer_id() -> str:
@@ -786,102 +791,60 @@ def upload_gcs_blob(bucket_name, source_file_name, destination_blob_name):
         raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Submit various kinds of chronon jobs")
-    parser.add_argument(
-        "--conf",
-        required=False,
-        help="Conf param - required for every mode except fetch",
-    )
-    parser.add_argument(
-        "--env",
-        required=False,
-        default="dev",
-        help="Running environment - default to be dev",
-    )
-    parser.add_argument("--mode", choices=MODE_ARGS.keys())
-    parser.add_argument("--dataproc", action="store_true", help="Run on dataproc", default=False)
-    parser.add_argument("--ds", help="the end partition to backfill the data")
-    parser.add_argument(
-        "--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE)
-    )
-    parser.add_argument(
-        "--start-ds",
-        help="override the original start partition for a range backfill. "
-             "It only supports staging query, group by backfill and join jobs. "
-             "It could leave holes in your final output table due to the override date range.",
-    )
-    parser.add_argument("--end-ds", help="the end ds for a range backfill")
-    parser.add_argument(
-        "--parallelism",
-        help="break down the backfill range into this number of tasks in parallel. "
-             "Please use it along with --start-ds and --end-ds and only in manual mode",
-    )
-    parser.add_argument("--repo", help="Path to chronon repo")
-    parser.add_argument(
-        "--online-jar",
-        help="Jar containing Online KvStore & Deserializer Impl. "
-             + "Used for streaming and metadata-upload mode.",
-    )
-    parser.add_argument(
-        "--online-class",
-        help="Class name of Online Impl. Used for streaming and metadata-upload mode.",
-    )
-    parser.add_argument("--version", help="Chronon version to use.")
-    parser.add_argument(
-        "--spark-version", help="Spark version to use for downloading jar."
-    )
-    parser.add_argument("--spark-submit-path", help="Path to spark-submit")
-    parser.add_argument(
-        "--spark-streaming-submit-path", help="Path to spark-submit for streaming"
-    )
-    parser.add_argument(
-        "--online-jar-fetch",
-        help="Path to script that can pull online jar. "
-             + "This will run only when a file doesn't exist at location specified by online_jar",
-    )
-    parser.add_argument(
-        "--sub-help",
-        action="store_true",
-        help="print help command of the underlying jar and exit",
-    )
-    parser.add_argument(
-        "--conf-type",
-        help="related to sub-help - no need to set unless you are not working with a conf",
-    )
-    parser.add_argument(
-        "--online-args",
-        help="Basic arguments that need to be supplied to all online modes",
-    )
-    parser.add_argument("--chronon-jar", help="Path to chronon OS jar")
-    parser.add_argument(
-        "--release-tag", help="Use the latest jar for a particular tag."
-    )
-    parser.add_argument(
-        "--list-apps", help="command/script to list running jobs on the scheduler"
-    )
-    parser.add_argument(
-        "--render-info",
-        help="Path to script rendering additional information of the given config. "
-             + "Only applicable when mode is set to info",
-    )
-    set_defaults(parser)
-    pre_parse_args, _ = parser.parse_known_args()
-    # We do a pre-parse to extract conf, mode, etc and set environment variables and re parse default values.
-    set_runtime_env(pre_parse_args)
-    set_defaults(parser)
-    args, unknown_args = parser.parse_known_args()
-    jar_type = "embedded" if args.mode in MODES_USING_EMBEDDED else "uber"
-    extra_args = (" " + args.online_args) if args.mode in ONLINE_MODES else ""
-    args.args = " ".join(unknown_args) + extra_args
+@click.command(name="run", context_settings=dict(allow_extra_args=True, ignore_unknown_options=True))
+@click.option("--conf", required=False, help="Conf param - required for every mode except fetch")
+@click.option("--env", required=False, default="dev", help="Running environment - default to be dev")
+@click.option("--mode", type=click.Choice(MODE_ARGS.keys()))
+@click.option("--dataproc", is_flag=True, help="Run on dataproc")
+@click.option("--ds", help="the end partition to backfill the data")
+@click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
+@click.option("--start-ds", help="override the original start partition for a range backfill. "
+                                 "It only supports staging query, group by backfill and join jobs. "
+                                 "It could leave holes in your final output table due to the override date range.")
+@click.option("--end-ds", help="the end ds for a range backfill")
+@click.option("--parallelism", help="break down the backfill range into this number of tasks in parallel. "
+                                    "Please use it along with --start-ds and --end-ds and only in manual mode")
+@click.option("--repo", help="Path to chronon repo")
+@click.option("--online-jar", help="Jar containing Online KvStore & Deserializer Impl. "
+                                   "Used for streaming and metadata-upload mode.")
+@click.option("--online-class", help="Class name of Online Impl. Used for streaming and metadata-upload mode.")
+@click.option("--version", help="Chronon version to use.")
+@click.option("--spark-version", help="Spark version to use for downloading jar.")
+@click.option("--spark-submit-path", help="Path to spark-submit")
+@click.option("--spark-streaming-submit-path", help="Path to spark-submit for streaming")
+@click.option("--online-jar-fetch", help="Path to script that can pull online jar. This will run only "
+                                         "when a file doesn't exist at location specified by online_jar")
+@click.option("--sub-help", is_flag=True, help="print help command of the underlying jar and exit")
+@click.option("--conf-type", help="related to sub-help - no need to set unless you are not working with a conf")
+@click.option("--online-args", help="Basic arguments that need to be supplied to all online modes")
+@click.option("--chronon-jar", help="Path to chronon OS jar")
+@click.option("--release-tag", help="Use the latest jar for a particular tag.")
+@click.option("--list-apps", help="command/script to list running jobs on the scheduler")
+@click.option("--render-info", help="Path to script rendering additional information of the given config. "
+                                    "Only applicable when mode is set to info")
+@click.pass_context
+def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar, online_class,
+         version, spark_version, spark_submit_path, spark_streaming_submit_path, online_jar_fetch, sub_help, conf_type,
+         online_args, chronon_jar, release_tag, list_apps, render_info):
+    unknown_args = ctx.args
+    click.echo("Running with args: {}".format(ctx.params))
+    set_runtime_env(ctx.params)
+    set_defaults(ctx)
+    jar_type = "embedded" if mode in MODES_USING_EMBEDDED else "uber"
+    extra_args = (" " + online_args) if mode in ONLINE_MODES else ""
+    ctx.params["args"] = " ".join(unknown_args) + extra_args
     jar_path = (
-        args.chronon_jar
-        if args.chronon_jar
+        chronon_jar
+        if chronon_jar
         else download_jar(
-            args.version,
+            version,
             jar_type=jar_type,
-            release_tag=args.release_tag,
-            spark_version=os.environ.get("SPARK_VERSION", args.spark_version),
+            release_tag=release_tag,
+            spark_version=os.environ.get("SPARK_VERSION", spark_version),
         )
     )
-    Runner(args, os.path.expanduser(jar_path)).run()
+    Runner(ctx.params, os.path.expanduser(jar_path)).run()
+
+
+if __name__ == "__main__":
+    main()
