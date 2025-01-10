@@ -5,7 +5,7 @@ import ai.chronon.orchestration.TabularData
 import ai.chronon.orchestration.TabularDataType
 
 case class TabularDataNodeImpl(tabularData: TabularData) extends LogicalNodeImpl {
-  override def name: String = tabularData.table
+  override def name: String = "tabular_data." + tabularData.table
 
   override def outputTables: Seq[String] =
     Seq.empty

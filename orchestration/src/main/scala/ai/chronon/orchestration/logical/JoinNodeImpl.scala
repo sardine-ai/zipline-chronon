@@ -10,7 +10,7 @@ import ai.chronon.orchestration.utils.TabularDataUtils
 
 // Join implementation
 case class JoinNodeImpl(join: Join) extends LogicalNodeImpl {
-  override def name: String = join.metaData.name
+  override def name: String = "joins." + join.metaData.name
 
   override def outputTables: Seq[String] =
     Seq(join.metaData.outputTable, join.metaData.loggedTable)

@@ -9,7 +9,7 @@ import ai.chronon.orchestration.utils.TabularDataUtils
 
 // Model implementation
 case class ModelNodeImpl(model: Model) extends LogicalNodeImpl {
-  override def name: String = model.metaData.name
+  override def name: String = "models." + model.metaData.name
 
   override def outputTables: Seq[String] =
     Seq(model.metaData.outputTable)

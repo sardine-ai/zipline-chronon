@@ -9,7 +9,7 @@ import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
 
 // GroupBy implementation
 case class GroupByNodeImpl(groupBy: GroupBy) extends LogicalNodeImpl {
-  override def name: String = groupBy.metaData.name
+  override def name: String = "group_bys." + groupBy.metaData.name
 
   override def outputTables: Seq[String] =
     Seq(groupBy.metaData.outputTable)

@@ -9,7 +9,7 @@ import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
 
 // StagingQuery implementation
 case class StagingQueryNodeImpl(stagingQuery: StagingQuery) extends LogicalNodeImpl {
-  override def name: String = stagingQuery.metaData.name
+  override def name: String = "staging_queries." + stagingQuery.metaData.name
 
   override def outputTables: Seq[String] =
     Seq(stagingQuery.metaData.outputTable)

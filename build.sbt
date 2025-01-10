@@ -136,7 +136,9 @@ lazy val api = project
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
-      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test"
+      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
+      // needed by thrift
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
     )
   )
 
@@ -410,33 +412,22 @@ lazy val hub = (project in file("hub"))
     }
   )
 
-val scala_test = "org.scalatest" %% "scalatest" % "3.2.19" % "test"
-val sl4j = "org.slf4j" % "slf4j-api" % slf4jApiVersion
-val logback = "ch.qos.logback" % "logback-classic" % logbackClassicVersion
-val commonDependencies = Seq(
-  scala_test,
-  sl4j,
-  logback
-)
 
 // orchestrator
 lazy val orchestration = project
   .dependsOn(online.%("compile->compile;test->test"))
   .settings(
     assembly / mainClass := Some("ai.chronon.orchestration.RepoParser"),
+    
     Compile / run / mainClass := Some("ai.chronon.orchestration.RepoParser"),
-    assembly / assemblyMergeStrategy := {
-      case "log4j2.properties"                  => MergeStrategy.first
-      case "META-INF/log4j-provider.properties" => MergeStrategy.first
-      case PathList("org", "apache", "logging", "log4j", "core", "config", "plugins", "Log4j2Plugins.dat") =>
-        MergeStrategy.first
-      case x => (assembly / assemblyMergeStrategy).value(x)
-    },
-    libraryDependencies ++= commonDependencies ++ Seq(
-      "org.apache.logging.log4j" % "log4j-api" % log4j2_version,
-      "org.apache.logging.log4j" % "log4j-core" % log4j2_version,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4j2_version
-    )
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources",
+
+    libraryDependencies ++= Seq(
+      "org.apache.logging.log4j" %% "log4j-api-scala" % "13.1.0",
+      "org.apache.logging.log4j" % "log4j-core" % "2.20.0",
+//      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "org.scalatest" %% "scalatest" % "3.2.19" % "test",
+    ),
   )
 
 ThisBuild / assemblyMergeStrategy := {
