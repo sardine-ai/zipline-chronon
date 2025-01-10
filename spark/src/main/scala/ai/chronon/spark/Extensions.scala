@@ -312,12 +312,6 @@ object Extensions {
               dfw
                 .format("bigquery")
                 .options(dataPointer.options)
-                // todo(tchow): thread these through
-                // .option("partitionField", "ds")
-                // .option("temporaryGcsBucket", "zl-warehouse")
-                .option("writeMethod",
-                        "indirect"
-                ) // direct write does not support partitioned writes. See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file#properties
                 .save(dataPointer.tableOrPath)
             case "snowflake" | "sf" =>
               dfw

@@ -12,6 +12,8 @@ trait Format {
 
   def name: String
 
+  def options: Map[String, String] = Map.empty[String, String]
+
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,

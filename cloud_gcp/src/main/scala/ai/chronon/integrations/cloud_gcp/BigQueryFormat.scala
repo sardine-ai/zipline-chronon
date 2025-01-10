@@ -3,6 +3,7 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.Format
 import ai.chronon.spark.FormatProvider
 import ai.chronon.spark.Hive
+import ai.chronon.spark.TableUtils
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.ExternalTableDefinition
 import com.google.cloud.bigquery.FormatOptions
@@ -37,7 +38,19 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
   override def readFormat(tableName: String): Format = format(tableName)
 
   // Fixed to BigQuery for now.
-  override def writeFormat(tableName: String): Format = BQuery(bqOptions.getProjectId)
+  override def writeFormat(tableName: String): Format = {
+
+    val tu = TableUtils(sparkSession)
+    val sparkOptions: Map[String, String] =
+      Map(
+        "partitionField" -> tu.partitionColumn,
+        "temporaryGcsBucket" -> sparkSession.conf.get(
+          "spark.chronon.table.gcs.temporary_gcs_bucket"
+        ), // todo(tchow): No longer needed after https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1320
+        "writeMethod" -> "indirect"
+      )
+    BQuery(bqOptions.getProjectId, sparkOptions)
+  }
 
   private def format(tableName: String): Format = {
 
@@ -65,8 +78,9 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
             .getType
 
           GCS(table.getTableId.getProject, uris.head, formatStr)
-        } else if (table.getDefinition.isInstanceOf[StandardTableDefinition]) BQuery(table.getTableId.getProject)
-        else throw new IllegalStateException(s"Cannot support table of type: ${table.getDefinition}")
+        } else if (table.getDefinition.isInstanceOf[StandardTableDefinition]) {
+          BQuery(table.getTableId.getProject, Map.empty)
+        } else throw new IllegalStateException(s"Cannot support table of type: ${table.getDefinition}")
       })
       .getOrElse(Hive)
 
@@ -97,7 +111,7 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
   }
 }
 
-case class BQuery(project: String) extends Format {
+case class BQuery(project: String, override val options: Map[String, String]) extends Format {
 
   override def name: String = "bigquery"
 

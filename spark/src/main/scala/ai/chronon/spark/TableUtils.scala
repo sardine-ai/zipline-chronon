@@ -505,13 +505,20 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
           (Seq(partitionColumn, saltCol), Seq(partitionColumn) ++ sortByCols)
         } else { (Seq(saltCol), sortByCols) }
       logger.info(s"Sorting within partitions with cols: $partitionSortCols")
+
+      val dataPointer = DataPointer(tableName, sparkSession)
       saltedDf
+        .select(saltedDf.columns.map {
+          case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
+            to_date(saltedDf.col(c), partitionFormat).as(partitionColumn)
+          case c => saltedDf.col(c)
+        }.toList: _*)
         .repartition(shuffleParallelism, repartitionCols.map(saltedDf.col): _*)
         .drop(saltCol)
         .sortWithinPartitions(partitionSortCols.map(col): _*)
         .write
         .mode(saveMode)
-        .save(DataPointer(tableName, sparkSession))
+        .save(dataPointer)
       logger.info(s"Finished writing to $tableName")
     }
   }
