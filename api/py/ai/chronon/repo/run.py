@@ -551,7 +551,6 @@ class Runner:
                                 )
                                 command_list.append(command)
                             else:
-
                                 user_args = (
                                     "{subcommand} {args} {additional_args}"
                                 ).format(
@@ -594,7 +593,6 @@ class Runner:
                             )
                             command_list.append(command)
                         else:
-                            dataproc_jar = download_dataproc_jar(temp_dir, get_customer_id())
                             user_args = (
                                 "{subcommand} {args} {additional_args}"
                             ).format(
