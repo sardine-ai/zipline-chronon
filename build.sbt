@@ -56,7 +56,18 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, service_commons, service, hub, orchestration)
+  .aggregate(api,
+             aggregator,
+             online,
+             spark,
+             flink,
+             cloud_gcp,
+             cloud_gcp_submitter,
+             cloud_aws,
+             service_commons,
+             service,
+             hub,
+             orchestration)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -231,6 +242,12 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
     // force a newer version of reload4j to sidestep: https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
     dependencyOverrides += "ch.qos.reload4j" % "reload4j" % "1.2.25"
+  )
+
+lazy val cloud_gcp_submitter = project
+  .dependsOn(cloud_gcp)
+  .settings(
+    mainClass in (Compile, run) := Some("ai.chronon.integrations.cloud_gcp.DataprocSubmitter")
   )
 
 lazy val cloud_aws = project
