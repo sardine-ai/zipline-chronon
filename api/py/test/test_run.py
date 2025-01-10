@@ -16,6 +16,7 @@ Basic tests for namespace and breaking changes in run.py
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+import click
 import argparse
 import json
 import os
@@ -27,27 +28,23 @@ from ai.chronon.repo import run
 DEFAULT_ENVIRONMENT = os.environ.copy()
 
 
-@pytest.fixture
-def parser():
-    """Basic parser for tests relative to the main arguments of run.py"""
-    parser = argparse.ArgumentParser()
-    args = [
-        "repo",
-        "conf",
-        "mode",
-        "env",
-        "app-name",
-        "chronon-jar",
-        "online-jar",
-        "online-class",
-        "render-info",
-        "sub-help",
-    ]
-    for arg in args:
-        parser.add_argument(f"--{arg}")
-    run.set_defaults(parser)
-    return parser
-
+def context():
+    """Basic click Context for tests relative to the main arguments of run.py"""
+    context = click.Context(run.main)
+    context.params = {
+        "repo": None,
+        "conf": None,
+        "mode": None,
+        "env": None,
+        "app_name": None,
+        "chronon_jar": None,
+        "online_jar": None,
+        "online_class": None,
+        "render_info": None,
+        "sub_help": None,
+    }
+    run.set_defaults(context)
+    return context
 
 @pytest.fixture
 def test_conf_location():
@@ -83,52 +80,51 @@ def test_download_jar(monkeypatch, sleepless):
         )
 
 
-def test_environment(teams_json, repo, parser, test_conf_location):
+def test_environment(teams_json, repo, test_conf_location):
     default_environment = DEFAULT_ENVIRONMENT.copy()
     # If nothing is passed.
-    run.set_runtime_env(parser.parse_args(args=[]))
+    ctx = context()
+    run.set_runtime_env(ctx.params)
 
     # If repo is passed common_env is loaded.
     reset_env(default_environment)
-    run.set_runtime_env(parser.parse_args(args=["--repo", repo]))
+    ctx = context()
+    ctx.params["repo"] = repo
+    run.set_runtime_env(ctx.params)
     assert os.environ["VERSION"] == "latest"
 
     # For chronon_metadata_export is passed. APP_NAME should be set.
     reset_env(default_environment)
-    run.set_runtime_env(parser.parse_args(args=["--mode", "metadata-export"]))
+    ctx = context()
+    ctx.params["mode"] = "metadata-export"
+    run.set_runtime_env(ctx.params)
     assert os.environ["APP_NAME"] == "chronon_metadata_export"
 
     # If APP_NAME is set, should be respected.
     reset_env(default_environment)
     os.environ["APP_NAME"] = "fake-name"
-    run.set_runtime_env(parser.parse_args(args=["--mode", "metadata-export"]))
+    ctx = context()
+    ctx.params["mode"] = "metadata-export"
+    run.set_runtime_env(ctx.params)
     assert os.environ["APP_NAME"] == "fake-name"
 
     # If app_name can be passed from cli.
     reset_env(default_environment)
-    run.set_runtime_env(
-        parser.parse_args(args=["--mode", "metadata-export", "--app-name", "fake-name"])
-    )
+    ctx = context()
+    ctx.params["mode"] = "metadata-export"
+    ctx.params["app_name"] = "fake-name"
+    run.set_runtime_env(ctx.params)
     assert os.environ["APP_NAME"] == "fake-name"
 
     # Check default backfill for a team sets parameters accordingly.
     reset_env(default_environment)
-    run.set_runtime_env(
-        parser.parse_args(
-            args=[
-                "--mode",
-                "backfill",
-                "--conf",
-                test_conf_location,
-                "--repo",
-                repo,
-                "--env",
-                "production",
-                "--online-jar",
-                test_conf_location,
-            ]
-        )
-    )
+    ctx = context()
+    ctx.params["mode"] = "backfill"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["repo"] = repo
+    ctx.params["env"] = "production"
+    ctx.params["online_jar"] = test_conf_location
+    run.set_runtime_env(ctx.params)
     # from team env.
     assert os.environ["EXECUTOR_CORES"] == "4"
     # from default env.
@@ -145,20 +141,12 @@ def test_environment(teams_json, repo, parser, test_conf_location):
 
     # Check dev backfill for a team sets parameters accordingly.
     reset_env(default_environment)
-    run.set_runtime_env(
-        parser.parse_args(
-            args=[
-                "--mode",
-                "backfill",
-                "--conf",
-                test_conf_location,
-                "--repo",
-                repo,
-                "--online-jar",
-                test_conf_location,
-            ]
-        )
-    )
+    ctx = context()
+    ctx.params["mode"] = "backfill"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["repo"] = repo
+    ctx.params["online_jar"] = test_conf_location
+    run.set_runtime_env(ctx.params)
     # from team dev env.
     assert os.environ["EXECUTOR_CORES"] == "2"
     # from team dev env.
@@ -168,126 +156,92 @@ def test_environment(teams_json, repo, parser, test_conf_location):
 
     # Check conf set environment overrides most.
     reset_env(default_environment)
-    run.set_runtime_env(
-        parser.parse_args(
-            args=[
-                "--mode",
-                "backfill",
-                "--conf",
-                "production/joins/sample_team/sample_join.v1",
-                "--repo",
-                repo,
-                "--env",
-                "production",
-            ]
-        )
-    )
+    ctx = context()
+    ctx.params["mode"] = "backfill"
+    ctx.params["conf"] = "production/joins/sample_team/sample_join.v1"
+    ctx.params["repo"] = repo
+    ctx.params["env"] = "production"
+    run.set_runtime_env(ctx.params)
     # from conf env.
     assert os.environ["EXECUTOR_MEMORY"] == "9G"
 
     # Bad conf location raises error.
     with pytest.raises(Exception):
         reset_env(default_environment)
-        run.set_runtime_env(
-            parser.parse_args(
-                args=[
-                    "--mode",
-                    "backfill",
-                    "--conf",
-                    "joins/sample_team/sample_join.v1",
-                    "--repo",
-                    repo,
-                ]
-            )
-        )
+        ctx = context()
+        ctx.params["mode"] = "backfill"
+        ctx.params["conf"] = "joins/sample_team/sample_join.v1"
+        ctx.params["repo"] = repo
+        run.set_runtime_env(ctx.params)
 
     # Check metadata export run.py
     reset_env(default_environment)
-    run.set_runtime_env(
-        parser.parse_args(
-            args=[
-                "--mode",
-                "metadata-export",
-                "--conf",
-                "production/joins//",
-                "--repo",
-                repo,
-            ]
-        )
-    )
+    ctx = context()
+    ctx.params["mode"] = "metadata-export"
+    ctx.params["conf"] = "production/joins//"
+    ctx.params["repo"] = repo
+    run.set_runtime_env(ctx.params)
     # without conf still works.
     assert os.environ["APP_NAME"] == "chronon_joins_metadata_export"
 
     reset_env(default_environment)
-    run.set_runtime_env(
-        parser.parse_args(
-            args=[
-                "--mode",
-                "metadata-upload",
-                "--conf",
-                "production/joins//",
-                "--repo",
-                repo,
-            ]
-        )
-    )
+    ctx = context()
+    ctx.params["mode"] = "metadata-upload"
+    ctx.params["conf"] = "production/joins//"
+    ctx.params["repo"] = repo
+    run.set_runtime_env(ctx.params)
     assert os.environ["APP_NAME"] == "chronon_joins_metadata_upload"
     reset_env(default_environment)
 
 
-def test_property_default_update(repo, parser, test_conf_location):
+def test_property_default_update(repo, test_conf_location):
     reset_env(DEFAULT_ENVIRONMENT.copy())
     assert "VERSION" not in os.environ
-    args, _ = parser.parse_known_args(
-        args=["--mode", "backfill", "--conf", test_conf_location, "--repo", repo]
-    )
-    assert args.version is None
-    run.set_runtime_env(args)
+    ctx = context()
+    ctx.params["mode"] = "backfill"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["repo"] = repo
+    assert "version" not in ctx.params
+    run.set_runtime_env(ctx.params)
     assert "VERSION" in os.environ
-    assert args.version is None
-    run.set_defaults(parser)
-    reparsed, _ = parser.parse_known_args(
-        args=["--mode", "backfill", "--conf", test_conf_location, "--repo", repo]
-    )
-    assert reparsed.version is not None
+    assert "version" not in ctx.params
+    run.set_defaults(ctx)
+    reparsed = ctx.params
+    assert reparsed["version"] is not None
 
 
-def test_render_info_setting_update(repo, parser, test_conf_location):
+def test_render_info_setting_update(repo, test_conf_location):
     default_environment = DEFAULT_ENVIRONMENT.copy()
 
-    run.set_defaults(parser)
-    args, _ = parser.parse_known_args(
-        args=["--mode", "info", "--conf", test_conf_location, "--repo", repo]
-    )
-    run.set_defaults(parser)
-    assert args.render_info == os.path.join(".", run.RENDER_INFO_DEFAULT_SCRIPT)
+    ctx = context()
+    run.set_defaults(ctx)
+    ctx.params["mode"] = "info"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["repo"] = repo
+    run.set_defaults(ctx)
+    assert ctx.params["render_info"] == os.path.join(".", run.RENDER_INFO_DEFAULT_SCRIPT)
 
     reset_env(default_environment)
-    run.set_runtime_env(args)
+    run.set_runtime_env(ctx.params)
     os.environ["CHRONON_REPO_PATH"] = repo
-    run.set_defaults(parser)
-    args, _ = parser.parse_known_args(
-        args=["--mode", "info", "--conf", test_conf_location, "--repo", repo]
-    )
-    assert args.render_info == os.path.join(repo, run.RENDER_INFO_DEFAULT_SCRIPT)
+    ctx = context()
+    ctx.params["mode"] = "info"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["repo"] = repo
+    run.set_defaults(ctx)
+    assert ctx.params["render_info"] == os.path.join(repo, run.RENDER_INFO_DEFAULT_SCRIPT)
 
     reset_env(default_environment)
-    run.set_defaults(parser)
+    ctx = context()
     somewhere = "/tmp/somewhere/script.py"
-    args, _ = parser.parse_known_args(
-        args=[
-            "--mode",
-            "info",
-            "--conf",
-            test_conf_location,
-            "--render-info",
-            somewhere,
-        ]
-    )
-    assert args.render_info == somewhere
+    ctx.params["mode"] = "info"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["render_info"] = somewhere
+    run.set_defaults(ctx)
+    assert ctx.params["render_info"] == somewhere
 
 
-def test_render_info(repo, parser, test_conf_location, monkeypatch):
+def test_render_info(repo, test_conf_location, monkeypatch):
     actual_cmd = None
 
     def mock_check_call(cmd):
@@ -300,19 +254,21 @@ def test_render_info(repo, parser, test_conf_location, monkeypatch):
 
     monkeypatch.setattr(run, "check_call", mock_check_call)
     monkeypatch.setattr(os.path, "exists", mock_exists)
-    run.set_defaults(parser)
-    args, _ = parser.parse_known_args(
-        args=["--mode", "info", "--conf", test_conf_location, "--repo", repo]
-    )
+    ctx = context()
+    run.set_defaults(ctx)
+    ctx.params["mode"] = "info"
+    ctx.params["conf"] = test_conf_location
+    ctx.params["repo"] = repo
+    args = ctx.params
 
-    args.args = _
+    args["args"] = ctx.args
     runner = run.Runner(args, "some.jar")
     runner.run()
 
     assert run.RENDER_INFO_DEFAULT_SCRIPT in actual_cmd
 
 
-def test_streaming_client(repo, parser, test_online_group_by, monkeypatch):
+def test_streaming_client(repo, test_online_group_by, monkeypatch):
     """Test mode compiles properly and uses the same app name by default, killing if necessary."""
     calls = []
 
@@ -327,45 +283,33 @@ def test_streaming_client(repo, parser, test_online_group_by, monkeypatch):
 
     monkeypatch.setattr(run, "check_output", mock_check_output)
     monkeypatch.setattr(run, "check_call", mock_check_call)
-    run.set_defaults(parser)
+    ctx = context()
+    run.set_defaults(ctx)
     # Follow the same flow as __main__: Do a first pass (no env), do a second pass and run.
-    pre_parse_args, _ = parser.parse_known_args(
-        args=["--mode", "streaming", "--conf", test_online_group_by, "--repo", repo]
-    )
-    run.set_runtime_env(pre_parse_args)
-    run.set_defaults(parser)
-    parse_args, _ = parser.parse_known_args(
-        args=["--mode", "streaming", "--conf", test_online_group_by, "--repo", repo]
-    )
-    parse_args.args = ""
-    runner = run.Runner(parse_args, "some.jar")
+    ctx.params["mode"] = "streaming"
+    ctx.params["conf"] = test_online_group_by
+    ctx.params["repo"] = repo
+    run.set_runtime_env(ctx.params)
+    run.set_defaults(ctx)
+    ctx.params["mode"] = "streaming"
+    ctx.params["conf"] = test_online_group_by
+    ctx.params["repo"] = repo
+    ctx.params["args"] = ""
+    runner = run.Runner(ctx.params, "some.jar")
     runner.run()
     streaming_app_name = runner.app_name
     # Repeat for streaming-client
-    pre_parse_args, _ = parser.parse_known_args(
-        args=[
-            "--mode",
-            "streaming-client",
-            "--conf",
-            test_online_group_by,
-            "--repo",
-            repo,
-        ]
-    )
-    run.set_runtime_env(pre_parse_args)
-    run.set_defaults(parser)
-    parse_args, _ = parser.parse_known_args(
-        args=[
-            "--mode",
-            "streaming-client",
-            "--conf",
-            test_online_group_by,
-            "--repo",
-            repo,
-        ]
-    )
-    parse_args.args = ""
-    runner = run.Runner(parse_args, "some.jar")
+    ctx = context()
+    ctx.params["mode"] = "streaming-client"
+    ctx.params["conf"] = test_online_group_by
+    ctx.params["repo"] = repo
+    run.set_runtime_env(ctx.params)
+    run.set_defaults(ctx)
+    ctx.params["mode"] = "streaming-client"
+    ctx.params["conf"] = test_online_group_by
+    ctx.params["repo"] = repo
+    ctx.params["args"] = ""
+    runner = run.Runner(ctx.params, "some.jar")
     runner.run()
     assert streaming_app_name == runner.app_name
 
@@ -381,7 +325,7 @@ def test_streaming_client(repo, parser, test_online_group_by, monkeypatch):
 
     monkeypatch.setattr(run, "check_output", mock_check_output_with_app_other_user)
     assert "<kill app cmd>" not in calls
-    runner = run.Runner(parse_args, "some.jar")
+    runner = run.Runner(ctx.params, "some.jar")
     with pytest.raises(RuntimeError):
         runner.run()
 

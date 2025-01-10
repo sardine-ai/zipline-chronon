@@ -7,5 +7,3 @@ isort
 autoflake
 zipp==3.19.1
 importlib-metadata==8.4.0
-google-cloud-storage==2.19.0
-
