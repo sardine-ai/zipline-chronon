@@ -262,7 +262,6 @@ def join_part_output_table_name(join, jp, full_name: bool = False):
     def partOutputTable(jp: JoinPart): String = (Seq(join.metaData.outputTable) ++ Option(jp.prefix) :+
       jp.groupBy.metaData.cleanName).mkString("_")
     """
-    print(join)
     if not join.metaData.name and isinstance(join, api.Join):
         __set_name(join, api.Join, "joins")
     return "_".join(
