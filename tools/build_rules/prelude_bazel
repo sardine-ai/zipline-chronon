@@ -5,4 +5,5 @@ load(
     "jar",
     "scala_jar")
 
+load("@io_bazel_rules_scala//scala:scala.bzl", "scala_library", "scala_test_suite")
 load("//tools/build_rules:maven_artifact.bzl", "maven_artifact", "scala_artifact")

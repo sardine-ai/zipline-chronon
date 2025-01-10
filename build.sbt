@@ -165,8 +165,7 @@ lazy val online = project
     libraryDependencies ++= jackson,
     // dep needed for HTTPKvStore - yank when we rip this out
     libraryDependencies += "com.softwaremill.sttp.client3" %% "core" % "3.9.7",
-    libraryDependencies ++= spark_all.map(_ % "provided"),
-    libraryDependencies ++= flink_all.map(_ % "provided")
+    libraryDependencies ++= spark_all.map(_ % "provided")
   )
 
 lazy val tmp_warehouse = "/tmp/chronon/"

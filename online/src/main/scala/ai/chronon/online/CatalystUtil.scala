@@ -202,7 +202,7 @@ class CatalystUtil(inputSchema: StructType,
         val unsafeProjection = UnsafeProjection.create(projectList, fp.output)
 
         def projectFunc(row: InternalRow): Option[InternalRow] = {
-          val r = ScalaVersionSpecificCatalystHelper.evalFilterExec(row, condition, child.output)
+          val r = CatalystHelper.evalFilterExec(row, condition, child.output)
           if (r)
             Some(unsafeProjection.apply(row))
           else
