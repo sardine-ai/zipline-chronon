@@ -16,6 +16,9 @@
 
 package ai.chronon.spark
 
+import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.core.LoggerContext
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.spark.SPARK_VERSION
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
@@ -25,6 +28,39 @@ import java.util.logging.Logger
 import scala.util.Properties
 
 object SparkSessionBuilder {
+
+  def configureLogging(): Unit = {
+    val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
+
+    // Create console appender
+    val console = builder
+      .newAppender("console", "Console")
+      .addAttribute("target", "SYSTEM_OUT")
+
+    // Create pattern layout with colors
+    val patternLayout = builder
+      .newLayout("PatternLayout")
+      .addAttribute("pattern", "%cyan{%d{yyyy/MM/dd HH:mm:ss}} %highlight{%-5level} %magenta{%file:%line} - %message%n")
+      .addAttribute("disableAnsi", "false")
+
+    console.add(patternLayout)
+    builder.add(console)
+
+    // Configure root logger
+    val rootLogger = builder.newRootLogger(Level.ERROR)
+    rootLogger.add(builder.newAppenderRef("console"))
+    builder.add(rootLogger)
+
+    // Configure specific logger for ai.chronon
+    val chrononLogger = builder.newLogger("ai.chronon", Level.INFO)
+    builder.add(chrononLogger)
+
+    // Build and apply configuration
+    val config = builder.build()
+    val context = LoggerContext.getContext(false)
+    context.start(config)
+  }
+
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
   private val warehouseId = java.util.UUID.randomUUID().toString.takeRight(6)
@@ -118,6 +154,7 @@ object SparkSessionBuilder {
     spark.sparkContext.setLogLevel("ERROR")
 
     Logger.getLogger("parquet.hadoop").setLevel(java.util.logging.Level.SEVERE)
+    configureLogging()
     spark
   }
 

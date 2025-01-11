@@ -658,6 +658,8 @@ object GroupBy {
     if (mutations && !source.getEntities.isSetMutationTable) {
       throw new Exception(s"mutationTopic is not set for groupby ${groupByConf.metaData.name} with Accuracy.TEMPORAL")
     }
+
+    // TODO: maybe drop this
     // chronon run ds macro is only supported for group bys
     val selects = Option(source.query.selects)
       .map(_.toScala.map(keyValue => {

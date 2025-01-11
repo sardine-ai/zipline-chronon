@@ -22,6 +22,7 @@ import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.slf4j.LoggerFactory
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
@@ -35,14 +36,16 @@ class DriftTest extends AnyFlatSpec with Matchers {
   implicit val spark: SparkSession = SparkSessionBuilder.build(namespace, local = true)
   implicit val tableUtils: TableUtils = TableUtils(spark)
   tableUtils.createDatabase(namespace)
-
+  
+  @transient private lazy val logger = LoggerFactory.getLogger(getClass.getName)
+  
   def showTable(name: String)(implicit tableUtils: TableUtils): Unit = {
-    println(s"Showing table $name".yellow)
+    logger.info(s"Showing table $name".yellow)
     val df = tableUtils.loadTable(name)
     val maxColNameLength = df.schema.fieldNames.map(_.length).max
     def pad(s: String): String = s.padTo(maxColNameLength, ' ')
     df.schema.fields.foreach { f =>
-      println(s"    ${pad(f.name)} : ${f.dataType.typeName}".yellow)
+      logger.info(s"    ${pad(f.name)} : ${f.dataType.typeName}".yellow)
     }
 
     df.show(10, truncate = false)
@@ -87,15 +90,14 @@ class DriftTest extends AnyFlatSpec with Matchers {
     val driftStore = new DriftStore(api.genKvStore)
 
     // fetch keys
-    val tileKeys = driftStore.tileKeysForJoin(join)
-    println(tileKeys)
+    driftStore.tileKeysForJoin(join)
 
     // fetch summaries
     val startMs = PartitionSpec.daily.epochMillis("2023-01-01")
     val endMs = PartitionSpec.daily.epochMillis("2023-02-29")
     val summariesFuture = driftStore.getSummaries(join, Some(startMs), Some(endMs), None)
     val summaries = Await.result(summariesFuture, Duration.create(10, TimeUnit.SECONDS))
-    println(summaries)
+    logger.info(s"${summaries.length} summaries fetched successfully")
 
     // fetch drift series
     val driftSeriesFuture = driftStore.getDriftSeries(
@@ -114,11 +116,11 @@ class DriftTest extends AnyFlatSpec with Matchers {
         (nulls + currentNulls, total + currentCount)
     }
 
-    println(s"""drift totals: $totals
+    logger.info(s"""drift totals: $totals
          |drift nulls: $nulls
          |""".stripMargin.red)
 
-    println("Drift series fetched successfully".green)
+    logger.info("Drift series fetched successfully".green)
 
     totals should be > 0
     nulls.toDouble / totals.toDouble should be < 0.6
@@ -139,13 +141,13 @@ class DriftTest extends AnyFlatSpec with Matchers {
           (nulls + currentNulls, total + currentCount)
         }
     }
-    println(s"""summary ptile totals: $summaryTotals
+    logger.info(s"""summary ptile totals: $summaryTotals
          |summary ptile nulls: $summaryNulls
          |""".stripMargin)
 
     summaryTotals should be > 0
     summaryNulls.toDouble / summaryTotals.toDouble should be < 0.1
-    println("Summary series fetched successfully".green)
+    logger.info("Summary series fetched successfully".green)
 
     val startTs = 1673308800000L
     val endTs = 1674172800000L
@@ -180,7 +182,9 @@ class DriftTest extends AnyFlatSpec with Matchers {
           ComparedFeatureTimeSeries(name, isCurrentNumeric, baselineFeatureTs, currentFeatureTs)
         }
     }
-    println(Await.result(result, Duration.create(10, TimeUnit.SECONDS)))
+    val comparedTimeSeries = Await.result(result, Duration.create(10, TimeUnit.SECONDS))
+    logger.info(
+      s"lengths - current/baseline: ${comparedTimeSeries.current.length} / ${comparedTimeSeries.baseline.length}")
   }
 
   // this is clunky copy of code, but was necessary to run the logic end-to-end without mocking drift store
