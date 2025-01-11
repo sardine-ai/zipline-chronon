@@ -433,7 +433,7 @@ class TableUtilsTest {
   }
 
   @Test
-  def testInsertPartitionsTableExistsAlready(): Unit = {
+  def testInsertPartitionsTableReachableAlready(): Unit = {
     val tableName = "db.test_table_exists_already"
 
     spark.sql("CREATE DATABASE IF NOT EXISTS db")

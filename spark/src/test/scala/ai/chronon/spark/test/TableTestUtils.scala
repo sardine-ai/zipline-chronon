@@ -9,7 +9,7 @@ case class TableTestUtils(override val sparkSession: SparkSession) extends Table
                      partitions: Seq[String],
                      partitionColumn: String = partitionColumn,
                      subPartitionFilters: Map[String, String] = Map.empty): Unit = {
-    if (partitions.nonEmpty && tableExists(tableName)) {
+    if (partitions.nonEmpty && tableReachable(tableName)) {
       val partitionSpecs = partitions
         .map { partition =>
           val mainSpec = s"$partitionColumn='$partition'"
@@ -30,7 +30,7 @@ case class TableTestUtils(override val sparkSession: SparkSession) extends Table
                          startDate: String,
                          endDate: String,
                          subPartitionFilters: Map[String, String] = Map.empty): Unit = {
-    if (tableExists(tableName)) {
+    if (tableReachable(tableName)) {
       val toDrop = Stream.iterate(startDate)(partitionSpec.after).takeWhile(_ <= endDate)
       dropPartitions(tableName, toDrop, partitionColumn, subPartitionFilters)
     } else {

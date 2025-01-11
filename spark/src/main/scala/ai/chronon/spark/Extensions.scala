@@ -367,7 +367,7 @@ object Extensions {
                 .load(tableOrPath)
             case "hive" | "delta" | "iceberg" => dfr.table(tableOrPath)
             case _ =>
-              throw new UnsupportedOperationException(s"Unsupported read catalog: ${normalized}")
+              throw new UnsupportedOperationException(s"Unsupported read catalog: $normalized")
           }
         })
         .getOrElse {
