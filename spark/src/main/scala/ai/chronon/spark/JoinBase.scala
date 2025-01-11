@@ -213,7 +213,7 @@ abstract class JoinBase(joinConf: api.Join,
           s"Error while processing groupBy: ${joinConf.metaData.name}/${joinPart.groupBy.getMetaData.getName}")
         throw e
     }
-    if (tableUtils.tableExists(partTable)) {
+    if (tableUtils.tableReachable(partTable)) {
       Some(tableUtils.scanDf(query = null, partTable, range = Some(rightRange)))
     } else {
       // Happens when everything is handled by bootstrap

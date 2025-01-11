@@ -353,7 +353,7 @@ class DerivationTest {
     val outputDf = runner.computeJoin()
 
     // assert that no computation happened for join part since all derivations have been bootstrapped
-    assertFalse(tableUtils.tableExists(joinConf.partOutputTable(joinPart)))
+    assertFalse(tableUtils.tableReachable(joinConf.partOutputTable(joinPart)))
 
     val diff = Comparison.sideBySide(outputDf, bootstrapDf, List("request_id", "user", "ts", "ds"))
     if (diff.count() > 0) {
@@ -475,7 +475,7 @@ class DerivationTest {
     }
 
     // assert that no computation happened for join part since all derivations have been bootstrapped
-    assertFalse(tableUtils.tableExists(bootstrapJoin.partOutputTable(joinPart)))
+    assertFalse(tableUtils.tableReachable(bootstrapJoin.partOutputTable(joinPart)))
 
     val baseJoinJob = new ai.chronon.spark.Join(baseJoin, endDs, tableUtils)
     val baseDf = baseJoinJob.computeJoin()

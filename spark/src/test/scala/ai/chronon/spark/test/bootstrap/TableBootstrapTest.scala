@@ -209,6 +209,6 @@ class TableBootstrapTest {
     joinJob.computeJoin()
 
     // assert that no computation happened for join part since all derivations have been bootstrapped
-    assertFalse(tableUtils.tableExists(join.partOutputTable(joinPart)))
+    assertFalse(tableUtils.tableReachable(join.partOutputTable(joinPart)))
   }
 }
