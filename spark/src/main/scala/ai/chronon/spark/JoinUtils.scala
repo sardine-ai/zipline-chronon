@@ -107,16 +107,29 @@ object JoinUtils {
                       endPartition: String,
                       overrideStartPartition: Option[String] = None,
                       historicalBackfill: Boolean = true): PartitionRange = {
+
     val overrideStart = if (historicalBackfill) {
       overrideStartPartition
     } else {
       logger.info(s"Historical backfill is set to false. Backfill latest single partition only: $endPartition")
       Some(endPartition)
     }
+
+    lazy val firstAvailablePartitionOpt =
+      tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters)
     lazy val defaultLeftStart = Option(leftSource.query.startPartition)
-      .getOrElse(tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters).get)
+      .getOrElse {
+        require(
+          firstAvailablePartitionOpt.isDefined,
+          s"No partitions were found for the join source table: ${leftSource.table}."
+        )
+        firstAvailablePartitionOpt.get
+      }
+
     val leftStart = overrideStart.getOrElse(defaultLeftStart)
     val leftEnd = Option(leftSource.query.endPartition).getOrElse(endPartition)
+
+    logger.info(s"Attempting to fill join partition range: $leftStart to $leftEnd")
     PartitionRange(leftStart, leftEnd)(tableUtils.partitionSpec)
   }
 
@@ -405,15 +418,26 @@ object JoinUtils {
   }
 
   def shouldRecomputeLeft(joinConf: ai.chronon.api.Join, outputTable: String, tableUtils: TableUtils): Boolean = {
-    // Determines if the saved left table of the join (includes bootstrap) needs to be recomputed due to semantic changes since last run
-    if (tableUtils.tableExists(outputTable)) {
+
+    if (!tableUtils.tableReachable(outputTable)) return false
+
+    try {
+
       val gson = new Gson()
       val props = tableUtils.getTableProperties(outputTable)
+
       val oldSemanticJson = props.get(Constants.SemanticHashKey)
       val oldSemanticHash = gson.fromJson(oldSemanticJson, classOf[java.util.HashMap[String, String]]).toScala
+
       joinConf.leftChanged(oldSemanticHash)
-    } else {
-      false
+
+    } catch {
+
+      case e: Exception =>
+        logger.error(s"Error while checking props of table $outputTable. Assuming no semantic change.", e)
+        false
+
     }
+
   }
 }

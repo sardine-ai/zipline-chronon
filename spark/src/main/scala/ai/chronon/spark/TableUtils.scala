@@ -126,8 +126,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
 
   // Needs provider
-  def tableExists(tableName: String): Boolean = {
-    Try(loadTable(tableName)).isSuccess
+  def tableReachable(tableName: String): Boolean = {
+    try {
+      loadTable(tableName)
+      true
+    } catch {
+      case ex: Exception =>
+        logger.error(s"Couldn't load $tableName", ex)
+        false
+    }
   }
 
   // Needs provider
@@ -162,22 +169,43 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   // Needs provider
   // return all specified partition columns in a table in format of Map[partitionName, PartitionValue]
   def allPartitions(tableName: String, partitionColumnsFilter: Seq[String] = Seq.empty): Seq[Map[String, String]] = {
-    if (!tableExists(tableName)) return Seq.empty[Map[String, String]]
+
+    if (!tableReachable(tableName)) return Seq.empty[Map[String, String]]
+
     val format = tableReadFormat(tableName)
     val partitionSeq = format.partitions(tableName)(sparkSession)
+
     if (partitionColumnsFilter.isEmpty) {
       partitionSeq
     } else {
+
       partitionSeq.map { partitionMap =>
-        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key)).toMap
+        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key))
       }
+
     }
   }
 
   def partitions(tableName: String, subPartitionsFilter: Map[String, String] = Map.empty): Seq[String] = {
-    if (!tableExists(tableName)) return Seq.empty[String]
+
+    if (!tableReachable(tableName)) {
+
+      logger.error(s"Table $tableName is not reachable. Returning empty partitions.")
+      return Seq.empty[String]
+
+    }
+
     val format = tableReadFormat(tableName)
-    format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
+    val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
+
+    if (partitions.isEmpty) {
+      logger.error(s"No partitions found for (reachable) table: $tableName")
+    } else {
+      logger.info(
+        s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
+    }
+
+    partitions
   }
 
   // Given a table and a query extract the schema of the columns involved as input.
@@ -262,7 +290,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   tableProperties: Map[String, String] = null,
                   fileFormat: String = "PARQUET",
                   autoExpand: Boolean = false): Boolean = {
-    val doesTableExist = tableExists(tableName)
+    val doesTableExist = tableReachable(tableName)
 
     // create table sql doesn't work for bigquery here. instead of creating the table explicitly, we can rely on the
     // bq connector to indirectly create the table and eventually write the data
@@ -679,7 +707,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // Needs provider
   private def archiveTableIfExists(tableName: String, timestamp: Option[Instant]): Unit = {
-    if (tableExists(tableName)) {
+    if (tableReachable(tableName)) {
       val humanReadableTimestamp = archiveTimestampFormatter.format(timestamp.getOrElse(Instant.now()))
       val finalArchiveTableName = s"${tableName}_$humanReadableTimestamp"
       val command = s"ALTER TABLE $tableName RENAME TO $finalArchiveTableName"

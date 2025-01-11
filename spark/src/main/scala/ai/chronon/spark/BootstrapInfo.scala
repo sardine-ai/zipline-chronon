@@ -167,7 +167,7 @@ object BootstrapInfo {
       Option(joinConf.bootstrapParts.toScala).getOrElse(Seq.empty).partition { part =>
         // treat log table with additional selects as standard table bootstrap
         val hasSelect = part.isSetQuery && part.query.isSetSelects
-        if (!tableUtils.tableExists(part.table)) {
+        if (!tableUtils.tableReachable(part.table)) {
           throw new Exception(s"Bootstrap table ${part.table} does NOT exist!")
         }
         val tblProps = tableUtils.getTableProperties(part.table)
