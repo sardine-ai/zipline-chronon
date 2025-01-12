@@ -20,6 +20,9 @@ from thrift.protocol.TJSONProtocol import (
     TJSONProtocolFactory,
 )
 
+from thrift.transport.TTransport import TMemoryBuffer
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
+from ai.chronon.repo.serializer import ThriftJSONDecoder
 from thrift import TSerialization
 
 
@@ -87,6 +90,15 @@ class ThriftJSONDecoder(json.JSONDecoder):
 
 def json2thrift(json_str, thrift_class):
     return json.loads(json_str, cls=ThriftJSONDecoder, thrift_class=thrift_class)
+
+
+def json2binary(json_str, thrift_class):
+    thrift = json2thrift(json_str, thrift_class)
+    transport = TMemoryBuffer()
+    protocol = TBinaryProtocolAccelerated(transport)
+    thrift.write(protocol)
+    # Get the raw bytes representing the object in Thrift binary format
+    return transport.getvalue()
 
 
 def file2thrift(path, thrift_class):

@@ -35,6 +35,7 @@ from ai.chronon.repo.validator import (
     get_group_by_output_columns,
 )
 
+
 DEFAULT_TEAM_NAME = "default"
 
 
@@ -110,15 +111,11 @@ def extract_and_convert(
             if obj_write_errors:
                 compile_errors[origin_file] = obj_write_errors
             else:
-                # In case of online join, we need to materialize the underlying online group_bys.
+                # In case of online join, we need to make sure that upstream GBs are online
                 if obj_class is Join and obj.metaData.online:
-                    online_group_bys = {}
-                    offline_gbs = []  # gather list to report errors
-                    for jp in obj.joinParts:
-                        if jp.groupBy.metaData.online:
-                            online_group_bys[jp.groupBy.metaData.name] = jp.groupBy
-                        else:
-                            offline_gbs.append(jp.groupBy.metaData.name)
+                    offline_gbs = [
+                        jp for jp in obj.joinParts if not jp.groupBy.metaData.online
+                    ]
                     assert not offline_gbs, (
                         "You must make all dependent GroupBys `online` if you want to make your join `online`."
                         " You can do this by passing the `online=True` argument to the GroupBy constructor."
