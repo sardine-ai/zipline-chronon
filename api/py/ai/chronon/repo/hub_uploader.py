@@ -45,7 +45,7 @@ def _build_local_repo_hashmap(root_dir: str):
                 results[name] = (binary, hash(thrift_json))
 
             except Exception as e:
-                # Skip files that can't be read/parsed
+                # TODO -- handle this case. Hard fail?
                 continue
     return
 
