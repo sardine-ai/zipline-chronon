@@ -254,8 +254,8 @@ def _write_obj(
     validation_errors = validator.validate_obj(obj)
     if validation_errors:
         return ", ".join(validation_errors)
-    elif not validator.safe_to_overwrite(obj):
-        return f"Cannot overwrite {class_name} {name} with existing online conf"
+    # elif not validator.safe_to_overwrite(obj):
+    #    return f"Cannot overwrite {class_name} {name} with existing online conf"
     _write_obj_as_json(name, obj, output_file, obj_class)
     return None
 

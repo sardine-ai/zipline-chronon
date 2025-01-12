@@ -22,7 +22,6 @@ from thrift.protocol.TJSONProtocol import (
 
 from thrift.transport.TTransport import TMemoryBuffer
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
-from ai.chronon.repo.serializer import ThriftJSONDecoder
 from thrift import TSerialization
 
 

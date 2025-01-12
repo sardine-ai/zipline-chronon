@@ -1,9 +1,11 @@
 import os
 import importlib
 import inspect
+import subprocess
 from dataclasses import dataclass
 from ai.chronon.repo.compilev2 import extract_and_convert
 from ai.chronon.utils import get_mod_and_var_name_from_gc
+from ai.chronon.repo.hub_uploader import compute_and_upload_diffs
 from ai.chronon.repo import FOLDER_NAME_TO_CLASS, OUTPUT_ROOT
 
 
@@ -14,6 +16,7 @@ class ConfigDetails:
     file: str
     compiled_file: str
     chronon_root: str
+    output_root: str
 
     def __init__(self, obj):
 
@@ -55,13 +58,16 @@ class ConfigDetails:
             )
 
         # Get chronon root and build compiled file path
-        self.chronon_root = get_chronon_root(self.file)
+        self.chronon_root = _get_chronon_root(self.file)
+        self.output_root = f"{self.chronon_root}/{OUTPUT_ROOT}"
         team = path_parts[1]
         path = ".".join(path_parts[2:])
-        self.compiled_file = f"{self.chronon_root}/{OUTPUT_ROOT}/{obj_type}/{team}/{path}.{self.variable}"
+        self.compiled_file = (
+            f"{self.output_root}/{obj_type}/{team}/{path}.{self.variable}"
+        )
 
 
-def get_chronon_root(filepath):
+def _get_chronon_root(filepath):
     """
     Infer chronon root from a filepath to a Chronon object
     """
@@ -78,6 +84,60 @@ def get_chronon_root(filepath):
     raise ValueError(
         f"{filepath} is not within a valid Chronon root directory, containing {target_dirs} subdirs."
     )
+
+
+def _get_branch(path):
+    """
+    Get the git branch for the given path.
+    """
+    try:
+        # Get the default branch
+        default_branch = (
+            subprocess.run(
+                ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+                cwd=os.path.dirname(path),
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            .stdout.strip()
+            .split("/")[-1]
+        )
+
+        # Get the git branch by running git command in the directory
+        current_branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=os.path.dirname(path),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+        if current_branch == default_branch:
+            raise RuntimeError(
+                f"You're currently on the production branch {default_branch}, please checkout a new branch"
+                + "before running to ensure that your changes do not interfere with production."
+            )
+
+        else:
+            print(f"Identified branch: {current_branch}")
+            return current_branch
+
+    except subprocess.CalledProcessError as e:
+        raise ValueError(
+            f"Failed to get git branch for {path}. Make sure your Chronon directory is in a git repository."
+        ) from e
+
+
+def _compile_and_upload_to_branch(zipline_obj):
+    """
+    Determines the correct current branch, compiles the repo, uploads the state to the remote branch, and returns the branch name
+    """
+    config_details = ConfigDetails(zipline_obj)
+    branch = _get_branch(config_details.chronon_root)
+    extract_and_convert(config_details.chronon_root, zipline_obj, config_details.module)
+    compute_and_upload_diffs(config_details.output_root, branch)
+    return branch
 
 
 def backfill(zipline_obj, start_date, end_date, force_recompute=False, plan=False):
@@ -97,10 +157,7 @@ def backfill(zipline_obj, start_date, end_date, force_recompute=False, plan=Fals
     Raises:
         ValueError: If the object cannot be compiled or backfilled
     """
-    config_details = ConfigDetails(zipline_obj)
-    # module_file, compiled_file, chronon_root = get_target_compiled_file(zipline_obj)
-    extract_and_convert(config_details.chronon_root, zipline_obj, config_details.module)
-    # TODO: actually kick off backfill for compiled_file
+    _compile_and_upload_to_branch(zipline_obj)
     print("\n\n TODO -- Implement \n\n")
 
 
@@ -121,6 +178,7 @@ def upload(zipline_obj, date, force_recompute=False, plan=False):
     Raises:
         ValueError: If the object cannot be compiled or uploaded
     """
+    _compile_and_upload_to_branch(zipline_obj)
     print("\n\n TODO -- Implement \n\n")
 
 
@@ -138,6 +196,7 @@ def stream(zipline_obj):
     Raises:
         ValueError: If the object cannot be compiled or streamed
     """
+    _compile_and_upload_to_branch(zipline_obj)
     print("\n\n TODO -- Implement \n\n")
 
 
@@ -157,4 +216,5 @@ def info(zipline_obj, branch=None):
     Raises:
         ValueError: If the object cannot be compiled or info cannot be retrieved
     """
+    _compile_and_upload_to_branch(zipline_obj)
     print("\n\n TODO -- Implement \n\n")
