@@ -73,6 +73,9 @@ releases
 # Frontend Test Results
 /frontend/test-results
 
+# Frontend Thrift generated types
+/frontend/src/lib/types/codegen
+
 # Generated during dynamodb kv store tests
 /cloud_aws/dynamodb-local-metadata.json
 
