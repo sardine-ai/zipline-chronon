@@ -16,8 +16,6 @@ import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.date_format
 import org.apache.spark.sql.functions.to_date
 
-import scala.collection.JavaConverters._
-
 case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
   // Order of Precedence for Default Project
   // Explicitly configured project in code (e.g., setProjectId()).
@@ -62,22 +60,22 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
       .map((table) => {
 
         if (table.getDefinition.isInstanceOf[ExternalTableDefinition]) {
-          val uris = table.getDefinition
-            .asInstanceOf[ExternalTableDefinition]
-            .getSourceUris
-            .asScala
-            .toList
-            .map((uri) => uri.stripSuffix("/*") + "/")
-
-          assert(uris.length == 1, s"External table ${tableName} can be backed by only one URI.")
-
           val formatStr = table.getDefinition
             .asInstanceOf[ExternalTableDefinition]
             .getFormatOptions
             .asInstanceOf[FormatOptions]
             .getType
 
-          GCS(table.getTableId.getProject, uris.head, formatStr)
+          val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
+          val uri = Option(externalTable.getHivePartitioningOptions)
+            .map(_.getSourceUriPrefix)
+            .getOrElse {
+              val uris = externalTable.getSourceUris
+              require(uris.size == 1, s"External table ${tableName} can be backed by only one URI.")
+              uris.get(0).replaceAll("/\\*\\.parquet$", "")
+            }
+          GCS(table.getTableId.getProject, uri, formatStr)
+
         } else if (table.getDefinition.isInstanceOf[StandardTableDefinition]) {
           BQuery(table.getTableId.getProject, Map.empty)
         } else throw new IllegalStateException(s"Cannot support table of type: ${table.getDefinition}")
