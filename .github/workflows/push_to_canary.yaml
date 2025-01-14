@@ -36,6 +36,11 @@ jobs:
           distribution: corretto
           java-version: 17
 
+      - name: Setup SBT
+        uses: sbt/setup-sbt@v1
+        with:
+          sbt-runner-version: 1.8.2
+
       - name: Install Thrift
         env:
           THRIFT_VERSION: 0.21.0
