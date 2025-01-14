@@ -29,7 +29,7 @@ export function getMetricTypeParamsConfig() {
 	};
 }
 
-export function getMetricTypeFromParams(searchParams: URLSearchParams): MetricType {
+export function getMetricTypeFromParams(searchParams: URLSearchParams) {
 	const paramsConfig = getMetricTypeParamsConfig();
 	return getSearchParamValues(searchParams, paramsConfig).metric;
 }
