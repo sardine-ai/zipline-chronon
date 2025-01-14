@@ -186,7 +186,7 @@ def download_only_once(url, path, skip_download=False):
             )
         )
         if local_size == remote_size:
-            print("Sizes match. Assuming its already downloaded.")
+            print("Sizes match. Assuming it's already downloaded.")
             should_download = False
         if should_download:
             print("Different file from remote at local: " + path + ". Re-downloading..")
@@ -412,7 +412,7 @@ class Runner:
                 raise e
             possible_modes = list(ROUTES[self.conf_type].keys()) + UNIVERSAL_ROUTES
             assert (
-                    args["mode"] in possible_modes
+                args["mode"] in possible_modes
             ), "Invalid mode:{} for conf:{} of type:{}, please choose from {}".format(
                 args["mode"], self.conf, self.conf_type, possible_modes
             )
@@ -733,7 +733,7 @@ def generate_dataproc_submitter_args(local_files_to_upload_to_gcs: List[str], us
 
     # include chronon jar uri. should also already be in the bucket
     chronon_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + \
-                      "/jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+        "/jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
 
     final_args = (f"{user_args} --additional-conf-path=additional-confs.yaml --gcs_files={gcs_file_args} "
                   f"--chronon_jar_uri={chronon_jar_uri}")
