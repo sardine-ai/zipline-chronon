@@ -24,6 +24,7 @@ import importlib
 import json
 import logging
 from typing import List, Dict, Tuple
+from types import MethodType
 
 logging.basicConfig(level=logging.INFO)
 
@@ -641,7 +642,7 @@ def Join(
         historicalBackfill=historical_backfill,
     )
 
-    return api.Join(
+    join = api.Join(
         left=updated_left,
         joinParts=right_parts,
         metaData=metadata,
@@ -652,3 +653,14 @@ def Join(
         labelParts=label_part,
         derivations=derivations,
     )
+
+    # Import locally to avoid circular dependency issue
+    from ai.chronon.repo.runner import backfill, stream, upload, info
+
+    # Attach functions directly to group_by
+    join.backfill = MethodType(backfill, join)
+    join.upload = MethodType(upload, join)
+    join.stream = MethodType(stream, join)
+    join.info = MethodType(info, join)
+
+    return join

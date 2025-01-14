@@ -66,6 +66,6 @@ def _build_local_repo_hashmap(root_dir: str):
 
 def compute_and_upload_diffs(root_dir: str, branch: str):
     diffed_entities = _get_diffed_entities(root_dir, branch)
-    print(f"Uploading: {"\n".join(diffed_entities.keys())}")
+    print(f"\n\nUploading:\n {"\n".join(diffed_entities.keys())}")
     # TODO make PUT request to ZiplineHub
     return

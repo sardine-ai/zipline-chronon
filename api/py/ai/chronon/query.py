@@ -14,6 +14,7 @@
 
 import ai.chronon.api.ttypes as api
 from typing import List, Dict
+from types import MethodType
 
 
 def Query(
@@ -71,7 +72,7 @@ def Query(
     :param reversal_column: str, optional (defaults to "is_before")
     :return: A Query object that Chronon can use to scan just the necessary data efficiently.
     """
-    return api.Query(
+    query = api.Query(
         selects,
         wheres,
         start_partition,
@@ -81,6 +82,15 @@ def Query(
         mutation_time_column,
         reversal_column,
     )
+
+    # Import locally to avoid circular dependency issue
+    from ai.chronon.repo.runner import backfill, info
+
+    # Attach functions directly to group_by
+    query.backfill = MethodType(backfill, query)
+    query.info = MethodType(info, query)
+
+    return query
 
 
 def select(*args, **kwargs):

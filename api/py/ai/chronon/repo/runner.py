@@ -140,9 +140,9 @@ def _compile_and_upload_to_branch(zipline_obj):
     return branch
 
 
-def backfill(zipline_obj, start_date, end_date, force_recompute=False, plan=False):
+def backfill(self, start_date, end_date, force_recompute=False, plan=False):
     """
-    Backfills a Chronon object for a specified date range.
+    Backfills a Chronon object for a specified date range. Attached to GroupBy, Join and StagingQuery.
 
     Args:
         zipline_obj: The Chronon object (GroupBy, Join, StagingQuery) to backfill
@@ -157,13 +157,13 @@ def backfill(zipline_obj, start_date, end_date, force_recompute=False, plan=Fals
     Raises:
         ValueError: If the object cannot be compiled or backfilled
     """
-    _compile_and_upload_to_branch(zipline_obj)
+    _compile_and_upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
 
 
-def upload(zipline_obj, date, force_recompute=False, plan=False):
+def upload(self, date, force_recompute=False, plan=False):
     """
-    Computes and uploads values for a Zipline for the specified date.
+    Computes and uploads values for a Zipline for the specified date. Attached to GroupBy and Join.
 
     Args:
         zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then
@@ -178,13 +178,13 @@ def upload(zipline_obj, date, force_recompute=False, plan=False):
     Raises:
         ValueError: If the object cannot be compiled or uploaded
     """
-    _compile_and_upload_to_branch(zipline_obj)
+    _compile_and_upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
 
 
-def stream(zipline_obj):
+def stream(self):
     """
-    Starts a streaming job for this Zipline object.
+    Starts a streaming job for this Zipline object. Attached to GroupBy.
 
     Args:
         zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then
@@ -196,17 +196,16 @@ def stream(zipline_obj):
     Raises:
         ValueError: If the object cannot be compiled or streamed
     """
-    _compile_and_upload_to_branch(zipline_obj)
+    _compile_and_upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
 
 
-def info(zipline_obj, branch=None):
+def info(self, branch=None):
     """
     Prints information about a zipline object, including a link to the ZiplineHub page which
-    shows additional information
+    shows additional information. Attached to GroupBy and Join.
 
     Args:
-        zipline_obj: The Chronon object (GroupBy, Join, StagingQuery) to get info for
         branch: Optional git branch to use for getting object info, if none is provided
             will use the user's dev branch (default: None)
 
@@ -216,5 +215,5 @@ def info(zipline_obj, branch=None):
     Raises:
         ValueError: If the object cannot be compiled or info cannot be retrieved
     """
-    _compile_and_upload_to_branch(zipline_obj)
+    _compile_and_upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
