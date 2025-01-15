@@ -6,6 +6,7 @@ import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import ai.chronon.online.LoggableResponse
 import ai.chronon.online.Serde
+import ai.chronon.online.serde.AvroSerde
 import com.google.api.gax.core.NoCredentialsProvider
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
@@ -17,9 +18,10 @@ import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde =
-    new AvroStreamDecoder(groupByServingInfoParsed.streamChrononSchema)
+    new AvroSerde(groupByServingInfoParsed.streamChrononSchema)
 
   override def genKvStore: KVStore = {
+
     val projectId = sys.env
       .get("GCP_PROJECT_ID")
       .orElse(conf.get("GCP_PROJECT_ID"))
@@ -32,19 +34,23 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
     // Create settings builder based on whether we're in emulator mode (e.g. docker) or not
     val (dataSettingsBuilder, adminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
+
       case Some(emulatorHostPort) =>
         val (emulatorHost, emulatorPort) = (emulatorHostPort.split(":")(0), emulatorHostPort.split(":")(1).toInt)
+
         val dataSettingsBuilder =
           BigtableDataSettings
             .newBuilderForEmulator(emulatorHost, emulatorPort)
             .setCredentialsProvider(NoCredentialsProvider.create())
             .setMetricsProvider(NoopMetricsProvider.INSTANCE) // opt out of metrics in emulator
+
         val adminSettingsBuilder =
           BigtableTableAdminSettings
             .newBuilderForEmulator(emulatorHost, emulatorPort)
             .setCredentialsProvider(NoCredentialsProvider.create())
 
         (dataSettingsBuilder, adminSettingsBuilder, None)
+
       case None =>
         val dataSettingsBuilder = BigtableDataSettings.newBuilder()
         val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
@@ -53,8 +59,9 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
     }
 
     val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
-    val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val dataClient = BigtableDataClient.create(dataSettings)
+
+    val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val adminClient = BigtableTableAdminClient.create(adminSettings)
 
     new BigTableKVStoreImpl(dataClient, adminClient, maybeBQClient)
@@ -62,6 +69,7 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   // TODO: Load from user jar.
   @transient lazy val registry: ExternalSourceRegistry = new ExternalSourceRegistry()
+
   override def externalRegistry: ExternalSourceRegistry = registry
 
   //TODO - Implement this

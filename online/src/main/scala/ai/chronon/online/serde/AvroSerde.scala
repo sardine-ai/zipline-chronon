@@ -1,4 +1,4 @@
-package ai.chronon.integrations.cloud_gcp
+package ai.chronon.online.serde
 
 import ai.chronon.api.Constants
 import ai.chronon.api.StructType
@@ -14,7 +14,7 @@ import org.apache.avro.specific.SpecificDatumReader
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 
-class AvroStreamDecoder(inputSchema: StructType) extends Serde {
+class AvroSerde(inputSchema: StructType) extends Serde {
 
   private val avroSchema = AvroConversions.fromChrononSchema(inputSchema)
 
@@ -31,12 +31,14 @@ class AvroStreamDecoder(inputSchema: StructType) extends Serde {
     val row: Array[Any] = schema.fields.map { f =>
       AvroConversions.toChrononRow(avroRecord.get(f.name), f.fieldType).asInstanceOf[AnyRef]
     }
+
     val reversalIndex = schema.indexWhere(_.name == Constants.ReversalColumn)
     if (reversalIndex >= 0 && row(reversalIndex).asInstanceOf[Boolean]) {
       Mutation(schema, row, null)
     } else {
       Mutation(schema, null, row)
     }
+
   }
 
   override def schema: StructType = inputSchema

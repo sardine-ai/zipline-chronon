@@ -346,30 +346,37 @@ object Extensions {
       val tableOrPath = dataPointer.tableOrPath
 
       dataPointer.readFormat
-        .map((fmt) => {
-          val normalized = fmt.toLowerCase
-          normalized match {
+        .map { fmt =>
+          val fmtLower = fmt.toLowerCase
+
+          fmtLower match {
+
             case "bigquery" | "bq" =>
               dfr
                 .format("bigquery")
                 .options(dataPointer.options)
                 .load(tableOrPath)
+
             case "snowflake" | "sf" =>
               dfr
                 .format("net.snowflake.spark.snowflake")
                 .options(dataPointer.options)
                 .option("dbtable", tableOrPath)
                 .load()
+
             case "parquet" | "csv" =>
               dfr
-                .format(normalized)
+                .format(fmtLower)
                 .options(dataPointer.options)
                 .load(tableOrPath)
+
             case "hive" | "delta" | "iceberg" => dfr.table(tableOrPath)
+
             case _ =>
-              throw new UnsupportedOperationException(s"Unsupported read catalog: $normalized")
+              throw new UnsupportedOperationException(s"Unsupported read catalog: $fmtLower")
+
           }
-        })
+        }
         .getOrElse {
           // None case is just table against default catalog
           dfr.table(tableOrPath)

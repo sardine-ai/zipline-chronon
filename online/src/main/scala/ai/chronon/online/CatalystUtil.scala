@@ -34,6 +34,7 @@ import org.apache.spark.sql.execution.ProjectExec
 import org.apache.spark.sql.execution.RDDScanExec
 import org.apache.spark.sql.execution.WholeStageCodegenExec
 import org.apache.spark.sql.types
+import org.slf4j.LoggerFactory
 
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
@@ -119,6 +120,9 @@ class CatalystUtil(inputSchema: StructType,
                    selects: Seq[(String, String)],
                    wheres: Seq[String] = Seq.empty,
                    setups: Seq[String] = Seq.empty) {
+
+  @transient private lazy val logger = LoggerFactory.getLogger(this.getClass)
+
   private val selectClauses = selects.map { case (name, expr) => s"$expr as $name" }
   private val sessionTable =
     s"q${math.abs(selectClauses.mkString(", ").hashCode)}_f${math.abs(inputSparkSchema.pretty.hashCode)}"
@@ -128,14 +132,16 @@ class CatalystUtil(inputSchema: StructType,
       s"${w.mkString(" AND ")}"
     }
 
-  private val (transformFunc: (InternalRow => Option[InternalRow]), outputSparkSchema: types.StructType) = initialize()
-  @transient lazy val outputChrononSchema: Array[(String, DataType)] =
-    SparkConversions.toChrononSchema(outputSparkSchema)
-  private val outputDecoder = SparkInternalRowConversions.from(outputSparkSchema)
   @transient lazy val inputSparkSchema: types.StructType = SparkConversions.fromChrononSchema(inputSchema)
   private val inputEncoder = SparkInternalRowConversions.to(inputSparkSchema)
   private val inputArrEncoder = SparkInternalRowConversions.to(inputSparkSchema, false)
+
+  private val (transformFunc: (InternalRow => Option[InternalRow]), outputSparkSchema: types.StructType) = initialize()
+
   private lazy val outputArrDecoder = SparkInternalRowConversions.from(outputSparkSchema, false)
+  @transient lazy val outputChrononSchema: Array[(String, DataType)] =
+    SparkConversions.toChrononSchema(outputSparkSchema)
+  private val outputDecoder = SparkInternalRowConversions.from(outputSparkSchema)
 
   def performSql(values: Array[Any]): Option[Array[Any]] = {
     val internalRow = inputArrEncoder(values).asInstanceOf[InternalRow]
@@ -164,10 +170,12 @@ class CatalystUtil(inputSchema: StructType,
     setups.foreach { statement =>
       try {
         session.sql(statement)
+        logger.info(s"Executed setup statement: $statement")
       } catch {
         case _: FunctionAlreadyExistsException =>
         // ignore - this crops up in unit tests on occasion
         case e: Exception =>
+          logger.warn(s"Failed to execute setup statement: $statement", e)
           throw new RuntimeException(s"Error executing setup statement: $statement", e)
       }
     }
