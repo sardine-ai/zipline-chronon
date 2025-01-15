@@ -16,25 +16,17 @@
 
 package ai.chronon.spark.utils
 
-import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.StructType
 import ai.chronon.online.Fetcher.Response
 import ai.chronon.online._
+import ai.chronon.online.serde.AvroSerde
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
-import org.apache.avro.Schema
-import org.apache.avro.generic.GenericRecord
-import org.apache.avro.io.BinaryDecoder
-import org.apache.avro.io.DecoderFactory
-import org.apache.avro.specific.SpecificDatumReader
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 
-import java.io.ByteArrayInputStream
-import java.io.InputStream
 import java.util
 import java.util.Base64
 import java.util.concurrent.CompletableFuture
@@ -42,33 +34,6 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.Seq
 import scala.concurrent.Future
 import scala.util.Success
-
-class MockDecoder(inputSchema: StructType) extends Serde {
-
-  private def byteArrayToAvro(avro: Array[Byte], schema: Schema): GenericRecord = {
-    val reader = new SpecificDatumReader[GenericRecord](schema)
-    val input: InputStream = new ByteArrayInputStream(avro)
-    val decoder: BinaryDecoder = DecoderFactory.get().binaryDecoder(input, null)
-    reader.read(null, decoder)
-  }
-
-  override def fromBytes(bytes: Array[Byte]): Mutation = {
-    val avroSchema = AvroConversions.fromChrononSchema(inputSchema)
-    val avroRecord = byteArrayToAvro(bytes, avroSchema)
-
-    val row: Array[Any] = schema.fields.map { f =>
-      AvroConversions.toChrononRow(avroRecord.get(f.name), f.fieldType).asInstanceOf[AnyRef]
-    }
-    val reversalIndex = schema.indexWhere(_.name == Constants.ReversalColumn)
-    if (reversalIndex >= 0 && row(reversalIndex).asInstanceOf[Boolean]) {
-      Mutation(schema, row, null)
-    } else {
-      Mutation(schema, null, row)
-    }
-  }
-
-  override def schema: StructType = inputSchema
-}
 
 class MockStreamBuilder extends StreamBuilder {
   override def from(topicInfo: TopicInfo)(implicit session: SparkSession, props: Map[String, String]): DataStream = {
@@ -141,7 +106,7 @@ class MockApi(kvStore: () => KVStore, val namespace: String) extends Api(null) {
     println(
       s"decoding stream ${parsedInfo.groupBy.streamingSource.get.topic} with " +
         s"schema: ${SparkConversions.fromChrononSchema(parsedInfo.streamChrononSchema).catalogString}")
-    new MockDecoder(parsedInfo.streamChrononSchema)
+    new AvroSerde(parsedInfo.streamChrononSchema)
   }
 
   override def genKvStore: KVStore = {

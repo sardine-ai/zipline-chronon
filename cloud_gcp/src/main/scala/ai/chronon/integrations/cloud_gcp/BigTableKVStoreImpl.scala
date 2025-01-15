@@ -88,20 +88,29 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
   override def create(dataset: String, props: Map[String, Any]): Unit = {
+
     try {
+
       if (!adminClient.exists(dataset)) {
+
         // we can explore split points if we need custom tablet partitioning. For now though, we leave this to BT
         val createTableRequest = CreateTableRequest.of(dataset).addFamily(ColumnFamilyString, DefaultGcRules)
         val table = adminClient.createTable(createTableRequest)
+
         logger.info(s"Created table: $table")
         metricsContext.increment("create.successes")
+
       } else {
+
         logger.info(s"Table $dataset already exists")
+
       }
     } catch {
+
       case e: Exception =>
         logger.error("Error creating table", e)
         metricsContext.increment("create.failures", s"exception:${e.getClass.getName}")
+
     }
   }
 
@@ -114,15 +123,18 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         .filter(Filters.FILTERS.qualifier().exactMatch(ColumnFamilyQualifierString))
 
       request.startTsMillis match {
+
         case Some(startTs) if isTimeSeriesDataset(request.dataset) =>
           val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
           setQueryTimeSeriesFilters(query, startTs, endTime, request.keyBytes, request.dataset)
+
         case _ =>
           // for non-timeseries data, we just look up based on the base row key
           val baseRowKey = buildRowKey(request.keyBytes, request.dataset)
           query.rowKey(ByteString.copyFrom(baseRowKey))
           // we also limit to the latest cell per row as we don't want clients to iterate over all prior edits
           query.filter(Filters.FILTERS.limit().cellsPerRow(1))
+
       }
 
       val startTs = System.currentTimeMillis()
@@ -130,17 +142,21 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       val apiFuture = dataClient.readRowsCallable().all().futureCall(query)
       val completableFuture = ApiFutureUtils.toCompletableFuture(apiFuture)
       val scalaResultFuture = FutureConverters.toScala(completableFuture)
+
       scalaResultFuture
         .map { rows =>
           metricsContext.distribution("multiGet.latency", System.currentTimeMillis() - startTs)
           metricsContext.increment("multiGet.successes")
+
           val timedValues = rows.asScala.flatMap { row =>
             row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
               // Convert back to milliseconds
               KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
             }
           }
+
           KVStore.GetResponse(request, Success(timedValues))
+
         }
         .recover {
           case e: Exception =>
@@ -179,16 +195,19 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
     val startDay = startTs - (startTs % millisPerDay)
     val endDay = endTs - (endTs % millisPerDay)
+
     (startDay to endDay by millisPerDay).foreach(dayTs => {
       val rowKey = buildRowKey(keyBytes, dataset, Some(dayTs))
       query.rowKey(ByteString.copyFrom(rowKey))
     })
+
     // Bigtable uses microseconds and we need to scan from startTs (millis) to endTs (millis)
     query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000))
   }
 
   override def list(request: ListRequest): Future[ListResponse] = {
     logger.info(s"Performing list for ${request.dataset}")
+
     val listLimit = request.props.get(BigTableKVStore.listLimit) match {
       case Some(value: Int)    => value
       case Some(value: String) => value.toInt
@@ -196,6 +215,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     }
 
     val maybeStartKey = request.props.get(continuationKey)
+
     val query = Query
       .create(mapDatasetToTable(request.dataset))
       .filter(Filters.FILTERS.family().exactMatch(ColumnFamilyString))
@@ -211,29 +231,38 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
     val startTs = System.currentTimeMillis()
     val rowsApiFuture = dataClient.readRowsCallable().all.futureCall(query)
+
     val rowCompletableFuture = ApiFutureUtils.toCompletableFuture(rowsApiFuture)
     val rowsScalaFuture = FutureConverters.toScala(rowCompletableFuture)
+
     rowsScalaFuture
       .map { rows =>
         metricsContext.distribution("list.latency", System.currentTimeMillis() - startTs)
         metricsContext.increment("list.successes")
+
         val listValues = rows.asScala.flatMap { row =>
           row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
             ListValue(row.getKey.toByteArray, cell.getValue.toByteArray)
           }
         }
+
         val propsMap: Map[String, Any] =
           if (listValues.size < listLimit) {
             Map.empty // last page, we're done
           } else
             Map(continuationKey -> listValues.last.keyBytes)
+
         ListResponse(request, Success(listValues), propsMap)
+
       }
       .recover {
+
         case e: Exception =>
           logger.error("Error listing values", e)
           metricsContext.increment("list.bigtable_errors", s"exception:${e.getClass.getName}")
+
           ListResponse(request, Failure(e), Map.empty)
+
       }
   }
 

@@ -1,12 +1,13 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.Format
+import ai.chronon.spark.format.Format
 import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.execution.FileSourceScanExec
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
+
 case class GCS(project: String, sourceUri: String, fileFormat: String) extends Format {
 
   override def name: String = fileFormat
@@ -62,20 +63,21 @@ case class GCS(project: String, sourceUri: String, fileFormat: String) extends F
     val roundTripped = sparkSession
       .createDataFrame(sparkSession.sparkContext.parallelize(partitions.map(deserializer)), partitionColumns)
       .collect
-      .toList
 
     roundTripped
-      .map((part) =>
-        partitionColumns.fields.toList.zipWithIndex.map {
-          case (field, idx) => {
+      .map(part =>
+        partitionColumns.fields.iterator.zipWithIndex.map {
+
+          case (field, idx) =>
             val fieldName = field.name
             val fieldValue = part.get(idx)
             fieldName -> fieldValue.toString // Just going to cast this as a string.
-          }
+
         }.toMap)
   }
 
   def createTableTypeString: String = throw new UnsupportedOperationException("GCS does not support create table")
+
   def fileFormatString(format: String): String = ""
 
   override def supportSubPartitionsFilter: Boolean = true

@@ -26,6 +26,10 @@ import ai.chronon.api.QueryUtils
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
+import ai.chronon.spark.format.CreationUtils.createTableSql
+import ai.chronon.spark.format.Format
+import ai.chronon.spark.format.FormatProvider
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.SparkException
 import org.apache.spark.sql.AnalysisException
@@ -49,7 +53,6 @@ import java.time.format.DateTimeFormatter
 import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
-import scala.reflect.runtime.universe._
 import scala.util.Failure
 import scala.util.Try
 
@@ -81,7 +84,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val bloomFilterThreshold: Long =
     sparkSession.conf.get("spark.chronon.backfill.bloomfilter.threshold", "1000000").toLong
 
-  val minWriteShuffleParallelism = 200
+  private val minWriteShuffleParallelism = 200
 
   // see what's allowed and explanations here: https://sparkbyexamples.com/spark/spark-persistence-storage-levels/
   private val cacheLevelString: String =
@@ -89,19 +92,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   private val blockingCacheEviction: Boolean =
     sparkSession.conf.get("spark.chronon.table_write.cache.blocking", "false").toBoolean
 
-  // Add transient here because the format provider can sometimes not be serializable.
+  // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
-  @transient private[spark] lazy val tableFormatProvider: FormatProvider = {
-    val clazzName =
-      sparkSession.conf.get("spark.chronon.table.format_provider.class", classOf[DefaultFormatProvider].getName)
-    val mirror = runtimeMirror(getClass.getClassLoader)
-    val classSymbol = mirror.staticClass(clazzName)
-    val classMirror = mirror.reflectClass(classSymbol)
-    val constructor = classSymbol.primaryConstructor.asMethod
-    val constructorMirror = classMirror.reflectConstructor(constructor)
-    val reflected = constructorMirror(sparkSession)
-    reflected.asInstanceOf[FormatProvider]
-  }
+  @transient implicit private[spark] lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   private val cacheLevel: Option[StorageLevel] = Try {
     if (cacheLevelString == "NONE") None
@@ -176,7 +169,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val partitionSeq = format.partitions(tableName)(sparkSession)
 
     if (partitionColumnsFilter.isEmpty) {
+
       partitionSeq
+
     } else {
 
       partitionSeq.map { partitionMap =>
@@ -290,6 +285,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   tableProperties: Map[String, String] = null,
                   fileFormat: String = "PARQUET",
                   autoExpand: Boolean = false): Boolean = {
+
     val doesTableExist = tableReachable(tableName)
 
     // create table sql doesn't work for bigquery here. instead of creating the table explicitly, we can rely on the
@@ -301,15 +297,22 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
 
     if (!doesTableExist) {
+
       val creationSql = createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormat)
+
       try {
+
         sql(creationSql)
+
       } catch {
+
         case _: TableAlreadyExistsException =>
           logger.info(s"Table $tableName already exists, skipping creation")
+
         case e: Exception =>
           logger.error(s"Failed to create table $tableName", e)
           throw e
+
       }
     }
 
@@ -352,7 +355,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                      autoExpand)
 
     val finalizedDf = if (autoExpand && isTableCreated) {
-      // reselect the columns so that an deprecated columns will be selected as NULL before write
+      // reselect the columns so that a deprecated columns will be selected as NULL before write
       val tableSchema = getSchemaFromTable(tableName)
       val finalColumns = tableSchema.fieldNames.map(fieldName => {
         if (dfRearranged.schema.fieldNames.contains(fieldName)) {
@@ -551,57 +554,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  // Needs provider
-  private def createTableSql(tableName: String,
-                             schema: StructType,
-                             partitionColumns: Seq[String],
-                             tableProperties: Map[String, String],
-                             fileFormat: String): String = {
-    val fieldDefinitions = schema
-      .filterNot(field => partitionColumns.contains(field.name))
-      .map(field => s"`${field.name}` ${field.dataType.catalogString}")
-
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
-
-    val tableTypString = writeFormat.createTableTypeString
-
-    val createFragment =
-      s"""CREATE TABLE $tableName (
-         |    ${fieldDefinitions.mkString(",\n    ")}
-         |) $tableTypString """.stripMargin
-    val partitionFragment = if (partitionColumns != null && partitionColumns.nonEmpty) {
-      val partitionDefinitions = schema
-        .filter(field => partitionColumns.contains(field.name))
-        .map(field => s"${field.name} ${field.dataType.catalogString}")
-      s"""PARTITIONED BY (
-         |    ${partitionDefinitions.mkString(",\n    ")}
-         |)""".stripMargin
-    } else {
-      ""
-    }
-    val propertiesFragment = if (tableProperties != null && tableProperties.nonEmpty) {
-      s"""TBLPROPERTIES (
-         |    ${tableProperties.transform((k, v) => s"'$k'='$v'").values.mkString(",\n   ")}
-         |)""".stripMargin
-    } else {
-      ""
-    }
-    val fileFormatString = writeFormat.fileFormatString(fileFormat)
-    Seq(createFragment, partitionFragment, fileFormatString, propertiesFragment).mkString("\n")
-  }
-
-  // Needs provider
-  private def alterTablePropertiesSql(tableName: String, properties: Map[String, String]): String = {
-    // Only SQL api exists for setting TBLPROPERTIES
-    val propertiesString = properties
-      .map {
-        case (key, value) =>
-          s"'$key' = '$value'"
-      }
-      .mkString(", ")
-    s"ALTER TABLE $tableName SET TBLPROPERTIES ($propertiesString)"
-  }
-
   def chunk(partitions: Set[String]): Seq[PartitionRange] = {
     val sortedDates = partitions.toSeq.sorted
     sortedDates.foldLeft(Seq[PartitionRange]()) { (ranges, nextDate) =>
@@ -644,26 +596,33 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
       validPartitionRange.start
     }
+
     val fillablePartitions =
       if (skipFirstHole) {
         validPartitionRange.partitions.toSet.filter(_ >= cutoffPartition)
       } else {
         validPartitionRange.partitions.toSet
       }
-    val outputMissing = fillablePartitions -- outputExisting
-    val allInputExisting = inputTables
-      .map { tables =>
-        tables
-          .flatMap { table =>
-            partitions(table, inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty))
-          }
-          .map(partitionSpec.shift(_, inputToOutputShift))
-      }
-      .getOrElse(fillablePartitions)
 
-    val inputMissing = fillablePartitions -- allInputExisting
+    val outputMissing = fillablePartitions -- outputExisting
+
+    val existingInputPartitions =
+      for (
+        inputTables <- inputTables.toSeq;
+        table <- inputTables;
+        subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty);
+        partitionStr <- partitions(table, subPartitionFilters)
+      ) yield {
+        partitionSpec.shift(partitionStr, inputToOutputShift)
+      }
+
+    val inputMissing = inputTables
+      .map(_ => fillablePartitions -- existingInputPartitions)
+      .getOrElse(Set.empty)
+
     val missingPartitions = outputMissing -- inputMissing
     val missingChunks = chunk(missingPartitions)
+
     logger.info(s"""
                |Unfilled range computation:
                |   Output table: $outputTable
@@ -673,6 +632,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                |   Unfilled Partitions: ${missingPartitions.toSeq.sorted.prettyInline}
                |   Unfilled ranges: ${missingChunks.sorted.mkString("")}
                |""".stripMargin)
+
     if (missingPartitions.isEmpty) return None
     Some(missingChunks)
   }
@@ -688,7 +648,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   // Needs provider
-  def dropTableIfExists(tableName: String): Unit = {
+  private def dropTableIfExists(tableName: String): Unit = {
     val command = s"DROP TABLE IF EXISTS $tableName"
     logger.info(s"Dropping table with command: $command")
     sql(command)
@@ -794,9 +754,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  wheres: Seq[String],
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
+
     val dp = DataPointer(table, sparkSession)
     var df = sparkSession.read.load(dp)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
+
     logger.info(s""" Scanning data:
          |  table: ${dp.tableOrPath.green}
          |  options: ${dp.options}
@@ -808,9 +770,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
          |  partition filters:
          |    ${rangeWheres.mkString(",\n    ").green}
          |""".stripMargin.yellow)
+
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
-    if (wheres.nonEmpty) df = df.where(wheres.map(w => s"($w)").mkString(" AND "))
-    if (rangeWheres.nonEmpty) df = df.where(rangeWheres.map(w => s"($w)").mkString(" AND "))
+
+    val allWheres = wheres ++ rangeWheres
+    if (allWheres.nonEmpty) {
+      val whereStr = allWheres.map(w => s"($w)").mkString(" AND ")
+      df = df.where(whereStr)
+    }
+
     df
   }
 

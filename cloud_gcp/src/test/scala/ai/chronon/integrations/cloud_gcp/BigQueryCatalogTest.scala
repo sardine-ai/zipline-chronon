@@ -44,7 +44,7 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
 
   test("verify dynamic classloading of GCP providers") {
     assertTrue(tableUtils.tableReadFormat("data.sample_native") match {
-      case BQuery(_, _) => true
+      case BigQueryFormat(_, _) => true
       case _            => false
     })
   }
