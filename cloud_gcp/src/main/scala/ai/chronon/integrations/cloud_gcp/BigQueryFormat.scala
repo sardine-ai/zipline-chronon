@@ -1,115 +1,13 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.Format
-import ai.chronon.spark.FormatProvider
-import ai.chronon.spark.Hive
-import ai.chronon.spark.TableUtils
-import com.google.cloud.bigquery.BigQueryOptions
-import com.google.cloud.bigquery.ExternalTableDefinition
-import com.google.cloud.bigquery.FormatOptions
-import com.google.cloud.bigquery.StandardTableDefinition
-import com.google.cloud.bigquery.Table
+import ai.chronon.spark.format.Format
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.date_format
 import org.apache.spark.sql.functions.to_date
 
-case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
-  // Order of Precedence for Default Project
-  // Explicitly configured project in code (e.g., setProjectId()).
-  // GOOGLE_CLOUD_PROJECT environment variable.
-  // project_id from the ADC service account JSON file.
-  // Active project in the gcloud CLI configuration.
-  // No default project: An error will occur if no project ID is available.
-  lazy val bqOptions = BigQueryOptions.getDefaultInstance
-  lazy val bigQueryClient = bqOptions.getService
-
-  override def resolveTableName(tableName: String): String = {
-    format(tableName: String) match {
-      case GCS(_, uri, _) => uri
-      case _              => tableName
-    }
-  }
-
-  override def readFormat(tableName: String): Format = format(tableName)
-
-  // Fixed to BigQuery for now.
-  override def writeFormat(tableName: String): Format = {
-
-    val tu = TableUtils(sparkSession)
-    val sparkOptions: Map[String, String] =
-      Map(
-        "partitionField" -> tu.partitionColumn,
-        "temporaryGcsBucket" -> sparkSession.conf.get(
-          "spark.chronon.table.gcs.temporary_gcs_bucket"
-        ), // todo(tchow): No longer needed after https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1320
-        "writeMethod" -> "indirect"
-      )
-    BQuery(bqOptions.getProjectId, sparkOptions)
-  }
-
-  private def format(tableName: String): Format = {
-
-    val btTableIdentifier: TableId = BigQueryUtil.parseTableId(tableName)
-
-    val tableOpt: Option[Table] = Option(
-      bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable))
-    tableOpt
-      .map((table) => {
-
-        if (table.getDefinition.isInstanceOf[ExternalTableDefinition]) {
-          val formatStr = table.getDefinition
-            .asInstanceOf[ExternalTableDefinition]
-            .getFormatOptions
-            .asInstanceOf[FormatOptions]
-            .getType
-
-          val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
-          val uri = Option(externalTable.getHivePartitioningOptions)
-            .map(_.getSourceUriPrefix)
-            .getOrElse {
-              val uris = externalTable.getSourceUris
-              require(uris.size == 1, s"External table ${tableName} can be backed by only one URI.")
-              uris.get(0).replaceAll("/\\*\\.parquet$", "")
-            }
-          GCS(table.getTableId.getProject, uri, formatStr)
-
-        } else if (table.getDefinition.isInstanceOf[StandardTableDefinition]) {
-          BQuery(table.getTableId.getProject, Map.empty)
-        } else throw new IllegalStateException(s"Cannot support table of type: ${table.getDefinition}")
-      })
-      .getOrElse(Hive)
-
-    /**
-      * Using federation
-      * val tableIdentifier = sparkSession.sessionState.sqlParser.parseTableIdentifier(tableName)
-      * val tableMeta = sparkSession.sessionState.catalog.getTableRawMetadata(tableIdentifier)
-      * val storageProvider = tableMeta.provider
-      * storageProvider match {
-      * case Some("com.google.cloud.spark.bigquery") => {
-      * val tableProperties = tableMeta.properties
-      * val project = tableProperties
-      * .get("FEDERATION_BIGQUERY_TABLE_PROPERTY")
-      * .map(BigQueryUtil.parseTableId)
-      * .map(_.getProject)
-      * .getOrElse(throw new IllegalStateException("bigquery project required!"))
-      * val bigQueryTableType = tableProperties.get("federation.bigquery.table.type")
-      * bigQueryTableType.map(_.toUpperCase) match {
-      * case Some("EXTERNAL") => GCS(project)
-      * case Some("MANAGED")  => BQuery(project)
-      * case None             => throw new IllegalStateException("Dataproc federation service must be available.")
-      *
-      * }
-      *
-      * case Some("hive") | None => Hive
-      * }
-      * */
-  }
-}
-
-case class BQuery(project: String, override val options: Map[String, String]) extends Format {
+case class BigQueryFormat(project: String, override val options: Map[String, String]) extends Format {
 
   override def name: String = "bigquery"
 
@@ -134,6 +32,7 @@ case class BQuery(project: String, override val options: Map[String, String]) ex
     sparkSession.conf.set("materializationDataset", database)
 
     try {
+
       // See: https://cloud.google.com/bigquery/docs/information-schema-columns
       val partColsSql =
         s"""
@@ -165,11 +64,13 @@ case class BQuery(project: String, override val options: Map[String, String]) ex
       //  moving forward, for bigquery gcp we should default to storing raw data in yyyyMMdd format.
       val partitionFormat = sparkSession.conf.get("spark.chronon.partition.format", "yyyyMMdd")
 
-      val partitionVals = sparkSession.read
+      val partitionInfoDf = sparkSession.read
         .format("bigquery")
         .option("project", project)
         .option("query", partValsSql)
         .load()
+
+      val partitionVals = partitionInfoDf
         .select(
           date_format(
             to_date(
@@ -183,11 +84,14 @@ case class BQuery(project: String, override val options: Map[String, String]) ex
         .as[String]
         .collect
         .toList
+
       partitionVals.map((p) => Map(partitionCol -> p))
 
     } finally {
+
       sparkSession.conf.set("viewsEnabled", originalViewsEnabled)
       sparkSession.conf.set("materializationDataset", originalMaterializationDataset)
+
     }
 
   }

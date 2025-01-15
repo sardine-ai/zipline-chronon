@@ -53,51 +53,68 @@ public class FetchHandler implements Handler<RoutingContext> {
 
     @Override
     public void handle(RoutingContext ctx) {
+
         String entityName = ctx.pathParam("name");
+
         logger.debug("Retrieving {}", entityName);
+
         JTry<List<JavaRequest>> maybeRequest = parseJavaRequest(entityName, ctx.body());
+
         if (! maybeRequest.isSuccess()) {
+
             logger.error("Unable to parse request body", maybeRequest.getException());
+
             List<String> errorMessages = Collections.singletonList(maybeRequest.getException().getMessage());
+
             ctx.response()
                     .setStatusCode(400)
                     .putHeader("content-type", "application/json")
                     .end(new JsonObject().put("errors", errorMessages).encode());
+
             return;
         }
 
         List<JavaRequest> requests = maybeRequest.getValue();
         CompletableFuture<List<JavaResponse>> resultsJavaFuture = fetchFunction.apply(fetcher, requests);
+
         // wrap the Java future we get in a Vert.x Future to not block the worker thread
         Future<List<GetFeaturesResponse.Result>> maybeFeatureResponses =
                 Future.fromCompletionStage(resultsJavaFuture)
-                      .map(result -> result.stream().map(FetchHandler::responseToPoJo)
-                      .collect(Collectors.toList()));
+                      .map(result ->
+                              result.stream()
+                                      .map(FetchHandler::responseToPoJo)
+                                      .collect(Collectors.toList()));
 
-        maybeFeatureResponses.onSuccess(resultList -> {
-            // as this is a bulkGet request, we might have some successful and some failed responses
-            // we return the responses in the same order as they come in and mark them as successful / failed based
-            // on the lookups
-            GetFeaturesResponse.Builder responseBuilder = GetFeaturesResponse.builder();
-            responseBuilder.results(resultList);
+        maybeFeatureResponses.onSuccess(
+                resultList -> {
+                    // as this is a bulkGet request, we might have some successful and some failed responses
+                    // we return the responses in the same order as they come in and mark them as successful / failed based
+                    // on the lookups
+                    GetFeaturesResponse.Builder responseBuilder = GetFeaturesResponse.builder();
+                    responseBuilder.results(resultList);
 
-            ctx.response()
-                        .setStatusCode(200)
-                        .putHeader("content-type", "application/json")
-                        .end(JsonObject.mapFrom(responseBuilder.build()).encode());
-        });
+                    ctx.response()
+                            .setStatusCode(200)
+                            .putHeader("content-type", "application/json")
+                            .end(JsonObject.mapFrom(responseBuilder.build()).encode());
+                });
 
-        maybeFeatureResponses.onFailure(err -> {
-            List<String> failureMessages = Collections.singletonList(err.getMessage());
-            ctx.response()
-                    .setStatusCode(500)
-                    .putHeader("content-type", "application/json")
-                    .end(new JsonObject().put("errors", failureMessages).encode());
-        });
+        maybeFeatureResponses.onFailure(
+                err -> {
+
+                    List<String> failureMessages = Collections.singletonList(err.getMessage());
+
+                    ctx.response()
+                            .setStatusCode(500)
+                            .putHeader("content-type", "application/json")
+                            .end(new JsonObject().put("errors", failureMessages).encode());
+                });
     }
 
     public static GetFeaturesResponse.Result responseToPoJo(JavaResponse response) {
+
         if (response.values.isSuccess()) {
+
             return GetFeaturesResponse.Result
                     .builder()
                     .status(Success)
@@ -105,6 +122,7 @@ public class FetchHandler implements Handler<RoutingContext> {
                     .features(response.values.getValue())
                     .build();
         } else {
+
             return GetFeaturesResponse.Result
                     .builder()
                     .status(Failure)
@@ -115,11 +133,20 @@ public class FetchHandler implements Handler<RoutingContext> {
     }
 
     public static JTry<List<JavaRequest>> parseJavaRequest(String name, RequestBody body) {
+
         TypeReference<List<Map<String, Object>>> ref = new TypeReference<List<Map<String, Object>>>() { };
+
         try {
+
             List<Map<String, Object>> entityKeysList = objectMapper.readValue(body.asString(), ref);
-            List<JavaRequest> requests = entityKeysList.stream().map(m -> new JavaRequest(name, m)).collect(Collectors.toList());
+
+            List<JavaRequest> requests = entityKeysList
+                    .stream()
+                    .map(m -> new JavaRequest(name, m))
+                    .collect(Collectors.toList());
+
             return JTry.success(requests);
+
         } catch (Exception e) {
             return JTry.failure(e);
         }
