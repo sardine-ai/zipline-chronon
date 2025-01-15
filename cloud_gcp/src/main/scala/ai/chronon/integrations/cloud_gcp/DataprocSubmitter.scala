@@ -32,11 +32,15 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
 
   override def status(jobId: String): Unit = {
     try {
+
       val currentJob: Job = jobControllerClient.getJob(conf.projectId, conf.region, jobId)
       currentJob.getStatus.getState
+
     } catch {
+
       case e: ApiException =>
         println(s"Error monitoring job: ${e.getMessage}")
+
     }
   }
 
@@ -46,6 +50,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
   }
 
   override def submit(files: List[String], args: String*): String = {
+
     val sparkJob = SparkJob
       .newBuilder()
       .setMainClass(conf.mainClass)
