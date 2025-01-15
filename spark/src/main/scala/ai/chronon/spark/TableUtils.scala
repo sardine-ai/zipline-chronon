@@ -125,7 +125,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       true
     } catch {
       case ex: Exception =>
-        logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
+        logger.debug(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
              |Call path:
              |${cleanStackTrace(ex).yellow}
              |""".stripMargin)
@@ -135,7 +135,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // Needs provider
   def loadTable(tableName: String): DataFrame = {
-    sparkSession.read.load(DataPointer(tableName, sparkSession))
+    sparkSession.read.load(DataPointer.from(tableName, sparkSession))
   }
 
   def isPartitioned(tableName: String): Boolean = {
@@ -241,7 +241,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   def getSchemaFromTable(tableName: String): StructType = {
-    sparkSession.read.load(DataPointer(tableName, sparkSession)).limit(1).schema
+    sparkSession.read.load(DataPointer.from(tableName, sparkSession)).limit(1).schema
   }
 
   // method to check if a user has access to a table
@@ -254,7 +254,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // retrieve one row from the table
       val partitionFilter = lastAvailablePartition(tableName).getOrElse(fallbackPartition)
       sparkSession.read
-        .load(DataPointer(tableName, sparkSession))
+        .load(DataPointer.from(tableName, sparkSession))
         .where(s"$partitionColumn='$partitionFilter'")
         .limit(1)
         .collect()
@@ -545,8 +545,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
           (Seq(partitionColumn, saltCol), Seq(partitionColumn) ++ sortByCols)
         } else { (Seq(saltCol), sortByCols) }
       logger.info(s"Sorting within partitions with cols: $partitionSortCols")
+      val dataPointer = DataPointer.from(tableName, sparkSession)
 
-      val dataPointer = DataPointer(tableName, sparkSession)
       saltedDf
         .select(saltedDf.columns.map {
           case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
@@ -763,14 +763,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  wheres: Seq[String],
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
-
-    val dp = DataPointer(table, sparkSession)
+    val dp = DataPointer.from(table, sparkSession)
     var df = sparkSession.read.load(dp)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
 
     logger.info(s""" Scanning data:
          |  table: ${dp.tableOrPath.green}
-         |  options: ${dp.options}
+         |  options: ${dp.readOptions}
          |  format: ${dp.readFormat}
          |  selects:
          |    ${selects.mkString("\n    ").green}
