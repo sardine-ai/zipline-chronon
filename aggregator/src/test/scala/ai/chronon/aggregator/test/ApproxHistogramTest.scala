@@ -2,14 +2,14 @@ package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base.ApproxHistogram
 import ai.chronon.aggregator.base.ApproxHistogramIr
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 import scala.jdk.CollectionConverters._
 
-class ApproxHistogramTest extends TestCase {
-  def testHistogram(): Unit = {
+class ApproxHistogramTest extends AnyFlatSpec {
+  it should "histogram" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts = (1L to 3).map(i => i.toString -> i).toMap
     val ir = makeIr(approxHistogram, counts)
@@ -19,7 +19,7 @@ class ApproxHistogramTest extends TestCase {
     assertEquals(toHashMap(counts), approxHistogram.finalize(ir))
   }
 
-  def testSketch(): Unit = {
+  it should "sketch" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts = (1L to 4).map(i => i.toString -> i).toMap
     val expected = counts.toSeq.sortBy(_._2).reverse.take(3).toMap
@@ -30,7 +30,7 @@ class ApproxHistogramTest extends TestCase {
     assertEquals(toHashMap(expected), approxHistogram.finalize(ir))
   }
 
-  def testMergeSketches(): Unit = {
+  it should "merge sketches" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts1: Map[String, Long] = Map("5" -> 5L, "4" -> 4, "2" -> 2, "1" -> 1)
     val counts2: Map[String, Long] = Map("6" -> 6L, "4" -> 4, "2" -> 2, "1" -> 1)
@@ -52,7 +52,7 @@ class ApproxHistogramTest extends TestCase {
     assertTrue(ir.histogram.isEmpty)
   }
 
-  def testMergeHistograms(): Unit = {
+  it should "merge histograms" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts1: Map[String, Long] = Map("4" -> 4L, "2" -> 2)
     val counts2: Map[String, Long] = Map("3" -> 3L, "2" -> 2)
@@ -74,7 +74,7 @@ class ApproxHistogramTest extends TestCase {
     assertTrue(ir.sketch.isEmpty)
   }
 
-  def testMergeHistogramsToSketch(): Unit = {
+  it should "merge histograms to sketch" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts1: Map[String, Long] = Map("4" -> 4L, "3" -> 3)
     val counts2: Map[String, Long] = Map("2" -> 2L, "1" -> 1)
@@ -97,7 +97,7 @@ class ApproxHistogramTest extends TestCase {
     assertTrue(ir.histogram.isEmpty)
   }
 
-  def testMergeSketchAndHistogram(): Unit = {
+  it should "merge sketch and histogram" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts1: Map[String, Long] = Map("5" -> 5L, "3" -> 3, "2" -> 2, "1" -> 1)
     val counts2: Map[String, Long] = Map("2" -> 2L)
@@ -119,7 +119,7 @@ class ApproxHistogramTest extends TestCase {
     assert(ir.histogram.isEmpty)
   }
 
-  def testNormalizeHistogram(): Unit = {
+  it should "normalize histogram" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts = (1L to 3).map(i => i.toString -> i).toMap
     val ir = makeIr(approxHistogram, counts)
@@ -129,7 +129,7 @@ class ApproxHistogramTest extends TestCase {
     assertEquals(ir, normalized)
   }
 
-  def testNormalizeSketch(): Unit = {
+  it should "normalize sketch" in {
     val approxHistogram = new ApproxHistogram[String](3)
     val counts = (1L to 4).map(i => i.toString -> i).toMap
     val expected = counts.toSeq.sortBy(_._2).reverse.take(3).toMap

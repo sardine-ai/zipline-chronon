@@ -10,10 +10,8 @@ import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
-import org.junit.After
-import org.junit.Assert.fail
-import org.junit.Before
-import org.junit.Test
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers.be
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -33,7 +31,7 @@ import scala.util.Try
 case class Model(modelId: String, modelName: String, online: Boolean)
 case class TimeSeries(joinName: String, featureName: String, tileTs: Long, metric: String, summary: Array[Double])
 
-class DynamoDBKVStoreTest {
+class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
 
   import DynamoDBKVStoreConstants._
 
@@ -57,8 +55,7 @@ class DynamoDBKVStoreTest {
     series.asJson.noSpaces.getBytes(StandardCharsets.UTF_8)
   }
 
-  @Before
-  def setup(): Unit = {
+  before {
     // Start the local DynamoDB instance
     server = ServerRunner.createServerFromCommandLineArgs(Array("-inMemory", "-port", "8000"))
     server.start()
@@ -75,15 +72,13 @@ class DynamoDBKVStoreTest {
       .build()
   }
 
-  @After
-  def tearDown(): Unit = {
+  after {
     client.close()
     server.stop()
   }
 
   // Test creation of a table with primary keys only (e.g. model)
-  @Test
-  def testCreatePKeyOnlyTable(): Unit = {
+  it should "create p key only table" in {
     val dataset = "models"
     val props = Map(isTimedSorted -> "false")
     val kvStore = new DynamoDBKVStoreImpl(client)
@@ -96,8 +91,7 @@ class DynamoDBKVStoreTest {
   }
 
   // Test creation of a table with primary + sort keys (e.g. time series)
-  @Test
-  def testCreatePKeyAndSortKeyTable(): Unit = {
+  it should "create p key and sort key table" in {
     val dataset = "timeseries"
     val props = Map(isTimedSorted -> "true")
     val kvStore = new DynamoDBKVStoreImpl(client)
@@ -110,8 +104,7 @@ class DynamoDBKVStoreTest {
   }
 
   // Test table scan with pagination
-  @Test
-  def testTableScanWithPagination(): Unit = {
+  it should "table scan with pagination" in {
     val dataset = "models"
     val props = Map(isTimedSorted -> "false")
     val kvStore = new DynamoDBKVStoreImpl(client)
@@ -141,8 +134,7 @@ class DynamoDBKVStoreTest {
   }
 
   // Test write & read of a simple blob dataset
-  @Test
-  def testBlobDataRoundTrip(): Unit = {
+  it should "blob data round trip" in {
     val dataset = "models"
     val props = Map(isTimedSorted -> "false")
     val kvStore = new DynamoDBKVStoreImpl(client)
@@ -174,8 +166,7 @@ class DynamoDBKVStoreTest {
   }
 
   // Test write and query of a time series dataset
-  @Test
-  def testTimeSeriesQuery(): Unit = {
+  it should "time series query" in {
     val dataset = "timeseries"
     val props = Map(isTimedSorted -> "true")
     val kvStore = new DynamoDBKVStoreImpl(client)

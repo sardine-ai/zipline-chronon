@@ -216,7 +216,7 @@ object Expressions {
                 })
 
             // TODO: deal with map keys - as histogram - high cardinality keys vs low cardinality?
-            // TODO: heavy hitters - top_k via approx_histogram
+            // TODO: frequent key - top_k via approx_histogram
             case types.MapType(_, vType, _) =>
               se(Inp.cLen, Agg.ptile, MetricName.lengthPercentiles) ++ // length drift
                 se(Inp.mapVals, Agg.arrNulls, MetricName.innerNullCount) ++

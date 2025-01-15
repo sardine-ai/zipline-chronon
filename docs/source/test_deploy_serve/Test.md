@@ -47,12 +47,12 @@ Please note that these validations will also be executed as a prerequisite check
 
 ```
 # run the analyzer
-run.py --mode=analyze --conf=production/joins/<path_to_conf_file> --enable-hitter
+run.py --mode=analyze --conf=production/joins/<path_to_conf_file> --skew-detection
 ```
 
 Optional parameters:
 
-`--endable-hitter`: enable skewed data analysis - include the heavy hitter analysis in output, only output schema if not specified
+`--skew-detection`: enable skewed data analysis - include the frequent key analysis in output, only output schema if not specified
 
 `--start-date` : Finds heavy hitters & time-distributions for a specified start date. Default 3 days prior to "today"
 

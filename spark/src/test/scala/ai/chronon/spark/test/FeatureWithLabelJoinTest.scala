@@ -33,11 +33,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.max
 import org.apache.spark.sql.functions.min
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class FeatureWithLabelJoinTest {
+class FeatureWithLabelJoinTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val spark: SparkSession = SparkSessionBuilder.build("FeatureWithLabelJoinTest", local = true)
 
@@ -50,8 +50,7 @@ class FeatureWithLabelJoinTest {
   private val viewsGroupBy = TestUtils.createViewsGroupBy(namespace, spark)
   private val left = viewsGroupBy.groupByConf.sources.get(0)
 
-  @Test
-  def testFinalViews(): Unit = {
+  it should "final views" in {
     // create test feature join table
     val featureTable = s"${namespace}.${tableName}"
     createTestFeatureTable().write.saveAsTable(featureTable)
@@ -113,8 +112,7 @@ class FeatureWithLabelJoinTest {
     assertEquals("2022-11-11", latest.agg(max("label_ds")).first().getString(0))
   }
 
-  @Test
-  def testFinalViewsWithAggLabel(): Unit = {
+  it should "final views with agg label" in {
     // create test feature join table
     val tableName = "label_agg_table"
     val featureTable = s"${namespace}.${tableName}"

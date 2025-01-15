@@ -1,11 +1,6 @@
-package ai.chronon.spark.test
+package ai.chronon.online.test
 
-import org.scalatest.Args
-import org.scalatest.Filter
-import org.scalatest.Status
-import org.scalatest.SucceededStatus
-import org.scalatest.Suite
-import org.scalatest.SuiteMixin
+import org.scalatest._
 
 /**
   * SuiteMixin that skips execution of the tests in a suite if the tests are not triggered

@@ -19,11 +19,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Try
 
-class TableUtilsFormatTest extends AnyFunSuite {
+class TableUtilsFormatTest extends AnyFlatSpec {
 
   import TableUtilsFormatTest._
 
@@ -32,11 +32,11 @@ class TableUtilsFormatTest extends AnyFunSuite {
   val spark: SparkSession = SparkSessionBuilder.build("TableUtilsFormatTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
 
-  test("testing dynamic classloading") {
+  it should "testing dynamic classloading" in {
     assertTrue(tableUtils.tableFormatProvider.isInstanceOf[DefaultFormatProvider])
   }
 
-  test("test insertion of partitioned data and adding of columns") {
+  it should "test insertion of partitioned data and adding of columns" in {
     val dbName = s"db_${System.currentTimeMillis()}"
     val tableName = s"$dbName.test_table_1_$format"
     spark.sql(s"CREATE DATABASE IF NOT EXISTS $dbName")
@@ -71,7 +71,7 @@ class TableUtilsFormatTest extends AnyFunSuite {
     testInsertPartitions(spark, tableUtils, tableName, format, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
   }
 
-  test("test insertion of partitioned data and removal of columns") {
+  it should "test insertion of partitioned data and removal of columns" in {
     val dbName = s"db_${System.currentTimeMillis()}"
     val tableName = s"$dbName.test_table_2_$format"
     spark.sql(s"CREATE DATABASE IF NOT EXISTS $dbName")
@@ -106,7 +106,7 @@ class TableUtilsFormatTest extends AnyFunSuite {
     testInsertPartitions(spark, tableUtils, tableName, format, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
   }
 
-  test("test insertion of partitioned data and modification of columns") {
+  it should "test insertion of partitioned data and modification of columns" in {
     val dbName = s"db_${System.currentTimeMillis()}"
     val tableName = s"$dbName.test_table_3_$format"
     spark.sql(s"CREATE DATABASE IF NOT EXISTS $dbName")

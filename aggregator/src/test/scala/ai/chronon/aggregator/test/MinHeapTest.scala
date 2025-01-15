@@ -17,14 +17,14 @@
 package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base.MinHeap
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 import scala.collection.JavaConverters._
 
-class MinHeapTest extends TestCase {
-  def testInserts(): Unit = {
+class MinHeapTest extends AnyFlatSpec {
+  it should "inserts" in {
     val mh = new MinHeap[Int](maxSize = 4, Ordering.Int)
 
     def make_container = new util.ArrayList[Int](4)
