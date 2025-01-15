@@ -3,13 +3,12 @@ package ai.chronon.flink.test.window
 import ai.chronon.api._
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.online.TileCodec
-import org.junit.Assert.fail
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Failure
 import scala.util.Try
 
-class FlinkRowAggregationFunctionTest {
+class FlinkRowAggregationFunctionTest extends AnyFlatSpec {
   private val aggregations: Seq[Aggregation] = Seq(
     Builders.Aggregation(
       Operation.AVERAGE,
@@ -51,8 +50,7 @@ class FlinkRowAggregationFunctionTest {
     "title" -> StringType
   )
 
-  @Test
-  def testFlinkAggregatorProducesCorrectResults(): Unit = {
+  it should "flink aggregator produces correct results" in {
     val groupByMetadata = Builders.MetaData(name = "my_group_by")
     val groupBy = Builders.GroupBy(metaData = groupByMetadata, aggregations = aggregations)
     val aggregateFunc = new FlinkRowAggregationFunction(groupBy, schema)
@@ -94,8 +92,7 @@ class FlinkRowAggregationFunctionTest {
     assert(finalResult sameElements expectedResult)
   }
 
-  @Test
-  def testFlinkAggregatorResultsCanBeMergedWithOtherPreAggregates(): Unit = {
+  it should "flink aggregator results can be merged with other pre aggregates" in {
     val groupByMetadata = Builders.MetaData(name = "my_group_by")
     val groupBy = Builders.GroupBy(metaData = groupByMetadata, aggregations = aggregations)
     val aggregateFunc = new FlinkRowAggregationFunction(groupBy, schema)
@@ -159,8 +156,7 @@ class FlinkRowAggregationFunctionTest {
     assert(finalResult sameElements expectedResult)
   }
 
-  @Test
-  def testFlinkAggregatorProducesCorrectResultsIfInputIsInIncorrectOrder(): Unit = {
+  it should "flink aggregator produces correct results if input is in incorrect order" in {
     val groupByMetadata = Builders.MetaData(name = "my_group_by")
     val groupBy = Builders.GroupBy(metaData = groupByMetadata, aggregations = aggregations)
     val aggregateFunc = new FlinkRowAggregationFunction(groupBy, schema)

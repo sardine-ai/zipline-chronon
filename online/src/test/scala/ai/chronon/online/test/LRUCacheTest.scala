@@ -2,28 +2,28 @@ package ai.chronon.online.test
 
 import ai.chronon.online.LRUCache
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 
-class LRUCacheTest {
-  val testCache: CaffeineCache[String, String] = LRUCache[String, String]("testCache")
+class LRUCacheTest extends AnyFlatSpec {
 
-  @Test
-  def testGetsNothingWhenThereIsNothing(): Unit = {
+
+  it should "gets nothing when there is nothing" in {
+    val testCache: CaffeineCache[String, String] = LRUCache[String, String]("testCache")
     assert(testCache.getIfPresent("key") == null)
     assert(testCache.estimatedSize() == 0)
   }
 
-  @Test
-  def testGetsSomethingWhenThereIsSomething(): Unit = {
+  it should "gets something when there is something" in {
+    val testCache: CaffeineCache[String, String] = LRUCache[String, String]("testCache")
     assert(testCache.getIfPresent("key") == null)
     testCache.put("key", "value")
     assert(testCache.getIfPresent("key") == "value")
     assert(testCache.estimatedSize() == 1)
   }
 
-  @Test
-  def testEvictsWhenSomethingIsSet(): Unit = {
+  it should "evicts when something is set" in {
+    val testCache: CaffeineCache[String, String] = LRUCache[String, String]("testCache")
     assert(testCache.estimatedSize() == 0)
     assert(testCache.getIfPresent("key") == null)
     testCache.put("key", "value")

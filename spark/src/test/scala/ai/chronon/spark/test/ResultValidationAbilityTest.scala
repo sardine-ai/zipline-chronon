@@ -26,20 +26,19 @@ import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.when
 import org.rogach.scallop.ScallopConf
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpec
 
-class ResultValidationAbilityTest {
+class ResultValidationAbilityTest extends AnyFlatSpec with BeforeAndAfter{
   val confPath = "joins/team/example_join.v1"
   val spark: SparkSession = SparkSessionBuilder.build("test", local = true)
   val mockTableUtils: TableUtils = mock(classOf[TableUtils])
 
-  @Before
-  def setup(): Unit = {
+  before {
     when(mockTableUtils.partitionColumn).thenReturn("ds")
     when(mockTableUtils.partitionSpec).thenReturn(PartitionSpec("yyyy-MM-dd", WindowUtils.Day.millis))
   }
@@ -51,20 +50,17 @@ class ResultValidationAbilityTest {
     override def buildSparkSession(): SparkSession = spark
   }
 
-  @Test
-  def shouldNotValidateWhenComparisonTableIsNotSpecified(): Unit = {
+  it should "should not validate when comparison table is not specified" in {
     val args = new TestArgs(Seq("--conf-path", confPath).toArray)
     assertFalse(args.shouldPerformValidate())
   }
 
-  @Test
-  def shouldValidateWhenComparisonTableIsSpecified(): Unit = {
+  it should "should validate when comparison table is specified" in {
     val args = new TestArgs(Seq("--conf-path", confPath, "--expected-result-table", "a_table").toArray)
     assertTrue(args.shouldPerformValidate())
   }
 
-  @Test
-  def testSuccessfulValidation(): Unit = {
+  it should "successful validation" in {
     val args = new TestArgs(Seq("--conf-path", confPath, "--expected-result-table", "a_table").toArray)
 
     // simple testing, more comprehensive testing are already done in CompareTest.scala
@@ -78,8 +74,7 @@ class ResultValidationAbilityTest {
     assertTrue(args.validateResult(df, Seq("keyId", "ds"), mockTableUtils))
   }
 
-  @Test
-  def testFailedValidation(): Unit = {
+  it should "failed validation" in {
     val args = new TestArgs(Seq("--conf-path", confPath, "--expected-result-table", "a_table").toArray)
 
     val columns = Seq("serial", "value", "rating", "keyId", "ds")

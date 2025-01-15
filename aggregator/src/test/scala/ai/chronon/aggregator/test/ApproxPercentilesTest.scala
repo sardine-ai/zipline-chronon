@@ -18,15 +18,15 @@ package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base.ApproxPercentiles
 import ai.chronon.aggregator.row.StatsGenerator
-import junit.framework.TestCase
 import org.apache.datasketches.kll.KllFloatsSketch
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.util.Random
 
-class ApproxPercentilesTest extends TestCase {
+class ApproxPercentilesTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def basicImplTestHelper(nums: Int, slide: Int, k: Int, percentiles: Array[Double], errorPercent: Float): Unit = {
@@ -56,7 +56,7 @@ class ApproxPercentilesTest extends TestCase {
     diffs.foreach(diff => assertTrue(diff < errorMargin))
   }
 
-  def testBasicPercentiles: Unit = {
+  it should "basic percentiles: unit = {" in {
     val percentiles_tested: Int = 31
     val percentiles: Array[Double] = (0 to percentiles_tested).toArray.map(i => i * 1.0 / percentiles_tested)
     basicImplTestHelper(3000, 5, 100, percentiles, errorPercent = 4)
@@ -74,7 +74,7 @@ class ApproxPercentilesTest extends TestCase {
     drift
   }
 
-  def testPSIDrifts(): Unit = {
+  it should "psi drifts" in {
     assertTrue(
       getPSIDrift(
         Array(1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7).map(_.toFloat),

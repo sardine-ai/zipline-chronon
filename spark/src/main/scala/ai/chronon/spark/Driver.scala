@@ -431,24 +431,24 @@ object Driver {
     class Args extends Subcommand("analyze") with OfflineSubcommand {
       val startDate: ScallopOption[String] =
         opt[String](required = false,
-                    descr = "Finds heavy hitters & time-distributions until a specified start date",
+                    descr = "Finds skewed keys & time-distributions until a specified start date",
                     default = None)
-      val count: ScallopOption[Int] =
+      val skewKeyCount: ScallopOption[Int] =
         opt[Int](
           required = false,
           descr =
-            "Finds the specified number of heavy hitters approximately. The larger this number is the more accurate the analysis will be.",
+            "Finds the specified number of skewed keys. The larger this number is the more accurate the analysis will be.",
           default = Option(128)
         )
       val sample: ScallopOption[Double] =
         opt[Double](required = false,
-                    descr = "Sampling ratio - what fraction of rows into incorporate into the heavy hitter estimate",
+                    descr = "Sampling ratio - what fraction of rows into incorporate into the skew key detection",
                     default = Option(0.1))
-      val enableHitter: ScallopOption[Boolean] =
+      val skewDetection: ScallopOption[Boolean] =
         opt[Boolean](
           required = false,
           descr =
-            "enable skewed data analysis - whether to include the heavy hitter analysis, will only output schema if disabled",
+            "finds skewed keys if true else will only output schema and exit. Skew detection will take longer time.",
           default = Some(false)
         )
 
@@ -461,9 +461,9 @@ object Driver {
                    args.confPath(),
                    args.startDate.getOrElse(tableUtils.partitionSpec.shiftBackFromNow(3)),
                    args.endDate(),
-                   args.count(),
+                   args.skewKeyCount(),
                    args.sample(),
-                   args.enableHitter()).run
+                   args.skewDetection()).run
     }
   }
 

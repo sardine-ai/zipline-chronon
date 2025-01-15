@@ -23,6 +23,7 @@ import ai.chronon.api.Builders
 import ai.chronon.api.Operation
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.online.test.TaggedFilterSuite
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.Join
@@ -38,7 +39,7 @@ import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -48,7 +49,7 @@ import org.slf4j.LoggerFactory
   * Join is the events and the entity value at the exact timestamp of the ts.
   *  To run: sbt "spark/testOnly -- -n mutationstest"
   */
-class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
+class MutationsTest extends AnyFlatSpec with TaggedFilterSuite {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   override def tagName: String = "mutationstest"
@@ -449,7 +450,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     *
     * Compute Join for when mutations are just insert on values.
     */
-  test("test simplest case") {
+  it should "test simplest case" in {
     val suffix = "simple"
     val leftData = Seq(
       // {listing_id, some_col, ts, ds}
@@ -507,7 +508,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     *
     * Compute Join when mutations have an update on values.
     */
-  test("test update value case") {
+  it should "test update value case" in {
     val suffix = "update_value"
     val leftData = Seq(
       // {listing_id, ts, event, ds}
@@ -558,7 +559,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     *
     * Compute Join when mutations have an update on keys.
     */
-  test("test update key case") {
+  it should "test update key case" in {
     val suffix = "update_key"
     val leftData = Seq(
       Row(1, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
@@ -615,7 +616,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     * For this test we request a value for id 2, w/ mutations happening in the day before and after the time requested.
     * The consistency constraint here is that snapshot 4/8 + mutations 4/8 = snapshot 4/9
     */
-  test("test inconsistent ts left case") {
+  it should "test inconsistent ts left case" in {
     val suffix = "inconsistent_ts"
     val leftData = Seq(
       Row(1, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
@@ -684,7 +685,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     * Compute Join, the snapshot aggregation should decay, this is the main reason to have
     * resolution in snapshot IR
     */
-  test("test decayed window case") {
+  it should "test decayed window case" in {
     val suffix = "decayed"
     val leftData = Seq(
       Row(2, 1, millis("2021-04-09 01:30:00"), "2021-04-10"),
@@ -755,7 +756,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     * Compute Join, the snapshot aggregation should decay.
     * When there are no mutations returning the collapsed is not enough depending on the time.
     */
-  test("test decayed window case no mutation") {
+  it should "test decayed window case no mutation" in {
     val suffix = "decayed_v2"
     val leftData = Seq(
       Row(2, 1, millis("2021-04-10 01:00:00"), "2021-04-10"),
@@ -803,7 +804,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     * Compute Join, the snapshot aggregation should decay.
     * When there's no snapshot the value would depend only on mutations of the day.
     */
-  test("test no snapshot just mutation") {
+  it should "test no snapshot just mutation" in {
     val suffix = "no_mutation"
     val leftData = Seq(
       Row(2, 1, millis("2021-04-10 00:07:00"), "2021-04-10"),
@@ -843,7 +844,7 @@ class MutationsTest extends AnyFunSuite with TaggedFilterSuite {
     assert(compareResult(result, expected))
   }
 
-  test("test with generated data") {
+  it should "test with generated data" in {
     val suffix = "generated"
     val reviews = List(
       Column("listing_id", api.StringType, 10),

@@ -10,10 +10,10 @@ import com.google.cloud.hadoop.gcsio.GoogleCloudStorageFileSystem
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar
 
-class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
+class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build(
     "BigQuerySparkTest",
@@ -30,11 +30,11 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
 
-  test("hive uris are set") {
+  it should "hive uris are set" in {
     assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
   }
 
-  test("google runtime classes are available") {
+  it should "google runtime classes are available" in {
     assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[Long]])
     assertCompiles("classOf[GoogleHadoopFileSystem]")
     assertCompiles("classOf[GoogleHadoopFS]")
@@ -42,14 +42,14 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
 
   }
 
-  test("verify dynamic classloading of GCP providers") {
+  it should "verify dynamic classloading of GCP providers" in {
     assertTrue(tableUtils.tableReadFormat("data.sample_native") match {
       case BigQueryFormat(_, _) => true
       case _            => false
     })
   }
 
-  ignore("integration testing bigquery native table") {
+  it should "integration testing bigquery native table" ignore {
     val nativeTable = "data.sample_native"
     val table = tableUtils.loadTable(nativeTable)
     table.show
@@ -60,7 +60,7 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
     println(allParts)
   }
 
-  ignore("integration testing bigquery external table") {
+  it should "integration testing bigquery external table" ignore {
     val externalTable = "data.checkouts_parquet"
 
     val bs = GoogleHadoopFileSystemConfiguration.BLOCK_SIZE
@@ -74,7 +74,7 @@ class BigQueryCatalogTest extends AnyFunSuite with MockitoSugar {
     println(allParts)
   }
 
-  ignore("integration testing bigquery partitions") {
+  it should "integration testing bigquery partitions" ignore {
     // TODO(tchow): This test is ignored because it requires a running instance of the bigquery. Need to figure out stubbing locally.
     // to run this:
     //    1. Set up a tunnel to dataproc federation proxy:

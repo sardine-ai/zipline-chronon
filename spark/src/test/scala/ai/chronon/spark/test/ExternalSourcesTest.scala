@@ -21,7 +21,7 @@ import ai.chronon.online.Fetcher.Request
 import ai.chronon.spark.LoggingSchema
 import ai.chronon.spark.utils.MockApi
 import org.junit.Assert._
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util.Base64
 import scala.collection.mutable
@@ -29,9 +29,8 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.SECONDS
 
-class ExternalSourcesTest {
-  @Test
-  def testFetch(): Unit = {
+class ExternalSourcesTest extends AnyFlatSpec {
+  it should "fetch" in {
     val plusOneSource = Builders.ExternalSource(
       metadata = Builders.MetaData(
         name = "plus_one"

@@ -18,11 +18,10 @@ package ai.chronon.online.test
 
 import ai.chronon.online.OnlineDerivationUtil.reintroduceExceptions
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class JoinCodecTest {
-  @Test
-  def testReintroduceException(): Unit = {
+class JoinCodecTest extends AnyFlatSpec {
+  it should "reintroduce exception" in {
 
     val preDerived = Map("group_by_2_exception" -> "ex", "group_by_1_exception" -> "ex", "group_by_4_exception" -> "ex")
     val derived = Map(

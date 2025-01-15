@@ -22,8 +22,8 @@ import ai.chronon.aggregator.windowing._
 import ai.chronon.api.Extensions.AggregationOps
 import ai.chronon.api._
 import com.google.gson.Gson
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -46,9 +46,9 @@ class Timer {
   }
 }
 
-class SawtoothAggregatorTest extends TestCase {
+class SawtoothAggregatorTest extends AnyFlatSpec {
 
-  def testTailAccuracy(): Unit = {
+  it should "tail accuracy" in {
     val timer = new Timer
     val queries = CStream.genTimestamps(new Window(30, TimeUnit.DAYS), 10000, 5 * 60 * 1000)
 
@@ -119,7 +119,7 @@ class SawtoothAggregatorTest extends TestCase {
     }
   }
 
-  def testRealTimeAccuracy(): Unit = {
+  it should "real time accuracy" in {
     val timer = new Timer
     val queries = CStream.genTimestamps(new Window(1, TimeUnit.DAYS), 1000)
     val columns = Seq(Column("ts", LongType, 180),

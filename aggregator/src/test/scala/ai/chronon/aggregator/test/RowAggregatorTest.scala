@@ -18,8 +18,8 @@ package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.api._
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 import scala.collection.JavaConverters._
@@ -48,8 +48,8 @@ object TestRow {
   def apply(inputsArray: Any*): TestRow = new TestRow(inputsArray: _*)()
 }
 
-class RowAggregatorTest extends TestCase {
-  def testUpdate(): Unit = {
+class RowAggregatorTest extends AnyFlatSpec {
+  it should "update" in {
     val rows = List(
       TestRow(1L, 4, 5.0f, "A", Seq(5, 3, 4), Seq("D", "A", "B", "A"), Map("A" -> 1, "B" -> 2)),
       TestRow(2L, 3, 4.0f, "B", Seq(6, null), Seq(), null),

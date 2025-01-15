@@ -11,12 +11,12 @@ import com.google.cloud.spark.bigquery.BigQueryUtilScala
 import org.junit.Assert.assertEquals
 import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar
 
-class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
+class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
-  test("DataprocClient should return job id when a job is submitted") {
+"DataprocClient" should "return job id when a job is submitted" in {
 
     // Mock dataproc job client.
     val jobId = "mock-job-id"
@@ -47,11 +47,12 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     assertEquals(submittedJobId, jobId)
   }
 
-  test("Verify classpath with spark-bigquery-connector") {
+  it should "Verify classpath with spark-bigquery-connector" in {
     BigQueryUtilScala.validateScalaVersionCompatibility()
   }
 
-  ignore("test flink job locally") {
+  it should "test flink job locally" ignore {
+    
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(spark.FlinkJob,
@@ -64,9 +65,10 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
         "-ZGCP_PROJECT_ID=bigtable-project-id",
         "-ZGCP_INSTANCE_ID=bigtable-instance-id")
     println(submittedJobId)
+    
   }
 
-  ignore("Used to iterate locally. Do not enable this in CI/CD!") {
+  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore  {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
@@ -85,7 +87,7 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     println(submittedJobId)
   }
 
-  ignore("Used to test GBU bulk load locally. Do not enable this in CI/CD!") {
+  it should "Used to test GBU bulk load locally. Do not enable this in CI/CD!" ignore {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
