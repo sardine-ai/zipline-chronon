@@ -145,7 +145,7 @@ union PhysicalNodeType {
     4: ModelNodeType modelNodeType
     5: TableNodeType tableNodeType
 }
-// ====================== End of phsical node types ======================
+// ====================== End of physical node types ======================
 
 /**
 * Multiple logical nodes could share the same physical node
