@@ -1,5 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.spark
+import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
+import ai.chronon.spark.JobSubmitterConstants.JarURI
+import ai.chronon.spark.JobSubmitterConstants.MainClass
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
@@ -37,9 +41,9 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
 
     val submitter = new DataprocSubmitter(
       mockJobControllerClient,
-      SubmitterConf("test-project", "test-region", "test-cluster", "test-jar-uri", "test-main-class"))
+      SubmitterConf("test-project", "test-region", "test-cluster"))
 
-    val submittedJobId = submitter.submit(List.empty)
+    val submittedJobId = submitter.submit(spark.SparkJob, Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"), List.empty)
     assertEquals(submittedJobId, jobId)
   }
 
@@ -47,11 +51,29 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
     BigQueryUtilScala.validateScalaVersionCompatibility()
   }
 
+  ignore("test flink job locally") {
+    val submitter = DataprocSubmitter()
+    val submittedJobId =
+      submitter.submit(spark.FlinkJob,
+        Map(MainClass -> "ai.chronon.flink.FlinkJob",
+          FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
+          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
+        List.empty,
+        "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
+        "--groupby-name=e2e-count",
+        "-ZGCP_PROJECT_ID=bigtable-project-id",
+        "-ZGCP_INSTANCE_ID=bigtable-instance-id")
+    println(submittedJobId)
+  }
+
   ignore("Used to iterate locally. Do not enable this in CI/CD!") {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(
+        spark.SparkJob,
+        Map(MainClass -> "ai.chronon.spark.Driver",
+              JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         List("gs://zipline-jars/training_set.v1",
              "gs://zipline-jars/dataproc-submitter-conf.yaml",
              "gs://zipline-jars/additional-confs.yaml"),
@@ -67,7 +89,11 @@ class DataprocSubmitterTest extends AnyFunSuite with MockitoSugar {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
-      submitter.submit(List.empty,
+      submitter.submit(
+        spark.SparkJob,
+        Map(MainClass -> "ai.chronon.spark.Driver",
+          JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+        List.empty,
         "groupby-upload-bulk-load",
         "-ZGCP_PROJECT_ID=bigtable-project-id",
         "-ZGCP_INSTANCE_ID=bigtable-instance-id",
