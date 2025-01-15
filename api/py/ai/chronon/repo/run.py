@@ -418,9 +418,9 @@ class Runner:
             )
         else:
             self.conf_type = args["conf_type"]
-        self.ds = args.end_ds if "end_ds" in args and args["end_ds"] else args["ds"]
+        self.ds = args["end_ds"] if "end_ds" in args and args["end_ds"] else args["ds"]
         self.start_ds = (
-            args.start_ds if "start_ds" in args and args["start_ds"] else None
+            args["start_ds"] if "start_ds" in args and args["start_ds"] else None
         )
         self.parallelism = (
             int(args["parallelism"])
