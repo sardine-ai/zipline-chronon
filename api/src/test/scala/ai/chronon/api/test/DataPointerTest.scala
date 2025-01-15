@@ -5,8 +5,7 @@ import ai.chronon.api.URIDataPointer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class
-DataPointerTest extends AnyFlatSpec with Matchers {
+class DataPointerTest extends AnyFlatSpec with Matchers {
 
   "DataPointer.apply" should "parse a simple s3 path" in {
     val result = DataPointer("s3://bucket/path/to/data.parquet")
