@@ -9,18 +9,18 @@ import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 import org.junit.Assert.assertEquals
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.nio.file.Files
 
-class GCSFormatTest extends AnyFunSuite {
+class GCSFormatTest extends AnyFlatSpec {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build(
     "BigQuerySparkTest",
     local = true
   )
 
-  test("partitions method should return correctly parsed partitions as maps") {
+  it should "partitions method should return correctly parsed partitions as maps" in {
 
     val testData = List(
       ("20241223", "b", "c"),
@@ -40,7 +40,7 @@ class GCSFormatTest extends AnyFunSuite {
 
   }
 
-  test("partitions method should handle empty partitions gracefully") {
+  it should "partitions method should handle empty partitions gracefully" in {
 
     val testData = List(
       ("20241223", "b", "c"),
@@ -60,7 +60,7 @@ class GCSFormatTest extends AnyFunSuite {
 
   }
 
-  test("partitions method should handle date types") {
+  it should "partitions method should handle date types" in {
     val testData = List(
       Row("2024-12-23", "b", "c"),
       Row("2024-12-24", "e", "f"),

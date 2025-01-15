@@ -22,15 +22,15 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Test
 import org.rogach.scallop.ScallopConf
+import org.scalatest.flatspec.AnyFlatSpec
 import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
 
 import collection.JavaConverters._
 
-class OfflineSubcommandTest {
+class OfflineSubcommandTest extends AnyFlatSpec {
 
   class TestArgs(args: Array[String]) extends ScallopConf(args) with OfflineSubcommand {
     verify()
@@ -42,16 +42,14 @@ class OfflineSubcommandTest {
     override def isLocal: Boolean = true
   }
 
-  @Test
-  def basicIsParsedCorrectly(): Unit = {
+  it should "basic is parsed correctly" in {
     val confPath = "joins/team/example_join.v1"
     val args = new TestArgs(Seq("--conf-path", confPath).toArray)
     assertEquals(confPath, args.confPath())
     assertTrue(args.localTableMapping.isEmpty)
   }
 
-  @Test
-  def localTableMappingIsParsedCorrectly(): Unit = {
+  it should "local table mapping is parsed correctly" in {
     val confPath = "joins/team/example_join.v1"
     val endData = "2023-03-03"
     val argList = Seq("--local-table-mapping", "a=b", "c=d", "--conf-path", confPath, "--end-date", endData)
@@ -63,8 +61,7 @@ class OfflineSubcommandTest {
     assertEquals(endData, args.endDate())
   }
 
-  @Test
-  def additionalConfsParsedCorrectly(): Unit = {
+  it should "additional confs parsed correctly" in {
     implicit val formats: Formats = DefaultFormats
 
     val url = getClass.getClassLoader.getResource("test-driver-additional-confs.yaml")

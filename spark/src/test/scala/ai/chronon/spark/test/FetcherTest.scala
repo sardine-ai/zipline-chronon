@@ -34,6 +34,7 @@ import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
 import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
+import ai.chronon.online.test.TaggedFilterSuite
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.utils.MockApi
@@ -49,7 +50,7 @@ import org.apache.spark.sql.functions.lit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -66,7 +67,7 @@ import scala.concurrent.duration.SECONDS
 import scala.io.Source
 
 // Run as follows: sbt "spark/testOnly -- -n fetchertest"
-class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
+class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
 
   override def tagName: String = "fetchertest"
 
@@ -79,7 +80,7 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val yesterday = tableUtils.partitionSpec.before(today)
 
-  test("test metadata store") {
+  it should "test metadata store" in {
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
     implicit val tableUtils: TableUtils = TableUtils(spark)
 
@@ -721,13 +722,13 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(0, diff.count())
   }
 
-  test("test temporal fetch join deterministic") {
+  it should "test temporal fetch join deterministic" in {
     val namespace = "deterministic_fetch"
     val joinConf = generateMutationData(namespace)
     compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
   }
 
-  test("test temporal fetch join generated") {
+  it should "test temporal fetch join generated" in {
     val namespace = "generated_fetch"
     val joinConf = generateRandomData(namespace)
     compareTemporalFetch(joinConf,
@@ -737,14 +738,14 @@ class FetcherTest extends AnyFunSuite with TaggedFilterSuite {
                          dropDsOnWrite = false)
   }
 
-  test("test temporal tiled fetch join deterministic") {
+  it should "test temporal tiled fetch join deterministic" in {
     val namespace = "deterministic_tiled_fetch"
     val joinConf = generateEventOnlyData(namespace, groupByCustomJson = Some("{\"enable_tiling\": true}"))
     compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
   }
 
   // test soft-fail on missing keys
-  test("test empty request") {
+  it should "test empty request" in {
     val namespace = "empty_request"
     val joinConf = generateRandomData(namespace, 5, 5)
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))

@@ -4,10 +4,10 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.observability.DriftMetric
 import ai.chronon.online.stats.DriftMetrics.histogramDistance
 import ai.chronon.online.stats.DriftMetrics.percentileDistance
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class DriftMetricsTest extends AnyFunSuite with Matchers {
+class DriftMetricsTest extends AnyFlatSpec with Matchers {
 
   def buildPercentiles(mean: Double, variance: Double, breaks: Int = 20): Array[Double] = {
     val stdDev = math.sqrt(variance)
@@ -75,7 +75,7 @@ class DriftMetricsTest extends AnyFunSuite with Matchers {
     )
   }
 
-  test("Low drift - similar distributions") {
+  it should "Low drift - similar distributions" in {
     val drifts = compareDistributions(meanA = 100.0, varianceA = 225.0, meanB = 101.0, varianceB = 225.0)
 
     // JSD assertions
@@ -89,7 +89,7 @@ class DriftMetricsTest extends AnyFunSuite with Matchers {
     hellingerHisto should be < 0.05
   }
 
-  test("Moderate drift - slightly different distributions") {
+  it should "Moderate drift - slightly different distributions" in {
     val drifts = compareDistributions(meanA = 100.0, varianceA = 225.0, meanB = 105.0, varianceB = 256.0)
 
     // JSD assertions
@@ -101,7 +101,7 @@ class DriftMetricsTest extends AnyFunSuite with Matchers {
     hellingerPercentile should (be >= 0.05 and be <= 0.15)
   }
 
-  test("Severe drift - different means") {
+  it should "Severe drift - different means" in {
     val drifts = compareDistributions(meanA = 100.0, varianceA = 225.0, meanB = 110.0, varianceB = 225.0)
 
     // JSD assertions
@@ -113,7 +113,7 @@ class DriftMetricsTest extends AnyFunSuite with Matchers {
     hellingerPercentile should be > 0.15
   }
 
-  test("Severe drift - different variances") {
+  it should "Severe drift - different variances" in {
     val drifts = compareDistributions(meanA = 100.0, varianceA = 225.0, meanB = 105.0, varianceB = 100.0)
 
     // JSD assertions

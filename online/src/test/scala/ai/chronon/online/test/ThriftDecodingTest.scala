@@ -24,14 +24,13 @@ import ai.chronon.online.SerializableFunction
 import ai.chronon.online.TBaseDecoderFactory
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 
-class ThriftDecodingTest {
+class ThriftDecodingTest extends AnyFlatSpec {
 
-  @Test
-  def testDecoding(): Unit = {
+  it should "decoding" in {
     val tokens = new util.HashSet[String]()
     Seq("left", "source", "events", "derivations", "name", "expression")
       .foreach(tokens.add)

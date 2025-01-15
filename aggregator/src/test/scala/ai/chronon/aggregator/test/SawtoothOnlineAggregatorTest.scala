@@ -24,17 +24,17 @@ import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._
 import com.google.gson.Gson
-import junit.framework.TestCase
 import org.junit.Assert.assertEquals
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class SawtoothOnlineAggregatorTest extends TestCase {
+class SawtoothOnlineAggregatorTest extends AnyFlatSpec {
 
-  def testConsistency(): Unit = {
+  it should "consistency" in {
     val queryEndTs = TsUtils.round(System.currentTimeMillis(), WindowUtils.Day.millis)
     val batchEndTs = queryEndTs - WindowUtils.Day.millis
     val queries = CStream.genTimestamps(new Window(1, TimeUnit.DAYS), 1000)

@@ -8,18 +8,17 @@ import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.DataStreamUtils
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar.mock
 
-class AsyncKVStoreWriterTest {
+class AsyncKVStoreWriterTest extends AnyFlatSpec {
 
   val eventTs = 1519862400075L
 
   def createKVRequest(key: String, value: String, dataset: String, ts: Long): PutRequest =
     PutRequest(key.getBytes, value.getBytes, dataset, Some(ts))
 
-  @Test
-  def testAsyncWriterSuccessWrites(): Unit = {
+  it should "write successfully" in {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val source: DataStream[PutRequest] = env
       .fromCollection(
@@ -41,8 +40,7 @@ class AsyncKVStoreWriterTest {
 
   // ensure that if we get an event that would cause the operator to throw an exception,
   // we don't crash the app
-  @Test
-  def testAsyncWriterHandlesPoisonPillWrites(): Unit = {
+  it should "handle poison pill writes" in {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val source: DataStream[KVStore.PutRequest] = env
       .fromCollection(

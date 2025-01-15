@@ -22,9 +22,9 @@ import ai.chronon.online.Metrics.Context
 import ai.chronon.online.Metrics.Environment
 import ai.chronon.online.TTLCache
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class TagsTest {
+class TagsTest extends AnyFlatSpec {
   // test that ttlCache of context is creates non duplicated entries
 
   // copied from the private NonBlockingStatsDClient.tagString
@@ -45,8 +45,7 @@ class TagsTest {
     sb.toString
   }
 
-  @Test
-  def testCachedTagsAreComputedTags(): Unit = {
+  it should "cached tags are computed tags" in {
     val cache = new TTLCache[Metrics.Context, String](
       { ctx => ctx.toTags.mkString(",") },
       { ctx => ctx },

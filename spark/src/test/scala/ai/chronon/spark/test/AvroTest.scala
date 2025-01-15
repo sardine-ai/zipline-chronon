@@ -25,17 +25,16 @@ import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.DecimalType
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class AvroTest {
+class AvroTest extends AnyFlatSpec {
   val spark: SparkSession = SparkSessionBuilder.build("AvroTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
   private val twoMonthsAgo = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
 
-  @Test
-  def testDecimal(): Unit = {
+  it should "decimal" in {
 
     val namespace = "test_decimal"
     tableUtils.createDatabase(namespace)

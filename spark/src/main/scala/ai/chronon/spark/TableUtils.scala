@@ -125,7 +125,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       true
     } catch {
       case ex: Exception =>
-        logger.error(s"Couldn't load $tableName", ex)
+        logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
+             |Call path:
+             |${cleanStackTrace(ex).yellow}
+             |""".stripMargin)
         false
     }
   }
@@ -373,17 +376,23 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     repartitionAndWrite(finalizedDf, tableName, saveMode, stats, sortByCols)
   }
 
-  def sql(query: String): DataFrame = {
-    val partitionCount = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
+  // retains only the invocations from chronon code.
+  private def cleanStackTrace(throwable: Throwable): String = {
     val sw = new StringWriter()
     val pw = new PrintWriter(sw)
-    new Throwable().printStackTrace(pw)
+    throwable.printStackTrace(pw)
     val stackTraceString = sw.toString
-    val stackTraceStringPretty = "    " + stackTraceString
+    "    " + stackTraceString
       .split("\n")
       .filter(_.contains("chronon"))
       .map(_.replace("at ai.chronon.spark.test.", "").replace("at ai.chronon.spark.", "").stripLeading())
       .mkString("\n    ")
+  }
+
+  def sql(query: String): DataFrame = {
+    val partitionCount = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
+
+    val stackTraceString = cleanStackTrace(new Throwable())
 
     logger.info(s"""
          |  ${"---- running query ----".highlight}
@@ -392,7 +401,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
          |
          |  ---- call path ----
          |
-         |$stackTraceStringPretty
+         |$stackTraceString
          |
          |  ---- end ----
          |""".stripMargin)
@@ -769,7 +778,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
          |    ${wheres.mkString(",\n    ").green}
          |  partition filters:
          |    ${rangeWheres.mkString(",\n    ").green}
-         |""".stripMargin.yellow)
+         |""".stripMargin)
 
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
 

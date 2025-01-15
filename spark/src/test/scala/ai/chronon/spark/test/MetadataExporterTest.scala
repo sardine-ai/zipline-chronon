@@ -25,16 +25,16 @@ import ai.chronon.spark.TableUtils
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.io.Files
-import junit.framework.TestCase
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.io.File
 import scala.io.Source
 
-class MetadataExporterTest extends TestCase {
+class MetadataExporterTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val sessionName = "MetadataExporter"
@@ -64,7 +64,7 @@ class MetadataExporterTest extends TestCase {
     }
   }
 
-  def testMetadataExport(): Unit = {
+  it should "metadata export" in {
     // Create the tables.
     val namespace = "example_namespace"
     val tablename = "table"
