@@ -17,12 +17,12 @@
 package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base.Variance
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class VarianceTest extends TestCase {
+class VarianceTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def mean(elems: Seq[Double]): Double = elems.sum / elems.length
@@ -60,7 +60,7 @@ class VarianceTest extends TestCase {
     assertTrue((naiveResult - welfordResult) / naiveResult < 0.0000001)
   }
 
-  def testVariance: Unit = {
+  it should "match with naive approach" in {
     compare(1000000)
     compare(1000000, min = 100000, max = 100001)
   }

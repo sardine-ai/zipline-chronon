@@ -32,22 +32,21 @@ import org.apache.spark.sql.functions._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class DerivationTest {
+class DerivationTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("DerivationTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 
-  @Test
-  def testBootstrapToDerivations(): Unit = {
+  it should "bootstrap to derivations" in {
     val namespace = "test_derivations"
     tableUtils.createDatabase(namespace)
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
@@ -293,8 +292,7 @@ class DerivationTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testBootstrapToDerivationsNoStar(): Unit = {
+  it should "bootstrap to derivations no star" in {
     val namespace = "test_derivations_no_star"
     tableUtils.createDatabase(namespace)
 
@@ -367,13 +365,11 @@ class DerivationTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testLoggingNonStar(): Unit = {
+  it should "logging non star" in {
     runLoggingTest("test_derivations_logging_non_star", wildcardSelection = false)
   }
 
-  @Test
-  def testLogging(): Unit = {
+  it should "logging" in {
     runLoggingTest("test_derivations_logging", wildcardSelection = true)
   }
 
@@ -501,8 +497,7 @@ class DerivationTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testContextual(): Unit = {
+  it should "contextual" in {
     val namespace = "test_contextual"
     tableUtils.createDatabase(namespace)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
@@ -628,8 +623,7 @@ class DerivationTest {
     assertFalse(schema4.contains("ext_contextual_context_2"))
   }
 
-  @Test
-  def testGroupByDerivations(): Unit = {
+  it should "group by derivations" in {
     val namespace = "test_group_by_derivations"
     tableUtils.createDatabase(namespace)
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)

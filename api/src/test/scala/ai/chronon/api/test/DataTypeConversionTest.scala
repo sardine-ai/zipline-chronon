@@ -20,14 +20,13 @@ import ai.chronon.api._
 import ai.chronon.api.thrift.TSerializer
 import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol
 import org.junit.Assert._
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class DataTypeConversionTest {
+class DataTypeConversionTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  @Test
-  def testDataTypeToThriftAndBack(): Unit = {
+  it should "data type to thrift and back" in {
     // build some complex type
     val dType = StructType(
       "root",

@@ -193,7 +193,7 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
 ) ++ addArtifact(assembly / artifact, assembly)
 
 lazy val spark = project
-  .dependsOn(aggregator.%("compile->compile;test->test"), online)
+  .dependsOn(aggregator.%("compile->compile;test->test"), online.%("compile->compile;test->test"))
   .settings(
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,

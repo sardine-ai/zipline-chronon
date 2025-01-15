@@ -122,6 +122,7 @@ object FlinkTestUtils {
       PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
     )
   }
+
   def makeGroupBy(keyColumns: Seq[String], filters: Seq[String] = Seq.empty): GroupBy =
     Builders.GroupBy(
       sources = Seq(

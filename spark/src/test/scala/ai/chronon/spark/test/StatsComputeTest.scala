@@ -25,18 +25,17 @@ import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.StatsCompute
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class StatsComputeTest {
+class StatsComputeTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = SparkSessionBuilder.build("StatsComputeTest", local = true)
   implicit val tableUtils: TableUtils = TableUtils(spark)
   val namespace: String = "stats_compute_test"
 
-  @Test
-  def summaryTest(): Unit = {
+  it should "summary" in {
     val data = Seq(
       ("1", Some(1L), Some(1.0), Some("a")),
       ("1", Some(1L), None, Some("b")),
@@ -53,8 +52,7 @@ class StatsComputeTest {
     stats.addDerivedMetrics(result, aggregator).show()
   }
 
-  @Test
-  def snapshotSummaryTest(): Unit = {
+  it should "snapshot summary" in {
     tableUtils.createDatabase(namespace)
     val data = Seq(
       ("1", Some(1L), Some(1.0), Some("a")),
@@ -76,8 +74,7 @@ class StatsComputeTest {
     stats.addDerivedMetrics(result, aggregator).save(s"$namespace.testTablenameSnapshot")
   }
 
-  @Test
-  def generatedSummaryTest(): Unit = {
+  it should "generated summary" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 10000)
@@ -104,8 +101,7 @@ class StatsComputeTest {
     denormalized.show(truncate = false)
   }
 
-  @Test
-  def generatedSummaryNoTsTest(): Unit = {
+  it should "generated summary no ts" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 10000)
@@ -135,8 +131,7 @@ class StatsComputeTest {
     * Test to make sure aggregations are generated when it makes sense.
     * Example, percentiles are not currently supported for byte.
     */
-  @Test
-  def generatedSummaryByteTest(): Unit = {
+  it should "generated summary byte" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 10000)

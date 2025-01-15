@@ -32,13 +32,13 @@ import ai.chronon.api.StructType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import com.google.gson.Gson
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.Seq
 
-class TwoStackLiteAggregatorTest extends TestCase{
-  def testBufferWithTopK(): Unit = {
+class TwoStackLiteAggregatorTest extends AnyFlatSpec {
+  it should "buffer with top k" in {
     val topK = new TopK[Integer](IntType, 2)
     val bankersBuffer = new TwoStackLiteAggregationBuffer(topK, 5)
     assertEquals(null, bankersBuffer.query) // null
@@ -63,7 +63,7 @@ class TwoStackLiteAggregatorTest extends TestCase{
     assertBufferEquals(Seq(10), bankersBuffer.query)
   }
 
-  def testAgainstSawtooth(): Unit = {
+  it should "against sawtooth" in {
     val timer = new Timer
     val queries = CStream.genTimestamps(new Window(30, TimeUnit.DAYS), 100000, 5 * 60 * 1000)
 

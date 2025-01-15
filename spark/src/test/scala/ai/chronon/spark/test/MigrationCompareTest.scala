@@ -28,9 +28,9 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.CompareJob
 import org.apache.spark.sql.SparkSession
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class MigrationCompareTest {
+class MigrationCompareTest extends AnyFlatSpec {
   lazy val spark: SparkSession = SparkSessionBuilder.build("MigrationCompareTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -95,8 +95,7 @@ class MigrationCompareTest {
     (joinConf, stagingQueryConf)
   }
 
-  @Test
-  def testMigrateCompare(): Unit = {
+  it should "migrate compare" in {
     val (joinConf, stagingQueryConf) = setupTestData()
 
     val (compareDf, metricsDf, metrics: DataMetrics) =
@@ -105,8 +104,7 @@ class MigrationCompareTest {
     assert(result.size == 0)
   }
 
-  @Test
-  def testMigrateCompareWithLessColumns(): Unit = {
+  it should "migrate compare with less columns" in {
     val (joinConf, _) = setupTestData()
 
     // Run the staging query to generate the corresponding table for comparison
@@ -124,8 +122,7 @@ class MigrationCompareTest {
     assert(result.size == 0)
   }
 
-  @Test
-  def testMigrateCompareWithWindows(): Unit = {
+  it should "migrate compare with windows" in {
     val (joinConf, stagingQueryConf) = setupTestData()
 
     val (compareDf, metricsDf, metrics: DataMetrics) =
@@ -134,8 +131,7 @@ class MigrationCompareTest {
     assert(result.size == 0)
   }
 
-  @Test
-  def testMigrateCompareWithLessData(): Unit = {
+  it should "migrate compare with less data" in {
     val (joinConf, _) = setupTestData()
 
     val stagingQueryConf = Builders.StagingQuery(

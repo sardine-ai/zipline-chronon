@@ -26,10 +26,10 @@ import ai.chronon.spark._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory
 
-class LabelJoinTest {
+class LabelJoinTest extends AnyFlatSpec {
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("LabelJoinTest", local = true)
@@ -44,8 +44,7 @@ class LabelJoinTest {
   private val labelGroupBy = TestUtils.createRoomTypeGroupBy(namespace, spark)
   private val left = viewsGroupBy.groupByConf.sources.get(0)
 
-  @Test
-  def testLabelJoin(): Unit = {
+  it should "label join" in {
     val labelGroupBy = TestUtils.createRoomTypeGroupBy(namespace, spark, "listing_attributes").groupByConf
     val labelJoinConf = createTestLabelJoin(30, 20, Seq(labelGroupBy))
     val joinConf = Builders.Join(
@@ -81,8 +80,7 @@ class LabelJoinTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testLabelJoinMultiLabels(): Unit = {
+  it should "label join multi labels" in {
     val labelGroupBy1 = TestUtils.createRoomTypeGroupBy(namespace, spark).groupByConf
     val labelGroupBy2 = TestUtils.createReservationGroupBy(namespace, spark).groupByConf
     val labelJoinConf = createTestLabelJoin(30, 20, Seq(labelGroupBy1, labelGroupBy2))
@@ -134,8 +132,7 @@ class LabelJoinTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testLabelDsDoesNotExist(): Unit = {
+  it should "label ds does not exist" in {
     val labelGroupBy = TestUtils.createRoomTypeGroupBy(namespace, spark, "listing_label_not_exist").groupByConf
     val labelJoinConf = createTestLabelJoin(30, 20, Seq(labelGroupBy))
     val joinConf = Builders.Join(
@@ -157,8 +154,7 @@ class LabelJoinTest {
                  null)
   }
 
-  @Test
-  def testLabelRefresh(): Unit = {
+  it should "label refresh" in {
     val labelGroupBy = TestUtils.createRoomTypeGroupBy(namespace, spark, "listing_attributes_refresh").groupByConf
     val labelJoinConf = createTestLabelJoin(60, 20, Seq(labelGroupBy))
     val joinConf = Builders.Join(
@@ -188,8 +184,7 @@ class LabelJoinTest {
     assertEquals(computedRows.toSet, refreshedRows.toSet)
   }
 
-  @Test
-  def testLabelEvolution(): Unit = {
+  it should "label evolution" in {
     val labelGroupBy = TestUtils.createRoomTypeGroupBy(namespace, spark, "listing_labels").groupByConf
     val labelJoinConf = createTestLabelJoin(30, 20, Seq(labelGroupBy))
     val tableName = "label_evolution"
@@ -236,8 +231,7 @@ class LabelJoinTest {
                  "NEW_HOST")
   }
 
-  @Test(expected = classOf[AssertionError])
-  def testLabelJoinInvalidSource(): Unit = {
+  it should "throw on invalid source" in {
     // Invalid left data model entities
     val labelJoin = Builders.LabelPart(
       labels = Seq(
@@ -253,11 +247,13 @@ class LabelJoinTest {
       joinParts = Seq.empty,
       labelParts = labelJoin
     )
-    new LabelJoin(invalidJoinConf, tableUtils, labelDS).computeLabelJoin()
+
+    intercept[AssertionError] {
+      new LabelJoin(invalidJoinConf, tableUtils, labelDS).computeLabelJoin()
+    }
   }
 
-  @Test(expected = classOf[AssertionError])
-  def testLabelJoinInvalidLabelGroupByDataModal(): Unit = {
+  it should "throw on invalid label group-by data-model" in {
     // Invalid data model entities with aggregations, expected Events
     val agg_label_conf = Builders.GroupBy(
       sources = Seq(labelGroupBy.groupByConf.sources.get(0)),
@@ -286,11 +282,13 @@ class LabelJoinTest {
       joinParts = Seq.empty,
       labelParts = labelJoin
     )
-    new LabelJoin(invalidJoinConf, tableUtils, labelDS).computeLabelJoin()
+
+    intercept[AssertionError] {
+      new LabelJoin(invalidJoinConf, tableUtils, labelDS).computeLabelJoin()
+    }
   }
 
-  @Test(expected = classOf[AssertionError])
-  def testLabelJoinInvalidAggregations(): Unit = {
+  it should "throw on invalid aggregations" in {
     // multi window aggregations
     val agg_label_conf = Builders.GroupBy(
       sources = Seq(labelGroupBy.groupByConf.sources.get(0)),
@@ -319,11 +317,13 @@ class LabelJoinTest {
       joinParts = Seq.empty,
       labelParts = labelJoin
     )
-    new LabelJoin(invalidJoinConf, tableUtils, labelDS).computeLabelJoin()
+
+    intercept[AssertionError] {
+      new LabelJoin(invalidJoinConf, tableUtils, labelDS).computeLabelJoin()
+    }
   }
 
-  @Test
-  def testLabelAggregations(): Unit = {
+  it should "label aggregations" in {
     // left : listing_id, _, _, ts, ds
     val rows = List(
       Row(1L, 20L, "2022-10-02 11:00:00", "2022-10-02"),
@@ -380,8 +380,7 @@ class LabelJoinTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testLabelAggregationsWithLargerDataset(): Unit = {
+  it should "label aggregations with larger dataset" in {
     val labelTableName = s"$namespace.listing_status"
     val listingTableName = s"$namespace.listing_views_agg_left"
     val listingTable = TestUtils.buildListingTable(spark, listingTableName)

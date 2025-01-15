@@ -24,11 +24,11 @@ import ai.chronon.spark.TimedKvRdd
 import ai.chronon.spark.stats.CompareBaseJob
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class CompareTest {
+class CompareTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = SparkSessionBuilder.build("CompareTest", local = true)
 
@@ -53,8 +53,7 @@ class CompareTest {
   val leftColumns: Seq[String] = Seq("serial", "value", "rating", "keyId", "ts", "ds")
   val rightColumns: Seq[String] = Seq("rev_serial", "rev_value", "rev_rating", "keyId", "ts", "ds")
 
-  @Test
-  def basicTest(): Unit = {
+  it should "basic" in {
     val leftRdd = spark.sparkContext.parallelize(leftData)
     val leftDf = spark.createDataFrame(leftRdd).toDF(leftColumns: _*)
     val rightRdd = spark.sparkContext.parallelize(rightData)
@@ -85,8 +84,7 @@ class CompareTest {
     }
   }
 
-  @Test
-  def mappingTest(): Unit = {
+  it should "mapping" in {
     val leftRdd = spark.sparkContext.parallelize(leftData)
     val leftDf = spark.createDataFrame(leftRdd).toDF(leftColumns: _*)
     val rightRdd = spark.sparkContext.parallelize(rightData)
@@ -122,8 +120,7 @@ class CompareTest {
     }
   }
 
-  @Test
-  def checkKeysTest(): Unit = {
+  it should "check keys" in {
     val leftRdd = spark.sparkContext.parallelize(leftData)
     val leftDf = spark.createDataFrame(leftRdd).toDF(leftColumns: _*)
     val rightRdd = spark.sparkContext.parallelize(rightData)
@@ -138,8 +135,7 @@ class CompareTest {
     runFailureScenario(leftDf, rightDf, keys2, mapping2)
   }
 
-  @Test
-  def checkDataTypeTest(): Unit = {
+  it should "check data type" in {
     val leftData = Seq(
       (1, Some(1), 1.0, "a", toTs("2021-04-10 09:00:00"), "2021-04-10")
     )
@@ -161,8 +157,7 @@ class CompareTest {
     runFailureScenario(leftDf, rightDf, keys, mapping)
   }
 
-  @Test
-  def checkForWrongColumnCount(): Unit = {
+  it should "check for wrong column count" in {
     val leftData = Seq(
       (1, Some(1), 1.0, "a", "2021-04-10")
     )
@@ -184,8 +179,7 @@ class CompareTest {
     runFailureScenario(leftDf, rightDf, keys, mapping)
   }
 
-  @Test
-  def checkForMappingConsistency(): Unit = {
+  it should "check for mapping consistency" in {
     val leftData = Seq(
       (1, Some(1), 1.0, "a", toTs("2021-04-10 09:00:00"), "2021-04-10")
     )

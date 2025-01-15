@@ -22,14 +22,13 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class DataRangeTest {
+class DataRangeTest extends AnyFlatSpec {
   val spark: SparkSession = SparkSessionBuilder.build("DataRangeTest", local = true)
   private implicit val partitionSpec: PartitionSpec = TableUtils(spark).partitionSpec
 
-  @Test
-  def testIntersect(): Unit = {
+  it should "intersect" in {
     val range1 = PartitionRange(null, null)
     val range2 = PartitionRange("2023-01-01", "2023-01-02")
     assertEquals(range2, range1.intersect(range2))

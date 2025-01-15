@@ -72,7 +72,8 @@ class Join(joinConf: api.Join,
            skipFirstHole: Boolean = true,
            showDf: Boolean = false,
            selectedJoinParts: Option[List[String]] = None)
-    extends JoinBase(joinConf, endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
+// we copy the joinConfCloned to prevent modification of shared joinConf's in unit tests
+    extends JoinBase(joinConf.deepCopy(), endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
 
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
@@ -190,7 +191,7 @@ class Join(joinConf: api.Join,
       }
 
     logger.info(
-      s"\n======= CoveringSet for Join ${joinConf.metaData.name} for PartitionRange(${leftRange.start}, ${leftRange.end}) =======\n")
+      s"\n======= CoveringSet for Join ${joinConfCloned.metaData.name} for PartitionRange(${leftRange.start}, ${leftRange.end}) =======\n")
     coveringSetsPerJoinPart.foreach {
       case (joinPartMetadata, coveringSets) =>
         logger.info(s"Bootstrap sets for join part ${joinPartMetadata.joinPart.groupBy.metaData.name}")
@@ -204,10 +205,10 @@ class Join(joinConf: api.Join,
   }
 
   private def getRightPartsData(leftRange: PartitionRange): Seq[(JoinPart, DataFrame)] = {
-    joinConf.joinParts.asScala.map { joinPart =>
-      val partTable = joinConf.partOutputTable(joinPart)
+    joinConfCloned.joinParts.asScala.map { joinPart =>
+      val partTable = joinConfCloned.partOutputTable(joinPart)
       val effectiveRange =
-        if (joinConf.left.dataModel != Entities && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+        if (joinConfCloned.left.dataModel != Entities && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
           leftRange.shift(-1)
         } else {
           leftRange
@@ -273,9 +274,9 @@ class Join(joinConf: api.Join,
       if (skipBloomFilter) {
         None
       } else {
-        val leftBlooms = joinConf.leftKeyCols.iterator
+        val leftBlooms = joinConfCloned.leftKeyCols.iterator
           .map { key =>
-            key -> bootstrapDf.generateBloomFilter(key, leftRowCount, joinConf.left.table, leftRange)
+            key -> bootstrapDf.generateBloomFilter(key, leftRowCount, joinConfCloned.left.table, leftRange)
           }
           .toMap
           .asJava
@@ -383,11 +384,11 @@ class Join(joinConf: api.Join,
   }
 
   private def applyDerivation(baseDf: DataFrame, bootstrapInfo: BootstrapInfo, leftColumns: Seq[String]): DataFrame = {
-    if (!joinConf.isSetDerivations || joinConf.derivations.isEmpty) {
+    if (!joinConfCloned.isSetDerivations || joinConfCloned.derivations.isEmpty) {
       return baseDf
     }
 
-    val projections = joinConf.derivations.toScala.derivationProjection(bootstrapInfo.baseValueNames)
+    val projections = joinConfCloned.derivations.toScala.derivationProjection(bootstrapInfo.baseValueNames)
     val projectionsMap = projections.toMap
     val baseOutputColumns = baseDf.columns.toSet
 
@@ -440,7 +441,7 @@ class Join(joinConf: api.Join,
 
     val result = baseDf.select(finalOutputColumns: _*)
     if (showDf) {
-      logger.info(s"printing results for join: ${joinConf.metaData.name}")
+      logger.info(s"printing results for join: ${joinConfCloned.metaData.name}")
       result.prettyPrint()
     }
     result
@@ -455,8 +456,8 @@ class Join(joinConf: api.Join,
 
     val contextualNames =
       bootstrapInfo.externalParts.filter(_.externalPart.isContextual).flatMap(_.keySchema).map(_.name)
-    val projections = if (joinConf.isSetDerivations) {
-      joinConf.derivations.toScala.derivationProjection(bootstrapInfo.baseValueNames).map(_._1)
+    val projections = if (joinConfCloned.isSetDerivations) {
+      joinConfCloned.derivations.toScala.derivationProjection(bootstrapInfo.baseValueNames).map(_._1)
     } else {
       Seq()
     }
@@ -492,13 +493,13 @@ class Join(joinConf: api.Join,
     val startMillis = System.currentTimeMillis()
 
     // verify left table does not have reserved columns
-    validateReservedColumns(leftDf, joinConf.left.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
+    validateReservedColumns(leftDf, joinConfCloned.left.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
 
     tableUtils
       .unfilledRanges(bootstrapTable, range, skipFirstHole = skipFirstHole)
       .getOrElse(Seq())
       .foreach(unfilledRange => {
-        val parts = Option(joinConf.bootstrapParts)
+        val parts = Option(joinConfCloned.bootstrapParts)
           .map(_.toScala)
           .getOrElse(Seq())
 
@@ -537,16 +538,16 @@ class Join(joinConf: api.Join,
               // include only necessary columns. in particular,
               // this excludes columns that are NOT part of Join's output (either from GB or external source)
               val includedColumns = bootstrapDf.columns
-                .filter(bootstrapInfo.fieldNames ++ part.keys(joinConf, tableUtils.partitionColumn)
+                .filter(bootstrapInfo.fieldNames ++ part.keys(joinConfCloned, tableUtils.partitionColumn)
                   ++ Seq(Constants.BootstrapHash, tableUtils.partitionColumn))
                 .sorted
 
               bootstrapDf = bootstrapDf
                 .select(includedColumns.map(col): _*)
                 // TODO: allow customization of deduplication logic
-                .dropDuplicates(part.keys(joinConf, tableUtils.partitionColumn).toArray)
+                .dropDuplicates(part.keys(joinConfCloned, tableUtils.partitionColumn).toArray)
 
-              coalescedJoin(partialDf, bootstrapDf, part.keys(joinConf, tableUtils.partitionColumn))
+              coalescedJoin(partialDf, bootstrapDf, part.keys(joinConfCloned, tableUtils.partitionColumn))
               // as part of the left outer join process, we update and maintain matched_hashes for each record
               // that summarizes whether there is a join-match for each bootstrap source.
               // later on we use this information to decide whether we still need to re-run the backfill logic
@@ -564,7 +565,7 @@ class Join(joinConf: api.Join,
       })
 
     val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
-    logger.info(s"Finished computing bootstrap table ${joinConf.metaData.bootstrapTable} in $elapsedMins minutes")
+    logger.info(s"Finished computing bootstrap table ${joinConfCloned.metaData.bootstrapTable} in $elapsedMins minutes")
 
     tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(range))
   }

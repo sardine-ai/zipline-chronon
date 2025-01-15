@@ -356,6 +356,10 @@ object JoinUtils {
 
     val collectedLeft = leftDf.collect()
 
+    // clone groupBy before modifying it to prevent concurrent modification
+    val groupByClone = joinPart.groupBy.deepCopy()
+    joinPart.setGroupBy(groupByClone)
+
     joinPart.groupBy.sources.asScala.foreach { source =>
       val selectMap = Option(source.rootQuery.getQuerySelects).getOrElse(Map.empty[String, String])
       val groupByKeyExpressions = groupByKeyNames.map { key =>
@@ -389,6 +393,8 @@ object JoinUtils {
             s"$groupByKeyExpression in (${valueSet.mkString(sep = ",")})"
         }
         .foreach { whereClause =>
+          logger.info(s"Injecting where clause: $whereClause into groupBy: ${joinPart.groupBy.metaData.name}")
+
           val currentWheres = Option(source.rootQuery.getWheres).getOrElse(new util.ArrayList[String]())
           currentWheres.add(whereClause)
           source.rootQuery.setWheres(currentWheres)

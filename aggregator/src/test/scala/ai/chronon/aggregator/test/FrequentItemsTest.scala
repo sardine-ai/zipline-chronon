@@ -4,14 +4,14 @@ import ai.chronon.aggregator.base.FrequentItemType
 import ai.chronon.aggregator.base.FrequentItems
 import ai.chronon.aggregator.base.FrequentItemsFriendly
 import ai.chronon.aggregator.base.ItemsSketchIR
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 import scala.jdk.CollectionConverters._
 
-class FrequentItemsTest extends TestCase {
-  def testNonPowerOfTwoAndTruncate(): Unit = {
+class FrequentItemsTest extends AnyFlatSpec {
+  it should "non power of two and truncate" in {
     val size = 3
     val items = new FrequentItems[String](size)
     val ir = items.prepare("4")
@@ -32,7 +32,7 @@ class FrequentItemsTest extends TestCase {
     )), result)
   }
 
-  def testLessItemsThanSize(): Unit = {
+  it should "less items than size" in {
     val size = 10
     val items = new FrequentItems[java.lang.Long](size)
     val ir = items.prepare(3)
@@ -52,7 +52,7 @@ class FrequentItemsTest extends TestCase {
     )), result)
   }
 
-  def testZeroSize(): Unit = {
+  it should "zero size" in {
     val size = 0
     val items = new FrequentItems[java.lang.Double](size)
     val ir = items.prepare(3.0)
@@ -68,7 +68,7 @@ class FrequentItemsTest extends TestCase {
     assertEquals(new util.HashMap[String, Double](), result)
   }
 
-  def testSketchSizes(): Unit = {
+  it should "sketch sizes" in {
     val expectedSketchSizes =
       Map(
         -1 -> 2,
@@ -87,7 +87,7 @@ class FrequentItemsTest extends TestCase {
     assertEquals(expectedSketchSizes, actualSketchSizes)
   }
 
-  def testNormalization(): Unit = {
+  it should "normalization" in {
     val testValues = (1 to 4)
       .map(i => i -> i)
       .toMap
@@ -118,7 +118,7 @@ class FrequentItemsTest extends TestCase {
     assertEquals(expectedStringValues, actualStringValues)
   }
 
-   def testBulkMerge(): Unit = {
+  it should "bulk merge" in {
      val sketch = new FrequentItems[String](3)
 
      val irs = Seq(

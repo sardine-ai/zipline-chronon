@@ -25,16 +25,15 @@ import ai.chronon.api.ScalaJavaConversions._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Test
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.when
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util.Arrays
 
-class ExtensionsTest {
+class ExtensionsTest extends AnyFlatSpec {
 
-  @Test
-  def testSubPartitionFilters(): Unit = {
+  it should "sub partition filters" in {
     val source = Builders.Source.events(query = null, table = "db.table/system=mobile/currency=USD")
     assertEquals(
       Map("system" -> "mobile", "currency" -> "USD"),
@@ -42,8 +41,7 @@ class ExtensionsTest {
     )
   }
 
-  @Test
-  def testOwningTeam(): Unit = {
+  it should "owning team" in {
     val metadata =
       Builders.MetaData(
         customJson = "{\"check_consistency\": true, \"lag\": 0, \"team_override\": \"ml_infra\"}",
@@ -61,22 +59,19 @@ class ExtensionsTest {
     )
   }
 
-  @Test
-  def testRowIdentifier(): Unit = {
+  it should "row identifier" in {
     val labelPart = Builders.LabelPart();
     val res = labelPart.rowIdentifier(Arrays.asList("yoyo", "yujia"), "ds")
     assertTrue(res.contains("ds"))
   }
 
-  @Test
-  def partSkewFilterShouldReturnNoneWhenNoSkewKey(): Unit = {
+  it should "part skew filter should return none when no skew key" in {
     val joinPart = Builders.JoinPart()
     val join = Builders.Join(joinParts = Seq(joinPart))
     assertTrue(join.partSkewFilter(joinPart).isEmpty)
   }
 
-  @Test
-  def partSkewFilterShouldReturnCorrectlyWithSkewKeys(): Unit = {
+  it should "part skew filter should return correctly with skew keys" in {
     val groupByMetadata = Builders.MetaData(name = "test")
     val groupBy = Builders.GroupBy(keyColumns = Seq("a", "c"), metaData = groupByMetadata)
     val joinPart = Builders.JoinPart(groupBy = groupBy)
@@ -85,8 +80,7 @@ class ExtensionsTest {
     assertEquals("a NOT IN (b) OR c NOT IN (d)", join.partSkewFilter(joinPart).get)
   }
 
-  @Test
-  def partSkewFilterShouldReturnCorrectlyWithPartialSkewKeys(): Unit = {
+  it should "part skew filter should return correctly with partial skew keys" in {
     val groupByMetadata = Builders.MetaData(name = "test")
     val groupBy = Builders.GroupBy(keyColumns = Seq("c"), metaData = groupByMetadata)
 
@@ -97,8 +91,7 @@ class ExtensionsTest {
     assertEquals("c NOT IN (d)", join.partSkewFilter(joinPart).get)
   }
 
-  @Test
-  def partSkewFilterShouldReturnCorrectlyWithSkewKeysWithMapping(): Unit = {
+  it should "part skew filter should return correctly with skew keys with mapping" in {
     val groupByMetadata = Builders.MetaData(name = "test")
     val groupBy = Builders.GroupBy(keyColumns = Seq("x", "c"), metaData = groupByMetadata)
 
@@ -109,8 +102,7 @@ class ExtensionsTest {
     assertEquals("x NOT IN (b) OR c NOT IN (d)", join.partSkewFilter(joinPart).get)
   }
 
-  @Test
-  def partSkewFilterShouldReturnNoneIfJoinPartHasNoRelatedKeys(): Unit = {
+  it should "part skew filter should return none if join part has no related keys" in {
     val groupByMetadata = Builders.MetaData(name = "test")
     val groupBy = Builders.GroupBy(keyColumns = Seq("non_existent"), metaData = groupByMetadata)
 
@@ -120,8 +112,7 @@ class ExtensionsTest {
     assertTrue(join.partSkewFilter(joinPart).isEmpty)
   }
 
-  @Test
-  def groupByKeysShouldContainPartitionColumn(): Unit = {
+  it should "group by keys should contain partition column" in {
     val groupBy = spy(new GroupBy())
     val baseKeys = List("a", "b")
     val partitionColumn = "ds"
@@ -135,8 +126,7 @@ class ExtensionsTest {
     assertEquals(3, keys.size)
   }
 
-  @Test
-  def groupByKeysShouldContainTimeColumnForTemporalAccuracy(): Unit = {
+  it should "group by keys should contain time column for temporal accuracy" in {
     val groupBy = spy(new GroupBy())
     val baseKeys = List("a", "b")
     val partitionColumn = "ds"
@@ -151,8 +141,7 @@ class ExtensionsTest {
     assertEquals(4, keys.size)
   }
 
-  @Test
-  def testIsTilingEnabled(): Unit = {
+  it should "is tiling enabled" in {
     def buildGroupByWithCustomJson(customJson: String = null): GroupBy =
       Builders.GroupBy(
         metaData = Builders.MetaData(name = "featureGroupName", customJson = customJson)

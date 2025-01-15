@@ -25,15 +25,15 @@ import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.doNothing
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.rogach.scallop.ScallopConf
+import org.scalatest.flatspec.AnyFlatSpec
 
-class LocalExportTableAbilityTest {
+class LocalExportTableAbilityTest extends AnyFlatSpec {
   class TestArgs(args: Array[String], localTableExporter: LocalTableExporter)
       extends ScallopConf(args)
       with OfflineSubcommand
@@ -47,23 +47,20 @@ class LocalExportTableAbilityTest {
     protected override def buildLocalTableExporter(tableUtils: TableUtils): LocalTableExporter = localTableExporter
   }
 
-  @Test
-  def localTableExporterIsNotUsedWhenNotInLocalMode(): Unit = {
+  it should "local table exporter is not used when not in local mode" in {
     val argList = Seq("--conf-path", "joins/team/example_join.v1", "--end-date", "2023-03-03")
     val args = new TestArgs(argList.toArray, mock(classOf[LocalTableExporter]))
     assertFalse(args.shouldExport())
   }
 
-  @Test
-  def localTableExporterIsNotUsedWhenNotExportPathIsNotSpecified(): Unit = {
+  it should "local table exporter is not used when not export path is not specified" in {
     val argList =
       Seq("--conf-path", "joins/team/example_join.v1", "--end-date", "2023-03-03", "--local-data-path", "somewhere")
     val args = new TestArgs(argList.toArray, mock(classOf[LocalTableExporter]))
     assertFalse(args.shouldExport())
   }
 
-  @Test
-  def localTableExporterIsUsedWhenNecessary(): Unit = {
+  it should "local table exporter is used when necessary" in {
     val targetOutputPath = "path/to/somewhere"
     val targetFormat = "parquet"
     val prefix = "test_prefix"

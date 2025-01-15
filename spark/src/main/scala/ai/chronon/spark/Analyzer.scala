@@ -87,35 +87,35 @@ class Analyzer(tableUtils: TableUtils,
                endDate: String,
                count: Int = 64,
                sample: Double = 0.1,
-               enableHitter: Boolean = false,
+               skewDetection: Boolean = false,
                silenceMode: Boolean = false) {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // include ts into heavy hitter analysis - useful to surface timestamps that have wrong units
   // include total approx row count - so it is easy to understand the percentage of skewed data
-  def heavyHittersWithTsAndCount(df: DataFrame,
-                                 keys: Array[String],
-                                 frequentItemMapSize: Int = 1024,
-                                 sampleFraction: Double = 0.1): Array[(String, Array[(String, Long)])] = {
+  def skewKeysWithTsAndCount(df: DataFrame,
+                             keys: Array[String],
+                             frequentItemMapSize: Int = 1024,
+                             sampleFraction: Double = 0.1): Array[(String, Array[(String, Long)])] = {
     val baseDf = df.withColumn("total_count", lit("rows"))
     val baseKeys = keys :+ "total_count"
     if (df.schema.fieldNames.contains(Constants.TimeColumn)) {
-      heavyHitters(baseDf.withColumn("ts_year", from_unixtime(col("ts") / 1000, "yyyy")),
-                   baseKeys :+ "ts_year",
-                   frequentItemMapSize,
-                   sampleFraction)
+      skewKeys(baseDf.withColumn("ts_year", from_unixtime(col("ts") / 1000, "yyyy")),
+               baseKeys :+ "ts_year",
+               frequentItemMapSize,
+               sampleFraction)
     } else {
-      heavyHitters(baseDf, baseKeys, frequentItemMapSize, sampleFraction)
+      skewKeys(baseDf, baseKeys, frequentItemMapSize, sampleFraction)
     }
   }
 
-  // Uses a variant Misra-Gries heavy hitter algorithm from Data Sketches to find topK most frequent items in data
-  // frame. The result is a Array of tuples of (column names, array of tuples of (heavy hitter keys, counts))
+  // Uses a variant Misra-Gries frequent items algorithm from Data Sketches to find topK most frequent items in data
+  // frame. The result is a Array of tuples of (column names, array of tuples of (frequent keys, counts))
   // [(keyCol1, [(key1: count1) ...]), (keyCol2, [...]), ....]
-  def heavyHitters(df: DataFrame,
-                   frequentItemKeys: Array[String],
-                   frequentItemMapSize: Int = 1024,
-                   sampleFraction: Double = 0.1): Array[(String, Array[(String, Long)])] = {
+  def skewKeys(df: DataFrame,
+               frequentItemKeys: Array[String],
+               frequentItemMapSize: Int = 1024,
+               sampleFraction: Double = 0.1): Array[(String, Array[(String, Long)])] = {
     assert(frequentItemKeys.nonEmpty, "No column arrays specified for frequent items summary")
     // convert all keys into string
     val stringifiedCols = frequentItemKeys.map { col =>
@@ -160,13 +160,13 @@ class Analyzer(tableUtils: TableUtils,
   }
 
   private val range = PartitionRange(startDate, endDate)(tableUtils.partitionSpec)
-  // returns with heavy hitter analysis for the specified keys
+  // returns with frequent key analysis for the specified keys
   def analyze(df: DataFrame, keys: Array[String], sourceTable: String): String = {
-    val result = heavyHittersWithTsAndCount(df, keys, count, sample)
-    val header = s"Analyzing heavy-hitters from table $sourceTable over columns: [${keys.mkString(", ")}]"
+    val result = skewKeysWithTsAndCount(df, keys, count, sample)
+    val header = s"Analyzing frequent keys from table $sourceTable over columns: [${keys.mkString(", ")}]"
     val colPrints = result.flatMap {
-      case (col, heavyHitters) =>
-        Seq(s"  $col") ++ heavyHitters.map { case (name, count) => s"    $name: $count" }
+      case (col, skewKeys) =>
+        Seq(s"  $col") ++ skewKeys.map { case (name, count) => s"    $name: $count" }
     }
     (header +: colPrints).mkString("\n")
   }
@@ -207,17 +207,17 @@ class Analyzer(tableUtils: TableUtils,
   def analyzeGroupBy(groupByConf: api.GroupBy,
                      prefix: String = "",
                      includeOutputTableName: Boolean = false,
-                     enableHitter: Boolean = false): (Array[AggregationMetadata], Map[String, DataType]) = {
+                     skewDetection: Boolean = false): (Array[AggregationMetadata], Map[String, DataType]) = {
     groupByConf.setups.foreach(tableUtils.sql)
-    val groupBy = GroupBy.from(groupByConf, range, tableUtils, computeDependency = enableHitter, finalize = true)
+    val groupBy = GroupBy.from(groupByConf, range, tableUtils, computeDependency = skewDetection, finalize = true)
     val name = "group_by/" + prefix + groupByConf.metaData.name
-    println(s"""|Running GroupBy analysis for $name ...""".stripMargin)
+    logger.info(s"""Running GroupBy analysis for $name ...""".stripMargin)
 
     val timestampChecks = runTimestampChecks(groupBy.inputDf)
     validateTimestampChecks(timestampChecks, "GroupBy", name)
 
     val analysis =
-      if (enableHitter)
+      if (skewDetection)
         analyze(groupBy.inputDf,
                 groupByConf.keyColumns.toScala.toArray,
                 groupByConf.sources.toScala.map(_.table).mkString(","))
@@ -241,20 +241,20 @@ class Analyzer(tableUtils: TableUtils,
       groupBy.outputSchema
     }
     if (silenceMode) {
-      println(s"""ANALYSIS completed for group_by/${name}.""".stripMargin)
+      logger.info(s"""ANALYSIS completed for group_by/${name}.""".stripMargin)
     } else {
-      println(s"""
+      logger.info(s"""
            |ANALYSIS for $name:
            |$analysis
                """.stripMargin)
       if (includeOutputTableName)
-        println(s"""
+        logger.info(s"""
              |----- OUTPUT TABLE NAME -----
              |${groupByConf.metaData.outputTable}
                """.stripMargin)
       val keySchema = groupBy.keySchema.fields.map { field => s"  ${field.name} => ${field.dataType}" }
       schema.fields.map { field => s"  ${field.name} => ${field.fieldType}" }
-      println(s"""
+      logger.info(s"""
            |----- KEY SCHEMA -----
            |${keySchema.mkString("\n")}
            |----- OUTPUT SCHEMA -----
@@ -275,16 +275,15 @@ class Analyzer(tableUtils: TableUtils,
   }
 
   def analyzeJoin(joinConf: api.Join,
-                  enableHitter: Boolean = false,
+                  skewDetection: Boolean = false,
                   validateTablePermission: Boolean = true,
                   validationAssert: Boolean = false): (Map[String, DataType], ListBuffer[AggregationMetadata]) = {
     val name = "joins/" + joinConf.metaData.name
-    println(s"""|Running join analysis for $name ...""".stripMargin)
+    logger.info(s"""|Running join analysis for $name ...\n""".stripMargin)
     // run SQL environment setups such as UDFs and JARs
     joinConf.setups.foreach(tableUtils.sql)
 
-    val (analysis, leftDf) = if (enableHitter) {
-      println()
+    val (analysis, leftDf) = if (skewDetection) {
       val leftDf = JoinUtils.leftDf(joinConf, range, tableUtils, allowEmpty = true).get
       val analysis = analyze(leftDf, joinConf.leftKeyCols, joinConf.left.table)
       (analysis, leftDf)
@@ -313,14 +312,17 @@ class Analyzer(tableUtils: TableUtils,
 
     val rangeToFill =
       JoinUtils.getRangesToFill(joinConf.left, tableUtils, endDate, historicalBackfill = joinConf.historicalBackfill)
-    println(s"Join range to fill $rangeToFill")
+    logger.info(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
       .unfilledRanges(joinConf.metaData.outputTable, rangeToFill, Some(Seq(joinConf.left.table)))
       .getOrElse(Seq.empty)
 
     joinConf.joinParts.toScala.foreach { part =>
       val (aggMetadata, gbKeySchema) =
-        analyzeGroupBy(part.groupBy, part.fullPrefix, includeOutputTableName = true, enableHitter = enableHitter)
+        analyzeGroupBy(part.groupBy,
+                       Option(part.prefix).map(_ + "_").getOrElse(""),
+                       includeOutputTableName = true,
+                       skewDetection = skewDetection)
       aggregationsMetadata ++= aggMetadata.map { aggMeta =>
         AggregationMetadata(part.fullPrefix + "_" + aggMeta.name,
                             aggMeta.columnType,
@@ -330,7 +332,7 @@ class Analyzer(tableUtils: TableUtils,
                             part.getGroupBy.getMetaData.getName)
       }
       // Run validation checks.
-      println(s"""
+      logger.info(s"""
           |left columns: ${leftDf.columns.mkString(", ")}
           |gb columns: ${gbKeySchema.keys.mkString(", ")}
           |""".stripMargin)
@@ -351,9 +353,9 @@ class Analyzer(tableUtils: TableUtils,
     val rightSchema: Map[String, DataType] =
       aggregationsMetadata.map(aggregation => (aggregation.name, aggregation.columnType)).toMap
     if (silenceMode) {
-      println(s"""-- ANALYSIS completed for join/${joinConf.metaData.cleanName}. --""".stripMargin.blue)
+      logger.info(s"""-- ANALYSIS completed for join/${joinConf.metaData.cleanName}. --""".stripMargin.blue)
     } else {
-      println(s"""
+      logger.info(s"""
            |ANALYSIS for join/${joinConf.metaData.cleanName}:
            |$analysis
            |-- OUTPUT TABLE NAME --
@@ -363,38 +365,39 @@ class Analyzer(tableUtils: TableUtils,
            |-- RIGHT SIDE SCHEMA --
            |${rightSchema.mkString("\n")}
            |-- END --
-           |""".stripMargin)
+           |""".stripMargin.green)
     }
 
-    println(s"-- Validations for join/${joinConf.metaData.cleanName} --")
+    logger.info(s"-- Validations for join/${joinConf.metaData.cleanName} --")
     if (gbStartPartitions.nonEmpty) {
-      println(
-        "-- Following Group_Bys contains a startPartition. Please check if any startPartition will conflict with your backfill. --")
+      logger.info(
+        "-- Following GroupBy-s contains a startPartition. Please check if any startPartition will conflict with your backfill. --")
       gbStartPartitions.foreach {
         case (gbName, startPartitions) =>
-          println(s"    $gbName : ${startPartitions.mkString(",")}".yellow)
+          logger.info(s"    $gbName : ${startPartitions.mkString(",")}".yellow)
       }
     }
 
     if (keysWithError.nonEmpty) {
-      println(s"-- Schema validation completed. Found ${keysWithError.size} errors".red)
+      logger.info(s"-- Schema validation completed. Found ${keysWithError.size} errors".red)
       val keyErrorSet: Set[(String, String)] = keysWithError.toSet
-      println(keyErrorSet.map { case (key, errorMsg) => s"$key => $errorMsg" }.mkString("\n    ").yellow)
+      logger.info(keyErrorSet.map { case (key, errorMsg) => s"$key => $errorMsg" }.mkString("\n    ").yellow)
     }
 
     if (noAccessTables.nonEmpty) {
-      println(s"-- Table permission check completed. Found permission errors in ${noAccessTables.size} tables --".red)
-      println(noAccessTables.mkString("\n    ").yellow)
+      logger.info(
+        s"-- Table permission check completed. Found permission errors in ${noAccessTables.size} tables --".red)
+      logger.info(noAccessTables.mkString("\n    ").yellow)
     }
 
     if (dataAvailabilityErrors.nonEmpty) {
-      println(s"-- Data availability check completed. Found issue in ${dataAvailabilityErrors.size} tables --".red)
+      logger.info(s"-- Data availability check completed. Found issue in ${dataAvailabilityErrors.size} tables --".red)
       dataAvailabilityErrors.foreach(error =>
-        println(s"    Group_By ${error._2} : Source Tables ${error._1} : Expected start ${error._3}".yellow))
+        logger.info(s"    Group_By ${error._2} : Source Tables ${error._1} : Expected start ${error._3}".yellow))
     }
 
     if (keysWithError.isEmpty && noAccessTables.isEmpty && dataAvailabilityErrors.isEmpty) {
-      println("-- Backfill validation completed. No errors found. --".green)
+      logger.info("-- Backfill validation completed. No errors found. --".green)
     }
 
     if (validationAssert) {
@@ -418,9 +421,9 @@ class Analyzer(tableUtils: TableUtils,
 
   // validate the schema of the left and right side of the join and make sure the types match
   // return a map of keys and corresponding error message that failed validation
-  def runSchemaValidation(left: Map[String, DataType],
-                          right: Map[String, DataType],
-                          keyMapping: Map[String, String]): Map[String, String] = {
+  private def runSchemaValidation(left: Map[String, DataType],
+                                  right: Map[String, DataType],
+                                  keyMapping: Map[String, String]): Map[String, String] = {
     keyMapping.flatMap {
       case (_, leftKey) if !left.contains(leftKey) =>
         Some(leftKey ->
@@ -441,8 +444,8 @@ class Analyzer(tableUtils: TableUtils,
 
   // validate the table permissions for given list of tables
   // return a list of tables that the user doesn't have access to
-  def runTablePermissionValidation(sources: Set[String]): Set[String] = {
-    println(s"Validating ${sources.size} tables permissions ...")
+  private def runTablePermissionValidation(sources: Set[String]): Set[String] = {
+    logger.info(s"Validating ${sources.size} tables permissions ...")
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     //todo: handle offset-by-1 depending on temporal vs snapshot accuracy
     val partitionFilter = tableUtils.partitionSpec.minus(today, new Window(2, TimeUnit.DAYS))
@@ -459,7 +462,7 @@ class Analyzer(tableUtils: TableUtils,
                                        groupBy: api.GroupBy,
                                        unfilledRanges: Seq[PartitionRange]): List[(String, String, String)] = {
     if (unfilledRanges.isEmpty) {
-      println("No unfilled ranges found.")
+      logger.info("No unfilled ranges found.")
       List.empty
     } else {
       val firstUnfilledPartition = unfilledRanges.min.start
@@ -479,14 +482,14 @@ class Analyzer(tableUtils: TableUtils,
             case (Events, Events, Accuracy.TEMPORAL) =>
               tableUtils.partitionSpec.minus(firstUnfilledPartition, window)
           }
-          println(
+          logger.info(
             s"Checking data availability for group_by ${groupBy.metaData.name} ... Expected start partition: $expectedStart")
           if (groupBy.sources.toScala.exists(s => s.isCumulative)) {
             List.empty
           } else {
             val tableToPartitions = groupBy.sources.toScala.map { source =>
               val table = source.table
-              println(s"Checking table $table for data availability ...")
+              logger.info(s"Checking table $table for data availability ...")
               val partitions = tableUtils.partitions(table)
               val startOpt = if (partitions.isEmpty) None else Some(partitions.min)
               val endOpt = if (partitions.isEmpty) None else Some(partitions.max)
@@ -496,7 +499,7 @@ class Analyzer(tableUtils: TableUtils,
             val minPartition = if (allPartitions.isEmpty) None else Some(allPartitions.min)
 
             if (minPartition.isEmpty || minPartition.get > expectedStart) {
-              println(s"""
+              logger.info(s"""
                          |Join needs data older than what is available for GroupBy: ${groupBy.metaData.name}
                          |left-${leftDataModel.toString.low.yellow},
                          |right-${groupBy.dataModel.toString.low.yellow},
@@ -504,7 +507,7 @@ class Analyzer(tableUtils: TableUtils,
                          |expected earliest available data partition: $expectedStart\n""".stripMargin.red)
               tableToPartitions.foreach {
                 case (table, _, startOpt, endOpt) =>
-                  println(
+                  logger.info(
                     s"Table $table startPartition ${startOpt.getOrElse("empty")} endPartition ${endOpt.getOrElse("empty")}")
               }
               val tables = tableToPartitions.map(_._1)
@@ -528,7 +531,7 @@ class Analyzer(tableUtils: TableUtils,
       // set max sample to 100 rows if larger input is provided
       val sampleN = if (sampleNumber > 100) { 100 }
       else { sampleNumber }
-      dataFrameToMap(
+      dataframeToMap(
         df.limit(sampleN)
           .agg(
             // will return 0 if all values are null
@@ -591,7 +594,7 @@ class Analyzer(tableUtils: TableUtils,
 
   }
 
-  def dataFrameToMap(inputDf: DataFrame): Map[String, String] = {
+  private def dataframeToMap(inputDf: DataFrame): Map[String, String] = {
     val row: Row = inputDf.head()
     val schema = inputDf.schema
     val columns = schema.fieldNames
@@ -610,12 +613,12 @@ class Analyzer(tableUtils: TableUtils,
       case confPath: String =>
         if (confPath.contains("/joins/")) {
           val joinConf = parseConf[api.Join](confPath)
-          analyzeJoin(joinConf, enableHitter = enableHitter)
+          analyzeJoin(joinConf, skewDetection = skewDetection)
         } else if (confPath.contains("/group_bys/")) {
           val groupByConf = parseConf[api.GroupBy](confPath)
-          analyzeGroupBy(groupByConf, enableHitter = enableHitter)
+          analyzeGroupBy(groupByConf, skewDetection = skewDetection)
         }
-      case groupByConf: api.GroupBy => analyzeGroupBy(groupByConf, enableHitter = enableHitter)
-      case joinConf: api.Join       => analyzeJoin(joinConf, enableHitter = enableHitter)
+      case groupByConf: api.GroupBy => analyzeGroupBy(groupByConf, skewDetection = skewDetection)
+      case joinConf: api.Join       => analyzeJoin(joinConf, skewDetection = skewDetection)
     }
 }

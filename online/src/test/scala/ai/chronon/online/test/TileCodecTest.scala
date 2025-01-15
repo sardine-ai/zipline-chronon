@@ -20,13 +20,13 @@ import ai.chronon.api._
 import ai.chronon.online.ArrayRow
 import ai.chronon.online.TileCodec
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
-class TileCodecTest {
+class TileCodecTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private val histogram = Map[String, Int]("A" -> 3, "B" -> 2).asJava
 
@@ -92,8 +92,7 @@ class TileCodecTest {
     new ArrayRow(values.map(_._2), ts)
   }
 
-  @Test
-  def testTileCodecIrSerRoundTrip(): Unit = {
+  it should "tile codec ir ser round trip" in {
     val groupByMetadata = Builders.MetaData(name = "my_group_by")
     val (aggregations, expectedVals) = aggregationsAndExpected.unzip
     val expectedFlattenedVals = expectedVals.flatten
@@ -127,8 +126,7 @@ class TileCodecTest {
     }
   }
 
-  @Test
-  def testTileCodecIrSerRoundTrip_WithBuckets(): Unit = {
+  it should "tile codec ir ser round trip_with buckets" in {
     val groupByMetadata = Builders.MetaData(name = "my_group_by")
     val groupBy = Builders.GroupBy(metaData = groupByMetadata, aggregations = bucketedAggregations)
     val tileCodec = new TileCodec(groupBy, schema)

@@ -16,14 +16,14 @@ import com.google.cloud.bigtable.data.v2.models.Query
 import com.google.cloud.bigtable.data.v2.models.Row
 import com.google.cloud.bigtable.data.v2.models.RowMutation
 import com.google.cloud.bigtable.emulator.v2.BigtableEmulatorRule
-import org.junit.Before
 import org.junit.Rule
-import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.mockito.Mockito.withSettings
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.mockito.MockitoSugar.mock
 
@@ -34,7 +34,7 @@ import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 
 @RunWith(classOf[JUnit4])
-class BigTableKVStoreTest {
+class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
 
   import BigTableKVStore._
 
@@ -49,8 +49,7 @@ class BigTableKVStoreTest {
   private val projectId = "test-project"
   private val instanceId = "test-instance"
 
-  @Before
-  def setup(): Unit = {
+  before {
     // Configure settings to use emulator
     val dataSettings = BigtableDataSettings
       .newBuilderForEmulator(bigtableEmulator.getPort)
@@ -71,8 +70,7 @@ class BigTableKVStoreTest {
     adminClient = BigtableTableAdminClient.create(adminSettings)
   }
 
-  @Test
-  def testBigTableCreation(): Unit = {
+  it should "big table creation" in {
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     val dataset = "test-table"
     kvStore.create(dataset)
@@ -82,8 +80,7 @@ class BigTableKVStoreTest {
   }
 
   // Test write & read of a simple blob dataset
-  @Test
-  def testBlobDataRoundTrip(): Unit = {
+  it should "blob data round trip" in {
     val dataset = "models"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
@@ -113,8 +110,7 @@ class BigTableKVStoreTest {
     validateBlobValueExpectedPayload(getResult2.head, value2)
   }
 
-  @Test
-  def testBlobDataUpdates(): Unit = {
+  it should "blob data updates" in {
     val dataset = "models"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
@@ -149,8 +145,7 @@ class BigTableKVStoreTest {
     validateBlobValueExpectedPayload(getResultUpdated.head, valueUpdated)
   }
 
-  @Test
-  def testListWithPagination(): Unit = {
+  it should "list with pagination" in {
     val dataset = "models"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
@@ -191,8 +186,7 @@ class BigTableKVStoreTest {
       .toSet
   }
 
-  @Test
-  def testMultiputFailures(): Unit = {
+  it should "multiput failures" in {
     val mockDataClient: BigtableDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
     val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
@@ -214,8 +208,7 @@ class BigTableKVStoreTest {
     putResults shouldBe Seq(false, false)
   }
 
-  @Test
-  def testMultigetFailures(): Unit = {
+  it should "multiget failures" in {
     val mockDataClient: BigtableDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
     val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
@@ -244,8 +237,7 @@ class BigTableKVStoreTest {
   }
 
   // Test write and query of a simple time series dataset
-  @Test
-  def testTimeSeriesQuery_MultipleDays(): Unit = {
+  it should "time series query_multiple days" in {
     val dataset = "TILE_SUMMARIES"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
@@ -265,8 +257,7 @@ class BigTableKVStoreTest {
     validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTimeSeriesPoints, fakePayload)
   }
 
-  @Test
-  def testMultipleDatasetTimeSeriesQuery_OneDay(): Unit = {
+  it should "multiple dataset time series query_one day" in {
     val dataset = "TILE_SUMMARIES"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
@@ -286,8 +277,7 @@ class BigTableKVStoreTest {
     validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTimeSeriesPoints, fakePayload)
   }
 
-  @Test
-  def testMultipleDatasetTimeSeriesQuery_SameDay(): Unit = {
+  it should "multiple dataset time series query_same day" in {
     val dataset = "TILE_SUMMARIES"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
@@ -307,8 +297,7 @@ class BigTableKVStoreTest {
     validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTimeSeriesPoints, fakePayload)
   }
 
-  @Test
-  def testMultipleDatasetTimeSeriesQuery_DaysWithoutData(): Unit = {
+  it should "multiple dataset time series query_days without data" in {
     val dataset = "TILE_SUMMARIES"
     val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)

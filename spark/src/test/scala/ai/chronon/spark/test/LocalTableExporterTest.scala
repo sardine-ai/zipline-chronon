@@ -34,7 +34,7 @@ import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.io.File
 
@@ -50,10 +50,9 @@ object LocalTableExporterTest {
   }
 }
 
-class LocalTableExporterTest {
+class LocalTableExporterTest extends AnyFlatSpec {
 
-  @Test
-  def exporterExportsTablesCorrectly(): Unit = {
+  it should "exporter exports tables correctly" in {
     val schema = List(
       Column("user", StringType, 10),
       Column(Constants.TimeColumn, LongType, 10000), // ts = last 10000 days to avoid conflict
@@ -83,8 +82,7 @@ class LocalTableExporterTest {
     generatedData.zip(loadedData).foreach { case (g, l) => assertEquals(g, l) }
   }
 
-  @Test
-  def exporterExportsMultipleTablesWithFilesInCorrectPlace(): Unit = {
+  it should "exporter exports multiple tables with files in correct place" in {
     val schema = List(
       Column("user", StringType, 100000),
       Column(Constants.TimeColumn, LongType, 10000),
