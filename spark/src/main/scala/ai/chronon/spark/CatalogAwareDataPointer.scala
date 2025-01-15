@@ -10,10 +10,12 @@ case class CatalogAwareDataPointer(inputTableOrPath: String, formatProvider: For
     formatProvider.resolveTableName(inputTableOrPath)
   }
 
-  override lazy val options: Map[String, String] = {
-    // Hack for now, include both read and write options for the datapointer.
-    // todo(tchow): rework this abstraction. https://app.asana.com/0/1208785567265389/1209026103291854/f
-    formatProvider.readFormat(inputTableOrPath).options ++ formatProvider.writeFormat(inputTableOrPath).options
+  override lazy val readOptions: Map[String, String] = {
+    formatProvider.readFormat(inputTableOrPath).options
+  }
+
+  override lazy val writeOptions: Map[String, String] = {
+    formatProvider.writeFormat(inputTableOrPath).options
   }
 
   override lazy val readFormat: Option[String] = {
@@ -28,7 +30,7 @@ case class CatalogAwareDataPointer(inputTableOrPath: String, formatProvider: For
 
 object DataPointer {
 
-  def apply(tableOrPath: String, sparkSession: SparkSession): DataPointer = {
+  def from(tableOrPath: String, sparkSession: SparkSession): DataPointer = {
 
     CatalogAwareDataPointer(tableOrPath, FormatProvider.from(sparkSession))
 

@@ -32,17 +32,21 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
   override def readFormat(tableName: String): Format = format(tableName)
 
   override def writeFormat(table: String): Format = {
+    val tableId = BigQueryUtil.parseTableId(table)
+    assert(scala.Option(tableId.getProject).isDefined, s"project required for ${table}")
+    assert(scala.Option(tableId.getDataset).isDefined, s"dataset required for ${table}")
 
     val tu = TableUtils(sparkSession)
+    val partitionColumnOption =
+      if (tu.tableReachable(table)) Map.empty else Map("partitionField" -> tu.partitionColumn)
 
     val sparkOptions: Map[String, String] = Map(
-      "partitionField" -> tu.partitionColumn,
       // todo(tchow): No longer needed after https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1320
       "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
       "writeMethod" -> "indirect"
-    )
+    ) ++ partitionColumnOption
 
-    BigQueryFormat(bqOptions.getProjectId, sparkOptions)
+    BigQueryFormat(tableId.getProject, sparkOptions)
   }
 
   private def getFormat(table: Table): Format =
@@ -72,7 +76,10 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     val table = bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable)
 
     // lookup bq for the table, if not fall back to hive
-    scala.Option(table).map(getFormat).getOrElse(Hive)
+    scala
+      .Option(table)
+      .map(getFormat)
+      .getOrElse(scala.Option(btTableIdentifier.getProject).map(BigQueryFormat(_, Map.empty)).getOrElse(Hive))
 
   }
 }

@@ -304,28 +304,26 @@ object Extensions {
 
     def save(dataPointer: DataPointer): Unit = {
 
+      val optionDfw = dfw.options(dataPointer.writeOptions)
       dataPointer.writeFormat
         .map((wf) => {
           val normalized = wf.toLowerCase
           normalized match {
             case "bigquery" | "bq" =>
-              dfw
+              optionDfw
                 .format("bigquery")
-                .options(dataPointer.options)
                 .save(dataPointer.tableOrPath)
             case "snowflake" | "sf" =>
-              dfw
+              optionDfw
                 .format("net.snowflake.spark.snowflake")
-                .options(dataPointer.options)
                 .option("dbtable", dataPointer.tableOrPath)
                 .save()
             case "parquet" | "csv" =>
-              dfw
+              optionDfw
                 .format(normalized)
-                .options(dataPointer.options)
                 .save(dataPointer.tableOrPath)
             case "hive" | "delta" | "iceberg" =>
-              dfw
+              optionDfw
                 .format(normalized)
                 .insertInto(dataPointer.tableOrPath)
             case _ =>
@@ -334,7 +332,7 @@ object Extensions {
         })
         .getOrElse(
           // None case is just table against default catalog
-          dfw
+          optionDfw
             .format("hive")
             .insertInto(dataPointer.tableOrPath))
     }
@@ -345,6 +343,8 @@ object Extensions {
     def load(dataPointer: DataPointer): DataFrame = {
       val tableOrPath = dataPointer.tableOrPath
 
+      val optionDfr = dfr.options(dataPointer.readOptions)
+
       dataPointer.readFormat
         .map { fmt =>
           val fmtLower = fmt.toLowerCase
@@ -352,22 +352,19 @@ object Extensions {
           fmtLower match {
 
             case "bigquery" | "bq" =>
-              dfr
+              optionDfr
                 .format("bigquery")
-                .options(dataPointer.options)
                 .load(tableOrPath)
 
             case "snowflake" | "sf" =>
-              dfr
+              optionDfr
                 .format("net.snowflake.spark.snowflake")
-                .options(dataPointer.options)
                 .option("dbtable", tableOrPath)
                 .load()
 
             case "parquet" | "csv" =>
-              dfr
-                .format(fmtLower)
-                .options(dataPointer.options)
+              optionDfr
+                .format(fmt)
                 .load(tableOrPath)
 
             case "hive" | "delta" | "iceberg" => dfr.table(tableOrPath)
@@ -379,7 +376,7 @@ object Extensions {
         }
         .getOrElse {
           // None case is just table against default catalog
-          dfr.table(tableOrPath)
+          optionDfr.table(tableOrPath)
         }
     }
   }
