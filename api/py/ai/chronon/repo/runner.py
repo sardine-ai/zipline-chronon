@@ -217,3 +217,7 @@ def info(self, branch=None):
     """
     _compile_and_upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
+
+
+def fetch(self, branch=None):
+    return
