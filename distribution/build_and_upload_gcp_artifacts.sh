@@ -24,8 +24,9 @@ if [[ EXPECTED_MINIMUM_MINOR_PYTHON_VERSION -gt MINOR_PYTHON_VERSION ]] ; then
     exit 1
 fi
 
-thrift --gen py -out api/py/ai/chronon api/thrift/common.thrift
-thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
+thrift --gen py -out api/py/ api/thrift/common.thrift
+thrift --gen py -out api/py/ api/thrift/api.thrift
+thrift --gen py -out api/py/ api/thrift/observability.thrift
 VERSION=$(cat version.sbt | cut -d " " -f3 | tr -d '"') pip wheel api/py
 EXPECTED_ZIPLINE_WHEEL="zipline_ai-0.1.0.dev0-py3-none-any.whl"
 if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
@@ -70,7 +71,7 @@ function upload_to_gcp() {
               done
               echo "Succeeded"
               break;;
-          No ) exit 0;;
+          No ) break;;
       esac
   done
 }
@@ -81,3 +82,6 @@ if [ -z "$1" ]; then
 else
   upload_to_gcp "$1"
 fi
+
+# Cleanup wheel stuff
+rm ./*.whl
