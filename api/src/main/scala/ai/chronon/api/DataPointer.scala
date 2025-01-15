@@ -5,7 +5,9 @@ abstract class DataPointer {
   def tableOrPath: String
   def readFormat: Option[String]
   def writeFormat: Option[String]
-  def options: Map[String, String]
+
+  def readOptions: Map[String, String]
+  def writeOptions: Map[String, String]
 
 }
 
@@ -13,8 +15,12 @@ case class URIDataPointer(
     override val tableOrPath: String,
     override val readFormat: Option[String],
     override val writeFormat: Option[String],
-    override val options: Map[String, String]
-) extends DataPointer
+    options: Map[String, String]
+) extends DataPointer {
+
+  override val readOptions: Map[String, String] = options
+  override val writeOptions: Map[String, String] = options
+}
 
 // parses string representations of data pointers
 // ex: namespace.table
