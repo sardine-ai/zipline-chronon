@@ -128,3 +128,23 @@
 	font-display: swap;
 	unicode-range: U+0030-0039; /* Digits 0-9 */
 }
+
+@layer utilities {
+	.content-auto {
+		content-visibility: auto;
+	}
+
+	.grid-stack {
+		& > * {
+			grid-area: 1 / 1;
+		}
+	}
+
+	.scrollbar-none {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+		&::-webkit-scrollbar {
+			display: none;
+		}
+	}
+}
