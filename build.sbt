@@ -109,7 +109,8 @@ val circe = Seq(
 val flink_all = Seq(
   "org.apache.flink" %% "flink-streaming-scala",
   "org.apache.flink" % "flink-metrics-dropwizard",
-  "org.apache.flink" % "flink-clients"
+  "org.apache.flink" % "flink-clients",
+  "org.apache.flink" % "flink-yarn"
 ).map(_ % flink_1_17)
 
 val vertx_java = Seq(
@@ -213,6 +214,22 @@ lazy val flink = project
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
+      case "reference.conf" => MergeStrategy.concat
+      case "application.conf" => MergeStrategy.concat
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case _ => MergeStrategy.first
+    },
+    // Exclude Hadoop & Guava from the assembled JAR
+    // Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
+    // superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
+    // Or: java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument(...)
+    // Or: 'com/google/protobuf/MapField' is not assignable to 'com/google/protobuf/MapFieldReflectionAccessor'
+    assembly / assemblyExcludedJars := {
+      val cp = (assembly / fullClasspath).value
+      cp filter { jar =>  jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("guava") || jar.data.getName.startsWith("protobuf")}
+    },
     libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),
@@ -236,13 +253,24 @@ lazy val cloud_gcp = project
     libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
     libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
+    libraryDependencies += "io.grpc" % "grpc-netty-shaded" % "1.62.2",
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
     dependencyOverrides ++= jackson,
+    // assembly merge settings to allow Flink jobs to kick off
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat // Add to include channel provider
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case "reference.conf" => MergeStrategy.concat
+      case "application.conf" => MergeStrategy.concat
+      case _ => MergeStrategy.first
+    },
     libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
     // force a newer version of reload4j to sidestep: https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
-    dependencyOverrides += "ch.qos.reload4j" % "reload4j" % "1.2.25"
+    dependencyOverrides ++= Seq(
+      "ch.qos.reload4j" % "reload4j" % "1.2.25",
+    )
   )
 
 lazy val cloud_gcp_submitter = project
