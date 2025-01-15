@@ -116,6 +116,7 @@ val flink_all = Seq(
 val vertx_java = Seq(
   "io.vertx" % "vertx-core",
   "io.vertx" % "vertx-web",
+  "io.vertx" % "vertx-web-client",
   "io.vertx" % "vertx-config",
   // wire up metrics using micro meter and statsd
   "io.vertx" % "vertx-micrometer-metrics"
@@ -325,7 +326,7 @@ lazy val frontend = (project in file("frontend"))
   )
 
 lazy val service_commons = (project in file("service_commons"))
-  .dependsOn(online)
+  .dependsOn(api.%("compile->compile;test->test"), online)
   .settings(
     libraryDependencies ++= vertx_java,
     libraryDependencies ++= Seq(
@@ -336,8 +337,17 @@ lazy val service_commons = (project in file("service_commons"))
       // our online module's spark deps which causes the web-app to not serve up content
       "io.netty" % "netty-all" % "4.1.111.Final",
       // wire up metrics using micro meter and statsd
-      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6"
-    )
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+      "com.fasterxml.jackson.core" % "jackson-databind" % "2.15.2", // pinned from elsewhere
+      "io.vertx" % "vertx-junit5" % vertxVersion % Test,
+      "org.junit.jupiter" % "junit-jupiter-api" % "5.10.5" % Test
+    ),
+    libraryDependencies ++= {
+      if (System.getProperty("os.name").toLowerCase.contains("mac"))
+        Seq("io.netty" % "netty-resolver-dns-native-macos" % "4.1.115.Final" classifier "osx-aarch_64")
+      else
+        Seq.empty
+    }
   )
 
 lazy val service = (project in file("service"))
@@ -446,7 +456,7 @@ lazy val orchestration = project
   .dependsOn(online.%("compile->compile;test->test"))
   .settings(
     assembly / mainClass := Some("ai.chronon.orchestration.RepoParser"),
-    
+
     Compile / run / mainClass := Some("ai.chronon.orchestration.RepoParser"),
     Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources",
 
