@@ -43,7 +43,9 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     val sparkOptions: Map[String, String] = Map(
       // todo(tchow): No longer needed after https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1320
       "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
-      "writeMethod" -> "indirect"
+      "writeMethod" -> "indirect",
+      "materializationProject" -> sparkSession.conf.get("spark.chronon.table.gcs.connector_output_project"),
+      "materializationDataset" -> sparkSession.conf.get("spark.chronon.table.gcs.connector_output_dataset")
     ) ++ partitionColumnOption
 
     BigQueryFormat(tableId.getProject, sparkOptions)
