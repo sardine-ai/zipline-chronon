@@ -34,7 +34,7 @@
 		sortDistributions,
 		type SortContext
 	} from '$lib/util/sort';
-	import type { JoinPageData } from '../../../routes/joins/[slug]/proxy+page.server';
+	import type { JoinPageData } from '$routes/joins/[slug]/+page.server';
 
 	const api = new Api();
 
