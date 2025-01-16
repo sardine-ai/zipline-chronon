@@ -8,11 +8,7 @@ import { getSortDirection, sortDrift, type SortDirection } from '$lib/util/sort'
 const FALLBACK_START_TS = 1672531200000; // 2023-01-01
 const FALLBACK_END_TS = 1677628800000; // 2023-03-01
 
-export const load: PageServerLoad = async ({
-	params,
-	url,
-	fetch
-}): Promise<{
+export type JoinPageData = {
 	joinTimeseries: JoinTimeSeriesResponse;
 	model?: Model;
 	metricType: MetricType;
@@ -22,7 +18,9 @@ export const load: PageServerLoad = async ({
 		dateRangeValue: string;
 		isUsingFallback: boolean;
 	};
-}> => {
+};
+
+export const load: PageServerLoad = async ({ params, url, fetch }): Promise<JoinPageData> => {
 	const api = new Api({ fetch });
 	const requestedDateRange = parseDateRangeParams(url.searchParams);
 	const joinName = params.slug;
