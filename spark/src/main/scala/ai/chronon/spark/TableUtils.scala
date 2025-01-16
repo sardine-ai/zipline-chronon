@@ -118,7 +118,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       df
     }
 
-  // Needs provider
   def tableReachable(tableName: String): Boolean = {
     try {
       loadTable(tableName)
@@ -133,7 +132,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  // Needs provider
   def loadTable(tableName: String): DataFrame = {
     sparkSession.read.load(DataPointer.from(tableName, sparkSession))
   }
