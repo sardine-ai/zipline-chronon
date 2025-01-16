@@ -1,11 +1,16 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import ai.chronon.spark.format.Hive
-import com.google.cloud.bigquery._
+import com.google.cloud.bigquery.BigQuery
+import com.google.cloud.bigquery.BigQueryOptions
+import com.google.cloud.bigquery.ExternalTableDefinition
+import com.google.cloud.bigquery.FormatOptions
+import com.google.cloud.bigquery.StandardTableDefinition
+import com.google.cloud.bigquery.Table
+import com.google.cloud.bigquery.TableDefinition
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
@@ -51,19 +56,21 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     BigQueryFormat(tableId.getProject, sparkOptions)
   }
 
-  private def getFormat(table: Table): Format =
+  private[cloud_gcp] def getFormat(table: Table): Format =
     table.getDefinition.asInstanceOf[TableDefinition] match {
 
       case definition: ExternalTableDefinition =>
-        val uris = definition.getSourceUris.toScala
-          .map(uri => uri.stripSuffix("/*") + "/")
-
-        assert(uris.length == 1, s"External table ${table.getFriendlyName} can be backed by only one URI.")
-
         val formatOptions = definition.getFormatOptions
           .asInstanceOf[FormatOptions]
-
-        GCS(table.getTableId.getProject, uris.head, formatOptions.getType)
+        val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
+        val uri = Option(externalTable.getHivePartitioningOptions)
+          .map(_.getSourceUriPrefix)
+          .getOrElse {
+            val uris = externalTable.getSourceUris
+            require(uris.size == 1, s"External table ${table} can be backed by only one URI.")
+            uris.get(0).replaceAll("/\\*\\.parquet$", "")
+          }
+        GCS(table.getTableId.getProject, uri, formatOptions.getType)
 
       case _: StandardTableDefinition =>
         BigQueryFormat(table.getTableId.getProject, Map.empty)
