@@ -32,6 +32,8 @@
 	import IconExclamationTriangle from '~icons/heroicons/exclamation-triangle-16-solid';
 	import IconMagnifyingGlass from '~icons/heroicons/magnifying-glass-16-solid';
 	import IconUser from '~icons/heroicons/user';
+	import IconSquaresSolid from '~icons/heroicons/squares-2x2-16-solid';
+	import { Separator } from '$lib/components/ui/separator';
 
 	type Props = {
 		navItems: Entity[];
@@ -113,19 +115,12 @@
 			</span>
 		{/if}
 	</Button>
-	<Button
-		variant="ghost"
-		class="mb-9 text-regular-medium"
-		size="nav"
-		href="https://docs.chronon.ai"
-		target="_blank"
-		rel="noopener noreferrer"
-		icon="leading"
-	>
-		<IconDocumentText class="text-muted-icon-neutral" />
-		<span class="text-muted-foreground">Chronon docs</span>
+	<Button variant="ghost" class="text-regular-medium" size="nav" href="/" icon="leading">
+		<IconSquaresSolid class="text-muted-icon-neutral" />
+		<span class="text-muted-foreground">Home</span>
 	</Button>
-	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Observability</span>
+	<Separator class="my-6" />
+	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Datasets</span>
 	<ul class="space-y-1 flex-grow">
 		{#each navItems as item}
 			<li>
@@ -143,7 +138,32 @@
 			</li>
 		{/each}
 	</ul>
-	<div class="flex items-center mt-auto">
+	<Separator class="my-6" />
+	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Resources</span>
+	<Button
+		variant="ghost"
+		class="w-full text-regular-medium my-1"
+		size="nav"
+		href="https://docs.chronon.ai"
+		target="_blank"
+		rel="noopener noreferrer"
+		icon="leading"
+	>
+		<IconDocumentText class="text-muted-icon-neutral" />
+		<span class="text-muted-foreground">Chronon docs</span>
+	</Button>
+	<Button
+		variant="ghost"
+		class="w-full text-regular-medium my-1"
+		size="nav"
+		href="mailto:hello@zipline.ai"
+		icon="leading"
+	>
+		<IconDocumentText class="text-muted-icon-neutral" />
+		<span class="text-muted-foreground">Support</span>
+	</Button>
+	<Separator class="mt-6 mb-4" />
+	<div class="flex items-center">
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild let:builder>
 				<Button variant="ghost" class="flex items-center cursor-pointer" builders={[builder]}>

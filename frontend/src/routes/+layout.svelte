@@ -23,8 +23,7 @@
 	<NavigationSlider />
 
 	<!-- Left navigation -->
-	<NavigationBar navItems={entityConfig.filter((entity) => entity.id === 'joins')} {user} />
-
+	<NavigationBar navItems={[...entityConfig]} {user} />
 	<!-- Main content -->
 	<main
 		class="flex-1 flex flex-col overflow-hidden bg-neutral-100 relative rounded-tl-xl"
