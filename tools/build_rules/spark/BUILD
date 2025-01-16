@@ -31,17 +31,9 @@ SPARK_JARS = [
         name = "spark-tags",
         org = "org.apache.spark",
     ),
-    jar(
-        name = "scala-library",
-        org = "org.scala-lang",
-    ),
     scala_jar(
         name = "spark-unsafe",
         org = "org.apache.spark",
-    ),
-    jar(
-        name = "avro",
-        org = "org.apache.avro",
     ),
     jar(
         name = "hive-metastore",
@@ -56,28 +48,8 @@ SPARK_JARS = [
         org = "org.apache.hadoop",
     ),
     jar(
-        name = "jackson-core",
-        org = "com.fasterxml.jackson.core",
-    ),
-    jar(
-        name = "jackson-annotations",
-        org = "com.fasterxml.jackson.core",
-    ),
-    jar(
-        name = "jackson-databind",
-        org = "com.fasterxml.jackson.core",
-    ),
-    jar(
         name = "kryo_shaded",
         org = "com.esotericsoftware",
-    ),
-    scala_jar(
-        name = "json4s-jackson",
-        org = "org.json4s",
-    ),
-    jar(
-        name = "commons-lang3",
-        org = "org.apache.commons",
     ),
 ]
 
@@ -102,6 +74,6 @@ java_binary(
     name = "spark",
     main_class = "None",  #hack
     runtime_deps = [
-        "//third_party/java/spark:spark-exec",
+        ":spark-exec",
     ],
 )
