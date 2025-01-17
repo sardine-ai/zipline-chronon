@@ -100,8 +100,35 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
   }
 
   private def buildFlinkJob(mainClass: String, mainJarUri: String, jarUri: String, args: String*): Job.Builder = {
+
+    // TODO leverage a setting in teams.json when that's wired up
+    val checkpointsDir = "gs://zl-warehouse/flink-state"
+
+    // JobManager is primarily responsible for coordinating the job (task slots, checkpoint triggering) and not much else
+    // so 4G should suffice.
+    // We go with 64G TM containers (4 task slots per container)
+    // Broadly Flink splits TM memory into:
+    // 1) Metaspace, framework offheap etc
+    // 2) Network buffers
+    // 3) Managed Memory (rocksdb)
+    // 4) JVM heap
+    // We tune down the network buffers to 1G-2G (default would be ~6.3G) and use some of the extra memory for
+    // managed mem + jvm heap
+    // Good doc - https://nightlies.apache.org/flink/flink-docs-master/docs/deployment/memory/mem_setup_tm
     val envProps =
-      Map("jobmanager.memory.process.size" -> "4G", "yarn.classpath.include-user-jar" -> "FIRST")
+      Map(
+        "jobmanager.memory.process.size" -> "4G",
+        "taskmanager.memory.process.size" -> "64G",
+        "taskmanager.memory.network.min" -> "1G",
+        "taskmanager.memory.network.max" -> "2G",
+        "taskmanager.memory.managed.fraction" -> "0.5f",
+        "yarn.classpath.include-user-jar" -> "FIRST",
+        "state.savepoints.dir" -> checkpointsDir,
+        "state.checkpoints.dir" -> checkpointsDir,
+        // override the local dir for rocksdb as the default ends up being too large file name size wise
+        "state.backend.rocksdb.localdir" -> "/tmp/flink-state",
+        "state.checkpoint-storage" -> "filesystem"
+      )
 
     val flinkJob = FlinkJob
       .newBuilder()
