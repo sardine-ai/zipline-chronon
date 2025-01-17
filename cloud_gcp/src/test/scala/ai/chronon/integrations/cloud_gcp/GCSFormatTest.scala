@@ -33,7 +33,7 @@ class GCSFormatTest extends AnyFlatSpec {
 
     val df = spark.createDataFrame(testData).toDF("ds", "first", "second")
     df.write.partitionBy("ds").format("parquet").mode(SaveMode.Overwrite).save(dir.getAbsolutePath)
-    val gcsFormat = GCS(project = "test-project", sourceUri = dir.getAbsolutePath, fileFormat = "parquet")
+    val gcsFormat = GCS(sourceUri = dir.getAbsolutePath, fileFormat = "parquet")
     val partitions = gcsFormat.partitions("unused_table")(spark)
 
     assertEquals(Set(Map("ds" -> "20241223"), Map("ds" -> "20241224"), Map("ds" -> "20241225")), partitions.toSet)
@@ -53,7 +53,7 @@ class GCSFormatTest extends AnyFlatSpec {
 
     val df = spark.createDataFrame(testData).toDF("ds", "first", "second")
     df.write.format("parquet").mode(SaveMode.Overwrite).save(dir.getAbsolutePath)
-    val gcsFormat = GCS(project = "test-project", sourceUri = dir.getAbsolutePath, fileFormat = "parquet")
+    val gcsFormat = GCS(sourceUri = dir.getAbsolutePath, fileFormat = "parquet")
     val partitions = gcsFormat.partitions("unused_table")(spark)
 
     assertEquals(Set.empty, partitions.toSet)
@@ -83,7 +83,7 @@ class GCSFormatTest extends AnyFlatSpec {
         .toDF("ds", "first", "second")
         .select(to_date(col("ds"), "yyyy-MM-dd").as("ds"), col("first"), col("second"))
     df.write.format("parquet").partitionBy("ds").mode(SaveMode.Overwrite).save(dir.getAbsolutePath)
-    val gcsFormat = GCS(project = "test-project", sourceUri = dir.getAbsolutePath, fileFormat = "parquet")
+    val gcsFormat = GCS(sourceUri = dir.getAbsolutePath, fileFormat = "parquet")
     val partitions = gcsFormat.partitions("unused_table")(spark)
 
     assertEquals(Set(Map("ds" -> "2024-12-23"), Map("ds" -> "2024-12-24"), Map("ds" -> "2024-12-25")), partitions.toSet)

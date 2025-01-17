@@ -1,0 +1,63 @@
+java_library(
+    name = "lib",
+    srcs = glob(["src/main/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = SCALA_DEPS + [
+        "//api:lib",
+        "//online:lib",
+        maven_artifact("io.vertx:vertx-core"),
+        maven_artifact("io.vertx:vertx-web"),
+        maven_artifact("io.vertx:vertx-web-client"),
+        maven_artifact("io.vertx:vertx-config"),
+        maven_artifact("io.vertx:vertx-micrometer-metrics"),
+        maven_artifact("ch.qos.logback:logback-classic"),
+        maven_artifact("com.typesafe:config"),
+        maven_artifact("io.netty:netty-all"),
+        maven_artifact("io.micrometer:micrometer-registry-statsd"),
+        maven_artifact("io.micrometer:micrometer-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("org.slf4j:slf4j-api"),
+    ],
+)
+
+java_library(
+    name = "test-lib",
+    srcs = glob(["src/test/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lib",
+        "//api:lib",
+        "//api:thrift",
+        "//online:lib",
+        # Libraries
+        maven_artifact("io.vertx:vertx-core"),
+        maven_artifact("io.vertx:vertx-web"),
+        maven_artifact("io.vertx:vertx-web-client"),
+        # Testing
+        maven_artifact("io.vertx:vertx-junit5"),
+        maven_artifact("org.junit.jupiter:junit-jupiter-api"),
+    ],
+)
+
+java_test_suite(
+    name = "test",
+    srcs = glob(["src/test/**/*.java"]),
+    visibility = ["//visibility:public"],
+    runner = "junit5",
+    deps = [
+        ":lib",
+        ":test-lib",
+        "//api:lib",
+        "//api:thrift",
+        "//online:lib",
+        # Libraries
+        maven_artifact("io.vertx:vertx-core"),
+        maven_artifact("io.vertx:vertx-web"),
+        maven_artifact("io.vertx:vertx-web-client"),
+        # Testing
+        maven_artifact("io.vertx:vertx-junit5"),
+        maven_artifact("org.junit.jupiter:junit-jupiter-api"),
+        maven_artifact("org.junit.platform:junit-platform-launcher"),
+        maven_artifact("org.junit.platform:junit-platform-reporting"),
+    ],
+)

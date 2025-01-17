@@ -2,14 +2,18 @@
 	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
 	import PageHeader from '$lib/components/PageHeader/PageHeader.svelte';
 	import Observability from '$lib/components/Observability/Observability.svelte';
+	import JobTracker from '$lib/components/JobTracker/JobTracker.svelte';
+	import { queryParameters, ssp } from 'sveltekit-search-params';
 
 	const { data } = $props();
 	const joinTimeseries = $derived(data.joinTimeseries);
+
+	const params = queryParameters({ tab: ssp.string('observability') }, { pushHistory: true });
 </script>
 
 <PageHeader title={joinTimeseries.name} />
 
-<Tabs class="w-full">
+<Tabs bind:value={params.tab} class="w-full">
 	<TabsList>
 		<TabsTrigger value="observability">Observability</TabsTrigger>
 		<TabsTrigger value="job-tracker">Job Tracker</TabsTrigger>
@@ -21,7 +25,7 @@
 	</TabsContent>
 
 	<TabsContent value="job-tracker">
-		<div class="py-4">Job Tracker content coming soon...</div>
+		<JobTracker jobTree={data.jobTree} dates={data.dates} />
 	</TabsContent>
 
 	<TabsContent value="lineage">

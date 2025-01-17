@@ -13,6 +13,9 @@ maven_repository = repository(
 
         # JUnit
         "junit:junit:4.13.2",
+        "org.junit.jupiter:junit-jupiter-api:5.10.5",
+        "org.junit.platform:junit-platform-launcher:1.10.5",
+        "org.junit.platform:junit-platform-reporting:1.10.5",
         "com.novocode:junit-interface:0.11",
         "org.scalatestplus:mockito-3-4_2.12:3.2.10.0",
         "org.mockito:mockito-core:4.6.1",
@@ -47,11 +50,22 @@ maven_repository = repository(
         "org.yaml:snakeyaml:2.3",
         "commons-io:commons-io:2.9.0",
         "commons-lang:commons-lang:2.6",
-        "io.netty:netty-all:4.1.99.Final",
+        "io.netty:netty-all:4.1.111.Final",
         "io.delta:delta-spark_2.12:3.2.0",
+        "ch.qos.logback:logback-classic:1.5.6",
+        "com.typesafe:config:1.4.3",
+        "io.micrometer:micrometer-registry-statsd:1.13.6",
 
         # Kafka
         "org.apache.kafka:kafka-clients:3.9.0",
+
+        # Vertx
+        "io.vertx:vertx-core:4.5.10",
+        "io.vertx:vertx-web:4.5.10",
+        "io.vertx:vertx-web-client:4.5.10",
+        "io.vertx:vertx-config:4.5.10",
+        "io.vertx:vertx-micrometer-metrics:4.5.10",
+        "io.vertx:vertx-junit5:4.5.10",
     ],
     overrides = {
     },

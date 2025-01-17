@@ -522,10 +522,10 @@ class Runner:
                 else:
                     # offline mode
 
-                    # we'll always download the jar for now so that we can pull
+                    # Always download the jar for now in dataproc mode so that we can pull
                     # in any fixes or latest changes
-                    dataproc_jar = download_dataproc_jar(temp_dir,
-                                                         get_customer_id())
+                    if self.dataproc:
+                        dataproc_jar = download_dataproc_jar(temp_dir, get_customer_id())
 
                     if self.parallelism > 1:
                         assert self.start_ds is not None and self.ds is not None, (
@@ -538,8 +538,8 @@ class Runner:
                         for start_ds, end_ds in date_ranges:
                             if not self.dataproc:
                                 command = (
-                                    "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} "
-                                    + "{additional_args}"
+                                    "bash {script} --class ai.chronon.spark.Driver " +
+                                    "{jar} {subcommand} {args} {additional_args}"
                                 ).format(
                                     script=self.spark_submit,
                                     jar=self.jar_path,
@@ -580,8 +580,8 @@ class Runner:
                     else:
                         if not self.dataproc:
                             command = (
-                                "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} " +
-                                "{additional_args}"
+                                "bash {script} --class ai.chronon.spark.Driver "
+                                + "{jar} {subcommand} {args} {additional_args}"
                             ).format(
                                 script=self.spark_submit,
                                 jar=self.jar_path,

@@ -14,6 +14,10 @@ import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.SparkConversions
 import org.apache.flink.api.scala._
+import org.apache.flink.configuration.CheckpointingOptions
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.configuration.StateBackendOptions
+import org.apache.flink.streaming.api.CheckpointingMode
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.OutputTag
@@ -27,6 +31,9 @@ import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Serialization
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
@@ -82,9 +89,12 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
         "Tiling is disabled.")
 
+    // we expect parallelism on the source stream to be set by the source provider
     val sourceStream: DataStream[T] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
+        .uid(s"source-$groupByName")
+        .name(s"Source for $groupByName")
 
     val sparkExprEvalDS: DataStream[Map[String, Any]] = sourceStream
       .flatMap(exprEval)
@@ -128,9 +138,12 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     val tilingWindowSizeInMillis: Option[Long] =
       ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
 
+    // we expect parallelism on the source stream to be set by the source provider
     val sourceStream: DataStream[T] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
+        .uid(s"source-$groupByName")
+        .name(s"Source for $groupByName")
 
     val sparkExprEvalDS: DataStream[Map[String, Any]] = sourceStream
       .flatMap(exprEval)
@@ -202,6 +215,26 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
 }
 
 object FlinkJob {
+  // we set an explicit max parallelism to ensure if we do make parallelism setting updates, there's still room
+  // to restore the job from prior state. Number chosen does have perf ramifications if too high (can impact rocksdb perf)
+  // so we've chosen one that should allow us to scale to jobs in the 10K-50K events / s range.
+  val MaxParallelism = 1260 // highly composite number
+
+  // We choose to checkpoint frequently to ensure the incremental checkpoints are small in size
+  // as well as ensuring the catch-up backlog is fairly small in case of failures
+  val CheckPointInterval: FiniteDuration = 10.seconds
+
+  // We set a more lenient checkpoint timeout to guard against large backlog / catchup scenarios where checkpoints
+  // might be slow and a tight timeout will set us on a snowball restart loop
+  val CheckpointTimeout: FiniteDuration = 5.minutes
+
+  // We use incremental checkpoints and we cap how many we keep around
+  val MaxRetainedCheckpoints = 10
+
+  // how many consecutive checkpoint failures can we tolerate - default is 0, we choose a more lenient value
+  // to allow us a few tries before we give up
+  val TolerableCheckpointFailures = 5
+
   // Pull in the Serialization trait to sidestep: https://github.com/scallop/scallop/issues/137
   class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
     val onlineClass: ScallopOption[String] =
@@ -235,13 +268,39 @@ object FlinkJob {
         // based on the topic type (e.g. kafka / pubsub) and the schema class name:
         // 1. lookup schema object using SchemaProvider (e.g SchemaRegistry / Jar based)
         // 2. Create the appropriate Encoder for the given schema type
-        // 3. Invoke the appropriate source provider to get the source, encoder, parallelism
+        // 3. Invoke the appropriate source provider to get the source, parallelism
         throw new IllegalArgumentException("We don't support non-mocked sources like Kafka / PubSub yet!")
       }
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    // TODO add useful configs
-    flinkJob.runGroupByJob(env).addSink(new PrintSink) // TODO wire up a metrics sink / such
+
+    env.enableCheckpointing(CheckPointInterval.toMillis, CheckpointingMode.AT_LEAST_ONCE)
+    val checkpointConfig = env.getCheckpointConfig
+    checkpointConfig.setMinPauseBetweenCheckpoints(CheckPointInterval.toMillis)
+    checkpointConfig.setCheckpointTimeout(CheckpointTimeout.toMillis)
+    checkpointConfig.setMaxConcurrentCheckpoints(1)
+    checkpointConfig.setTolerableCheckpointFailureNumber(TolerableCheckpointFailures)
+
+    val config = new Configuration()
+
+    config.set(StateBackendOptions.STATE_BACKEND, "rocksdb")
+    config.setBoolean(CheckpointingOptions.INCREMENTAL_CHECKPOINTS, true)
+    config.setInteger(CheckpointingOptions.MAX_RETAINED_CHECKPOINTS, MaxRetainedCheckpoints)
+
+    env.setMaxParallelism(MaxParallelism)
+
+    env.getConfig.disableAutoGeneratedUIDs() // we generate UIDs manually to ensure consistency across runs
+    env.getConfig
+      .enableForceKryo() // use kryo for complex types that Flink's default ser system doesn't support (e.g case classes)
+    env.getConfig.enableGenericTypes() // more permissive type checks
+
+    env.configure(config)
+
+    flinkJob
+      .runGroupByJob(env)
+      .addSink(new MetricsSink(flinkJob.groupByName))
+      .uid(s"metrics-sink - ${flinkJob.groupByName}")
+      .name(s"Metrics Sink for ${flinkJob.groupByName}")
     env.execute(s"${flinkJob.groupByName}")
   }
 

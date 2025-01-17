@@ -51,6 +51,32 @@ const config = {
 				card: {
 					DEFAULT: 'hsl(var(--card) / <alpha-value>)',
 					foreground: 'hsl(var(--card-foreground) / <alpha-value>)'
+				},
+				jobs: {
+					waiting: {
+						bg: 'hsl(var(--job-waiting-bg) / <alpha-value>)',
+						text: 'hsl(var(--job-waiting-text) / <alpha-value>)'
+					},
+					running: {
+						bg: 'hsl(var(--job-running-bg) / <alpha-value>)',
+						text: 'hsl(var(--job-running-text) / <alpha-value>)'
+					},
+					failed: {
+						bg: 'hsl(var(--job-failed-bg) / <alpha-value>)',
+						text: 'hsl(var(--job-failed-text) / <alpha-value>)'
+					},
+					completed: {
+						bg: 'hsl(var(--job-completed-bg) / <alpha-value>)',
+						text: 'hsl(var(--job-completed-text) / <alpha-value>)'
+					},
+					queued: {
+						bg: 'hsl(var(--job-queued-bg) / <alpha-value>)',
+						text: 'hsl(var(--job-queued-text) / <alpha-value>)'
+					},
+					invalid: {
+						bg: 'hsl(var(--job-invalid-bg) / <alpha-value>)',
+						text: 'hsl(var(--job-invalid-text) / <alpha-value>)'
+					}
 				}
 			},
 			borderRadius: {
