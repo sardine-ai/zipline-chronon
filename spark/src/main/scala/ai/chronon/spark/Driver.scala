@@ -86,7 +86,17 @@ object Driver {
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
     ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
 
-  trait OfflineSubcommand {
+  trait AddGcpSubCommandArgs {
+    this: ScallopConf =>
+    val isGcp: ScallopOption[Boolean] =
+      opt[Boolean](required = false, default = Some(false), descr = "Whether to use GCP")
+    val gcpProjectId: ScallopOption[String] =
+      opt[String](required = false, descr = "GCP project id")
+    val gcpBigtableInstanceId: ScallopOption[String] =
+      opt[String](required = false, descr = "GCP BigTable instance id")
+  }
+
+  trait OfflineSubcommand extends AddGcpSubCommandArgs {
     this: ScallopConf =>
     val confPath: ScallopOption[String] = opt[String](required = true, descr = "Path to conf")
 
@@ -513,10 +523,20 @@ object Driver {
   object GroupByUploader {
     class Args extends Subcommand("group-by-upload") with OfflineSubcommand {
       override def subcommandName() = "group-by-upload"
+
+      // jsonPercent
+      val jsonPercent: ScallopOption[Int] =
+        opt[Int](name = "json-percent",
+                 required = false,
+                 descr = "Percentage of json encoding to retain for debuggability",
+                 default = Some(1))
     }
 
     def run(args: Args): Unit = {
-      GroupByUpload.run(parseConf[api.GroupBy](args.confPath()), args.endDate(), Some(args.buildTableUtils()))
+      GroupByUpload.run(parseConf[api.GroupBy](args.confPath()),
+                        args.endDate(),
+                        Some(args.buildTableUtils()),
+                        jsonPercent = args.jsonPercent.apply())
     }
   }
 
@@ -564,7 +584,7 @@ object Driver {
   }
 
   // common arguments to all online commands
-  trait OnlineSubcommand { s: ScallopConf =>
+  trait OnlineSubcommand extends AddGcpSubCommandArgs { s: ScallopConf =>
     // this is `-Z` and not `-D` because sbt-pack plugin uses that for JAVA_OPTS
     val propsInner: Map[String, String] = props[String]('Z')
     val onlineJar: ScallopOption[String] =
@@ -573,6 +593,10 @@ object Driver {
       opt[String](required = true,
                   descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
 
+    // TODO: davidhan - remove this when we've migrated away from additional-conf-path
+    val additionalConfPath: ScallopOption[String] =
+      opt[String](required = false, descr = "Path to additional driver job configurations")
+
     // hashmap implements serializable
     def serializableProps: Map[String, String] = {
       val map = new mutable.HashMap[String, String]()
@@ -580,7 +604,15 @@ object Driver {
       map.toMap
     }
 
-    lazy val api: Api = impl(serializableProps)
+    lazy private val gcpMap = Map(
+      "GCP_PROJECT_ID" -> gcpProjectId.toOption.getOrElse(""),
+      "GCP_BIGTABLE_INSTANCE_ID" -> gcpBigtableInstanceId.toOption.getOrElse("")
+    )
+
+    lazy val api: Api = isGcp.toOption match {
+      case Some(true) => impl(serializableProps ++ gcpMap)
+      case _          => impl(serializableProps)
+    }
 
     def metaDataStore =
       new MetadataStore(impl(serializableProps).genKvStore, MetadataDataset, timeoutMillis = 10000)
@@ -734,31 +766,36 @@ object Driver {
   object GroupByUploadToKVBulkLoad {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args extends Subcommand("groupby-upload-bulk-load") with OnlineSubcommand {
-      val srcOfflineTable: ScallopOption[String] =
-        opt[String](required = true, descr = "Name of the source GroupBy Upload table")
-
-      val groupbyName: ScallopOption[String] =
-        opt[String](required = true, descr = "Name of the GroupBy that we're triggering this upload for")
+      // Expectation that run.py only sets confPath
+      val confPath: ScallopOption[String] = opt[String](required = false, descr = "path to groupBy conf")
 
       val partitionString: ScallopOption[String] =
         opt[String](required = true, descr = "Partition string (in 'yyyy-MM-dd' format) that we are uploading")
     }
 
     def run(args: Args): Unit = {
-      logger.info(s"Triggering bulk load for GroupBy: ${args.groupbyName()} for partition: ${args
-        .partitionString()} from table: ${args.srcOfflineTable()}")
+      val groupByConf = parseConf[api.GroupBy](args.confPath())
+
+      val offlineTable = groupByConf.metaData.uploadTable
+
+      val groupByName = groupByConf.metaData.name
+
+      logger.info(s"Triggering bulk load for GroupBy: ${groupByName} for partition: ${args
+        .partitionString()} from table: ${offlineTable}")
       val kvStore = args.api.genKvStore
       val startTime = System.currentTimeMillis()
+
       try {
-        kvStore.bulkPut(args.srcOfflineTable(), args.groupbyName(), args.partitionString())
+        // TODO: we may need to wrap this around TableUtils
+        kvStore.bulkPut(offlineTable, groupByName, args.partitionString())
       } catch {
         case e: Exception =>
-          logger.error(s"Failed to upload GroupBy: ${args.groupbyName()} for partition: ${args
-                         .partitionString()} from table: ${args.srcOfflineTable()}",
+          logger.error(s"Failed to upload GroupBy: ${groupByName} for partition: ${args
+                         .partitionString()} from table: $offlineTable",
                        e)
           throw e
       }
-      logger.info(s"Uploaded GroupByUpload data to KV store for GroupBy: ${args.groupbyName()}; partition: ${args
+      logger.info(s"Uploaded GroupByUpload data to KV store for GroupBy: ${groupByName}; partition: ${args
         .partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
   }

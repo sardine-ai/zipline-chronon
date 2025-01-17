@@ -181,27 +181,31 @@ object DataprocSubmitter {
     val chrononJarUri = args.filter(_.startsWith("--chronon_jar_uri"))(0).split("=")(1)
 
     // search args array for prefix `--gcs_files`
-    val gcsFiles = args
-      .filter(_.startsWith("--gcs_files"))(0)
-      .split("=")(1)
-      .split(",")
+    val gcsFilesArgs = args.filter(_.startsWith("--gcs_files"))
+    assert(gcsFilesArgs.length == 0 || gcsFilesArgs.length == 1)
+
+    val gcsFiles = if (gcsFilesArgs.isEmpty) {
+      Array.empty[String]
+    } else {
+      gcsFilesArgs(0).split("=")(1).split(",")
+    }
 
     val userArgs = args.filter(f => !f.startsWith("--gcs_files") && !f.startsWith("--chronon_jar_uri"))
 
     val required_vars = List.apply(
-      "ZIPLINE_GCP_PROJECT_ID",
-      "ZIPLINE_GCP_REGION",
-      "ZIPLINE_GCP_DATAPROC_CLUSTER_NAME"
+      "GCP_PROJECT_ID",
+      "GCP_REGION",
+      "GCP_DATAPROC_CLUSTER_NAME"
     )
     val missing_vars = required_vars.filter(!sys.env.contains(_))
     if (missing_vars.nonEmpty) {
       throw new Exception(s"Missing required environment variables: ${missing_vars.mkString(", ")}")
     }
 
-    val projectId = sys.env.getOrElse("ZIPLINE_GCP_PROJECT_ID", throw new Exception("ZIPLINE_GCP_PROJECT_ID not set"))
-    val region = sys.env.getOrElse("ZIPLINE_GCP_REGION", throw new Exception("ZIPLINE_GCP_REGION not set"))
+    val projectId = sys.env.getOrElse("GCP_PROJECT_ID", throw new Exception("GCP_PROJECT_ID not set"))
+    val region = sys.env.getOrElse("GCP_REGION", throw new Exception("GCP_REGION not set"))
     val clusterName = sys.env
-      .getOrElse("ZIPLINE_GCP_DATAPROC_CLUSTER_NAME", throw new Exception("ZIPLINE_GCP_DATAPROC_CLUSTER_NAME not set"))
+      .getOrElse("GCP_DATAPROC_CLUSTER_NAME", throw new Exception("GCP_DATAPROC_CLUSTER_NAME not set"))
 
     val submitterConf = SubmitterConf(
       projectId,
@@ -209,13 +213,25 @@ object DataprocSubmitter {
       clusterName
     )
 
+    val bigtableInstanceId = sys.env.getOrElse("GCP_BIGTABLE_INSTANCE_ID", "")
+
+    val gcpArgsToPass = Array.apply(
+      "--is-gcp",
+      s"--gcp-project-id=${projectId}",
+      s"--gcp-bigtable-instance-id=$bigtableInstanceId"
+    )
+
+    val finalArgs = Array.concat(userArgs, gcpArgsToPass)
+
+    println(finalArgs.mkString("Array(", ", ", ")"))
+
     val a = DataprocSubmitter(submitterConf)
 
     val jobId = a.submit(
       TypeSparkJob,
       Map(MainClass -> "ai.chronon.spark.Driver", JarURI -> chrononJarUri),
       gcsFiles.toList,
-      userArgs: _*
+      finalArgs: _*
     )
     println("Dataproc submitter job id: " + jobId)
   }
