@@ -28,9 +28,9 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       .getOrElse(throw new IllegalArgumentException("GCP_PROJECT_ID environment variable not set"))
 
     val instanceId = sys.env
-      .get("GCP_INSTANCE_ID")
-      .orElse(conf.get("GCP_INSTANCE_ID"))
-      .getOrElse(throw new IllegalArgumentException("GCP_INSTANCE_ID environment variable not set"))
+      .get("GCP_BIGTABLE_INSTANCE_ID")
+      .orElse(conf.get("GCP_BIGTABLE_INSTANCE_ID"))
+      .getOrElse(throw new IllegalArgumentException("GCP_BIGTABLE_INSTANCE_ID environment variable not set"))
 
     // Create settings builder based on whether we're in emulator mode (e.g. docker) or not
     val (dataSettingsBuilder, adminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
