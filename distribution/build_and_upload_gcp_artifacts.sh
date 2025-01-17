@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 SCRIPT_DIRECTORY=$(dirname -- "$(realpath -- "$0")")
 CHRONON_ROOT_DIR=$(dirname "$SCRIPT_DIRECTORY")
 
