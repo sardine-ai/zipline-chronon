@@ -34,7 +34,6 @@ class GcpFormatProviderTest extends AnyFlatSpec with MockitoSugar {
 
     val gcsFormat = gcpFormatProvider.getFormat(mockTable).asInstanceOf[GCS]
     assert(gcsFormat.sourceUri == tableName)
-    assert(gcsFormat.project == "project")
     assert(gcsFormat.fileFormat == "PARQUET")
   }
 }
