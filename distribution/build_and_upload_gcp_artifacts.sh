@@ -24,6 +24,7 @@ if [[ EXPECTED_MINIMUM_MINOR_PYTHON_VERSION -gt MINOR_PYTHON_VERSION ]] ; then
     exit 1
 fi
 
+
 thrift --gen py -out api/py/ api/thrift/common.thrift
 thrift --gen py -out api/py/ api/thrift/api.thrift
 thrift --gen py -out api/py/ api/thrift/observability.thrift
@@ -35,6 +36,7 @@ if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
 fi
 
 echo "Building jars"
+sbt clean
 sbt cloud_gcp/assembly
 sbt cloud_gcp_submitter/assembly
 

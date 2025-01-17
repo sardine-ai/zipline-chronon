@@ -244,6 +244,9 @@ lazy val flink = project
   )
 
 // GCP requires java 11, can't cross compile higher
+
+javacOptions ++= Seq("-source", "11", "-target", "11")
+
 lazy val cloud_gcp = project
   .dependsOn(api % ("compile->compile;test->test"), online, spark % ("compile->compile;test->test"))
   .settings(
