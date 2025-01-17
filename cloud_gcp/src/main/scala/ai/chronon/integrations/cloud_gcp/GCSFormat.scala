@@ -8,7 +8,7 @@ import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.execution.FileSourceScanExec
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
 
-case class GCS(project: String, sourceUri: String, fileFormat: String) extends Format {
+case class GCS(sourceUri: String, fileFormat: String) extends Format {
 
   override def name: String = fileFormat
 
