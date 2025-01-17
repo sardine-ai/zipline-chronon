@@ -107,7 +107,6 @@ val circe = Seq(
 ).map(_ % circeVersion)
 
 val flink_all = Seq(
-  "org.apache.flink" %% "flink-streaming-scala",
   "org.apache.flink" % "flink-metrics-dropwizard",
   "org.apache.flink" % "flink-clients",
   "org.apache.flink" % "flink-yarn"
@@ -215,6 +214,9 @@ lazy val flink = project
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
+    // mark the flink-streaming scala as provided as otherwise we end up with some extra Flink classes in our jar
+    // and errors at runtime like: java.io.InvalidClassException: org.apache.flink.streaming.api.scala.DataStream$$anon$1; local class incompatible
+    libraryDependencies += "org.apache.flink" %% "flink-streaming-scala" % flink_1_17 % "provided",
     assembly / assemblyMergeStrategy := {
       case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
       case "reference.conf"                          => MergeStrategy.concat

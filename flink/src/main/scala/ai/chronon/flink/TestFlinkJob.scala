@@ -15,6 +15,7 @@ import ai.chronon.online.Extensions.StructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
+import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.spark.sql.Encoder
@@ -37,7 +38,25 @@ class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestE
 
   override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
                                                                parallelism: Int): DataStream[E2ETestEvent] = {
-    env.fromCollection(mockEvents)
+    env
+      .addSource(new SourceFunction[E2ETestEvent] {
+        private var isRunning = true
+
+        override def run(ctx: SourceFunction.SourceContext[E2ETestEvent]): Unit = {
+          while (isRunning) {
+            mockEvents.foreach { event =>
+              ctx.collect(event)
+            }
+            // Add some delay between event batches
+            Thread.sleep(1000)
+          }
+        }
+
+        override def cancel(): Unit = {
+          isRunning = false
+        }
+      })
+      .setParallelism(1)
   }
 }
 
