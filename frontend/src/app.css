@@ -100,6 +100,19 @@
 		--destructive-foreground: 0 0% 98%;
 
 		--ring: 0 0% 83.1%;
+
+		--job-waiting-bg: 0 0% 10%;
+		--job-waiting-text: 245 40% 72%;
+		--job-running-bg: 250 40% 15%;
+		--job-running-text: 245 40% 72%;
+		--job-failed-bg: 10 55% 13%;
+		--job-failed-text: 10 40% 58%;
+		--job-completed-bg: 160 47% 11%;
+		--job-completed-text: 160 30% 48%;
+		--job-queued-bg: 0 0% 10%;
+		--job-queued-text: 0 0% 64%;
+		--job-invalid-bg: 44 82% 11%;
+		--job-invalid-text: 44 35% 55%;
 	}
 }
 

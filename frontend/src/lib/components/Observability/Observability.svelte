@@ -34,11 +34,11 @@
 		sortDistributions,
 		type SortContext
 	} from '$lib/util/sort';
-	import type { JoinPageData } from '$routes/joins/[slug]/+page.server';
+	import type { JoinData } from '$routes/joins/[slug]/services/joins.service';
 
 	const api = new Api();
 
-	const { data }: { data: JoinPageData } = $props();
+	const { data }: { data: JoinData } = $props();
 	let scale = $derived(METRIC_SCALES[data.metricType]);
 	const joinTimeseries = $derived(data.joinTimeseries);
 	const model = $derived(data.model);
