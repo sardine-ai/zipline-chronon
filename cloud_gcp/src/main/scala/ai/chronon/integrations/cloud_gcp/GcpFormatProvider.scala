@@ -15,6 +15,8 @@ import com.google.cloud.bigquery.connector.common.BigQueryUtil
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
 
+import scala.jdk.CollectionConverters._
+
 case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
 
   /**
@@ -30,8 +32,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
 
   override def resolveTableName(tableName: String): String =
     format(tableName) match {
-      case GCS(_, uri, _) => uri
-      case _              => tableName
+      case GCS(uri, _) => uri
+      case _           => tableName
     }
 
   override def readFormat(tableName: String): Format = format(tableName)
@@ -66,11 +68,12 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         val uri = Option(externalTable.getHivePartitioningOptions)
           .map(_.getSourceUriPrefix)
           .getOrElse {
-            val uris = externalTable.getSourceUris
+            val uris = externalTable.getSourceUris.asScala
             require(uris.size == 1, s"External table ${table} can be backed by only one URI.")
-            uris.get(0).replaceAll("/\\*\\.parquet$", "")
+            uris.head.replaceAll("/\\*\\.parquet$", "")
           }
-        GCS(table.getTableId.getProject, uri, formatOptions.getType)
+
+        GCS(uri, formatOptions.getType)
 
       case _: StandardTableDefinition =>
         BigQueryFormat(table.getTableId.getProject, Map.empty)
