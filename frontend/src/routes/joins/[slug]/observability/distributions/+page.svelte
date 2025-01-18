@@ -6,7 +6,6 @@
 	import PercentileChart from '$lib/components/PercentileChart.svelte';
 	import { getSortParamsConfig, getSortParamKey, sortDistributions } from '$lib/util/sort';
 	import type { FeatureResponse } from '$src/lib/types/Model/Model.js';
-	import { fade } from 'svelte/transition';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
 	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
 	import { Separator } from '$src/lib/components/ui/separator';

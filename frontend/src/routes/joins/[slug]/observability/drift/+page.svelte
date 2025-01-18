@@ -20,7 +20,6 @@
 	import { handleChartHighlight } from '$lib/util/chart';
 	import ChartControls from '$lib/components/ChartControls.svelte';
 	import type { JoinData } from '$routes/joins/[slug]/services/joins.service';
-	import { fade } from 'svelte/transition';
 	import ModelTable from '../ModelTable.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
