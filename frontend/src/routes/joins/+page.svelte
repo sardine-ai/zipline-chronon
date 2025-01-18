@@ -9,8 +9,8 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import PageHeader from '$lib/components/PageHeader/PageHeader.svelte';
-	import ActionButtons from '$lib/components/ActionButtons/ActionButtons.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ActionButtons from '$lib/components/ActionButtons.svelte';
 
 	const { data } = $props();
 	const joins: Join[] = $state(data.joins.items);

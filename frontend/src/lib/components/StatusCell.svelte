@@ -6,7 +6,7 @@
 		type JobStatus
 	} from '$lib/types/Job/Job';
 	import * as Popover from '$lib/components/ui/popover';
-	import LogsDownloadButton from '$lib/components/LogsDownloadButton/LogsDownloadButton.svelte';
+	import LogsDownloadButton from '$lib/components/LogsDownloadButton.svelte';
 
 	let {
 		status,

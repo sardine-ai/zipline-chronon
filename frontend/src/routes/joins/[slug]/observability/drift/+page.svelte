@@ -1,48 +1,35 @@
 <script lang="ts">
-	import { untrack, onMount } from 'svelte';
-	import EChart from '$lib/components/EChart/EChart.svelte';
+	import { untrack } from 'svelte';
+	import EChart from '$lib/components/EChart.svelte';
 	import { connect } from 'echarts';
 	import type { EChartOption, EChartsType, ECElementEvent } from 'echarts';
-	import { queryParameters } from 'sveltekit-search-params';
-	import { fade } from 'svelte/transition';
 
-	import IconTableCells from '~icons/heroicons/table-cells-16-solid';
-	import IconChartLine from '~icons/zipline-ai/chart-line';
-
-	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
-	import CollapsibleSection from '$lib/components/CollapsibleSection/CollapsibleSection.svelte';
+	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import type { FeatureResponse, TimeSeriesItem } from '$lib/types/Model/Model';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import ResetZoomButton from '$lib/components/ResetZoomButton/ResetZoomButton.svelte';
+	import ResetZoomButton from '$lib/components/ResetZoomButton.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Api } from '$lib/api/api';
-	import InfoTooltip from '$lib/components/InfoTooltip/InfoTooltip.svelte';
-	import { Table, TableBody, TableCell, TableRow } from '$lib/components/ui/table/index.js';
-	import TrueFalseBadge from '$lib/components/TrueFalseBadge/TrueFalseBadge.svelte';
+	import InfoTooltip from '$lib/components/InfoTooltip.svelte';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { formatDate, formatValue } from '$lib/util/format';
-	import PercentileChart from '$lib/components/PercentileChart/PercentileChart.svelte';
+	import PercentileChart from '$lib/components/PercentileChart.svelte';
 	import { createChartOption } from '$lib/util/chart-options.svelte';
 	import { METRIC_SCALES } from '$lib/types/MetricType/MetricType';
 	import { getSeriesColor } from '$lib/util/chart';
 	import { handleChartHighlight } from '$lib/util/chart';
-	import ChartControls from '$lib/components/ChartControls/ChartControls.svelte';
-	import {
-		getSortParamsConfig,
-		getSortParamKey,
-		sortDistributions,
-		type SortContext
-	} from '$lib/util/sort';
+	import ChartControls from '$lib/components/ChartControls.svelte';
 	import type { JoinData } from '$routes/joins/[slug]/services/joins.service';
+	import { fade } from 'svelte/transition';
+	import ModelTable from '../ModelTable.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
 
 	const api = new Api();
 
 	const { data }: { data: JoinData } = $props();
 	let scale = $derived(METRIC_SCALES[data.metricType]);
 	const joinTimeseries = $derived(data.joinTimeseries);
-	const model = $derived(data.model);
-	const isUsingFallbackDates = $derived(data.dateRange.isUsingFallback);
 	let isFeatureMonitoringOpen = $state(true);
 	let isSheetOpen = $state(false);
 	let selectedEvents = $state<ECElementEvent[]>([]);
@@ -405,57 +392,6 @@
 		}
 	}
 
-	let distributions: FeatureResponse[] = $state([]);
-	let isLoadingDistributions = $state(false);
-
-	async function loadDistributions() {
-		if (distributions.length > 0 || isLoadingDistributions) return;
-
-		isLoadingDistributions = true;
-		try {
-			// Get all unique feature names across all groups
-			const allFeatures = Array.from(
-				new Set(joinTimeseries.items.flatMap((group) => group.items.map((item) => item.feature)))
-			);
-
-			// Fetch percentile data for each feature
-			const distributionsPromises = allFeatures.map((featureName) =>
-				api.getFeatureTimeseries({
-					joinId: joinTimeseries.name,
-					featureName,
-					startTs: data.dateRange.startTimestamp,
-					endTs: data.dateRange.endTimestamp,
-					granularity: 'percentile',
-					metricType: 'drift',
-					metrics: 'value',
-					offset: '1D',
-					algorithm: 'psi'
-				})
-			);
-
-			const responses = await Promise.all(distributionsPromises);
-			distributions = responses.filter((response) => response.isNumeric);
-		} catch (error) {
-			console.error('Error loading distributions:', error);
-		} finally {
-			isLoadingDistributions = false;
-		}
-	}
-
-	onMount(() => {
-		loadDistributions();
-	});
-
-	const sortContext = 'distributions';
-	const sortKey = getSortParamKey(sortContext);
-	const params = queryParameters(getSortParamsConfig(sortContext), {
-		pushHistory: false,
-		showDefaults: false
-	});
-	const sortedDistributions = $derived(sortDistributions(distributions, params[sortKey]));
-
-	let selectedTab = $state<SortContext>('drift');
-
 	// update selectedEvents when joinTimeseries changes
 	$effect(() => {
 		if (joinTimeseries) {
@@ -491,112 +427,60 @@
 	});
 </script>
 
-<div
-	class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l"
-	transition:fade={{ duration: 150 }}
->
+{#if data.model}
+	<ModelTable model={data.model} />
+{/if}
+
+<div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
 	<ChartControls
 		{isZoomed}
 		onResetZoom={resetZoom}
-		{isUsingFallbackDates}
+		isUsingFallbackDates={data.dateRange.isUsingFallback}
 		dateRange={{
 			startTimestamp: data.dateRange.startTimestamp,
 			endTimestamp: data.dateRange.endTimestamp
 		}}
 		showActionButtons={true}
-		showCluster={selectedTab === 'drift'}
+		showCluster
 		showSort={true}
-		context={selectedTab}
+		context="drift"
 	/>
 </div>
-
-{#if model}
-	<div class="border rounded-md w-1/2 mb-6">
-		<Table density="compact">
-			<TableBody>
-				<TableRow>
-					<TableCell align="left">Team</TableCell>
-					<TableCell align="right">{model.team}</TableCell>
-				</TableRow>
-				<TableRow>
-					<TableCell align="left">Model Type</TableCell>
-					<TableCell align="right">{model.modelType}</TableCell>
-				</TableRow>
-				<TableRow>
-					<TableCell align="left">Production</TableCell>
-					<TableCell align="right">
-						<TrueFalseBadge isTrue={model.production} />
-					</TableCell>
-				</TableRow>
-			</TableBody>
-		</Table>
-	</div>
-{/if}
 
 <Separator fullWidthExtend={true} wide={true} />
 <CollapsibleSection title="Feature Monitoring" bind:open={isFeatureMonitoringOpen}>
 	{#snippet collapsibleContent()}
-		<Tabs bind:value={selectedTab} class="w-full">
-			<TabsList>
-				<TabsTrigger value="drift" class="flex items-center">
-					<IconChartLine class="mr-2 size-4" />
-					Drift
-				</TabsTrigger>
-				<TabsTrigger value="distributions" class="flex items-center">
-					<IconTableCells class="mr-2" />
-					Distributions
-				</TabsTrigger>
-			</TabsList>
-			<Separator fullWidthExtend={true} />
+		<ObservabilityNavTabs />
 
-			<TabsContent value="drift">
-				{#each joinTimeseries.items as group (group.name)}
-					<CollapsibleSection
-						title={group.name}
-						size="small"
-						bind:open={groupSectionStates[group.name]}
-					>
-						{#snippet collapsibleContent()}
-							<EChart
-								option={createGroupByChartOption(group.items)}
-								bind:chartInstance={groupByCharts[group.name]}
-								on:click={(event) =>
-									handleChartClick(
-										event.detail.detail,
-										groupByCharts[group.name],
-										event.detail.fromTooltip
-									)}
-								on:datazoom={handleZoom}
-								enableMousemove={true}
-								enableCustomZoom={true}
-								enableCustomTooltip={true}
-								enableTooltipClick={true}
-								showCustomLegend={true}
-								legendGroup={group}
-							/>
-						{/snippet}
-					</CollapsibleSection>
-				{/each}
-			</TabsContent>
-			<TabsContent value="distributions">
-				{#if isLoadingDistributions}
-					<div class="mt-6">Loading distributions...</div>
-				{:else if distributions.length === 0}
-					<div class="mt-6">No distribution data available</div>
-				{:else}
-					{#each sortedDistributions as feature}
-						<CollapsibleSection title={feature.feature} size="small" open={true}>
-							{#snippet collapsibleContent()}
-								<PercentileChart
-									data={feature.current ?? null}
-									bind:chartInstance={distributionCharts[feature.feature]}
-								/>
-							{/snippet}
-						</CollapsibleSection>
-					{/each}
-				{/if}
-			</TabsContent>
-		</Tabs>
+		<div>
+			{#each joinTimeseries.items as group (group.name)}
+				<CollapsibleSection
+					title={group.name}
+					size="small"
+					bind:open={groupSectionStates[group.name]}
+				>
+					{#snippet collapsibleContent()}
+						<EChart
+							option={createGroupByChartOption(group.items)}
+							bind:chartInstance={groupByCharts[group.name]}
+							on:click={(event) =>
+								handleChartClick(
+									event.detail.detail,
+									groupByCharts[group.name],
+									event.detail.fromTooltip
+								)}
+							on:datazoom={handleZoom}
+							enableMousemove={true}
+							enableCustomZoom={true}
+							enableCustomTooltip={true}
+							enableTooltipClick={true}
+							showCustomLegend={true}
+							legendGroup={group}
+						/>
+					{/snippet}
+				</CollapsibleSection>
+			{/each}
+		</div>
 	{/snippet}
 </CollapsibleSection>
 
@@ -619,18 +503,19 @@
 					{selectedSeries ? `${selectedSeries} at ` : ''}{formatEventDate()}
 				</div>
 			</span>
+
 			<ChartControls
 				{isZoomed}
 				onResetZoom={resetZoom}
-				{isUsingFallbackDates}
+				isUsingFallbackDates={data.dateRange.isUsingFallback}
 				dateRange={{
 					startTimestamp: data.dateRange.startTimestamp,
 					endTimestamp: data.dateRange.endTimestamp
 				}}
 				showActionButtons={false}
-				showCluster={selectedTab === 'drift'}
+				showCluster
 				showSort={false}
-				context={selectedTab}
+				context="drift"
 			/>
 		</DialogHeader>
 

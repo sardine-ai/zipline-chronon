@@ -2,9 +2,9 @@
 	import '../app.css';
 	import { type Snippet } from 'svelte';
 	import { page } from '$app/stores';
-	import NavigationSlider from '$lib/components/NavigationSlider/NavigationSlider.svelte';
-	import NavigationBar from '$lib/components/NavigationBar/NavigationBar.svelte';
-	import BreadcrumbNav from '$lib/components/BreadcrumbNav/BreadcrumbNav.svelte';
+	import NavigationSlider from '$lib/components/NavigationSlider.svelte';
+	import NavigationBar from '$lib/components/NavigationBar.svelte';
+	import BreadcrumbNav from '$lib/components/BreadcrumbNav.svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { entityConfig } from '$lib/types/Entity/Entity';
 

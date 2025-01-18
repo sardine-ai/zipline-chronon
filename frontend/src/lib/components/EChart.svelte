@@ -3,8 +3,8 @@
 	import * as echarts from 'echarts';
 	import type { ECElementEvent, EChartOption } from 'echarts';
 	import merge from 'lodash/merge';
-	import EChartTooltip from '$lib/components/EChartTooltip/EChartTooltip.svelte';
-	import CustomEChartLegend from '$lib/components/CustomEChartLegend/CustomEChartLegend.svelte';
+	import EChartTooltip from '$lib/components/EChartTooltip.svelte';
+	import CustomEChartLegend from '$lib/components/CustomEChartLegend.svelte';
 
 	let {
 		option,

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import IconChevronDown from '~icons/heroicons/chevron-down-16-solid';
 	import type { Writable } from 'svelte/store';
-	import CellDivider from '$lib/components/CellDivider/CellDivider.svelte';
+	import CellDivider from '$lib/components/CellDivider.svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 
 	let {

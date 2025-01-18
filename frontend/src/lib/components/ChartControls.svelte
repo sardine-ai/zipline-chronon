@@ -1,8 +1,8 @@
 <script lang="ts">
-	import ResetZoomButton from '$lib/components/ResetZoomButton/ResetZoomButton.svelte';
-	import MetricTypeToggle from '$lib/components/MetricTypeToggle/MetricTypeToggle.svelte';
-	import DateRangeSelector from '$lib/components/DateRangeSelector/DateRangeSelector.svelte';
-	import ActionButtons from '$lib/components/ActionButtons/ActionButtons.svelte';
+	import ResetZoomButton from '$lib/components/ResetZoomButton.svelte';
+	import MetricTypeToggle from '$lib/components/MetricTypeToggle.svelte';
+	import DateRangeSelector from '$lib/components/DateRangeSelector.svelte';
+	import ActionButtons from '$lib/components/ActionButtons.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { formatDate } from '$lib/util/format';
 	import type { SortContext } from '$lib/util/sort';

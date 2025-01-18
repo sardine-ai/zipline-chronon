@@ -2,9 +2,9 @@
 	import { readable } from 'svelte/store';
 	import { createTable, Render, createRender, DataBodyRow } from 'svelte-headless-table';
 	import { addSubRows, addExpandedRows } from 'svelte-headless-table/plugins';
-	import ExpandableCell from '$lib/components/ExpandableCell/ExpandableCell.svelte';
-	import StatusCell from '$lib/components/StatusCell/StatusCell.svelte';
-	import CollapsibleSection from '$lib/components/CollapsibleSection/CollapsibleSection.svelte';
+	import ExpandableCell from '$lib/components/ExpandableCell.svelte';
+	import StatusCell from '$lib/components/StatusCell.svelte';
+	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import {
 		Table,
 		TableBody,
@@ -17,18 +17,12 @@
 	import { type JobTreeNode } from '$lib/types/Job/Job';
 	import { onMount } from 'svelte';
 	import { Separator } from '$lib/components/ui/separator';
-	import LogsDownloadButton from '$lib/components/LogsDownloadButton/LogsDownloadButton.svelte';
-	import JobOverviewChart from '$lib/components/JobOverviewChart/JobOverviewChart.svelte';
+	import LogsDownloadButton from '$lib/components/LogsDownloadButton.svelte';
+	import JobOverviewChart from '$lib/components/JobOverviewChart.svelte';
 
-	let {
-		jobTree,
-		dates
-	}: {
-		jobTree: JobTreeNode[];
-		dates: string[];
-	} = $props();
+	let { data } = $props();
 
-	const jobsData = readable<JobTreeNode[]>(jobTree);
+	const jobsData = readable<JobTreeNode[]>(data.jobTree);
 
 	const table = createTable(jobsData, {
 		sub: addSubRows({
@@ -219,7 +213,7 @@
 					<div class="[grid-area:1/1] w-full">
 						{#if $rows.length > 0}
 							{@const firstJob = ($rows[0] as unknown as DataBodyRow<JobTreeNode>).original}
-							<JobOverviewChart job={firstJob} {dates} {getDaysInRange} {formatDate} />
+							<JobOverviewChart job={firstJob} dates={data.dates} {getDaysInRange} {formatDate} />
 						{/if}
 					</div>
 
@@ -244,7 +238,7 @@
 									class={`min-w-[250px] ${tableHeadClass} ${stickyCellClass} text-neutral-900`}
 									>Job Name</TableHead
 								>
-								{#each dates as date}
+								{#each data.dates as date}
 									<TableHead class={`min-w-[62px] ${tableHeadClass} text-xs text-neutral-900`}>
 										{formatDate(date)}
 									</TableHead>
@@ -258,7 +252,7 @@
 										<Render of={row.cells[0].render()} />
 									</TableCell>
 									{#each (row as unknown as DataBodyRow<JobTreeNode>).original.runs as run}
-										{@const daysInRange = getDaysInRange(run.start, run.end, dates)}
+										{@const daysInRange = getDaysInRange(run.start, run.end, data.dates)}
 										<TableCell colspan={daysInRange} class={`${tableCellClass} bg-neutral-100`}>
 											<StatusCell status={run.status} startDate={run.start} endDate={run.end} />
 										</TableCell>

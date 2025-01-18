@@ -1,5 +1,5 @@
 <script lang="ts">
-	import EChart from '$lib/components/EChart/EChart.svelte';
+	import EChart from '$lib/components/EChart.svelte';
 	import type { EChartOption, EChartsType } from 'echarts';
 	import type { TimeSeriesItem } from '$lib/types/Model/Model';
 	import { createChartOption } from '$lib/util/chart-options.svelte';
@@ -55,4 +55,5 @@
 	enableMousemove={false}
 	enableCustomZoom={true}
 	enableCustomTooltip={true}
+	on:datazoom
 />
