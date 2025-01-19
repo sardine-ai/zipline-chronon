@@ -210,7 +210,7 @@ lazy val spark = project
   )
 
 lazy val flink = project
-  .dependsOn(aggregator.%("compile->compile;test->test"), online)
+  .dependsOn(aggregator.%("compile->compile;test->test"), online.%("compile->compile;test->test"))
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
