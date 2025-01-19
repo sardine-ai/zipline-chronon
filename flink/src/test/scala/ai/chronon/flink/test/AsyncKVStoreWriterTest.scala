@@ -4,6 +4,7 @@ import ai.chronon.flink.AsyncKVStoreWriter
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.test.TaggedFilterSuite
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.DataStreamUtils
@@ -11,7 +12,7 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar.mock
 
-class AsyncKVStoreWriterTest extends AnyFlatSpec {
+class AsyncKVStoreWriterTest extends AnyFlatSpec with TaggedFilterSuite  {
 
   val eventTs = 1519862400075L
 
@@ -59,4 +60,6 @@ class AsyncKVStoreWriterTest extends AnyFlatSpec {
     assert(result.nonEmpty, "Expect result set to be non-empty")
     assert(result.map(_.putRequest.tsMillis).forall(_.contains(eventTs)))
   }
+
+  override def tagName: String = "asyncKVStoreWriterTest"
 }
