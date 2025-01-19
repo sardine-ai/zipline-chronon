@@ -51,6 +51,10 @@ jobs:
           export SBT_OPTS="-Xmx24G -Xms4G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
           sbt "++ 2.12.18 flink/test"
 
+      - name: Run Async KV Store writer test
+        run: |
+          sbt "++ 2.12.18 flink/testOnly -- -n asyncKVStoreWriterTest"
+
       - name: Run Aggregator tests
         run: |
           sbt "++ 2.12.18 aggregator/test"
@@ -61,7 +65,7 @@ jobs:
 
       - name: Run Catalyst Util tests
         run: |
-          sbt "++ 2.12.18 online/testOnly -- -n catalystUtilHiveUdfTest"
+          sbt "++ 2.12.18 online/testOnly -- -n catalystUtilHiveUdfTest"      
 
       - name: Run api tests
         run: |
