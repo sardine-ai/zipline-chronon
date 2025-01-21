@@ -141,7 +141,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
 
   it should "get cached requests does not cache when cache is disabled for group by" in {
     val testCache = new BatchIrCache("test", batchIrCacheMaximumSize)
-    val spiedTestCache = spy(testCache)
+    val spiedTestCache = spy[BatchIrCache](testCache)
     val fetcherCache = new TestableFetcherCache(Some(testCache)) {
       // Cache is enabled globally, but disabled for a specific groupBy
       override def isCachingEnabled(groupBy: GroupBy) = false
@@ -216,7 +216,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val cacheKey = BatchIrCache.Key(servingInfo.groupByOps.batchDataset, keys, servingInfo.batchEndTsMillis)
 
     val fetcherCache = new TestableFetcherCache(Some(batchIrCache))
-    val spiedFetcherCache = Mockito.spy(fetcherCache)
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](fetcherCache)
     doReturn(true).when(spiedFetcherCache).isCachingEnabled(any())
 
     // 1. Cached BatchResponse returns the same IRs passed in
@@ -247,7 +247,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val toBatchIr = mock[(Array[Byte], GroupByServingInfoParsed) => FinalBatchIr]
     val kvStoreBatchResponses = BatchResponses(Success(Seq(TimedValue(batchBytes, 1000L))))
 
-    val spiedFetcherCache = Mockito.spy(new TestableFetcherCache(None))
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](new TestableFetcherCache(None))
     when(toBatchIr(any(), any())).thenReturn(finalBatchIr)
 
     // When getBatchIrFromBatchResponse is called, it decodes the bytes and doesn't hit the cache
@@ -272,7 +272,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val keys = Map("key" -> "value")
     val cacheKey = BatchIrCache.Key(servingInfo.groupByOps.batchDataset, keys, servingInfo.batchEndTsMillis)
 
-    val spiedFetcherCache = Mockito.spy(new TestableFetcherCache(Some(batchIrCache)))
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](new TestableFetcherCache(Some(batchIrCache)))
     doReturn(true).when(spiedFetcherCache).isCachingEnabled(any())
 
     // 1. Cached BatchResponse returns the same Map responses passed in
@@ -313,7 +313,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     when(servingInfo.outputCodec).thenReturn(outputCodec)
     when(outputCodec.decodeMap(any())).thenReturn(mapResponse)
 
-    val spiedFetcherCache = Mockito.spy(new TestableFetcherCache(None))
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](new TestableFetcherCache(None))
 
     // When getMapResponseFromBatchResponse is called, it decodes the bytes and doesn't hit the cache
     val decodedMapResponse = spiedFetcherCache.getMapResponseFromBatchResponse(kvStoreBatchResponses,
