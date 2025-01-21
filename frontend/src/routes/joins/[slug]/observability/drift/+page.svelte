@@ -169,7 +169,7 @@
 			return 'N/A';
 		}
 		const timestamp = (selectedEvents[0].data as [number, number])[0];
-		return formatDate(new Date(timestamp).toLocaleString());
+		return formatDate(timestamp);
 	}
 
 	function formatEventValue(event: ECElementEvent): string {

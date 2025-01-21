@@ -23,6 +23,7 @@
 	import MetadataTable from '$lib/components/MetadataTable/MetadataTable.svelte';
 	import MetadataTableSection from '$lib/components/MetadataTable/MetadataTableSection.svelte';
 	import MetadataTableRow from '$lib/components/MetadataTable/MetadataTableRow.svelte';
+	import { format, PeriodType } from '@layerstack/utils';
 
 	let { data } = $props();
 
@@ -64,11 +65,15 @@
 	}
 
 	function formatDate(dateString: string): string {
-		const date = new Date(dateString);
-		const month = date.toLocaleDateString('en-US', { month: 'short' });
-		const day = date.getDate();
-		const year = date.getFullYear();
-		return `${month} ${day}\n${year}`;
+		const formatted = format(dateString, PeriodType.Custom, {
+			custom: {
+				month: 'short',
+				day: 'numeric',
+				year: 'numeric'
+			}
+		});
+		const [monthDay, year] = formatted.split(', ');
+		return `${monthDay}\n${year}`;
 	}
 
 	const stickyCellClass = 'sticky left-0 bg-neutral-100 z-30';
@@ -183,7 +188,7 @@
 					<div class="[grid-area:1/1] w-full">
 						{#if $rows.length > 0}
 							{@const firstJob = ($rows[0] as unknown as DataBodyRow<JobTreeNode>).original}
-							<JobOverviewChart job={firstJob} dates={data.dates} {getDaysInRange} {formatDate} />
+							<JobOverviewChart job={firstJob} dates={data.dates} {getDaysInRange} />
 						{/if}
 					</div>
 

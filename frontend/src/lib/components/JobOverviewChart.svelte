@@ -5,13 +5,11 @@
 	let {
 		job,
 		dates,
-		getDaysInRange,
-		formatDate
+		getDaysInRange
 	}: {
 		job: JobTreeNode;
 		dates: string[];
 		getDaysInRange: (start: string, end: string, availableDates: string[]) => number;
-		formatDate: (dateString: string) => string;
 	} = $props();
 </script>
 
@@ -24,7 +22,6 @@
 				<div
 					class={`h-4 rounded-sm border ${statusColors[run.status]} ${statusBorderColors[run.status]}`}
 					style="width: {widthPercentage}%"
-					title={`${run.status}: ${formatDate(run.start)} - ${formatDate(run.end)}`}
 				></div>
 			{/each}
 		</div>
