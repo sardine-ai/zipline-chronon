@@ -64,20 +64,16 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
                dryRun: Boolean = true): Seq[VersionUpdate] = {
 
     val newContents = buildContentMap(proc, newNodes, fileHashes)
+
     val enrichedFileHashes = newContents.map {
       case (name, content) => name -> content.localData.fileHash
     } ++ fileHashes
 
     /**
-      * we turn local hash into global hash by combining it with parent hashes recursively
-      * global_hash(node) = hash(node.local_hash + node.parents.map(global_hash))
-      *
-      * we use memoization to avoid recomputing global hashes via the [[globalHashes]] map
-      */
-    def computeGlobalHash(name: Name, globalHashes: mutable.Map[Name, GlobalHash]): GlobalHash = {
-
-      if (globalHashes.contains(name)) return globalHashes(name)
-
+     * Returns NodeContent given the name of the Node
+     * It first looks up from newly added contents map otherwise fileHashToContent map
+     */
+    def getNodeContent(name: Name): NodeContent[T] = {
       val fileHash = enrichedFileHashes.get(name) match {
         case Some(hash) => hash
 
@@ -89,7 +85,7 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
 
           require(hashToContent.size == 1, s"Expected 1 entry for artifact $name, found ${hashToContent.size}")
           require(hashToContent.head._2.localData.fileHash.hash == name.name.md5,
-                  s"Expected artifact $name to have no inputs")
+            s"Expected artifact $name to have no inputs")
 
           hashToContent.head._1
       }
@@ -99,7 +95,29 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
       } else {
         fileHashToContent(name)(fileHash)
       }
+      content
+    }
 
+    /**
+     * Returns if the given node is an external artifact
+     * External artifacts are the artifacts without any parents, also they shouldn't be versioned
+     */
+    def isExternalArtifact(name: Name): Boolean = {
+      val nodeContent = getNodeContent(name);
+      nodeContent.localData.fileHash.hash == nodeContent.localData.name.name.md5 && nodeContent.localData.inputs.isEmpty
+    }
+
+    /**
+      * we turn local hash into global hash by combining it with parent hashes recursively
+      * global_hash(node) = hash(node.local_hash + node.parents.map(global_hash))
+      *
+      * we use memoization to avoid recomputing global hashes via the [[globalHashes]] map
+      */
+    def computeGlobalHash(name: Name, globalHashes: mutable.Map[Name, GlobalHash]): GlobalHash = {
+
+      if (globalHashes.contains(name)) return globalHashes(name)
+
+      val content = getNodeContent(name)
       val localHash = content.localData.localHash
       val parents = content.localData.inputs
 
@@ -137,7 +155,10 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
         case (name, content) => update(fileHashToContent, name, content.localData.fileHash, content)
       }
 
-      val newVersions = globalHashes.map {
+      val newVersions = globalHashes.filter {
+        // External artifacts should not be versioned
+        case (name, globalHash) => !isExternalArtifact(name)
+      }.map {
         case (name, globalHash) =>
           val versionIndex = versionSequencer.insert(name, globalHash)
           val version = Version("v" + versionIndex.toString)
@@ -153,7 +174,10 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
 
       // dry run - don't insert into any members of the index
       val newVersions = mutable.Map.empty[Name, Version]
-      globalHashes.foreach {
+      globalHashes.filter {
+        // External artifacts should not be versioned
+        case (name, globalHash) => !isExternalArtifact(name)
+      }.foreach {
         case (name, globalHash) =>
           val versionIndex = versionSequencer.potentialIndex(name, globalHash)
           newVersions.update(name, Version("v" + versionIndex.toString))
@@ -282,6 +306,8 @@ object RepoIndex {
 
         val newParents = if (isOutput) Seq(name) else Seq.empty
 
+        // allows multiple nodes can be parents to an artifact
+        // but we don't really have use-cases
         val parents = (existingParents ++ newParents).distinct
 
         val artifactData = LocalData.forArtifact(artifactName, parents)
