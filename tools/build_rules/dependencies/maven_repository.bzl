@@ -57,6 +57,15 @@ maven_repository = repository(
         # Kafka
         "org.apache.kafka:kafka-clients:3.9.0",
 
+        # Flink
+        "org.apache.flink:flink-streaming-scala_2.12:1.17.0",
+        "org.apache.flink:flink-metrics-dropwizard:1.17.0",
+        "org.apache.flink:flink-clients:1.17.0",
+        "org.apache.flink:flink-yarn:1.17.0",
+        "org.apache.flink:flink-runtime:1.17.0",
+        "org.apache.flink:flink-runtime:1.17.0:tests",
+        "org.apache.flink:flink-test-utils:1.17.0",
+
         # Vertx
         "io.vertx:vertx-core:4.5.10",
         "io.vertx:vertx-web:4.5.10",
