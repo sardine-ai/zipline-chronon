@@ -15,6 +15,8 @@
 import ai.chronon.api.ttypes as ttypes
 import ai.chronon.api.common.ttypes as common
 import ai.chronon.utils as utils
+import ai.chronon.windows as window_utils
+
 from copy import deepcopy
 import logging
 import inspect
@@ -133,7 +135,7 @@ def op_to_str(operation: OperationType):
 def Aggregation(
     input_column: str = None,
     operation: Union[ttypes.Operation, Tuple[ttypes.Operation, Dict[str, str]]] = None,
-    windows: List[common.Window] = None,
+    windows: Union[List[common.Window], List[str]] = None,
     buckets: List[str] = None,
     tags: Dict[str, str] = None,
 ) -> ttypes.Aggregation:
@@ -148,7 +150,7 @@ def Aggregation(
         Defaults to "LAST".
     :type operation: ttypes.Operation
     :param windows:
-        Length to window to calculate the aggregates on.
+        Length to window to calculate the aggregates on. Strings like "1h", "30d" are also accepted.
         Minimum window size is 1hr. Maximum can be arbitrary. When not defined, the computation is un-windowed.
     :type windows: List[common.Window]
     :param buckets:
@@ -162,7 +164,21 @@ def Aggregation(
     arg_map = {}
     if isinstance(operation, tuple):
         operation, arg_map = operation[0], operation[1]
-    agg = ttypes.Aggregation(input_column, operation, arg_map, windows, buckets)
+
+    def normalize(w: Union[common.Window, str]) -> common.Window:
+        if isinstance(w, str):
+            return window_utils._from_str(w)
+        elif isinstance(w, common.Window):
+            return w
+        else:
+            raise Exception(
+                "window should be either a string like '7d', '24h', or a Window type"
+            )
+
+    norm_windows = [normalize(w) for w in windows] if windows else None
+
+    agg = ttypes.Aggregation(input_column, operation, arg_map, norm_windows, buckets)
+
     agg.tags = tags
     return agg
 
@@ -409,7 +425,7 @@ def GroupBy(
             import ai.chronon.api.ttypes as chronon
             aggregations = [
                 chronon.Aggregation(input_column="entity", operation=Operation.LAST),
-                chronon.Aggregation(input_column="entity", operation=Operation.LAST, windows=[Window(7, TimeUnit.DAYS)])
+                chronon.Aggregation(input_column="entity", operation=Operation.LAST, windows=['7d'])
             ],
     :type aggregations: List[ai.chronon.api.ttypes.Aggregation]
     :param online:

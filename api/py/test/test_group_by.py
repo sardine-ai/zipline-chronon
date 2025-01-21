@@ -252,3 +252,30 @@ def test_additional_metadata():
         tags={"to_deprecate": True},
     )
     assert json.loads(gb.metaData.customJson)["groupby_tags"]["to_deprecate"]
+
+
+def test_windows_as_strings():
+    gb = group_by.GroupBy(
+        sources=[
+            ttypes.EventSource(
+                table="event_table1", query=query.Query(selects=None, time_column="ts")
+            )
+        ],
+        keys=["key1", "key2"],
+        aggregations=[
+            group_by.Aggregation(
+                input_column="event_id",
+                operation=ttypes.Operation.SUM,
+                windows=["1h", "30d"],
+            )
+        ],
+        tags={"to_deprecate": True},
+    )
+
+    windows = gb.aggregations[0].windows
+
+    assert len(windows) == 2
+    assert windows[0] == common.Window(1, common.TimeUnit.HOURS)
+    assert windows[1] == common.Window(30, common.TimeUnit.DAYS)
+
+    assert json.loads(gb.metaData.customJson)["groupby_tags"]["to_deprecate"]

@@ -207,7 +207,7 @@ source = Source(
             time_column="ts") # The event time
     ))
 
-window_sizes = [Window(length=day, timeUnit=TimeUnit.DAYS) for day in [3, 14, 30]] # Define some window sizes to use below
+window_sizes = ["3d", "14d", "30d"] # Define some window sizes to use below
 
 v1 = GroupBy(
     sources=[source],
@@ -249,7 +249,7 @@ source = Source(
             time_column="ts")
     ))
 
-window_sizes = [Window(length=day, timeUnit=TimeUnit.DAYS) for day in [3, 14, 30]]
+window_sizes = ["3d", "14d", "30d"]
 
 v1 = GroupBy(
     sources=[source],
@@ -300,7 +300,7 @@ source = Source(
             )
     ))
 
-window_sizes = [Window(length=day, timeUnit=TimeUnit.DAYS) for day in [3, 14, 30]] # Define some window sizes to use below
+window_sizes = ["3d", "14d", "30d"] # Define some window sizes to use below
 
 v1 = GroupBy(
     sources=[source],

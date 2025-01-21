@@ -21,8 +21,6 @@ from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Window,
-    TimeUnit,
 )
 
 
@@ -35,7 +33,7 @@ v1 = GroupBy(
     aggregations=[
         Aggregation(input_column="event", operation=Operation.SUM),
         Aggregation(input_column="event", operation=Operation.APPROX_PERCENTILE([0.5])),
-        Aggregation(input_column="event", operation=Operation.SUM, windows=[Window(7, TimeUnit.DAYS)]),
+        Aggregation(input_column="event", operation=Operation.SUM, windows=["7d"]),
     ],
     additional_argument="To be placed in customJson",
     online=True,
