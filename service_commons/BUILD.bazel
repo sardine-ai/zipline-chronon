@@ -2,7 +2,7 @@ java_library(
     name = "lib",
     srcs = glob(["src/main/**/*.java"]),
     visibility = ["//visibility:public"],
-    deps = SCALA_DEPS + [
+    deps = _SCALA_DEPS + [
         "//api:lib",
         "//online:lib",
         maven_artifact("io.vertx:vertx-core"),
@@ -20,23 +20,27 @@ java_library(
     ],
 )
 
+test_deps = [
+    ":lib",
+    "//api:lib",
+    "//api:thrift",
+    "//online:lib",
+    # Libraries
+    maven_artifact("io.vertx:vertx-core"),
+    maven_artifact("io.vertx:vertx-web"),
+    maven_artifact("io.vertx:vertx-web-client"),
+    # Testing
+    maven_artifact("io.vertx:vertx-junit5"),
+    maven_artifact("org.junit.jupiter:junit-jupiter-api"),
+    maven_artifact("org.junit.platform:junit-platform-launcher"),
+    maven_artifact("org.junit.platform:junit-platform-reporting"),
+]
+
 java_library(
     name = "test-lib",
     srcs = glob(["src/test/**/*.java"]),
     visibility = ["//visibility:public"],
-    deps = [
-        ":lib",
-        "//api:lib",
-        "//api:thrift",
-        "//online:lib",
-        # Libraries
-        maven_artifact("io.vertx:vertx-core"),
-        maven_artifact("io.vertx:vertx-web"),
-        maven_artifact("io.vertx:vertx-web-client"),
-        # Testing
-        maven_artifact("io.vertx:vertx-junit5"),
-        maven_artifact("org.junit.jupiter:junit-jupiter-api"),
-    ],
+    deps = test_deps,
 )
 
 java_test_suite(
@@ -44,20 +48,5 @@ java_test_suite(
     srcs = glob(["src/test/**/*.java"]),
     visibility = ["//visibility:public"],
     runner = "junit5",
-    deps = [
-        ":lib",
-        ":test-lib",
-        "//api:lib",
-        "//api:thrift",
-        "//online:lib",
-        # Libraries
-        maven_artifact("io.vertx:vertx-core"),
-        maven_artifact("io.vertx:vertx-web"),
-        maven_artifact("io.vertx:vertx-web-client"),
-        # Testing
-        maven_artifact("io.vertx:vertx-junit5"),
-        maven_artifact("org.junit.jupiter:junit-jupiter-api"),
-        maven_artifact("org.junit.platform:junit-platform-launcher"),
-        maven_artifact("org.junit.platform:junit-platform-reporting"),
-    ],
+    deps = test_deps + [":test-lib"],
 )

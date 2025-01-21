@@ -13,6 +13,8 @@ spark_repository = repository(
         # Hive dependencies
         "org.apache.hive:hive-metastore:2.3.9",
         "org.apache.hive:hive-exec:2.3.9",
+
+        "org.apache.curator:apache-curator:5.5.0",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",

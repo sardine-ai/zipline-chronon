@@ -18,7 +18,7 @@ maven_repository = repository(
         "org.junit.platform:junit-platform-reporting:1.10.5",
         "com.novocode:junit-interface:0.11",
         "org.scalatestplus:mockito-3-4_2.12:3.2.10.0",
-        "org.mockito:mockito-core:4.6.1",
+        "org.mockito:mockito-core:5.12.0",
         "org.mockito:mockito-scala_2.12:1.17.0",
         "org.scalatest:scalatest_2.12:3.2.15",
         "org.scalatest:scalatest-shouldmatchers_2.12:3.2.15",
@@ -50,12 +50,28 @@ maven_repository = repository(
         "commons-lang:commons-lang:2.6",
         "io.netty:netty-all:4.1.111.Final",
         "io.delta:delta-spark_2.12:3.2.0",
+        "io.grpc:grpc-netty-shaded:1.62.2",
+        "ch.qos.reload4j:reload4j:1.2.25",
         "ch.qos.logback:logback-classic:1.5.6",
         "com.typesafe:config:1.4.3",
         "io.micrometer:micrometer-registry-statsd:1.13.6",
+        "net.sf.py4j:py4j:0.10.9.9",
 
         # Kafka
         "org.apache.kafka:kafka-clients:3.9.0",
+
+        # Google Cloud
+        "com.google.cloud:google-cloud-bigquery:2.42.0",
+        "com.google.cloud:google-cloud-bigtable:2.41.0",
+        "com.google.cloud:google-cloud-pubsub:1.131.0",
+        "com.google.cloud:google-cloud-dataproc:4.52.0",
+        # Have to specify in group:artifact:packaging:version format if version doesn't start with a digit
+        # Code reference: https://github.com/bazel-contrib/rules_jvm_external/blob/master/private/lib/coordinates.bzl#L44
+        "com.google.cloud.bigdataoss:gcs-connector:jar:hadoop3-2.2.6",
+        "com.google.cloud.bigdataoss:gcsio:3.0.3",
+        "com.google.cloud.bigdataoss:util-hadoop:3.0.0",
+        "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.41.0",
+        "com.google.cloud:google-cloud-bigtable-emulator:0.178.0",
 
         # Flink
         "org.apache.flink:flink-streaming-scala_2.12:1.17.0",
