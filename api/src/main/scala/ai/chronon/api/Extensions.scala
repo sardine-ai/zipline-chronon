@@ -430,14 +430,6 @@ object Extensions {
       */
     def cleanTopic: String = source.topic.cleanSpec
 
-    def copyForVersioningComparison: Source = {
-      // Makes a copy of the source and unsets date fields, used to compute equality on sources while ignoring these fields
-      val newSource = source.deepCopy()
-      val query = newSource.query
-      query.unsetEndPartition()
-      query.unsetStartPartition()
-      newSource
-    }
   }
 
   implicit class GroupByOps(groupBy: GroupBy) extends GroupBy(groupBy) {

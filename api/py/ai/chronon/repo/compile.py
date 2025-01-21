@@ -44,7 +44,7 @@ def get_folder_name_from_class_name(class_name):
     return {v.__name__: k for k, v in FOLDER_NAME_TO_CLASS.items()}[class_name]
 
 
-@click.command(name='compile')
+@click.command(name="compile")
 @click.option(
     "--chronon_root",
     envvar="CHRONON_ROOT",
@@ -263,8 +263,9 @@ def _write_obj(
     if force_overwrite:
         _print_warning(f"Force overwrite {class_name} {name}")
     elif not validator.safe_to_overwrite(obj):
-        _print_warning(
-            f"Cannot overwrite {class_name} {name} with existing online conf"
+        _print_error(
+            f"Cannot overwrite {class_name} {name} with existing online conf",
+            "Skipping.",
         )
         return False
     _write_obj_as_json(name, obj, output_file, obj_class)

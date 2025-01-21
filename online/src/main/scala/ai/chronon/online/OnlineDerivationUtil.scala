@@ -55,7 +55,7 @@ object OnlineDerivationUtil {
       baseValueSchema: StructType
   ): DerivationFunc = {
     if (derivationsScala.isEmpty) {
-      return { case (_, values: Map[String, Any]) => values }
+      { case (_, values: Map[String, Any]) => values }
     } else if (derivationsScala.areDerivationsRenameOnly) {
       buildRenameOnlyDerivationFunction(derivationsScala)
     } else {

@@ -22,6 +22,6 @@ from ai.chronon.join import (
 
 v1 = Join(
     left=test_sources.staging_entities,
-    right_parts=[JoinPart(group_by=sample_group_by_from_join_part.v1)],
+    right_parts=[JoinPart(group_by=sample_group_by_from_join_part.v2)],
     output_namespace="sample_namespace",
 )
