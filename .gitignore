@@ -11,6 +11,7 @@
 *.iml
 *.db
 .idea/
+**/local_warehouse/
 .eclipse
 **/.vscode/
 **/__pycache__/

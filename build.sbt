@@ -206,7 +206,10 @@ lazy val spark = project
     libraryDependencies += "org.json4s" % "json4s-jackson_2.12" % "3.7.0-M11", // This version is pinned to the one spark uses in 3.X.X - see: https://github.com/apache/spark/pull/45838
     libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
-    libraryDependencies += "org.yaml" % "snakeyaml" % "2.3"
+    libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
+    libraryDependencies += "net.sf.py4j" % "py4j" % "0.10.9.9",
+
+    libraryDependencies := libraryDependencies.value.map(_.exclude("org.slf4j", "slf4j-log4j12"))
   )
 
 lazy val flink = project
@@ -355,7 +358,7 @@ lazy val service_commons = (project in file("service_commons"))
         Seq("io.netty" % "netty-resolver-dns-native-macos" % "4.1.115.Final" classifier "osx-aarch_64")
       else
         Seq.empty
-    }
+    },
   )
 
 lazy val service = (project in file("service"))
