@@ -17,6 +17,7 @@
 package ai.chronon.spark
 
 import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.spark.SPARK_VERSION
@@ -30,7 +31,14 @@ import scala.util.Properties
 object SparkSessionBuilder {
 
   def configureLogging(): Unit = {
+
+    // Force reconfiguration
+    LoggerContext.getContext(false).close()
+
     val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
+
+    // Add status logger to debug logging setup
+    // builder.setStatusLevel(Level.DEBUG)
 
     // Create console appender
     val console = builder
@@ -40,7 +48,9 @@ object SparkSessionBuilder {
     // Create pattern layout with colors
     val patternLayout = builder
       .newLayout("PatternLayout")
-      .addAttribute("pattern", "%cyan{%d{yyyy/MM/dd HH:mm:ss}} %highlight{%-5level} %magenta{%file:%line} - %message%n")
+      .addAttribute(
+        "pattern",
+        "%cyan{%d{yyyy/MM/dd HH:mm:ss}} %highlight{%-5level} %style{%file:%line}{ITALIC,GREEN} - %message%n")
       .addAttribute("disableAnsi", "false")
 
     console.add(patternLayout)
@@ -59,6 +69,11 @@ object SparkSessionBuilder {
     val config = builder.build()
     val context = LoggerContext.getContext(false)
     context.start(config)
+
+    // Add a test log message
+    val logger = LogManager.getLogger(getClass)
+    logger.info("Chronon logging system initialized. Overrides spark's configuration")
+
   }
 
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
