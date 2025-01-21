@@ -28,8 +28,6 @@ maven_repository = repository(
         # Add other dependencies
         "org.slf4j:slf4j-api:2.0.12",
         "org.apache.logging.log4j:log4j-slf4j-impl:2.20.0",
-        "org.apache.logging.log4j:log4j-core:2.20.0",
-        "org.apache.logging.log4j:log4j-api-scala_2.12:13.1.0",
         "org.apache.datasketches:datasketches-memory:3.0.2",
         "org.apache.datasketches:datasketches-java:6.1.1",
         "com.fasterxml.jackson.core:jackson-core:2.15.2",
