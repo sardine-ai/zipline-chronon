@@ -17,7 +17,6 @@ Basic tests for namespace and breaking changes in run.py
 #     limitations under the License.
 
 import click
-import argparse
 import json
 import os
 import time

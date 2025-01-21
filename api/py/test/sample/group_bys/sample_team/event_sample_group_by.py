@@ -13,13 +13,7 @@
 #     limitations under the License.
 
 from sources import test_sources
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    TimeUnit,
-    Window,
-)
+from ai.chronon.group_by import GroupBy, Aggregation, Operation
 
 
 v1 = GroupBy(
@@ -29,7 +23,7 @@ v1 = GroupBy(
         Aggregation(
             input_column="event",
             operation=Operation.SUM,
-            windows=[Window(length=7, timeUnit=TimeUnit.DAYS)],
+            windows=["7d"],
             tags={"DETAILED_TYPE": "CONTINUOUS"},
         ),
         Aggregation(input_column="event", operation=Operation.SUM),

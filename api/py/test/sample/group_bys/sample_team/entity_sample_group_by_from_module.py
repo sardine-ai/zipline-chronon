@@ -17,13 +17,7 @@ Sample group by
 #     limitations under the License.
 
 from sources import test_sources
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Window,
-    TimeUnit,
-)
+from ai.chronon.group_by import GroupBy, Aggregation, Operation
 
 
 v1 = GroupBy(
@@ -31,7 +25,7 @@ v1 = GroupBy(
     keys=["group_by_subject"],
     aggregations=[
         Aggregation(input_column="entity", operation=Operation.LAST),
-        Aggregation(input_column="entity", operation=Operation.LAST, windows=[Window(7, TimeUnit.DAYS)]),
+        Aggregation(input_column="entity", operation=Operation.LAST, windows=["7d"]),
     ],
     online=True,
 )

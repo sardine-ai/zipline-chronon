@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +18,7 @@ from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Window,
-    TimeUnit,
-    Accuracy
+    Accuracy,
 )
 from ai.chronon.utils import get_staging_query_output_table_name
 from staging_queries.kaggle.outbrain import base_table
@@ -45,31 +42,23 @@ the fields that we care about (`ad_id`, `clicked`, and `ts` columns), it will mi
 
 source = Source(
     events=EventSource(
-        table=get_staging_query_output_table_name(base_table), # Here we use the staging query output table because it has the necessary fields, but for a true streaming source we would likely use a log table
-        topic="some_topic", # You would set your streaming source topic here
-        query=Query(
-            selects=select("ad_id", "clicked"),
-            time_column="ts")
-    ))
+        table=get_staging_query_output_table_name(
+            base_table
+        ),  # Here we use the staging query output table because it has the necessary fields, but for a true streaming source we would likely use a log table
+        topic="some_topic",  # You would set your streaming source topic here
+        query=Query(selects=select("ad_id", "clicked"), time_column="ts"),
+    )
+)
 
 ad_streaming = GroupBy(
     sources=[source],
-    keys=["ad_id"], # We use the ad_id column as our primary key
-    aggregations=[Aggregation(
-            input_column="clicked",
-            operation=Operation.SUM,
-            windows=[Window(length=3, timeUnit=TimeUnit.DAYS)]
-        ),
+    keys=["ad_id"],  # We use the ad_id column as our primary key
+    aggregations=[
+        Aggregation(input_column="clicked", operation=Operation.SUM, windows=["3d"]),
+        Aggregation(input_column="clicked", operation=Operation.COUNT, windows=["3d"]),
         Aggregation(
-            input_column="clicked",
-            operation=Operation.COUNT,
-            windows=[Window(length=3, timeUnit=TimeUnit.DAYS)]
+            input_column="clicked", operation=Operation.AVERAGE, windows=["3d"]
         ),
-        Aggregation(
-            input_column="clicked",
-            operation=Operation.AVERAGE,
-            windows=[Window(length=3, timeUnit=TimeUnit.DAYS)]
-        )
     ],
-    accuracy=Accuracy.TEMPORAL # Here we use temporal accuracy so that training data backfills mimic streaming updates
+    accuracy=Accuracy.TEMPORAL,  # Here we use temporal accuracy so that training data backfills mimic streaming updates
 )
