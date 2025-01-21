@@ -7,9 +7,9 @@
 	import { getSortParamsConfig, getSortParamKey, sortDistributions } from '$lib/util/sort';
 	import type { FeatureResponse } from '$src/lib/types/Model/Model.js';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
-	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
+	import ObservabilityNavTabs from '$routes/joins/[slug]/observability/ObservabilityNavTabs.svelte';
 	import { Separator } from '$src/lib/components/ui/separator';
-	import ModelTable from '../ModelTable.svelte';
+	import ModelTable from '$routes/joins/[slug]/observability/ModelTable.svelte';
 	import { untrack } from 'svelte';
 
 	const { data } = $props();

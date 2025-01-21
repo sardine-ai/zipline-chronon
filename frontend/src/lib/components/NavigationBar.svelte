@@ -34,6 +34,8 @@
 	import IconUser from '~icons/heroicons/user';
 	import IconSquaresSolid from '~icons/heroicons/squares-2x2-16-solid';
 	import { Separator } from '$lib/components/ui/separator';
+	import IconChatBubbleOvalLeft16Solid from '~icons/heroicons/chat-bubble-oval-left-16-solid';
+	import IconQuestionMarkCircle16Solid from '~icons/heroicons/question-mark-circle-16-solid';
 
 	type Props = {
 		navItems: Entity[];
@@ -91,13 +93,13 @@
 <nav class="w-60 p-3 flex flex-col">
 	<div class="ml-2 mt-1 mb-10 flex items-center justify-between">
 		<Button variant="link" href="/" class="p-0 h-6 w-6">
-			<img src="/logo.png" alt="Zipline Logo" />
+			<img src="/logo.svg" alt="Zipline Logo" />
 		</Button>
 	</div>
 	<Button
 		variant="outline"
 		size="sm"
-		class="mb-6 w-full flex justify-start pl-2"
+		class="mb-[22px] w-full flex justify-start pl-2"
 		onclick={() => (open = true)}
 		icon="leading"
 	>
@@ -115,13 +117,13 @@
 			</span>
 		{/if}
 	</Button>
-	<Button variant="ghost" class="text-regular-medium" size="nav" href="/" icon="leading">
-		<IconSquaresSolid class="text-muted-icon-neutral" />
-		<span class="text-muted-foreground">Home</span>
+	<Button variant="ghost" class="text-regular" size="nav" href="/" icon="leading">
+		<IconSquaresSolid class="text-muted-icon-neutral h-4 w-4" />
+		<span>Home</span>
 	</Button>
-	<Separator class="my-6" />
-	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Datasets</span>
-	<ul class="space-y-1 flex-grow">
+	<Separator class="my-[22px]" />
+	<span class="mb-[10px] px-2 text-xs-medium text-muted-icon-neutral">Datasets</span>
+	<ul class="space-y-[1px] flex-grow">
 		{#each navItems as item}
 			<li>
 				<Button
@@ -129,20 +131,21 @@
 					size="nav"
 					href={item.path}
 					icon="leading"
+					class="text-regular"
 				>
 					<item.icon
-						class={isActiveRoute(item.path) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}
+						class={`h-4 w-4 ${isActiveRoute(item.path) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}`}
 					/>
 					{item.label}
 				</Button>
 			</li>
 		{/each}
 	</ul>
-	<Separator class="my-6" />
-	<span class="mb-[10px] px-2 text-xs-medium text-muted-foreground">Resources</span>
+	<Separator class="mb-6" />
+	<span class="mb-[7px] px-2 text-xs-medium text-muted-icon-neutral">Resources</span>
 	<Button
 		variant="ghost"
-		class="w-full text-regular-medium my-1"
+		class="w-full text-regular my-[2px]"
 		size="nav"
 		href="https://docs.chronon.ai"
 		target="_blank"
@@ -154,27 +157,41 @@
 	</Button>
 	<Button
 		variant="ghost"
-		class="w-full text-regular-medium my-1"
+		class="w-full text-regular my-[2px]"
 		size="nav"
-		href="mailto:hello@zipline.ai"
+		href="https://join.slack.com/t/chrononworkspace/shared_invite/zt-1no5t3lxd-mFUo644T6tPJOeTeZRTggw"
+		target="_blank"
+		rel="noopener noreferrer"
 		icon="leading"
 	>
-		<IconDocumentText class="text-muted-icon-neutral" />
+		<IconQuestionMarkCircle16Solid class="text-muted-icon-neutral" />
 		<span class="text-muted-foreground">Support</span>
 	</Button>
-	<Separator class="mt-6 mb-4" />
+	<div class="flex justify-start">
+		<Button
+			variant="outline"
+			size="md"
+			class="text-small mb-1 mt-5 ml-2"
+			href="mailto:hello@zipline.ai"
+			icon="leading"
+		>
+			<IconChatBubbleOvalLeft16Solid class="text-muted-icon-neutral" />
+			<span class="text-muted-foreground">Got feedback?</span>
+		</Button>
+	</div>
+	<Separator class="mt-[19px] mb-3" />
 	<div class="flex items-center">
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild let:builder>
 				<Button variant="ghost" class="flex items-center cursor-pointer" builders={[builder]}>
-					<Avatar class="h-4 w-4">
+					<Avatar class="h-4 w-4 text-muted-foreground">
 						<AvatarImage src={user.avatar} alt={user.name} />
 						<AvatarFallback>
 							<IconUser />
 						</AvatarFallback>
 					</Avatar>
-					<span class="ml-3">{user.name}</span>
-					<IconChevronDown class="ml-3" />
+					<span class="ml-3 text-muted-foreground text-regular">{user.name}</span>
+					<IconChevronDown class="ml-3 text-muted-foreground" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent>

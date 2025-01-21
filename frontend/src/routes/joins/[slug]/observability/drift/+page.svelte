@@ -20,9 +20,9 @@
 	import { handleChartHighlight } from '$lib/util/chart';
 	import ChartControls from '$lib/components/ChartControls.svelte';
 	import type { JoinData } from '$routes/joins/[slug]/services/joins.service';
-	import ModelTable from '../ModelTable.svelte';
+	import ModelTable from '$routes/joins/[slug]/observability/ModelTable.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
+	import ObservabilityNavTabs from '$routes/joins/[slug]/observability/ObservabilityNavTabs.svelte';
 
 	const api = new Api();
 

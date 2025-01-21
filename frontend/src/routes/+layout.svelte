@@ -35,7 +35,7 @@
 		></div>
 		<ScrollArea class="flex-1">
 			<div class="px-8 py-5">
-				<BreadcrumbNav {breadcrumbs} class="mb-[38px] ml-2" />
+				<BreadcrumbNav {breadcrumbs} class="mb-[38px]" />
 				{@render children()}
 			</div>
 		</ScrollArea>

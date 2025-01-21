@@ -22,7 +22,7 @@
 <div class="flex items-center justify-center h-full relative">
 	<CellDivider />
 	<div
-		class="flex items-center bg-neutral-300 border border-neutral-400 rounded-md p-2 pl-0 w-full mr-4"
+		class="flex items-center bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px]"
 		style:margin-left={`calc(${depth * 0.75}rem)`}
 	>
 		{#if $canExpand}
@@ -35,7 +35,7 @@
 			</button>
 		{/if}
 		{#if childrenCount > 0}
-			<Badge variant="secondary" class="border-none rounded-xl bg-neutral-50 text-neutral-900">
+			<Badge variant="secondary" class="border-none rounded-xl bg-neutral-200 text-neutral-700">
 				{childrenCount}
 			</Badge>
 		{/if}

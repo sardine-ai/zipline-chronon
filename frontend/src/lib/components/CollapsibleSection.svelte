@@ -13,7 +13,8 @@
 		headerContentRight,
 		title,
 		open = $bindable(true),
-		size = 'default'
+		size = 'default',
+		class: className = ''
 	}: {
 		collapsibleContent: Snippet;
 		headerContentLeft?: Snippet;
@@ -21,6 +22,7 @@
 		title: string;
 		open: boolean;
 		size?: 'small' | 'default' | 'large';
+		class?: string;
 	} = $props();
 
 	const sizeClasses = {
@@ -39,7 +41,7 @@
 	}[size];
 </script>
 
-<Collapsible bind:open class={sizeClasses.wrapper}>
+<Collapsible bind:open class="{sizeClasses.wrapper} {className}">
 	<div class="flex mb-3">
 		<CollapsibleTrigger class="flex items-center space-x-4">
 			<IconChevronDown

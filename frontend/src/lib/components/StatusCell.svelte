@@ -1,20 +1,20 @@
 <script lang="ts">
 	import {
+		statusActiveBorderColors,
 		statusBorderColors,
 		statusColors,
-		statusRingColors,
 		type JobStatus
 	} from '$lib/types/Job/Job';
 	import * as Popover from '$lib/components/ui/popover';
-	import LogsDownloadButton from '$lib/components/LogsDownloadButton.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import IconArrowDownOnSquare16Solid from '~icons/heroicons/arrow-down-on-square-16-solid';
+	import { format, PeriodType } from '@layerstack/utils';
 
 	let {
 		status,
-		startDate,
 		endDate
 	}: {
 		status: JobStatus;
-		startDate: string;
 		endDate: string;
 	} = $props();
 
@@ -25,19 +25,24 @@
 	<Popover.Trigger class="w-full h-full">
 		<div class="flex items-center justify-center bg-neutral-50 pt-1 pb-3">
 			<div
-				class={`h-4 w-full ${statusColors[status]} ${statusBorderColors[status]} rounded z-10 hover:z-20 hover:ring-2 ${statusRingColors[status]} ${
-					isPopoverOpen && `z-20 ring-2 ${statusRingColors[status]}`
+				class={`h-4 w-full rounded border ${statusColors[status]} hover:${statusActiveBorderColors[status]} ${
+					isPopoverOpen ? `${statusActiveBorderColors[status]}` : `${statusBorderColors[status]}`
 				} transition-all`}
 			></div>
 		</div>
 	</Popover.Trigger>
-	<Popover.Content sideOffset={-16}>
+	<Popover.Content sideOffset={-16} variant="light">
 		<div>
-			<p><span class="font-medium">Status:</span> <span class="capitalize">{status}</span></p>
-			<p><span class="font-medium">Start:</span> {startDate}</p>
-			<p><span class="font-medium">End:</span> {endDate}</p>
-			<div class="mt-2">
-				<LogsDownloadButton />
+			<p>
+				<span class="mr-1 capitalize">{status}</span><span class="text-neutral-800"
+					>{format(endDate, PeriodType.Day, { variant: 'long' })}</span
+				>
+			</p>
+			<div class="mt-4">
+				<Button variant="secondary" class="!text-small !text-neutral-800">
+					<IconArrowDownOnSquare16Solid class="mr-2 h-4 w-4" />
+					Download Logs
+				</Button>
 			</div>
 		</div>
 	</Popover.Content>

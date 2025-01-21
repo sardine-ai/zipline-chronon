@@ -1,6 +1,6 @@
 import IconCube from '~icons/heroicons/cube-16-solid';
 import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
-import IconCubeTransparent from '~icons/heroicons/cube-transparent';
+import IconCubeTransparent from '~icons/heroicons/cube-transparent-16-solid';
 import IconRectangleStack from '~icons/heroicons/rectangle-stack-16-solid';
 
 export const entityConfig = [

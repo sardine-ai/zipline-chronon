@@ -17,8 +17,12 @@
 	import { type JobTreeNode } from '$lib/types/Job/Job';
 	import { onMount } from 'svelte';
 	import { Separator } from '$lib/components/ui/separator';
-	import LogsDownloadButton from '$lib/components/LogsDownloadButton.svelte';
 	import JobOverviewChart from '$lib/components/JobOverviewChart.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import IconArrowDownOnSquare16Solid from '~icons/heroicons/arrow-down-on-square-16-solid';
+	import MetadataTable from '$lib/components/MetadataTable/MetadataTable.svelte';
+	import MetadataTableSection from '$lib/components/MetadataTable/MetadataTableSection.svelte';
+	import MetadataTableRow from '$lib/components/MetadataTable/MetadataTableRow.svelte';
 
 	let { data } = $props();
 
@@ -68,8 +72,8 @@
 	}
 
 	const stickyCellClass = 'sticky left-0 bg-neutral-100 z-30';
-	const tableHeadClass = 'h-[42px] px-2';
-	const tableCellClass = 'p-0 border-0 h-[58px]';
+	const tableHeadClass = 'h-[42px]';
+	const tableCellClass = 'p-0 border-0 h-[48px]';
 
 	let scrollPercentage = $state(0);
 	let scrollbarWidth = $state(0);
@@ -145,69 +149,35 @@
 </script>
 
 <div class="flex flex-col">
-	<CollapsibleSection title="Current Job" bind:open={isMetadataOpen}>
+	<CollapsibleSection title="Current job" bind:open={isMetadataOpen} class="mt-5 mb-6">
 		{#snippet headerContentRight()}
-			<LogsDownloadButton />
+			<Button variant="outline" size="md" class="!text-small text-muted-foreground">
+				<IconArrowDownOnSquare16Solid class="mr-2 h-4 w-4" />
+				Download Logs
+			</Button>
 		{/snippet}
 		{#snippet collapsibleContent()}
-			<div class="grid grid-cols-2 gap-4">
-				<div class="border rounded-md">
-					<Table density="compact">
-						<TableBody>
-							<TableRow>
-								<TableCell class="flex justify-between">
-									<span>Job Name</span>
-									<span>daily_sales_report</span>
-								</TableCell>
-							</TableRow>
-							<TableRow>
-								<TableCell class="flex justify-between">
-									<span>Status</span>
-									<span>Completed</span>
-								</TableCell>
-							</TableRow>
-							<TableRow>
-								<TableCell class="flex justify-between">
-									<span>Start Date & Time</span>
-									<span>Mar 20, 2024 09:15 AM</span>
-								</TableCell>
-							</TableRow>
-						</TableBody>
-					</Table>
-				</div>
-				<div class="border rounded-md">
-					<Table density="compact">
-						<TableBody>
-							<TableRow>
-								<TableCell class="flex justify-between">
-									<span>Run By</span>
-									<span>john.doe@company.com</span>
-								</TableCell>
-							</TableRow>
-							<TableRow>
-								<TableCell class="flex justify-between">
-									<span>Execution Type</span>
-									<span>Scheduled</span>
-								</TableCell>
-							</TableRow>
-							<TableRow>
-								<TableCell class="flex justify-between">
-									<span>Job Type</span>
-									<span>ETL Pipeline</span>
-								</TableCell>
-							</TableRow>
-						</TableBody>
-					</Table>
-				</div>
-			</div>
+			<!-- todo: use real data from API -->
+			<MetadataTable columns={2}>
+				<MetadataTableSection>
+					<MetadataTableRow label="Job ID" value="chargeback_v1_adhoc_2024-01-03__2024-01-07" />
+					<MetadataTableRow label="Status" value="Running" />
+					<MetadataTableRow label="Start date & time" value="Oct 08, 2024 4:10pm" />
+				</MetadataTableSection>
+				<MetadataTableSection>
+					<MetadataTableRow label="Run by" value="Nikhil Simha" />
+					<MetadataTableRow label="Adhoc / Scheduled" value="Adhoc" />
+					<MetadataTableRow label="Type" value="Batch upload" />
+				</MetadataTableSection>
+			</MetadataTable>
 		{/snippet}
 	</CollapsibleSection>
 
 	<Separator fullWidthExtend={true} wide={true} />
 
-	<CollapsibleSection title="Timeline" bind:open={isTimelineOpen}>
+	<CollapsibleSection title="Timeline" bind:open={isTimelineOpen} class="mt-7">
 		{#snippet collapsibleContent()}
-			<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-2 pt-2 border-t">
 				<div class="grid h-10">
 					<!-- Overview chart content -->
 					<div class="[grid-area:1/1] w-full">
@@ -235,11 +205,13 @@
 						<TableHeader>
 							<TableRow class="border-none">
 								<TableHead
-									class={`min-w-[250px] ${tableHeadClass} ${stickyCellClass} text-neutral-900`}
-									>Job Name</TableHead
+									class={`min-w-[250px] ${tableHeadClass} ${stickyCellClass} text-neutral-900 text-regular px-0 pb-2`}
+									>Job structure</TableHead
 								>
 								{#each data.dates as date}
-									<TableHead class={`min-w-[62px] ${tableHeadClass} text-xs text-neutral-900`}>
+									<TableHead
+										class={`min-w-[62px] ${tableHeadClass} text-xs text-neutral-700 px-2 border-b`}
+									>
 										{formatDate(date)}
 									</TableHead>
 								{/each}
@@ -254,7 +226,7 @@
 									{#each (row as unknown as DataBodyRow<JobTreeNode>).original.runs as run}
 										{@const daysInRange = getDaysInRange(run.start, run.end, data.dates)}
 										<TableCell colspan={daysInRange} class={`${tableCellClass} bg-neutral-100`}>
-											<StatusCell status={run.status} startDate={run.start} endDate={run.end} />
+											<StatusCell status={run.status} endDate={run.end} />
 										</TableCell>
 									{/each}
 								</TableRow>

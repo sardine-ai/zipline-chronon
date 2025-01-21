@@ -22,7 +22,7 @@
 				{@const daysInRange = getDaysInRange(run.start, run.end, dates)}
 				{@const widthPercentage = (daysInRange / dates.length) * 100}
 				<div
-					class={`h-4 rounded-sm ${statusColors[run.status]} ${statusBorderColors[run.status]}`}
+					class={`h-4 rounded-sm border ${statusColors[run.status]} ${statusBorderColors[run.status]}`}
 					style="width: {widthPercentage}%"
 					title={`${run.status}: ${formatDate(run.start)} - ${formatDate(run.end)}`}
 				></div>

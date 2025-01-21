@@ -21,6 +21,7 @@
 		"up-deps": "npx npm-check-updates -i"
 	},
 	"devDependencies": {
+		"@iconify-json/carbon": "^1.2.5",
 		"@iconify-json/heroicons": "^1.2.2",
 		"@internationalized/date": "^3.6.0",
 		"@playwright/test": "^1.49.1",
@@ -61,6 +62,7 @@
 	"dependencies": {
 		"@creditkarma/thrift-server-core": "^1.0.4",
 		"@creditkarma/thrift-typescript": "^3.7.6",
+		"@layerstack/utils": "^0.0.7",
 		"@types/echarts": "^4.9.22",
 		"clsx": "^2.1.1",
 		"d3": "^7.9.0",
