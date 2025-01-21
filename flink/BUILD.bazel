@@ -41,6 +41,7 @@ scala_library(
 test_deps = flink_test_deps + [
     ":lib",
     "//online:lib",
+    "//online:test-lib",
     "//api:thrift",
     "//api:lib",
     "//aggregator:lib",
