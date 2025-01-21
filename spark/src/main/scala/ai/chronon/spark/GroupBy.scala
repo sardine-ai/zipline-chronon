@@ -420,12 +420,16 @@ object GroupBy {
                         tableUtils: TableUtils,
                         computeDependency: Boolean = true,
                         showDf: Boolean = false): api.GroupBy = {
+
     val result = groupByConf.deepCopy()
+
     val newSources: java.util.List[api.Source] = groupByConf.sources.toScala.map { source =>
-      if (source.isSetJoinSource) {
+      if (!source.isSetJoinSource) source
+      else {
         logger.info("Join source detected. Materializing the join.")
         val joinSource = source.getJoinSource
         val joinConf = joinSource.join
+
         // materialize the table with the right end date. QueryRange.end could be shifted for temporal events
         val beforeDs = tableUtils.partitionSpec.before(queryRange.end)
         val isPreShifted =
@@ -433,24 +437,32 @@ object GroupBy {
         val endDate = if (isPreShifted) beforeDs else queryRange.end
 
         val join = new Join(joinConf, endDate, tableUtils, showDf = showDf)
+
         if (computeDependency) {
+
           val df = join.computeJoin()
+
           if (showDf) {
             logger.info(
               s"printing output data from groupby::join_source: ${groupByConf.metaData.name}::${joinConf.metaData.name}")
             df.prettyPrint()
           }
         }
+
         val joinOutputTable = joinConf.metaData.outputTable
         val topic = joinConf.left.topic
         val newSource = joinConf.left.deepCopy()
+
         if (newSource.isSetEvents) {
+
           val events = newSource.getEvents
           events.setQuery(joinSource.query)
           events.setTable(joinOutputTable)
           // set invalid topic to make sure inferAccuracy works as expected
           events.setTopic(topic + Constants.TopicInvalidSuffix)
+
         } else if (newSource.isSetEntities) {
+
           val entities = newSource.getEntities
           entities.setQuery(joinSource.query)
           entities.setSnapshotTable(joinOutputTable)
@@ -459,12 +471,13 @@ object GroupBy {
           // It is very unlikely that we will ever need to PITC backfill
           // we don't need mutation enrichment for serving
           entities.setMutationTopic(joinConf.left.topic + Constants.TopicInvalidSuffix)
+
         }
+
         newSource
-      } else {
-        source
       }
     }.toJava
+
     result.setSources(newSources)
   }
 

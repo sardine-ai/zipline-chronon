@@ -371,6 +371,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // so that an exception will be thrown below
       dfRearranged
     }
+
     repartitionAndWrite(finalizedDf, tableName, saveMode, stats, sortByCols)
   }
 
@@ -432,6 +433,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                 fileFormat)
 
     repartitionAndWrite(df, tableName, saveMode, None)
+
   }
 
   def columnSizeEstimator(dataType: DataType): Long = {
@@ -483,6 +485,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                           saveMode: SaveMode,
                                           stats: Option[DfStats],
                                           sortByCols: Seq[String]): Unit = {
+
     // get row count and table partition count statistics
 
     val (rowCount: Long, tablePartitionCount: Int) =
@@ -557,6 +560,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         .write
         .mode(saveMode)
         .save(dataPointer)
+
       logger.info(s"Finished writing to $tableName")
     }
   }
