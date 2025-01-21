@@ -27,8 +27,6 @@ from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Window,
-    TimeUnit,
 )
 
 label_part_group_by = GroupBy(
@@ -39,7 +37,7 @@ label_part_group_by = GroupBy(
         Aggregation(
             input_column="group_by_subject",
             operation=Operation.SUM,
-            windows=[Window(7, TimeUnit.DAYS)],
+            windows=["7d"],
         ),
     ],
     online=False,
