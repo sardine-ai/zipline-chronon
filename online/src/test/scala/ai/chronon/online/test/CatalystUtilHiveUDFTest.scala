@@ -4,12 +4,12 @@ import ai.chronon.online.CatalystUtil
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 
-class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs with TaggedFilterSuite  {
+class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs with TaggedFilterSuite {
 
   it should "hive ud fs via setups should work" in {
     val setups = Seq(
       "CREATE FUNCTION MINUS_ONE AS 'ai.chronon.online.test.Minus_One'",
-      "CREATE FUNCTION CAT_STR AS 'ai.chronon.online.test.Cat_Str'",
+      "CREATE FUNCTION CAT_STR AS 'ai.chronon.online.test.Cat_Str'"
     )
     val selects = Seq(
       "a" -> "MINUS_ONE(int32_x)",

@@ -53,7 +53,7 @@ class ModelHandlerTest extends EitherValues {
   }
 
   @Test
-  def testSend400BadOffset(context: TestContext) : Unit = {
+  def testSend400BadOffset(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("offset", "-1")
@@ -62,14 +62,15 @@ class ModelHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSend400BadLimit(context: TestContext) : Unit = {
+  def testSend400BadLimit(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("offset", "10")
@@ -78,14 +79,15 @@ class ModelHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSendValidResults(context: TestContext) : Unit = {
+  def testSendValidResults(context: TestContext): Unit = {
     val async = context.async
     when(mockedStore.getModels).thenReturn(mockModelRegistry)
     val multiMap = MultiMap.caseInsensitiveMultiMap
@@ -96,23 +98,26 @@ class ModelHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](jsonResponse)
-      val items = listModelResponse.right.value.items
-      assertEquals(items.length, handler.defaultLimit)
-      assertEquals(items.map(_.name.toInt).toSet, (0 until 10).toSet)
+        val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](jsonResponse)
+        val items = listModelResponse.right.value.items
+        assertEquals(items.length, handler.defaultLimit)
+        assertEquals(items.map(_.name.toInt).toSet, (0 until 10).toSet)
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 
   @Test
-  def testSendPaginatedResultsCorrectly(context: TestContext) : Unit = {
+  def testSendPaginatedResultsCorrectly(context: TestContext): Unit = {
     val async = context.async
     when(mockedStore.getModels).thenReturn(mockModelRegistry)
 
@@ -128,19 +133,22 @@ class ModelHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](jsonResponse)
-      val items = listModelResponse.right.value.items
-      assertEquals(items.length, number)
-      assertEquals(items.map(_.name.toInt).toSet, (startOffset until startOffset + number).toSet)
+        val listModelResponse: Either[Error, ListModelResponse] = decode[ListModelResponse](jsonResponse)
+        val items = listModelResponse.right.value.items
+        assertEquals(items.length, number)
+        assertEquals(items.map(_.name.toInt).toSet, (startOffset until startOffset + number).toSet)
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 }
 

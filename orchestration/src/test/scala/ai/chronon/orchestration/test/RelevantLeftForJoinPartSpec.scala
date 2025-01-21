@@ -10,11 +10,11 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
 
   // Helper method to create a basic GroupBy setup
   private def createGroupBy(
-                             name: String = "team1.cohorts",
-                             selects: Map[String, String] = Map("user_id" -> "user_id"),
-                             keyColumns: Seq[String] = Seq("user_id"),
-                             wheres: Seq[String] = null
-                           ): api.GroupBy = {
+      name: String = "team1.cohorts",
+      selects: Map[String, String] = Map("user_id" -> "user_id"),
+      keyColumns: Seq[String] = Seq("user_id"),
+      wheres: Seq[String] = null
+  ): api.GroupBy = {
     val metadata = MetaData(
       name = name,
       team = "team1"
@@ -39,14 +39,14 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
 
   // Helper method to create a basic join setup
   private def createBasicJoin(
-                               groupBy: api.GroupBy,
-                               leftTableName: String = "team1.events",
-                               leftSelects: Map[String, String] = Map("user_id" -> "user_id"),
-                               leftWheres: Seq[String] = null,
-                               joinName: String = "test_join",
-                               prefix: String = null,
-                               leftStart: String = "2024-01-01"
-                             ): (api.Join, api.JoinPart) = {
+      groupBy: api.GroupBy,
+      leftTableName: String = "team1.events",
+      leftSelects: Map[String, String] = Map("user_id" -> "user_id"),
+      leftWheres: Seq[String] = null,
+      joinName: String = "test_join",
+      prefix: String = null,
+      leftStart: String = "2024-01-01"
+  ): (api.Join, api.JoinPart) = {
     val query = Query(
       selects = leftSelects,
       wheres = leftWheres,
@@ -92,7 +92,7 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
       leftSelects = Map(
         "user_id" -> "user_id",
         "ts" -> "timestamp",
-        "extra_field" -> "some_value"  // Additional unrelated select
+        "extra_field" -> "some_value" // Additional unrelated select
       )
     )
 
@@ -112,7 +112,7 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
 
     val (joinWithDifferentDate, _) = createBasicJoin(
       groupBy = groupBy,
-      leftStart = "2024-02-01"  // Different start date
+      leftStart = "2024-02-01" // Different start date
     )
 
     val baseTableName = RelevantLeftForJoinPart.partTableName(baseJoin, joinPart)
@@ -129,7 +129,7 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
 
     val modifiedGroupBy = createGroupBy(
       selects = Map("user_id" -> "user_id", "client_id" -> "client_id", "activity" -> "COUNT(*)"),
-      keyColumns = Seq("user_id", "client_id")  // Additional key column
+      keyColumns = Seq("user_id", "client_id") // Additional key column
     )
 
     val (baseJoin, baseJoinPart) = createBasicJoin(groupBy = baseGroupBy)
@@ -148,7 +148,7 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
     )
 
     val modifiedGroupBy = createGroupBy(
-      selects = Map("user_id" -> "user_id", "activity" -> "SUM(value)"),  // Different aggregation
+      selects = Map("user_id" -> "user_id", "activity" -> "SUM(value)"), // Different aggregation
       keyColumns = Seq("user_id")
     )
 
@@ -168,7 +168,7 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
     )
 
     val modifiedGroupBy = createGroupBy(
-      wheres = Seq("value > 10"),  // Different filter condition
+      wheres = Seq("value > 10"), // Different filter condition
       keyColumns = Seq("user_id")
     )
 
@@ -191,7 +191,7 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
 
     val (join2, _) = createBasicJoin(
       groupBy = groupBy,
-      joinName = "test_join_2"  // Different join name
+      joinName = "test_join_2" // Different join name
     )
 
     val tableName1 = RelevantLeftForJoinPart.partTableName(join1, joinPart)

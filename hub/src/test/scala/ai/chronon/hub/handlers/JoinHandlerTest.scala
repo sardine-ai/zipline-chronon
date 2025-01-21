@@ -54,7 +54,7 @@ class JoinHandlerTest extends EitherValues {
   }
 
   @Test
-  def testSend400BadOffset(context: TestContext) : Unit = {
+  def testSend400BadOffset(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("offset", "-1")
@@ -63,14 +63,15 @@ class JoinHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     listHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSend400BadLimit(context: TestContext) : Unit = {
+  def testSend400BadLimit(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("offset", "10")
@@ -79,14 +80,15 @@ class JoinHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     listHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSend404MissingJoin(context: TestContext) : Unit = {
+  def testSend404MissingJoin(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("offset", "10")
@@ -97,14 +99,15 @@ class JoinHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     getHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(404)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(404)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSendValidResults(context: TestContext) : Unit = {
+  def testSendValidResults(context: TestContext): Unit = {
     val async = context.async
     when(mockedStore.getJoins).thenReturn(mockJoinRegistry)
     val multiMap = MultiMap.caseInsensitiveMultiMap
@@ -115,23 +118,26 @@ class JoinHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     listHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val listResponse: Either[Error, ListJoinResponse] = decode[ListJoinResponse](jsonResponse)
-      val items = listResponse.right.value.items
-      assertEquals(items.length, new JoinsHandler(mockedStore).defaultLimit)
-      assertEquals(items.map(_.name.toInt).toSet, (0 until 10).toSet)
+        val listResponse: Either[Error, ListJoinResponse] = decode[ListJoinResponse](jsonResponse)
+        val items = listResponse.right.value.items
+        assertEquals(items.length, new JoinsHandler(mockedStore).defaultLimit)
+        assertEquals(items.map(_.name.toInt).toSet, (0 until 10).toSet)
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 
   @Test
-  def testSendPaginatedResultsCorrectly(context: TestContext) : Unit = {
+  def testSendPaginatedResultsCorrectly(context: TestContext): Unit = {
     val async = context.async
     when(mockedStore.getJoins).thenReturn(mockJoinRegistry)
 
@@ -147,23 +153,26 @@ class JoinHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     listHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val listResponse: Either[Error, ListJoinResponse] = decode[ListJoinResponse](jsonResponse)
-      val items = listResponse.right.value.items
-      assertEquals(items.length, number)
-      assertEquals(items.map(_.name.toInt).toSet, (startOffset until startOffset + number).toSet)
+        val listResponse: Either[Error, ListJoinResponse] = decode[ListJoinResponse](jsonResponse)
+        val items = listResponse.right.value.items
+        assertEquals(items.length, number)
+        assertEquals(items.map(_.name.toInt).toSet, (startOffset until startOffset + number).toSet)
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 
   @Test
-  def testSendValidJoinOnLookup(context: TestContext) : Unit = {
+  def testSendValidJoinOnLookup(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("offset", "10")
@@ -177,17 +186,20 @@ class JoinHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     getHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val joinResponse: Either[Error, Join] = decode[Join](jsonResponse)
-      assertEquals(joinResponse.right.value.name,  "10")
+        val joinResponse: Either[Error, Join] = decode[Join](jsonResponse)
+        assertEquals(joinResponse.right.value.name, "10")
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 
 }

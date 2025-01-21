@@ -70,8 +70,7 @@ class TimeExpressionSpec extends AnyFlatSpec with Matchers {
   }
 
   // Helper function to simulate isIdentifier behavior
-  
 
   // Safe get implementation
-  
+
 }

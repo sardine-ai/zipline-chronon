@@ -19,7 +19,7 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
 
-class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
+class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
   val flinkCluster = new MiniClusterWithClientResource(
     new MiniClusterResourceConfiguration.Builder()

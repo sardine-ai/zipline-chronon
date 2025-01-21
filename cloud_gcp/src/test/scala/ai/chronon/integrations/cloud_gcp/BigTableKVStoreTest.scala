@@ -34,7 +34,7 @@ import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 
 @RunWith(classOf[JUnit4])
-class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
+class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   import BigTableKVStore._
 

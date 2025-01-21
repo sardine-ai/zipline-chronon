@@ -144,7 +144,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     queryResults.contains(query) shouldBe true
     queryResults.get(query).map(_.values) match {
       case Some(Failure(_: IllegalStateException)) => succeed
-      case _                                        => fail()
+      case _                                       => fail()
     }
 
     // GroupBy request sent to KV store for the query

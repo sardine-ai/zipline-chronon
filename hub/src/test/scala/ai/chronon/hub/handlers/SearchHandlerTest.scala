@@ -52,7 +52,7 @@ class SearchHandlerTest extends EitherValues {
   }
 
   @Test
-  def testSend400BadOffset(context: TestContext) : Unit = {
+  def testSend400BadOffset(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("term", "foo")
@@ -62,14 +62,15 @@ class SearchHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSend400BadLimit(context: TestContext) : Unit = {
+  def testSend400BadLimit(context: TestContext): Unit = {
     val async = context.async
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("term", "foo")
@@ -79,42 +80,46 @@ class SearchHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
-  def testSendValidResults(context: TestContext) : Unit = {
+  def testSendValidResults(context: TestContext): Unit = {
     val async = context.async
     when(mockedStore.getJoins).thenReturn(mockJoinRegistry)
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("term", "1")
     when(routingContext.queryParams()).thenReturn(multiMap)
-    
+
     // Capture the response that will be sent
     val responseCaptor = ArgumentCaptor.forClass(classOf[String])
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val listResponse: Either[Error, SearchJoinResponse] = decode[SearchJoinResponse](jsonResponse)
-      val items = listResponse.right.value.items
-      assertEquals(items.length, handler.defaultLimit)
-      assertEquals(items.map(_.name.toInt).toSet, Set(1, 10, 11, 12, 13, 14, 15, 16, 17, 18))
+        val listResponse: Either[Error, SearchJoinResponse] = decode[SearchJoinResponse](jsonResponse)
+        val items = listResponse.right.value.items
+        assertEquals(items.length, handler.defaultLimit)
+        assertEquals(items.map(_.name.toInt).toSet, Set(1, 10, 11, 12, 13, 14, 15, 16, 17, 18))
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 
   @Test
-  def testSendPaginatedResultsCorrectly(context: TestContext) : Unit = {
+  def testSendPaginatedResultsCorrectly(context: TestContext): Unit = {
     val async = context.async
     when(mockedStore.getJoins).thenReturn(mockJoinRegistry)
 
@@ -135,19 +140,22 @@ class SearchHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     handler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val jsonResponse = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val jsonResponse = responseCaptor.getValue
 
-      val listResponse: Either[Error, SearchJoinResponse] = decode[SearchJoinResponse](jsonResponse)
-      val items = listResponse.right.value.items
-      assertEquals(items.length, number)
-      assertEquals(items.map(_.name.toInt).toSet, expected)
+        val listResponse: Either[Error, SearchJoinResponse] = decode[SearchJoinResponse](jsonResponse)
+        val items = listResponse.right.value.items
+        assertEquals(items.length, number)
+        assertEquals(items.map(_.name.toInt).toSet, expected)
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 }
 
@@ -159,4 +167,3 @@ object MockJoinService {
 
   val mockJoinRegistry: Seq[Join] = (0 until 100).map(i => generateMockJoin(i.toString))
 }
-
