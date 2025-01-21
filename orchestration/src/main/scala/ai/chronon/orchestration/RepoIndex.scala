@@ -64,15 +64,14 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
                dryRun: Boolean = true): Seq[VersionUpdate] = {
 
     val newContents = buildContentMap(proc, newNodes, fileHashes)
-
     val enrichedFileHashes = newContents.map {
       case (name, content) => name -> content.localData.fileHash
     } ++ fileHashes
 
     /**
-     * Returns NodeContent given the name of the Node
-     * It first looks up from newly added contents map otherwise fileHashToContent map
-     */
+      * Returns NodeContent given the name of the Node
+      * It first looks up from newly added contents map otherwise fileHashToContent map from the Index
+      */
     def getNodeContent(name: Name): NodeContent[T] = {
       val fileHash = enrichedFileHashes.get(name) match {
         case Some(hash) => hash
@@ -85,7 +84,7 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
 
           require(hashToContent.size == 1, s"Expected 1 entry for artifact $name, found ${hashToContent.size}")
           require(hashToContent.head._2.localData.fileHash.hash == name.name.md5,
-            s"Expected artifact $name to have no inputs")
+                  s"Expected artifact $name to have no inputs")
 
           hashToContent.head._1
       }
@@ -99,9 +98,9 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
     }
 
     /**
-     * Returns if the given node is an external artifact
-     * External artifacts are the artifacts without any parents, also they shouldn't be versioned
-     */
+      * Returns if the given node is an external artifact
+      * External artifacts are the artifacts without any parents, also they shouldn't be versioned
+      */
     def isExternalArtifact(name: Name): Boolean = {
       val nodeContent = getNodeContent(name);
       nodeContent.localData.fileHash.hash == nodeContent.localData.name.name.md5 && nodeContent.localData.inputs.isEmpty
@@ -155,15 +154,17 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
         case (name, content) => update(fileHashToContent, name, content.localData.fileHash, content)
       }
 
-      val newVersions = globalHashes.filter {
-        // External artifacts should not be versioned
-        case (name, globalHash) => !isExternalArtifact(name)
-      }.map {
-        case (name, globalHash) =>
-          val versionIndex = versionSequencer.insert(name, globalHash)
-          val version = Version("v" + versionIndex.toString)
-          name -> version
-      }
+      val newVersions = globalHashes
+        .filter {
+          // External artifacts should not be versioned
+          case (name, globalHash) => !isExternalArtifact(name)
+        }
+        .map {
+          case (name, globalHash) =>
+            val versionIndex = versionSequencer.insert(name, globalHash)
+            val version = Version("v" + versionIndex.toString)
+            name -> version
+        }
 
       branchToFileHash.update(branch, enrichedFileHashes)
       branchVersionIndex.update(branch, newVersions)
@@ -174,14 +175,16 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
 
       // dry run - don't insert into any members of the index
       val newVersions = mutable.Map.empty[Name, Version]
-      globalHashes.filter {
-        // External artifacts should not be versioned
-        case (name, globalHash) => !isExternalArtifact(name)
-      }.foreach {
-        case (name, globalHash) =>
-          val versionIndex = versionSequencer.potentialIndex(name, globalHash)
-          newVersions.update(name, Version("v" + versionIndex.toString))
-      }
+      globalHashes
+        .filter {
+          // External artifacts should not be versioned
+          case (name, globalHash) => !isExternalArtifact(name)
+        }
+        .foreach {
+          case (name, globalHash) =>
+            val versionIndex = versionSequencer.potentialIndex(name, globalHash)
+            newVersions.update(name, Version("v" + versionIndex.toString))
+        }
 
       VersionUpdate.join(newVersions, existingVersions, mainVersions)
     }
