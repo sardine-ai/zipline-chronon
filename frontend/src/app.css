@@ -101,24 +101,24 @@
 
 		--ring: 0 0% 83.1%;
 
-		--job-waiting-bg: 250 32% 24%;
-		--job-waiting-border: 249 32% 40%;
-		--job-waiting-active-border: 250 89% 72%;
 		--job-running-bg: 249 32% 56%;
-		--job-running-border: 249 64% 72%;
-		--job-running-active-border: 250 100% 91%;
+		--job-running-border: 249 54% 72%;
+		--job-running-active-border: 250 100% 86%;
+		--job-waiting-bg: 250 30% 24%;
+		--job-waiting-border: 250 30% 40%;
+		--job-waiting-active-border: 250 89% 70%;
 		--job-failed-bg: 10 24% 20%;
-		--job-failed-border: 10 40% 36%;
-		--job-failed-active-border: 9 49% 58%;
-		--job-completed-bg: 160 40% 12%;
-		--job-completed-border: 160 32% 24%;
-		--job-completed-active-border: 153 35% 47%;
+		--job-failed-border: 10 30% 34%;
+		--job-failed-active-border: 10 46% 56%;
+		--job-completed-bg: 160 40% 17%;
+		--job-completed-border: 160 40% 28%;
+		--job-completed-active-border: 160 32% 47%;
+		--job-invalid-bg: 44 80% 14%;
+		--job-invalid-border: 44 68% 24%;
+		--job-invalid-active-border: 44 62% 40%;
 		--job-queued-bg: 0 0% 16%;
 		--job-queued-border: 0 0% 24%;
-		--job-queued-active-border: 0 0% 64%;
-		--job-invalid-bg: 44 82% 11%;
-		--job-invalid-border: 44 74% 22%;
-		--job-invalid-active-border: 44 77% 37%;
+		--job-queued-active-border: 0 0% 40%;
 	}
 }
 

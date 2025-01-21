@@ -10,6 +10,11 @@ const config = {
 		'dark',
 		{
 			pattern: /^grid-cols-\d+$/ // Preserves all grid-cols-{n} classes
+		},
+		{
+			// Generic pattern that will match any job status
+			pattern: /^border-jobs-(.*)-active-border$/,
+			variants: ['hover']
 		}
 	],
 	theme: {
