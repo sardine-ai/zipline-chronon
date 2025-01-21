@@ -111,7 +111,7 @@ This definition starts with purchase events as the raw input source, and creates
       )
    )
 
-   window_sizes = [Window(length=day, timeUnit=TimeUnit.DAYS) for day in [3, 14, 30]] # Define some window sizes to use below
+   window_sizes = ["3d", "14d", "30d"] # Define some window sizes to use below
 
    v1 = GroupBy(
       sources=[source],

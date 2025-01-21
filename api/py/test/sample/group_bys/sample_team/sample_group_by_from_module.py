@@ -21,8 +21,6 @@ from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Window,
-    TimeUnit,
 )
 
 
@@ -34,6 +32,6 @@ v1 = GroupBy(
     keys=["group_by_subject"],
     aggregations=[
         Aggregation(input_column="event", operation=Operation.SUM),
-        Aggregation(input_column="event", operation=Operation.SUM, windows=[Window(7, TimeUnit.DAYS)]),
+        Aggregation(input_column="event", operation=Operation.SUM, windows=["7d"]),
     ],
 )
