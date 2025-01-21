@@ -89,6 +89,7 @@ maven_repository = repository(
         "io.vertx:vertx-config:4.5.10",
         "io.vertx:vertx-micrometer-metrics:4.5.10",
         "io.vertx:vertx-junit5:4.5.10",
+        "io.vertx:vertx-unit:4.5.10",
     ],
     overrides = {
     },

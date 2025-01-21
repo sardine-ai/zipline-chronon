@@ -1,0 +1,63 @@
+vertx_deps = [
+    maven_artifact("io.vertx:vertx-core"),
+    maven_artifact("io.vertx:vertx-web"),
+    maven_artifact("io.vertx:vertx-web-client"),
+    maven_artifact("io.vertx:vertx-config"),
+    maven_artifact("io.vertx:vertx-micrometer-metrics"),
+]
+
+vertx_test_deps = [
+    # Libraries
+    maven_artifact("io.vertx:vertx-core"),
+    maven_artifact("io.vertx:vertx-web"),
+    maven_artifact("io.vertx:vertx-web-client"),
+    # Testing
+    maven_artifact("io.vertx:vertx-junit5"),
+    maven_artifact("io.vertx:vertx-unit"),
+]
+
+java_library(
+    name = "lib",
+    srcs = glob(["src/main/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = _SCALA_DEPS + vertx_deps + [
+        "//online:lib",
+        "//service_commons:lib",
+        maven_artifact("ch.qos.logback:logback-classic"),
+        maven_artifact("com.typesafe:config"),
+        maven_artifact("io.netty:netty-all"),
+        maven_artifact("io.micrometer:micrometer-registry-statsd"),
+        maven_artifact("io.micrometer:micrometer-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-annotations"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        scala_artifact("org.json4s:json4s-core"),
+    ],
+)
+
+test_deps = vertx_test_deps + [
+    ":lib",
+    "//online:lib",
+    "//service_commons:lib",
+    maven_artifact("org.mockito:mockito-core"),
+    maven_artifact("org.junit.jupiter:junit-jupiter-api"),
+    maven_artifact("junit:junit"),
+    maven_artifact("org.junit.platform:junit-platform-launcher"),
+    maven_artifact("org.junit.platform:junit-platform-reporting"),
+]
+
+java_library(
+    name = "test-lib",
+    srcs = glob(["src/test/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = test_deps,
+)
+
+java_test_suite(
+    name = "test",
+    srcs = glob(["src/test/**/*.java"]),
+    visibility = ["//visibility:public"],
+    runner = "junit5",
+    deps = test_deps + [":test-lib"],
+)

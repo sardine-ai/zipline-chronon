@@ -75,11 +75,11 @@ public class FetchHandlerTest {
 
         Map<String, Object> keys = Collections.singletonMap("user_id", "123");
         JavaRequest request = new JavaRequest(TEST_GROUP_BY, keys);
-        Map<String, Object> featureMap = new HashMap<String, Object>() {{
-            put("feature_1", 12);
-            put("feature_2", 23.3);
-            put("feature_3", "USD");
-        }};
+        Map<String, Object> featureMap = Map.of(
+            "feature_1", 12,
+            "feature_2", 23.3,
+            "feature_3", "USD"
+        );
         JTry<Map<String, Object>> values = JTry.success(featureMap);
         JavaResponse mockResponse = new JavaResponse(request, values);
 
@@ -177,27 +177,27 @@ public class FetchHandlerTest {
         Map<String, Object> keys2 = Collections.singletonMap("user_id", "456");
         JavaRequest request2 = new JavaRequest(TEST_GROUP_BY, keys2);
 
-        Map<String, Object> featureMap1 = new HashMap<String, Object>() {{
-            put("feature_1", 12);
-            put("feature_2", 23.3);
-            put("feature_3", "USD");
-        }};
+        Map<String, Object> featureMap1 = Map.of(
+            "feature_1", 12,
+            "feature_2", 23.3,
+            "feature_3", "USD"
+        );
 
-        Map<String, Object> featureMap2 = new HashMap<String, Object>() {{
-            put("feature_1", 24);
-            put("feature_2", 26.3);
-            put("feature_3", "CAD");
-        }};
+        Map<String, Object> featureMap2 = Map.of(
+            "feature_1", 24,
+            "feature_2", 26.3,
+            "feature_3", "CAD"
+        );
 
         JTry<Map<String, Object>> values1 = JTry.success(featureMap1);
         JTry<Map<String, Object>> values2 = JTry.success(featureMap2);
         JavaResponse mockResponse1 = new JavaResponse(request1, values1);
         JavaResponse mockResponse2 = new JavaResponse(request2, values2);
 
-        List<JavaResponse> mockResponseList = new ArrayList<JavaResponse>() {{
-            add(mockResponse1);
-            add(mockResponse2);
-        }};
+        List<JavaResponse> mockResponseList = List.of(
+            mockResponse1,
+            mockResponse2
+        );
         CompletableFuture<List<JavaResponse>> futureResponse =
                 CompletableFuture.completedFuture(mockResponseList);
         when(mockFetcher.fetchJoin(anyList())).thenReturn(futureResponse);
@@ -219,10 +219,10 @@ public class FetchHandlerTest {
             GetFeaturesResponse.Result expectedResult1 = GetFeaturesResponse.Result.builder().status(Success).entityKeys(keys1).features(featureMap1).build();
             GetFeaturesResponse.Result expectedResult2 = GetFeaturesResponse.Result.builder().status(Success).entityKeys(keys2).features(featureMap2).build();
 
-            List<GetFeaturesResponse.Result> expectedResultList = new ArrayList<GetFeaturesResponse.Result>() {{
-                add(expectedResult1);
-                add(expectedResult2);
-            }};
+            List<GetFeaturesResponse.Result> expectedResultList = List.of(
+                expectedResult1,
+                expectedResult2
+            );
             validateSuccessfulResponse(actualResponse, expectedResultList, context);
             async.complete();
         });
@@ -242,21 +242,21 @@ public class FetchHandlerTest {
         Map<String, Object> keys2 = Collections.singletonMap("user_id", "456");
         JavaRequest request2 = new JavaRequest(TEST_GROUP_BY, keys2);
 
-        Map<String, Object> featureMap = new HashMap<String, Object>() {{
-            put("feature_1", 12);
-            put("feature_2", 23.3);
-            put("feature_3", "USD");
-        }};
+        Map<String, Object> featureMap = Map.of(
+            "feature_1", 12,
+            "feature_2", 23.3,
+            "feature_3", "USD"
+        );
 
         JTry<Map<String, Object>> values1 = JTry.success(featureMap);
         JTry<Map<String, Object>> values2 = JTry.failure(new RuntimeException("some failure!"));
         JavaResponse mockResponse1 = new JavaResponse(request1, values1);
         JavaResponse mockResponse2 = new JavaResponse(request2, values2);
 
-        List<JavaResponse> mockResponseList = new ArrayList<JavaResponse>() {{
-            add(mockResponse1);
-            add(mockResponse2);
-        }};
+        List<JavaResponse> mockResponseList = List.of(
+                mockResponse1,
+                mockResponse2
+        );
         CompletableFuture<List<JavaResponse>> futureResponse =
                 CompletableFuture.completedFuture(mockResponseList);
         when(mockFetcher.fetchJoin(anyList())).thenReturn(futureResponse);
@@ -277,10 +277,10 @@ public class FetchHandlerTest {
             JsonObject actualResponse = new JsonObject(responseCaptor.getValue());
             GetFeaturesResponse.Result expectedResult1 = GetFeaturesResponse.Result.builder().status(Success).entityKeys(keys1).features(featureMap).build();
             GetFeaturesResponse.Result expectedResult2 = GetFeaturesResponse.Result.builder().status(Failure).entityKeys(keys2).error("some failure!").build();
-            List<GetFeaturesResponse.Result> expectedResultList = new ArrayList<GetFeaturesResponse.Result>() {{
-               add(expectedResult1);
-               add(expectedResult2);
-            }};
+            List<GetFeaturesResponse.Result> expectedResultList = List.of(
+                    expectedResult1,
+                    expectedResult2
+            );
             validateSuccessfulResponse(actualResponse, expectedResultList, context);
             async.complete();;
         });
