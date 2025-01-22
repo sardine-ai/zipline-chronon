@@ -90,6 +90,12 @@ maven_repository = repository(
         "io.vertx:vertx-micrometer-metrics:4.5.10",
         "io.vertx:vertx-junit5:4.5.10",
         "io.vertx:vertx-unit:4.5.10",
+        "io.vertx:vertx-unit:4.5.10",
+
+        # Circe
+        "io.circe:circe-core_2.12:0.14.9",
+        "io.circe:circe-generic_2.12:0.14.9",
+        "io.circe:circe-parser_2.12:0.14.9",
     ],
     overrides = {
     },

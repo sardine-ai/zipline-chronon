@@ -1,29 +1,38 @@
 scala_library(
     name = "lib",
-    srcs = glob(["src/main/**/*.scala"]),
+    srcs = glob(["src/main/**/*.scala"]) + glob(["src/main/**/*.java"]),
     visibility = ["//visibility:public"],
-    deps = _FLINK_DEPS + [
-        "//api:lib",
+    deps = _VERTX_DEPS + _CIRCE_DEPS + [
         "//api:thrift",
-        "//aggregator:lib",
+        "//api:lib",
         "//online:lib",
-        "//tools/build_rules/spark:spark-exec",
+        "//service_commons:lib",
+        "//spark:lib",
+        scala_artifact("org.typelevel:cats-core"),
+        scala_artifact("com.chuusai:shapeless"),
+        scala_artifact("org.json4s:json4s-core"),
+        scala_artifact("org.json4s:json4s-jackson"),
         scala_artifact("org.scala-lang.modules:scala-java8-compat"),
         scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-        scala_artifact("org.rogach:scallop"),
-        maven_artifact("io.dropwizard.metrics:metrics-core"),
+        maven_artifact("ch.qos.logback:logback-classic"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("com.typesafe:config"),
+        maven_artifact("io.netty:netty-all"),
+        maven_artifact("io.micrometer:micrometer-registry-statsd"),
+        maven_artifact("io.micrometer:micrometer-core"),
     ],
 )
 
-test_deps = _FLINK_TEST_DEPS + [
+test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
     ":lib",
-    "//online:lib",
-    "//online:test-lib",
     "//api:thrift",
     "//api:lib",
-    "//aggregator:lib",
-    "//tools/build_rules/spark:spark-exec",
+    "//online:lib",
+    "//spark:lib",
+    "//service_commons:lib",
     # Libraries
+    scala_artifact("org.typelevel:cats-core"),
+    scala_artifact("com.chuusai:shapeless"),
     scala_artifact("org.scala-lang.modules:scala-java8-compat"),
     scala_artifact("org.scala-lang.modules:scala-collection-compat"),
     # Testing
@@ -53,5 +62,5 @@ scala_test_suite(
     name = "test",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib",],
+    deps = test_deps + [":test-lib"],
 )
