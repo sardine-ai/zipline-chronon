@@ -33,6 +33,20 @@ class Evaluator(localWarehouse: LocalWarehouse) {
     }
   }
 
+  def evalQuery(query: String, limit: Int = 5): EvaluationResult = {
+
+    try {
+
+      EvaluationResult(null, localWarehouse.runSql(query).limit(limit))
+
+    } catch {
+
+      case analysisException: AnalysisException =>
+        EvaluationResult(analysisException.getMessage, null)
+
+    }
+  }
+
   private def runSourceBundle(sourceSqlBundle: SourceSqlBundle): DataFrame = {
 
     val missingTables = sourceSqlBundle.tables -- localWarehouse.existingTables
