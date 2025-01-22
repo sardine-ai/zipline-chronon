@@ -1,26 +1,8 @@
-vertx_deps = [
-    maven_artifact("io.vertx:vertx-core"),
-    maven_artifact("io.vertx:vertx-web"),
-    maven_artifact("io.vertx:vertx-web-client"),
-    maven_artifact("io.vertx:vertx-config"),
-    maven_artifact("io.vertx:vertx-micrometer-metrics"),
-]
-
-vertx_test_deps = [
-    # Libraries
-    maven_artifact("io.vertx:vertx-core"),
-    maven_artifact("io.vertx:vertx-web"),
-    maven_artifact("io.vertx:vertx-web-client"),
-    # Testing
-    maven_artifact("io.vertx:vertx-junit5"),
-    maven_artifact("io.vertx:vertx-unit"),
-]
-
 java_library(
     name = "lib",
     srcs = glob(["src/main/**/*.java"]),
     visibility = ["//visibility:public"],
-    deps = _SCALA_DEPS + vertx_deps + [
+    deps = _SCALA_DEPS + _VERTX_DEPS + [
         "//online:lib",
         "//service_commons:lib",
         maven_artifact("ch.qos.logback:logback-classic"),
@@ -36,7 +18,7 @@ java_library(
     ],
 )
 
-test_deps = vertx_test_deps + [
+test_deps = _VERTX_TEST_DEPS + [
     ":lib",
     "//online:lib",
     "//service_commons:lib",
