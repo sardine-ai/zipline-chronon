@@ -4,7 +4,7 @@ import ai.chronon.repo.serializer as ser
 import ai.chronon.api.ttypes as thrift
 
 
-def eval(obj):
+def eval(obj, limit=5):
     """
     utility function to run conf's in an interactive environment.
 
@@ -22,7 +22,7 @@ def eval(obj):
     evaluator = gateway.entry_point
 
     if isinstance(obj, str):
-        evaluator.evalQuery(obj)  # TODO
+        return _to_df(evaluator.evalQuery(obj, limit))
 
     func = None
 
@@ -41,9 +41,12 @@ def eval(obj):
     elif isinstance(obj, thrift.Model):
         func = evaluator.evalModel  # TODO
 
+    else:
+        raise Exception(f"Unsupported object type for: {obj}")
+
     thrift_str = ser.thrift_simple_json(obj)
 
-    eval_result = func(thrift_str, 5)
+    eval_result = func(thrift_str, limit)
 
     return _to_df(eval_result)
 
@@ -57,4 +60,7 @@ def _to_df(eval_result):
         raise Exception(error)
 
     df = eval_result.df()
-    return DataFrame(df, df.sqlContext())
+
+    py_df = DataFrame(df, df.sparkSession())
+
+    return py_df
