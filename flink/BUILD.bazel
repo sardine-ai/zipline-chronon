@@ -1,31 +1,8 @@
-flink_deps = [
-    scala_artifact("org.apache.flink:flink-streaming-scala"),
-    scala_artifact("org.apache.flink:flink-scala"),
-    maven_artifact("org.apache.flink:flink-streaming-java"),
-    maven_artifact("org.apache.flink:flink-core"),
-    maven_artifact("org.apache.flink:flink-metrics-dropwizard"),
-    maven_artifact("org.apache.flink:flink-metrics-core"),
-    maven_artifact("org.apache.flink:flink-clients"),
-    maven_artifact("org.apache.flink:flink-yarn"),
-]
-
-flink_test_deps = [
-    # Libraries
-    scala_artifact("org.apache.flink:flink-streaming-scala"),
-    scala_artifact("org.apache.flink:flink-scala"),
-    maven_artifact("org.apache.flink:flink-streaming-java"),
-    maven_artifact("org.apache.flink:flink-core"),
-    maven_artifact("org.apache.flink:flink-runtime"),
-    # Testing
-    maven_artifact("org.apache.flink:flink-test-utils"),
-    maven_artifact("org.apache.flink:flink-runtime-tests"),
-]
-
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
     visibility = ["//visibility:public"],
-    deps = flink_deps + [
+    deps = _FLINK_DEPS + [
         "//api:lib",
         "//api:thrift",
         "//aggregator:lib",
@@ -38,7 +15,7 @@ scala_library(
     ],
 )
 
-test_deps = flink_test_deps + [
+test_deps = _FLINK_TEST_DEPS + [
     ":lib",
     "//online:lib",
     "//online:test-lib",
