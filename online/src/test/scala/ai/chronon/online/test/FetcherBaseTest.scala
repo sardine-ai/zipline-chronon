@@ -64,7 +64,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     // Future compositions in the Fetcher so provision it in
     // the mock to prevent hanging.
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    fetcherBase = spy(new FetcherBase(kvStore))
+    fetcherBase = spy[FetcherBase](new FetcherBase(kvStore))
   }
 
   it should "fetch columns single query" in {
@@ -213,7 +213,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    val fetcherBaseWithFlagStore = spy(new FetcherBase(kvStore, flagStore = flagStore))
+    val fetcherBaseWithFlagStore = spy[FetcherBase](new FetcherBase(kvStore, flagStore = flagStore))
     when(fetcherBaseWithFlagStore.isCacheSizeConfigured).thenReturn(true)
 
     def buildGroupByWithCustomJson(name: String): GroupBy = Builders.GroupBy(metaData = Builders.MetaData(name = name))

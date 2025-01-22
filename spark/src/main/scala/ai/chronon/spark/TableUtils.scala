@@ -371,6 +371,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // so that an exception will be thrown below
       dfRearranged
     }
+
     repartitionAndWrite(finalizedDf, tableName, saveMode, stats, sortByCols)
   }
 
@@ -388,8 +389,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   def sql(query: String): DataFrame = {
-    val partitionCount = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
-
+    val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
+    val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
     val stackTraceString = cleanStackTrace(new Throwable())
 
     logger.info(s"""
@@ -405,7 +406,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
          |""".stripMargin)
     try {
       // Run the query
-      val df = sparkSession.sql(query).coalesce(partitionCount)
+      val df = sparkSession.sql(query).coalesce(coalesceFactor * parallelism)
       df
     } catch {
       case e: AnalysisException if e.getMessage.contains(" already exists") =>
@@ -432,6 +433,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                 fileFormat)
 
     repartitionAndWrite(df, tableName, saveMode, None)
+
   }
 
   def columnSizeEstimator(dataType: DataType): Long = {
@@ -483,6 +485,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                           saveMode: SaveMode,
                                           stats: Option[DfStats],
                                           sortByCols: Seq[String]): Unit = {
+
     // get row count and table partition count statistics
 
     val (rowCount: Long, tablePartitionCount: Int) =
@@ -557,6 +560,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         .write
         .mode(saveMode)
         .save(dataPointer)
+
       logger.info(s"Finished writing to $tableName")
     }
   }
@@ -766,16 +770,16 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
 
     logger.info(s""" Scanning data:
-         |  table: ${dp.tableOrPath.green}
-         |  options: ${dp.readOptions}
-         |  format: ${dp.readFormat}
-         |  selects:
-         |    ${selects.mkString("\n    ").green}
-         |  wheres:
-         |    ${wheres.mkString(",\n    ").green}
-         |  partition filters:
-         |    ${rangeWheres.mkString(",\n    ").green}
-         |""".stripMargin)
+                   |  table: ${dp.tableOrPath.green}
+                   |  options: ${dp.readOptions}
+                   |  format: ${dp.readFormat}
+                   |  selects:
+                   |    ${selects.mkString("\n    ").green}
+                   |  wheres:
+                   |    ${wheres.mkString(",\n    ").green}
+                   |  partition filters:
+                   |    ${rangeWheres.mkString(",\n    ").green}
+                   |""".stripMargin)
 
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
 
@@ -784,8 +788,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val whereStr = allWheres.map(w => s"($w)").mkString(" AND ")
       df = df.where(whereStr)
     }
-
-    df
+    val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
+    val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
+    df.coalesce(coalesceFactor * parallelism)
   }
 
   def whereClauses(partitionRange: PartitionRange, partitionColumn: String = partitionColumn): Seq[String] = {

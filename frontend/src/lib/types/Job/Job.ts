@@ -22,7 +22,6 @@ export type JobTreeNode = {
 	runs: JobRun[];
 };
 
-// todo: update these colors to match the design
 export const statusColors: Record<JobStatus, string> = {
 	waiting: 'bg-jobs-waiting-bg',
 	running: 'bg-jobs-running-bg',
@@ -33,19 +32,19 @@ export const statusColors: Record<JobStatus, string> = {
 };
 
 export const statusBorderColors: Record<JobStatus, string> = {
-	waiting: 'border border-jobs-waiting-text',
-	running: 'border border-jobs-running-text',
-	failed: 'border border-jobs-failed-text',
-	completed: 'border border-jobs-completed-text',
-	queued: 'border border-jobs-queued-text',
-	invalid: 'border border-jobs-invalid-text'
+	waiting: 'border-jobs-waiting-border',
+	running: 'border-jobs-running-border',
+	failed: 'border-jobs-failed-border',
+	completed: 'border-jobs-completed-border',
+	queued: 'border-jobs-queued-border',
+	invalid: 'border-jobs-invalid-border'
 };
 
-export const statusRingColors: Record<JobStatus, string> = {
-	waiting: 'ring-jobs-waiting-text',
-	running: 'ring-jobs-running-text',
-	failed: 'ring-jobs-failed-text',
-	completed: 'ring-jobs-completed-text',
-	queued: 'ring-jobs-queued-text',
-	invalid: 'ring-jobs-invalid-text'
+export const statusActiveBorderColors: Record<JobStatus, string> = {
+	waiting: 'border-jobs-waiting-active-border',
+	running: 'border-jobs-running-active-border',
+	failed: 'border-jobs-failed-active-border',
+	completed: 'border-jobs-completed-active-border',
+	queued: 'border-jobs-queued-active-border',
+	invalid: 'border-jobs-invalid-active-border'
 };

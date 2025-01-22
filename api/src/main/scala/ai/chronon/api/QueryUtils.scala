@@ -16,6 +16,11 @@
 
 package ai.chronon.api
 
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.Extensions.StringOps
+import ai.chronon.api.ScalaJavaConversions.ListOps
+import ai.chronon.api.ScalaJavaConversions.MapOps
+
 // utilized by both streaming and batch
 object QueryUtils {
 
@@ -40,7 +45,7 @@ object QueryUtils {
   // when the value in fillIfAbsent for a key is null, we expect the column with the same name as the key
   // to be present in the table that the generated query runs on.
   def build(selects: Map[String, String],
-            from: String,
+            table: String,
             wheres: scala.collection.Seq[String],
             fillIfAbsent: Option[Map[String, String]] = None): String = {
 
@@ -57,6 +62,42 @@ object QueryUtils {
 
     s"""SELECT
        |  ${finalSelects.mkString(",\n  ")}
-       |FROM $from $whereClause""".stripMargin
+       |FROM $table $whereClause""".stripMargin
+  }
+
+  case class SourceSqlBundle(setups: Seq[String], scans: Seq[String], tables: Set[String]) {
+
+    def ++(that: SourceSqlBundle): SourceSqlBundle = {
+      SourceSqlBundle(setups ++ that.setups, scans ++ that.scans, tables ++ that.tables)
+    }
+
+    def scanQuery: String = scans.mkString("( ", " )\nUNION\n( ", " )")
+  }
+
+  object SourceSqlBundle {
+    def empty: SourceSqlBundle = SourceSqlBundle(Seq.empty, Seq.empty, Set.empty)
+
+    def merge(bundles: Iterable[SourceSqlBundle]): SourceSqlBundle = {
+      bundles.foldLeft(SourceSqlBundle.empty)(_ ++ _)
+    }
+  }
+
+  def sqlBundle(source: Source, sanitize: Boolean = false): SourceSqlBundle = {
+
+    val query = source.query
+
+    val selects = query.selects.toScala
+    val from = if (sanitize) source.table.sanitize else source.table
+    val wheres = query.wheres.toScala
+
+    val timeColumn =
+      Option(query.timeColumn).map(Constants.TimeColumn -> _)
+
+    val scan = build(selects, from, wheres, Some(timeColumn.toMap))
+    val setups = query.setups.toScala
+
+    // TODO support mutations
+
+    SourceSqlBundle(setups, Seq(scan), Set(from))
   }
 }

@@ -57,9 +57,11 @@ def JoinPart(
         JoinPart specifies how the left side of a join, or the query in online setting, would join with the right side
         components like GroupBys.
     """
+
     assert isinstance(
         group_by, api.GroupBy
     ), f"Expecting GroupBy. But found {type(group_by).__name__}"
+
     # used for reset for next run
     import_copy = __builtins__["__import__"]
     # get group_by's module info from garbage collector
