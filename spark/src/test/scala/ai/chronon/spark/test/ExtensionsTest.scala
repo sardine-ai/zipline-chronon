@@ -3,7 +3,8 @@ package ai.chronon.spark.test
 import ai.chronon.api.Builders
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.TestUtils.compareDfSchemas
-import ai.chronon.spark.{Comparison, PartitionRange, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.{Comparison, SparkSessionBuilder, TableUtils}
+import ai.chronon.online.PartitionRange
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SparkSession}
 import org.junit.Assert.assertEquals
