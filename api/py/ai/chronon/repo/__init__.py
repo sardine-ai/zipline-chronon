@@ -20,7 +20,7 @@ STAGING_QUERY_FOLDER_NAME = "staging_queries"
 MODEL_FOLDER_NAME = "models"
 # TODO - make team part of thrift API?
 TEAMS_FILE_PATH = "teams.json"
-
+OUTPUT_ROOT = "production"
 
 # This is set in the main function -
 # from command line or from env variable during invocation

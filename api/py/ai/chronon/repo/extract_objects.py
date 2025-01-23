@@ -22,7 +22,7 @@ from ai.chronon.logger import get_logger
 from ai.chronon.repo import FOLDER_NAME_TO_CLASS
 
 
-def from_folder(root_path: str, full_path: str, cls: type, log_level=logging.INFO):
+def from_folder(full_path: str, cls: type, log_level=logging.INFO):
     """
     Recursively consumes a folder, and constructs a map
     Creates a map of object qualifier to
@@ -34,11 +34,35 @@ def from_folder(root_path: str, full_path: str, cls: type, log_level=logging.INF
     result = {}
     for f in python_files:
         try:
-            result.update(from_file(root_path, f, cls, log_level))
+            result.update(from_file(f, cls, log_level))
         except Exception as e:
             logging.error(f"Failed to extract: {f}")
             logging.exception(e)
     return result
+
+
+def from_folderV2(full_path: str, target_file: str, cls: type):
+    """
+    Recursively consumes a folder, and constructs a map of
+    object qualifier to StagingQuery, GroupBy, or Join
+    """
+    if full_path.endswith("/"):
+        full_path = full_path[:-1]
+
+    python_files = glob.glob(os.path.join(full_path, "**/*.py"), recursive=True)
+    results = {}
+    errors = {}
+    target_file_error = None
+    for f in python_files:
+        try:
+            results_dict = from_file(f, cls, log_level=logging.NOTSET)
+            for k, v in results_dict.items():
+                results[k] = (v, f)
+        except Exception as e:
+            if f == target_file:
+                target_file_error = e
+            errors[f] = e
+    return results, errors, target_file_error
 
 
 def import_module_set_name(module, cls):
@@ -56,7 +80,7 @@ def import_module_set_name(module, cls):
     return module
 
 
-def from_file(root_path: str, file_path: str, cls: type, log_level=logging.INFO):
+def from_file(file_path: str, cls: type, log_level=logging.INFO):
 
     logger = get_logger(log_level)
     logger.debug("Loading objects of type {cls} from {file_path}".format(**locals()))
