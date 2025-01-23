@@ -3,11 +3,13 @@ package ai.chronon.hub;
 import ai.chronon.api.Constants;
 import ai.chronon.hub.handlers.*;
 import ai.chronon.hub.store.MonitoringModelStore;
+import ai.chronon.observability.TileKey;
 import ai.chronon.online.Api;
 import ai.chronon.online.KVStore;
 import ai.chronon.online.stats.DriftStore;
 import ai.chronon.service.ApiProvider;
 import ai.chronon.service.ConfigStore;
+import ai.chronon.service.RouteHandlerWrapper;
 import ai.chronon.spark.utils.InMemoryKvStore;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
@@ -60,6 +62,7 @@ public class HubVerticle extends AbstractVerticle {
         router.get("/api/v1/join/:name").handler(new JoinsHandler(store).getHandler());
         router.get("/api/v1/joins").handler(new JoinsHandler(store).listHandler());
         router.get("/api/v1/search").handler(new SearchHandler(store));
+        router.get("/api/v1/:name/job/type/:type").handler(RouteHandlerWrapper.createHandler(JobTracker::handle, JobTrackerRequest.class));
 
         // hacked up in mem kv store bulkPut
         KVStore inMemoryKVStore = InMemoryKvStore.build("hub", () -> null);
