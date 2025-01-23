@@ -24,6 +24,7 @@ import importlib
 import json
 import logging
 from typing import List, Dict, Tuple
+from types import MethodType
 
 logging.basicConfig(level=logging.INFO)
 
@@ -69,7 +70,13 @@ def JoinPart(
 
     group_by_module_name = None
     for ref in gc.get_referrers(group_by):
-        if "__name__" in ref and ref["__name__"].startswith("group_bys"):
+        if (
+            isinstance(
+                ref, dict
+            )  # Attaching methods to GroupBy adds references in GC, need to filter out
+            and "__name__" in ref
+            and ref["__name__"].startswith("group_bys")
+        ):
             group_by_module_name = ref["__name__"]
             break
 
@@ -643,7 +650,7 @@ def Join(
         historicalBackfill=historical_backfill,
     )
 
-    return api.Join(
+    join = api.Join(
         left=updated_left,
         joinParts=right_parts,
         metaData=metadata,
@@ -654,3 +661,13 @@ def Join(
         labelParts=label_part,
         derivations=derivations,
     )
+
+    # Import locally to avoid circular dependency issue
+    from ai.chronon.repo.runner import backfill, deploy, info
+
+    # Attach functions directly to group_by
+    join.backfill = MethodType(backfill, join)
+    join.upload = MethodType(deploy, join)
+    join.info = MethodType(info, join)
+
+    return join

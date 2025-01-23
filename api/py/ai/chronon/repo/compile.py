@@ -98,16 +98,12 @@ def extract_and_convert(
         full_input_path
     ), f"Input Path: {full_input_path} doesn't exist"
     if os.path.isdir(full_input_path):
-        results = eo.from_folder(
-            chronon_root_path, full_input_path, obj_class, log_level=log_level
-        )
+        results = eo.from_folder(full_input_path, obj_class, log_level=log_level)
     elif os.path.isfile(full_input_path):
         assert full_input_path.endswith(
             ".py"
         ), f"Input Path: {input_path} isn't a python file"
-        results = eo.from_file(
-            chronon_root_path, full_input_path, obj_class, log_level=log_level
-        )
+        results = eo.from_file(full_input_path, obj_class, log_level=log_level)
     else:
         raise Exception(f"Input Path: {full_input_path}, isn't a file or a folder")
     validator = ChrononRepoValidator(

@@ -22,6 +22,8 @@ import logging
 import inspect
 import json
 from typing import List, Optional, Union, Dict, Callable, Tuple
+from types import MethodType
+
 
 OperationType = int  # type(zthrift.Operation.FIRST)
 
@@ -600,4 +602,13 @@ def GroupBy(
         derivations=derivations,
     )
     validate_group_by(group_by)
+
+    # Import locally to avoid circular dependency issue
+    from ai.chronon.repo.runner import backfill, deploy, info
+
+    # Attach functions directly to group_by
+    group_by.backfill = MethodType(backfill, group_by)
+    group_by.deploy = MethodType(deploy, group_by)
+    group_by.info = MethodType(info, group_by)
+
     return group_by
