@@ -19,6 +19,8 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataPointer
+import ai.chronon.api.Extensions.JoinPartOps
+import ai.chronon.api.JoinPart
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
@@ -26,6 +28,7 @@ import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.online.TimeRange
 import org.apache.avro.Schema
+import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.DataFrameReader
 import org.apache.spark.sql.DataFrameWriter
@@ -35,9 +38,6 @@ import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.Logger
-import ai.chronon.api.Extensions.JoinPartOps
-import ai.chronon.api.JoinPart
-import org.apache.spark.sql
 import org.slf4j.LoggerFactory
 
 import java.util

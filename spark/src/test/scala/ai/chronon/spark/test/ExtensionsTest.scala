@@ -1,12 +1,15 @@
 package ai.chronon.spark.test
 
 import ai.chronon.api.Builders
-import ai.chronon.spark.Extensions._
-import ai.chronon.spark.test.TestUtils.compareDfSchemas
-import ai.chronon.spark.{Comparison, SparkSessionBuilder, TableUtils}
 import ai.chronon.online.PartitionRange
+import ai.chronon.spark.Comparison
+import ai.chronon.spark.Extensions._
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.test.TestUtils.compareDfSchemas
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Row, SparkSession}
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -61,6 +64,7 @@ class ExtensionsTest {
       (10, "2024-01-09"),
     ).toDF("key", "ds")
 
+    implicit val ps = tableUtils.partitionSpec
     val prunedDf = df.prunePartition(PartitionRange("2024-01-05", "2024-01-07"))
 
     val expectedDf = Seq(
