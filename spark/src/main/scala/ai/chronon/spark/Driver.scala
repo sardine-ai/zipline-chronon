@@ -86,7 +86,7 @@ object Driver {
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
     ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
 
-  trait AddGcpSubCommandArgs {
+  trait SharedSubCommandArgs {
     this: ScallopConf =>
     val isGcp: ScallopOption[Boolean] =
       opt[Boolean](required = false, default = Some(false), descr = "Whether to use GCP")
@@ -94,9 +94,12 @@ object Driver {
       opt[String](required = false, descr = "GCP project id")
     val gcpBigtableInstanceId: ScallopOption[String] =
       opt[String](required = false, descr = "GCP BigTable instance id")
+
+    val confType: ScallopOption[String] =
+      opt[String](required = false, descr = "Type of the conf to run. ex: join, group-by, etc")
   }
 
-  trait OfflineSubcommand extends AddGcpSubCommandArgs {
+  trait OfflineSubcommand extends SharedSubCommandArgs {
     this: ScallopConf =>
     val confPath: ScallopOption[String] = opt[String](required = true, descr = "Path to conf")
 
@@ -584,7 +587,7 @@ object Driver {
   }
 
   // common arguments to all online commands
-  trait OnlineSubcommand extends AddGcpSubCommandArgs { s: ScallopConf =>
+  trait OnlineSubcommand extends SharedSubCommandArgs { s: ScallopConf =>
     // this is `-Z` and not `-D` because sbt-pack plugin uses that for JAVA_OPTS
     val propsInner: Map[String, String] = props[String]('Z')
     val onlineJar: ScallopOption[String] =
@@ -615,7 +618,7 @@ object Driver {
     }
 
     def metaDataStore =
-      new MetadataStore(impl(serializableProps).genKvStore, MetadataDataset, timeoutMillis = 10000)
+      new MetadataStore(api.genKvStore, MetadataDataset, timeoutMillis = 10000)
 
     def impl(props: Map[String, String]): Api = {
       val urls = Array(new File(onlineJar()).toURI.toURL)
@@ -748,7 +751,7 @@ object Driver {
 
     def run(args: Args): Unit = {
       val acceptedEndPoints = List(MetadataEndPoint.ConfByKeyEndPointName, MetadataEndPoint.NameByTeamEndPointName)
-      val dirWalker = new MetadataDirWalker(args.confPath(), acceptedEndPoints)
+      val dirWalker = new MetadataDirWalker(args.confPath(), acceptedEndPoints, maybeConfType = args.confType.toOption)
       val kvMap: Map[String, Map[String, List[String]]] = dirWalker.run
 
       // trigger creates of the datasets before we proceed with writes

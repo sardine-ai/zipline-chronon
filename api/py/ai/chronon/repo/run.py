@@ -64,8 +64,7 @@ MODES_USING_EMBEDDED = ["metadata-upload", "fetch", "local-streaming"]
 
 # Constants for supporting multiple spark versions.
 SUPPORTED_SPARK = ["2.4.0", "3.1.1", "3.2.1", "3.5.1"]
-SCALA_VERSION_FOR_SPARK = {"2.4.0": "2.11",
-                           "3.1.1": "2.12", "3.2.1": "2.13", "3.5.1": "2.12"}
+SCALA_VERSION_FOR_SPARK = {"2.4.0": "2.11", "3.1.1": "2.12", "3.2.1": "2.13", "3.5.1": "2.12"}
 
 MODE_ARGS = {
     "backfill": OFFLINE_ARGS,
@@ -407,9 +406,11 @@ class Runner:
         self.sub_help = args["sub_help"]
         self.mode = args["mode"]
         self.online_jar = args["online_jar"]
+        self.dataproc = args["dataproc"]
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
+
         # fetch online jar if necessary
-        if (self.mode in ONLINE_MODES) and (not args["sub_help"]) and not valid_jar:
+        if (self.mode in ONLINE_MODES) and (not args["sub_help"] and not self.dataproc) and not valid_jar:
             print("Downloading online_jar")
             self.online_jar = check_output("{}".format(args["online_jar_fetch"])).decode(
                 "utf-8"
@@ -434,8 +435,7 @@ class Runner:
                     args["mode"] in possible_modes), ("Invalid mode:{} for conf:{} of type:{}, please choose from {}"
                                                       .format(args["mode"], self.conf, self.conf_type, possible_modes
                                                               ))
-        else:
-            self.conf_type = args["conf_type"]
+
         self.ds = args["end_ds"] if "end_ds" in args and args["end_ds"] else args["ds"]
         self.start_ds = (
             args["start_ds"] if "start_ds" in args and args["start_ds"] else None
@@ -459,7 +459,6 @@ class Runner:
         else:
             self.spark_submit = args["spark_submit_path"]
         self.list_apps_cmd = args["list_apps"]
-        self.dataproc = args["dataproc"]
 
     def run(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -470,7 +469,7 @@ class Runner:
                         script=self.render_info, conf=self.conf, ds=self.ds, repo=self.repo
                     )
                 )
-            elif self.sub_help or (self.mode not in SPARK_MODES):
+            elif (self.sub_help or (self.mode not in SPARK_MODES)) and not self.dataproc:
                 command_list.append(
                     "java -cp {jar} ai.chronon.spark.Driver {subcommand} {args}".format(
                         jar=self.jar_path,
@@ -660,6 +659,8 @@ class Runner:
             online_jar=self.online_jar,
             online_class=self.online_class,
         )
+        base_args = base_args + f" --conf-type={self.conf_type} " if self.conf_type else base_args
+
         override_start_partition_arg = (
             " --start-partition-override=" + start_ds if start_ds else ""
         )
@@ -867,7 +868,7 @@ def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, paralle
     set_runtime_env(ctx.params)
     set_defaults(ctx)
     jar_type = "embedded" if mode in MODES_USING_EMBEDDED else "uber"
-    extra_args = (" " + online_args) if mode in ONLINE_MODES else ""
+    extra_args = (" " + online_args) if mode in ONLINE_MODES and online_args else ""
     ctx.params["args"] = " ".join(unknown_args) + extra_args
     jar_path = (
         chronon_jar
