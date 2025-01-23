@@ -74,7 +74,7 @@ class Join(joinConf: api.Join,
            selectedJoinParts: Option[List[String]] = None)
 // we copy the joinConfCloned to prevent modification of shared joinConf's in unit tests
     extends JoinBase(joinConf.deepCopy(), endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
-  
+
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
     structType.foldLeft(df) {

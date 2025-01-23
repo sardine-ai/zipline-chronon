@@ -18,12 +18,7 @@ package ai.chronon.spark.test
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-<<<<<<< HEAD
 import ai.chronon.api.ScalaJavaConversions._
-=======
-import ai.chronon.api.Constants.ChrononMetadataKey
-import ai.chronon.api.Extensions.MetadataOps
->>>>>>> 787e9fce (Replace multiple calls to `withColumn` with single `select` to simplify query plans)
 import ai.chronon.api._
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
@@ -32,14 +27,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
-<<<<<<< HEAD
-=======
 import org.apache.spark.sql.types.{StructType => SparkStructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-
-import scala.collection.JavaConverters._
-import scala.util.ScalaJavaConversions.JListOps
->>>>>>> 787e9fce (Replace multiple calls to `withColumn` with single `select` to simplify query plans)
 
 object TestUtils {
   def createViewsGroupBy(namespace: String,
