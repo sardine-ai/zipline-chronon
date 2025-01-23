@@ -96,7 +96,8 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         // we can explore split points if we need custom tablet partitioning. For now though, we leave this to BT
         val createTableRequest = CreateTableRequest.of(dataset).addFamily(ColumnFamilyString, DefaultGcRules)
         val table = adminClient.createTable(createTableRequest)
-
+        // TODO: this actually submits an async task. thus, the submission can succeed but the task can fail.
+        //  doesn't return a future but maybe we can poll
         logger.info(s"Created table: $table")
         metricsContext.increment("create.successes")
 

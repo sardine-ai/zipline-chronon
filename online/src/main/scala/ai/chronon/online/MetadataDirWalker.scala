@@ -15,7 +15,12 @@ import java.nio.file.Paths
 import scala.reflect.ClassTag
 import scala.util.Try
 
-class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
+class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], maybeConfType: Option[String] = None) {
+
+  val JoinKeyword = "joins"
+  val GroupByKeyword = "group_bys"
+  val StagingQueryKeyword = "staging_queries"
+  val ModelKeyword = "models"
 
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private def loadJsonToConf[T <: TBase[_, _]: Manifest: ClassTag](file: String): Option[T] = {
@@ -77,10 +82,14 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
       val optConf =
         try {
           filePath match {
-            case value if value.contains("joins/")           => loadJsonToConf[api.Join](filePath)
-            case value if value.contains("group_bys/")       => loadJsonToConf[api.GroupBy](filePath)
-            case value if value.contains("staging_queries/") => loadJsonToConf[api.StagingQuery](filePath)
-            case value if value.contains("models/")          => loadJsonToConf[api.Model](filePath)
+            case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
+              loadJsonToConf[api.Join](filePath)
+            case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
+              loadJsonToConf[api.GroupBy](filePath)
+            case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
+              loadJsonToConf[api.StagingQuery](filePath)
+            case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
+              loadJsonToConf[api.Model](filePath)
           }
         } catch {
           case e: Throwable =>
@@ -94,22 +103,22 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
             val conf = optConf.get
 
             val kVPair = filePath match {
-              case value if value.contains("joins/") =>
+              case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.Join](endPointName)
                   .extractFn(filePath, conf.asInstanceOf[api.Join])
 
-              case value if value.contains("group_bys/") =>
+              case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.GroupBy](endPointName)
                   .extractFn(filePath, conf.asInstanceOf[api.GroupBy])
 
-              case value if value.contains("staging_queries/") =>
+              case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.StagingQuery](endPointName)
                   .extractFn(filePath, conf.asInstanceOf[api.StagingQuery])
 
-              case value if value.contains("models/") =>
+              case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.Model](endPointName)
                   .extractFn(filePath, conf.asInstanceOf[api.Model])

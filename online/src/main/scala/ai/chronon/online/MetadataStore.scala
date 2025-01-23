@@ -232,7 +232,10 @@ class MetadataStore(kvStore: KVStore, val dataset: String = MetadataDataset, tim
   def create(dataset: String): Unit = {
     try {
       logger.info(s"Creating dataset: $dataset")
+      // TODO: this is actually just an async task. it doesn't block and thus we don't actually
+      //  know if it successfully created the dataset
       kvStore.create(dataset)
+
       logger.info(s"Successfully created dataset: $dataset")
     } catch {
       case e: Exception =>
