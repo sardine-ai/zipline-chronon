@@ -16,7 +16,7 @@ import org.scalatestplus.mockito.MockitoSugar
 
 class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
-"DataprocClient" should "return job id when a job is submitted" in {
+  "DataprocClient" should "return job id when a job is submitted" in {
 
     // Mock dataproc job client.
     val jobId = "mock-job-id"
@@ -52,33 +52,46 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
   }
 
   it should "test flink job locally" ignore {
-    
+
+    val submitter = DataprocSubmitter()
+    submitter.submit(spark.FlinkJob,
+      Map(MainClass -> "ai.chronon.flink.FlinkJob",
+        FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
+        JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
+      List.empty,
+      "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
+      "--groupby-name=e2e-count",
+      "-ZGCP_PROJECT_ID=bigtable-project-id",
+      "-ZGCP_INSTANCE_ID=bigtable-instance-id")
+  }
+
+  it should "test flink kafka ingest job locally" ignore {
+
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(spark.FlinkJob,
-        Map(MainClass -> "ai.chronon.flink.FlinkJob",
-          FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
+        Map(MainClass -> "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
+          FlinkMainJarURI -> "gs://zipline-jars/flink_kafka_ingest-assembly-0.1.0-SNAPSHOT.jar",
           JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
         List.empty,
-        "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
-        "--groupby-name=e2e-count",
-        "-ZGCP_PROJECT_ID=bigtable-project-id",
-        "-ZGCP_INSTANCE_ID=bigtable-instance-id")
+        "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
+        "--kafka-topic=test-beacon-main",
+        "--data-file-name=gs://zl-warehouse/beacon_events/beacon-output.avro",
+      )
     println(submittedJobId)
-    
   }
 
-  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore  {
+  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(
         spark.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
-              JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+          JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         List("gs://zipline-jars/training_set.v1",
-             "gs://zipline-jars/dataproc-submitter-conf.yaml",
-             "gs://zipline-jars/additional-confs.yaml"),
+          "gs://zipline-jars/dataproc-submitter-conf.yaml",
+          "gs://zipline-jars/additional-confs.yaml"),
         "join",
         "--end-date=2024-12-10",
         "--additional-conf-path=additional-confs.yaml",
@@ -107,5 +120,4 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     println(submittedJobId)
     assertEquals(submittedJobId, "mock-job-id")
   }
-
 }
