@@ -35,12 +35,11 @@ case class BigQueryFormat(project: String, override val options: Map[String, Str
       val partitionCol = sparkSession.read
         .format("bigquery")
         .option("project", project)
-        .option("query", partColsSql)
         // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
         // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
         .option("viewsEnabled", true)
         .option("materializationDataset", database)
-        .load()
+        .load(partColsSql)
         .as[String]
         .collect
         .headOption
@@ -62,8 +61,11 @@ case class BigQueryFormat(project: String, override val options: Map[String, Str
       val partitionInfoDf = sparkSession.read
         .format("bigquery")
         .option("project", project)
-        .option("query", partValsSql)
-        .load()
+        // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+        // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+        .option("viewsEnabled", true)
+        .option("materializationDataset", database)
+        .load(partValsSql)
 
       val partitionVals = partitionInfoDf
         .select(
