@@ -76,16 +76,6 @@ class Join(joinConf: api.Join,
     extends JoinBase(joinConf.deepCopy(), endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
 
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
-  private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
-    structType.foldLeft(df) {
-      case (df, field) =>
-        if (df.columns.contains(field.name)) {
-          df
-        } else {
-          df.withColumn(field.name, lit(null).cast(field.dataType))
-        }
-    }
-  }
 
   private def toSparkSchema(fields: Seq[StructField]): sql.types.StructType =
     SparkConversions.fromChrononSchema(StructType("", fields.toArray))
