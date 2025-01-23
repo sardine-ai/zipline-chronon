@@ -109,7 +109,9 @@ val circe = Seq(
 val flink_all = Seq(
   "org.apache.flink" % "flink-metrics-dropwizard",
   "org.apache.flink" % "flink-clients",
-  "org.apache.flink" % "flink-yarn"
+  "org.apache.flink" % "flink-yarn",
+  "org.apache.flink" % "flink-connector-kafka",
+  "org.apache.flink" % "flink-avro",
 ).map(_ % flink_1_17)
 
 val vertx_java = Seq(
@@ -220,6 +222,8 @@ lazy val flink = project
     // mark the flink-streaming scala as provided as otherwise we end up with some extra Flink classes in our jar
     // and errors at runtime like: java.io.InvalidClassException: org.apache.flink.streaming.api.scala.DataStream$$anon$1; local class incompatible
     libraryDependencies += "org.apache.flink" %% "flink-streaming-scala" % flink_1_17 % "provided",
+    libraryDependencies += "org.apache.flink" % "flink-connector-files" % flink_1_17 % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-avro" % spark_3_5,
     assembly / assemblyMergeStrategy := {
       case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
       case "reference.conf"                          => MergeStrategy.concat
@@ -239,11 +243,36 @@ lazy val flink = project
           .startsWith("protobuf")
       }
     },
+    assembly / packageOptions += Package.ManifestAttributes(
+      ("Main-Class", "ai.chronon.flink.FlinkJob")
+    ),
     libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-slf4j-impl")
     )
+  )
+
+// We carve out a separate module for the Flink Kafka ingestion job. This isn't included in the main root module list
+// for now as we use this for testing adhoc using: sbt "project flink_kafka_ingest" assembly
+lazy val flink_kafka_ingest = project
+  .dependsOn(flink)
+  .settings(
+    // Exclude Hadoop & Guava from the assembled JAR
+    // Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
+    // superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
+    // Or: java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument(...)
+    // Or: 'com/google/protobuf/MapField' is not assignable to 'com/google/protobuf/MapFieldReflectionAccessor'
+    assembly / assemblyExcludedJars := {
+      val cp = (assembly / fullClasspath).value
+      cp filter { jar =>
+        jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("guava") || jar.data.getName
+          .startsWith("protobuf")
+      }
+    },
+    assembly / packageOptions += Package.ManifestAttributes(
+      ("Main-Class", "ai.chronon.flink.FlinkKafkaBeaconEventDriver")
+    ),
   )
 
 // GCP requires java 11, can't cross compile higher
@@ -266,6 +295,9 @@ lazy val cloud_gcp = project
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
     libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
     libraryDependencies += "io.grpc" % "grpc-netty-shaded" % "1.62.2",
+    libraryDependencies += "com.google.cloud.hosted.kafka" % "managed-kafka-auth-login-handler" % "1.0.3" excludeAll (
+      ExclusionRule(organization = "io.confluent", name = "kafka-schema-registry-client")
+    ),
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
     dependencyOverrides ++= jackson,
@@ -279,9 +311,12 @@ lazy val cloud_gcp = project
     },
     libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
-    // force a newer version of reload4j to sidestep: https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
+    // force some newer versions of reload4j and kafka-clients to sidestep:
+    // https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
+    // https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHEKAFKA-8528112
     dependencyOverrides ++= Seq(
-      "ch.qos.reload4j" % "reload4j" % "1.2.25"
+      "ch.qos.reload4j" % "reload4j" % "1.2.25",
+      "org.apache.kafka" % "kafka-clients" % "3.8.1"
     )
   )
 
