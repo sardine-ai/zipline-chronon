@@ -367,7 +367,7 @@ object Extensions {
                 .format(fmt)
                 .load(tableOrPath)
 
-            case "hive" | "delta" | "iceberg" => dfr.table(tableOrPath)
+            case "hive" | "delta" | "iceberg" => optionDfr.table(tableOrPath)
 
             case _ =>
               throw new UnsupportedOperationException(s"Unsupported read catalog: $fmtLower")
