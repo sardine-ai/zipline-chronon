@@ -22,15 +22,6 @@ case class BigQueryFormat(project: String, override val options: Map[String, Str
     val database =
       Option(tableIdentifier.getDataset).getOrElse(throw new IllegalArgumentException("database required!"))
 
-    val originalViewsEnabled = sparkSession.conf.get("viewsEnabled", false.toString)
-    val originalMaterializationDataset = sparkSession.conf.get("materializationDataset", "")
-
-    // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
-    // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
-
-    sparkSession.conf.set("viewsEnabled", true)
-    sparkSession.conf.set("materializationDataset", database)
-
     try {
 
       // See: https://cloud.google.com/bigquery/docs/information-schema-columns
@@ -45,6 +36,10 @@ case class BigQueryFormat(project: String, override val options: Map[String, Str
         .format("bigquery")
         .option("project", project)
         .option("query", partColsSql)
+        // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+        // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+        .option("viewsEnabled", true)
+        .option("materializationDataset", database)
         .load()
         .as[String]
         .collect
@@ -86,11 +81,6 @@ case class BigQueryFormat(project: String, override val options: Map[String, Str
         .toList
 
       partitionVals.map((p) => Map(partitionCol -> p))
-
-    } finally {
-
-      sparkSession.conf.set("viewsEnabled", originalViewsEnabled)
-      sparkSession.conf.set("materializationDataset", originalMaterializationDataset)
 
     }
 
