@@ -8,20 +8,17 @@ object CreationUtils {
                      schema: StructType,
                      partitionColumns: Seq[String],
                      tableProperties: Map[String, String],
-                     fileFormat: String)(implicit provider: FormatProvider): String = {
+                     fileFormatString: String,
+                     tableTypeString: String): String = {
 
     val fieldDefinitions = schema
       .filterNot(field => partitionColumns.contains(field.name))
       .map(field => s"`${field.name}` ${field.dataType.catalogString}")
 
-    val writeFormat = provider.writeFormat(tableName)
-
-    val tableTypString = writeFormat.createTableTypeString
-
     val createFragment =
       s"""CREATE TABLE $tableName (
          |    ${fieldDefinitions.mkString(",\n    ")}
-         |) $tableTypString """.stripMargin
+         |) $tableTypeString """.stripMargin
 
     val partitionFragment = if (partitionColumns != null && partitionColumns.nonEmpty) {
 
@@ -44,8 +41,6 @@ object CreationUtils {
     } else {
       ""
     }
-
-    val fileFormatString = writeFormat.fileFormatString(fileFormat)
 
     Seq(createFragment, partitionFragment, fileFormatString, propertiesFragment).mkString("\n")
 

@@ -284,7 +284,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   partitionColumns: Seq[String] = Seq.empty,
                   writeFormatTypeString: String = "",
                   tableProperties: Map[String, String] = null,
-                  fileFormat: String = "PARQUET",
+                  fileFormatString: String = "",
                   autoExpand: Boolean = false): Boolean = {
 
     val doesTableExist = tableReachable(tableName)
@@ -299,7 +299,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     if (!doesTableExist) {
 
-      val creationSql = createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormat)
+      val creationSql =
+        createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormatString, writeFormatTypeString)
 
       try {
 
@@ -347,12 +348,14 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       df
     }
 
+    val writeFormat = tableFormatProvider.writeFormat(tableName)
+
     val isTableCreated = createTable(dfRearranged,
                                      tableName,
                                      partitionColumns,
-                                     tableFormatProvider.writeFormat(tableName).createTableTypeString,
+                                     writeFormat.createTableTypeString,
                                      tableProperties,
-                                     fileFormat,
+                                     writeFormat.fileFormatString(fileFormat),
                                      autoExpand)
 
     val finalizedDf = if (autoExpand && isTableCreated) {
@@ -425,12 +428,14 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                           saveMode: SaveMode = SaveMode.Overwrite,
                           fileFormat: String = "PARQUET"): Unit = {
 
+    val writeFormat = tableFormatProvider.writeFormat(tableName)
+
     createTable(df,
                 tableName,
                 Seq.empty[String],
-                tableFormatProvider.writeFormat(tableName).createTableTypeString,
+                writeFormat.createTableTypeString,
                 tableProperties,
-                fileFormat)
+                writeFormat.fileFormatString(fileFormat))
 
     repartitionAndWrite(df, tableName, saveMode, None)
 
