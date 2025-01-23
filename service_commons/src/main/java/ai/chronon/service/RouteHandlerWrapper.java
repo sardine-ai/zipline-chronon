@@ -155,7 +155,8 @@ public class RouteHandlerWrapper {
 
     private static Object convertValue(String value, Type targetType) {  // Changed parameter to Type
         // Handle Class types
-        if (targetType instanceof Class<?> targetClass) {
+        if (targetType instanceof Class) {
+            Class<?> targetClass = (Class<?>) targetType;
 
             if (targetClass == String.class) {
                 return value;
@@ -188,7 +189,8 @@ public class RouteHandlerWrapper {
         }
 
         // Handle parameterized types (List, Map)
-        if (targetType instanceof ParameterizedType parameterizedType) {
+        if (targetType instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) targetType;
             Class<?> rawType = (Class<?>) parameterizedType.getRawType();
 
             // Handle List types
