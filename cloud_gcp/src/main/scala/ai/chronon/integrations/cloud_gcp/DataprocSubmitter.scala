@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.JobAuth
+import ai.chronon.spark.Driver
 import ai.chronon.spark.JobSubmitter
 import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
 import ai.chronon.spark.JobSubmitterConstants.JarURI
@@ -107,6 +108,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     val sparkJob = SparkJob
       .newBuilder()
       .setMainClass(sparkArgs.mainClass)
+      .setMainJarFileUri(sparkArgs.primaryResource)
       .addAllJarFileUris(stringToSeq(sparkArgs.jars).toList.asJava)
       .addAllFileUris(stringToSeq(sparkArgs.files).toList.asJava)
       .addAllArgs(sparkArgs.childArgs.asJava)
@@ -237,7 +239,17 @@ object DataprocSubmitter {
       s"--gcp-bigtable-instance-id=$bigtableInstanceId"
     )
 
-    val finalArgs = Array.concat(userArgs, gcpArgsToPass)
+    // todo(tchow): Move to run.py
+    val requiredArgs =
+      List("--class",
+           Driver.getClass.getName,
+           "--jars",
+           chrononJarUri,
+           "--files",
+           gcsFiles.mkString(","),
+           chrononJarUri)
+
+    val finalArgs = requiredArgs ++ userArgs ++ gcpArgsToPass
 
     println(finalArgs.mkString("Array(", ", ", ")"))
 

@@ -88,7 +88,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     println(submittedJobId)
   }
 
-  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
+  it should "Used to iterate locally. Do not enable this in CI/CD!" in {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
@@ -99,16 +99,16 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         List("gs://zipline-jars/training_set.v1",
              "gs://zipline-jars/dataproc-submitter-conf.yaml",
              "gs://zipline-jars/additional-confs.yaml"),
-        "--class",
-        "ai.chronon.spark.Driver",
-        "--jars",
-        "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
         "--files",
         "gs://zipline-jars/training_set.v1,gs://zipline-jars/dataproc-submitter-conf.yaml,gs://zipline-jars/additional-confs.yaml",
-        "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
+        "--class",
+        "ai.chronon.spark.Driver",
+        "gs://zipline-artifacts-canary/jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
         "join",
-        "--additional-conf-path=additional-confs.yaml",
-        "--conf-path=training_set.v1"
+        "--additional-conf-path",
+        "additional-confs.yaml",
+        "--conf-path",
+        "training_set.v1"
       )
     println(submittedJobId)
   }
