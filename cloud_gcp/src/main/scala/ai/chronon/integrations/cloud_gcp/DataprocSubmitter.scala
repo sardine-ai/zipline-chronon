@@ -97,7 +97,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
   private def stringToSeq(commaDelimited: String) = {
     // Copied from: https://github.com/apache/spark/pull/49062/files#diff-2ecc6aef4b0c50bbf146e6c0b3b8b2249375f06a83e2a224c7718cfc850c3af7L2802-L2804
     // which in later versions is available at: https://github.com/apache/spark/blob/c662441de3a4fc84e938e9211c77b5143b095842/common/utils/src/main/scala/org/apache/spark/util/SparkStringUtils.scala#L21-L22
-    commaDelimited.split(",").map(_.trim()).filter(_.nonEmpty)
+    Option(commaDelimited).getOrElse("").split(",").map(_.trim()).filter(_.nonEmpty)
   }
 
   private def buildSparkJob(args: String*): Job.Builder = {

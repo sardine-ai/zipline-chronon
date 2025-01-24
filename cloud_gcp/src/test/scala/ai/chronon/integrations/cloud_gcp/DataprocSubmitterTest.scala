@@ -99,8 +99,14 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         List("gs://zipline-jars/training_set.v1",
              "gs://zipline-jars/dataproc-submitter-conf.yaml",
              "gs://zipline-jars/additional-confs.yaml"),
+        "--class",
+        "ai.chronon.spark.Driver",
+        "--jars",
+        "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
+        "--files",
+        "gs://zipline-jars/training_set.v1,gs://zipline-jars/dataproc-submitter-conf.yaml,gs://zipline-jars/additional-confs.yaml",
+        "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
         "join",
-        "--end-date=2024-12-10",
         "--additional-conf-path=additional-confs.yaml",
         "--conf-path=training_set.v1"
       )
