@@ -44,8 +44,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   it should "verify dynamic classloading of GCP providers" in {
     assertTrue(tableUtils.tableReadFormat("data.sample_native") match {
-      case BigQueryFormat(_, _) => true
-      case _            => false
+      case BigQueryFormat(_, _, _) => true
+      case _                       => false
     })
   }
 

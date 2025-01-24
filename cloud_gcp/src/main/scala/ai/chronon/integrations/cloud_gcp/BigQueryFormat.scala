@@ -1,19 +1,30 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark.format.Format
+import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.date_format
 import org.apache.spark.sql.functions.to_date
 
-case class BigQueryFormat(project: String, override val options: Map[String, String]) extends Format {
+case class BigQueryFormat(project: String, bqClient: BigQuery, override val options: Map[String, String])
+    extends Format {
 
   override def name: String = "bigquery"
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
+
+  override def createTable(df: DataFrame,
+                           tableName: String,
+                           partitionColumns: Seq[String],
+                           tableProperties: Map[String, String],
+                           fileFormat: String): (String => Unit) => Unit = {
+    throw new UnsupportedOperationException("createTable not yet supported for BigQuery")
+  }
 
   override def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]] = {
     import sparkSession.implicits._
@@ -88,8 +99,10 @@ case class BigQueryFormat(project: String, override val options: Map[String, Str
 
   }
 
-  def createTableTypeString: String = "BIGQUERY"
-  def fileFormatString(format: String): String = ""
+  def createTableTypeString: String =
+    throw new UnsupportedOperationException("createTableTypeString not yet supported for BigQuery")
+  def fileFormatString(format: String): String =
+    throw new UnsupportedOperationException("fileFormatString not yet supported for BigQuery")
 
   override def supportSubPartitionsFilter: Boolean = true
 }
