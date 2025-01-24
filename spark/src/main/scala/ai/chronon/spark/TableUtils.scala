@@ -27,7 +27,6 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.CreationUtils.createTableSql
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
@@ -282,29 +281,22 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def createTable(df: DataFrame,
                   tableName: String,
                   partitionColumns: Seq[String] = Seq.empty,
-                  writeFormatTypeString: String = "",
                   tableProperties: Map[String, String] = null,
-                  fileFormatString: String = "",
-                  autoExpand: Boolean = false): Boolean = {
+                  fileFormat: String,
+                  autoExpand: Boolean = false): Unit = {
 
     val doesTableExist = tableReachable(tableName)
 
-    // create table sql doesn't work for bigquery here. instead of creating the table explicitly, we can rely on the
-    // bq connector to indirectly create the table and eventually write the data
-    if (writeFormatTypeString.toUpperCase == "BIGQUERY") {
-      logger.info(s"Skipping table creation in BigQuery for $tableName. tableExists=$doesTableExist")
+    val writeFormat = tableFormatProvider.writeFormat(tableName)
 
-      return doesTableExist
-    }
+    val createTableOperation =
+      writeFormat.createTable(df, tableName, partitionColumns, tableProperties, fileFormat)
 
     if (!doesTableExist) {
 
-      val creationSql =
-        createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormatString, writeFormatTypeString)
-
       try {
 
-        sql(creationSql)
+        createTableOperation(sql)
 
       } catch {
 
@@ -326,8 +318,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     if (autoExpand) {
       expandTable(tableName, df.schema)
     }
-
-    true
   }
 
   // Needs provider
@@ -348,17 +338,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       df
     }
 
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
+    createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat, autoExpand)
 
-    val isTableCreated = createTable(dfRearranged,
-                                     tableName,
-                                     partitionColumns,
-                                     writeFormat.createTableTypeString,
-                                     tableProperties,
-                                     writeFormat.fileFormatString(fileFormat),
-                                     autoExpand)
-
-    val finalizedDf = if (autoExpand && isTableCreated) {
+    val finalizedDf = if (autoExpand) {
       // reselect the columns so that a deprecated columns will be selected as NULL before write
       val tableSchema = getSchemaFromTable(tableName)
       val finalColumns = tableSchema.fieldNames.map(fieldName => {
@@ -428,14 +410,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                           saveMode: SaveMode = SaveMode.Overwrite,
                           fileFormat: String = "PARQUET"): Unit = {
 
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
-
-    createTable(df,
-                tableName,
-                Seq.empty[String],
-                writeFormat.createTableTypeString,
-                tableProperties,
-                writeFormat.fileFormatString(fileFormat))
+    createTable(df, tableName, Seq.empty[String], tableProperties, fileFormat)
 
     repartitionAndWrite(df, tableName, saveMode, None)
 
