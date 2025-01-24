@@ -16,23 +16,16 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.api.StructField
 import ai.chronon.api._
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
-import ai.chronon.spark.IncompatibleSchemaException
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark._
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
-import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql._
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -482,7 +475,7 @@ class TableUtilsTest extends AnyFlatSpec {
           Row(1L, 2, "3")
         )
       )
-      assertTrue(tableUtils.createTable(df, tableName))
+      tableUtils.createTable(df, tableName, fileFormat = "PARQUET")
       assertTrue(spark.catalog.tableExists(tableName))
     } finally {
       spark.sql(s"DROP TABLE IF EXISTS $tableName")
@@ -508,32 +501,8 @@ class TableUtilsTest extends AnyFlatSpec {
           Row(1L, 2, "3")
         )
       )
-      assertTrue(tableUtils.createTable(df, tableName))
+      tableUtils.createTable(df, tableName, fileFormat = "PARQUET")
       assertTrue(spark.catalog.tableExists(tableName))
-    } finally {
-      spark.sql(s"DROP TABLE IF EXISTS $tableName")
-    }
-  }
-
-  it should "create table big query" in {
-    val tableName = "db.test_create_table_bigquery"
-    spark.sql("CREATE DATABASE IF NOT EXISTS db")
-    try {
-      val columns = Array(
-        StructField("long_field", LongType),
-        StructField("int_field", IntType),
-        StructField("string_field", StringType)
-      )
-      val df = makeDf(
-        spark,
-        StructType(
-          tableName,
-          columns
-        ),
-        List(Row(1L, 2, "3"))
-      )
-      assertFalse(tableUtils.createTable(df, tableName, writeFormatTypeString = "BIGQUERY"))
-      assertFalse(spark.catalog.tableExists(tableName))
     } finally {
       spark.sql(s"DROP TABLE IF EXISTS $tableName")
     }

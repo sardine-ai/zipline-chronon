@@ -55,7 +55,7 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
       "materializationDataset" -> tableId.getDataset
     ) ++ partitionColumnOption
 
-    BigQueryFormat(tableId.getProject, sparkOptions)
+    BigQueryFormat(tableId.getProject, bigQueryClient, sparkOptions)
   }
 
   private[cloud_gcp] def getFormat(table: Table): Format =
@@ -76,7 +76,7 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         GCS(uri, formatOptions.getType)
 
       case _: StandardTableDefinition =>
-        BigQueryFormat(table.getTableId.getProject, Map.empty)
+        BigQueryFormat(table.getTableId.getProject, bigQueryClient, Map.empty)
 
       case _ => throw new IllegalStateException(s"Cannot support table of type: ${table.getFriendlyName}")
     }
@@ -91,7 +91,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     scala
       .Option(table)
       .map(getFormat)
-      .getOrElse(scala.Option(btTableIdentifier.getProject).map(BigQueryFormat(_, Map.empty)).getOrElse(Hive))
+      .getOrElse(
+        scala.Option(btTableIdentifier.getProject).map(BigQueryFormat(_, bigQueryClient, Map.empty)).getOrElse(Hive))
 
   }
 }
