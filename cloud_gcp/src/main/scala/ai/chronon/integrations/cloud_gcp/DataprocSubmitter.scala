@@ -1,6 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.JobAuth
 import ai.chronon.spark.Driver
+import ai.chronon.spark.JobAuth
 import ai.chronon.spark.JobSubmitter
 import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
 import ai.chronon.spark.JobSubmitterConstants.JarURI
