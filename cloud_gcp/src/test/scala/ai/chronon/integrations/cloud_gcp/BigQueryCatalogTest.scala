@@ -6,7 +6,6 @@ import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystemConfiguration
 import com.google.cloud.hadoop.fs.gcs.HadoopConfigurationProperty
-import com.google.cloud.hadoop.gcsio.GoogleCloudStorageFileSystem
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
