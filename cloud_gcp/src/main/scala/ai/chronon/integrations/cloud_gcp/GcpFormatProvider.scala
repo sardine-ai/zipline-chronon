@@ -4,15 +4,8 @@ import ai.chronon.spark.TableUtils
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import ai.chronon.spark.format.Hive
-import com.google.cloud.bigquery.BigQuery
-import com.google.cloud.bigquery.BigQueryOptions
-import com.google.cloud.bigquery.ExternalTableDefinition
-import com.google.cloud.bigquery.FormatOptions
-import com.google.cloud.bigquery.StandardTableDefinition
-import com.google.cloud.bigquery.Table
-import com.google.cloud.bigquery.TableDefinition
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
 import org.apache.spark.sql.SparkSession
 
 import scala.jdk.CollectionConverters._
@@ -65,7 +58,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         val formatOptions = definition.getFormatOptions
           .asInstanceOf[FormatOptions]
         val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
-        val uri = Option(externalTable.getHivePartitioningOptions)
+        val uri = scala
+          .Option(externalTable.getHivePartitioningOptions)
           .map(_.getSourceUriPrefix)
           .getOrElse {
             val uris = externalTable.getSourceUris.asScala

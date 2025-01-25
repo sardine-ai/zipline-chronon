@@ -285,16 +285,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   fileFormat: String,
                   autoExpand: Boolean = false): Unit = {
 
-    val doesTableExist = tableReachable(tableName)
-
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
-
-    val createTableOperation =
-      writeFormat.createTable(df, tableName, partitionColumns, tableProperties, fileFormat)
-
-    if (!doesTableExist) {
+    if (!tableReachable(tableName)) {
 
       try {
+
+        val writeFormat = tableFormatProvider.writeFormat(tableName)
+        val createTableOperation =
+          writeFormat.createTable(df, tableName, partitionColumns, tableProperties, fileFormat)
 
         createTableOperation(sql)
 
