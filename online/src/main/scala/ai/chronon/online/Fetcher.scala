@@ -47,6 +47,9 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import scala.collection.{Seq, mutable}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Random, Success, Try}
 
 object Fetcher {
   case class Request(name: String,
@@ -95,9 +98,15 @@ class Fetcher(val kvStore: KVStore,
               val externalSourceRegistry: ExternalSourceRegistry = null,
               callerName: String = null,
               flagStore: FlagStore = null,
-              disableErrorThrows: Boolean = false)
-    extends FetcherBase(kvStore, metaDataSet, timeoutMillis, debug, flagStore, disableErrorThrows) {
-
+              disableErrorThrows: Boolean = false,
+              executionContextOverride: ExecutionContext = null)
+    extends FetcherBase(kvStore,
+                        metaDataSet,
+                        timeoutMillis,
+                        debug,
+                        flagStore,
+                        disableErrorThrows,
+                        executionContextOverride) {
   private def reportCallerNameFetcherVersion(): Unit = {
     val message = s"CallerName: ${Option(callerName).getOrElse("N/A")}, FetcherVersion: ${BuildInfo.version}"
     val ctx = Metrics.Context(Environment.Fetcher)
