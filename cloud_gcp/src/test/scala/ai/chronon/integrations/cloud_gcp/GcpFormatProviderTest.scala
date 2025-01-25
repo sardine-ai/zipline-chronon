@@ -1,7 +1,7 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark.SparkSessionBuilder
-import com.google.cloud.bigquery._
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
 import org.apache.spark.sql.SparkSession
 import org.mockito.Mockito.when
 import org.scalatest.flatspec.AnyFlatSpec
