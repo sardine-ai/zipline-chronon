@@ -1,5 +1,6 @@
 package ai.chronon.spark.format
 
+import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import ai.chronon.spark.format.CreationUtils.createTableSql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
@@ -70,6 +71,20 @@ trait Format {
     }
 
     inner(df, tableName, partitionColumns, tableProperties, fileFormat)
+
+  }
+
+  def alterTableProperties(tableName: String, tableProperties: Map[String, String]): (String => Unit) => Unit = {
+
+    def inner(tableName: String, tableProperties: Map[String, String])(sqlEvaluator: String => Unit) = {
+      val alterSql =
+        alterTablePropertiesSql(tableName, tableProperties)
+
+      sqlEvaluator(alterSql)
+
+    }
+
+    inner(tableName, tableProperties)
 
   }
 
