@@ -132,7 +132,12 @@ object PivotUtils {
     def doubleIterator(isSetFunc: TileDrift => Boolean, extract: TileDrift => Double): Iterator[JDouble] = {
       drifts.iterator.map { drift =>
         if (isSetFunc(drift)) {
-          JDouble.valueOf(extract(drift))
+          val value = extract(drift)
+          if (value.isInfinite || value.isNaN) {
+            Constants.magicNullDouble
+          } else {
+            JDouble.valueOf(value)
+          }
         } else {
           Constants.magicNullDouble
         }
