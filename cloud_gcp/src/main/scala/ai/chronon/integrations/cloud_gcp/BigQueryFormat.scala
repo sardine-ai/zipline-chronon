@@ -18,6 +18,11 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     extends Format {
   override def name: String = "bigquery"
 
+  override def alterTableProperties(tableName: String,
+                                    tableProperties: Map[String, String]): (String => Unit) => Unit = {
+    throw new NotImplementedError("alterTableProperties not yet supported for BigQuery")
+  }
+
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)

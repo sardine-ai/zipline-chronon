@@ -311,7 +311,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     //  https://app.asana.com/0/1208949807589885/1209111629687568/f
     if (writeFormat.name.toUpperCase != "BIGQUERY") {
       if (tableProperties != null && tableProperties.nonEmpty) {
-        sql(alterTablePropertiesSql(tableName, tableProperties))
+        val alterTblPropsOperation = writeFormat.alterTableProperties(tableName, tableProperties)
+        alterTblPropsOperation(sql)
       }
       if (autoExpand) {
         expandTable(tableName, df.schema)
