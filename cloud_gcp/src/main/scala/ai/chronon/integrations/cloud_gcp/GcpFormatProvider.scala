@@ -1,6 +1,4 @@
 package ai.chronon.integrations.cloud_gcp
-
-import ai.chronon.spark.TableUtils
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import ai.chronon.spark.format.Hive
@@ -36,17 +34,10 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     assert(scala.Option(tableId.getProject).isDefined, s"project required for ${table}")
     assert(scala.Option(tableId.getDataset).isDefined, s"dataset required for ${table}")
 
-    val tu = TableUtils(sparkSession)
-    val partitionColumnOption =
-      if (tu.tableReachable(table)) Map.empty else Map("partitionField" -> tu.partitionColumn)
-
     val sparkOptions: Map[String, String] = Map(
-      // todo(tchow): No longer needed after https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1320
-      "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
-      "writeMethod" -> "indirect", // writeMethod direct does not output partitioned tables. keep as indirect.
-      "materializationProject" -> tableId.getProject,
-      "materializationDataset" -> tableId.getDataset
-    ) ++ partitionColumnOption
+      "writeMethod" -> "direct",
+      "createDisposition" -> JobInfo.CreateDisposition.CREATE_NEVER.name
+    )
 
     BigQueryFormat(tableId.getProject, bigQueryClient, sparkOptions)
   }
