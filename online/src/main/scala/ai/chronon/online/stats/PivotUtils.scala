@@ -1,5 +1,6 @@
 package ai.chronon.online.stats
 
+import ai.chronon.api.Constants
 import ai.chronon.observability.TileDrift
 import ai.chronon.observability.TileDriftSeries
 import ai.chronon.observability.TileSummary
@@ -133,7 +134,7 @@ object PivotUtils {
         if (isSetFunc(drift)) {
           JDouble.valueOf(extract(drift))
         } else {
-          null
+          Constants.magicNullDouble
         }
       }
     }
