@@ -31,6 +31,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Try
 
+case class TestRecord(ds: String, id: String)
+
 class SimpleAddUDF extends UDF {
   def evaluate(value: Int): Int = {
     value + 20
@@ -480,6 +482,21 @@ class TableUtilsTest extends AnyFlatSpec {
     } finally {
       spark.sql(s"DROP TABLE IF EXISTS $tableName")
     }
+  }
+
+  it should "repartitioning an empty dataframe should work" in {
+    import spark.implicits._
+    val tableName = "db.test_empty_table"
+    tableUtils.createDatabase("db")
+
+    tableUtils.insertPartitions(spark.emptyDataset[TestRecord].toDF(), tableName)
+    val res = tableUtils.loadTable(tableName)
+    assertEquals(0, res.count)
+
+    tableUtils.insertPartitions(spark.createDataFrame(List(TestRecord("2025-01-01", "a"))), tableName)
+    val newRes = tableUtils.loadTable(tableName)
+
+    assertEquals(1, newRes.count)
   }
 
   it should "create table" in {
