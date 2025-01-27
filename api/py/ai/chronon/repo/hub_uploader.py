@@ -58,10 +58,10 @@ def _build_local_repo_hashmap(root_dir: str):
 
         if exceptions:
             error_msg = (
-                "The following files had exceptions during upload: \n"
-                + "\n".join(exceptions)
-                + "\n\n Consider deleting the files (safe operation) and checking "
-                + "your thrift version before rerunning your command."
+                    "The following files had exceptions during upload: \n"
+                    + "\n".join(exceptions)
+                    + "\n\n Consider deleting the files (safe operation) and checking "
+                    + "your thrift version before rerunning your command."
             )
             raise RuntimeError(error_msg)
 
@@ -70,6 +70,8 @@ def _build_local_repo_hashmap(root_dir: str):
 
 def compute_and_upload_diffs(root_dir: str, branch: str):
     diffed_entities = _get_diffed_entities(root_dir, branch)
-    print(f"\n\nUploading:\n {"\n".join(diffed_entities.keys())}")
+    entity_keys_str = "\n".join(diffed_entities.keys())
+    log_str = "\n\nUploading:\n{entity_keys}".format(entity_keys=entity_keys_str)
+    print(log_str)
     # TODO make PUT request to ZiplineHub
     return
