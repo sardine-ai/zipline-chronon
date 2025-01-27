@@ -81,6 +81,8 @@ maven_repository = repository(
         "org.apache.flink:flink-clients:1.17.0",
         "org.apache.flink:flink-yarn:1.17.0",
         "org.apache.flink:flink-runtime:1.17.0",
+        "org.apache.flink:flink-connector-kafka:1.17.0",
+        "org.apache.flink:flink-avro:1.17.0",
         "org.apache.flink:flink-runtime:1.17.0:tests",
         "org.apache.flink:flink-test-utils:1.17.0",
 
@@ -98,6 +100,22 @@ maven_repository = repository(
         "io.circe:circe-core_2.12:0.14.9",
         "io.circe:circe-generic_2.12:0.14.9",
         "io.circe:circe-parser_2.12:0.14.9",
+    ],
+    excluded_artifacts = [
+        # Exclude Hadoop from the assembled JAR
+        # Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
+        # superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
+        # Note: Only excluding them from a specific module is getting tricky
+        # so we ended up removing these from our entire repo as they are required across our project
+        "org.apache.hadoop:hadoop-annotations",
+        "org.apache.hadoop:hadoop-auth",
+        "org.apache.hadoop:hadoop-common",
+        "org.apache.hadoop:hadoop-hdfs-client",
+        "org.apache.hadoop:hadoop-hdfs",
+        "org.apache.hadoop:hadoop-mapreduce-client-core",
+        "org.apache.hadoop:hadoop-yarn-api",
+        "org.apache.hadoop:hadoop-yarn-client",
+        "org.apache.hadoop:hadoop-yarn-common",
     ],
     overrides = {
     },
