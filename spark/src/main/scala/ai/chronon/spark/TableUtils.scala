@@ -457,15 +457,23 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                   sortByCols: Seq[String] = Seq.empty): Unit = {
     wrapWithCache(s"repartition & write to $tableName", df) {
       logger.info("Repartitioning before writing...")
-      repartitionAndWriteInternal(df, tableName, saveMode, stats, sortByCols)
+      val dataPointer = DataPointer.from(tableName, sparkSession)
+      val repartitioned =
+        if (sparkSession.conf.get("spark.chronon.write.repartition", true.toString).toBoolean)
+          repartitionInternal(df, tableName, stats, sortByCols)
+        else df
+      repartitioned.write
+        .mode(saveMode)
+        .save(dataPointer)
+
+      logger.info(s"Finished writing to $tableName")
     }.get
   }
 
-  private def repartitionAndWriteInternal(df: DataFrame,
-                                          tableName: String,
-                                          saveMode: SaveMode,
-                                          stats: Option[DfStats],
-                                          sortByCols: Seq[String]): Unit = {
+  private def repartitionInternal(df: DataFrame,
+                                  tableName: String,
+                                  stats: Option[DfStats],
+                                  sortByCols: Seq[String]): DataFrame = {
 
     // get row count and table partition count statistics
 
@@ -483,7 +491,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     // set to one if tablePartitionCount=0 to avoid division by zero
     val nonZeroTablePartitionCount = if (tablePartitionCount == 0) 1 else tablePartitionCount
-
     logger.info(s"$rowCount rows requested to be written into table $tableName")
     if (rowCount > 0) {
       val columnSizeEstimate = columnSizeEstimator(df.schema)
@@ -527,18 +534,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
           (Seq(partitionColumn, saltCol), Seq(partitionColumn) ++ sortByCols)
         } else { (Seq(saltCol), sortByCols) }
       logger.info(s"Sorting within partitions with cols: $partitionSortCols")
-      val dataPointer = DataPointer.from(tableName, sparkSession)
 
       saltedDf
         .repartition(shuffleParallelism, repartitionCols.map(saltedDf.col): _*)
         .drop(saltCol)
         .sortWithinPartitions(partitionSortCols.map(col): _*)
-        .write
-        .mode(saveMode)
-        .save(dataPointer)
-
-      logger.info(s"Finished writing to $tableName")
     }
+    df
   }
 
   def chunk(partitions: Set[String]): Seq[PartitionRange] = {
