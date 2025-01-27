@@ -284,12 +284,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   tableProperties: Map[String, String] = null,
                   fileFormat: String,
                   autoExpand: Boolean = false): Unit = {
+    val writeFormat = tableFormatProvider.writeFormat(tableName)
 
     if (!tableReachable(tableName)) {
 
       try {
 
-        val writeFormat = tableFormatProvider.writeFormat(tableName)
         val createTableOperation =
           writeFormat.createTable(df, tableName, partitionColumns, tableProperties, fileFormat)
 
@@ -309,11 +309,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     // TODO: we need to also allow for bigquery tables to have their table properties (or tags) to be persisted too.
     //  https://app.asana.com/0/1208949807589885/1209111629687568/f
-    if (tableProperties != null && tableProperties.nonEmpty) {
-      sql(alterTablePropertiesSql(tableName, tableProperties))
-    }
-    if (autoExpand) {
-      expandTable(tableName, df.schema)
+    if (writeFormat.name.toUpperCase != "BIGQUERY") {
+      if (tableProperties != null && tableProperties.nonEmpty) {
+        sql(alterTablePropertiesSql(tableName, tableProperties))
+      }
+      if (autoExpand) {
+        expandTable(tableName, df.schema)
+      }
     }
   }
 
@@ -328,12 +330,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                        stats: Option[DfStats] = None,
                        sortByCols: Seq[String] = Seq.empty): Unit = {
     // partitions to the last
-    val dfRearranged: DataFrame = if (!df.columns.endsWith(partitionColumns)) {
-      val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
-      df.select(colOrder.map(df.col): _*)
-    } else {
-      df
-    }
+    val dataPointer = DataPointer.from(tableName, sparkSession)
+    val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
+    val dfRearranged: DataFrame = df.select(colOrder.map {
+      case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
+        to_date(df.col(c), partitionFormat).as(partitionColumn)
+      case c => df.col(c)
+    }: _*)
 
     createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat, autoExpand)
 
@@ -526,11 +529,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val dataPointer = DataPointer.from(tableName, sparkSession)
 
       saltedDf
-        .select(saltedDf.columns.map {
-          case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
-            to_date(saltedDf.col(c), partitionFormat).as(partitionColumn)
-          case c => saltedDf.col(c)
-        }.toList: _*)
         .repartition(shuffleParallelism, repartitionCols.map(saltedDf.col): _*)
         .drop(saltCol)
         .sortWithinPartitions(partitionSortCols.map(col): _*)
