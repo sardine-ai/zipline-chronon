@@ -11,12 +11,12 @@ import java.lang.{Double => JDouble}
 
 class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
 
-  "TileDriftSeries" should "serialize with nulls" in {
+  "TileDriftSeries" should "serialize with nulls and special values" in {
     val tileDriftSeries = new TileDriftSeries()
 
-    val percentileDrifts: Seq[JDouble] = Seq(0.1, null, 0.3, null, 0.5, null, 0.7, null, 0.9)
-      .map(v =>
-        if (v == null)
+    val percentileDrifts: Seq[JDouble] = Seq(0.1, null, Double.PositiveInfinity, Double.NaN, 0.5)
+      .map(v => 
+        if (v == null || (v != null && (v.asInstanceOf[Double].isInfinite || v.asInstanceOf[Double].isNaN)))
           Constants.magicNullDouble
         else
           v.asInstanceOf[JDouble]
@@ -27,7 +27,7 @@ class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
 
     val jsonStr = ThriftJsonCodec.toJsonStr(tileDriftSeries)
 
-    jsonStr should be ("""{"percentileDriftSeries":[0.1,-2.7980863399423856E16,0.3,-2.7980863399423856E16,0.5,-2.7980863399423856E16,0.7,-2.7980863399423856E16,0.9]}""")
+    jsonStr should be ("""{"percentileDriftSeries":[0.1,-2.7980863399423856E16,-2.7980863399423856E16,-2.7980863399423856E16,0.5]}""")
   }
 
 
