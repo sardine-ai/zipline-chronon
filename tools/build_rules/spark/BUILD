@@ -70,10 +70,13 @@ java_library(
     exports = get_jars_for_repository("spark", SPARK_3_5_JARS),
 )
 
+# To simulate the spark runtime environment with dependencies we want to exclude from our final deployment jar
+# We would need to specify this as 'deploy_env' for our final build target.
 java_binary(
     name = "spark",
     main_class = "None",  #hack
     runtime_deps = [
+        # Exclude all spark related dependencies as they are already available in our cluster runtime environment
         ":spark-exec",
     ],
 )

@@ -18,5 +18,9 @@ spark_repository = repository(
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",
+        # Exclude commons-cli as it's picking up old 1.2 version which conflicts with our
+        # Flink runtime as it needs 1.5.0 otherwise we run into this error
+        # java.lang.NoSuchMethodError: 'org.apache.commons.cli.Option$Builder org.apache.commons.cli.Option.builder(java.lang.String)'
+        "commons-cli:commons-cli",
     ],
 )
