@@ -111,8 +111,8 @@ class DriftTest extends AnyFlatSpec with Matchers {
 
     val (nulls, totals) = driftSeries.iterator.foldLeft(0 -> 0) {
       case ((nulls, total), s) =>
-        val currentNulls = s.getPercentileDriftSeries.iterator().toScala.count(_ == null)
-        val currentCount = s.getPercentileDriftSeries.size()
+        val currentNulls = Option(s.getPercentileDriftSeries).map(_.iterator().toScala.count(_ == null)).getOrElse(0)
+        val currentCount = Option(s.getPercentileDriftSeries).map(_.size()).getOrElse(0)
         (nulls + currentNulls, total + currentCount)
     }
 

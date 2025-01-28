@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.function
 import scala.collection.Seq
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object CatalystUtil {
   private class IteratorWrapper[T] extends Iterator[T] {
@@ -109,7 +110,7 @@ class PoolMap[Key, Value](createFunc: Key => Value, maxSize: Int = 100, initialS
 class PooledCatalystUtil(expressions: collection.Seq[(String, String)], inputSchema: StructType) {
   private val poolKey = PoolKey(expressions, inputSchema)
   private val cuPool = poolMap.getPool(PoolKey(expressions, inputSchema))
-  def performSql(values: Map[String, Any]): Option[Map[String, Any]] =
+  def performSql(values: Map[String, Any]): Seq[Map[String, Any]] =
     poolMap.performWithValue(poolKey, cuPool) { _.performSql(values) }
   def outputChrononSchema: Array[(String, DataType)] =
     poolMap.performWithValue(poolKey, cuPool) { _.outputChrononSchema }
@@ -136,26 +137,26 @@ class CatalystUtil(inputSchema: StructType,
   private val inputEncoder = SparkInternalRowConversions.to(inputSparkSchema)
   private val inputArrEncoder = SparkInternalRowConversions.to(inputSparkSchema, false)
 
-  private val (transformFunc: (InternalRow => Option[InternalRow]), outputSparkSchema: types.StructType) = initialize()
+  private val (transformFunc: (InternalRow => Seq[InternalRow]), outputSparkSchema: types.StructType) = initialize()
 
   private lazy val outputArrDecoder = SparkInternalRowConversions.from(outputSparkSchema, false)
   @transient lazy val outputChrononSchema: Array[(String, DataType)] =
     SparkConversions.toChrononSchema(outputSparkSchema)
   private val outputDecoder = SparkInternalRowConversions.from(outputSparkSchema)
 
-  def performSql(values: Array[Any]): Option[Array[Any]] = {
+  def performSql(values: Array[Any]): Seq[Array[Any]] = {
     val internalRow = inputArrEncoder(values).asInstanceOf[InternalRow]
-    val resultRowOpt = transformFunc(internalRow)
-    val outputVal = resultRowOpt.map(resultRow => outputArrDecoder(resultRow))
+    val resultRowSeq = transformFunc(internalRow)
+    val outputVal = resultRowSeq.map(resultRow => outputArrDecoder(resultRow))
     outputVal.map(_.asInstanceOf[Array[Any]])
   }
 
-  def performSql(values: Map[String, Any]): Option[Map[String, Any]] = {
+  def performSql(values: Map[String, Any]): Seq[Map[String, Any]] = {
     val internalRow = inputEncoder(values).asInstanceOf[InternalRow]
     performSql(internalRow)
   }
 
-  def performSql(row: InternalRow): Option[Map[String, Any]] = {
+  def performSql(row: InternalRow): Seq[Map[String, Any]] = {
     val resultRowMaybe = transformFunc(row)
     val outputVal = resultRowMaybe.map(resultRow => outputDecoder(resultRow))
     outputVal.map(_.asInstanceOf[Map[String, Any]])
@@ -163,7 +164,7 @@ class CatalystUtil(inputSchema: StructType,
 
   def getOutputSparkSchema: types.StructType = outputSparkSchema
 
-  private def initialize(): (InternalRow => Option[InternalRow], types.StructType) = {
+  private def initialize(): (InternalRow => Seq[InternalRow], types.StructType) = {
     val session = CatalystUtil.session
 
     // run through and execute the setup statements
@@ -189,7 +190,7 @@ class CatalystUtil(inputSchema: StructType,
     val filteredDf = whereClauseOpt.map(df.where(_)).getOrElse(df)
 
     // extract transform function from the df spark plan
-    val func: InternalRow => Option[InternalRow] = filteredDf.queryExecution.executedPlan match {
+    val func: InternalRow => ArrayBuffer[InternalRow] = filteredDf.queryExecution.executedPlan match {
       case whc: WholeStageCodegenExec => {
         val (ctx, cleanedSource) = whc.doCodeGen()
         val (clazz, _) = CodeGenerator.compile(cleanedSource)
@@ -197,24 +198,26 @@ class CatalystUtil(inputSchema: StructType,
         val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
         val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
         buffer.init(0, Array(iteratorWrapper))
-        def codegenFunc(row: InternalRow): Option[InternalRow] = {
+        def codegenFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
           iteratorWrapper.put(row)
+          val result = ArrayBuffer.empty[InternalRow]
           while (buffer.hasNext) {
-            return Some(buffer.next())
+            result.append(buffer.next())
           }
-          None
+          result
         }
         codegenFunc
       }
+
       case ProjectExec(projectList, fp @ FilterExec(condition, child)) => {
         val unsafeProjection = UnsafeProjection.create(projectList, fp.output)
 
-        def projectFunc(row: InternalRow): Option[InternalRow] = {
+        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
           val r = CatalystHelper.evalFilterExec(row, condition, child.output)
           if (r)
-            Some(unsafeProjection.apply(row))
+            ArrayBuffer(unsafeProjection.apply(row))
           else
-            None
+            ArrayBuffer.empty[InternalRow]
         }
 
         projectFunc
@@ -230,33 +233,34 @@ class CatalystUtil(inputSchema: StructType,
             val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
             val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
             buffer.init(0, Array(iteratorWrapper))
-            def codegenFunc(row: InternalRow): Option[InternalRow] = {
+            def codegenFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
               iteratorWrapper.put(row)
+              val result = ArrayBuffer.empty[InternalRow]
               while (buffer.hasNext) {
-                return Some(unsafeProjection.apply(buffer.next()))
+                result.append(unsafeProjection.apply(buffer.next()))
               }
-              None
+              result
             }
             codegenFunc
           case _ =>
             val unsafeProjection = UnsafeProjection.create(projectList, childPlan.output)
-            def projectFunc(row: InternalRow): Option[InternalRow] = {
-              Some(unsafeProjection.apply(row))
+            def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
+              ArrayBuffer(unsafeProjection.apply(row))
             }
             projectFunc
         }
       }
       case ltse: LocalTableScanExec => {
         // Input `row` is unused because for LTSE, no input is needed to compute the output
-        def projectFunc(row: InternalRow): Option[InternalRow] =
-          ltse.executeCollect().headOption
+        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] =
+          ArrayBuffer(ltse.executeCollect(): _*)
 
         projectFunc
       }
       case rddse: RDDScanExec => {
         val unsafeProjection = UnsafeProjection.create(rddse.schema)
-        def projectFunc(row: InternalRow): Option[InternalRow] =
-          Some(unsafeProjection.apply(row))
+        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] =
+          ArrayBuffer(unsafeProjection.apply(row))
 
         projectFunc
       }

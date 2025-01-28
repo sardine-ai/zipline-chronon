@@ -24,6 +24,7 @@ import scala.Option;
 import scala.collection.mutable.ArrayBuffer;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
+import scala.concurrent.ExecutionContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,15 +36,87 @@ public class JavaFetcher {
   Fetcher fetcher;
 
   public JavaFetcher(KVStore kvStore, String metaDataSet, Long timeoutMillis, Consumer<LoggableResponse> logFunc, ExternalSourceRegistry registry, String callerName, Boolean disableErrorThrows) {
-    this.fetcher = new Fetcher(kvStore, metaDataSet, timeoutMillis, logFunc, false, registry, callerName, null, disableErrorThrows);
+    this.fetcher = new Fetcher(kvStore, metaDataSet, timeoutMillis, logFunc, false, registry, callerName, null, disableErrorThrows, null);
   }
 
   public JavaFetcher(KVStore kvStore, String metaDataSet, Long timeoutMillis, Consumer<LoggableResponse> logFunc, ExternalSourceRegistry registry) {
-    this.fetcher = new Fetcher(kvStore, metaDataSet, timeoutMillis, logFunc, false, registry, null, null, false);
+    this.fetcher = new Fetcher(kvStore, metaDataSet, timeoutMillis, logFunc, false, registry, null, null, false, null);
   }
 
   public JavaFetcher(KVStore kvStore, String metaDataSet, Long timeoutMillis, Consumer<LoggableResponse> logFunc, ExternalSourceRegistry registry, String callerName, FlagStore flagStore, Boolean disableErrorThrows) {
-    this.fetcher = new Fetcher(kvStore, metaDataSet, timeoutMillis, logFunc, false, registry, callerName, flagStore, disableErrorThrows);
+    this.fetcher = new Fetcher(kvStore, metaDataSet, timeoutMillis, logFunc, false, registry, callerName, flagStore, disableErrorThrows, null);
+  }
+
+    /* user builder pattern to create JavaFetcher
+    example way to create the java fetcher
+    JavaFetcher fetcher = new JavaFetcher.Builder(kvStore, metaDataSet, timeoutMillis, logFunc, registry)
+                                        .callerName(callerName)
+                                        .flagStore(flagStore)
+                                        .disableErrorThrows(disableErrorThrows)
+                                        .build();
+     */
+  private JavaFetcher(Builder builder) {
+    this.fetcher = new Fetcher(builder.kvStore,
+            builder.metaDataSet,
+            builder.timeoutMillis,
+            builder.logFunc,
+            builder.debug,
+            builder.registry,
+            builder.callerName,
+            builder.flagStore,
+            builder.disableErrorThrows,
+            builder.executionContextOverride);
+  }
+
+  public static class Builder {
+    private KVStore kvStore;
+    private String metaDataSet;
+    private Long timeoutMillis;
+    private Consumer<LoggableResponse> logFunc;
+    private ExternalSourceRegistry registry;
+    private String callerName;
+    private Boolean debug;
+    private FlagStore flagStore;
+    private Boolean disableErrorThrows;
+    private ExecutionContext executionContextOverride;
+
+    public Builder(KVStore kvStore, String metaDataSet, Long timeoutMillis,
+                   Consumer<LoggableResponse> logFunc, ExternalSourceRegistry registry) {
+      this.kvStore = kvStore;
+      this.metaDataSet = metaDataSet;
+      this.timeoutMillis = timeoutMillis;
+      this.logFunc = logFunc;
+      this.registry = registry;
+    }
+
+    public Builder callerName(String callerName) {
+      this.callerName = callerName;
+      return this;
+    }
+    
+    public Builder flagStore(FlagStore flagStore) {
+      this.flagStore = flagStore;
+      return this;
+    }
+    
+    public Builder disableErrorThrows(Boolean disableErrorThrows) {
+      this.disableErrorThrows = disableErrorThrows;
+      return this;
+    }
+    
+    public Builder debug(Boolean debug) {
+      this.debug = debug;
+      return this;
+    }
+
+    public Builder executionContextOverride(ExecutionContext executionContextOverride) {
+      this.executionContextOverride = executionContextOverride;
+      return this;
+    }
+
+    public JavaFetcher build() {
+      return new JavaFetcher(this);
+    }
   }
 
 

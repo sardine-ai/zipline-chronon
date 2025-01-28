@@ -1,8 +1,13 @@
 package ai.chronon.spark.format
 
+import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
+import ai.chronon.spark.format.CreationUtils.createTableSql
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 trait Format {
+  @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def name: String
 
@@ -41,6 +46,47 @@ trait Format {
   //         Map("ds" -> "2023-04-02", "hr" -> "00")
   //      )
   def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]]
+
+  def createTable(df: DataFrame,
+                  tableName: String,
+                  partitionColumns: Seq[String],
+                  tableProperties: Map[String, String],
+                  fileFormat: String): (String => Unit) => Unit = {
+
+    def inner(df: DataFrame,
+              tableName: String,
+              partitionColumns: Seq[String],
+              tableProperties: Map[String, String],
+              fileFormat: String)(sqlEvaluator: String => Unit) = {
+      val creationSql =
+        createTableSql(tableName,
+                       df.schema,
+                       partitionColumns,
+                       tableProperties,
+                       fileFormatString(fileFormat),
+                       createTableTypeString)
+
+      sqlEvaluator(creationSql)
+
+    }
+
+    inner(df, tableName, partitionColumns, tableProperties, fileFormat)
+
+  }
+
+  def alterTableProperties(tableName: String, tableProperties: Map[String, String]): (String => Unit) => Unit = {
+
+    def inner(tableName: String, tableProperties: Map[String, String])(sqlEvaluator: String => Unit) = {
+      val alterSql =
+        alterTablePropertiesSql(tableName, tableProperties)
+
+      sqlEvaluator(alterSql)
+
+    }
+
+    inner(tableName, tableProperties)
+
+  }
 
   // Help specify the appropriate table type to use in the Spark create table DDL query
   def createTableTypeString: String

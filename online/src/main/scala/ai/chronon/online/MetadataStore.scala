@@ -41,7 +41,10 @@ import scala.util.Try
 // [timestamp -> {metric name -> metric value}]
 case class DataMetrics(series: Seq[(Long, SortedMap[String, Any])])
 
-class MetadataStore(kvStore: KVStore, val dataset: String = MetadataDataset, timeoutMillis: Long) {
+class MetadataStore(kvStore: KVStore,
+                    val dataset: String = MetadataDataset,
+                    timeoutMillis: Long,
+                    executionContextOverride: ExecutionContext = null) {
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private var partitionSpec = PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
   private val CONF_BATCH_SIZE = 50
@@ -56,7 +59,8 @@ class MetadataStore(kvStore: KVStore, val dataset: String = MetadataDataset, tim
     partitionSpec = PartitionSpec(format = format, spanMillis = partitionSpec.spanMillis)
   }
 
-  implicit val executionContext: ExecutionContext = kvStore.executionContext
+  implicit val executionContext: ExecutionContext =
+    Option(executionContextOverride).getOrElse(FlexibleExecutionContext.buildExecutionContext)
 
   def getConf[T <: TBase[_, _]: Manifest](confPathOrName: String): Try[T] = {
     val clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]

@@ -39,11 +39,11 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     // Test starts here.
 
-    val submitter = new DataprocSubmitter(
-      mockJobControllerClient,
-      SubmitterConf("test-project", "test-region", "test-cluster"))
+    val submitter =
+      new DataprocSubmitter(mockJobControllerClient, SubmitterConf("test-project", "test-region", "test-cluster"))
 
-    val submittedJobId = submitter.submit(spark.SparkJob, Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"), List.empty)
+    val submittedJobId =
+      submitter.submit(spark.SparkJob, Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"), List.empty)
     assertEquals(submittedJobId, jobId)
   }
 
@@ -54,29 +54,36 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
   it should "test flink job locally" ignore {
 
     val submitter = DataprocSubmitter()
-    submitter.submit(spark.FlinkJob,
-      Map(MainClass -> "ai.chronon.flink.FlinkJob",
+    submitter.submit(
+      spark.FlinkJob,
+      Map(
+        MainClass -> "ai.chronon.flink.FlinkJob",
         FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
+        // Include savepoint / checkpoint Uri to resume from where a job left off
+        // SavepointUri -> "gs://zl-warehouse/flink-state/93686c72c3fd63f58d631e8388d8180d/chk-12",
         JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
       List.empty,
       "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
       "--groupby-name=e2e-count",
       "-ZGCP_PROJECT_ID=bigtable-project-id",
-      "-ZGCP_INSTANCE_ID=bigtable-instance-id")
+      "-ZGCP_BIGTABLE_INSTANCE_ID=bigtable-instance-id")
   }
 
   it should "test flink kafka ingest job locally" ignore {
 
     val submitter = DataprocSubmitter()
     val submittedJobId =
-      submitter.submit(spark.FlinkJob,
-        Map(MainClass -> "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
+      submitter.submit(
+        spark.FlinkJob,
+        Map(
+          MainClass -> "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
           FlinkMainJarURI -> "gs://zipline-jars/flink_kafka_ingest-assembly-0.1.0-SNAPSHOT.jar",
-          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
+          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"
+        ),
         List.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
         "--kafka-topic=test-beacon-main",
-        "--data-file-name=gs://zl-warehouse/beacon_events/beacon-output.avro",
+        "--data-file-name=gs://zl-warehouse/beacon_events/beacon-output.avro"
       )
     println(submittedJobId)
   }
@@ -88,10 +95,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       submitter.submit(
         spark.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
-          JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+            JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         List("gs://zipline-jars/training_set.v1",
-          "gs://zipline-jars/dataproc-submitter-conf.yaml",
-          "gs://zipline-jars/additional-confs.yaml"),
+             "gs://zipline-jars/dataproc-submitter-conf.yaml",
+             "gs://zipline-jars/additional-confs.yaml"),
         "join",
         "--end-date=2024-12-10",
         "--additional-conf-path=additional-confs.yaml",
@@ -107,7 +114,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       submitter.submit(
         spark.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
-          JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+            JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         List.empty,
         "groupby-upload-bulk-load",
         "-ZGCP_PROJECT_ID=bigtable-project-id",
@@ -116,7 +123,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
         "--src-offline-table=data.test_gbu",
         "--groupby-name=quickstart.purchases.v1",
-        "--partition-string=2024-01-01")
+        "--partition-string=2024-01-01"
+      )
     println(submittedJobId)
     assertEquals(submittedJobId, "mock-job-id")
   }

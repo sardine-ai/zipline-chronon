@@ -1,5 +1,6 @@
 package ai.chronon.online.test.stats
 
+import ai.chronon.api.Constants
 import ai.chronon.observability.TileDrift
 import ai.chronon.observability.TileSummary
 import ai.chronon.online.stats.PivotUtils.pivot
@@ -251,12 +252,12 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     ))
 
     result.getPercentileDriftSeries.asScala.map(Option(_).map(_.doubleValue)) shouldEqual
-      List(Some(0.5), None, Some(0.7))
+      List(Some(0.5), Some(Constants.magicNullDouble), Some(0.7))
 
     result.getCountChangePercentSeries.asScala.map(Option(_).map(_.doubleValue)) shouldEqual
-      List(Some(10.0), None, Some(30.0))
+      List(Some(10.0), Some(Constants.magicNullDouble), Some(30.0))
 
-    result.getHistogramDriftSeries.asScala shouldBe List(null, null, null)  // since no values were ever set
+    result.getHistogramDriftSeries.asScala shouldBe null  // since no values were ever set
   }
 
   it should "preserve timestamp order" in {
@@ -290,8 +291,8 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     ))
 
     result.getPercentileDriftSeries.asScala shouldEqual List(0.5, 0.6)
-    result.getHistogramDriftSeries.asScala shouldBe List(null, null)  // never set
-    result.getCountChangePercentSeries.asScala shouldBe List(null, null)  // never set
+    result.getHistogramDriftSeries.asScala shouldBe null  // never set
+    result.getCountChangePercentSeries.asScala shouldBe null  // never set
     result.getTimestamps.asScala shouldEqual List(1000L, 2000L)
   }
 
@@ -309,7 +310,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
 
     val series = result.getPercentileDriftSeries.asScala.toList
     series.size shouldBe 2
-    series(0).isNaN shouldBe true
+    series(0) shouldBe Constants.magicNullDouble
     series(1) shouldBe 0.5
   }
 }

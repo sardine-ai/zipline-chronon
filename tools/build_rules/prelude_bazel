@@ -38,6 +38,8 @@ _FLINK_DEPS = [
     maven_artifact("org.apache.flink:flink-metrics-core"),
     maven_artifact("org.apache.flink:flink-clients"),
     maven_artifact("org.apache.flink:flink-yarn"),
+    maven_artifact("org.apache.flink:flink-connector-kafka"),
+    maven_artifact("org.apache.flink:flink-avro"),
 ]
 
 _FLINK_TEST_DEPS = [

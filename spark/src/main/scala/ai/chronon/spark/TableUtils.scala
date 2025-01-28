@@ -27,7 +27,6 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.CreationUtils.createTableSql
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
@@ -282,29 +281,19 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def createTable(df: DataFrame,
                   tableName: String,
                   partitionColumns: Seq[String] = Seq.empty,
-                  writeFormatTypeString: String = "",
                   tableProperties: Map[String, String] = null,
-                  fileFormatString: String = "",
-                  autoExpand: Boolean = false): Boolean = {
+                  fileFormat: String,
+                  autoExpand: Boolean = false): Unit = {
+    val writeFormat = tableFormatProvider.writeFormat(tableName)
 
-    val doesTableExist = tableReachable(tableName)
-
-    // create table sql doesn't work for bigquery here. instead of creating the table explicitly, we can rely on the
-    // bq connector to indirectly create the table and eventually write the data
-    if (writeFormatTypeString.toUpperCase == "BIGQUERY") {
-      logger.info(s"Skipping table creation in BigQuery for $tableName. tableExists=$doesTableExist")
-
-      return doesTableExist
-    }
-
-    if (!doesTableExist) {
-
-      val creationSql =
-        createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormatString, writeFormatTypeString)
+    if (!tableReachable(tableName)) {
 
       try {
 
-        sql(creationSql)
+        val createTableOperation =
+          writeFormat.createTable(df, tableName, partitionColumns, tableProperties, fileFormat)
+
+        createTableOperation(sql)
 
       } catch {
 
@@ -320,14 +309,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     // TODO: we need to also allow for bigquery tables to have their table properties (or tags) to be persisted too.
     //  https://app.asana.com/0/1208949807589885/1209111629687568/f
-    if (tableProperties != null && tableProperties.nonEmpty) {
-      sql(alterTablePropertiesSql(tableName, tableProperties))
+    if (writeFormat.name.toUpperCase != "BIGQUERY") {
+      if (tableProperties != null && tableProperties.nonEmpty) {
+        val alterTblPropsOperation = writeFormat.alterTableProperties(tableName, tableProperties)
+        alterTblPropsOperation(sql)
+      }
+      if (autoExpand) {
+        expandTable(tableName, df.schema)
+      }
     }
-    if (autoExpand) {
-      expandTable(tableName, df.schema)
-    }
-
-    true
   }
 
   // Needs provider
@@ -341,24 +331,17 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                        stats: Option[DfStats] = None,
                        sortByCols: Seq[String] = Seq.empty): Unit = {
     // partitions to the last
-    val dfRearranged: DataFrame = if (!df.columns.endsWith(partitionColumns)) {
-      val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
-      df.select(colOrder.map(df.col): _*)
-    } else {
-      df
-    }
+    val dataPointer = DataPointer.from(tableName, sparkSession)
+    val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
+    val dfRearranged: DataFrame = df.select(colOrder.map {
+      case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
+        to_date(df.col(c), partitionFormat).as(partitionColumn)
+      case c => df.col(c)
+    }: _*)
 
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
+    createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat, autoExpand)
 
-    val isTableCreated = createTable(dfRearranged,
-                                     tableName,
-                                     partitionColumns,
-                                     writeFormat.createTableTypeString,
-                                     tableProperties,
-                                     writeFormat.fileFormatString(fileFormat),
-                                     autoExpand)
-
-    val finalizedDf = if (autoExpand && isTableCreated) {
+    val finalizedDf = if (autoExpand) {
       // reselect the columns so that a deprecated columns will be selected as NULL before write
       val tableSchema = getSchemaFromTable(tableName)
       val finalColumns = tableSchema.fieldNames.map(fieldName => {
@@ -428,14 +411,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                           saveMode: SaveMode = SaveMode.Overwrite,
                           fileFormat: String = "PARQUET"): Unit = {
 
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
-
-    createTable(df,
-                tableName,
-                Seq.empty[String],
-                writeFormat.createTableTypeString,
-                tableProperties,
-                writeFormat.fileFormatString(fileFormat))
+    createTable(df, tableName, Seq.empty[String], tableProperties, fileFormat)
 
     repartitionAndWrite(df, tableName, saveMode, None)
 
@@ -481,15 +457,23 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                   sortByCols: Seq[String] = Seq.empty): Unit = {
     wrapWithCache(s"repartition & write to $tableName", df) {
       logger.info("Repartitioning before writing...")
-      repartitionAndWriteInternal(df, tableName, saveMode, stats, sortByCols)
+      val dataPointer = DataPointer.from(tableName, sparkSession)
+      val repartitioned =
+        if (sparkSession.conf.get("spark.chronon.write.repartition", true.toString).toBoolean)
+          repartitionInternal(df, tableName, stats, sortByCols)
+        else df
+      repartitioned.write
+        .mode(saveMode)
+        .save(dataPointer)
+
+      logger.info(s"Finished writing to $tableName")
     }.get
   }
 
-  private def repartitionAndWriteInternal(df: DataFrame,
-                                          tableName: String,
-                                          saveMode: SaveMode,
-                                          stats: Option[DfStats],
-                                          sortByCols: Seq[String]): Unit = {
+  private def repartitionInternal(df: DataFrame,
+                                  tableName: String,
+                                  stats: Option[DfStats],
+                                  sortByCols: Seq[String]): DataFrame = {
 
     // get row count and table partition count statistics
 
@@ -507,7 +491,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     // set to one if tablePartitionCount=0 to avoid division by zero
     val nonZeroTablePartitionCount = if (tablePartitionCount == 0) 1 else tablePartitionCount
-
     logger.info(s"$rowCount rows requested to be written into table $tableName")
     if (rowCount > 0) {
       val columnSizeEstimate = columnSizeEstimator(df.schema)
@@ -551,23 +534,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
           (Seq(partitionColumn, saltCol), Seq(partitionColumn) ++ sortByCols)
         } else { (Seq(saltCol), sortByCols) }
       logger.info(s"Sorting within partitions with cols: $partitionSortCols")
-      val dataPointer = DataPointer.from(tableName, sparkSession)
 
       saltedDf
-        .select(saltedDf.columns.map {
-          case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
-            to_date(saltedDf.col(c), partitionFormat).as(partitionColumn)
-          case c => saltedDf.col(c)
-        }.toList: _*)
         .repartition(shuffleParallelism, repartitionCols.map(saltedDf.col): _*)
         .drop(saltCol)
         .sortWithinPartitions(partitionSortCols.map(col): _*)
-        .write
-        .mode(saveMode)
-        .save(dataPointer)
-
-      logger.info(s"Finished writing to $tableName")
     }
+    df
   }
 
   def chunk(partitions: Set[String]): Seq[PartitionRange] = {

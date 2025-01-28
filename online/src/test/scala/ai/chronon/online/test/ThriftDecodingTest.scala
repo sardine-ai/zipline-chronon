@@ -74,8 +74,8 @@ class ThriftDecodingTest extends AnyFlatSpec {
 
     // apply sql on this
     val cu = new CatalystUtil(schema.asInstanceOf[StructType], collection.Seq(der_name -> der_expr))
-    val result = cu.performSql(decoder.apply(dks).asInstanceOf[Array[Any]]).orNull
-    val resultJson = gson.toJson(result)
+    val result = cu.performSql(decoder.apply(dks).asInstanceOf[Array[Any]])
+    val resultJson = gson.toJson(result.head)
     assertEquals(resultJson, "[24.0]")
   }
 

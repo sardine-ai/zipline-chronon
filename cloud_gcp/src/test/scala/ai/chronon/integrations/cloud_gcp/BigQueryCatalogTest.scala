@@ -6,7 +6,6 @@ import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystemConfiguration
 import com.google.cloud.hadoop.fs.gcs.HadoopConfigurationProperty
-import com.google.cloud.hadoop.gcsio.GoogleCloudStorageFileSystem
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -44,8 +43,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   it should "verify dynamic classloading of GCP providers" in {
     assertTrue(tableUtils.tableReadFormat("data.sample_native") match {
-      case BigQueryFormat(_, _) => true
-      case _            => false
+      case BigQueryFormat(_, _, _) => true
+      case _                       => false
     })
   }
 

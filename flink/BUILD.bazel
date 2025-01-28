@@ -12,6 +12,7 @@ scala_library(
         scala_artifact("org.scala-lang.modules:scala-collection-compat"),
         scala_artifact("org.rogach:scallop"),
         maven_artifact("io.dropwizard.metrics:metrics-core"),
+        maven_artifact("org.apache.kafka:kafka-clients"),
     ],
 )
 
@@ -54,4 +55,22 @@ scala_test_suite(
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps + [":test-lib",],
+)
+
+jvm_binary(
+    name = "assembly",
+    # To exclude runtime dependencies not needed for flink environement in the cluster
+    # otherwise we run into version conflict errors
+    deploy_env = ["//tools/build_rules/flink:flink"],
+    main_class = "ai.chronon.flink.FlinkJob",
+    runtime_deps = [":lib"],
+)
+
+jvm_binary(
+    name = "kafka-assembly",
+    # To exclude runtime dependencies not needed for flink environement in the cluster
+    # otherwise we run into version conflict errors
+    deploy_env = ["//tools/build_rules/flink:flink"],
+    main_class = "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
+    runtime_deps = [":lib"],
 )

@@ -1,18 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
-
-import ai.chronon.spark.TableUtils
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import ai.chronon.spark.format.Hive
-import com.google.cloud.bigquery.BigQuery
-import com.google.cloud.bigquery.BigQueryOptions
-import com.google.cloud.bigquery.ExternalTableDefinition
-import com.google.cloud.bigquery.FormatOptions
-import com.google.cloud.bigquery.StandardTableDefinition
-import com.google.cloud.bigquery.Table
-import com.google.cloud.bigquery.TableDefinition
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
 import org.apache.spark.sql.SparkSession
 
 import scala.jdk.CollectionConverters._
@@ -43,19 +34,12 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     assert(scala.Option(tableId.getProject).isDefined, s"project required for ${table}")
     assert(scala.Option(tableId.getDataset).isDefined, s"dataset required for ${table}")
 
-    val tu = TableUtils(sparkSession)
-    val partitionColumnOption =
-      if (tu.tableReachable(table)) Map.empty else Map("partitionField" -> tu.partitionColumn)
-
     val sparkOptions: Map[String, String] = Map(
-      // todo(tchow): No longer needed after https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1320
-      "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
-      "writeMethod" -> "indirect", // writeMethod direct does not output partitioned tables. keep as indirect.
-      "materializationProject" -> tableId.getProject,
-      "materializationDataset" -> tableId.getDataset
-    ) ++ partitionColumnOption
+      "writeMethod" -> "direct",
+      "createDisposition" -> JobInfo.CreateDisposition.CREATE_NEVER.name
+    )
 
-    BigQueryFormat(tableId.getProject, sparkOptions)
+    BigQueryFormat(tableId.getProject, bigQueryClient, sparkOptions)
   }
 
   private[cloud_gcp] def getFormat(table: Table): Format =
@@ -65,7 +49,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         val formatOptions = definition.getFormatOptions
           .asInstanceOf[FormatOptions]
         val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
-        val uri = Option(externalTable.getHivePartitioningOptions)
+        val uri = scala
+          .Option(externalTable.getHivePartitioningOptions)
           .map(_.getSourceUriPrefix)
           .getOrElse {
             val uris = externalTable.getSourceUris.asScala
@@ -76,7 +61,7 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         GCS(uri, formatOptions.getType)
 
       case _: StandardTableDefinition =>
-        BigQueryFormat(table.getTableId.getProject, Map.empty)
+        BigQueryFormat(table.getTableId.getProject, bigQueryClient, Map.empty)
 
       case _ => throw new IllegalStateException(s"Cannot support table of type: ${table.getFriendlyName}")
     }
@@ -91,7 +76,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     scala
       .Option(table)
       .map(getFormat)
-      .getOrElse(scala.Option(btTableIdentifier.getProject).map(BigQueryFormat(_, Map.empty)).getOrElse(Hive))
+      .getOrElse(
+        scala.Option(btTableIdentifier.getProject).map(BigQueryFormat(_, bigQueryClient, Map.empty)).getOrElse(Hive))
 
   }
 }

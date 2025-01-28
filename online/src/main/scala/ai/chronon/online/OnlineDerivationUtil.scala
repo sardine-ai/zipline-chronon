@@ -45,7 +45,7 @@ object OnlineDerivationUtil {
   ): DerivationFunc = {
     {
       case (keys: Map[String, Any], values: Map[String, Any]) =>
-        reintroduceExceptions(catalystUtil.performSql(keys ++ values).orNull, values)
+        reintroduceExceptions(catalystUtil.performSql(keys ++ values).headOption.orNull, values)
     }
   }
 
