@@ -1,9 +1,10 @@
 package ai.chronon.spark.stats.drift
 
-import ai.chronon.api.Cardinality
 import ai.chronon.api.Constants
-import ai.chronon.api.TileKey
-import ai.chronon.api.TileSummary
+import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.observability.Cardinality
+import ai.chronon.observability.TileKey
+import ai.chronon.observability.TileSummary
 import org.apache.spark.sql
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types
@@ -12,7 +13,6 @@ import org.apache.spark.sql.types.StructType
 import java.lang
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.mapAsJavaMapConverter
-import scala.util.ScalaJavaConversions.JListOps
 
 object Expressions {
 
@@ -216,7 +216,7 @@ object Expressions {
                 })
 
             // TODO: deal with map keys - as histogram - high cardinality keys vs low cardinality?
-            // TODO: heavy hitters - top_k via approx_histogram
+            // TODO: frequent key - top_k via approx_histogram
             case types.MapType(_, vType, _) =>
               se(Inp.cLen, Agg.ptile, MetricName.lengthPercentiles) ++ // length drift
                 se(Inp.mapVals, Agg.arrNulls, MetricName.innerNullCount) ++

@@ -1,0 +1,26 @@
+load("@rules_jvm_external//:specs.bzl", "maven")
+load(":defs.bzl", "repository")
+
+spark_repository = repository(
+    name = "spark",
+    provided = True,
+    artifacts = [
+        # Spark artifacts - for scala 2.12
+        "org.apache.spark:spark-sql_2.12:3.5.1",
+        "org.apache.spark:spark-hive_2.12:3.5.1",
+        "org.apache.spark:spark-streaming_2.12:3.5.1",
+
+        # Hive dependencies
+        "org.apache.hive:hive-metastore:2.3.9",
+        "org.apache.hive:hive-exec:2.3.9",
+
+        "org.apache.curator:apache-curator:5.5.0",
+    ],
+    excluded_artifacts = [
+        "org.pentaho:pentaho-aggdesigner-algorithm",
+        # Exclude commons-cli as it's picking up old 1.2 version which conflicts with our
+        # Flink runtime as it needs 1.5.0 otherwise we run into this error
+        # java.lang.NoSuchMethodError: 'org.apache.commons.cli.Option$Builder org.apache.commons.cli.Option.builder(java.lang.String)'
+        "commons-cli:commons-cli",
+    ],
+)

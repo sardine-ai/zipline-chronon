@@ -45,7 +45,7 @@ object OnlineDerivationUtil {
   ): DerivationFunc = {
     {
       case (keys: Map[String, Any], values: Map[String, Any]) =>
-        reintroduceExceptions(catalystUtil.performSql(keys ++ values).orNull, values)
+        reintroduceExceptions(catalystUtil.performSql(keys ++ values).headOption.orNull, values)
     }
   }
 
@@ -55,7 +55,7 @@ object OnlineDerivationUtil {
       baseValueSchema: StructType
   ): DerivationFunc = {
     if (derivationsScala.isEmpty) {
-      return { case (_, values: Map[String, Any]) => values }
+      { case (_, values: Map[String, Any]) => values }
     } else if (derivationsScala.areDerivationsRenameOnly) {
       buildRenameOnlyDerivationFunction(derivationsScala)
     } else {

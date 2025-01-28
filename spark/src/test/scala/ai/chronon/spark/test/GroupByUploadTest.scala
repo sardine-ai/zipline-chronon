@@ -19,6 +19,7 @@ package ai.chronon.spark.test
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
@@ -29,24 +30,21 @@ import ai.chronon.spark.utils.MockApi
 import com.google.gson.Gson
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.util.ScalaJavaConversions.JMapOps
-import scala.util.ScalaJavaConversions.ListOps
 
-class GroupByUploadTest {
+class GroupByUploadTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   lazy val spark: SparkSession = SparkSessionBuilder.build("GroupByUploadTest", local = true)
   private val namespace = "group_by_upload_test"
   private val tableUtils = TableUtils(spark)
 
-  @Test
-  def temporalEventsLastKTest(): Unit = {
+  it should "temporal events last k" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
     tableUtils.createDatabase(namespace)
@@ -74,8 +72,7 @@ class GroupByUploadTest {
     GroupByUpload.run(groupByConf, endDs = yesterday)
   }
 
-  @Test
-  def structSupportTest(): Unit = {
+  it should "struct support" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
     tableUtils.createDatabase(namespace)
@@ -116,8 +113,7 @@ class GroupByUploadTest {
     GroupByUpload.run(groupByConf, endDs = yesterday)
   }
 
-  @Test
-  def multipleAvgCountersTest(): Unit = {
+  it should "multiple avg counters" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
     tableUtils.createDatabase(namespace)
@@ -151,8 +147,7 @@ class GroupByUploadTest {
   //  joinLeft = (review, category, rating)  [ratings]
   //  joinPart = (review, user, listing)     [reviews]
   // groupBy = keys:[listing, category], aggs:[avg(rating)]
-  @Test
-  def listingRatingCategoryJoinSourceTest(): Unit = {
+  it should "listing rating category join source" in {
     tableUtils.createDatabase(namespace)
     tableUtils.sql(s"USE $namespace")
 

@@ -1,9 +1,12 @@
 import type { PageServerLoad } from './$types';
-import type { ModelsResponse } from '$lib/types/Model/Model';
-import * as api from '$lib/api/api';
+import type { JoinsResponse } from '$lib/types/Model/Model';
+import { Api } from '$lib/api/api';
 
-export const load: PageServerLoad = async (): Promise<{ models: ModelsResponse }> => {
+export const load: PageServerLoad = async ({ fetch }): Promise<{ joins: JoinsResponse }> => {
+	const offset = 0;
+	const limit = 100;
+	const api = new Api({ fetch });
 	return {
-		models: await api.getModels()
+		joins: await api.getJoins(offset, limit)
 	};
 };

@@ -1,23 +1,33 @@
-import { Cube, PuzzlePiece, Square3Stack3d } from 'svelte-hero-icons';
+import IconCube from '~icons/heroicons/cube-16-solid';
+import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
+import IconCubeTransparent from '~icons/heroicons/cube-transparent-16-solid';
+import IconRectangleStack from '~icons/heroicons/rectangle-stack-16-solid';
 
 export const entityConfig = [
 	{
 		label: 'Models',
 		path: '/models',
-		icon: Cube,
+		icon: IconCube,
 		id: 'models'
-	},
-	{
-		label: 'GroupBys',
-		path: '/groupbys',
-		icon: PuzzlePiece,
-		id: 'groupbys'
 	},
 	{
 		label: 'Joins',
 		path: '/joins',
-		icon: Square3Stack3d,
+		icon: IconSquare3Stack3d,
 		id: 'joins'
+	},
+	{
+		label: 'GroupBys',
+		path: '/GroupBys',
+		icon: IconRectangleStack,
+		id: 'groupbys'
+	},
+
+	{
+		label: 'Staging Queries',
+		path: '/StagingQueries',
+		icon: IconCubeTransparent,
+		id: 'stagingqueries'
 	}
 ] as const;
 

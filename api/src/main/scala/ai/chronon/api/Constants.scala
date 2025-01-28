@@ -74,4 +74,15 @@ object Constants {
   val FetchTimeout: Duration = Duration(10, concurrent.TimeUnit.MINUTES)
   val DefaultCharset: Charset = Charset.forName("UTF-8")
 
+  val extensionsToIgnore: Array[String] = Array(".class", ".csv", ".java", ".scala", ".py", ".DS_Store")
+  val foldersToIgnore: Array[String] = Array(".git")
+
+  // import base64
+  // text_bytes = "chronon".encode('utf-8')
+  // base64_str = base64.b64encode(text_bytes)
+  // int.from_bytes(base64.b64decode(base64_str), "big")
+  //
+  // output: 27980863399423854
+
+  val magicNullDouble: java.lang.Double = -27980863399423854.0
 }

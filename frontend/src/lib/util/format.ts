@@ -1,23 +1,26 @@
-/**
- * Formats a timestamp into a human-readable date string
- */
-export function formatDate(value: string | number, includeTime: boolean = true): string {
-	const options: Intl.DateTimeFormatOptions = {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric'
-	};
+import { format, PeriodType } from '@layerstack/utils';
 
-	if (includeTime) {
-		Object.assign(options, {
-			hour: 'numeric',
-			minute: '2-digit',
-			second: '2-digit',
-			hour12: true
+/**
+ * Formats a timestamp into a human-readable date string.
+ * For example: Dec 31, 2022, 5:00:00 PM
+ */
+export function formatDate(value: Date | string | number | null | undefined): string {
+	if (value == null || value === undefined) {
+		return '';
+	} else {
+		const date = value instanceof Date ? value : new Date(value);
+		return format(date, PeriodType.Custom, {
+			custom: {
+				month: 'short',
+				day: 'numeric',
+				year: 'numeric',
+				hour: 'numeric',
+				minute: '2-digit',
+				second: '2-digit',
+				hour12: true
+			}
 		});
 	}
-
-	return new Date(value).toLocaleString('en-US', options);
 }
 
 /**

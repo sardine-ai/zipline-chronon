@@ -16,7 +16,7 @@
 
 package ai.chronon.online;
 
-import scala.util.ScalaVersionSpecificCollectionsConverter;
+import ai.chronon.api.ScalaJavaConversions;
 
 import java.util.Map;
 
@@ -42,7 +42,7 @@ public class JavaStatsResponse {
         this.request = new JavaStatsRequest(scalaResponse.request());
         this.values = JTry
                 .fromScala(scalaResponse.values())
-                .map(ScalaVersionSpecificCollectionsConverter::convertScalaMapToJava);
+                .map(ScalaJavaConversions::toJava);
         this.millis = scalaResponse.millis();
     }
 

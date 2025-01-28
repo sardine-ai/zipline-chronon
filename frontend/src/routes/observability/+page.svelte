@@ -1,6 +1,6 @@
 <script lang="ts">
-	import EChart from '$lib/components/EChart/EChart.svelte';
-	import SplitView from '$lib/components/SplitView/SplitView.svelte';
+	import EChart from '$lib/components/EChart.svelte';
+	import SplitView from '$lib/components/SplitView.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { generateXAxis, generateYAxis, generateHeatmapData } from '$lib/util/heatmap-data-gen';
 	import type { ECElementEvent, EChartOption, EChartsType } from 'echarts';

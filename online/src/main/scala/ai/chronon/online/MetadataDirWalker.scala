@@ -1,6 +1,7 @@
 package ai.chronon.online
 
 import ai.chronon.api
+import ai.chronon.api.Constants
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import com.google.gson.Gson
@@ -8,30 +9,20 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.io.File
+import java.io.FileReader
 import java.nio.file.Files
 import java.nio.file.Paths
 import scala.reflect.ClassTag
+import scala.util.Try
 
-class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
-  // ignore files ending with extensions below
-  private val ignoreExtensions = List(".class", ".csv", ".java", ".scala", ".py")
+class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], maybeConfType: Option[String] = None) {
+
+  val JoinKeyword = "joins"
+  val GroupByKeyword = "group_bys"
+  val StagingQueryKeyword = "staging_queries"
+  val ModelKeyword = "models"
+
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  private def listFiles(base: File, recursive: Boolean = true): Seq[File] = {
-    if (base.isFile) {
-      Seq(base)
-    } else {
-      val files = base.listFiles
-      val result = files.filter(_.isFile).filterNot { file =>
-        ignoreExtensions.exists(file.getName.endsWith)
-      }
-      result ++
-        files
-          .filter(_.isDirectory)
-          .filter(_ => recursive)
-          .flatMap(listFiles(_, recursive))
-    }
-  }
-
   private def loadJsonToConf[T <: TBase[_, _]: Manifest: ClassTag](file: String): Option[T] = {
     try {
       val configConf = ThriftJsonCodec.fromJsonFile[T](file, check = true)
@@ -64,7 +55,7 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
     val configFile = new File(dirPath)
     assert(configFile.exists(), s"$configFile does not exist")
     logger.info(s"Uploading Chronon configs from $dirPath")
-    listFiles(configFile)
+    MetadataDirWalker.listFiles(configFile).getValidFilesAndReport
   }
 
   lazy val nonEmptyFileList: Seq[File] = {
@@ -91,37 +82,50 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
       val optConf =
         try {
           filePath match {
-            case value if value.contains("joins/")           => loadJsonToConf[api.Join](filePath)
-            case value if value.contains("group_bys/")       => loadJsonToConf[api.GroupBy](filePath)
-            case value if value.contains("staging_queries/") => loadJsonToConf[api.StagingQuery](filePath)
-            case value if value.contains("models/")          => loadJsonToConf[api.Model](filePath)
+            case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
+              loadJsonToConf[api.Join](filePath)
+            case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
+              loadJsonToConf[api.GroupBy](filePath)
+            case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
+              loadJsonToConf[api.StagingQuery](filePath)
+            case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
+              loadJsonToConf[api.Model](filePath)
           }
         } catch {
           case e: Throwable =>
             logger.error(s"Failed to parse compiled team from file path: $filePath, \nerror=${e.getMessage}")
             None
         }
+
       if (optConf.isDefined) {
-        val kvPairToEndPoint: List[(String, (String, String))] = metadataEndPointNames.map { endPointName =>
-          val conf = optConf.get
-          val kVPair = filePath match {
-            case value if value.contains("joins/") =>
-              MetadataEndPoint.getEndPoint[api.Join](endPointName).extractFn(filePath, conf.asInstanceOf[api.Join])
-            case value if value.contains("group_bys/") =>
-              MetadataEndPoint
-                .getEndPoint[api.GroupBy](endPointName)
-                .extractFn(filePath, conf.asInstanceOf[api.GroupBy])
-            case value if value.contains("staging_queries/") =>
-              MetadataEndPoint
-                .getEndPoint[api.StagingQuery](endPointName)
-                .extractFn(filePath, conf.asInstanceOf[api.StagingQuery])
-            case value if value.contains("models/") =>
-              MetadataEndPoint
-                .getEndPoint[api.Model](endPointName)
-                .extractFn(filePath, conf.asInstanceOf[api.Model])
+        val kvPairToEndPoint: List[(String, (String, String))] = metadataEndPointNames
+          .map { endPointName =>
+            val conf = optConf.get
+
+            val kVPair = filePath match {
+              case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
+                MetadataEndPoint
+                  .getEndPoint[api.Join](endPointName)
+                  .extractFn(filePath, conf.asInstanceOf[api.Join])
+
+              case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
+                MetadataEndPoint
+                  .getEndPoint[api.GroupBy](endPointName)
+                  .extractFn(filePath, conf.asInstanceOf[api.GroupBy])
+
+              case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
+                MetadataEndPoint
+                  .getEndPoint[api.StagingQuery](endPointName)
+                  .extractFn(filePath, conf.asInstanceOf[api.StagingQuery])
+
+              case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
+                MetadataEndPoint
+                  .getEndPoint[api.Model](endPointName)
+                  .extractFn(filePath, conf.asInstanceOf[api.Model])
+            }
+
+            (endPointName, kVPair)
           }
-          (endPointName, kVPair)
-        }
 
         kvPairToEndPoint
           .map(kvPair => {
@@ -138,4 +142,70 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String]) {
       }
     }
   }
+}
+
+object MetadataDirWalker {
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+
+  case class FileList(fileList: Seq[File] = Seq.empty, ignored: Seq[File] = Seq.empty) {
+    def ++(other: FileList): FileList = FileList(fileList ++ other.fileList, ignored ++ other.ignored)
+
+    def getValidFilesAndReport: Seq[File] = {
+      if (ignored.nonEmpty)
+        logger.debug(
+          s"Skipping invalid files with invalid extensions. Skipping..:\n  ${ignored.map(relativePath).mkString("\n  ")}")
+
+      fileList
+    }
+  }
+
+  def relativePath(file: File): String = {
+    val currentDir = Paths.get("")
+    currentDir.toAbsolutePath.relativize(file.toPath).toString
+  }
+
+  def listFiles(base: File, recursive: Boolean = true): FileList = {
+
+    if (base.isFile) return FileList(Array(base))
+
+    val (folders, files) = base.listFiles.partition(_.isDirectory)
+
+    val (invalidPaths, remainingFiles) = files.partition { file =>
+      Constants.extensionsToIgnore.exists(file.getName.endsWith) ||
+      Constants.foldersToIgnore.exists(file.getPath.split("/").contains(_))
+    }
+
+    val (validFiles, unParseableFiles) = remainingFiles.partition { parseMetadataName(_).isSuccess }
+
+    val filesHere = FileList(validFiles, invalidPaths ++ unParseableFiles)
+
+    val nestedFiles: FileList =
+      if (recursive)
+        folders.map(listFiles(_, recursive)).reduceOption(_ ++ _).getOrElse(FileList())
+      else
+        FileList()
+
+    filesHere ++ nestedFiles
+
+  }
+
+  private def parseMetadataName(file: File): Try[String] =
+    Try {
+      val gson = new Gson()
+      val reader = new FileReader(file)
+      val map = gson.fromJson(reader, classOf[java.util.Map[String, AnyRef]])
+      val result = map
+        .get("metaData")
+        .asInstanceOf[java.util.Map[String, AnyRef]]
+        .get("name")
+        .asInstanceOf[String]
+
+      reader.close()
+      result
+    }
+
+  def parse[T <: TBase[_, _]: Manifest: ClassTag](file: File): Try[T] =
+    Try {
+      ThriftJsonCodec.fromJsonFile[T](file, check = true)
+    }
 }

@@ -21,6 +21,7 @@ import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
@@ -28,7 +29,6 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.utils.MockApi
 import ai.chronon.spark.{Join => _, _}
-import junit.framework.TestCase
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -36,6 +36,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.lit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -44,9 +45,8 @@ import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.collection.Seq
 import scala.concurrent.ExecutionContext
-import scala.util.ScalaJavaConversions._
 
-class ChainingFetcherTest extends TestCase {
+class ChainingFetcherTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "ChainingFetcherTest"
   val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
@@ -318,14 +318,14 @@ class ChainingFetcherTest extends TestCase {
     assertEquals(0, diff.count())
   }
 
-  def testFetchParentJoin(): Unit = {
+  it should "fetch parent join" in {
     val namespace = "parent_join_fetch"
     val joinConf = generateMutationData(namespace, Accuracy.TEMPORAL)
     val (expected, fetcherResponse) = executeFetch(joinConf, "2021-04-15", namespace)
     compareTemporalFetch(joinConf, "2021-04-15", expected, fetcherResponse, "user")
   }
 
-  def testFetchChainingDeterministic(): Unit = {
+  it should "fetch chaining deterministic" in {
     val namespace = "chaining_fetch"
     val chainingJoinConf = generateChainingJoinData(namespace, Accuracy.TEMPORAL)
     assertTrue(chainingJoinConf.joinParts.get(0).groupBy.sources.get(0).isSetJoinSource)

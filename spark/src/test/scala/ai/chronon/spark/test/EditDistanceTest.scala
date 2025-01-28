@@ -18,12 +18,11 @@ package ai.chronon.spark.test
 
 import ai.chronon.spark.stats.EditDistance
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class EditDistanceTest {
+class EditDistanceTest extends AnyFlatSpec {
 
-  @Test
-  def basic(): Unit = {
+  it should "basic" in {
     def of(a: Any, b: Any) = EditDistance.between(a, b)
     def ofString(a: String, b: String) = EditDistance.betweenStrings(a, b)
 

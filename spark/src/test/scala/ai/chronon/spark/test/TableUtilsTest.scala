@@ -16,29 +16,22 @@
 
 package ai.chronon.spark.test
 
-import ai.chronon.api.StructField
 import ai.chronon.api._
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
-import ai.chronon.spark.IncompatibleSchemaException
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
 import ai.chronon.spark._
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
-import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql._
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Try
 
-
+case class TestRecord(ds: String, id: String)
 
 class SimpleAddUDF extends UDF {
   def evaluate(value: Int): Int = {
@@ -46,13 +39,12 @@ class SimpleAddUDF extends UDF {
   }
 }
 
-class TableUtilsTest {
+class TableUtilsTest extends AnyFlatSpec {
   lazy val spark: SparkSession = SparkSessionBuilder.build("TableUtilsTest", local = true)
-  private val tableUtils = TableUtils(spark)
+  private val tableUtils = TableTestUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
-  @Test
-  def ColumnFromSqlTest(): Unit = {
+  it should "column from sql" in {
     val sampleSql =
       """
         |SELECT
@@ -77,16 +69,17 @@ class TableUtilsTest {
     assertEquals(expected, columns.sorted)
   }
 
-  @Test
-  def GetFieldNamesTest(): Unit = {
+  it should "get field names" in {
     val schema = types.StructType(
       Seq(
         types.StructField("name", types.StringType, nullable = true),
         types.StructField("age", types.IntegerType, nullable = false),
-        types.StructField("address", types.StructType(Seq(
-          types.StructField("street", types.StringType, nullable = true),
-          types.StructField("city", types.StringType, nullable = true)
-        )))
+        types.StructField("address",
+                          types.StructType(
+                            Seq(
+                              types.StructField("street", types.StringType, nullable = true),
+                              types.StructField("city", types.StringType, nullable = true)
+                            )))
       )
     )
     val expectedFieldNames = Seq("name", "age", "address", "address.street", "address.city")
@@ -141,8 +134,7 @@ class TableUtilsTest {
     })
   }
 
-  @Test
-  def testInsertPartitionsAddColumns(): Unit = {
+  it should "insert partitions add columns" in {
     val tableName = "db.test_table_1"
     spark.sql("CREATE DATABASE IF NOT EXISTS db")
     val columns1 = Array(
@@ -177,8 +169,7 @@ class TableUtilsTest {
     testInsertPartitions(tableName, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
   }
 
-  @Test
-  def testInsertPartitionsRemoveColumns(): Unit = {
+  it should "insert partitions remove columns" in {
     val tableName = "db.test_table_2"
     spark.sql("CREATE DATABASE IF NOT EXISTS db")
     val columns1 = Array(
@@ -212,8 +203,7 @@ class TableUtilsTest {
     testInsertPartitions(tableName, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
   }
 
-  @Test
-  def testInsertPartitionsModifiedColumns(): Unit = {
+  it should "insert partitions modified columns" in {
     val tableName = "db.test_table_3"
     spark.sql("CREATE DATABASE IF NOT EXISTS db")
     val columns1 = Array(
@@ -249,8 +239,7 @@ class TableUtilsTest {
     testInsertPartitions(tableName, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
   }
 
-  @Test
-  def ChunkTest(): Unit = {
+  it should "chunk" in {
     val actual = tableUtils.chunk(Set("2021-01-01", "2021-01-02", "2021-01-05", "2021-01-07"))
     val expected = Seq(
       PartitionRange("2021-01-01", "2021-01-02"),
@@ -260,8 +249,7 @@ class TableUtilsTest {
     assertEquals(expected, actual)
   }
 
-  @Test
-  def testDropPartitions(): Unit = {
+  it should "drop partitions" in {
     val tableName = "db.test_drop_partitions_table"
     spark.sql("CREATE DATABASE IF NOT EXISTS db")
     val columns1 = Array(
@@ -303,8 +291,7 @@ class TableUtilsTest {
           )))
   }
 
-  @Test
-  def testAllPartitionsAndGetLatestLabelMapping(): Unit = {
+  it should "all partitions and get latest label mapping" in {
     val tableName = "db.test_show_partitions"
     spark.sql("CREATE DATABASE IF NOT EXISTS db")
 
@@ -344,8 +331,7 @@ class TableUtilsTest {
     // verify the latest label version
     val labels = JoinUtils.getLatestLabelMapping(tableName, tableUtils)
     assertEquals(labels("2022-11-09"),
-                 List(PartitionRange("2022-10-01", "2022-10-02"),
-                      PartitionRange("2022-10-05", "2022-10-05")))
+                 List(PartitionRange("2022-10-01", "2022-10-02"), PartitionRange("2022-10-05", "2022-10-05")))
   }
 
   private def prepareTestDataWithSubPartitions(tableName: String): Unit = {
@@ -376,8 +362,7 @@ class TableUtilsTest {
 
   }
 
-  @Test
-  def testLastAvailablePartition(): Unit = {
+  it should "last available partition" in {
     val tableName = "db.test_last_available_partition"
     prepareTestDataWithSubPartitions(tableName)
     Seq("2022-11-01", "2022-11-02", "2022-11-03").foreach { ds =>
@@ -386,8 +371,7 @@ class TableUtilsTest {
     }
   }
 
-  @Test
-  def testFirstAvailablePartition(): Unit = {
+  it should "first available partition" in {
     val tableName = "db.test_first_available_partition"
     prepareTestDataWithSubPartitions(tableName)
     Seq("2022-11-01", "2022-11-02", "2022-11-03").foreach { ds =>
@@ -396,8 +380,7 @@ class TableUtilsTest {
     }
   }
 
-  @Test
-  def testColumnSizeEstimator(): Unit = {
+  it should "column size estimator" in {
     val chrononType = StructType(
       "table_schema",
       Array(
@@ -420,17 +403,126 @@ class TableUtilsTest {
     )
   }
 
-  @Test
-  def testCheckTablePermission(): Unit = {
+  it should "check table permission" in {
     val tableName = "db.test_check_table_permission"
     prepareTestDataWithSubPartitions(tableName)
     assertTrue(tableUtils.checkTablePermission(tableName))
   }
 
-  @Test
-  def testDoubleUDFRegistration(): Unit = {
+  it should "double udf registration" in {
     tableUtils.sql("CREATE TEMPORARY FUNCTION test AS 'ai.chronon.spark.test.SimpleAddUDF'")
     tableUtils.sql("CREATE TEMPORARY FUNCTION test AS 'ai.chronon.spark.test.SimpleAddUDF'")
+  }
+
+  it should "insert partitions table reachable already" in {
+    val tableName = "db.test_table_exists_already"
+
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+    val columns = Array(
+      StructField("long_field", LongType),
+      StructField("int_field", IntType),
+      StructField("string_field", StringType),
+      StructField("ds", StringType)
+    )
+
+    // Create the table beforehand
+    spark.sql(s"CREATE TABLE IF NOT EXISTS $tableName (long_field LONG, int_field INT, string_field STRING, ds STRING)")
+
+    val df1 = makeDf(
+      spark,
+      StructType(
+        tableName,
+        columns
+      ),
+      List(
+        Row(1L, 2, "3", "2022-10-01")
+      )
+    )
+    val df2 = makeDf(
+      spark,
+      StructType(
+        tableName,
+        columns
+      ),
+      List(
+        Row(1L, 2, "3", "2022-10-02")
+      )
+    )
+
+    // check if insertion still works
+    testInsertPartitions(tableName, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
+  }
+
+  it should "create table already exists" in {
+    val tableName = "db.test_create_table_already_exists"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+
+    val columns = Array(
+      StructField("long_field", LongType),
+      StructField("int_field", IntType),
+      StructField("string_field", StringType)
+    )
+
+    spark.sql(
+      "CREATE TABLE IF NOT EXISTS db.test_create_table_already_exists (long_field LONG, int_field INT, string_field STRING)")
+
+    try {
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(
+          Row(1L, 2, "3")
+        )
+      )
+      tableUtils.createTable(df, tableName, fileFormat = "PARQUET")
+      assertTrue(spark.catalog.tableExists(tableName))
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
+  }
+
+  it should "repartitioning an empty dataframe should work" in {
+    import spark.implicits._
+    val tableName = "db.test_empty_table"
+    tableUtils.createDatabase("db")
+
+    tableUtils.insertPartitions(spark.emptyDataset[TestRecord].toDF(), tableName)
+    val res = tableUtils.loadTable(tableName)
+    assertEquals(0, res.count)
+
+    tableUtils.insertPartitions(spark.createDataFrame(List(TestRecord("2025-01-01", "a"))), tableName)
+    val newRes = tableUtils.loadTable(tableName)
+
+    assertEquals(1, newRes.count)
+  }
+
+  it should "create table" in {
+    val tableName = "db.test_create_table"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+    try {
+      val columns = Array(
+        StructField("long_field", LongType),
+        StructField("int_field", IntType),
+        StructField("string_field", StringType)
+      )
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(
+          Row(1L, 2, "3")
+        )
+      )
+      tableUtils.createTable(df, tableName, fileFormat = "PARQUET")
+      assertTrue(spark.catalog.tableExists(tableName))
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
   }
 
 }

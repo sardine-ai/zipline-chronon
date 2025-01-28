@@ -49,11 +49,14 @@ import org.apache.spark.sql.streaming.StreamingQueryListener
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryProgressEvent
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryStartedEvent
 import org.apache.spark.sql.streaming.StreamingQueryListener.QueryTerminatedEvent
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Subcommand
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.yaml.snakeyaml.Yaml
 
 import java.io.File
 import java.nio.file.Files
@@ -83,9 +86,25 @@ object Driver {
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
     ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
 
-  trait OfflineSubcommand {
+  trait SharedSubCommandArgs {
+    this: ScallopConf =>
+    val isGcp: ScallopOption[Boolean] =
+      opt[Boolean](required = false, default = Some(false), descr = "Whether to use GCP")
+    val gcpProjectId: ScallopOption[String] =
+      opt[String](required = false, descr = "GCP project id")
+    val gcpBigtableInstanceId: ScallopOption[String] =
+      opt[String](required = false, descr = "GCP BigTable instance id")
+
+    val confType: ScallopOption[String] =
+      opt[String](required = false, descr = "Type of the conf to run. ex: join, group-by, etc")
+  }
+
+  trait OfflineSubcommand extends SharedSubCommandArgs {
     this: ScallopConf =>
     val confPath: ScallopOption[String] = opt[String](required = true, descr = "Path to conf")
+
+    val additionalConfPath: ScallopOption[String] =
+      opt[String](required = false, descr = "Path to additional driver job configurations")
 
     val runFirstHole: ScallopOption[Boolean] =
       opt[Boolean](required = false,
@@ -144,33 +163,44 @@ object Driver {
 
     def subcommandName(): String
 
-    def isLocal: Boolean = localTableMapping.nonEmpty || localDataPath.isDefined
+    protected def isLocal: Boolean = localTableMapping.nonEmpty || localDataPath.isDefined
 
     protected def buildSparkSession(): SparkSession = {
+      implicit val formats: Formats = DefaultFormats
+      val yamlLoader = new Yaml()
+      val additionalConfs = additionalConfPath.toOption
+        .map(Source.fromFile)
+        .map((src) =>
+          try { src.mkString }
+          finally { src.close })
+        .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
+        .map((map) => Extraction.decompose(map.asScala.toMap))
+        .map((v) => render(v))
+        .map(compact)
+        .map((str) => parse(str).extract[Map[String, String]])
+
+      // We use the KryoSerializer for group bys and joins since we serialize the IRs.
+      // But since staging query is fairly freeform, it's better to stick to the java serializer.
+      val session =
+        SparkSessionBuilder.build(
+          subcommandName(),
+          local = isLocal,
+          localWarehouseLocation = localWarehouseLocation.toOption,
+          enforceKryoSerializer = !subcommandName().contains("staging_query"),
+          additionalConfig = additionalConfs
+        )
       if (localTableMapping.nonEmpty) {
-        val localSession = SparkSessionBuilder.build(subcommandName(),
-                                                     local = true,
-                                                     localWarehouseLocation = localWarehouseLocation.toOption)
         localTableMapping.foreach {
           case (table, filePath) =>
             val file = new File(filePath)
-            LocalDataLoader.loadDataFileAsTable(file, localSession, table)
+            LocalDataLoader.loadDataFileAsTable(file, session, table)
         }
-        localSession
       } else if (localDataPath.isDefined) {
         val dir = new File(localDataPath())
         assert(dir.exists, s"Provided local data path: ${localDataPath()} doesn't exist")
-        val localSession =
-          SparkSessionBuilder.build(subcommandName(),
-                                    local = true,
-                                    localWarehouseLocation = localWarehouseLocation.toOption)
-        LocalDataLoader.loadDataRecursively(dir, localSession)
-        localSession
-      } else {
-        // We use the KryoSerializer for group bys and joins since we serialize the IRs.
-        // But since staging query is fairly freeform, it's better to stick to the java serializer.
-        SparkSessionBuilder.build(subcommandName(), enforceKryoSerializer = !subcommandName().contains("staging_query"))
+        LocalDataLoader.loadDataRecursively(dir, session)
       }
+      session
     }
 
     def buildTableUtils(): TableUtils = {
@@ -278,7 +308,7 @@ object Driver {
       val join = new Join(
         args.joinConf,
         args.endDate(),
-        args.buildTableUtils(),
+        tableUtils,
         !args.runFirstHole(),
         selectedJoinParts = args.selectedJoinParts.toOption
       )
@@ -414,24 +444,24 @@ object Driver {
     class Args extends Subcommand("analyze") with OfflineSubcommand {
       val startDate: ScallopOption[String] =
         opt[String](required = false,
-                    descr = "Finds heavy hitters & time-distributions until a specified start date",
+                    descr = "Finds skewed keys & time-distributions until a specified start date",
                     default = None)
-      val count: ScallopOption[Int] =
+      val skewKeyCount: ScallopOption[Int] =
         opt[Int](
           required = false,
           descr =
-            "Finds the specified number of heavy hitters approximately. The larger this number is the more accurate the analysis will be.",
+            "Finds the specified number of skewed keys. The larger this number is the more accurate the analysis will be.",
           default = Option(128)
         )
       val sample: ScallopOption[Double] =
         opt[Double](required = false,
-                    descr = "Sampling ratio - what fraction of rows into incorporate into the heavy hitter estimate",
+                    descr = "Sampling ratio - what fraction of rows into incorporate into the skew key detection",
                     default = Option(0.1))
-      val enableHitter: ScallopOption[Boolean] =
+      val skewDetection: ScallopOption[Boolean] =
         opt[Boolean](
           required = false,
           descr =
-            "enable skewed data analysis - whether to include the heavy hitter analysis, will only output schema if disabled",
+            "finds skewed keys if true else will only output schema and exit. Skew detection will take longer time.",
           default = Some(false)
         )
 
@@ -444,9 +474,9 @@ object Driver {
                    args.confPath(),
                    args.startDate.getOrElse(tableUtils.partitionSpec.shiftBackFromNow(3)),
                    args.endDate(),
-                   args.count(),
+                   args.skewKeyCount(),
                    args.sample(),
-                   args.enableHitter()).run
+                   args.skewDetection()).run
     }
   }
 
@@ -496,10 +526,20 @@ object Driver {
   object GroupByUploader {
     class Args extends Subcommand("group-by-upload") with OfflineSubcommand {
       override def subcommandName() = "group-by-upload"
+
+      // jsonPercent
+      val jsonPercent: ScallopOption[Int] =
+        opt[Int](name = "json-percent",
+                 required = false,
+                 descr = "Percentage of json encoding to retain for debuggability",
+                 default = Some(1))
     }
 
     def run(args: Args): Unit = {
-      GroupByUpload.run(parseConf[api.GroupBy](args.confPath()), args.endDate())
+      GroupByUpload.run(parseConf[api.GroupBy](args.confPath()),
+                        args.endDate(),
+                        Some(args.buildTableUtils()),
+                        jsonPercent = args.jsonPercent.apply())
     }
   }
 
@@ -547,7 +587,7 @@ object Driver {
   }
 
   // common arguments to all online commands
-  trait OnlineSubcommand { s: ScallopConf =>
+  trait OnlineSubcommand extends SharedSubCommandArgs { s: ScallopConf =>
     // this is `-Z` and not `-D` because sbt-pack plugin uses that for JAVA_OPTS
     val propsInner: Map[String, String] = props[String]('Z')
     val onlineJar: ScallopOption[String] =
@@ -556,6 +596,10 @@ object Driver {
       opt[String](required = true,
                   descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
 
+    // TODO: davidhan - remove this when we've migrated away from additional-conf-path
+    val additionalConfPath: ScallopOption[String] =
+      opt[String](required = false, descr = "Path to additional driver job configurations")
+
     // hashmap implements serializable
     def serializableProps: Map[String, String] = {
       val map = new mutable.HashMap[String, String]()
@@ -563,10 +607,18 @@ object Driver {
       map.toMap
     }
 
-    lazy val api: Api = impl(serializableProps)
+    lazy private val gcpMap = Map(
+      "GCP_PROJECT_ID" -> gcpProjectId.toOption.getOrElse(""),
+      "GCP_BIGTABLE_INSTANCE_ID" -> gcpBigtableInstanceId.toOption.getOrElse("")
+    )
+
+    lazy val api: Api = isGcp.toOption match {
+      case Some(true) => impl(serializableProps ++ gcpMap)
+      case _          => impl(serializableProps)
+    }
 
     def metaDataStore =
-      new MetadataStore(impl(serializableProps).genKvStore, MetadataDataset, timeoutMillis = 10000)
+      new MetadataStore(api.genKvStore, MetadataDataset, timeoutMillis = 10000)
 
     def impl(props: Map[String, String]): Api = {
       val urls = Array(new File(onlineJar()).toURI.toURL)
@@ -699,7 +751,7 @@ object Driver {
 
     def run(args: Args): Unit = {
       val acceptedEndPoints = List(MetadataEndPoint.ConfByKeyEndPointName, MetadataEndPoint.NameByTeamEndPointName)
-      val dirWalker = new MetadataDirWalker(args.confPath(), acceptedEndPoints)
+      val dirWalker = new MetadataDirWalker(args.confPath(), acceptedEndPoints, maybeConfType = args.confType.toOption)
       val kvMap: Map[String, Map[String, List[String]]] = dirWalker.run
 
       // trigger creates of the datasets before we proceed with writes
@@ -711,6 +763,43 @@ object Driver {
       val res = putRequestsSeq.flatMap(putRequests => Await.result(putRequests, 1.hour))
       logger.info(
         s"Uploaded Chronon Configs to the KV store, success count = ${res.count(v => v)}, failure count = ${res.count(!_)}")
+    }
+  }
+
+  object GroupByUploadToKVBulkLoad {
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("groupby-upload-bulk-load") with OnlineSubcommand {
+      // Expectation that run.py only sets confPath
+      val confPath: ScallopOption[String] = opt[String](required = false, descr = "path to groupBy conf")
+
+      val partitionString: ScallopOption[String] =
+        opt[String](required = true, descr = "Partition string (in 'yyyy-MM-dd' format) that we are uploading")
+    }
+
+    def run(args: Args): Unit = {
+      val groupByConf = parseConf[api.GroupBy](args.confPath())
+
+      val offlineTable = groupByConf.metaData.uploadTable
+
+      val groupByName = groupByConf.metaData.name
+
+      logger.info(s"Triggering bulk load for GroupBy: ${groupByName} for partition: ${args
+        .partitionString()} from table: ${offlineTable}")
+      val kvStore = args.api.genKvStore
+      val startTime = System.currentTimeMillis()
+
+      try {
+        // TODO: we may need to wrap this around TableUtils
+        kvStore.bulkPut(offlineTable, groupByName, args.partitionString())
+      } catch {
+        case e: Exception =>
+          logger.error(s"Failed to upload GroupBy: ${groupByName} for partition: ${args
+                         .partitionString()} from table: $offlineTable",
+                       e)
+          throw e
+      }
+      logger.info(s"Uploaded GroupByUpload data to KV store for GroupBy: ${groupByName}; partition: ${args
+        .partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
   }
 
@@ -913,6 +1002,8 @@ object Driver {
     addSubcommand(FetcherCliArgs)
     object MetadataUploaderArgs extends MetadataUploader.Args
     addSubcommand(MetadataUploaderArgs)
+    object GroupByUploadToKVBulkLoadArgs extends GroupByUploadToKVBulkLoad.Args
+    addSubcommand(GroupByUploadToKVBulkLoadArgs)
     object GroupByStreamingArgs extends GroupByStreaming.Args
     addSubcommand(GroupByStreamingArgs)
     object AnalyzerArgs extends Analyzer.Args
@@ -958,7 +1049,9 @@ object Driver {
             shouldExit = false
             GroupByStreaming.run(args.GroupByStreamingArgs)
 
-          case args.MetadataUploaderArgs   => MetadataUploader.run(args.MetadataUploaderArgs)
+          case args.MetadataUploaderArgs => MetadataUploader.run(args.MetadataUploaderArgs)
+          case args.GroupByUploadToKVBulkLoadArgs =>
+            GroupByUploadToKVBulkLoad.run(args.GroupByUploadToKVBulkLoadArgs)
           case args.FetcherCliArgs         => FetcherCli.run(args.FetcherCliArgs)
           case args.LogFlattenerArgs       => LogFlattener.run(args.LogFlattenerArgs)
           case args.ConsistencyMetricsArgs => ConsistencyMetricsCompute.run(args.ConsistencyMetricsArgs)

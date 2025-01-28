@@ -1,10 +1,26 @@
 package ai.chronon.api
 import scala.util.parsing.combinator._
 
-case class DataPointer(catalog: Option[String],
-                       tableOrPath: String,
-                       format: Option[String],
-                       options: Map[String, String])
+abstract class DataPointer {
+  def tableOrPath: String
+  def readFormat: Option[String]
+  def writeFormat: Option[String]
+
+  def readOptions: Map[String, String]
+  def writeOptions: Map[String, String]
+
+}
+
+case class URIDataPointer(
+    override val tableOrPath: String,
+    override val readFormat: Option[String],
+    override val writeFormat: Option[String],
+    options: Map[String, String]
+) extends DataPointer {
+
+  override val readOptions: Map[String, String] = options
+  override val writeOptions: Map[String, String] = options
+}
 
 // parses string representations of data pointers
 // ex: namespace.table
@@ -27,21 +43,26 @@ object DataPointer extends RegexParsers {
     opt(catalogWithOptionalFormat ~ opt(options) ~ "://") ~ tableOrPath ^^ {
       // format is specified in the prefix s3+parquet://bucket/path/to/data/*/*/
       // note that if you have s3+parquet://bucket/path/to/data.csv, format is still parquet
-      case Some((ctl, Some(fmt)) ~ opts ~ _) ~ path =>
-        DataPointer(Some(ctl), path, Some(fmt), opts.getOrElse(Map.empty))
+      case Some((ctl, Some(fmt)) ~ opts ~ sep) ~ path =>
+        URIDataPointer(ctl + sep + path, Some(fmt), Some(fmt), opts.getOrElse(Map.empty))
 
       // format is extracted from the path for relevant sources
       // ex: s3://bucket/path/to/data.parquet
       // ex: file://path/to/data.csv
       // ex: hdfs://path/to/data.with.dots.parquet
       // for other sources like bigquery, snowflake, format is None
-      case Some((ctl, None) ~ opts ~ _) ~ path =>
-        val (pathWithoutFormat, fmt) = extractFormatFromPath(path, ctl)
-        DataPointer(Some(ctl), path, fmt, opts.getOrElse(Map.empty))
+      case Some((ctl, None) ~ opts ~ sep) ~ path =>
+        val (_, fmt) = extractFormatFromPath(path, ctl)
+
+        fmt match {
+          // Retain the full uri if it's a path.
+          case Some(ft) => URIDataPointer(ctl + sep + path, Some(ft), Some(ft), opts.getOrElse(Map.empty))
+          case None     => URIDataPointer(path, Some(ctl), Some(ctl), opts.getOrElse(Map.empty))
+        }
 
       case None ~ path =>
         // No prefix case (direct table reference)
-        DataPointer(None, path, None, Map.empty)
+        URIDataPointer(path, None, None, Map.empty)
     }
 
   private def catalogWithOptionalFormat: Parser[(String, Option[String])] =

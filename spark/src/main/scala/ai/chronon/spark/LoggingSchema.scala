@@ -17,13 +17,12 @@
 package ai.chronon.spark
 
 import ai.chronon.api.HashUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
 import ai.chronon.online.AvroCodec
 import ai.chronon.online.JoinCodec
 import com.google.gson.Gson
-
-import scala.util.ScalaJavaConversions.MapOps
 
 /*
  * Schema of a published log event. valueCodec includes both base and derived columns.
@@ -34,7 +33,7 @@ case class LoggingSchema(keyCodec: AvroCodec, valueCodec: AvroCodec) {
   lazy val keyIndices: Map[StructField, Int] = keyFields.zipWithIndex.toMap
   lazy val valueIndices: Map[StructField, Int] = valueFields.zipWithIndex.toMap
 
-  def hash(joinName: String): String = HashUtils.md5Base64(JoinCodec.buildLoggingSchema(joinName, keyCodec, valueCodec))
+  def hash(joinName: String): String = HashUtils.md5Hex(JoinCodec.buildLoggingSchema(joinName, keyCodec, valueCodec))
 }
 
 object LoggingSchema {

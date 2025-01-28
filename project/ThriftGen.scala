@@ -4,7 +4,7 @@ import sbt.*
 import scala.language.postfixOps
 import sys.process.*
 
-object Thrift {
+object ThriftGen {
 
   def print_and_execute(command: String): Int = {
     println(s"+ $command")
@@ -37,13 +37,17 @@ object Thrift {
     }
   }
 
-  def gen(inputPath: String, outputPath: String, language: String, cleanupSuffixPath: String = "", extension: String = null): Seq[File] = {
-    s"""echo "Generating files from thrift file: $inputPath \ninto folder $outputPath" """ !;
-    print_and_execute(s"rm -rf $outputPath/$cleanupSuffixPath")
-    s"mkdir -p $outputPath" !;
+  def gen(inputFolder: File, outputPath: String, language: String, extension: String = null): Seq[File] = {
+    s"""echo "Generating files from thrift files at: $inputFolder/ \ninto folder $outputPath" """ !;
+    print_and_execute(s"rm -rf $outputPath")
+    print_and_execute(s"mkdir -p $outputPath");
     print_and_execute(s"thrift -version")
-    print_and_execute(s"thrift --gen $language:generated_annotations=suppress -out $outputPath $inputPath")
-    val javaFiles = (PathFinder(new File(s"$outputPath/ai/chronon/api/")) ** "*.java").get()
+    val thriftFiles = (PathFinder(new File(s"$inputFolder/")) ** "*.thrift").get()
+    thriftFiles.foreach { file =>
+      println(s"Processing file: $file")
+      print_and_execute(s"thrift --gen $language:generated_annotations=suppress -out $outputPath $file")
+    }
+    val javaFiles = (PathFinder(new File(s"$outputPath/ai/chronon/")) ** "*.java").get()
     javaFiles.foreach { file =>
       println(s"Processing file: ${file.getPath}")
       replaceInFile(file)

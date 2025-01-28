@@ -18,6 +18,7 @@ package ai.chronon.spark.test
 
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online._
@@ -28,7 +29,6 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.utils.MockApi
-import junit.framework.TestCase
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -38,6 +38,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -46,8 +47,6 @@ import scala.collection.Seq
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.SECONDS
-import scala.util.ScalaJavaConversions.JListOps
-import scala.util.ScalaJavaConversions.ListOps
 
 case class GroupByTestSuite(
     name: String,
@@ -74,7 +73,7 @@ object JoinTestSuite {
   }
 }
 
-class SchemaEvolutionTest extends TestCase {
+class SchemaEvolutionTest extends AnyFlatSpec {
 
   val spark: SparkSession = SparkSessionBuilder.build("SchemaEvolutionTest", local = true)
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
@@ -316,8 +315,10 @@ class SchemaEvolutionTest extends TestCase {
   }
 
   def testSchemaEvolution(namespace: String, joinSuiteV1: JoinTestSuite, joinSuiteV2: JoinTestSuite): Unit = {
-    assert(joinSuiteV1.joinConf.metaData.name == joinSuiteV2.joinConf.metaData.name,
-           message = "Schema evolution can only be tested on changes of the SAME join")
+
+    require(joinSuiteV1.joinConf.metaData.name == joinSuiteV2.joinConf.metaData.name,
+      "Schema evolution can only be tested on changes of the SAME join")
+
     val tableUtils: TableUtils = TableUtils(spark)
     val inMemoryKvStore = OnlineUtils.buildInMemoryKVStore(namespace)
     val mockApi = new MockApi(() => inMemoryKvStore, namespace)
@@ -442,12 +443,12 @@ class SchemaEvolutionTest extends TestCase {
     assertTrue(removedFeatures.forall(flattenedDf34.schema.fieldNames.contains(_)))
   }
 
-  def testAddFeatures(): Unit = {
+  it should "add features" in {
     val namespace = "add_features"
     testSchemaEvolution(namespace, createV1Join(namespace), createV2Join(namespace))
   }
 
-  def testRemoveFeatures(): Unit = {
+  it should "remove features" in {
     val namespace = "remove_features"
     testSchemaEvolution(namespace, createV2Join(namespace), createV1Join(namespace))
   }

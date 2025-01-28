@@ -22,6 +22,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ExternalPart
 import ai.chronon.api.JoinPart
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructField
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
@@ -36,7 +37,6 @@ import org.slf4j.LoggerFactory
 import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
-import scala.util.ScalaJavaConversions.ListOps
 import scala.util.Try
 
 case class JoinPartMetadata(
@@ -167,7 +167,7 @@ object BootstrapInfo {
       Option(joinConf.bootstrapParts.toScala).getOrElse(Seq.empty).partition { part =>
         // treat log table with additional selects as standard table bootstrap
         val hasSelect = part.isSetQuery && part.query.isSetSelects
-        if (!tableUtils.tableExists(part.table)) {
+        if (!tableUtils.tableReachable(part.table)) {
           throw new Exception(s"Bootstrap table ${part.table} does NOT exist!")
         }
         val tblProps = tableUtils.getTableProperties(part.table)

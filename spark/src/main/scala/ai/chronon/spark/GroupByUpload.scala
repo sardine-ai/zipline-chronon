@@ -30,6 +30,7 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.GroupByServingInfo
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.QueryUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.Extensions.ChrononStructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
@@ -50,8 +51,6 @@ import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Try
 
 class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable {
@@ -258,8 +257,8 @@ object GroupByUpload {
       .withColumn("ds", lit(endDs))
       .saveUnPartitioned(groupByConf.metaData.uploadTable, groupByConf.metaData.tableProps)
 
-    val kvDfReloaded = tableUtils.sparkSession
-      .table(groupByConf.metaData.uploadTable)
+    val kvDfReloaded = tableUtils
+      .loadTable(groupByConf.metaData.uploadTable)
       .where(not(col("key_json").eqNullSafe(Constants.GroupByServingInfoKey)))
 
     val metricRow =

@@ -13,11 +13,17 @@
 #     limitations under the License.
 
 import ai.chronon.api.ttypes as ttypes
+import ai.chronon.api.common.ttypes as common
 import ai.chronon.utils as utils
+import ai.chronon.windows as window_utils
+
+from copy import deepcopy
 import logging
 import inspect
 import json
 from typing import List, Optional, Union, Dict, Callable, Tuple
+from types import MethodType
+
 
 OperationType = int  # type(zthrift.Operation.FIRST)
 
@@ -114,12 +120,12 @@ def DefaultAggregation(keys, sources, operation=Operation.LAST, tags=None):
 
 
 class TimeUnit:
-    HOURS = ttypes.TimeUnit.HOURS
-    DAYS = ttypes.TimeUnit.DAYS
+    HOURS = common.TimeUnit.HOURS
+    DAYS = common.TimeUnit.DAYS
 
 
-def window_to_str_pretty(window: ttypes.Window):
-    unit = ttypes.TimeUnit._VALUES_TO_NAMES[window.timeUnit].lower()
+def window_to_str_pretty(window: common.Window):
+    unit = common.TimeUnit._VALUES_TO_NAMES[window.timeUnit].lower()
     return f"{window.length} {unit}"
 
 
@@ -131,7 +137,7 @@ def op_to_str(operation: OperationType):
 def Aggregation(
     input_column: str = None,
     operation: Union[ttypes.Operation, Tuple[ttypes.Operation, Dict[str, str]]] = None,
-    windows: List[ttypes.Window] = None,
+    windows: Union[List[common.Window], List[str]] = None,
     buckets: List[str] = None,
     tags: Dict[str, str] = None,
 ) -> ttypes.Aggregation:
@@ -146,9 +152,9 @@ def Aggregation(
         Defaults to "LAST".
     :type operation: ttypes.Operation
     :param windows:
-        Length to window to calculate the aggregates on.
+        Length to window to calculate the aggregates on. Strings like "1h", "30d" are also accepted.
         Minimum window size is 1hr. Maximum can be arbitrary. When not defined, the computation is un-windowed.
-    :type windows: List[ttypes.Window]
+    :type windows: List[common.Window]
     :param buckets:
         Besides the GroupBy.keys, this is another level of keys for use under this aggregation.
         Using this would create an output as a map of string to aggregate.
@@ -160,13 +166,27 @@ def Aggregation(
     arg_map = {}
     if isinstance(operation, tuple):
         operation, arg_map = operation[0], operation[1]
-    agg = ttypes.Aggregation(input_column, operation, arg_map, windows, buckets)
+
+    def normalize(w: Union[common.Window, str]) -> common.Window:
+        if isinstance(w, str):
+            return window_utils._from_str(w)
+        elif isinstance(w, common.Window):
+            return w
+        else:
+            raise Exception(
+                "window should be either a string like '7d', '24h', or a Window type"
+            )
+
+    norm_windows = [normalize(w) for w in windows] if windows else None
+
+    agg = ttypes.Aggregation(input_column, operation, arg_map, norm_windows, buckets)
+
     agg.tags = tags
     return agg
 
 
-def Window(length: int, timeUnit: ttypes.TimeUnit) -> ttypes.Window:
-    return ttypes.Window(length, timeUnit)
+def Window(length: int, timeUnit: common.TimeUnit) -> common.Window:
+    return common.Window(length, timeUnit)
 
 
 def Derivation(name: str, expression: str) -> ttypes.Derivation:
@@ -334,7 +354,7 @@ def get_output_col_names(aggregation):
     windowed_names = []
     if aggregation.windows:
         for window in aggregation.windows:
-            unit = ttypes.TimeUnit._VALUES_TO_NAMES[window.timeUnit].lower()[0]
+            unit = common.TimeUnit._VALUES_TO_NAMES[window.timeUnit].lower()[0]
             window_suffix = f"{window.length}{unit}"
             windowed_names.append(f"{base_name}_{window_suffix}")
     else:
@@ -407,7 +427,7 @@ def GroupBy(
             import ai.chronon.api.ttypes as chronon
             aggregations = [
                 chronon.Aggregation(input_column="entity", operation=Operation.LAST),
-                chronon.Aggregation(input_column="entity", operation=Operation.LAST, windows=[Window(7, TimeUnit.DAYS)])
+                chronon.Aggregation(input_column="entity", operation=Operation.LAST, windows=['7d'])
             ],
     :type aggregations: List[ai.chronon.api.ttypes.Aggregation]
     :param online:
@@ -493,7 +513,8 @@ def GroupBy(
 
     required_columns = keys + agg_inputs
 
-    def _sanitize_columns(source: ttypes.Source):
+    def _sanitize_columns(src: ttypes.Source):
+        source = deepcopy(src)
         query = (
             source.entities.query
             if source.entities is not None
@@ -536,13 +557,14 @@ def GroupBy(
 
     if not isinstance(sources, list):
         sources = [sources]
-    sources = [_sanitize_columns(_normalize_source(source)) for source in sources]
 
     deps = [
         dep
         for src in sources
-        for dep in utils.get_dependencies(src, dependencies, lag=lag)
+        for dep in utils.get_dependencies(_normalize_source(src), dependencies, lag=lag)
     ]
+
+    sources = [_sanitize_columns(_normalize_source(source)) for source in sources]
 
     kwargs.update({"lag": lag})
     # get caller's filename to assign team
@@ -580,4 +602,13 @@ def GroupBy(
         derivations=derivations,
     )
     validate_group_by(group_by)
+
+    # Import locally to avoid circular dependency issue
+    from ai.chronon.repo.runner import backfill, deploy, info
+
+    # Attach functions directly to group_by
+    group_by.backfill = MethodType(backfill, group_by)
+    group_by.deploy = MethodType(deploy, group_by)
+    group_by.info = MethodType(info, group_by)
+
     return group_by

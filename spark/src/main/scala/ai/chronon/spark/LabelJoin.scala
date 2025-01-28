@@ -43,14 +43,14 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   assert(Option(joinConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   assert(
-    joinConf.labelPart.leftStartOffset >= joinConf.labelPart.getLeftEndOffset,
-    s"Start time offset ${joinConf.labelPart.leftStartOffset} must be earlier than end offset " +
-      s"${joinConf.labelPart.leftEndOffset}"
+    joinConf.labelParts.leftStartOffset >= joinConf.labelParts.getLeftEndOffset,
+    s"Start time offset ${joinConf.labelParts.leftStartOffset} must be earlier than end offset " +
+      s"${joinConf.labelParts.leftEndOffset}"
   )
 
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.LabelJoin, joinConf)
   private val outputLabelTable = joinConf.metaData.outputLabelTable
-  private val labelJoinConf = joinConf.labelPart
+  private val labelJoinConf = joinConf.labelParts
   private val confTableProps = Option(joinConf.metaData.tableProperties)
     .map(_.asScala.toMap)
     .getOrElse(Map.empty[String, String])
@@ -156,16 +156,19 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
 
   def computeRange(leftDf: DataFrame, leftRange: PartitionRange, sanitizedLabelDs: String): DataFrame = {
     val leftDfCount = leftDf.count()
-    val leftBlooms = labelJoinConf.leftKeyCols.iterator.map { key =>
-      key -> leftDf.generateBloomFilter(key, leftDfCount, joinConf.left.table, leftRange)
-    }.toJMap
+    val leftBlooms = labelJoinConf.leftKeyCols.iterator
+      .map { key =>
+        key -> leftDf.generateBloomFilter(key, leftDfCount, joinConf.left.table, leftRange)
+      }
+      .toMap
+      .asJava
 
     // compute joinParts in parallel
     val rightDfs = labelJoinConf.labels.asScala.map { labelJoinPart =>
       val labelJoinPartMetrics = Metrics.Context(metrics, labelJoinPart)
       if (labelJoinPart.groupBy.aggregations == null) {
         // no need to generate join part cache if there are no aggregations
-        computeLabelPart(labelJoinPart, leftRange, leftBlooms)
+        computelabelParts(labelJoinPart, leftRange, leftBlooms)
       } else {
         val labelOutputRange = PartitionRange(sanitizedLabelDs, sanitizedLabelDs)
         val partTable = joinConf.partOutputTable(labelJoinPart)
@@ -178,7 +181,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
             val start = System.currentTimeMillis()
             leftRanges
               .foreach(leftRange => {
-                val labeledDf = computeLabelPart(labelJoinPart, leftRange, leftBlooms)
+                val labeledDf = computelabelParts(labelJoinPart, leftRange, leftBlooms)
                 // Cache label part data into intermediate table
                 logger.info(s"Writing to join part table: $partTable for partition range $leftRange")
                 labeledDf.save(tableName = partTable,
@@ -220,9 +223,9 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     updatedJoin.drop(Constants.TimePartitionColumn)
   }
 
-  private def computeLabelPart(joinPart: JoinPart,
-                               leftRange: PartitionRange,
-                               leftBlooms: util.Map[String, BloomFilter]): DataFrame = {
+  private def computelabelParts(joinPart: JoinPart,
+                                leftRange: PartitionRange,
+                                leftBlooms: util.Map[String, BloomFilter]): DataFrame = {
     val rightSkewFilter = joinConf.partSkewFilter(joinPart)
     val rightBloomMap = joinPart.rightToLeft.iterator.map { case (right, left) => right -> leftBlooms.get(left) }.toSeq
     val bloomSizes = rightBloomMap.map { case (col, bloom) => s"$col -> ${bloom.bitSize()}" }.pretty
@@ -241,7 +244,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                                PartitionRange(labelDS, labelDS),
                                tableUtils,
                                computeDependency = true,
-                               Option(rightBloomMap.iterator.toJMap),
+                               Option(rightBloomMap.toMap.asJava),
                                rightSkewFilter)
 
     val df = (joinConf.left.dataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {

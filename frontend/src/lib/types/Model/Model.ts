@@ -47,7 +47,10 @@ export type JoinTimeSeriesResponse = {
 
 export type FeatureResponse = {
 	feature: string;
-	points: TimeSeriesItem[];
+	isNumeric?: boolean;
+	points?: TimeSeriesItem[];
+	baseline?: TimeSeriesItem[];
+	current?: TimeSeriesItem[];
 };
 
 export type RawComparedFeatureResponse = {
@@ -61,4 +64,9 @@ export type NullComparedFeatureResponse = {
 	newNullCount: number;
 	oldValueCount: number;
 	newValueCount: number;
+};
+
+export type JoinsResponse = {
+	offset: number;
+	items: Join[];
 };

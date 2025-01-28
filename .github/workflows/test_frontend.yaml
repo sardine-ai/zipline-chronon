@@ -1,0 +1,79 @@
+name: Test Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/test_frontend.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/test_frontend.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend_tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+          cache-dependency-path: "./frontend/package-lock.json"
+
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.2
+        with:
+          packages: thrift-compiler
+          version: 1.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      # TODO: Disabled until `test:integration` is ran
+      # - name: Install playwright browsers
+      #   run: npx playwright install --with-deps
+
+      - name: Run svelte-check (svelte errors, type errors)
+        run: npm run check
+
+      - name: Lint project (prettier format and eslint)
+        run: npm run lint
+
+      # TODO: Disabled until API is setup
+      # - name: Run unit tests (vitest)
+      #   run: npm run test:unit
+      #   env:
+      #     CI: true
+
+      # TODO: Disabled until API is setup
+      # - name: Run integration tests (playwright)
+      #   run: npm run test:integration
+      #   env:
+      #     CI: true
+
+      # TODO: Disabled until `test:integration` is ran
+      # - name: Upload playwright report
+      #   uses: actions/upload-artifact@v4
+      #   if: ${{ !cancelled() }}
+      #   with:
+      #     name: playwright-report
+      #     path: playwright-report/
+      #     retention-days: 30
+
+      - name: Build project
+        run: npm run build

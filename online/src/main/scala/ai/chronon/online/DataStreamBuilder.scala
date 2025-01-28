@@ -20,14 +20,13 @@ import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataModel
 import ai.chronon.api.DataModel.DataModel
+import ai.chronon.api.ScalaJavaConversions._
 import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.Seq
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 

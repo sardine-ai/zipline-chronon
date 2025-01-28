@@ -1,8 +1,4 @@
-import type {
-	FeatureResponse,
-	NullComparedFeatureResponse,
-	RawComparedFeatureResponse
-} from '$lib/types/Model/Model';
+import type { FeatureResponse, RawComparedFeatureResponse } from '$lib/types/Model/Model';
 
 export const percentileSampleData: FeatureResponse = {
 	feature: 'my_feat',
@@ -746,9 +742,71 @@ export const comparedFeatureCategoricalSampleData: RawComparedFeatureResponse = 
 	]
 };
 
-export const nullCountSampleData: NullComparedFeatureResponse = {
-	oldNullCount: 10,
-	newNullCount: 20,
-	oldValueCount: 90,
-	newValueCount: 80
+export const nullCountSampleData: FeatureResponse = {
+	feature: 'feature_1',
+	current: [
+		{ ts: 1725926400000, value: 20, nullValue: 20 } // 20% null values in current
+	],
+	baseline: [
+		{ ts: 1725926400000, value: 10, nullValue: 10 } // 10% null values in baseline
+	]
 };
+
+export function generatePercentileData(
+	numFeatures: number = 1,
+	numTimePoints: number = 24
+): FeatureResponse[] {
+	const percentileLabels = [
+		'p0',
+		'p5',
+		'p10',
+		'p20',
+		'p30',
+		'p40',
+		'p50',
+		'p60',
+		'p70',
+		'p75',
+		'p80',
+		'p90',
+		'p95',
+		'p99',
+		'p100'
+	];
+
+	const currentTime = Date.now();
+	const oneHour = 3600000; // 1 hour in milliseconds
+	const oneHourAgo = currentTime - oneHour; // Start from 1 hour ago
+
+	const features: FeatureResponse[] = [];
+
+	// Generate data for each feature
+	for (let f = 0; f < numFeatures; f++) {
+		const current = [];
+
+		// Generate time series data going backwards from one hour ago
+		for (let i = 0; i < numTimePoints; i++) {
+			const timestamp = oneHourAgo - i * oneHour;
+
+			// Generate points for each percentile at this timestamp
+			for (const label of percentileLabels) {
+				current.push({
+					value: Math.random(),
+					ts: timestamp,
+					label,
+					nullValue: Math.floor(Math.random() * 31)
+				});
+			}
+		}
+
+		// Sort points by timestamp ascending (oldest to newest)
+		current.sort((a, b) => a.ts - b.ts);
+
+		features.push({
+			feature: `feature_${f + 1}`,
+			current
+		});
+	}
+
+	return features;
+}

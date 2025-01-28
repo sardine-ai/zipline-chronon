@@ -24,7 +24,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.io.File
 
@@ -32,10 +32,8 @@ object LocalDataLoaderTest {
 
   val tmpDir: File = Files.createTempDir()
 
-  val spark: SparkSession = SparkSessionBuilder.build(
-    "LocalDataLoaderTest",
-    local = true,
-    localWarehouseLocation = Some(tmpDir.getPath))
+  val spark: SparkSession =
+    SparkSessionBuilder.build("LocalDataLoaderTest", local = true, localWarehouseLocation = Some(tmpDir.getPath))
 
   @AfterClass
   def teardown(): Unit = {
@@ -43,10 +41,9 @@ object LocalDataLoaderTest {
   }
 }
 
-class LocalDataLoaderTest {
+class LocalDataLoaderTest extends AnyFlatSpec {
 
-  @Test
-  def loadDataFileAsTableShouldBeCorrect(): Unit = {
+  it should "load data file as table should be correct" in {
     val resourceURL = Option(getClass.getResource("/local_data_csv/test_table_1_data.csv"))
       .getOrElse(throw new IllegalStateException("Required test resource not found"))
     val file = new File(resourceURL.getFile)
@@ -60,8 +57,7 @@ class LocalDataLoaderTest {
     assertEquals(3, loadedDataDf.count())
   }
 
-  @Test
-  def loadDataRecursivelyShouldBeCorrect(): Unit = {
+  it should "load data recursively should be correct" in {
     val resourceURI = getClass.getResource("/local_data_csv")
     val path = new File(resourceURI.getFile)
     LocalDataLoader.loadDataRecursively(path, spark)

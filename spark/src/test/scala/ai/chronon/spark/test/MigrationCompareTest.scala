@@ -28,9 +28,9 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.CompareJob
 import org.apache.spark.sql.SparkSession
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class MigrationCompareTest {
+class MigrationCompareTest extends AnyFlatSpec {
   lazy val spark: SparkSession = SparkSessionBuilder.build("MigrationCompareTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -84,18 +84,18 @@ class MigrationCompareTest {
 
     //--------------------------------Staging Query-----------------------------
     val stagingQueryConf = Builders.StagingQuery(
-      query = s"select * from ${joinConf.metaData.outputTable} WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
+      query =
+        s"select * from ${joinConf.metaData.outputTable} WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_3",
-        namespace = namespace,
-        tableProperties = Map("key" -> "val"))
+                                   namespace = namespace,
+                                   tableProperties = Map("key" -> "val"))
     )
 
     (joinConf, stagingQueryConf)
   }
 
-  @Test
-  def testMigrateCompare(): Unit = {
+  it should "migrate compare" in {
     val (joinConf, stagingQueryConf) = setupTestData()
 
     val (compareDf, metricsDf, metrics: DataMetrics) =
@@ -104,8 +104,7 @@ class MigrationCompareTest {
     assert(result.size == 0)
   }
 
-  @Test
-  def testMigrateCompareWithLessColumns(): Unit = {
+  it should "migrate compare with less columns" in {
     val (joinConf, _) = setupTestData()
 
     // Run the staging query to generate the corresponding table for comparison
@@ -113,8 +112,8 @@ class MigrationCompareTest {
       query = s"select item, ts, ds from ${joinConf.metaData.outputTable}",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_4",
-        namespace = namespace,
-        tableProperties = Map("key" -> "val"))
+                                   namespace = namespace,
+                                   tableProperties = Map("key" -> "val"))
     )
 
     val (compareDf, metricsDf, metrics: DataMetrics) =
@@ -123,8 +122,7 @@ class MigrationCompareTest {
     assert(result.size == 0)
   }
 
-  @Test
-  def testMigrateCompareWithWindows(): Unit = {
+  it should "migrate compare with windows" in {
     val (joinConf, stagingQueryConf) = setupTestData()
 
     val (compareDf, metricsDf, metrics: DataMetrics) =
@@ -133,16 +131,15 @@ class MigrationCompareTest {
     assert(result.size == 0)
   }
 
-  @Test
-  def testMigrateCompareWithLessData(): Unit = {
+  it should "migrate compare with less data" in {
     val (joinConf, _) = setupTestData()
 
     val stagingQueryConf = Builders.StagingQuery(
       query = s"select * from ${joinConf.metaData.outputTable} where ds BETWEEN '${monthAgo}' AND '${today}'",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_5",
-        namespace = namespace,
-        tableProperties = Map("key" -> "val"))
+                                   namespace = namespace,
+                                   tableProperties = Map("key" -> "val"))
     )
 
     val (compareDf, metricsDf, metrics: DataMetrics) =

@@ -20,15 +20,15 @@ import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataPointer
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.online.TimeRange
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.DataFrameReader
+import org.apache.spark.sql.DataFrameWriter
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.LongType
@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory
 import java.util
 import scala.collection.Seq
 import scala.reflect.ClassTag
-import scala.util.ScalaJavaConversions.IteratorOps
 
 object Extensions {
 
@@ -87,8 +86,11 @@ object Extensions {
 
   object DfWithStats {
     def apply(dataFrame: DataFrame)(implicit partitionSpec: PartitionSpec): DfWithStats = {
+      val tu = TableUtils(dataFrame.sparkSession)
+      val pCol = tu.partitionColumn
+      val pFormat = tu.partitionFormat
       val partitionCounts = dataFrame
-        .groupBy(col(TableUtils(dataFrame.sparkSession).partitionColumn))
+        .groupBy(date_format(col(pCol), pFormat))
         .count()
         .collect()
         .map(row => row.getString(0) -> row.getLong(1))
@@ -298,77 +300,84 @@ object Extensions {
     }
   }
 
-  implicit class InternalRowOps(internalRow: InternalRow) {
-    def toRow: Row = {
-      new Row() {
-        override def length: Int = {
-          internalRow.numFields
-        }
+  implicit class DataPointerAwareDataFrameWriter[T](dfw: DataFrameWriter[T]) {
 
-        override def get(i: Int): Any = {
-          internalRow.get(i, schema.fields(i).dataType)
-        }
+    def save(dataPointer: DataPointer): Unit = {
 
-        override def copy(): Row = internalRow.copy().toRow
-      }
+      val optionDfw = dfw.options(dataPointer.writeOptions)
+      dataPointer.writeFormat
+        .map((wf) => {
+          val normalized = wf.toLowerCase
+          normalized match {
+            case "bigquery" | "bq" =>
+              optionDfw
+                .format("bigquery")
+                .save(dataPointer.tableOrPath)
+            case "snowflake" | "sf" =>
+              optionDfw
+                .format("net.snowflake.spark.snowflake")
+                .option("dbtable", dataPointer.tableOrPath)
+                .save()
+            case "parquet" | "csv" =>
+              optionDfw
+                .format(normalized)
+                .save(dataPointer.tableOrPath)
+            case "hive" | "delta" | "iceberg" =>
+              optionDfw
+                .format(normalized)
+                .insertInto(dataPointer.tableOrPath)
+            case _ =>
+              throw new UnsupportedOperationException(s"Unsupported write catalog: ${normalized}")
+          }
+        })
+        .getOrElse(
+          // None case is just table against default catalog
+          optionDfw
+            .format("hive")
+            .insertInto(dataPointer.tableOrPath))
     }
   }
 
-  implicit class TupleToJMapOps[K, V](tuples: Iterator[(K, V)]) {
-    def toJMap: util.Map[K, V] = {
-      val map = new util.HashMap[K, V]()
-      tuples.foreach { case (k, v) => map.put(k, v) }
-      map
-    }
-  }
+  implicit class DataPointerAwareDataFrameReader(dfr: DataFrameReader) {
 
-  implicit class DataPointerOps(dataPointer: DataPointer) {
-    def toDf(implicit sparkSession: SparkSession): DataFrame = {
+    def load(dataPointer: DataPointer): DataFrame = {
       val tableOrPath = dataPointer.tableOrPath
-      val format = dataPointer.format.getOrElse("parquet")
-      dataPointer.catalog.map(_.toLowerCase) match {
-        case Some("bigquery") | Some("bq") =>
-          // https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file#reading-data-from-a-bigquery-table
-          sparkSession.read
-            .format("bigquery")
-            .options(dataPointer.options)
-            .load(tableOrPath)
 
-        case Some("snowflake") | Some("sf") =>
-          // https://docs.snowflake.com/en/user-guide/spark-connector-use#moving-data-from-snowflake-to-spark
-          val sfOptions = dataPointer.options
-          sparkSession.read
-            .format("net.snowflake.spark.snowflake")
-            .options(sfOptions)
-            .option("dbtable", tableOrPath)
-            .load()
+      val optionDfr = dfr.options(dataPointer.readOptions)
 
-        case Some("s3") | Some("s3a") | Some("s3n") =>
-          // https://sites.google.com/site/hellobenchen/home/wiki/big-data/spark/read-data-files-from-multiple-sub-folders
-          // "To get spark to read through all subfolders and subsubfolders, etc. simply use the wildcard *"
-          // "df= spark.read.parquet('/datafolder/*/*')"
-          //
-          // https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-plan-file-systems.html
-          // "Previously, Amazon EMR used the s3n and s3a file systems. While both still work, "
-          // "we recommend that you use the s3 URI scheme for the best performance, security, and reliability."
-          // TODO: figure out how to scan subfolders in a date range without reading the entire folder
-          sparkSession.read
-            .format(format)
-            .options(dataPointer.options)
-            .load("ș3://" + tableOrPath)
+      dataPointer.readFormat
+        .map { fmt =>
+          val fmtLower = fmt.toLowerCase
 
-        case Some("file") =>
-          sparkSession.read
-            .format(format)
-            .options(dataPointer.options)
-            .load(tableOrPath)
+          fmtLower match {
 
-        case Some("hive") | None =>
-          sparkSession.table(tableOrPath)
+            case "bigquery" | "bq" =>
+              optionDfr
+                .format("bigquery")
+                .load(tableOrPath)
 
-        case _ =>
-          throw new UnsupportedOperationException(s"Unsupported catalog: ${dataPointer.catalog}")
-      }
+            case "snowflake" | "sf" =>
+              optionDfr
+                .format("net.snowflake.spark.snowflake")
+                .option("dbtable", tableOrPath)
+                .load()
+
+            case "parquet" | "csv" =>
+              optionDfr
+                .format(fmt)
+                .load(tableOrPath)
+
+            case "hive" | "delta" | "iceberg" => optionDfr.table(tableOrPath)
+
+            case _ =>
+              throw new UnsupportedOperationException(s"Unsupported read catalog: $fmtLower")
+
+          }
+        }
+        .getOrElse {
+          // None case is just table against default catalog
+          optionDfr.table(tableOrPath)
+        }
     }
   }
 }

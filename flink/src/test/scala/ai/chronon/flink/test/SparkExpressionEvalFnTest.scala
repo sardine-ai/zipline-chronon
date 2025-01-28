@@ -6,12 +6,11 @@ import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.DataStreamUtils
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.spark.sql.Encoders
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SparkExpressionEvalFnTest {
+class SparkExpressionEvalFnTest extends AnyFlatSpec {
 
-  @Test
-  def testBasicSparkExprEvalSanity(): Unit = {
+  it should "basic spark expr eval sanity" in {
     val elements = Seq(
       E2ETestEvent("test1", 12, 1.5, 1699366993123L),
       E2ETestEvent("test2", 13, 1.6, 1699366993124L),
@@ -27,6 +26,7 @@ class SparkExpressionEvalFnTest {
     )
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
+
     val source: DataStream[E2ETestEvent] = env.fromCollection(elements)
     val sparkExprEvalDS = source.flatMap(sparkExprEval)
 
@@ -36,5 +36,4 @@ class SparkExpressionEvalFnTest {
     // let's check the id field
     assert(result.map(_.apply("id")).toSet == Set("test1", "test2", "test3"))
   }
-
 }

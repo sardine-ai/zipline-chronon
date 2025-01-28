@@ -1,0 +1,176 @@
+name: Push To Canary
+
+on:
+  push:
+    branches:
+      - 'main'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_ACCOUNT_ID: ${{secrets.AWS_ACCOUNT_ID}}
+  AWS_QUICKSTART_REPOSITORY: zipline-ai/canary-quickstart
+  AWS_REGION: ${{secrets.AWS_REGION}}
+  GCP_PROJECT_ID: ${{secrets.GCP_PROJECT_ID}}
+  GCP_REGION: ${{secrets.GCP_REGION}}
+
+jobs:
+  push_to_cloud:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: 17
+
+      - name: Setup SBT
+        uses: sbt/setup-sbt@v1
+        with:
+          sbt-runner-version: 1.8.2
+
+      - name: Install Thrift
+        env:
+          THRIFT_VERSION: 0.21.0
+        run: |
+          sudo apt-get install automake bison flex g++ git libboost-all-dev libevent-dev libssl-dev libtool make pkg-config && \
+          curl -LSs https://archive.apache.org/dist/thrift/${{env.THRIFT_VERSION}}/thrift-${{env.THRIFT_VERSION}}.tar.gz -o thrift-${{env.THRIFT_VERSION}}.tar.gz && \
+          tar -xzf thrift-${{env.THRIFT_VERSION}}.tar.gz && \
+          cd thrift-${{env.THRIFT_VERSION}} && \
+          sudo ./configure --without-python --without-cpp --without-nodejs --without-java --disable-debug --disable-tests --disable-libs && \
+          sudo make && \
+          sudo make install && \
+          cd .. && \
+          sudo rm -rf thrift-${{env.THRIFT_VERSION}} thrift-${{env.THRIFT_VERSION}}.tar.gz
+
+
+      - name: Build SBT Project
+        id: sbt-assembly
+        run: |
+          sbt clean && sbt assembly
+
+      - name: Build AWS Quickstart Image
+        id: build-aws-app
+        shell: bash
+        env:
+          USER: root
+          SPARK_SUBMIT_PATH: spark-submit
+          PYTHONPATH: /srv/chronon
+          SPARK_VERSION: 3.1.1
+          JOB_MODE: local[*]
+          PARALLELISM: 2
+          EXECUTOR_MEMORY: 2G
+          EXECUTOR_CORES: 4
+          DRIVER_MEMORY: 1G
+          CHRONON_LOG_TABLE: default.chronon_log_table
+          CHRONON_ONLINE_CLASS: ai.chronon.integrations.aws.AwsApiImpl
+          AWS_DEFAULT_REGION: ${{env.AWS_REGION}}
+          DYNAMO_ENDPOINT: https://dynamodb.${{env.AWS_REGION}}.amazonaws.com
+          JAVA_OPTS: "-Xms1g -Xmx1g"
+          CLOUD_AWS_JAR: /app/cli/cloud_aws.jar
+        run:
+          docker build "." -f "./Dockerfile" -t "aws-quickstart-image:latest"
+
+      - name: Build GCP Quickstart Image
+        id: build-gcp-app
+        shell: bash
+        env:
+          USER: root
+          SPARK_SUBMIT_PATH: spark-submit
+          PYTHONPATH: /srv/chronon
+          SPARK_VERSION: 3.1.1
+          JOB_MODE: local[*]
+          PARALLELISM: 2
+          EXECUTOR_MEMORY: 2G
+          EXECUTOR_CORES: 4
+          DRIVER_MEMORY: 1G
+          CHRONON_LOG_TABLE: default.chronon_log_table
+          CHRONON_ONLINE_CLASS: ai.chronon.integrations.cloud_gcp.GcpApiImpl
+          GCP_DEFAULT_REGION: ${{env.GCP_REGION}}
+          BIGTABLE_ENDPOINT: https://${{env.GCP_REGION}}-bigtable.googleapis.com
+          JAVA_OPTS: "-Xms1g -Xmx1g"
+          CLOUD_GCP_JAR: /app/cli/cloud_gcp.jar
+        run:
+          docker build "." -f "./Dockerfile" -t "gcp-quickstart-image:latest"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{env.AWS_ACCOUNT_ID}}:role/github-canary-updater
+          aws-region: ${{env.AWS_REGION}}
+
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: ${{env.AWS_ACCOUNT_ID}}
+
+      - name: Tag, and push quickstart image to Amazon ECR
+        env:
+          ECR_REPOSITORY: ${{steps.login-ecr.outputs.registry}}/${{env.AWS_QUICKSTART_REPOSITORY}}
+          IMAGE_TAG: main
+        shell: bash
+        run: |
+          set -eo pipefail
+          docker tag "aws-quickstart-image:latest" "${{env.ECR_REPOSITORY}}:$IMAGE_TAG"
+          docker push "${{env.ECR_REPOSITORY}}:$IMAGE_TAG" || {
+            echo "Failed to push canary tag"
+            exit 1
+          }
+          docker tag "${{env.ECR_REPOSITORY}}:$IMAGE_TAG" "${{env.ECR_REPOSITORY}}:${{github.sha}}"
+          docker push "${{env.ECR_REPOSITORY}}:${{github.sha}}" || {
+            echo "Failed to push sha tag"
+            exit 1
+          }
+          echo "IMAGE $IMAGE_TAG is pushed to ${{env.ECR_REPOSITORY}}"
+          echo "image_tag=$IMAGE_TAG" 
+          echo "full_image=${{env.ECR_REPOSITORY}}:$IMAGE_TAG"
+
+      - name: Configure GCP Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{env.GCP_PROJECT_ID}}
+          workload_identity_provider: projects/703996152583/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: githubactions@canary-443022.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Google Cloud Docker Auth
+        shell: bash
+        run: |-
+          gcloud auth configure-docker ${{env.GCP_REGION}}-docker.pkg.dev --quiet
+
+      - name: Push Quickstart to Artifact Registry
+        shell: bash
+        env:
+          GAR_QUICKSTART_REPOSITORY: ${{env.GCP_REGION}}-docker.pkg.dev/${{env.GCP_PROJECT_ID}}/canary-images/quickstart
+          IMAGE_TAG: main
+        run: |
+          set -eo pipefail
+          docker tag "gcp-quickstart-image:latest" "${{env.GAR_QUICKSTART_REPOSITORY}}:$IMAGE_TAG"
+          docker push "${{env.GAR_QUICKSTART_REPOSITORY}}:$IMAGE_TAG" || {
+            echo "Failed to push canary tag"
+            exit 1
+          }
+          docker tag "${{env.GAR_QUICKSTART_REPOSITORY}}:$IMAGE_TAG" "${{env.GAR_QUICKSTART_REPOSITORY}}:${{github.sha}}"
+          docker push "${{env.GAR_QUICKSTART_REPOSITORY}}:${{github.sha}}" || {
+            echo "Failed to push sha tag"
+            exit 1
+          }
+          echo "IMAGE $IMAGE_TAG is pushed to ${{env.GAR_QUICKSTART_REPOSITORY}}"
+          echo "image_tag=$IMAGE_TAG" 
+          echo "full_image=${{env.GAR_QUICKSTART_REPOSITORY}}:$IMAGE_TAG"

@@ -1,0 +1,76 @@
+scala_library(
+    name = "lib",
+    srcs = glob(["src/main/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = _FLINK_DEPS + [
+        "//api:lib",
+        "//api:thrift",
+        "//aggregator:lib",
+        "//online:lib",
+        "//tools/build_rules/spark:spark-exec",
+        scala_artifact("org.scala-lang.modules:scala-java8-compat"),
+        scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+        scala_artifact("org.rogach:scallop"),
+        maven_artifact("io.dropwizard.metrics:metrics-core"),
+        maven_artifact("org.apache.kafka:kafka-clients"),
+    ],
+)
+
+test_deps = _FLINK_TEST_DEPS + [
+    ":lib",
+    "//online:lib",
+    "//online:test-lib",
+    "//api:thrift",
+    "//api:lib",
+    "//aggregator:lib",
+    "//tools/build_rules/spark:spark-exec",
+    # Libraries
+    scala_artifact("org.scala-lang.modules:scala-java8-compat"),
+    scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+    # Testing
+    scala_artifact("org.scalatest:scalatest-matchers-core"),
+    scala_artifact("org.scalatest:scalatest-core"),
+    scala_artifact("org.scalatest:scalatest"),
+    scala_artifact("org.scalatest:scalatest-flatspec"),
+    scala_artifact("org.scalatest:scalatest-funsuite"),
+    scala_artifact("org.scalatest:scalatest-shouldmatchers"),
+    scala_artifact("org.scalactic:scalactic"),
+    scala_artifact("org.scalatestplus:mockito-3-4"),
+    scala_artifact("org.mockito:mockito-scala"),
+    maven_artifact("org.mockito:mockito-core"),
+    maven_artifact("org.scalatest:scalatest-compatible"),
+    maven_artifact("junit:junit"),
+    maven_artifact("com.novocode:junit-interface"),
+]
+
+scala_library(
+    name = "test-lib",
+    srcs = glob(["src/test/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = test_deps,
+)
+
+scala_test_suite(
+    name = "test",
+    srcs = glob(["src/test/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test-lib",],
+)
+
+jvm_binary(
+    name = "assembly",
+    # To exclude runtime dependencies not needed for flink environement in the cluster
+    # otherwise we run into version conflict errors
+    deploy_env = ["//tools/build_rules/flink:flink"],
+    main_class = "ai.chronon.flink.FlinkJob",
+    runtime_deps = [":lib"],
+)
+
+jvm_binary(
+    name = "kafka-assembly",
+    # To exclude runtime dependencies not needed for flink environement in the cluster
+    # otherwise we run into version conflict errors
+    deploy_env = ["//tools/build_rules/flink:flink"],
+    main_class = "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
+    runtime_deps = [":lib"],
+)

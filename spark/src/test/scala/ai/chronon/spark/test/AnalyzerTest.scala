@@ -26,13 +26,17 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.lit
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class AnalyzerTest {
+class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+
   val spark: SparkSession = SparkSessionBuilder.build("AnalyzerTest", local = true)
   private val tableUtils = TableUtils(spark)
 
@@ -43,10 +47,10 @@ class AnalyzerTest {
   private val namespace = "analyzer_test_ns"
   tableUtils.createDatabase(namespace)
 
+  private val viewsTable = s"$namespace.view_events_gb_table"
   private val viewsSource = getTestEventSource()
 
-  @Test
-  def testJoinAnalyzerSchemaWithValidation(): Unit = {
+  it should "produce correct analyzer schema" in {
     val viewsGroupBy = getViewsGroupBy("join_analyzer_test.item_gb", Operation.AVERAGE)
     val anotherViewsGroupBy = getViewsGroupBy("join_analyzer_test.another_item_gb", Operation.SUM)
 
@@ -70,10 +74,16 @@ class AnalyzerTest {
     )
 
     //run analyzer and validate output schema
-    val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, enableHitter = true)
+    val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
     val analyzerSchema = analyzer.analyzeJoin(joinConf)._1.map { case (k, v) => s"${k} => ${v}" }.toList.sorted
+
+    val originalJoinConf = joinConf.deepCopy()
+
     val join = new Join(joinConf = joinConf, endPartition = oneMonthAgo, tableUtils)
     val computed = join.computeJoin()
+
+    originalJoinConf shouldBe joinConf // running a join should not modify the passed in conf
+
     val expectedSchema = computed.schema.fields.map(field => s"${field.name} => ${field.dataType}").sorted
     logger.info("=== expected schema =====")
     logger.info(expectedSchema.mkString("\n"))
@@ -81,8 +91,7 @@ class AnalyzerTest {
     assertTrue(expectedSchema sameElements analyzerSchema)
   }
 
-  @Test(expected = classOf[java.lang.AssertionError])
-  def testJoinAnalyzerValidationFailure(): Unit = {
+  it should "throw on validation failure" in {
     val viewsGroupBy = getViewsGroupBy("join_analyzer_test.item_gb", Operation.AVERAGE, source = getTestGBSource())
     val usersGroupBy = getUsersGroupBy("join_analyzer_test.user_gb", Operation.AVERAGE, source = getTestGBSource())
 
@@ -105,16 +114,22 @@ class AnalyzerTest {
         Builders.MetaData(name = "test_join_analyzer.item_type_mismatch", namespace = namespace, team = "chronon")
     )
 
-    //run analyzer and validate output schema
-    val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, enableHitter = true)
-    analyzer.analyzeJoin(joinConf, validationAssert = true)
+    logger.info("=== views table ===")
+    tableUtils.sql(s"SELECT * FROM $viewsTable LIMIT 10").show()
+
+    intercept[AssertionError] {
+      //run analyzer and validate output schema
+      val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
+      analyzer.analyzeJoin(joinConf, validationAssert = true)
+    }
   }
 
-  @Test(expected = classOf[java.lang.AssertionError])
-  def testJoinAnalyzerValidationDataAvailability(): Unit = {
+  it should "throw on data unavailability" in {
+
     // left side
     val itemQueries = List(Column("item", api.StringType, 100), Column("guest", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_with_user_table"
+
     DataFrameGen
       .events(spark, itemQueries, 500, partitions = 100)
       .save(itemQueriesTable)
@@ -141,13 +156,16 @@ class AnalyzerTest {
       metaData = Builders.MetaData(name = "test_join_analyzer.item_validation", namespace = namespace, team = "chronon")
     )
 
-    //run analyzer and validate data availability
-    val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, enableHitter = true)
-    analyzer.analyzeJoin(joinConf, validationAssert = true)
+    logger.info("=== views table ===")
+    tableUtils.sql(s"SELECT * FROM $viewsTable LIMIT 10").show()
+
+    intercept[AssertionError] {
+      val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
+      analyzer.analyzeJoin(joinConf, validationAssert = true)
+    }
   }
 
-  @Test
-  def testJoinAnalyzerValidationDataAvailabilityMultipleSources(): Unit = {
+  it should "join analyzer validation data availability multiple sources" in {
     val leftSchema = List(Column("item", api.StringType, 100))
     val leftTable = s"$namespace.multiple_sources_left_table"
     val leftData = DataFrameGen.events(spark, leftSchema, 10, partitions = 1)
@@ -213,6 +231,194 @@ class AnalyzerTest {
     analyzer.analyzeJoin(joinConf, validationAssert = true)
   }
 
+  it should "join analyzer check timestamp has values" in {
+
+    // left side
+    // create the event source with values
+    getTestGBSourceWithTs()
+
+    // join parts
+    val joinPart = Builders.GroupBy(
+      sources = Seq(getTestGBSourceWithTs()),
+      keyColumns = Seq("key"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM, inputColumn = "col1")
+      ),
+      metaData = Builders.MetaData(name = "join_analyzer_test.test_1", namespace = namespace),
+      accuracy = Accuracy.SNAPSHOT
+    )
+
+    val joinConf = Builders.Join(
+      left = Builders.Source.events(Builders.Query(startPartition = oneMonthAgo), table = s"$namespace.test_table"),
+      joinParts = Seq(
+        Builders.JoinPart(groupBy = joinPart, prefix = "validation")
+      ),
+      metaData = Builders.MetaData(name = "test_join_analyzer.key_validation", namespace = namespace, team = "chronon")
+    )
+
+    //run analyzer an ensure ts timestamp values result in analyzer passing
+    val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
+    analyzer.analyzeJoin(joinConf, validationAssert = true)
+
+  }
+
+  it should "join analyzer check timestamp out of range" in {
+
+    // left side
+    // create the event source with values out of range
+    getTestGBSourceWithTs("out_of_range")
+
+    // join parts
+    val joinPart = Builders.GroupBy(
+      sources = Seq(getTestGBSourceWithTs("out_of_range")),
+      keyColumns = Seq("key"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM, inputColumn = "col1")
+      ),
+      metaData = Builders.MetaData(name = "join_analyzer_test.test_1", namespace = namespace),
+      accuracy = Accuracy.SNAPSHOT
+    )
+
+    val joinConf = Builders.Join(
+      left = Builders.Source.events(Builders.Query(startPartition = oneMonthAgo), table = s"$namespace.test_table"),
+      joinParts = Seq(
+        Builders.JoinPart(groupBy = joinPart, prefix = "validation")
+      ),
+      metaData = Builders.MetaData(name = "test_join_analyzer.key_validation", namespace = namespace, team = "chronon")
+    )
+
+    intercept[AssertionError] {
+      //run analyzer and trigger assertion error when timestamps are out of range
+      val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
+      analyzer.analyzeJoin(joinConf, validationAssert = true)
+    }
+  }
+
+  it should "throw when join timestamps are all nulls" in {
+
+    // left side
+    // create the event source with nulls
+    getTestGBSourceWithTs("nulls")
+
+    // join parts
+    val joinPart = Builders.GroupBy(
+      sources = Seq(getTestGBSourceWithTs("nulls")),
+      keyColumns = Seq("key"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM, inputColumn = "col1")
+      ),
+      metaData = Builders.MetaData(name = "join_analyzer_test.test_1", namespace = namespace),
+      accuracy = Accuracy.SNAPSHOT
+    )
+
+    val joinConf = Builders.Join(
+      left = Builders.Source.events(Builders.Query(startPartition = oneMonthAgo), table = s"$namespace.test_table"),
+      joinParts = Seq(
+        Builders.JoinPart(groupBy = joinPart, prefix = "validation")
+      ),
+      metaData = Builders.MetaData(name = "test_join_analyzer.key_validation", namespace = namespace, team = "chronon")
+    )
+
+    intercept[AssertionError] {
+      //run analyzer and trigger assertion error when timestamps are all NULL
+      val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
+      analyzer.analyzeJoin(joinConf, validationAssert = true)
+    }
+  }
+
+  it should "group by analyzer check timestamp has values" in {
+
+    val tableGroupBy = Builders.GroupBy(
+      sources = Seq(getTestGBSourceWithTs()),
+      keyColumns = Seq("key"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM, inputColumn = "col1")
+      ),
+      metaData = Builders.MetaData(name = "group_by_analyzer_test.test_1", namespace = namespace),
+      accuracy = Accuracy.SNAPSHOT
+    )
+
+    //run analyzer an ensure ts timestamp values result in analyzer passing
+    val analyzer = new Analyzer(tableUtils, tableGroupBy, oneMonthAgo, today)
+    analyzer.analyzeGroupBy(tableGroupBy)
+
+  }
+
+  it should "throw when groupBy timestamps are all nulls" in {
+
+    val tableGroupBy = Builders.GroupBy(
+      sources = Seq(getTestGBSourceWithTs("nulls")),
+      keyColumns = Seq("key"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM, inputColumn = "col2")
+      ),
+      metaData = Builders.MetaData(name = "group_by_analyzer_test.test_2", namespace = namespace),
+      accuracy = Accuracy.TEMPORAL
+    )
+
+    intercept[AssertionError] {
+      //run analyzer and trigger assertion error when timestamps are all NULL
+      val analyzer = new Analyzer(tableUtils, tableGroupBy, oneMonthAgo, today)
+      analyzer.analyzeGroupBy(tableGroupBy)
+    }
+  }
+
+  it should "group by analyzer check timestamp out of range" in {
+
+    val tableGroupBy = Builders.GroupBy(
+      sources = Seq(getTestGBSourceWithTs("out_of_range")),
+      keyColumns = Seq("key"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM, inputColumn = "col2")
+      ),
+      metaData = Builders.MetaData(name = "group_by_analyzer_test.test_3", namespace = namespace),
+      accuracy = Accuracy.TEMPORAL
+    )
+
+    intercept[AssertionError] {
+      //run analyzer and trigger assertion error when timestamps are out of range
+      val analyzer = new Analyzer(tableUtils, tableGroupBy, oneMonthAgo, today)
+      analyzer.analyzeGroupBy(tableGroupBy)
+    }
+  }
+
+  def getTestGBSourceWithTs(option: String = "default"): api.Source = {
+    val testSchema = List(
+      Column("key", api.StringType, 10),
+      Column("col1", api.IntType, 10),
+      Column("col2", api.IntType, 10),
+    )
+
+    val viewsTable = s"$namespace.test_table"
+    option match {
+      case "default" => {
+        DataFrameGen.events(spark, testSchema, count = 100, partitions = 20)
+          .save(viewsTable)
+      }
+      case "nulls" => {
+        DataFrameGen.events(spark, testSchema, count = 100, partitions = 20)
+          .withColumn("ts", lit(null).cast("bigint")) // set ts to null to test analyzer
+          .save(viewsTable)
+      }
+      case "out_of_range" => {
+        DataFrameGen.events(spark, testSchema, count = 100, partitions = 20)
+          .withColumn("ts", col("ts")*lit(1000)) // convert to nanoseconds to test analyzer
+          .save(viewsTable)
+      }
+      case _ => {
+        throw new IllegalArgumentException(s"$option is not a valid timestamp generation option")
+      }
+    }
+
+    val out = Builders.Source.events(
+        query = Builders.Query(selects = Builders.Selects("col1", "col2"), startPartition = oneYearAgo),
+        table = viewsTable
+      )
+
+    out
+
+  }
+
   def getTestGBSource(): api.Source = {
     val viewsSchema = List(
       Column("user", api.StringType, 10000),
@@ -237,7 +443,6 @@ class AnalyzerTest {
       Column("time_spent_ms", api.LongType, 5000)
     )
 
-    val viewsTable = s"$namespace.view_events_gb_table"
     DataFrameGen.events(spark, viewsSchema, count = 1000, partitions = 200).drop("ts").save(viewsTable)
 
     Builders.Source.events(
@@ -269,4 +474,5 @@ class AnalyzerTest {
       accuracy = Accuracy.SNAPSHOT
     )
   }
+
 }

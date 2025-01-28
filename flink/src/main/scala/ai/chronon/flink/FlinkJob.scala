@@ -9,11 +9,16 @@ import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.flink.window.KeySelector
 import ai.chronon.flink.window.TimestampedTile
-import ai.chronon.online.FlinkSource
+import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.SparkConversions
 import org.apache.flink.api.scala._
+import org.apache.flink.configuration.CheckpointingOptions
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.configuration.StateBackendOptions
+import org.apache.flink.streaming.api.CheckpointingMode
+import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.OutputTag
@@ -23,7 +28,13 @@ import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.spark.sql.Encoder
+import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.ScallopOption
+import org.rogach.scallop.Serialization
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
@@ -79,9 +90,12 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
         "Tiling is disabled.")
 
+    // we expect parallelism on the source stream to be set by the source provider
     val sourceStream: DataStream[T] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
+        .uid(s"source-$groupByName")
+        .name(s"Source for $groupByName")
 
     val sparkExprEvalDS: DataStream[Map[String, Any]] = sourceStream
       .flatMap(exprEval)
@@ -125,9 +139,12 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     val tilingWindowSizeInMillis: Option[Long] =
       ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
 
+    // we expect parallelism on the source stream to be set by the source provider
     val sourceStream: DataStream[T] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
+        .uid(s"source-$groupByName")
+        .name(s"Source for $groupByName")
 
     val sparkExprEvalDS: DataStream[Map[String, Any]] = sourceStream
       .flatMap(exprEval)
@@ -195,5 +212,107 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       sinkFn,
       groupByName
     )
+  }
+}
+
+object FlinkJob {
+  // we set an explicit max parallelism to ensure if we do make parallelism setting updates, there's still room
+  // to restore the job from prior state. Number chosen does have perf ramifications if too high (can impact rocksdb perf)
+  // so we've chosen one that should allow us to scale to jobs in the 10K-50K events / s range.
+  val MaxParallelism = 1260 // highly composite number
+
+  // We choose to checkpoint frequently to ensure the incremental checkpoints are small in size
+  // as well as ensuring the catch-up backlog is fairly small in case of failures
+  val CheckPointInterval: FiniteDuration = 10.seconds
+
+  // We set a more lenient checkpoint timeout to guard against large backlog / catchup scenarios where checkpoints
+  // might be slow and a tight timeout will set us on a snowball restart loop
+  val CheckpointTimeout: FiniteDuration = 5.minutes
+
+  // We use incremental checkpoints and we cap how many we keep around
+  val MaxRetainedCheckpoints = 10
+
+  // how many consecutive checkpoint failures can we tolerate - default is 0, we choose a more lenient value
+  // to allow us a few tries before we give up
+  val TolerableCheckpointFailures = 5
+
+  // Pull in the Serialization trait to sidestep: https://github.com/scallop/scallop/issues/137
+  class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
+    val onlineClass: ScallopOption[String] =
+      opt[String](required = true,
+                  descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
+    val groupbyName: ScallopOption[String] =
+      opt[String](required = true, descr = "The name of the groupBy to process")
+    val mockSource: ScallopOption[Boolean] =
+      opt[Boolean](required = false, descr = "Use a mocked data source instead of a real source", default = Some(true))
+
+    val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API / KV Store")
+
+    verify()
+  }
+
+  def main(args: Array[String]): Unit = {
+    val jobArgs = new JobArgs(args)
+    jobArgs.groupbyName()
+    val onlineClassName = jobArgs.onlineClass()
+    val props = jobArgs.apiProps.map(identity)
+    val useMockedSource = jobArgs.mockSource()
+
+    val api = buildApi(onlineClassName, props)
+    val flinkJob =
+      if (useMockedSource) {
+        // We will yank this conditional block when we wire up our real sources etc.
+        TestFlinkJob.buildTestFlinkJob(api)
+      } else {
+        // TODO - what we need to do when we wire this up for real
+        // lookup groupByServingInfo by groupByName from the kv store
+        // based on the topic type (e.g. kafka / pubsub) and the schema class name:
+        // 1. lookup schema object using SchemaProvider (e.g SchemaRegistry / Jar based)
+        // 2. Create the appropriate Encoder for the given schema type
+        // 3. Invoke the appropriate source provider to get the source, parallelism
+        throw new IllegalArgumentException("We don't support non-mocked sources like Kafka / PubSub yet!")
+      }
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+
+    env.enableCheckpointing(CheckPointInterval.toMillis, CheckpointingMode.AT_LEAST_ONCE)
+    val checkpointConfig = env.getCheckpointConfig
+    checkpointConfig.setMinPauseBetweenCheckpoints(CheckPointInterval.toMillis)
+    checkpointConfig.setCheckpointTimeout(CheckpointTimeout.toMillis)
+    checkpointConfig.setMaxConcurrentCheckpoints(1)
+    checkpointConfig.setTolerableCheckpointFailureNumber(TolerableCheckpointFailures)
+    // for now we retain our checkpoints even when we can cancel to allow us to resume from where we left off
+    // post orchestrator, we will trigger savepoints on deploys and we can switch to delete on cancel
+    checkpointConfig.setExternalizedCheckpointCleanup(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+
+    val config = new Configuration()
+
+    config.set(StateBackendOptions.STATE_BACKEND, "rocksdb")
+    config.setBoolean(CheckpointingOptions.INCREMENTAL_CHECKPOINTS, true)
+    config.setInteger(CheckpointingOptions.MAX_RETAINED_CHECKPOINTS, MaxRetainedCheckpoints)
+
+    env.setMaxParallelism(MaxParallelism)
+
+    env.getConfig.disableAutoGeneratedUIDs() // we generate UIDs manually to ensure consistency across runs
+    env.getConfig
+      .enableForceKryo() // use kryo for complex types that Flink's default ser system doesn't support (e.g case classes)
+    env.getConfig.enableGenericTypes() // more permissive type checks
+
+    env.configure(config)
+
+    flinkJob
+      .runGroupByJob(env)
+      .addSink(new MetricsSink(flinkJob.groupByName))
+      .uid(s"metrics-sink - ${flinkJob.groupByName}")
+      .name(s"Metrics Sink for ${flinkJob.groupByName}")
+    env.execute(s"${flinkJob.groupByName}")
+  }
+
+  def buildApi(onlineClass: String, props: Map[String, String]): Api = {
+    val cl = Thread.currentThread().getContextClassLoader // Use Flink's classloader
+    val cls = cl.loadClass(onlineClass)
+    val constructor = cls.getConstructors.apply(0)
+    val onlineImpl = constructor.newInstance(props)
+    onlineImpl.asInstanceOf[Api]
   }
 }

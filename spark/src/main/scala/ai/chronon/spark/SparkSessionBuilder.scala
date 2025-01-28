@@ -16,6 +16,10 @@
 
 package ai.chronon.spark
 
+import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.core.LoggerContext
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.spark.SPARK_VERSION
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
@@ -25,6 +29,53 @@ import java.util.logging.Logger
 import scala.util.Properties
 
 object SparkSessionBuilder {
+
+  def configureLogging(): Unit = {
+
+    // Force reconfiguration
+    LoggerContext.getContext(false).close()
+
+    val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
+
+    // Add status logger to debug logging setup
+    // builder.setStatusLevel(Level.DEBUG)
+
+    // Create console appender
+    val console = builder
+      .newAppender("console", "Console")
+      .addAttribute("target", "SYSTEM_OUT")
+
+    // Create pattern layout with colors
+    val patternLayout = builder
+      .newLayout("PatternLayout")
+      .addAttribute(
+        "pattern",
+        "%cyan{%d{yyyy/MM/dd HH:mm:ss}} %highlight{%-5level} %style{%file:%line}{ITALIC,GREEN} - %message%n")
+      .addAttribute("disableAnsi", "false")
+
+    console.add(patternLayout)
+    builder.add(console)
+
+    // Configure root logger
+    val rootLogger = builder.newRootLogger(Level.ERROR)
+    rootLogger.add(builder.newAppenderRef("console"))
+    builder.add(rootLogger)
+
+    // Configure specific logger for ai.chronon
+    val chrononLogger = builder.newLogger("ai.chronon", Level.INFO)
+    builder.add(chrononLogger)
+
+    // Build and apply configuration
+    val config = builder.build()
+    val context = LoggerContext.getContext(false)
+    context.start(config)
+
+    // Add a test log message
+    val logger = LogManager.getLogger(getClass)
+    logger.info("Chronon logging system initialized. Overrides spark's configuration")
+
+  }
+
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
   private val warehouseId = java.util.UUID.randomUUID().toString.takeRight(6)
@@ -71,7 +122,9 @@ object SparkSessionBuilder {
     baseBuilder = baseBuilder
       .config("spark.sql.session.timeZone", "UTC")
       //otherwise overwrite will delete ALL partitions, not just the ones it touches
-      .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
+      .config("spark.sql.sources.partitionOverwriteMode",
+              "DYNAMIC"
+      ) // needs to be uppercase until https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1313 is available
       .config("hive.exec.dynamic.partition", "true")
       .config("hive.exec.dynamic.partition.mode", "nonstrict")
       .config("spark.sql.catalogImplementation", "hive")
@@ -116,6 +169,7 @@ object SparkSessionBuilder {
     spark.sparkContext.setLogLevel("ERROR")
 
     Logger.getLogger("parquet.hadoop").setLevel(java.util.logging.Level.SEVERE)
+    configureLogging()
     spark
   }
 

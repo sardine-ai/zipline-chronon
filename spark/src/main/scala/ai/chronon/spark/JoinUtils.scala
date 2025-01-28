@@ -21,6 +21,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory
 
 import java.util
 import scala.jdk.CollectionConverters._
-import scala.util.ScalaJavaConversions.MapOps
 
 object JoinUtils {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -107,16 +107,29 @@ object JoinUtils {
                       endPartition: String,
                       overrideStartPartition: Option[String] = None,
                       historicalBackfill: Boolean = true): PartitionRange = {
+
     val overrideStart = if (historicalBackfill) {
       overrideStartPartition
     } else {
       logger.info(s"Historical backfill is set to false. Backfill latest single partition only: $endPartition")
       Some(endPartition)
     }
+
+    lazy val firstAvailablePartitionOpt =
+      tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters)
     lazy val defaultLeftStart = Option(leftSource.query.startPartition)
-      .getOrElse(tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters).get)
+      .getOrElse {
+        require(
+          firstAvailablePartitionOpt.isDefined,
+          s"No partitions were found for the join source table: ${leftSource.table}."
+        )
+        firstAvailablePartitionOpt.get
+      }
+
     val leftStart = overrideStart.getOrElse(defaultLeftStart)
     val leftEnd = Option(leftSource.query.endPartition).getOrElse(endPartition)
+
+    logger.info(s"Attempting to fill join partition range: $leftStart to $leftEnd")
     PartitionRange(leftStart, leftEnd)(tableUtils.partitionSpec)
   }
 
@@ -304,10 +317,13 @@ object JoinUtils {
       joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]]): Option[util.Map[String, BloomFilter]] = {
 
     val rightBlooms = joinLevelBloomMapOpt.map { joinBlooms =>
-      joinPart.rightToLeft.iterator.map {
-        case (rightCol, leftCol) =>
-          rightCol -> joinBlooms.get(leftCol)
-      }.toJMap
+      joinPart.rightToLeft.iterator
+        .map {
+          case (rightCol, leftCol) =>
+            rightCol -> joinBlooms.get(leftCol)
+        }
+        .toMap
+        .asJava
     }
 
     // print bloom sizes
@@ -339,6 +355,10 @@ object JoinUtils {
     val groupByKeyNames = joinPart.groupBy.getKeyColumns.asScala
 
     val collectedLeft = leftDf.collect()
+
+    // clone groupBy before modifying it to prevent concurrent modification
+    val groupByClone = joinPart.groupBy.deepCopy()
+    joinPart.setGroupBy(groupByClone)
 
     joinPart.groupBy.sources.asScala.foreach { source =>
       val selectMap = Option(source.rootQuery.getQuerySelects).getOrElse(Map.empty[String, String])
@@ -373,6 +393,8 @@ object JoinUtils {
             s"$groupByKeyExpression in (${valueSet.mkString(sep = ",")})"
         }
         .foreach { whereClause =>
+          logger.info(s"Injecting where clause: $whereClause into groupBy: ${joinPart.groupBy.metaData.name}")
+
           val currentWheres = Option(source.rootQuery.getWheres).getOrElse(new util.ArrayList[String]())
           currentWheres.add(whereClause)
           source.rootQuery.setWheres(currentWheres)
@@ -402,15 +424,26 @@ object JoinUtils {
   }
 
   def shouldRecomputeLeft(joinConf: ai.chronon.api.Join, outputTable: String, tableUtils: TableUtils): Boolean = {
-    // Determines if the saved left table of the join (includes bootstrap) needs to be recomputed due to semantic changes since last run
-    if (tableUtils.tableExists(outputTable)) {
+
+    if (!tableUtils.tableReachable(outputTable)) return false
+
+    try {
+
       val gson = new Gson()
       val props = tableUtils.getTableProperties(outputTable)
+
       val oldSemanticJson = props.get(Constants.SemanticHashKey)
       val oldSemanticHash = gson.fromJson(oldSemanticJson, classOf[java.util.HashMap[String, String]]).toScala
+
       joinConf.leftChanged(oldSemanticHash)
-    } else {
-      false
+
+    } catch {
+
+      case e: Exception =>
+        logger.error(s"Error while checking props of table $outputTable. Assuming no semantic change.", e)
+        false
+
     }
+
   }
 }

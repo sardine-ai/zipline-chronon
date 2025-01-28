@@ -41,19 +41,19 @@ services:
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
 
-  base:
-    build:
-      context: ..
-      dockerfile: .github/image/Dockerfile
-    image: base_image:latest
+  statsd:
+    image: node:latest
+    ports:
+      - "8125:8125/udp"
+    command: sh -c "npm install -g statsd-logger && statsd-logger > /dev/null 2>&1"
 
   app:
     build:
       context: ..
       dockerfile: docker-init/Dockerfile
     depends_on:
-      - base
       - dynamo
+      - statsd
     environment:
       - DYNAMO_ENDPOINT=http://dynamo:8000
       - AWS_DEFAULT_REGION=us-west-2
@@ -64,6 +64,7 @@ services:
       - SPARK_JAR=/app/cli/spark.jar
       - CLOUD_AWS_JAR=/app/cli/cloud_aws.jar
       - ONLINE_CLASS=ai.chronon.integrations.aws.AwsApiImpl
+      - STATSD_HOST=statsd
     ports:
       - "9000:9000"
     healthcheck:
@@ -78,7 +79,6 @@ services:
       context: ..
       dockerfile: docker-init/frontend/Dockerfile
     depends_on:
-      - base
       - app
     environment:
       - API_BASE_URL=http://app:9000

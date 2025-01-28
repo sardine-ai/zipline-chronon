@@ -18,6 +18,8 @@ package ai.chronon.api
 
 import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
+import ai.chronon.api.QueryUtils.buildSelects
+import ai.chronon.api.ScalaJavaConversions._
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.spark.sql.Column
@@ -32,9 +34,6 @@ import java.util.regex.Pattern
 import scala.collection.Seq
 import scala.collection.mutable
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.IteratorOps
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 
@@ -112,7 +111,6 @@ object Extensions {
     def loggedTable: String = s"${outputTable}_logged"
     def summaryTable: String = s"${outputTable}_summary"
     def packedSummaryTable: String = s"${outputTable}_summary_packed"
-    def driftTable: String = s"${outputTable}_drift"
 
     def bootstrapTable: String = s"${outputTable}_bootstrap"
 
@@ -125,11 +123,7 @@ object Extensions {
     def consistencyTable: String = s"${outputTable}_consistency"
     def consistencyUploadTable: String = s"${consistencyTable}_upload"
 
-    def loggingStatsTable: String = s"${loggedTable}_daily_stats"
     def uploadTable: String = s"${outputTable}_upload"
-    def dailyStatsOutputTable: String = s"${outputTable}_daily_stats"
-
-    def toUploadTable(name: String): String = s"${name}_upload"
 
     def copyForVersioningComparison: MetaData = {
       // Changing name results in column rename, therefore schema change, other metadata changes don't effect output table
@@ -148,7 +142,7 @@ object Extensions {
     // helper function to extract values from customJson
     def customJsonLookUp(key: String): Any = {
       if (metaData.customJson == null) return null
-      val mapper = new ObjectMapper();
+      val mapper = new ObjectMapper()
       val typeRef = new TypeReference[java.util.HashMap[String, Object]]() {}
       val jMap: java.util.Map[String, Object] = mapper.readValue(metaData.customJson, typeRef)
       jMap.toScala.get(key).orNull
@@ -195,7 +189,7 @@ object Extensions {
     private def bucketSuffix = Option(aggregationPart.bucket).map("_by_" + _).getOrElse("")
 
     def outputColumnName: String =
-      s"${aggregationPart.inputColumn}_$opSuffix${aggregationPart.window.suffix}${bucketSuffix}"
+      s"${aggregationPart.inputColumn}_$opSuffix${aggregationPart.window.suffix}$bucketSuffix"
   }
 
   implicit class AggregationOps(aggregation: Aggregation) {
@@ -299,7 +293,7 @@ object Extensions {
   }
 
   implicit class AggregationsOps(aggregations: Seq[Aggregation]) {
-    def hasTimedAggregations: Boolean =
+    private def hasTimedAggregations: Boolean =
       aggregations.exists(_.operation match {
         case LAST_K | FIRST_K | LAST | FIRST => true
         case _                               => false
@@ -398,7 +392,9 @@ object Extensions {
     }
 
     def isCumulative: Boolean = {
-      if (source.isSetEntities) false else source.getEvents.isCumulative
+      if (source.isSetEntities) false
+      else if (source.isSetEvents) source.getEvents.isCumulative
+      else source.getJoinSource.getJoin.left.isCumulative
     }
 
     def topic: String = {
@@ -434,14 +430,6 @@ object Extensions {
       */
     def cleanTopic: String = source.topic.cleanSpec
 
-    def copyForVersioningComparison: Source = {
-      // Makes a copy of the source and unsets date fields, used to compute equality on sources while ignoring these fields
-      val newSource = source.deepCopy()
-      val query = newSource.query
-      query.unsetEndPartition()
-      query.unsetStartPartition()
-      newSource
-    }
   }
 
   implicit class GroupByOps(groupBy: GroupBy) extends GroupBy(groupBy) {
@@ -464,6 +452,7 @@ object Extensions {
     def semanticHash: String = {
       val newGroupBy = groupBy.deepCopy()
       newGroupBy.unsetMetaData()
+      newGroupBy.unsetBackfillStartDate()
       ThriftJsonCodec.md5Digest(newGroupBy)
     }
 
@@ -649,7 +638,6 @@ object Extensions {
         case DataModel.Events   => Seq(s"$timeColumn is NOT NULL")
       }
     }
-
   }
 
   implicit class StringOps(string: String) {
@@ -765,9 +753,9 @@ object Extensions {
     }
   }
 
-  implicit class LabelPartOps(val labelPart: LabelPart) extends Serializable {
+  implicit class LabelPartsOps(val labelParts: LabelParts) extends Serializable {
     def leftKeyCols: Array[String] = {
-      labelPart.labels.toScala
+      labelParts.labels.toScala
         .flatMap {
           _.rightToLeft.values
         }
@@ -776,7 +764,7 @@ object Extensions {
     }
 
     def setups: Seq[String] = {
-      labelPart.labels.toScala
+      labelParts.labels.toScala
         .flatMap(_.groupBy.setups)
         .distinct
     }
@@ -848,19 +836,6 @@ object Extensions {
         true
       }
     }
-
-    def computedFeatureCols: Array[String] =
-      if (Option(join.derivations).isDefined) {
-        val baseColumns = joinPartOps.flatMap(_.valueColumns).toArray
-        val baseExpressions = if (join.derivationsContainStar) baseColumns.filterNot {
-          join.derivationExpressionSet contains _
-        }
-        else Array.empty[String]
-        baseExpressions ++ join.derivationsWithoutStar.map { d =>
-          d.name
-        }
-      } else
-        joinPartOps.flatMap(_.valueColumns).toArray
 
     def partOutputTable(jp: JoinPart): String =
       (Seq(join.metaData.outputTable) ++ Option(jp.prefix) :+ jp.groupBy.metaData.cleanName).mkString("_")
@@ -951,21 +926,6 @@ object Extensions {
       val externalKeys = join.onlineExternalParts.toScala.flatMap(_.source.keyNames).toSet
       val bootstrapKeys = join.bootstrapParts.toScala.flatMap(_.keyColumns.toScala).toSet
       (joinPartKeys ++ externalKeys ++ bootstrapKeys).toArray
-    }
-
-    /*
-     * onlineSemanticHash includes everything in semanticHash as well as hashes of each onlineExternalParts (which only
-     * affect online serving but not offline table generation).
-     * It is used to detect join definition change in online serving and to update ttl-cached conf files.
-     */
-    def onlineSemanticHash: Map[String, String] = {
-      if (join.onlineExternalParts == null) {
-        return Map.empty[String, String]
-      }
-
-      val externalPartHashes = join.onlineExternalParts.toScala.map { part => part.fullName -> part.semanticHash }.toMap
-
-      externalPartHashes ++ semanticHash
     }
 
     def leftChanged(oldSemanticHash: Map[String, String]): Boolean = {
@@ -1069,24 +1029,32 @@ object Extensions {
       (join.left.query.setupsSeq ++ join.joinParts.toScala
         .flatMap(_.groupBy.setups)).distinct
 
-    def copyForVersioningComparison(): Join = {
-      // When we compare previous-run join to current join to detect changes requiring table migration
-      // these are the fields that should be checked to not have accidental recomputes
-      val newJoin = join.deepCopy()
-      newJoin.setLeft(newJoin.left.copyForVersioningComparison)
-      newJoin.unsetJoinParts()
-      // Opting not to use metaData.copyForVersioningComparison here because if somehow a name change results
-      // in a table existing for the new name (with no other metadata change), it is more than likely intentional
-      newJoin.unsetMetaData()
-      newJoin
-    }
-
     lazy val joinPartOps: Seq[JoinPartOps] =
       Option(join.joinParts)
         .getOrElse(new util.ArrayList[JoinPart]())
         .toScala
         .toSeq
         .map(new JoinPartOps(_))
+
+    def outputAsSource: Source = {
+      val source = new Source()
+
+      val query = new Query()
+      query.setStartPartition(join.left.query.getStartPartition)
+      query.setEndPartition(join.left.query.getEndPartition)
+
+      join.left.dataModel match {
+        case Entities =>
+          val src = new EntitySource()
+          src.setSnapshotTable(join.metaData.outputTable)
+          src.setQuery(query)
+        case Events =>
+          val src = new EventSource()
+          src.setTable(join.metaData.outputTable)
+          src.setQuery(query)
+      }
+      source
+    }
 
     def logFullValues: Boolean = true // TODO: supports opt-out in the future
 
@@ -1098,6 +1066,7 @@ object Extensions {
     lazy val areDerivationsRenameOnly: Boolean = join.hasDerivations && derivationsScala.areDerivationsRenameOnly
     lazy val derivationExpressionSet: Set[String] =
       if (join.hasDerivations) derivationsScala.iterator.map(_.expression).toSet else Set.empty
+
   }
 
   implicit class StringsOps(strs: Iterable[String]) {
@@ -1121,6 +1090,44 @@ object Extensions {
     }
 
     def getQuerySelects: Map[String, String] = Option(query.selects).map(_.toScala.toMap).orNull
+
+    def enrichedSelects(mutationInfoOnSnapshot: Boolean = false): Map[String, String] = {
+      query.selects.toScala ++
+        Option(query.timeColumn).map(timeColumn => Constants.TimeColumn -> timeColumn) ++
+        Option(query.mutationTimeColumn).map(mutationTimeExpression =>
+          Constants.MutationTimeColumn -> (if (mutationInfoOnSnapshot) "0" else mutationTimeExpression)) ++
+        Option(query.reversalColumn).map(isBeforeExpression =>
+          Constants.ReversalColumn -> (if (mutationInfoOnSnapshot) "false" else isBeforeExpression))
+    }
+
+    def enrichedQuery(mutationInfoOnSnapshot: Boolean = false): Query = {
+      val result = query.deepCopy()
+      result.setSelects(enrichedSelects(mutationInfoOnSnapshot).toJava)
+      result
+    }
+
+    // mutationsOnSnapshot table appends default values for mutation_ts and is_before column on the snapshotTable
+    // otherwise we will populate the query with the actual mutation_ts and is_before expressions specified in the query
+    def baseQuery(mutationInfoOnSnapshot: Boolean = false): String = {
+
+      val selects = enrichedSelects(mutationInfoOnSnapshot)
+      val wheres = query.wheres.toScala
+
+      val finalSelects = buildSelects(selects, None)
+
+      val whereClause = Option(wheres)
+        .filter(_.nonEmpty)
+        .map { ws =>
+          s"""
+             |WHERE
+             |  ${ws.map(w => s"(${w})").mkString(" AND ")}""".stripMargin
+        }
+        .getOrElse("")
+
+      s"""SELECT
+         |  ${finalSelects.mkString(",\n  ")}
+         |$whereClause""".stripMargin
+    }
   }
 
   implicit class ThrowableOps(throwable: Throwable) {
@@ -1181,6 +1188,28 @@ object Extensions {
       }
 
       wildcardDerivations ++ derivationsWithoutStar.map(d => d.name -> baseColumns.getOrElse(d.expression, null)).toMap
+    }
+  }
+
+  implicit class JoinSourceOps(joinSource: JoinSource) {
+    // convert chained joinSource into event or entity sources
+    def toDirectSource: Source = {
+      val joinTable = joinSource.getJoin.getMetaData.outputTable
+      val result = new Source()
+      joinSource.join.left.dataModel match {
+        case Entities =>
+          val inner = new EntitySource()
+          inner.setSnapshotTable(joinTable)
+          inner.setQuery(joinSource.getQuery)
+          result.setEntities(inner)
+
+        case Events =>
+          val inner = new EventSource()
+          inner.setTable(joinTable)
+          inner.setQuery(joinSource.getQuery)
+          result.setEvents(inner)
+      }
+      result
     }
   }
 }

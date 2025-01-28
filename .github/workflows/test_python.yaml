@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - 'api/py/**'
-      - '.github/workflows/**'
+      - '.github/workflows/test_python.yaml'
   pull_request:
     branches:
       - main
     paths:
       - 'api/py/**'
-      - '.github/workflows/**'
+      - '.github/workflows/test_python.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,10 +49,12 @@ jobs:
       - name: Run Chronon Python tests
         run: |
           source chronon_py_env/bin/activate
-          thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
+          thrift --gen py -out api/py/ api/thrift/common.thrift
+          thrift --gen py -out api/py/ api/thrift/observability.thrift
+          thrift --gen py -out api/py/ api/thrift/api.thrift
           cd api/py
-          pip install -r requirements/dev.txt
-          pip install tox
+          pip3 install -r requirements/dev.txt
+          pip3 install tox
           tox
 
       - uses: actions/upload-artifact@v4

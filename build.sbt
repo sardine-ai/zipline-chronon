@@ -30,6 +30,9 @@ lazy val jackson_2_15 = "2.15.2"
 lazy val avro_1_11 = "1.11.2"
 lazy val circeVersion = "0.14.9"
 lazy val deltaVersion = "3.2.0"
+lazy val slf4jApiVersion = "2.0.12"
+lazy val logbackClassicVersion = "1.5.6"
+lazy val vertxVersion = "4.5.10"
 
 // skip tests on assembly - uncomment if builds become slow
 // ThisBuild / assembly / test := {}
@@ -53,7 +56,18 @@ inThisBuild(
 lazy val supportedVersions = List(scala_2_12) // List(scala211, scala212, scala213)
 
 lazy val root = (project in file("."))
-  .aggregate(api, aggregator, online, spark, flink, cloud_gcp, cloud_aws, hub)
+  .aggregate(api,
+             aggregator,
+             online,
+             spark,
+             flink,
+             cloud_gcp,
+             cloud_gcp_submitter,
+             cloud_aws,
+             service_commons,
+             service,
+             hub,
+             orchestration)
   .settings(name := "chronon")
 
 val spark_sql = Seq(
@@ -76,8 +90,8 @@ val spark_all = Seq(
   "javax.servlet" % "javax.servlet-api" % "3.1.0",
 )
 val spark_all_provided = spark_all.map(_ % "provided")
-
-val log4j2 = Seq("org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.20.0")
+val log4j2_version = "2.20.0"
+val log4j2 = Seq("org.apache.logging.log4j" % "log4j-slf4j-impl" % log4j2_version)
 
 val jackson = Seq(
   "com.fasterxml.jackson.core" % "jackson-core",
@@ -89,23 +103,34 @@ val jackson = Seq(
 val circe = Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
-  "io.circe" %% "circe-parser",
+  "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
 val flink_all = Seq(
-  "org.apache.flink" %% "flink-streaming-scala",
   "org.apache.flink" % "flink-metrics-dropwizard",
-  "org.apache.flink" % "flink-clients"
+  "org.apache.flink" % "flink-clients",
+  "org.apache.flink" % "flink-yarn",
+  "org.apache.flink" % "flink-connector-kafka",
+  "org.apache.flink" % "flink-avro",
 ).map(_ % flink_1_17)
+
+val vertx_java = Seq(
+  "io.vertx" % "vertx-core",
+  "io.vertx" % "vertx-web",
+  "io.vertx" % "vertx-web-client",
+  "io.vertx" % "vertx-config",
+  // wire up metrics using micro meter and statsd
+  "io.vertx" % "vertx-micrometer-metrics"
+).map(_ % vertxVersion)
 
 val avro = Seq("org.apache.avro" % "avro" % "1.11.3")
 
 lazy val api = project
   .settings(
     Compile / sourceGenerators += Def.task {
-      val inputThrift = baseDirectory.value / "thrift" / "api.thrift"
+      val thriftFolder = baseDirectory.value / "thrift"
       val outputJava = (Compile / sourceManaged).value
-      Thrift.gen(inputThrift.getPath, outputJava.getPath, "java")
+      ThriftGen.gen(thriftFolder, outputJava.getPath, "java")
     }.taskValue,
     crossScalaVersions := supportedVersions,
     libraryDependencies ++= spark_sql_provided,
@@ -114,7 +139,9 @@ lazy val api = project
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.scalatest" %% "scalatest" % "3.2.19" % "test",
-      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test"
+      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
+      // needed by thrift
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion
     )
   )
 
@@ -143,8 +170,7 @@ lazy val online = project
     libraryDependencies ++= jackson,
     // dep needed for HTTPKvStore - yank when we rip this out
     libraryDependencies += "com.softwaremill.sttp.client3" %% "core" % "3.9.7",
-    libraryDependencies ++= spark_all.map(_ % "provided"),
-    libraryDependencies ++= flink_all.map(_ % "provided")
+    libraryDependencies ++= spark_all.map(_ % "provided")
   )
 
 lazy val tmp_warehouse = "/tmp/chronon/"
@@ -169,7 +195,7 @@ val sparkBaseSettings: Seq[Setting[_]] = Seq(
 ) ++ addArtifact(assembly / artifact, assembly)
 
 lazy val spark = project
-  .dependsOn(aggregator.%("compile->compile;test->test"), online)
+  .dependsOn(aggregator.%("compile->compile;test->test"), online.%("compile->compile;test->test"))
   .settings(
     sparkBaseSettings,
     crossScalaVersions := supportedVersions,
@@ -178,14 +204,48 @@ lazy val spark = project
     libraryDependencies += "jakarta.servlet" % "jakarta.servlet-api" % "4.0.3",
     libraryDependencies += "com.google.guava" % "guava" % "33.3.1-jre",
     libraryDependencies ++= log4j2,
-    libraryDependencies ++= delta.map(_ % "provided")
+    libraryDependencies ++= delta.map(_ % "provided"),
+    libraryDependencies += "org.json4s" % "json4s-jackson_2.12" % "3.7.0-M11", // This version is pinned to the one spark uses in 3.X.X - see: https://github.com/apache/spark/pull/45838
+    libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
+    libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
+    libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
+    libraryDependencies += "net.sf.py4j" % "py4j" % "0.10.9.9",
+
+    libraryDependencies := libraryDependencies.value.map(_.exclude("org.slf4j", "slf4j-log4j12"))
   )
 
 lazy val flink = project
-  .dependsOn(aggregator.%("compile->compile;test->test"), online)
+  .dependsOn(aggregator.%("compile->compile;test->test"), online.%("compile->compile;test->test"))
   .settings(
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
+    // mark the flink-streaming scala as provided as otherwise we end up with some extra Flink classes in our jar
+    // and errors at runtime like: java.io.InvalidClassException: org.apache.flink.streaming.api.scala.DataStream$$anon$1; local class incompatible
+    libraryDependencies += "org.apache.flink" %% "flink-streaming-scala" % flink_1_17 % "provided",
+    libraryDependencies += "org.apache.flink" % "flink-connector-files" % flink_1_17 % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-avro" % spark_3_5,
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
+      case "reference.conf"                          => MergeStrategy.concat
+      case "application.conf"                        => MergeStrategy.concat
+      case PathList("META-INF", xs @ _*)             => MergeStrategy.discard
+      case _                                         => MergeStrategy.first
+    },
+    // Exclude Hadoop & Guava from the assembled JAR
+    // Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
+    // superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
+    // Or: java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument(...)
+    // Or: 'com/google/protobuf/MapField' is not assignable to 'com/google/protobuf/MapFieldReflectionAccessor'
+    assembly / assemblyExcludedJars := {
+      val cp = (assembly / fullClasspath).value
+      cp filter { jar =>
+        jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("guava") || jar.data.getName
+          .startsWith("protobuf")
+      }
+    },
+    assembly / packageOptions += Package.ManifestAttributes(
+      ("Main-Class", "ai.chronon.flink.FlinkJob")
+    ),
     libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),
@@ -193,13 +253,77 @@ lazy val flink = project
     )
   )
 
+// We carve out a separate module for the Flink Kafka ingestion job. This isn't included in the main root module list
+// for now as we use this for testing adhoc using: sbt "project flink_kafka_ingest" assembly
+lazy val flink_kafka_ingest = project
+  .dependsOn(flink)
+  .settings(
+    // Exclude Hadoop & Guava from the assembled JAR
+    // Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
+    // superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
+    // Or: java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument(...)
+    // Or: 'com/google/protobuf/MapField' is not assignable to 'com/google/protobuf/MapFieldReflectionAccessor'
+    assembly / assemblyExcludedJars := {
+      val cp = (assembly / fullClasspath).value
+      cp filter { jar =>
+        jar.data.getName.startsWith("hadoop-") || jar.data.getName.startsWith("guava") || jar.data.getName
+          .startsWith("protobuf")
+      }
+    },
+    assembly / packageOptions += Package.ManifestAttributes(
+      ("Main-Class", "ai.chronon.flink.FlinkKafkaBeaconEventDriver")
+    ),
+  )
+
+// GCP requires java 11, can't cross compile higher
+
+javacOptions ++= Seq("-source", "11", "-target", "11")
+
 lazy val cloud_gcp = project
-  .dependsOn(api.%("compile->compile;test->test"), online)
+  .dependsOn(api % ("compile->compile;test->test"), online, spark % ("compile->compile;test->test"))
   .settings(
     libraryDependencies += "com.google.cloud" % "google-cloud-bigquery" % "2.42.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-bigtable" % "2.41.0",
     libraryDependencies += "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
-    libraryDependencies ++= spark_all
+    libraryDependencies += "com.google.cloud" % "google-cloud-dataproc" % "4.52.0",
+    libraryDependencies += "com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop3-2.2.26",
+    libraryDependencies += "com.google.cloud.bigdataoss" % "gcsio" % "3.0.3", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/gcsio/src/main/java/com/google/cloud/hadoop/gcsio/GoogleCloudStorageFileSystem.java
+    libraryDependencies += "com.google.cloud.bigdataoss" % "util-hadoop" % "3.0.0", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/util-hadoop/src/main/java/com/google/cloud/hadoop/util/HadoopConfigurationProperty.java
+    libraryDependencies += "com.google.cloud.spark" %% "spark-bigquery-with-dependencies" % "0.41.0",
+    libraryDependencies += "org.json4s" % "json4s-jackson_2.12" % "3.7.0-M11", // This version is pinned to the one spark uses in 3.X.X - see: https://github.com/apache/spark/pull/45838
+    libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
+    libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
+    libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
+    libraryDependencies += "io.grpc" % "grpc-netty-shaded" % "1.62.2",
+    libraryDependencies += "com.google.cloud.hosted.kafka" % "managed-kafka-auth-login-handler" % "1.0.3" excludeAll (
+      ExclusionRule(organization = "io.confluent", name = "kafka-schema-registry-client")
+    ),
+    libraryDependencies ++= avro,
+    libraryDependencies ++= spark_all_provided,
+    dependencyOverrides ++= jackson,
+    // assembly merge settings to allow Flink jobs to kick off
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat // Add to include channel provider
+      case PathList("META-INF", xs @ _*)             => MergeStrategy.discard
+      case "reference.conf"                          => MergeStrategy.concat
+      case "application.conf"                        => MergeStrategy.concat
+      case _                                         => MergeStrategy.first
+    },
+    libraryDependencies += "org.mockito" % "mockito-core" % "5.12.0" % Test,
+    libraryDependencies += "com.google.cloud" % "google-cloud-bigtable-emulator" % "0.178.0" % Test,
+    // force some newer versions of reload4j and kafka-clients to sidestep:
+    // https://security.snyk.io/vuln/SNYK-JAVA-CHQOSRELOAD4J-5731326
+    // https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHEKAFKA-8528112
+    dependencyOverrides ++= Seq(
+      "ch.qos.reload4j" % "reload4j" % "1.2.25",
+      "org.apache.kafka" % "kafka-clients" % "3.8.1"
+    )
+  )
+
+lazy val cloud_gcp_submitter = project
+  .dependsOn(cloud_gcp)
+  .settings(
+    mainClass in (Compile, run) := Some("ai.chronon.integrations.cloud_gcp.DataprocSubmitter")
   )
 
 lazy val cloud_aws = project
@@ -247,39 +371,143 @@ lazy val frontend = (project in file("frontend"))
     }
   )
 
-// We use Play 2.x (version defined in plugins.sbt) as many of our modules are still on Scala 2.12
-// build interop between one module solely on 2.13 and others on 2.12 is painful
-lazy val hub = (project in file("hub"))
-  .enablePlugins(PlayScala)
-  .dependsOn(cloud_aws, spark)
+lazy val service_commons = (project in file("service_commons"))
+  .dependsOn(api.%("compile->compile;test->test"), online)
   .settings(
-    name := "hub",
+    libraryDependencies ++= vertx_java,
     libraryDependencies ++= Seq(
-      guice,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
-      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0",
-      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.3.0",
-      "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "com.typesafe" % "config" % "1.4.3",
+      // force netty versions -> without this we conflict with the versions pulled in from
+      // our online module's spark deps which causes the web-app to not serve up content
+      "io.netty" % "netty-all" % "4.1.111.Final",
+      // wire up metrics using micro meter and statsd
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+      "com.fasterxml.jackson.core" % "jackson-databind" % "2.15.2", // pinned from elsewhere
+      "io.vertx" % "vertx-junit5" % vertxVersion % Test,
+      "org.junit.jupiter" % "junit-jupiter-api" % "5.10.5" % Test
     ),
+    libraryDependencies ++= {
+      if (System.getProperty("os.name").toLowerCase.contains("mac"))
+        Seq("io.netty" % "netty-resolver-dns-native-macos" % "4.1.115.Final" classifier "osx-aarch_64")
+      else
+        Seq.empty
+    },
+  )
+
+lazy val service = (project in file("service"))
+  .dependsOn(online, service_commons)
+  .settings(
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    assembly / artifact := {
+      val art = (assembly / artifact).value
+      art.withClassifier(Some("assembly"))
+    },
+    addArtifact(assembly / artifact, assembly),
+    libraryDependencies ++= vertx_java,
+    libraryDependencies ++= avro,
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "com.typesafe" % "config" % "1.4.3",
+      // force netty versions -> without this we conflict with the versions pulled in from
+      // our online module's spark deps which causes the web-app to not serve up content
+      "io.netty" % "netty-all" % "4.1.111.Final",
+      // wire up metrics using micro meter and statsd
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+      // need this to prevent a NoClassDef error on org/json4s/Formats
+      "org.json4s" %% "json4s-core" % "3.7.0-M11",
+      "org.apache.commons" % "commons-lang3" % "3.8.1",
+      "junit" % "junit" % "4.13.2" % Test,
+      "com.novocode" % "junit-interface" % "0.11" % Test,
+      "org.mockito" % "mockito-core" % "5.12.0" % Test,
+      "io.vertx" % "vertx-unit" % vertxVersion % Test
+    ),
+    // Assembly settings
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    // Main class configuration
+    // We use a custom launcher to help us wire up our statsd metrics
+    Compile / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+    assembly / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+    // Merge strategy for assembly
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "MANIFEST.MF")           => MergeStrategy.discard
+      case PathList("META-INF", xs @ _*)                 => MergeStrategy.first
+      case PathList("javax", "activation", xs @ _*)      => MergeStrategy.first
+      case PathList("org", "apache", "logging", xs @ _*) => MergeStrategy.first
+      case PathList("org", "slf4j", xs @ _*)             => MergeStrategy.first
+      case "application.conf"                            => MergeStrategy.concat
+      case "reference.conf"                              => MergeStrategy.concat
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
+  )
+
+lazy val hub = (project in file("hub"))
+  .dependsOn(online, service_commons, spark)
+  .settings(
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    assembly / artifact := {
+      val art = (assembly / artifact).value
+      art.withClassifier(Some("assembly"))
+    },
+    addArtifact(assembly / artifact, assembly),
+    libraryDependencies ++= vertx_java,
     libraryDependencies ++= circe,
-    libraryDependencySchemes ++= Seq(
-      "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
-      "org.scala-lang.modules" %% "scala-parser-combinators" % VersionScheme.Always,
-      "org.scala-lang.modules" %% "scala-java8-compat" % VersionScheme.Always
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackClassicVersion,
+      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "com.typesafe" % "config" % "1.4.3",
+      // force netty versions -> without this we conflict with the versions pulled in from
+      // our online module's spark deps which causes the web-app to not serve up content
+      "io.netty" % "netty-all" % "4.1.111.Final",
+      // wire up metrics using micro meter and statsd
+      "io.micrometer" % "micrometer-registry-statsd" % "1.13.6",
+      // need this to prevent a NoClassDef error on org/json4s/Formats
+      "org.json4s" %% "json4s-core" % "3.7.0-M11",
+      "junit" % "junit" % "4.13.2" % Test,
+      "com.novocode" % "junit-interface" % "0.11" % Test,
+      "org.mockito" % "mockito-core" % "5.12.0" % Test,
+      "io.vertx" % "vertx-unit" % vertxVersion % Test,
+      "org.scalatest" %% "scalatest" % "3.2.19" % "test",
+      "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % "test",
+      "io.vertx" % "vertx-unit" % "4.5.10" % Test
     ),
-    excludeDependencies ++= Seq(
-      ExclusionRule(organization = "org.slf4j", name = "slf4j-log4j12"),
-      ExclusionRule(organization = "log4j", name = "log4j"),
-      ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-to-slf4j"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-slf4j-impl"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-core"),
-      ExclusionRule("org.apache.logging.log4j", "log4j-api")
-    ),
-    // Ensure consistent versions of logging libraries
-    dependencyOverrides ++= Seq(
-      "org.slf4j" % "slf4j-api" % "1.7.36",
-      "ch.qos.logback" % "logback-classic" % "1.2.13"
+    // Assembly settings
+    assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
+    // Main class configuration
+    // We use a custom launcher to help us wire up our statsd metrics
+    Compile / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+    assembly / mainClass := Some("ai.chronon.service.ChrononServiceLauncher"),
+    // Merge strategy for assembly
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "MANIFEST.MF")           => MergeStrategy.discard
+      case PathList("META-INF", xs @ _*)                 => MergeStrategy.first
+      case PathList("javax", "activation", xs @ _*)      => MergeStrategy.first
+      case PathList("org", "apache", "logging", xs @ _*) => MergeStrategy.first
+      case PathList("org", "slf4j", xs @ _*)             => MergeStrategy.first
+      case "application.conf"                            => MergeStrategy.concat
+      case "reference.conf"                              => MergeStrategy.concat
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
+  )
+
+// orchestrator
+lazy val orchestration = project
+  .dependsOn(online.%("compile->compile;test->test"))
+  .settings(
+    assembly / mainClass := Some("ai.chronon.orchestration.RepoParser"),
+    Compile / run / mainClass := Some("ai.chronon.orchestration.RepoParser"),
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources",
+    libraryDependencies ++= Seq(
+      "org.apache.logging.log4j" %% "log4j-api-scala" % "13.1.0",
+      "org.apache.logging.log4j" % "log4j-core" % "2.20.0",
+//      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+      "org.scalatest" %% "scalatest" % "3.2.19" % "test"
     )
   )
 

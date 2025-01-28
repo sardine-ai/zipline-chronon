@@ -24,14 +24,13 @@ import ai.chronon.online.SerializableFunction
 import ai.chronon.online.TBaseDecoderFactory
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 
-class ThriftDecodingTest {
+class ThriftDecodingTest extends AnyFlatSpec {
 
-  @Test
-  def testDecoding(): Unit = {
+  it should "decoding" in {
     val tokens = new util.HashSet[String]()
     Seq("left", "source", "events", "derivations", "name", "expression")
       .foreach(tokens.add)
@@ -75,8 +74,8 @@ class ThriftDecodingTest {
 
     // apply sql on this
     val cu = new CatalystUtil(schema.asInstanceOf[StructType], collection.Seq(der_name -> der_expr))
-    val result = cu.performSql(decoder.apply(dks).asInstanceOf[Array[Any]]).orNull
-    val resultJson = gson.toJson(result)
+    val result = cu.performSql(decoder.apply(dks).asInstanceOf[Array[Any]])
+    val resultJson = gson.toJson(result.head)
     assertEquals(resultJson, "[24.0]")
   }
 

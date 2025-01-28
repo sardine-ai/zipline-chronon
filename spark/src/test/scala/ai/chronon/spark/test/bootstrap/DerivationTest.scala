@@ -18,6 +18,7 @@ package ai.chronon.spark.test.bootstrap
 
 import ai.chronon.api.Builders.Derivation
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
@@ -31,29 +32,26 @@ import org.apache.spark.sql.functions._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions.JListOps
 
-class DerivationTest {
+class DerivationTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("DerivationTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 
-  @Test
-  def testBootstrapToDerivations(): Unit = {
+  it should "bootstrap to derivations" in {
     val namespace = "test_derivations"
     tableUtils.createDatabase(namespace)
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
 
-    val derivation1 = Builders.Derivation(name = "user_amount_30d_avg",
-      expression = "amount_dollars_sum_30d / 30")
+    val derivation1 = Builders.Derivation(name = "user_amount_30d_avg", expression = "amount_dollars_sum_30d / 30")
     val derivation2 = Builders.Derivation(
       name = "*"
     )
@@ -268,7 +266,8 @@ class DerivationTest {
         outputDf("ts"),
         contextualBootstrapDf("user_txn_count_30d"),
         externalBootstrapDf("ext_payments_service_user_txn_count_15d").as("user_txn_count_15d"),
-        (concat(externalBootstrapDf("ext_payments_service_user_txn_count_15d"), lit(' '), outputDf("user"))).as("user_txn_count_15d_with_user_id"),
+        (concat(externalBootstrapDf("ext_payments_service_user_txn_count_15d"), lit(' '), outputDf("user")))
+          .as("user_txn_count_15d_with_user_id"),
         outputDf("user_amount_30d"),
         outputDf("user_amount_15d"),
         coalesce(diffBootstrapDf("user_amount_30d_minus_15d"), outputDf("user_amount_30d_minus_15d"))
@@ -293,8 +292,7 @@ class DerivationTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testBootstrapToDerivationsNoStar(): Unit = {
+  it should "bootstrap to derivations no star" in {
     val namespace = "test_derivations_no_star"
     tableUtils.createDatabase(namespace)
 
@@ -353,7 +351,7 @@ class DerivationTest {
     val outputDf = runner.computeJoin()
 
     // assert that no computation happened for join part since all derivations have been bootstrapped
-    assertFalse(tableUtils.tableExists(joinConf.partOutputTable(joinPart)))
+    assertFalse(tableUtils.tableReachable(joinConf.partOutputTable(joinPart)))
 
     val diff = Comparison.sideBySide(outputDf, bootstrapDf, List("request_id", "user", "ts", "ds"))
     if (diff.count() > 0) {
@@ -367,13 +365,11 @@ class DerivationTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testLoggingNonStar(): Unit = {
+  it should "logging non star" in {
     runLoggingTest("test_derivations_logging_non_star", wildcardSelection = false)
   }
 
-  @Test
-  def testLogging(): Unit = {
+  it should "logging" in {
     runLoggingTest("test_derivations_logging", wildcardSelection = true)
   }
 
@@ -475,7 +471,7 @@ class DerivationTest {
     }
 
     // assert that no computation happened for join part since all derivations have been bootstrapped
-    assertFalse(tableUtils.tableExists(bootstrapJoin.partOutputTable(joinPart)))
+    assertFalse(tableUtils.tableReachable(bootstrapJoin.partOutputTable(joinPart)))
 
     val baseJoinJob = new ai.chronon.spark.Join(baseJoin, endDs, tableUtils)
     val baseDf = baseJoinJob.computeJoin()
@@ -501,8 +497,7 @@ class DerivationTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testContextual(): Unit = {
+  it should "contextual" in {
     val namespace = "test_contextual"
     tableUtils.createDatabase(namespace)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
@@ -560,7 +555,6 @@ class DerivationTest {
     assertFalse(schema1.contains("context_2"))
     assertTrue(schema1.contains("ext_contextual_context_2"))
 
-
     /*
      * In order to keep the `key` format, use explicit rename derivation
      * Otherwise, in a * derivation, we keep only the values and discard the keys
@@ -605,7 +599,6 @@ class DerivationTest {
     assertFalse(schema3.contains("context_2"))
     assertFalse(schema3.contains("ext_contextual_context_2"))
 
-
     /*
      * If we want to keep both format, select both format explicitly
      */
@@ -630,27 +623,23 @@ class DerivationTest {
     assertFalse(schema4.contains("ext_contextual_context_2"))
   }
 
-  @Test
-  def testGroupByDerivations(): Unit = {
+  it should "group by derivations" in {
     val namespace = "test_group_by_derivations"
     tableUtils.createDatabase(namespace)
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     groupBy.setBackfillStartDate(today)
-    groupBy.setDerivations(Seq(
-      Builders.Derivation(
-        name = "*"),
-      Builders.Derivation(
-        name = "amount_dollars_avg_15d",
-        expression = "amount_dollars_sum_15d / 15"
-      )).toJava)
+    groupBy.setDerivations(
+      Seq(Builders.Derivation(name = "*"),
+          Builders.Derivation(
+            name = "amount_dollars_avg_15d",
+            expression = "amount_dollars_sum_15d / 15"
+          )).toJava)
     ai.chronon.spark.GroupBy.computeBackfill(groupBy, today, tableUtils)
-    val actualDf = tableUtils.sql(
-      s"""
+    val actualDf = tableUtils.sql(s"""
          |select * from $namespace.${groupBy.metaData.cleanName}
          |""".stripMargin)
 
-    val expectedDf = tableUtils.sql(
-      s"""
+    val expectedDf = tableUtils.sql(s"""
          |select
          |  user,
          |  amount_dollars_sum_30d,

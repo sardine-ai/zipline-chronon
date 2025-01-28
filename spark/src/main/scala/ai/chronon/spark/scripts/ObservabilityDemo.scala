@@ -3,13 +3,14 @@ package ai.chronon.spark.scripts
 import ai.chronon
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Constants
-import ai.chronon.api.DriftMetric
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
-import ai.chronon.api.TileDriftSeries
-import ai.chronon.api.TileSummarySeries
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Window
+import ai.chronon.observability.DriftMetric
+import ai.chronon.observability.TileDriftSeries
+import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.KVStore
 import ai.chronon.online.stats.DriftStore
 import ai.chronon.spark.SparkSessionBuilder
@@ -27,7 +28,6 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions.IteratorOps
 
 object ObservabilityDemo {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

@@ -29,8 +29,8 @@ import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.StreamingTest.buildInMemoryKvStore
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.{Join => _, _}
-import junit.framework.TestCase
 import org.apache.spark.sql.SparkSession
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util.TimeZone
 import scala.collection.JavaConverters.asScalaBufferConverter
@@ -42,7 +42,7 @@ object StreamingTest {
   }
 }
 
-class StreamingTest extends TestCase {
+class StreamingTest extends AnyFlatSpec {
 
   val spark: SparkSession = SparkSessionBuilder.build("StreamingTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
@@ -52,7 +52,7 @@ class StreamingTest extends TestCase {
   tableUtils.partitionSpec.before(today)
   private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
-  def testStructInStreaming(): Unit = {
+  it should "struct in streaming" in {
     tableUtils.createDatabase(namespace)
     val topicName = "fake_topic"
     val inMemoryKvStore = buildInMemoryKvStore()

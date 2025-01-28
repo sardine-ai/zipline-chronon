@@ -18,10 +18,12 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
 import ai.chronon.spark.Extensions.StructTypeOps
+import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Dataset
@@ -36,7 +38,6 @@ import java.util.Base64
 import scala.collection.Seq
 import scala.collection.mutable
 import scala.util.Failure
-import scala.util.ScalaJavaConversions.MapOps
 import scala.util.Success
 import scala.util.Try
 
@@ -224,11 +225,10 @@ class LogFlattenerJob(session: SparkSession,
       val schemaTblProps = buildTableProperties(schemaStringsMap)
       logger.info("======= Log table schema =======")
       logger.info(flattenedDf.schema.pretty)
-      tableUtils.insertPartitions(flattenedDf,
-                                  joinConf.metaData.loggedTable,
-                                  tableProperties =
-                                    joinTblProps ++ schemaTblProps ++ Map(Constants.ChrononLogTable -> true.toString),
-                                  autoExpand = true)
+
+      flattenedDf.save(joinConf.metaData.loggedTable,
+                       joinTblProps ++ schemaTblProps ++ Map(Constants.ChrononLogTable -> true.toString),
+                       autoExpand = true)
 
       val inputRowCount = rawDf.count()
       // read from output table to avoid recomputation

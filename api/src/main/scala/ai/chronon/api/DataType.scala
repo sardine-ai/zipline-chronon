@@ -16,9 +16,9 @@
 
 package ai.chronon.api
 
+import ai.chronon.api.ScalaJavaConversions._
+
 import java.util
-import scala.util.ScalaJavaConversions.JListOps
-import scala.util.ScalaJavaConversions.ListOps
 
 sealed trait DataType extends Serializable
 

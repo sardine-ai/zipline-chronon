@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { get } from './api';
+import { Api } from './api';
 import { error } from '@sveltejs/kit';
 
 // Mock the fetch function
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+const api = new Api({ fetch });
 
 // Mock the error function from @sveltejs/kit
 vi.mock('@sveltejs/kit', () => ({
@@ -28,11 +30,13 @@ describe('API module', () => {
 				text: () => Promise.resolve(JSON.stringify(mockResponse))
 			});
 
-			const result = await get('test-path');
+			const result = await api.getModels();
 
-			expect(mockFetch).toHaveBeenCalledWith(`http://localhost:9000/api/v1/test-path`, {
+			expect(mockFetch).toHaveBeenCalledWith(`/api/v1/models`, {
 				method: 'GET',
-				headers: {}
+				headers: {
+					'Content-Type': 'application/json'
+				}
 			});
 			expect(result).toEqual(mockResponse);
 		});
@@ -43,7 +47,7 @@ describe('API module', () => {
 				text: () => Promise.resolve('')
 			});
 
-			const result = await get('empty-path');
+			const result = await api.getModels();
 
 			expect(result).toEqual({});
 		});
@@ -54,7 +58,7 @@ describe('API module', () => {
 				status: 404
 			});
 
-			await get('error-path');
+			await api.getModels();
 
 			expect(error).toHaveBeenCalledWith(404);
 		});

@@ -13,12 +13,11 @@ import ai.chronon.online.Metrics.Context
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.fail
-import org.junit.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.mockito.stubbing.Stubber
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar
 
 import scala.collection.JavaConverters._
@@ -34,14 +33,13 @@ trait MockitoHelper extends MockitoSugar {
   }
 }
 
-class FetcherCacheTest extends MockitoHelper {
+class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
   class TestableFetcherCache(cache: Option[BatchIrCache]) extends FetcherCache {
     override val maybeBatchIrCache: Option[BatchIrCache] = cache
   }
   val batchIrCacheMaximumSize = 50
 
-  @Test
-  def testBatchIrCacheCorrectlyCachesBatchIrs(): Unit = {
+  it should "batch ir cache correctly caches batch irs" in {
     val cacheName = "test"
     val batchIrCache = new BatchIrCache(cacheName, batchIrCacheMaximumSize)
     val dataset = "TEST_GROUPBY_BATCH"
@@ -63,8 +61,7 @@ class FetcherCacheTest extends MockitoHelper {
     })
   }
 
-  @Test
-  def testBatchIrCacheCorrectlyCachesMapResponse(): Unit = {
+  it should "batch ir cache correctly caches map response" in {
     val cacheName = "test"
     val batchIrCache = new BatchIrCache(cacheName, batchIrCacheMaximumSize)
     val dataset = "TEST_GROUPBY_BATCH"
@@ -88,8 +85,7 @@ class FetcherCacheTest extends MockitoHelper {
 
   // Test that the cache keys are compared by equality, not by reference. In practice, this means that if two keys
   // have the same (dataset, keys, batchEndTsMillis), they will only be stored once in the cache.
-  @Test
-  def testBatchIrCacheKeysAreComparedByEquality(): Unit = {
+  it should "batch ir cache keys are compared by equality" in {
     val cacheName = "test"
     val batchIrCache = new BatchIrCache(cacheName, batchIrCacheMaximumSize)
 
@@ -108,8 +104,7 @@ class FetcherCacheTest extends MockitoHelper {
     assert(batchIrCache.cache.estimatedSize() == 1)
   }
 
-  @Test
-  def testGetCachedRequestsReturnsCorrectCachedDataWhenCacheIsEnabled(): Unit = {
+  it should "get cached requests returns correct cached data when cache is enabled" in {
     val cacheName = "test"
     val testCache = Some(new BatchIrCache(cacheName, batchIrCacheMaximumSize))
     val fetcherCache = new TestableFetcherCache(testCache) {
@@ -144,10 +139,9 @@ class FetcherCacheTest extends MockitoHelper {
     assert(cachedRequestsAfterAddingItem.head._2 == finalBatchIr)
   }
 
-  @Test
-  def testGetCachedRequestsDoesNotCacheWhenCacheIsDisabledForGroupBy(): Unit = {
+  it should "get cached requests does not cache when cache is disabled for group by" in {
     val testCache = new BatchIrCache("test", batchIrCacheMaximumSize)
-    val spiedTestCache = spy(testCache)
+    val spiedTestCache = spy[BatchIrCache](testCache)
     val fetcherCache = new TestableFetcherCache(Some(testCache)) {
       // Cache is enabled globally, but disabled for a specific groupBy
       override def isCachingEnabled(groupBy: GroupBy) = false
@@ -171,8 +165,7 @@ class FetcherCacheTest extends MockitoHelper {
     verify(spiedTestCache, never()).cache
   }
 
-  @Test
-  def testGetBatchBytesReturnsLatestTimedValueBytesIfGreaterThanBatchEnd(): Unit = {
+  it should "get batch bytes returns latest timed value bytes if greater than batch end" in {
     val kvStoreResponse = Success(
       Seq(TimedValue(Array(1.toByte), 1000L), TimedValue(Array(2.toByte), 2000L))
     )
@@ -181,8 +174,7 @@ class FetcherCacheTest extends MockitoHelper {
     assertArrayEquals(Array(2.toByte), batchBytes)
   }
 
-  @Test
-  def testGetBatchBytesReturnsNullIfLatestTimedValueTimestampIsLessThanBatchEnd(): Unit = {
+  it should "get batch bytes returns null if latest timed value timestamp is less than batch end" in {
     val kvStoreResponse = Success(
       Seq(TimedValue(Array(1.toByte), 1000L), TimedValue(Array(2.toByte), 1500L))
     )
@@ -191,24 +183,21 @@ class FetcherCacheTest extends MockitoHelper {
     assertNull(batchBytes)
   }
 
-  @Test
-  def testGetBatchBytesReturnsNullWhenCachedBatchResponse(): Unit = {
+  it should "get batch bytes returns null when cached batch response" in {
     val finalBatchIr = mock[FinalBatchIr]
     val batchResponses = BatchResponses(finalBatchIr)
     val batchBytes = batchResponses.getBatchBytes(1000L)
     assertNull(batchBytes)
   }
 
-  @Test
-  def testGetBatchBytesReturnsNullWhenKvStoreBatchResponseFails(): Unit = {
+  it should "get batch bytes returns null when kv store batch response fails" in {
     val kvStoreResponse = Failure(new RuntimeException("KV Store error"))
     val batchResponses = BatchResponses(kvStoreResponse)
     val batchBytes = batchResponses.getBatchBytes(1000L)
     assertNull(batchBytes)
   }
 
-  @Test
-  def testGetBatchIrFromBatchResponseReturnsCorrectIRsWithCacheEnabled(): Unit = {
+  it should "get batch ir from batch response returns correct i rs with cache enabled" in {
     // Use a real cache
     val batchIrCache = new BatchIrCache("test_cache", batchIrCacheMaximumSize)
 
@@ -227,7 +216,7 @@ class FetcherCacheTest extends MockitoHelper {
     val cacheKey = BatchIrCache.Key(servingInfo.groupByOps.batchDataset, keys, servingInfo.batchEndTsMillis)
 
     val fetcherCache = new TestableFetcherCache(Some(batchIrCache))
-    val spiedFetcherCache = Mockito.spy(fetcherCache)
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](fetcherCache)
     doReturn(true).when(spiedFetcherCache).isCachingEnabled(any())
 
     // 1. Cached BatchResponse returns the same IRs passed in
@@ -249,8 +238,7 @@ class FetcherCacheTest extends MockitoHelper {
     verify(toBatchIr, times(1))(any(), any()) // decoding did happen
   }
 
-  @Test
-  def testGetBatchIrFromBatchResponseDecodesBatchBytesIfCacheDisabled(): Unit = {
+  it should "get batch ir from batch response decodes batch bytes if cache disabled" in {
     // Set up mocks and dummy data
     val servingInfo = mock[GroupByServingInfoParsed]
     val batchBytes = Array[Byte](1, 2, 3)
@@ -259,7 +247,7 @@ class FetcherCacheTest extends MockitoHelper {
     val toBatchIr = mock[(Array[Byte], GroupByServingInfoParsed) => FinalBatchIr]
     val kvStoreBatchResponses = BatchResponses(Success(Seq(TimedValue(batchBytes, 1000L))))
 
-    val spiedFetcherCache = Mockito.spy(new TestableFetcherCache(None))
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](new TestableFetcherCache(None))
     when(toBatchIr(any(), any())).thenReturn(finalBatchIr)
 
     // When getBatchIrFromBatchResponse is called, it decodes the bytes and doesn't hit the cache
@@ -269,8 +257,7 @@ class FetcherCacheTest extends MockitoHelper {
     assertEquals(finalBatchIr, ir)
   }
 
-  @Test
-  def testGetBatchIrFromBatchResponseReturnsCorrectMapResponseWithCacheEnabled(): Unit = {
+  it should "get batch ir from batch response returns correct map response with cache enabled" in {
     // Use a real cache
     val batchIrCache = new BatchIrCache("test_cache", batchIrCacheMaximumSize)
     // Set up mocks and dummy data
@@ -285,7 +272,7 @@ class FetcherCacheTest extends MockitoHelper {
     val keys = Map("key" -> "value")
     val cacheKey = BatchIrCache.Key(servingInfo.groupByOps.batchDataset, keys, servingInfo.batchEndTsMillis)
 
-    val spiedFetcherCache = Mockito.spy(new TestableFetcherCache(Some(batchIrCache)))
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](new TestableFetcherCache(Some(batchIrCache)))
     doReturn(true).when(spiedFetcherCache).isCachingEnabled(any())
 
     // 1. Cached BatchResponse returns the same Map responses passed in
@@ -315,8 +302,7 @@ class FetcherCacheTest extends MockitoHelper {
     assertEquals(batchIrCache.cache.getIfPresent(cacheKey), CachedMapBatchResponse(mapResponse2)) // key was added
   }
 
-  @Test
-  def testGetMapResponseFromBatchResponseDecodesBatchBytesIfCacheDisabled(): Unit = {
+  it should "get map response from batch response decodes batch bytes if cache disabled" in {
     // Set up mocks and dummy data
     val servingInfo = mock[GroupByServingInfoParsed]
     val batchBytes = Array[Byte](1, 2, 3)
@@ -327,7 +313,7 @@ class FetcherCacheTest extends MockitoHelper {
     when(servingInfo.outputCodec).thenReturn(outputCodec)
     when(outputCodec.decodeMap(any())).thenReturn(mapResponse)
 
-    val spiedFetcherCache = Mockito.spy(new TestableFetcherCache(None))
+    val spiedFetcherCache = Mockito.spy[TestableFetcherCache](new TestableFetcherCache(None))
 
     // When getMapResponseFromBatchResponse is called, it decodes the bytes and doesn't hit the cache
     val decodedMapResponse = spiedFetcherCache.getMapResponseFromBatchResponse(kvStoreBatchResponses,

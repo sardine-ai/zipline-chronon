@@ -19,13 +19,13 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ParametricMacro
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.util.ScalaJavaConversions._
 
 class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -80,7 +80,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
               StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
             logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
             val df = tableUtils.sql(renderedQuery)
-            tableUtils.insertPartitions(df, outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
+            df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
             logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
         }
         logger.info(s"Finished writing Staging Query data to $outputTable")

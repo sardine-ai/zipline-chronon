@@ -17,10 +17,10 @@
 package ai.chronon.aggregator.test
 
 import ai.chronon.aggregator.base.ApproxDistinctCount
-import junit.framework.TestCase
 import org.junit.Assert._
+import org.scalatest.flatspec.AnyFlatSpec
 
-class ApproxDistinctTest extends TestCase {
+class ApproxDistinctTest extends AnyFlatSpec {
   def testErrorBound(uniques: Int, errorBound: Int, lgK: Int): Unit = {
     val uniqueElems = 1 to uniques
     val duplicates = uniqueElems ++ uniqueElems ++ uniqueElems
@@ -50,13 +50,13 @@ class ApproxDistinctTest extends TestCase {
     assertTrue(Math.abs(estimated - uniques) < errorBound)
   }
 
-  def testErrorBounds(): Unit = {
+  it should "error bounds" in {
     testErrorBound(uniques = 100, errorBound = 1, lgK = 10)
     testErrorBound(uniques = 1000, errorBound = 20, lgK = 10)
     testErrorBound(uniques = 10000, errorBound = 300, lgK = 10)
   }
 
-  def testMergingErrorBounds(): Unit = {
+  it should "merging error bounds" in {
     testMergingErrorBound(uniques = 100, errorBound = 1, lgK = 10, merges = 10)
     testMergingErrorBound(uniques = 1000, errorBound = 20, lgK = 10, merges = 4)
     testMergingErrorBound(uniques = 10000, errorBound = 400, lgK = 10, merges = 100)

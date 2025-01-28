@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +18,6 @@ from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Window,
-    TimeUnit,
-    Accuracy,
 )
 
 """
@@ -30,33 +26,30 @@ This GroupBy aggregates metrics about a user's previous purchases in various win
 
 source = Source(
     events=EventSource(
-        table="data.returns", # This points to the log table with historical return events
+        table="data.returns",  # This points to the log table with historical return events
         topic="events.returns/fields=ts,return_id,user_id,product_id,refund_amt/host=kafka/port=9092",
         query=Query(
-            selects=select("user_id","refund_amt"), # Select the fields we care about
-            time_column="ts") # The event time
-    ))
+            selects=select("user_id", "refund_amt"),  # Select the fields we care about
+            time_column="ts",
+        ),  # The event time
+    )
+)
 
-window_sizes = [Window(length=day, timeUnit=TimeUnit.DAYS) for day in [3, 14, 30]] # Define some window sizes to use below
+window_sizes = ["3d", "14d", "30d"]  # Define some window sizes to use below
 
 v1 = GroupBy(
     sources=[source],
-    keys=["user_id"], # We are aggregating by user
+    keys=["user_id"],  # We are aggregating by user
     online=True,
-    aggregations=[Aggregation(
-            input_column="refund_amt",
-            operation=Operation.SUM,
-            windows=window_sizes
-        ), # The sum of purchases prices in various windows
+    aggregations=[
         Aggregation(
-            input_column="refund_amt",
-            operation=Operation.COUNT,
-            windows=window_sizes
-        ), # The count of purchases in various windows
+            input_column="refund_amt", operation=Operation.SUM, windows=window_sizes
+        ),  # The sum of purchases prices in various windows
         Aggregation(
-            input_column="refund_amt",
-            operation=Operation.AVERAGE,
-            windows=window_sizes
+            input_column="refund_amt", operation=Operation.COUNT, windows=window_sizes
+        ),  # The count of purchases in various windows
+        Aggregation(
+            input_column="refund_amt", operation=Operation.AVERAGE, windows=window_sizes
         ),
         Aggregation(
             input_column="refund_amt",

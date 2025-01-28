@@ -16,6 +16,7 @@
 
 package ai.chronon.online
 
+import ai.chronon.api.ScalaJavaConversions._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.catalyst.util.ArrayBasedMapData
@@ -27,7 +28,6 @@ import org.apache.spark.unsafe.types.UTF8String
 
 import java.util
 import scala.collection.mutable
-import scala.util.ScalaJavaConversions.IteratorOps
 
 object SparkInternalRowConversions {
   // the identity function

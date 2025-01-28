@@ -26,11 +26,11 @@ import ai.chronon.spark.StagingQuery
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class StagingQueryTest {
+class StagingQueryTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = SparkSessionBuilder.build("StagingQueryTest", local = true)
   implicit private val tableUtils: TableUtils = TableUtils(spark)
@@ -40,8 +40,7 @@ class StagingQueryTest {
   private val namespace = "staging_query_chronon_test"
   tableUtils.createDatabase(namespace)
 
-  @Test
-  def testStagingQuery(): Unit = {
+  it should "staging query" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 1000)
@@ -91,8 +90,11 @@ class StagingQueryTest {
     val expectedWithOverrideStartPartition =
       tableUtils.sql(s"select * from $viewName where ds = '$today' AND user IS NOT NULL")
 
-    val computedWithOverrideStartPartition = tableUtils.sql(s"select * from ${stagingQueryConf.metaData.outputTable} WHERE user IS NOT NULL")
-    val diffWithOverrideStartPartition = Comparison.sideBySide(expectedWithOverrideStartPartition, computedWithOverrideStartPartition, List("user", "ts", "ds"))
+    val computedWithOverrideStartPartition =
+      tableUtils.sql(s"select * from ${stagingQueryConf.metaData.outputTable} WHERE user IS NOT NULL")
+    val diffWithOverrideStartPartition = Comparison.sideBySide(expectedWithOverrideStartPartition,
+                                                               computedWithOverrideStartPartition,
+                                                               List("user", "ts", "ds"))
     if (diffWithOverrideStartPartition.count() > 0) {
       println(s"Actual count: ${expectedWithOverrideStartPartition.count()}")
       println(expectedWithOverrideStartPartition.show())
@@ -107,8 +109,7 @@ class StagingQueryTest {
 
   /** Test Staging Query update with new feature/column added to the query.
     */
-  @Test
-  def testStagingQueryAutoExpand(): Unit = {
+  it should "staging query auto expand" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 50),
@@ -183,8 +184,7 @@ class StagingQueryTest {
     * Compute in several step ranges a trivial query and for the first step range (first partition) the latest_date
     * value should be that of the latest partition (today).
     */
-  @Test
-  def testStagingQueryLatestDate(): Unit = {
+  it should "staging query latest date" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 1000)
@@ -235,8 +235,7 @@ class StagingQueryTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testStagingQueryMaxDate(): Unit = {
+  it should "staging query max date" in {
     val schema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 1000)

@@ -35,19 +35,18 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.junit.Assert._
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.mutable
 import scala.util.Try
 
-class JoinUtilsTest {
+class JoinUtilsTest extends AnyFlatSpec {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build("JoinUtilsTest", local = true)
   private val tableUtils = TableUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private val namespace = "joinUtil"
-  @Test
-  def testUDFSetAdd(): Unit = {
+  it should "udf set add" in {
     val data = Seq(
       Row(Seq("a", "b", "c"), "a"),
       Row(Seq("a", "b", "c"), "d"),
@@ -80,8 +79,7 @@ class JoinUtilsTest {
     }
   }
 
-  @Test
-  def testUDFContainsAny(): Unit = {
+  it should "udf contains any" in {
     val data = Seq(
       Row(Seq("a", "b", "c"), Seq("a")),
       Row(Seq("a", "b", "c"), Seq("a", "b")),
@@ -130,8 +128,7 @@ class JoinUtilsTest {
     df
   }
 
-  @Test
-  def testCoalescedJoinMismatchedKeyColumns(): Unit = {
+  it should "coalesced join mismatched key columns" in {
     // mismatch data type on join keys
     testJoinScenario(
       new StructType()
@@ -145,8 +142,7 @@ class JoinUtilsTest {
     )
   }
 
-  @Test
-  def testCoalescedJoinMismatchedSharedColumns(): Unit = {
+  it should "coalesced join mismatched shared columns" in {
     // mismatch data type on shared columns
     testJoinScenario(
       new StructType()
@@ -160,8 +156,7 @@ class JoinUtilsTest {
     )
   }
 
-  @Test
-  def testCoalescedJoinMissingKeys(): Unit = {
+  it should "coalesced join missing keys" in {
     // missing some keys
     testJoinScenario(
       new StructType()
@@ -176,8 +171,7 @@ class JoinUtilsTest {
     )
   }
 
-  @Test
-  def testCoalescedJoinNoSharedColumns(): Unit = {
+  it should "coalesced join no shared columns" in {
     // test no shared columns
     val df = testJoinScenario(
       new StructType()
@@ -192,8 +186,7 @@ class JoinUtilsTest {
     assertEquals(3, df.get.columns.length)
   }
 
-  @Test
-  def testCoalescedJoinSharedColumns(): Unit = {
+  it should "coalesced join shared columns" in {
     // test shared columns
     val df = testJoinScenario(
       new StructType()
@@ -210,8 +203,7 @@ class JoinUtilsTest {
     assertEquals(4, df.get.columns.length)
   }
 
-  @Test
-  def testCoalescedJoinOneSidedLeft(): Unit = {
+  it should "coalesced join one sided left" in {
     // test when left side only has keys
     val df = testJoinScenario(
       new StructType()
@@ -226,8 +218,7 @@ class JoinUtilsTest {
     assertEquals(3, df.get.columns.length)
   }
 
-  @Test
-  def testCoalescedJoinOneSidedRight(): Unit = {
+  it should "coalesced join one sided right" in {
     // test when right side only has keys
     val df = testJoinScenario(
       new StructType()
@@ -242,8 +233,7 @@ class JoinUtilsTest {
     assertEquals(3, df.get.columns.length)
   }
 
-  @Test
-  def testCreateJoinView(): Unit = {
+  it should "create join view" in {
     val finalViewName = "testCreateView"
     val leftTableName = "joinUtil.testFeatureTable"
     val rightTableName = "joinUtil.testLabelTable"
@@ -281,8 +271,7 @@ class JoinUtilsTest {
     assertEquals(properties.get.get("labelTable"), Some(rightTableName))
   }
 
-  @Test
-  def testCreateLatestLabelView(): Unit = {
+  it should "create latest label view" in {
     val finalViewName = "joinUtil.testFinalView"
     val leftTableName = "joinUtil.testFeatureTable2"
     val rightTableName = "joinUtil.testLabelTable2"
@@ -327,16 +316,14 @@ class JoinUtilsTest {
     assertEquals(properties.get.get("newProperties"), Some("value"))
   }
 
-  @Test
-  def testFilterColumns(): Unit = {
+  it should "filter columns" in {
     val testDf = createSampleTable()
     val filter = Array("listing", "ds", "feature_review")
     val filteredDf = JoinUtils.filterColumns(testDf, filter)
     assertTrue(filteredDf.schema.fieldNames.sorted sameElements filter.sorted)
   }
 
-  @Test
-  def testGetRangesToFill(): Unit = {
+  it should "get ranges to fill" in {
     tableUtils.createDatabase(namespace)
     // left table
     val itemQueries = List(Column("item", api.StringType, 100))
@@ -352,8 +339,7 @@ class JoinUtilsTest {
     assertEquals(range, PartitionRange(startPartition, endPartition))
   }
 
-  @Test
-  def testGetRangesToFillWithOverride(): Unit = {
+  it should "get ranges to fill with override" in {
     tableUtils.createDatabase(namespace)
     // left table
     val itemQueries = List(Column("item", api.StringType, 100))

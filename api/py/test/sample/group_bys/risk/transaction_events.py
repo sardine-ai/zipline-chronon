@@ -1,16 +1,11 @@
 from ai.chronon.api.ttypes import Source, EventSource
 from ai.chronon.query import Query, select
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Window,
-    TimeUnit
-)
+from ai.chronon.group_by import GroupBy, Aggregation, Operation
 
 """
 This GroupBy aggregates metrics about a user's previous purchases in various windows.
 """
+
 
 def create_transaction_source(key_field):
     return Source(
@@ -19,12 +14,14 @@ def create_transaction_source(key_field):
             topic=None,
             query=Query(
                 selects=select(key_field, "transaction_amount", "transaction_type"),
-                time_column="transaction_time"
-            )
+                time_column="transaction_time",
+            ),
         )
     )
 
-window_sizes = [Window(length=1, timeUnit=TimeUnit.HOURS), Window(length=1, timeUnit=TimeUnit.DAYS), Window(length=30, timeUnit=TimeUnit.DAYS), Window(length=365, timeUnit=TimeUnit.DAYS)]
+
+window_sizes = ["1h", "1d", "30d", "365d"]
+
 
 def create_txn_group_by(source, key):
     return GroupBy(
@@ -35,15 +32,16 @@ def create_txn_group_by(source, key):
             Aggregation(
                 input_column="transaction_amount",
                 operation=Operation.COUNT,
-                windows=window_sizes
+                windows=window_sizes,
             ),
             Aggregation(
                 input_column="transaction_amount",
                 operation=Operation.SUM,
-                windows=[Window(length=1, timeUnit=TimeUnit.HOURS)]
-            )
-        ]
+                windows=["1h"],
+            ),
+        ],
     )
+
 
 source_user_transactions = create_transaction_source("user_id")
 txn_group_by_user = create_txn_group_by(source_user_transactions, "user_id")

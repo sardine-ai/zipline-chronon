@@ -48,18 +48,17 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.types.{LongType => SparkLongType}
 import org.apache.spark.sql.types.{StringType => SparkStringType}
 import org.junit.Assert._
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.mutable
 
-class GroupByTest {
+class GroupByTest extends AnyFlatSpec {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build("GroupByTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
-  @Test
-  def testSnapshotEntities(): Unit = {
+  it should "snapshot entities" in {
     val schema = List(
       Column("user", StringType, 10),
       Column(Constants.TimeColumn, LongType, 100), // ts = last 100 days
@@ -92,8 +91,7 @@ class GroupByTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testSnapshotEvents(): Unit = {
+  it should "snapshot events" in {
     val schema = List(
       Column("user", StringType, 10), // ts = last 10 days
       Column("session_length", IntType, 2),
@@ -144,8 +142,7 @@ class GroupByTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def eventsLastKTest(): Unit = {
+  it should "events last k" in {
     val eventSchema = List(
       Column("user", StringType, 10),
       Column("listing_view", StringType, 100)
@@ -170,7 +167,8 @@ class GroupByTest {
     val computed = resultDf.select("user", "ts", "listing_view_last30", "listing_view_count")
     computed.show()
 
-    val expected = eventDf.sqlContext.sql("""
+    val expected = eventDf.sqlContext.sql(
+      """
          |SELECT
          |      events_last_k.user as user,
          |      queries_last_k.ts as ts,
@@ -213,8 +211,7 @@ class GroupByTest {
       }
     }
   }
-  @Test
-  def testTemporalEvents(): Unit = {
+  it should "temporal events" in {
     val eventSchema = List(
       Column("user", StringType, 10),
       Column("session_length", IntType, 10000)
@@ -278,8 +275,7 @@ class GroupByTest {
   }
 
   // Test that the output of Group by with Step Days is the same as the output without Steps (full data range)
-  @Test
-  def testStepDaysConsistency(): Unit = {
+  it should "step days consistency" in {
     val (source, endPartition) = createTestSource()
 
     val tableUtils = TableUtils(spark)
@@ -298,8 +294,7 @@ class GroupByTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testGroupByAnalyzer(): Unit = {
+  it should "group by analyzer" in {
     val (source, endPartition) = createTestSource(30)
 
     val tableUtils = TableUtils(spark)
@@ -327,8 +322,7 @@ class GroupByTest {
     })
   }
 
-  @Test
-  def testGroupByNoAggregationAnalyzer(): Unit = {
+  it should "group by no aggregation analyzer" in {
     val (source, endPartition) = createTestSource(30)
     val testName = "unit_analyze_test_item_no_agg"
 
@@ -351,14 +345,14 @@ class GroupByTest {
 
     val columns = aggregationsMetadata.map(a => a.name -> a.columnType).toMap
     assertEquals(Map(
-      "time_spent_ms" -> LongType,
-      "price" -> DoubleType
-    ), columns)
+                   "time_spent_ms" -> LongType,
+                   "price" -> DoubleType
+                 ),
+                 columns)
   }
 
   // test that OrderByLimit and OrderByLimitTimed serialization works well with Spark's data type
-  @Test
-  def testFirstKLastKTopKBottomKApproxUniqueCount(): Unit = {
+  it should "first k last k top k bottom k approx unique count" in {
     val (source, endPartition) = createTestSource()
 
     val tableUtils = TableUtils(spark)
@@ -423,8 +417,8 @@ class GroupByTest {
     tableUtils.createDatabase(namespace)
     DataFrameGen.events(spark, sourceSchema, count = 1000, partitions = 200).save(sourceTable)
     val source = Builders.Source.events(
-      query =
-        Builders.Query(selects = Builders.Selects("ts", "item", "time_spent_ms", "price"), startPartition = startPartition),
+      query = Builders.Query(selects = Builders.Selects("ts", "item", "time_spent_ms", "price"),
+                             startPartition = startPartition),
       table = sourceTable
     )
     (source, endPartition)
@@ -474,8 +468,7 @@ class GroupByTest {
   }
 
   // Test percentile Impl on Spark.
-  @Test
-  def testPercentiles(): Unit = {
+  it should "percentiles" in {
     val (source, endPartition) = createTestSource(suffix = "_percentile")
     val tableUtils = TableUtils(spark)
     val namespace = "test_percentiles"
@@ -498,8 +491,7 @@ class GroupByTest {
              additionalAgg = aggs)
   }
 
-  @Test
-  def testApproxHistograms(): Unit = {
+  it should "approx histograms" in {
     val (source, endPartition) = createTestSource(suffix = "_approx_histogram")
     val tableUtils = TableUtils(spark)
     val namespace = "test_approx_histograms"
@@ -552,23 +544,22 @@ class GroupByTest {
     assert(!histogramValues.contains(0))
   }
 
-  @Test
-  def testReplaceJoinSource(): Unit = {
+  it should "replace join source" in {
     val namespace = "replace_join_source_ns"
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 
     val joinSource = TestUtils.getParentJoin(spark, namespace, "parent_join_table", "parent_gb")
     val query = Builders.Query(startPartition = today)
     val chainingGroupBy = TestUtils.getTestGBWithJoinSource(joinSource, query, namespace, "chaining_gb")
-    val newGroupBy = GroupBy.replaceJoinSource(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = false)
+    val newGroupBy =
+      GroupBy.replaceJoinSource(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = false)
 
     assertEquals(joinSource.metaData.outputTable, newGroupBy.sources.get(0).table)
     assertEquals(joinSource.left.topic + Constants.TopicInvalidSuffix, newGroupBy.sources.get(0).topic)
     assertEquals(query, newGroupBy.sources.get(0).query)
   }
 
-  @Test
-  def testGroupByFromChainingGB(): Unit = {
+  it should "group by from chaining gb" in {
     val namespace = "test_chaining_gb"
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val joinName = "parent_join_table"
@@ -627,8 +618,7 @@ class GroupByTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testDescriptiveStats(): Unit = {
+  it should "descriptive stats" in {
     val (source, endPartition) = createTestSource(suffix = "_descriptive_stats")
     val tableUtils = TableUtils(spark)
     val namespace = "test_descriptive_stats"
@@ -656,13 +646,13 @@ class GroupByTest {
           new Window(15, TimeUnit.DAYS),
           new Window(60, TimeUnit.DAYS)
         )
-      ),
+      )
     )
     backfill(name = "unit_test_group_by_descriptive_stats",
-      source = source,
-      endPartition = endPartition,
-      namespace = namespace,
-      tableUtils = tableUtils,
-      additionalAgg = aggs)
+             source = source,
+             endPartition = endPartition,
+             namespace = namespace,
+             tableUtils = tableUtils,
+             additionalAgg = aggs)
   }
 }

@@ -11,16 +11,15 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.spark.sql.Encoders
-import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Before
-import org.junit.Test
 import org.mockito.Mockito.withSettings
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
 
-class FlinkJobIntegrationTest {
+class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
 
   val flinkCluster = new MiniClusterWithClientResource(
     new MiniClusterResourceConfiguration.Builder()
@@ -52,20 +51,17 @@ class FlinkJobIntegrationTest {
     TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis))
   }
 
-  @Before
-  def setup(): Unit = {
+  before {
     flinkCluster.before()
     CollectSink.values.clear()
   }
 
-  @After
-  def teardown(): Unit = {
+  after {
     flinkCluster.after()
     CollectSink.values.clear()
   }
 
-  @Test
-  def testFlinkJobEndToEnd(): Unit = {
+  it should "flink job end to end" in {
     implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
 
     val elements = Seq(
@@ -101,8 +97,7 @@ class FlinkJobIntegrationTest {
     assertEquals(writeEventCreatedDS.map(_.status), Seq(true, true, true))
   }
 
-  @Test
-  def testTiledFlinkJobEndToEnd(): Unit = {
+  it should "tiled flink job end to end" in {
     implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
 
     // Create some test events with multiple different ids so we can check if tiling/pre-aggregation works correctly

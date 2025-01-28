@@ -2,11 +2,10 @@ package ai.chronon.flink.test.window
 
 import ai.chronon.api.Builders
 import ai.chronon.flink.window.KeySelector
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 
-class KeySelectorTest {
-  @Test
-  def TestChrononFlinkJobCorrectlyKeysByAGroupbysEntityKeys(): Unit = {
+class KeySelectorTest extends AnyFlatSpec {
+  it should "chronon flink job correctly keys by a groupbys entity keys" in {
     // We expect something like this to come out of the SparkExprEval operator
     val sampleSparkExprEvalOutput: Map[String, Any] =
       Map("number" -> 4242, "ip" -> "192.168.0.1", "user" -> "abc")
@@ -24,8 +23,7 @@ class KeySelectorTest {
     )
   }
 
-  @Test
-  def testKeySelectorFunctionReturnsSameHashesForListsWithTheSameContent(): Unit = {
+  it should "key selector function returns same hashes for lists with the same content" in {
     // This is more of a sanity check. It's not comprehensive.
     // SINGLE ENTITY KEY
     val map1: Map[String, Any] =

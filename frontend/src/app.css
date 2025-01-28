@@ -100,6 +100,25 @@
 		--destructive-foreground: 0 0% 98%;
 
 		--ring: 0 0% 83.1%;
+
+		--job-running-bg: 249 32% 56%;
+		--job-running-border: 249 54% 72%;
+		--job-running-active-border: 250 100% 86%;
+		--job-waiting-bg: 250 30% 24%;
+		--job-waiting-border: 250 30% 40%;
+		--job-waiting-active-border: 250 89% 70%;
+		--job-failed-bg: 10 24% 20%;
+		--job-failed-border: 10 30% 34%;
+		--job-failed-active-border: 10 46% 56%;
+		--job-completed-bg: 160 40% 17%;
+		--job-completed-border: 160 40% 28%;
+		--job-completed-active-border: 160 32% 47%;
+		--job-invalid-bg: 44 80% 14%;
+		--job-invalid-border: 44 68% 24%;
+		--job-invalid-active-border: 44 62% 40%;
+		--job-queued-bg: 0 0% 16%;
+		--job-queued-border: 0 0% 24%;
+		--job-queued-active-border: 0 0% 40%;
 	}
 }
 
@@ -127,4 +146,24 @@
 	font-style: normal;
 	font-display: swap;
 	unicode-range: U+0030-0039; /* Digits 0-9 */
+}
+
+@layer utilities {
+	.content-auto {
+		content-visibility: auto;
+	}
+
+	.grid-stack {
+		& > * {
+			grid-area: 1 / 1;
+		}
+	}
+
+	.scrollbar-none {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+		&::-webkit-scrollbar {
+			display: none;
+		}
+	}
 }

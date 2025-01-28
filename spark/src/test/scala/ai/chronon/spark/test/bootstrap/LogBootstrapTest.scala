@@ -17,6 +17,7 @@
 package ai.chronon.spark.test.bootstrap
 
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
@@ -31,15 +32,14 @@ import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.ScalaJavaConversions._
 
-class LogBootstrapTest {
+class LogBootstrapTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("BootstrapTest", local = true)
@@ -48,8 +48,7 @@ class LogBootstrapTest {
   tableUtils.createDatabase(namespace)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 
-  @Test
-  def testBootstrap(): Unit = {
+  it should "bootstrap" in {
 
     // group by
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)

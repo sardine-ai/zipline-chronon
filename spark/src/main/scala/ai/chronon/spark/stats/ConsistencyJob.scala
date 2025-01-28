@@ -18,6 +18,7 @@ package ai.chronon.spark.stats
 
 import ai.chronon
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
@@ -28,9 +29,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
-import scala.util.ScalaJavaConversions.JListOps
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 
 class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) extends Serializable {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -131,10 +129,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
       logger.info("Saving output.")
       val outputDf = metricsKvRdd.toFlatDf.withTimeBasedColumn("ds")
       logger.info(s"output schema ${outputDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
-      tableUtils.insertPartitions(outputDf,
-                                  joinConf.metaData.consistencyTable,
-                                  tableProperties = tblProperties,
-                                  autoExpand = true)
+      outputDf.save(joinConf.metaData.consistencyTable, tableProperties = tblProperties, autoExpand = true)
       metricsKvRdd.toAvroDf
         .withTimeBasedColumn(tableUtils.partitionColumn)
         .save(joinConf.metaData.consistencyUploadTable, tblProperties)

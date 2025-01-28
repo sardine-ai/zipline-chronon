@@ -1,0 +1,7 @@
+asdf-plugin-manager  https://github.com/asdf-community/asdf-plugin-manager.git  b5862c1
+gcloud               https://github.com/jthegedus/asdf-gcloud.git               00cdf06
+java                 https://github.com/halcyon/asdf-java.git                   0ec69b2
+python               https://github.com/danhper/asdf-python.git                 a3a0185
+sbt                  https://github.com/lerencao/asdf-sbt                       53c9f4b
+scala                https://github.com/asdf-community/asdf-scala.git           0533444
+thrift               https://github.com/alisaifee/asdf-thrift.git               fecdd6c

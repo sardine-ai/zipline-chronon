@@ -17,6 +17,7 @@
 package ai.chronon.spark.test.bootstrap
 
 import ai.chronon.api.Extensions.JoinOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
@@ -27,13 +28,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.util.ScalaJavaConversions.JListOps
-
-class TableBootstrapTest {
+class TableBootstrapTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = SparkSessionBuilder.build("BootstrapTest", local = true)
@@ -78,8 +77,7 @@ class TableBootstrapTest {
     (bootstrapPart, bootstrapDf)
   }
 
-  @Test
-  def testBootstrap(): Unit = {
+  it should "bootstrap" in {
 
     val namespace = "test_table_bootstrap"
     tableUtils.createDatabase(namespace)
@@ -162,8 +160,7 @@ class TableBootstrapTest {
     assertEquals(0, diff.count())
   }
 
-  @Test
-  def testBootstrapSameJoinPartMultipleSources(): Unit = {
+  it should "bootstrap same join part multiple sources" in {
 
     val namespace = "test_bootstrap_multi_source"
     tableUtils.createDatabase(namespace)
@@ -210,6 +207,6 @@ class TableBootstrapTest {
     joinJob.computeJoin()
 
     // assert that no computation happened for join part since all derivations have been bootstrapped
-    assertFalse(tableUtils.tableExists(join.partOutputTable(joinPart)))
+    assertFalse(tableUtils.tableReachable(join.partOutputTable(joinPart)))
   }
 }

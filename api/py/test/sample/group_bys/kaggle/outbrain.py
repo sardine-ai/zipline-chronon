@@ -1,5 +1,3 @@
-
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +12,14 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
 from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
     Operation,
-    Window,
-    TimeUnit,
-    Accuracy
+    Accuracy,
 )
 
 from sources.kaggle.outbrain import outbrain_left_events
-from ai.chronon.utils import get_staging_query_output_table_name
-from staging_queries.kaggle.outbrain import base_table
 
 """
 This file defines a number of GroupBys in a more programatic way, leveraging helper functions that act
@@ -48,21 +40,16 @@ def ctr_group_by(*keys, accuracy):
     return GroupBy(
         sources=[outbrain_left_events(*(list(keys) + ["clicked"]))],
         keys=list(keys),
-        aggregations=[Aggregation(
-                input_column="clicked",
-                operation=Operation.SUM,
-                windows=[Window(length=3, timeUnit=TimeUnit.DAYS)]
+        aggregations=[
+            Aggregation(
+                input_column="clicked", operation=Operation.SUM, windows=["3d"]
             ),
             Aggregation(
-                input_column="clicked",
-                operation=Operation.COUNT,
-                windows=[Window(length=3, timeUnit=TimeUnit.DAYS)]
+                input_column="clicked", operation=Operation.COUNT, windows=["3d"]
             ),
             Aggregation(
-                input_column="clicked",
-                operation=Operation.AVERAGE,
-                windows=[Window(length=3, timeUnit=TimeUnit.DAYS)]
-            )
+                input_column="clicked", operation=Operation.AVERAGE, windows=["3d"]
+            ),
         ],
         accuracy=accuracy,
     )
@@ -89,4 +76,6 @@ ad_uuid = ctr_group_by("ad_id", "uuid", accuracy=Accuracy.TEMPORAL)
 Snapshot accuracy is a reasonable choice here because platform/geo is a very coarse grained aggregations,
 so values are unlikely to meaningfully change intra day (midnight accuracy is sufficient)
 """
-ad_platform = ctr_group_by("ad_id", "platform", "geo_location", accuracy=Accuracy.SNAPSHOT)
+ad_platform = ctr_group_by(
+    "ad_id", "platform", "geo_location", accuracy=Accuracy.SNAPSHOT
+)

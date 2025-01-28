@@ -11,10 +11,10 @@ import ai.chronon.api.PartitionSpec
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.flink.AsyncKVStoreWriter
+import ai.chronon.flink.FlinkSource
 import ai.chronon.flink.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.Extensions.StructTypeOps
-import ai.chronon.online.FlinkSource
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner
@@ -122,6 +122,7 @@ object FlinkTestUtils {
       PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
     )
   }
+
   def makeGroupBy(keyColumns: Seq[String], filters: Seq[String] = Seq.empty): GroupBy =
     Builders.GroupBy(
       sources = Seq(

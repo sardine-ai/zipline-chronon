@@ -5,3 +5,5 @@ black
 pre-commit
 isort
 autoflake
+zipp==3.19.1
+importlib-metadata==8.4.0

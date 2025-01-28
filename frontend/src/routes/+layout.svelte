@@ -2,9 +2,9 @@
 	import '../app.css';
 	import { type Snippet } from 'svelte';
 	import { page } from '$app/stores';
-	import NavigationSlider from '$lib/components/NavigationSlider/NavigationSlider.svelte';
-	import NavigationBar from '$lib/components/NavigationBar/NavigationBar.svelte';
-	import BreadcrumbNav from '$lib/components/BreadcrumbNav/BreadcrumbNav.svelte';
+	import NavigationSlider from '$lib/components/NavigationSlider.svelte';
+	import NavigationBar from '$lib/components/NavigationBar.svelte';
+	import BreadcrumbNav from '$lib/components/BreadcrumbNav.svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { entityConfig } from '$lib/types/Entity/Entity';
 
@@ -13,7 +13,7 @@
 	// TODO: Replace with actual user data when implemented
 	const user = {
 		name: 'Demo User',
-		avatar: '/path/to/avatar.jpg'
+		avatar: ''
 	};
 
 	const breadcrumbs = $derived($page.url.pathname.split('/').filter(Boolean));
@@ -23,8 +23,7 @@
 	<NavigationSlider />
 
 	<!-- Left navigation -->
-	<NavigationBar navItems={entityConfig.filter((entity) => entity.id === 'joins')} {user} />
-
+	<NavigationBar navItems={[...entityConfig]} {user} />
 	<!-- Main content -->
 	<main
 		class="flex-1 flex flex-col overflow-hidden bg-neutral-100 relative rounded-tl-xl"
@@ -36,7 +35,7 @@
 		></div>
 		<ScrollArea class="flex-1">
 			<div class="px-8 py-5">
-				<BreadcrumbNav {breadcrumbs} class="mb-[38px] ml-2" />
+				<BreadcrumbNav {breadcrumbs} class="mb-[38px]" />
 				{@render children()}
 			</div>
 		</ScrollArea>

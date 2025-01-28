@@ -24,9 +24,11 @@ import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
 import ai.chronon.api.LongType
 import ai.chronon.api.Operation
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.online.test.TaggedFilterSuite
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import org.apache.spark.rdd.RDD
@@ -36,19 +38,28 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.types.{StringType => SparkStringType}
 import org.junit.Assert._
-import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.JavaConverters._
-import scala.util.ScalaJavaConversions.ListOps
+
+case class TestRow(ds: String, value: String) {}
+
+object TestRow {
+  implicit def ordering[A <: TestRow]: Ordering[A] =
+    new Ordering[A] {
+      override def compare(x: A, y: A): Int = {
+        x.ds.compareTo(y.ds)
+      }
+    }
+}
 
 // Run as follows: sbt "spark/testOnly -- -n jointest"
-class JoinTest extends AnyFunSuite with TaggedFilterSuite {
+class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
 
   val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
-  private implicit val tableUtils = TableUtils(spark)
+  private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
@@ -60,7 +71,46 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
 
   override def tagName: String = "jointest"
 
-  test("test events entities snapshot") {
+  it should "testing basic spark dynamic partition overwrite" in {
+    import org.apache.spark.sql.SaveMode
+    import spark.implicits._
+
+    val rows = List(
+      TestRow("1", "a"),
+      TestRow("2", "b"),
+      TestRow("3", "c"),
+      TestRow("4", "d"),
+      TestRow("5", "e")
+    )
+    val data = spark.createDataFrame(rows) toDF ("ds", "value")
+    data.write.mode(SaveMode.Overwrite).format("hive").partitionBy("ds").saveAsTable(f"${namespace}.table")
+    assertEquals(spark.table(f"${namespace}.table").as[TestRow].collect().toList.sorted, rows.sorted)
+
+    spark.table(f"${namespace}.table").show(truncate = false)
+
+    val dynamicPartitions = List(
+      TestRow("4", "y"),
+      TestRow("5", "z")
+    )
+    val dynamicPartitionsDF = spark.createDataset(dynamicPartitions).select("value", "ds")
+
+    dynamicPartitionsDF.write
+      .format("hive")
+      .mode(SaveMode.Overwrite)
+      .insertInto(f"${namespace}.table")
+
+    spark.table(f"${namespace}.table").show(truncate = false)
+
+    val updatedExpected =
+      (rows.map((r) => r.ds -> r.value).toMap ++ dynamicPartitions.map((r) => r.ds -> r.value).toMap).map {
+        case (k, v) => TestRow(k, v)
+      }.toList
+
+    assertEquals(updatedExpected.sorted, spark.table(f"${namespace}.table").as[TestRow].collect().toList.sorted)
+
+  }
+
+  it should "test events entities snapshot" in {
     val dollarTransactions = List(
       Column("user", StringType, 100),
       Column("user_name", api.StringType, 100),
@@ -263,7 +313,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(0, diff2.count())
   }
 
-  test("test entities entities") {
+  it should "test entities entities" in {
     // untimed/unwindowed entities on right
     // right side
     val weightSchema = List(
@@ -383,7 +433,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
      */
   }
 
-  test("test entities entities no historical backfill") {
+  it should "test entities entities no historical backfill" in {
     // Only backfill latest partition if historical_backfill is turned off
     val weightSchema = List(
       Column("user", api.StringType, 1000),
@@ -436,7 +486,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(allPartitions.toList(0), end)
   }
 
-  test("test events events snapshot") {
+  it should "test events events snapshot" in {
     val viewsSchema = List(
       Column("user", api.StringType, 10000),
       Column("item", api.StringType, 100),
@@ -505,7 +555,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(diff.count(), 0)
   }
 
-  test("test events events temporal") {
+  it should "test events events temporal" in {
 
     val joinConf = getEventsEventsTemporal("temporal")
     val viewsSchema = List(
@@ -582,7 +632,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(diff.count(), 0)
   }
 
-  test("test events events cumulative") {
+  it should "test events events cumulative" in {
     // Create a cumulative source GroupBy
     val viewsTable = s"$namespace.view_cumulative"
     val viewsGroupBy = getViewsGroupBy(suffix = "cumulative", makeCumulative = true)
@@ -681,7 +731,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
 
   }
 
-  test("test no agg") {
+  it should "test no agg" in {
     // Left side entities, right side entities no agg
     // Also testing specific select statement (rather than select *)
     val namesSchema = List(
@@ -761,7 +811,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(diff.count(), 0)
   }
 
-  test("test versioning") {
+  it should "test versioning" in {
     val joinConf = getEventsEventsTemporal("versioning")
 
     // Run the old join to ensure that tables exist
@@ -915,7 +965,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
 
   }
 
-  test("test end partition join") {
+  it should "test end partition join" in {
     val join = getEventsEventsTemporal("end_partition_test")
     val start = join.getLeft.query.startPartition
     val end = tableUtils.partitionSpec.after(start)
@@ -932,7 +982,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertTrue(ds.first().getString(0) < today)
   }
 
-  test("test skip bloom filter join backfill") {
+  it should "test skip bloom filter join backfill" in {
     val testSpark: SparkSession =
       SparkSessionBuilder.build("JoinTest",
                                 local = true,
@@ -981,7 +1031,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(leftSideCount, skipBloomComputed.count())
   }
 
-  test("test struct join") {
+  it should "test struct join" in {
     val nameSuffix = "_struct_test"
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_$nameSuffix"
@@ -1037,7 +1087,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     toCompute.computeJoin()
   }
 
-  test("test migration") {
+  it should "test migration" in {
 
     // Left
     val itemQueriesTable = s"$namespace.item_queries"
@@ -1086,7 +1136,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     assertEquals(0, join.tablesToDrop(productionHashV2).length)
   }
 
-  test("testKeyMappingOverlappingFields") {
+  it should "testKeyMappingOverlappingFields" in {
     // test the scenario when a key_mapping is a -> b, (right key b is mapped to left key a) and
     // a happens to be another field in the same group by
 
@@ -1144,7 +1194,7 @@ class JoinTest extends AnyFunSuite with TaggedFilterSuite {
     * Run computeJoin().
     * Check if the selected join part is computed and the other join parts are not computed.
     */
-  test("test selected join parts") {
+  it should "test selected join parts" in {
     // Left
     val itemQueries = List(
       Column("item", api.StringType, 100),

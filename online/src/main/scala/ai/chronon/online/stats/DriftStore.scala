@@ -9,6 +9,12 @@ import ai.chronon.api.thrift.TDeserializer
 import ai.chronon.api.thrift.TSerializer
 import ai.chronon.api.thrift.protocol.TBinaryProtocol
 import ai.chronon.api.thrift.protocol.TProtocolFactory
+import ai.chronon.observability.DriftMetric
+import ai.chronon.observability.TileDriftSeries
+import ai.chronon.observability.TileKey
+import ai.chronon.observability.TileSeriesKey
+import ai.chronon.observability.TileSummary
+import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.MetadataStore
@@ -210,6 +216,5 @@ object DriftStore {
     override def initialValue(): TDeserializer = new TDeserializer(new TBinaryProtocol.Factory())
   }
 
-  // todo - drop this hard-coded list in favor of a well known list or exposing as part of summaries
   def breaks(count: Int): Seq[String] = (0 to count).map(_ * (100 / count)).map("p" + _.toString)
 }

@@ -21,21 +21,19 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.DataMetrics
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Analyzer
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.StagingQuery
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd
 import ai.chronon.spark.stats.CompareJob.getJoinKeys
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SaveMode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.util.ScalaJavaConversions.ListOps
-import scala.util.ScalaJavaConversions.MapOps
 
 /**
   * Compare Job for comparing data between joins, staging queries and raw queries.
@@ -82,13 +80,13 @@ class CompareJob(
     logger.info("Saving comparison output..")
     logger.info(
       s"Comparison schema ${compareDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
-    tableUtils.insertUnPartitioned(compareDf, comparisonTableName, tableProps, saveMode = SaveMode.Overwrite)
+    compareDf.saveUnPartitioned(comparisonTableName, tableProps)
 
     // Save the metrics table
     logger.info("Saving metrics output..")
     val metricsDf = metricsTimedKvRdd.toFlatDf
     logger.info(s"Metrics schema ${metricsDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
-    tableUtils.insertUnPartitioned(metricsDf, metricsTableName, tableProps, saveMode = SaveMode.Overwrite)
+    metricsDf.saveUnPartitioned(metricsTableName, tableProps)
 
     logger.info("Printing basic comparison results..")
     logger.info("(Note: This is just an estimation and not a detailed analysis of results)")
@@ -100,7 +98,7 @@ class CompareJob(
 
   def validate(): Unit = {
     // Extract the schema of the Join, StagingQuery and the keys before calling this.
-    val analyzer = new Analyzer(tableUtils, joinConf, startDate, endDate, enableHitter = false)
+    val analyzer = new Analyzer(tableUtils, joinConf, startDate, endDate, skewDetection = false)
     val joinChrononSchema = analyzer.analyzeJoin(joinConf)._1
     val joinSchema = joinChrononSchema.map { case (k, v) => (k, SparkConversions.fromChrononType(v)) }
     val finalStagingQuery = StagingQuery.substitute(tableUtils, stagingQueryConf.query, startDate, endDate, endDate)

@@ -13,8 +13,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.join import JoinPart, Join
-from ai.chronon.query import Query, select
+from ai.chronon.join import Join
 from sources import test_sources
 
 

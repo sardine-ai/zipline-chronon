@@ -1,9 +1,10 @@
 package ai.chronon.online.stats
 
-import ai.chronon.api.TileDrift
-import ai.chronon.api.TileDriftSeries
-import ai.chronon.api.TileSummary
-import ai.chronon.api.TileSummarySeries
+import ai.chronon.api.Constants
+import ai.chronon.observability.TileDrift
+import ai.chronon.observability.TileDriftSeries
+import ai.chronon.observability.TileSummary
+import ai.chronon.observability.TileSummarySeries
 
 import java.lang.{Double => JDouble}
 import java.lang.{Long => JLong}
@@ -113,10 +114,22 @@ object PivotUtils {
 
   private def collectDoubles(vals: Iterator[JDouble]): JList[JDouble] = {
     val result = new JArrayList[JDouble]()
+
+    var sawValidInput = false
+
     while (vals.hasNext) {
-      result.add(vals.next())
+
+      val next = vals.next()
+
+      // check if this is valid input - if no prior inputs are valid
+      val thisIsValid = next != Constants.magicNullDouble && next != null
+      sawValidInput = sawValidInput || thisIsValid
+
+      result.add(next)
     }
-    result
+
+    // if no valid input, return null
+    if (!sawValidInput) null else result
   }
 
   def pivot(driftsWithTimestamps: Array[(TileDrift, Long)]): TileDriftSeries = {
@@ -131,9 +144,14 @@ object PivotUtils {
     def doubleIterator(isSetFunc: TileDrift => Boolean, extract: TileDrift => Double): Iterator[JDouble] = {
       drifts.iterator.map { drift =>
         if (isSetFunc(drift)) {
-          JDouble.valueOf(extract(drift))
+          val value = extract(drift)
+          if (value.isInfinite || value.isNaN) {
+            Constants.magicNullDouble
+          } else {
+            JDouble.valueOf(value)
+          }
         } else {
-          null
+          Constants.magicNullDouble
         }
       }
     }

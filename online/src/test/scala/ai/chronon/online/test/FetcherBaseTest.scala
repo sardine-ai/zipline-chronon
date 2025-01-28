@@ -29,14 +29,14 @@ import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online._
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
 import org.mockito.Answers
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
+import org.scalatest.BeforeAndAfter
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
@@ -48,7 +48,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
+class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with MockitoHelper with BeforeAndAfter {
   val GroupBy = "relevance.short_term_user_features"
   val Column = "pdp_view_count_14d"
   val GuestKey = "guest"
@@ -58,18 +58,16 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
   var fetcherBase: FetcherBase = _
   var kvStore: KVStore = _
 
-  @Before
-  def setup(): Unit = {
+  before {
     kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
     // The KVStore execution context is implicitly used for
     // Future compositions in the Fetcher so provision it in
     // the mock to prevent hanging.
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    fetcherBase = spy(new FetcherBase(kvStore))
+    fetcherBase = spy[FetcherBase](new FetcherBase(kvStore))
   }
 
-  @Test
-  def testFetchColumnsSingleQuery(): Unit = {
+  it should "fetch columns single query" in {
     // Fetch a single query
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
@@ -97,8 +95,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
     actualRequest.get.keys shouldBe query.keyMapping.get
   }
 
-  @Test
-  def testFetchColumnsBatch(): Unit = {
+  it should "fetch columns batch" in {
     // Fetch a batch of queries
     val guestKeyMap = Map(GuestKey -> GuestId)
     val guestQuery = ColumnSpec(GroupBy, Column, Some(GuestKey), Some(guestKeyMap))
@@ -131,8 +128,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
     actualRequests(1).keys shouldBe hostQuery.keyMapping.get
   }
 
-  @Test
-  def testFetchColumnsMissingResponse(): Unit = {
+  it should "fetch columns missing response" in {
     // Fetch a single query
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
@@ -161,8 +157,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
   }
 
   // updateServingInfo() is called when the batch response is from the KV store.
-  @Test
-  def testGetServingInfoShouldCallUpdateServingInfoIfBatchResponseIsFromKvStore(): Unit = {
+  it should "get serving info should call update serving info if batch response is from kv store" in {
     val oldServingInfo = mock[GroupByServingInfoParsed]
     val updatedServingInfo = mock[GroupByServingInfoParsed]
     doReturn(updatedServingInfo).when(fetcherBase).updateServingInfo(any(), any())
@@ -179,8 +174,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
 
   // If a batch response is cached, the serving info should be refreshed. This is needed to prevent
   // the serving info from becoming stale if all the requests are cached.
-  @Test
-  def testGetServingInfoShouldRefreshServingInfoIfBatchResponseIsCached(): Unit = {
+  it should "get serving info should refresh serving info if batch response is cached" in {
     val ttlCache = mock[TTLCache[String, Try[GroupByServingInfoParsed]]]
     doReturn(ttlCache).when(fetcherBase).getGroupByServingInfo
 
@@ -202,8 +196,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
     verify(fetcherBase, never()).updateServingInfo(any(), any())
   }
 
-  @Test
-  def testIsCachingEnabledCorrectlyDetermineIfCacheIsEnabled(): Unit = {
+  it should "is caching enabled correctly determine if cache is enabled" in {
     val flagStore: FlagStore = (flagName: String, attributes: java.util.Map[String, String]) => {
       flagName match {
         case "enable_fetcher_batch_ir_cache" =>
@@ -220,7 +213,7 @@ class FetcherBaseTest extends MockitoSugar with Matchers with MockitoHelper {
 
     kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    val fetcherBaseWithFlagStore = spy(new FetcherBase(kvStore, flagStore = flagStore))
+    val fetcherBaseWithFlagStore = spy[FetcherBase](new FetcherBase(kvStore, flagStore = flagStore))
     when(fetcherBaseWithFlagStore.isCacheSizeConfigured).thenReturn(true)
 
     def buildGroupByWithCustomJson(name: String): GroupBy = Builders.GroupBy(metaData = Builders.MetaData(name = name))

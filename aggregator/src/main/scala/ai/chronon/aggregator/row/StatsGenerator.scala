@@ -18,12 +18,12 @@ package ai.chronon.aggregator.row
 
 import ai.chronon.api
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 import org.apache.datasketches.kll.KllFloatsSketch
 import org.apache.datasketches.memory.Memory
 
 import java.util
 import scala.collection.Seq
-import scala.util.ScalaJavaConversions.JMapOps
 
 /**
   * Module managing FeatureStats Schema, Aggregations to be used by type and aggregator construction.

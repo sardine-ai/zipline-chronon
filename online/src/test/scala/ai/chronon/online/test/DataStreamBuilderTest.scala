@@ -19,6 +19,7 @@ package ai.chronon.online.test
 import ai.chronon.api.Builders
 import ai.chronon.api.DataModel
 import ai.chronon.api.LongType
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StringType
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
@@ -30,13 +31,11 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertTrue
-import org.junit.Test
+import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.util.ScalaJavaConversions.JListOps
-
-class DataStreamBuilderTest {
+class DataStreamBuilderTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   lazy val spark: SparkSession = {
     System.setSecurityManager(null)
@@ -48,8 +47,7 @@ class DataStreamBuilderTest {
     spark
   }
 
-  @Test
-  def testDataStreamQueryEvent(): Unit = {
+  it should "data stream query event" in {
     val topicInfo = TopicInfo.parse("kafka://topic_name/schema=my_schema/host=X/port=Y")
     val df = testDataFrame()
     // todo: test start/ end partition in where clause
@@ -65,8 +63,7 @@ class DataStreamBuilderTest {
     assertTrue(dataStream.df.count() == 6)
   }
 
-  @Test
-  def testTopicInfoParsing(): Unit = {
+  it should "topic info parsing" in {
     checkTopicInfo(parse("kafka://topic_name/schema=test_schema/host=X/port=Y"),
                    TopicInfo("topic_name", "kafka", Map("schema" -> "test_schema", "host" -> "X", "port" -> "Y")))
     checkTopicInfo(parse("topic_name/host=X/port=Y"),
