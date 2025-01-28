@@ -4,6 +4,7 @@ import ai.chronon.spark.JobSubmitter
 import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
 import ai.chronon.spark.JobSubmitterConstants.JarURI
 import ai.chronon.spark.JobSubmitterConstants.MainClass
+import ai.chronon.spark.JobSubmitterConstants.SavepointUri
 import ai.chronon.spark.JobType
 import ai.chronon.spark.{FlinkJob => TypeFlinkJob}
 import ai.chronon.spark.{SparkJob => TypeSparkJob}
@@ -65,7 +66,8 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       case TypeFlinkJob =>
         val mainJarUri =
           jobProperties.getOrElse(FlinkMainJarURI, throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
-        buildFlinkJob(mainClass, mainJarUri, jarUri, args: _*)
+        val maybeSavepointUri = jobProperties.get(SavepointUri)
+        buildFlinkJob(mainClass, mainJarUri, jarUri, maybeSavepointUri, args: _*)
     }
 
     val jobPlacement = JobPlacement
@@ -99,7 +101,11 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     Job.newBuilder().setSparkJob(sparkJob)
   }
 
-  private def buildFlinkJob(mainClass: String, mainJarUri: String, jarUri: String, args: String*): Job.Builder = {
+  private def buildFlinkJob(mainClass: String,
+                            mainJarUri: String,
+                            jarUri: String,
+                            maybeSavePointUri: Option[String],
+                            args: String*): Job.Builder = {
 
     // TODO leverage a setting in teams.json when that's wired up
     val checkpointsDir = "gs://zl-warehouse/flink-state"
@@ -130,15 +136,21 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         "state.checkpoint-storage" -> "filesystem"
       )
 
-    val flinkJob = FlinkJob
+    val flinkJobBuilder = FlinkJob
       .newBuilder()
       .setMainClass(mainClass)
       .setMainJarFileUri(mainJarUri)
       .putAllProperties(envProps.asJava)
       .addJarFileUris(jarUri)
       .addAllArgs(args.toIterable.asJava)
-      .build()
-    Job.newBuilder().setFlinkJob(flinkJob)
+
+    val updatedFlinkJobBuilder =
+      maybeSavePointUri match {
+        case Some(savePointUri) => flinkJobBuilder.setSavepointUri(savePointUri)
+        case None               => flinkJobBuilder
+      }
+
+    Job.newBuilder().setFlinkJob(updatedFlinkJobBuilder.build())
   }
 
   def jobReference: JobReference = JobReference.newBuilder().build()
