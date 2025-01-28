@@ -22,6 +22,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 
 import java.util
 
@@ -178,7 +179,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "bytes_x" -> "bytes_x"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("bool_x"), true)
     assertEquals(res.get("int32_x"), Int.MaxValue)
@@ -197,7 +198,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "e" -> "1 / 2 + 1"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 5)
     assertEquals(res.get("a"), 162)
     assertEquals(res.get("b"), 1073741824.0)
@@ -221,7 +222,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "k" -> "COALESCE(NULL, NULL, int32_x, NULL)"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 11)
     assertEquals(res.get("a"), 2147483645L)
     assertEquals(res.get("b"), "U3BhcmsgU1FM")
@@ -246,7 +247,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "e" -> "DAYOFWEEK('2009-07-30')"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 5)
     assertEquals(res.get("a"), "2038-01-19 03:14:07")
     assertTrue(res.get("b").isInstanceOf[java.lang.Long])
@@ -271,7 +272,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "bytes_x" -> "bytes_udf(bytes_x)"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("bool_x"), false)
     assertEquals(res.get("int32_x"), Int.MaxValue - 1)
@@ -294,7 +295,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "recursive_udf" -> "recursive_udf(8)"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 3)
     assertEquals(res.get("two_param_udf"), Long.MaxValue - Int.MaxValue)
     assertEquals(res.get("add_two_udf"), 3)
@@ -306,7 +307,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq("FALSE AND int64_x > `int32_x`")
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertTrue(res.isEmpty)
   }
 
@@ -314,7 +315,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq("FALSE OR int64_x > `int32_x`")
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 1)
     assertEquals(res.get("a"), Int.MaxValue)
   }
@@ -323,7 +324,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq("FALSE OR int64_x < `int32_x`")
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertTrue(res.isEmpty)
   }
 
@@ -331,7 +332,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq("int64_x > `int32_x`", "FALSE OR int64_x > `int32_x`")
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 1)
     assertEquals(res.get("a"), Int.MaxValue)
   }
@@ -348,7 +349,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq()
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 1)
     assertEquals(res.get("a"), Int.MaxValue)
   }
@@ -358,7 +359,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq("COALESCE(NULL, NULL, int32_x, int64_x, NULL) = `int32_x`")
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 1)
     assertEquals(res.get("a"), Int.MaxValue)
   }
@@ -368,7 +369,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     val selects = Seq("a" -> "int32_x")
     val wheres = Seq("int32_x - 1 = SUB_ONE(int32_x)")
     val cu = new CatalystUtil(CommonScalarsStruct, selects, wheres)
-    val res = cu.performSql(CommonScalarsRow)
+    val res = cu.performSql(CommonScalarsRow).headOption
     assertEquals(res.get.size, 1)
     assertEquals(res.get("a"), Int.MaxValue)
   }
@@ -383,7 +384,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "bytes_x" -> "bytes_x"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects)
-    val res = cu.performSql(CommonScalarsNullRow)
+    val res = cu.performSql(CommonScalarsNullRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("bool_x"), null)
     assertEquals(res.get("int32_x"), null)
@@ -403,7 +404,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "inner_opt_int32_opt" -> "inner_opt.int32_opt"
     )
     val cu = new CatalystUtil(NestedOuterStruct, selects)
-    val res = cu.performSql(NestedRow)
+    val res = cu.performSql(NestedRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("inner_req"), Map("int32_req" -> 12, "int32_opt" -> 34))
     assertEquals(res.get("inner_opt"), Map("int32_req" -> 56, "int32_opt" -> 78))
@@ -421,7 +422,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "inner_req_int32_opt" -> "inner_req.int32_opt"
     )
     val cu = new CatalystUtil(NestedOuterStruct, selects)
-    val res = cu.performSql(NestedNullRow)
+    val res = cu.performSql(NestedNullRow).headOption
     assertEquals(res.get.size, 4)
     assertEquals(res.get("inner_req"), Map("int32_req" -> 12, "int32_opt" -> null))
     assertEquals(res.get("inner_opt"), null)
@@ -439,7 +440,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "bytess" -> "bytess"
     )
     val cu = new CatalystUtil(ListContainersStruct, selects)
-    val res = cu.performSql(ListContainersRow)
+    val res = cu.performSql(ListContainersRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("bools"), makeArrayList(false, true, false))
     assertEquals(res.get("int32s"), makeArrayList(1, 2, 3))
@@ -466,7 +467,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "bytess" -> "bytess"
     )
     val cu = new CatalystUtil(ListContainersStruct, selects)
-    val res = cu.performSql(ArrayContainersRow)
+    val res = cu.performSql(ArrayContainersRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("bools"), makeArrayList(false, true, false))
     assertEquals(res.get("int32s"), makeArrayList(1, 2, 3))
@@ -484,7 +485,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "a" -> "int64s[1] + int32s[2]"
     )
     val cu = new CatalystUtil(ListContainersStruct, selects)
-    val res = cu.performSql(ListContainersRow)
+    val res = cu.performSql(ListContainersRow).headOption
     assertEquals(res.get.size, 1)
     assertEquals(res.get("a"), 8L)
   }
@@ -498,7 +499,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "e" -> "CARDINALITY(int32s)"
     )
     val cu = new CatalystUtil(ListContainersStruct, selects)
-    val res = cu.performSql(ListContainersRow)
+    val res = cu.performSql(ListContainersRow).headOption
     assertEquals(res.get.size, 5)
     assertEquals(res.get("a"), makeArrayList(2, 4, 6))
     assertEquals(res.get("b"), makeArrayList("123", "123"))
@@ -517,7 +518,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "bytess" -> "bytess"
     )
     val cu = new CatalystUtil(MapContainersStruct, selects)
-    val res = cu.performSql(MapContainersRow)
+    val res = cu.performSql(MapContainersRow).headOption
     assertEquals(res.get.size, 6)
     assertEquals(res.get("bools"), makeHashMap(1 -> false, 2 -> true, 3 -> false))
     assertEquals(res.get("int32s"), makeHashMap(1 -> 1, 2 -> 2, 3 -> 3))
@@ -536,7 +537,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "b" -> "strings['a']"
     )
     val cu = new CatalystUtil(MapContainersStruct, selects)
-    val res = cu.performSql(MapContainersRow)
+    val res = cu.performSql(MapContainersRow).headOption
     assertEquals(res.get.size, 2)
     assertEquals(res.get("a"), 2)
     assertEquals(res.get("b"), "hello")
@@ -549,7 +550,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "c" -> "MAP_VALUES(strings)"
     )
     val cu = new CatalystUtil(MapContainersStruct, selects)
-    val res = cu.performSql(MapContainersRow)
+    val res = cu.performSql(MapContainersRow).headOption
     assertEquals(res.get.size, 3)
     assertEquals(res.get("a"), makeHashMap(1 -> "2", 3 -> "4"))
     assertEquals(res.get("b").asInstanceOf[util.ArrayList[Any]].size, 3)
@@ -559,6 +560,54 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     assertEquals(res.get("c").asInstanceOf[util.ArrayList[Any]].size, 2)
     assertTrue(res.get("c").asInstanceOf[util.ArrayList[Any]].contains("hello"))
     assertTrue(res.get("c").asInstanceOf[util.ArrayList[Any]].contains("world"))
+  }
+
+  it should "handle explode invocations in select clauses" in {
+    val inputSchema: StructType = StructType.from(
+      "ECommerceEvent",
+      Array(
+        ("event_name", StringType),
+        ("properties", MapType(StringType, StringType)),
+      )
+    )
+    val addCartRow: Map[String, Any] = Map(
+      "event_name" -> "backend_add_to_cart",
+      "properties" -> makeHashMap("listing_id" -> "1234"),
+    )
+    val purchaseRow: Map[String, Any] = Map(
+      "event_name" -> "backend_cart_payment",
+      "properties" -> makeHashMap("sold_listing_ids" -> "1234,5678,9012"),
+    )
+
+    val listing_id = "EXPLODE(SPLIT(COALESCE(properties['sold_listing_ids'], properties['listing_id']), ','))"
+    val add_cart =  "IF(event_name = 'backend_add_to_cart', 1, 0)"
+    val purchase =  "IF(event_name = 'backend_cart_payment', 1, 0)"
+
+    val selects = Seq(
+      "listing_id" -> listing_id,
+      "add_cart" -> add_cart,
+      "purchase" -> purchase
+    )
+    val cu = new CatalystUtil(inputSchema, selects)
+    val purchase_res = cu.performSql(purchaseRow)
+    purchase_res.size shouldBe 3
+    purchase_res(0)("listing_id") shouldBe "1234"
+    purchase_res(0)("add_cart") shouldBe 0
+    purchase_res(0)("purchase") shouldBe 1
+
+    purchase_res(1)("listing_id") shouldBe "5678"
+    purchase_res(1)("add_cart") shouldBe 0
+    purchase_res(1)("purchase") shouldBe 1
+
+    purchase_res(2)("listing_id") shouldBe "9012"
+    purchase_res(2)("add_cart") shouldBe 0
+    purchase_res(2)("purchase") shouldBe 1
+
+    val add_cart_res = cu.performSql(addCartRow)
+    add_cart_res.size shouldBe 1
+    add_cart_res(0)("listing_id") shouldBe "1234"
+    add_cart_res(0)("add_cart") shouldBe 1
+    add_cart_res(0)("purchase") shouldBe 0
   }
 
   val inputEventStruct: StructType = StructType.from(
@@ -597,7 +646,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     ).toSeq
     val wheres = Seq("tag = 'v1.0'")
     val cu = new CatalystUtil(inputEventStruct, selects, wheres)
-    val res = cu.performSql(inputEventRow)
+    val res = cu.performSql(inputEventRow).headOption
     assertTrue(res.get.size == 3)
     assertTrue(res.get("id") == "unique_key")
     assertTrue(res.get("created") == 1000L)
