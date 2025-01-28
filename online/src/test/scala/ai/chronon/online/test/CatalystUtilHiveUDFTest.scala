@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs with TaggedFilterSuite  {
 
-  it should "hive ud fs via setups should work" in {
+  "catalyst util" should "work with hive_udfs via setups should work" in {
     val setups = Seq(
       "CREATE FUNCTION MINUS_ONE AS 'ai.chronon.online.test.Minus_One'",
       "CREATE FUNCTION CAT_STR AS 'ai.chronon.online.test.Cat_Str'",
@@ -16,10 +16,12 @@ class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLS
       "b" -> "CAT_STR(string_x)"
     )
     val cu = new CatalystUtil(CommonScalarsStruct, selects = selects, setups = setups)
-    val res = cu.performSql(CommonScalarsRow)
-    assertEquals(res.get.size, 2)
-    assertEquals(res.get("a"), Int.MaxValue - 1)
-    assertEquals(res.get("b"), "hello123")
+    val resList = cu.performSql(CommonScalarsRow)
+    assertEquals(resList.size, 1)
+    val resMap = resList.head
+    assertEquals(resMap.size, 2)
+    assertEquals(resMap("a"), Int.MaxValue - 1)
+    assertEquals(resMap("b"), "hello123")
   }
 
   override def tagName: String = "catalystUtilHiveUdfTest"
