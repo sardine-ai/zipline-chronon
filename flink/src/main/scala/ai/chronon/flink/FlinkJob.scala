@@ -18,6 +18,7 @@ import org.apache.flink.configuration.CheckpointingOptions
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.configuration.StateBackendOptions
 import org.apache.flink.streaming.api.CheckpointingMode
+import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.OutputTag
@@ -280,6 +281,9 @@ object FlinkJob {
     checkpointConfig.setCheckpointTimeout(CheckpointTimeout.toMillis)
     checkpointConfig.setMaxConcurrentCheckpoints(1)
     checkpointConfig.setTolerableCheckpointFailureNumber(TolerableCheckpointFailures)
+    // for now we retain our checkpoints even when we can cancel to allow us to resume from where we left off
+    // post orchestrator, we will trigger savepoints on deploys and we can switch to delete on cancel
+    checkpointConfig.setExternalizedCheckpointCleanup(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
 
     val config = new Configuration()
 
