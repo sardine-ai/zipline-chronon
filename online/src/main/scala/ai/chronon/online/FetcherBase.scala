@@ -44,6 +44,7 @@ import com.google.gson.Gson
 import java.util
 import scala.collection.JavaConverters._
 import scala.collection.Seq
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
@@ -58,8 +59,9 @@ class FetcherBase(kvStore: KVStore,
                   timeoutMillis: Long = 10000,
                   debug: Boolean = false,
                   flagStore: FlagStore = null,
-                  disableErrorThrows: Boolean = false)
-    extends MetadataStore(kvStore, metaDataSet, timeoutMillis)
+                  disableErrorThrows: Boolean = false,
+                  executionContextOverride: ExecutionContext = null)
+    extends MetadataStore(kvStore, metaDataSet, timeoutMillis, executionContextOverride)
     with FetcherCache {
   import FetcherBase._
 
