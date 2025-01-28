@@ -114,10 +114,22 @@ object PivotUtils {
 
   private def collectDoubles(vals: Iterator[JDouble]): JList[JDouble] = {
     val result = new JArrayList[JDouble]()
+
+    var sawValidInput = false
+
     while (vals.hasNext) {
-      result.add(vals.next())
+
+      val next = vals.next()
+
+      // check if this is valid input - if no prior inputs are valid
+      val thisIsValid = next != Constants.magicNullDouble && next != null
+      sawValidInput = sawValidInput || thisIsValid
+
+      result.add(next)
     }
-    result
+
+    // if no valid input, return null
+    if (!sawValidInput) null else result
   }
 
   def pivot(driftsWithTimestamps: Array[(TileDrift, Long)]): TileDriftSeries = {
