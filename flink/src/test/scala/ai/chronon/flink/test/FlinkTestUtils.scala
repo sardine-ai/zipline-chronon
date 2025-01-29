@@ -12,7 +12,7 @@ import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.flink.AsyncKVStoreWriter
 import ai.chronon.flink.FlinkSource
-import ai.chronon.flink.WriteResponse
+import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.Extensions.StructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed

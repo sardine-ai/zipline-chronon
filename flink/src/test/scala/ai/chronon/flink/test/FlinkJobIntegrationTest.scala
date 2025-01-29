@@ -2,11 +2,11 @@ package ai.chronon.flink.test
 
 import ai.chronon.flink.FlinkJob
 import ai.chronon.flink.SparkExpressionEvalFn
-import ai.chronon.flink.window.TimestampedIR
-import ai.chronon.flink.window.TimestampedTile
+import ai.chronon.flink.types.TimestampedIR
+import ai.chronon.flink.types.TimestampedTile
+import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
-import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource
@@ -29,8 +29,8 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
 
   // Decode a PutRequest into a TimestampedTile
   def avroConvertPutRequestToTimestampedTile[T](
-      in: PutRequest,
-      groupByServingInfoParsed: GroupByServingInfoParsed
+                                                 in: WriteResponse,
+                                                 groupByServingInfoParsed: GroupByServingInfoParsed
   ): TimestampedTile = {
     // Decode the key bytes into a GenericRecord
     val tileBytes = in.valueBytes
@@ -40,15 +40,15 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
     val decodedKeys: List[String] =
       groupByServingInfoParsed.groupBy.keyColumns.asScala.map(record.get(_).toString).toList
 
-    val tsMills = in.tsMillis.get
-    TimestampedTile(decodedKeys, tileBytes, tsMills)
+    val tsMills = in.tsMillis
+    new TimestampedTile(decodedKeys, tileBytes, tsMills)
   }
 
   // Decode a TimestampedTile into a TimestampedIR
   def avroConvertTimestampedTileToTimestampedIR(timestampedTile: TimestampedTile,
                                                 groupByServingInfoParsed: GroupByServingInfoParsed): TimestampedIR = {
     val tileIR = groupByServingInfoParsed.tiledCodec.decodeTileIr(timestampedTile.tileBytes)
-    TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis))
+    new TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis))
   }
 
   before {
@@ -92,7 +92,7 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
     assert(writeEventCreatedDS.size == elements.size)
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
-    assertEquals(writeEventCreatedDS.map(_.putRequest.tsMillis).map(_.get).toSet, elements.map(_.created).toSet)
+    assertEquals(writeEventCreatedDS.map(_.tsMillis).toSet, elements.map(_.created).toSet)
     // check that all the writes were successful
     assertEquals(writeEventCreatedDS.map(_.status), Seq(true, true, true))
   }
@@ -131,7 +131,7 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
     assert(writeEventCreatedDS.size == elements.size)
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
-    assertEquals(writeEventCreatedDS.map(_.putRequest.tsMillis).map(_.get).toSet, elements.map(_.created).toSet)
+    assertEquals(writeEventCreatedDS.map(_.tsMillis).toSet, elements.map(_.created).toSet)
     // check that all the writes were successful
     assertEquals(writeEventCreatedDS.map(_.status), Seq(true, true, true))
 
@@ -141,11 +141,11 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
       .map(writeEvent => {
         // First, we work back from the PutRequest decode it to TimestampedTile and then TimestampedIR
         val timestampedTile =
-          avroConvertPutRequestToTimestampedTile(writeEvent.putRequest, groupByServingInfoParsed)
+          avroConvertPutRequestToTimestampedTile(writeEvent, groupByServingInfoParsed)
         val timestampedIR = avroConvertTimestampedTileToTimestampedIR(timestampedTile, groupByServingInfoParsed)
 
         // We're interested in the the keys, Intermediate Result, and the timestamp for each processed event
-        (timestampedTile.keys, timestampedIR.ir.toList, writeEvent.putRequest.tsMillis.get)
+        (timestampedTile.keys, timestampedIR.ir.toList, writeEvent.tsMillis)
       })
       .groupBy(_._1) // Group by the keys
       .map((keys) => (keys._1, keys._2.maxBy(_._3)._2)) // pick just the events with largest timestamp

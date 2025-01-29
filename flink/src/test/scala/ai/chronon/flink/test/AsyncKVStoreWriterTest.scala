@@ -1,8 +1,8 @@
 package ai.chronon.flink.test
 
 import ai.chronon.flink.AsyncKVStoreWriter
+import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.online.Api
-import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.test.TaggedFilterSuite
 import org.apache.flink.api.scala._
@@ -21,9 +21,9 @@ class AsyncKVStoreWriterTest extends AnyFlatSpec with TaggedFilterSuite  {
 
   it should "write successfully" in {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    val source: DataStream[PutRequest] = env
+    val source: DataStream[AvroCodecOutput] = env
       .fromCollection(
-        Range(0, 5).map(i => createKVRequest(i.toString, "test", "my_dataset", eventTs))
+        Range(0, 5).map(i => new AvroCodecOutput(i.toString.getBytes, "test".getBytes, "my_dataset", eventTs))
       )
 
     val mockApi = mock[Api]
@@ -36,16 +36,16 @@ class AsyncKVStoreWriterTest extends AnyFlatSpec with TaggedFilterSuite  {
         )
     val result = new DataStreamUtils(withRetries).collect.toSeq
     assert(result.nonEmpty, "Expect result set to be non-empty")
-    assert(result.map(_.putRequest.tsMillis).forall(_.contains(eventTs)))
+    assert(result.map(_.tsMillis).forall(_ == eventTs))
   }
 
   // ensure that if we get an event that would cause the operator to throw an exception,
   // we don't crash the app
   it should "handle poison pill writes" in {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    val source: DataStream[KVStore.PutRequest] = env
+    val source: DataStream[AvroCodecOutput] = env
       .fromCollection(
-        Range(0, 5).map(i => createKVRequest(i.toString, "test", "my_dataset", eventTs))
+        Range(0, 5).map(i => new AvroCodecOutput(i.toString.getBytes, "test".getBytes, "my_dataset", eventTs))
       )
 
     val mockApi = mock[Api]
@@ -58,7 +58,7 @@ class AsyncKVStoreWriterTest extends AnyFlatSpec with TaggedFilterSuite  {
         )
     val result = new DataStreamUtils(withRetries).collect.toSeq
     assert(result.nonEmpty, "Expect result set to be non-empty")
-    assert(result.map(_.putRequest.tsMillis).forall(_.contains(eventTs)))
+    assert(result.map(_.tsMillis).forall(_ == eventTs))
   }
 
   override def tagName: String = "asyncKVStoreWriterTest"
