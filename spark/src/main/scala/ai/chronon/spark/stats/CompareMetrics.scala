@@ -17,6 +17,7 @@
 package ai.chronon.spark.stats
 
 import ai.chronon.aggregator.row.RowAggregator
+import ai.chronon.aggregator.stats.EditDistance
 import ai.chronon.api.Extensions.AggregationPartOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.ScalaJavaConversions._

@@ -14,20 +14,14 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.streaming
+package ai.chronon.online
 
 import ai.chronon.aggregator.base.BottomK
-import ai.chronon.api
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.aggregator.stats.EditDistance
 import ai.chronon.api.UnknownType
-import ai.chronon.spark.Driver
-import ai.chronon.spark.stats.EditDistance
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.admin.ListTopicsOptions
-import org.rogach.scallop.ScallopConf
-import org.rogach.scallop.ScallopOption
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -39,17 +33,15 @@ import scala.collection.JavaConverters.asScalaIteratorConverter
 object TopicChecker {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def getPartitions(topic: String, bootstrap: String): Int = {
-    val props = new Properties()
-    props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap)
+  def getPartitions(topic: String, bootstrap: String, additionalProps: Map[String, String] = Map.empty): Int = {
+    val props = mapToJavaProperties(additionalProps ++ Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrap))
     val adminClient = AdminClient.create(props)
     val topicDescription = adminClient.describeTopics(util.Arrays.asList(topic)).values().get(topic);
     topicDescription.get().partitions().size()
   }
 
-  def topicShouldExist(topic: String, bootstrap: String): Unit = {
-    val props = new Properties()
-    props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap)
+  def topicShouldExist(topic: String, bootstrap: String, additionalProps: Map[String, String] = Map.empty): Unit = {
+    val props = mapToJavaProperties(additionalProps ++ Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrap))
     try {
       val adminClient = AdminClient.create(props)
       val options = new ListTopicsOptions()
@@ -87,31 +79,9 @@ object TopicChecker {
     }
   }
 
-  class Args(arguments: Seq[String]) extends ScallopConf(arguments) {
-    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-    val conf: ScallopOption[String] = opt[String](descr = "Conf to pull topic and bootstrap server information")
-    val bootstrap: ScallopOption[String] = opt[String](descr = "Kafka bootstrap server in host:port format")
-    val topic: ScallopOption[String] = opt[String](descr = "kafka topic to check metadata for")
-    verify()
-  }
-
-  // print out number of partitions and exit
-  def main(argSeq: Array[String]): Unit = {
-    val args = new Args(argSeq)
-    val (topic, bootstrap) = if (args.conf.isDefined) {
-      val confPath = args.conf()
-      val groupBy = Driver.parseConf[api.GroupBy](confPath)
-      val source = groupBy.streamingSource.get
-      val topic = source.cleanTopic
-      val tokens = source.topicTokens
-      lazy val host = tokens.get("host")
-      lazy val port = tokens.get("port")
-      lazy val hostPort = s"${host.get}:${port.get}"
-      topic -> args.bootstrap.getOrElse(hostPort)
-    } else {
-      args.topic() -> args.bootstrap()
-    }
-    logger.info(getPartitions(topic, bootstrap).toString)
-    System.exit(0)
+  def mapToJavaProperties(map: Map[String, String]): Properties = {
+    val props = new Properties()
+    map.foreach { case (k, v) => props.put(k, v) }
+    props
   }
 }
