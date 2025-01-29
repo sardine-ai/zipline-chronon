@@ -16,16 +16,22 @@ import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.api.{StructType => ApiStructType}
+import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.AvroCodec
 import ai.chronon.online.AvroConversions
 import ai.chronon.online.Extensions.StructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
+import org.apache.flink.api.common.serialization.DeserializationSchema
+import org.apache.flink.api.common.serialization.SerializationSchema
 import org.apache.flink.api.scala.createTypeInformation
+import org.apache.flink.metrics.groups.UnregisteredMetricsGroup
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.util.SimpleUserCodeClassLoader
+import org.apache.flink.util.UserCodeClassLoader
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.avro.AvroDeserializationSupport
 import org.apache.spark.sql.types.StructType
@@ -71,9 +77,18 @@ class PrintSink extends SinkFunction[WriteResponse] {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   override def invoke(value: WriteResponse, context: SinkFunction.Context): Unit = {
-    val elapsedTime = System.currentTimeMillis() - value.putRequest.tsMillis.get
+    val elapsedTime = System.currentTimeMillis() - value.tsMillis
     logger.info(s"Received write response with status ${value.status}; elapsedTime = $elapsedTime ms")
   }
+}
+
+class DummyInitializationContext
+    extends SerializationSchema.InitializationContext
+    with DeserializationSchema.InitializationContext {
+  override def getMetricGroup = new UnregisteredMetricsGroup
+
+  override def getUserCodeClassLoader: UserCodeClassLoader =
+    SimpleUserCodeClassLoader.create(classOf[DummyInitializationContext].getClassLoader)
 }
 
 object TestFlinkJob {
@@ -92,6 +107,7 @@ object TestFlinkJob {
 
   def makeSource(mockPartitionCount: Int): FlinkSource[Row] = {
     val avroCodec = AvroCodec.of(e2eTestEventAvroSchema)
+    avroDeserializationSchema.open(new DummyInitializationContext)
     val startTs = System.currentTimeMillis()
     val elements: Seq[Map[String, AnyRef]] = (0 until 10).map(i =>
       Map("id" -> s"test$i",

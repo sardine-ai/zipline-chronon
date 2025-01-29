@@ -5,6 +5,8 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataType
 import ai.chronon.api.GroupBy
 import ai.chronon.api.Row
+import ai.chronon.flink.types.TimestampedIR
+import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.ArrayRow
 import ai.chronon.online.TileCodec
 import org.apache.flink.api.common.functions.AggregateFunction
@@ -19,20 +21,6 @@ import org.slf4j.LoggerFactory
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
-
-/**
-  * TimestampedIR combines the current Intermediate Result with the timestamp of the event being processed.
-  * We need to keep track of the timestamp of the event processed so we can calculate processing lag down the line.
-  *
-  * Example: for a GroupBy with 2 windows, we'd have TimestampedTile( [IR for window 1, IR for window 2], timestamp ).
-  *
-  * @param ir the array of partial aggregates
-  * @param latestTsMillis timestamp of the current event being processed
-  */
-case class TimestampedIR(
-    ir: Array[Any],
-    latestTsMillis: Option[Long]
-)
 
 /**
   * Wrapper Flink aggregator around Chronon's RowAggregator. Relies on Flink to pass in
@@ -63,7 +51,7 @@ class FlinkRowAggregationFunction(
 
   override def createAccumulator(): TimestampedIR = {
     initializeRowAggregator()
-    TimestampedIR(rowAggregator.init, None)
+    new TimestampedIR(rowAggregator.init, None)
   }
 
   override def add(
@@ -98,7 +86,7 @@ class FlinkRowAggregationFunction(
           f"Flink pre-aggregates AFTER adding new element [${v.mkString(", ")}] " +
             f"groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element"
         )
-        TimestampedIR(v, Some(tsMills))
+        new TimestampedIR(v, Some(tsMills))
       }
       case Failure(e) =>
         logger.error(
@@ -116,7 +104,7 @@ class FlinkRowAggregationFunction(
     accumulatorIr
 
   override def merge(aIr: TimestampedIR, bIr: TimestampedIR): TimestampedIR =
-    TimestampedIR(
+    new TimestampedIR(
       rowAggregator.merge(aIr.ir, bIr.ir),
       aIr.latestTsMillis
         .flatMap(aL => bIr.latestTsMillis.map(bL => Math.max(aL, bL)))
@@ -131,21 +119,6 @@ class FlinkRowAggregationFunction(
     new ArrayRow(values, tsMills)
   }
 }
-
-/**
-  * TimestampedTile combines the entity keys, the encoded Intermediate Result, and the timestamp of the event being processed.
-  *
-  * We need the timestamp of the event processed so we can calculate processing lag down the line.
-  *
-  * @param keys the GroupBy entity keys
-  * @param tileBytes encoded tile IR
-  * @param latestTsMillis timestamp of the current event being processed
-  */
-case class TimestampedTile(
-    keys: List[Any],
-    tileBytes: Array[Byte],
-    latestTsMillis: Long
-)
 
 // This process function is only meant to be used downstream of the ChrononFlinkAggregationFunction
 class FlinkRowAggProcessFunction(
@@ -199,7 +172,7 @@ class FlinkRowAggProcessFunction(
                 |keys=$keys isComplete=$isComplete tileAvroSchema=${tileCodec.tileAvroSchema}"""
         )
         // The timestamp should never be None here.
-        out.collect(TimestampedTile(keys, v, irEntry.latestTsMillis.get))
+        out.collect(new TimestampedTile(keys, v, irEntry.latestTsMillis.get))
       }
       case Failure(e) =>
         // To improve availability, we don't rethrow the exception. We just drop the event

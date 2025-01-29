@@ -1,4 +1,5 @@
 package ai.chronon.flink
+import ai.chronon.flink.types.WriteResponse
 import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
@@ -30,7 +31,7 @@ class MetricsSink(groupByName: String) extends RichSinkFunction[WriteResponse] {
   }
 
   override def invoke(value: WriteResponse, context: SinkFunction.Context): Unit = {
-    val eventCreatedToSinkTime = System.currentTimeMillis() - value.putRequest.tsMillis.get
+    val eventCreatedToSinkTime = System.currentTimeMillis() - value.tsMillis
     eventCreatedToSinkTimeHistogram.update(eventCreatedToSinkTime)
   }
 }
