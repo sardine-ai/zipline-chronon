@@ -30,13 +30,13 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-case class TopicInfo(name: String, topicType: String, params: Map[String, String])
+case class TopicInfo(name: String, messageBus: String, params: Map[String, String])
 object TopicInfo {
-  // default topic type is kafka
+  // default message bus is kafka
   // kafka://topic_name/schema=my_schema/host=X/port=Y should parse into TopicInfo(topic_name, kafka, {schema: my_schema, host: X, port Y})
   def parse(topic: String): TopicInfo = {
     assert(topic.nonEmpty, s"invalid topic: $topic")
-    val (topicType, rest) = if (topic.contains("://")) {
+    val (messageBus, rest) = if (topic.contains("://")) {
       val tokens = topic.split("://", 2)
       tokens.head -> tokens.last
     } else {
@@ -48,7 +48,7 @@ object TopicInfo {
     val params = fields.tail.map { f =>
       val kv = f.split("=", 2); kv.head -> kv.last
     }.toMap
-    TopicInfo(topicName, topicType, params)
+    TopicInfo(topicName, messageBus, params)
   }
 }
 

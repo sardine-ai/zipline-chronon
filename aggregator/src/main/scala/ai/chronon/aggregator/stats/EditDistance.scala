@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.stats
+package ai.chronon.aggregator.stats
 
 object EditDistance {
 

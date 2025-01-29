@@ -64,9 +64,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
       List.empty,
       "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
-      "--groupby-name=e2e-count",
-      "-ZGCP_PROJECT_ID=bigtable-project-id",
-      "-ZGCP_BIGTABLE_INSTANCE_ID=bigtable-instance-id")
+      "--groupby-name=etsy.listing_canary.actions_v1",
+      "-kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
+      "-ZGCP_PROJECT_ID=canary-443022",
+      "-ZGCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance")
   }
 
   it should "test flink kafka ingest job locally" ignore {

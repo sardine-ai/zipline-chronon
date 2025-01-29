@@ -217,12 +217,14 @@ lazy val spark = project
 lazy val flink = project
   .dependsOn(aggregator.%("compile->compile;test->test"), online.%("compile->compile;test->test"))
   .settings(
+    resolvers += "Confluent" at "https://packages.confluent.io/maven/", // needed for confluent's schema registry
     libraryDependencies ++= spark_all,
     libraryDependencies ++= flink_all,
     // mark the flink-streaming scala as provided as otherwise we end up with some extra Flink classes in our jar
     // and errors at runtime like: java.io.InvalidClassException: org.apache.flink.streaming.api.scala.DataStream$$anon$1; local class incompatible
     libraryDependencies += "org.apache.flink" %% "flink-streaming-scala" % flink_1_17 % "provided",
     libraryDependencies += "org.apache.flink" % "flink-connector-files" % flink_1_17 % "provided",
+    libraryDependencies += "io.confluent" % "kafka-schema-registry-client" % "7.6.0",
     libraryDependencies += "org.apache.spark" %% "spark-avro" % spark_3_5,
     assembly / assemblyMergeStrategy := {
       case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
@@ -246,6 +248,7 @@ lazy val flink = project
     assembly / packageOptions += Package.ManifestAttributes(
       ("Main-Class", "ai.chronon.flink.FlinkJob")
     ),
+    libraryDependencies += "io.confluent" % "kafka-protobuf-provider" % "7.6.0" % Test,
     libraryDependencies += "org.apache.flink" % "flink-test-utils" % flink_1_17 % Test excludeAll (
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-api"),
       ExclusionRule(organization = "org.apache.logging.log4j", name = "log4j-core"),

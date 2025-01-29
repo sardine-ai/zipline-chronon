@@ -1,9 +1,12 @@
 package ai.chronon.flink
 
 import ai.chronon.aggregator.windowing.ResolutionUtils
+import ai.chronon.api.Constants
+import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.DataType
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.flink.FlinkJob.watermarkStrategy
 import ai.chronon.flink.window.AlwaysFireOnElementTrigger
 import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
@@ -12,7 +15,11 @@ import ai.chronon.flink.window.TimestampedTile
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
+import ai.chronon.online.TopicInfo
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.scala._
 import org.apache.flink.configuration.CheckpointingOptions
 import org.apache.flink.configuration.Configuration
@@ -33,6 +40,7 @@ import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Serialization
 import org.slf4j.LoggerFactory
 
+import java.time.Duration
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
 
@@ -103,7 +111,13 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .name(s"Spark expression eval for $groupByName")
       .setParallelism(sourceStream.parallelism) // Use same parallelism as previous operator
 
-    val putRecordDS: DataStream[PutRequest] = sparkExprEvalDS
+    val sparkExprEvalDSWithWatermarks: DataStream[Map[String, Any]] = sparkExprEvalDS
+      .assignTimestampsAndWatermarks(watermarkStrategy)
+      .uid(s"spark-expr-eval-timestamps-$groupByName")
+      .name(s"Spark expression eval with timestamps for $groupByName")
+      .setParallelism(sourceStream.parallelism)
+
+    val putRecordDS: DataStream[PutRequest] = sparkExprEvalDSWithWatermarks
       .flatMap(AvroCodecFn[T](groupByServingInfoParsed))
       .uid(s"avro-conversion-$groupByName")
       .name(s"Avro conversion for $groupByName")
@@ -152,6 +166,12 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .name(s"Spark expression eval for $groupByName")
       .setParallelism(sourceStream.parallelism) // Use same parallelism as previous operator
 
+    val sparkExprEvalDSAndWatermarks: DataStream[Map[String, Any]] = sparkExprEvalDS
+      .assignTimestampsAndWatermarks(watermarkStrategy)
+      .uid(s"spark-expr-eval-timestamps-$groupByName")
+      .name(s"Spark expression eval with timestamps for $groupByName")
+      .setParallelism(sourceStream.parallelism)
+
     val inputSchema: Seq[(String, DataType)] =
       exprEval.getOutputSchema.fields
         .map(field => (field.name, SparkConversions.toChrononType(field.name, field.dataType)))
@@ -179,7 +199,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     //    - The only purpose of this window function is to mark tiles as closed so we can do client-side caching in SFS
     // 7. Output: TimestampedTile, containing the current IRs (Avro encoded) and the timestamp of the current element
     val tilingDS: DataStream[TimestampedTile] =
-      sparkExprEvalDS
+      sparkExprEvalDSAndWatermarks
         .keyBy(KeySelector.getKeySelectionFunction(groupByServingInfoParsed.groupBy))
         .window(window)
         .trigger(trigger)
@@ -236,6 +256,25 @@ object FlinkJob {
   // to allow us a few tries before we give up
   val TolerableCheckpointFailures = 5
 
+  // Keep windows open for a bit longer before closing to ensure we don't lose data due to late arrivals (needed in case of
+  // tiling implementation)
+  val AllowedOutOfOrderness: Duration = Duration.ofMinutes(5)
+
+  // Set an idleness timeout to keep time moving in case of very low traffic event streams as well as late events during
+  // large backlog catchups
+  val IdlenessTimeout: Duration = Duration.ofSeconds(30)
+
+  // We wire up the watermark strategy post the spark expr eval to be able to leverage the user's timestamp column (which is
+  // ETLed to Contants.TimeColumn) as the event timestamp and watermark
+  val watermarkStrategy: WatermarkStrategy[Map[String, Any]] = WatermarkStrategy
+    .forBoundedOutOfOrderness[Map[String, Any]](AllowedOutOfOrderness)
+    .withIdleness(IdlenessTimeout)
+    .withTimestampAssigner(new SerializableTimestampAssigner[Map[String, Any]] {
+      override def extractTimestamp(element: Map[String, Any], recordTimestamp: Long): Long = {
+        element.get(Constants.TimeColumn).map(_.asInstanceOf[Long]).getOrElse(recordTimestamp)
+      }
+    })
+
   // Pull in the Serialization trait to sidestep: https://github.com/scallop/scallop/issues/137
   class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
     val onlineClass: ScallopOption[String] =
@@ -244,7 +283,10 @@ object FlinkJob {
     val groupbyName: ScallopOption[String] =
       opt[String](required = true, descr = "The name of the groupBy to process")
     val mockSource: ScallopOption[Boolean] =
-      opt[Boolean](required = false, descr = "Use a mocked data source instead of a real source", default = Some(true))
+      opt[Boolean](required = false, descr = "Use a mocked data source instead of a real source", default = Some(false))
+    // Kafka config is optional as we can support other sources in the future
+    val kafkaBootstrap: ScallopOption[String] =
+      opt[String](required = false, descr = "Kafka bootstrap server in host:port format")
 
     val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API / KV Store")
 
@@ -253,28 +295,60 @@ object FlinkJob {
 
   def main(args: Array[String]): Unit = {
     val jobArgs = new JobArgs(args)
-    jobArgs.groupbyName()
+    val groupByName = jobArgs.groupbyName()
     val onlineClassName = jobArgs.onlineClass()
     val props = jobArgs.apiProps.map(identity)
     val useMockedSource = jobArgs.mockSource()
+    val kafkaBootstrap = jobArgs.kafkaBootstrap.toOption
 
     val api = buildApi(onlineClassName, props)
+    val metadataStore = new MetadataStore(api.genKvStore, MetadataDataset, timeoutMillis = 10000)
+
     val flinkJob =
       if (useMockedSource) {
         // We will yank this conditional block when we wire up our real sources etc.
         TestFlinkJob.buildTestFlinkJob(api)
       } else {
-        // TODO - what we need to do when we wire this up for real
-        // lookup groupByServingInfo by groupByName from the kv store
-        // based on the topic type (e.g. kafka / pubsub) and the schema class name:
-        // 1. lookup schema object using SchemaProvider (e.g SchemaRegistry / Jar based)
-        // 2. Create the appropriate Encoder for the given schema type
-        // 3. Invoke the appropriate source provider to get the source, parallelism
-        throw new IllegalArgumentException("We don't support non-mocked sources like Kafka / PubSub yet!")
+        val maybeServingInfo = metadataStore.getGroupByServingInfo(groupByName)
+        maybeServingInfo
+          .map { servingInfo =>
+            val topicUri = servingInfo.groupBy.streamingSource.get.topic
+            val topicInfo = TopicInfo.parse(topicUri)
+
+            val schemaProvider =
+              topicInfo.params.get("registry_url") match {
+                case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
+                case None =>
+                  throw new IllegalArgumentException(
+                    "We only support schema registry based schema lookups. Missing registry_url in topic config")
+              }
+
+            val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)
+            val source =
+              topicInfo.messageBus match {
+                case "kafka" =>
+                  new KafkaFlinkSource(kafkaBootstrap, deserializationSchema, topicInfo)
+                case _ =>
+                  throw new IllegalArgumentException(s"Unsupported message bus: ${topicInfo.messageBus}")
+              }
+
+            new FlinkJob(
+              eventSrc = source,
+              sinkFn = new AsyncKVStoreWriter(api, servingInfo.groupBy.metaData.name),
+              groupByServingInfoParsed = servingInfo,
+              encoder = encoder,
+              parallelism = source.parallelism
+            )
+
+          }
+          .recover {
+            case e: Exception =>
+              throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
+          }
+          .get
       }
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-
     env.enableCheckpointing(CheckPointInterval.toMillis, CheckpointingMode.AT_LEAST_ONCE)
     val checkpointConfig = env.getCheckpointConfig
     checkpointConfig.setMinPauseBetweenCheckpoints(CheckPointInterval.toMillis)
@@ -300,15 +374,19 @@ object FlinkJob {
 
     env.configure(config)
 
-    flinkJob
+    val jobDatastream = flinkJob
       .runGroupByJob(env)
+
+    jobDatastream
       .addSink(new MetricsSink(flinkJob.groupByName))
       .uid(s"metrics-sink - ${flinkJob.groupByName}")
       .name(s"Metrics Sink for ${flinkJob.groupByName}")
+      .setParallelism(jobDatastream.parallelism)
+
     env.execute(s"${flinkJob.groupByName}")
   }
 
-  def buildApi(onlineClass: String, props: Map[String, String]): Api = {
+  private def buildApi(onlineClass: String, props: Map[String, String]): Api = {
     val cl = Thread.currentThread().getContextClassLoader // Use Flink's classloader
     val cls = cl.loadClass(onlineClass)
     val constructor = cls.getConstructors.apply(0)
