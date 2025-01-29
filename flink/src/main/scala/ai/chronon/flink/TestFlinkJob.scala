@@ -2,15 +2,23 @@ package ai.chronon.flink
 
 import ai.chronon.api.Accuracy
 import ai.chronon.api.Builders
+import ai.chronon.api.DataType
+import ai.chronon.api.DoubleType
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.GroupBy
 import ai.chronon.api.GroupByServingInfo
+import ai.chronon.api.IntType
+import ai.chronon.api.LongType
 import ai.chronon.api.Operation
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.api.{StructType => ApiStructType}
 import ai.chronon.online.Api
+import ai.chronon.online.AvroCodec
+import ai.chronon.online.AvroConversions
 import ai.chronon.online.Extensions.StructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
 import org.apache.flink.api.scala.createTypeInformation
@@ -18,8 +26,8 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.spark.sql.Encoder
-import org.apache.spark.sql.Encoders
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.avro.AvroDeserializationSupport
 import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -32,17 +40,16 @@ import scala.jdk.CollectionConverters.asScalaBufferConverter
 // datastream source as well as created a mocked GroupByServingInfo. The job does write out data to
 // the configured KV store.
 
-case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: Long)
+class E2EEventSource(mockEvents: Seq[Row], mockPartitionCount: Int) extends FlinkSource[Row] {
 
-class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestEvent] {
-
+  implicit val parallelism: Int = mockPartitionCount
   override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
-                                                               parallelism: Int): DataStream[E2ETestEvent] = {
+                                                               parallelism: Int): DataStream[Row] = {
     env
-      .addSource(new SourceFunction[E2ETestEvent] {
+      .addSource(new SourceFunction[Row] {
         private var isRunning = true
 
-        override def run(ctx: SourceFunction.SourceContext[E2ETestEvent]): Unit = {
+        override def run(ctx: SourceFunction.SourceContext[Row]): Unit = {
           while (isRunning) {
             mockEvents.foreach { event =>
               ctx.collect(event)
@@ -56,7 +63,7 @@ class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestE
           isRunning = false
         }
       })
-      .setParallelism(1)
+      .setParallelism(parallelism)
   }
 }
 
@@ -69,26 +76,32 @@ class PrintSink extends SinkFunction[WriteResponse] {
   }
 }
 
-class MockedEncoderProvider extends EncoderProvider[E2ETestEvent] {
-  override def buildEncoder(): Encoder[E2ETestEvent] = Encoders.product[E2ETestEvent]
-}
-
-class MockedSourceProvider extends SourceProvider[E2ETestEvent](None) {
-  import TestFlinkJob._
-
-  override def buildSource(): (FlinkSource[E2ETestEvent], Int) = {
-    val eventSrc = makeSource()
-    val parallelism = 2 // TODO - take parallelism as a job param
-
-    (eventSrc, parallelism)
-  }
-}
-
 object TestFlinkJob {
-  def makeSource(): FlinkSource[E2ETestEvent] = {
+  val fields: Array[(String, DataType)] = Array(
+    "id" -> StringType,
+    "int_val" -> IntType,
+    "double_val" -> DoubleType,
+    "created" -> LongType
+  )
+
+  val e2eTestEventSchema: ApiStructType =
+    ApiStructType.from("E2ETestEvent", fields)
+  val e2eTestEventAvroSchema: String = AvroConversions.fromChrononSchema(e2eTestEventSchema).toString()
+  val (avroRowEncoder, avroDeserializationSchema) =
+    AvroDeserializationSupport.build("events.my_stream", e2eTestEventAvroSchema)
+
+  def makeSource(mockPartitionCount: Int): FlinkSource[Row] = {
+    val avroCodec = AvroCodec.of(e2eTestEventAvroSchema)
     val startTs = System.currentTimeMillis()
-    val elements = (0 until 10).map(i => E2ETestEvent(s"test$i", i, i.toDouble, startTs))
-    new E2EEventSource(elements)
+    val elements: Seq[Map[String, AnyRef]] = (0 until 10).map(i =>
+      Map("id" -> s"test$i",
+          "int_val" -> Integer.valueOf(i),
+          "double_val" -> java.lang.Double.valueOf(i),
+          "created" -> java.lang.Long.valueOf(startTs)))
+    val rowElements = elements
+      .map(valueMap => avroCodec.encode(valueMap))
+      .map(avroDeserializationSchema.deserialize)
+    new E2EEventSource(rowElements, mockPartitionCount)
   }
 
   def makeTestGroupByServingInfoParsed(groupBy: GroupBy,
@@ -165,22 +178,19 @@ object TestFlinkJob {
       accuracy = Accuracy.TEMPORAL
     )
 
-  def buildTestFlinkJob(api: Api): FlinkJob[E2ETestEvent] = {
-    val encoderProvider = new MockedEncoderProvider()
-    val encoder = encoderProvider.buildEncoder()
-
+  def buildTestFlinkJob(api: Api): FlinkJob[Row] = {
     val groupBy = makeGroupBy(Seq("id"))
-    val sourceProvider = new MockedSourceProvider()
-    val (eventSrc, parallelism) = sourceProvider.buildSource()
+    val parallelism = 1
+    val e2EEventSource = makeSource(parallelism)
 
-    val outputSchema = new SparkExpressionEvalFn(encoder, groupBy).getOutputSchema
-    val groupByServingInfoParsed = makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
+    val outputSchema = new SparkExpressionEvalFn(avroRowEncoder, groupBy).getOutputSchema
+    val groupByServingInfoParsed = makeTestGroupByServingInfoParsed(groupBy, avroRowEncoder.schema, outputSchema)
 
     new FlinkJob(
-      eventSrc = eventSrc,
+      eventSrc = e2EEventSource,
       sinkFn = new AsyncKVStoreWriter(api, groupBy.metaData.name),
       groupByServingInfoParsed = groupByServingInfoParsed,
-      encoder = encoder,
+      encoder = avroRowEncoder,
       parallelism = parallelism
     )
   }

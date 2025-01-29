@@ -14,9 +14,9 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.aggregator.test
 
-import ai.chronon.spark.stats.EditDistance
+import ai.chronon.aggregator.stats.EditDistance
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 

@@ -30,6 +30,7 @@ import ai.chronon.online.Fetcher
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
 import ai.chronon.online.MetadataStore
+import ai.chronon.online.TopicChecker
 import ai.chronon.spark.stats.CompareBaseJob
 import ai.chronon.spark.stats.CompareJob
 import ai.chronon.spark.stats.ConsistencyJob
@@ -37,7 +38,6 @@ import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.streaming.JoinSourceRunner
-import ai.chronon.spark.streaming.TopicChecker
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.commons.io.FileUtils
