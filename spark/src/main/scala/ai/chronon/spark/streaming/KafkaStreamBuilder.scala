@@ -18,6 +18,7 @@ package ai.chronon.spark.streaming
 
 import ai.chronon.online.DataStream
 import ai.chronon.online.StreamBuilder
+import ai.chronon.online.TopicChecker
 import ai.chronon.online.TopicInfo
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.StreamingQueryListener

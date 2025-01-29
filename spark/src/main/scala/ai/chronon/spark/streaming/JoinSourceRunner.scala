@@ -290,7 +290,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
   }
 
   private def buildStream(topic: TopicInfo): DataStream =
-    internalStreamBuilder(topic.topicType).from(topic)(session, conf)
+    internalStreamBuilder(topic.messageBus).from(topic)(session, conf)
 
   def percentile(arr: Array[Long], p: Double): Option[Long] = {
     if (arr == null || arr.length == 0) return None
