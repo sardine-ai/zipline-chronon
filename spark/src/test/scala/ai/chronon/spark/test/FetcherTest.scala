@@ -307,6 +307,10 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
         Builders.Aggregation(operation = Operation.COUNT, inputColumn = "payment"),
         Builders.Aggregation(operation = Operation.LAST, inputColumn = "payment"),
         Builders.Aggregation(operation = Operation.LAST_K, argMap = Map("k" -> "5"), inputColumn = "notes"),
+        Builders.Aggregation(operation = Operation.BOUNDED_UNIQUE_COUNT,
+          argMap = Map("k" -> "5"),
+          inputColumn = "user",
+          windows = Seq(new Window(2, TimeUnit.DAYS), new Window(30, TimeUnit.DAYS))),
         Builders.Aggregation(operation = Operation.VARIANCE, inputColumn = "payment"),
         Builders.Aggregation(operation = Operation.FIRST, inputColumn = "notes"),
         Builders.Aggregation(operation = Operation.FIRST, inputColumn = tsColString),
@@ -569,6 +573,11 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
         ),
         Builders.Aggregation(
           operation = Operation.APPROX_HISTOGRAM_K,
+          inputColumn = "rating",
+          windows = Seq(new Window(1, TimeUnit.DAYS))
+        ),
+        Builders.Aggregation(
+          operation = Operation.BOUNDED_UNIQUE_COUNT,
           inputColumn = "rating",
           windows = Seq(new Window(1, TimeUnit.DAYS))
         )

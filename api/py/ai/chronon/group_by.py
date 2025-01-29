@@ -65,6 +65,7 @@ class Operation:
     FIRST = ttypes.Operation.FIRST
     LAST = ttypes.Operation.LAST
     APPROX_UNIQUE_COUNT = ttypes.Operation.APPROX_UNIQUE_COUNT
+    BOUNDED_UNIQUE_COUNT = ttypes.Operation.BOUNDED_UNIQUE_COUNT
     # refer to the chart here to tune your sketch size with lgK
     # default is 8
     # https://github.com/apache/incubator-datasketches-java/blob/master/src/main/java/org/apache/datasketches/cpc/CpcSketch.java#L180
