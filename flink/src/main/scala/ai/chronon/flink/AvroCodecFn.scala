@@ -5,10 +5,10 @@ import ai.chronon.api.DataModel
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Query
 import ai.chronon.api.{StructType => ChrononStructType}
-import ai.chronon.flink.window.TimestampedTile
+import ai.chronon.flink.types.AvroCodecOutput
+import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.AvroConversions
 import ai.chronon.online.GroupByServingInfoParsed
-import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
@@ -89,7 +89,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   * @tparam T The input data type
   */
 case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
-    extends BaseAvroCodecFn[Map[String, Any], PutRequest] {
+    extends BaseAvroCodecFn[Map[String, Any], AvroCodecOutput] {
 
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
@@ -101,7 +101,7 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
 
   override def close(): Unit = super.close()
 
-  override def flatMap(value: Map[String, Any], out: Collector[PutRequest]): Unit =
+  override def flatMap(value: Map[String, Any], out: Collector[AvroCodecOutput]): Unit =
     try {
       out.collect(avroConvertMapToPutRequest(value))
     } catch {
@@ -113,11 +113,11 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
         avroConversionErrorCounter.inc()
     }
 
-  def avroConvertMapToPutRequest(in: Map[String, Any]): PutRequest = {
+  def avroConvertMapToPutRequest(in: Map[String, Any]): AvroCodecOutput = {
     val tsMills = in(timeColumnAlias).asInstanceOf[Long]
     val keyBytes = keyToBytes(keyColumns.map(in(_)))
     val valueBytes = valueToBytes(valueColumns.map(in(_)))
-    PutRequest(keyBytes, valueBytes, streamingDataset, Some(tsMills))
+    new AvroCodecOutput(keyBytes, valueBytes, streamingDataset, tsMills)
   }
 }
 
@@ -129,7 +129,7 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
   * @tparam T The input data type
   */
 case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
-    extends BaseAvroCodecFn[TimestampedTile, PutRequest] {
+    extends BaseAvroCodecFn[TimestampedTile, AvroCodecOutput] {
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
     val metricsGroup = getRuntimeContext.getMetricGroup
@@ -140,7 +140,7 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
   }
   override def close(): Unit = super.close()
 
-  override def flatMap(value: TimestampedTile, out: Collector[PutRequest]): Unit =
+  override def flatMap(value: TimestampedTile, out: Collector[AvroCodecOutput]): Unit =
     try {
       out.collect(avroConvertTileToPutRequest(value))
     } catch {
@@ -152,7 +152,7 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
         avroConversionErrorCounter.inc()
     }
 
-  def avroConvertTileToPutRequest(in: TimestampedTile): PutRequest = {
+  def avroConvertTileToPutRequest(in: TimestampedTile): AvroCodecOutput = {
     val tsMills = in.latestTsMillis
 
     // 'keys' is a map of (key name in schema -> key value), e.g. Map("card_number" -> "4242-4242-4242-4242")
@@ -170,6 +170,6 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
         |streamingDataset=$streamingDataset""".stripMargin
     )
 
-    PutRequest(keyBytes, valueBytes, streamingDataset, Some(tsMills))
+    new AvroCodecOutput(keyBytes, valueBytes, streamingDataset, tsMills)
   }
 }

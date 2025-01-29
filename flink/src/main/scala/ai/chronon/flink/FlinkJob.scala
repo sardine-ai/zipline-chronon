@@ -7,14 +7,15 @@ import ai.chronon.api.DataType
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.flink.FlinkJob.watermarkStrategy
+import ai.chronon.flink.types.AvroCodecOutput
+import ai.chronon.flink.types.TimestampedTile
+import ai.chronon.flink.types.WriteResponse
 import ai.chronon.flink.window.AlwaysFireOnElementTrigger
 import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.flink.window.KeySelector
-import ai.chronon.flink.window.TimestampedTile
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
-import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
 import ai.chronon.online.TopicInfo
@@ -58,7 +59,7 @@ import scala.concurrent.duration.FiniteDuration
   * @tparam T - The input data type
   */
 class FlinkJob[T](eventSrc: FlinkSource[T],
-                  sinkFn: RichAsyncFunction[PutRequest, WriteResponse],
+                  sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
                   groupByServingInfoParsed: GroupByServingInfoParsed,
                   encoder: Encoder[T],
                   parallelism: Int) {
@@ -117,7 +118,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .name(s"Spark expression eval with timestamps for $groupByName")
       .setParallelism(sourceStream.parallelism)
 
-    val putRecordDS: DataStream[PutRequest] = sparkExprEvalDSWithWatermarks
+    val putRecordDS: DataStream[AvroCodecOutput] = sparkExprEvalDSWithWatermarks
       .flatMap(AvroCodecFn[T](groupByServingInfoParsed))
       .uid(s"avro-conversion-$groupByName")
       .name(s"Avro conversion for $groupByName")
@@ -221,7 +222,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .name(s"Tiling Side Output Late Data for $groupByName")
       .setParallelism(sourceStream.parallelism)
 
-    val putRecordDS: DataStream[PutRequest] = tilingDS
+    val putRecordDS: DataStream[AvroCodecOutput] = tilingDS
       .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed))
       .uid(s"avro-conversion-01-$groupByName")
       .name(s"Avro conversion for $groupByName")
