@@ -8,13 +8,13 @@ import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.spark.sql.Encoders
-import org.junit.Assert.assertEquals
 import org.mockito.Mockito.withSettings
 import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
@@ -89,12 +89,13 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
     // capture the datastream of the 'created' timestamps of all the written out events
     val writeEventCreatedDS = CollectSink.values.asScala
 
-    assert(writeEventCreatedDS.size == elements.size)
+    writeEventCreatedDS.size shouldBe elements.size
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
-    assertEquals(writeEventCreatedDS.map(_.tsMillis).toSet, elements.map(_.created).toSet)
+
+    writeEventCreatedDS.map(_.tsMillis).toSet shouldBe elements.map(_.created).toSet
     // check that all the writes were successful
-    assertEquals(writeEventCreatedDS.map(_.status), Seq(true, true, true))
+    writeEventCreatedDS.map(_.status) shouldBe Seq(true, true, true)
   }
 
   it should "tiled flink job end to end" in {
@@ -128,12 +129,13 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
 
     // BASIC ASSERTIONS
     // All elements were processed
-    assert(writeEventCreatedDS.size == elements.size)
+    writeEventCreatedDS.size shouldBe elements.size
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
-    assertEquals(writeEventCreatedDS.map(_.tsMillis).toSet, elements.map(_.created).toSet)
+    writeEventCreatedDS.map(_.tsMillis).toSet shouldBe  elements.map(_.created).toSet
+
     // check that all the writes were successful
-    assertEquals(writeEventCreatedDS.map(_.status), Seq(true, true, true))
+    writeEventCreatedDS.map(_.status) shouldBe Seq(true, true, true)
 
     // Assert that the pre-aggregates/tiles are correct
     // Get a list of the final IRs for each key.
@@ -156,6 +158,6 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
       List("id2") -> List(10.0)
     )
 
-    assertEquals(expectedFinalIRsPerKey, finalIRsPerKey)
+    expectedFinalIRsPerKey shouldBe finalIRsPerKey
   }
 }

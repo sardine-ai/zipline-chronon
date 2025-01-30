@@ -1,6 +1,7 @@
 package ai.chronon.flink.window
 
 import ai.chronon.api.GroupBy
+import org.apache.flink.api.java.functions.KeySelector
 import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters._
@@ -10,7 +11,7 @@ import scala.jdk.CollectionConverters._
   * KeySelector guarantees that events with the same key always end up in the same machine.
   * If invoked multiple times on the same object, the returned key must be the same.
   */
-object KeySelector {
+object KeySelectorBuilder {
   private[this] lazy val logger = LoggerFactory.getLogger(getClass)
 
   /**
@@ -21,7 +22,7 @@ object KeySelector {
     * Flink SparkExprEval DataStream by color and size, so all events with the same (color, size) are sent to the same
     * operator.
     */
-  def getKeySelectionFunction(groupBy: GroupBy): Map[String, Any] => List[Any] = {
+  def build(groupBy: GroupBy): KeySelector[Map[String, Any], List[Any]] = {
     // List uses MurmurHash.seqHash for its .hashCode(), which gives us hashing based on content.
     // (instead of based on the instance, which is the case for Array).
     val groupByKeys: List[String] = groupBy.keyColumns.asScala.toList

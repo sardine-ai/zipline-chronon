@@ -12,12 +12,13 @@ import ai.chronon.online.TileCodec
 import org.apache.flink.api.common.functions.AggregateFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
-import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import java.lang
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
@@ -148,14 +149,12 @@ class FlinkRowAggProcessFunction(
     * Process events emitted from the aggregate function.
     * Output format: (keys, encoded tile IR, timestamp of the event being processed)
     * */
-  override def process(
-      keys: List[Any],
-      context: Context,
-      elements: Iterable[TimestampedIR],
-      out: Collector[TimestampedTile]
-  ): Unit = {
+  override def process(keys: List[Any],
+                       context: ProcessWindowFunction[TimestampedIR, TimestampedTile, List[Any], TimeWindow]#Context,
+                       elements: lang.Iterable[TimestampedIR],
+                       out: Collector[TimestampedTile]): Unit = {
     val windowEnd = context.window.getEnd
-    val irEntry = elements.head
+    val irEntry = elements.iterator.next()
     val isComplete = context.currentWatermark >= windowEnd
 
     val tileBytes = Try {
@@ -165,11 +164,11 @@ class FlinkRowAggProcessFunction(
     tileBytes match {
       case Success(v) => {
         logger.debug(
-          s""" 
-                |Flink aggregator processed element irEntry=$irEntry
-                |tileBytes=${java.util.Base64.getEncoder.encodeToString(v)}
-                |windowEnd=$windowEnd groupBy=${groupBy.getMetaData.getName}
-                |keys=$keys isComplete=$isComplete tileAvroSchema=${tileCodec.tileAvroSchema}"""
+          s"""
+             |Flink aggregator processed element irEntry=$irEntry
+             |tileBytes=${java.util.Base64.getEncoder.encodeToString(v)}
+             |windowEnd=$windowEnd groupBy=${groupBy.getMetaData.getName}
+             |keys=$keys isComplete=$isComplete tileAvroSchema=${tileCodec.tileAvroSchema}"""
         )
         // The timestamp should never be None here.
         out.collect(new TimestampedTile(keys, v, irEntry.latestTsMillis.get))

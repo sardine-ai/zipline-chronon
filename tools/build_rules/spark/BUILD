@@ -1,6 +1,6 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//tools/build_rules/dependencies:defs.bzl", "get_jars_for_repository")
+
+package(default_visibility = ["//visibility:public"])
 
 SPARK_JARS = [
     scala_jar(

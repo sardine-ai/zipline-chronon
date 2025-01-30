@@ -3,9 +3,9 @@ scala_library(
     srcs = glob(["src/main/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
+        "//aggregator:lib",
         "//api:lib",
         "//api:thrift",
-        "//aggregator:lib",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
         scala_artifact("org.scala-lang.modules:scala-java8-compat"),
@@ -41,6 +41,9 @@ test_deps = _FLINK_TEST_DEPS + [
     maven_artifact("org.scalatest:scalatest-compatible"),
     maven_artifact("junit:junit"),
     maven_artifact("com.novocode:junit-interface"),
+    #    scala_artifact("com.fasterxml.jackson.module:jackson-module-scala:2.15.2"),
+    #    scala_artifact("org.apache.spark:spark-sql"),
+    #    scala_artifact("org.apache.spark:spark-core"),
 ]
 
 scala_library(
@@ -54,7 +57,10 @@ scala_test_suite(
     name = "test",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib",],
+    deps = [
+        maven_artifact("com.fasterxml.jackson.core:jackson-core:2.15.2"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind:2.15.2"),
+    ] + test_deps + [":test-lib"],
 )
 
 jvm_binary(

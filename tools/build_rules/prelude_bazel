@@ -30,8 +30,6 @@ _SCALA_DEPS = [
 ]
 
 _FLINK_DEPS = [
-    scala_artifact("org.apache.flink:flink-streaming-scala"),
-    scala_artifact("org.apache.flink:flink-scala"),
     maven_artifact("org.apache.flink:flink-streaming-java"),
     maven_artifact("org.apache.flink:flink-core"),
     maven_artifact("org.apache.flink:flink-metrics-dropwizard"),
@@ -44,8 +42,6 @@ _FLINK_DEPS = [
 
 _FLINK_TEST_DEPS = [
     # Libraries
-    scala_artifact("org.apache.flink:flink-streaming-scala"),
-    scala_artifact("org.apache.flink:flink-scala"),
     maven_artifact("org.apache.flink:flink-streaming-java"),
     maven_artifact("org.apache.flink:flink-core"),
     maven_artifact("org.apache.flink:flink-runtime"),

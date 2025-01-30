@@ -8,6 +8,7 @@ import ai.chronon.api.GroupBy
 import ai.chronon.api.GroupByServingInfo
 import ai.chronon.api.Operation
 import ai.chronon.api.PartitionSpec
+import ai.chronon.api.ScalaJavaConversions.JListOps
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.flink.AsyncKVStoreWriter
@@ -19,10 +20,9 @@ import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
-import org.apache.flink.api.scala.createTypeInformation
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.spark.sql.types.StructType
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.when
@@ -42,8 +42,8 @@ case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: L
 class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestEvent] {
 
   override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
-                                                               parallelism: Int): DataStream[E2ETestEvent] = {
-    env.fromCollection(mockEvents)
+                                                               parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
+    env.fromCollection(mockEvents.toJava)
   }
 }
 
@@ -56,8 +56,8 @@ class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSour
           event.created
       })
   override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
-                                                               parallelism: Int): DataStream[E2ETestEvent] = {
-    env.fromCollection(mockEvents).assignTimestampsAndWatermarks(watermarkStrategy)
+                                                               parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
+    env.fromCollection(mockEvents.toJava).assignTimestampsAndWatermarks(watermarkStrategy)
   }
 }
 

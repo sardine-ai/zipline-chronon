@@ -13,7 +13,8 @@ import ai.chronon.flink.types.WriteResponse
 import ai.chronon.flink.window.AlwaysFireOnElementTrigger
 import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
-import ai.chronon.flink.window.KeySelector
+
+import ai.chronon.flink.window.KeySelectorBuilder
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.MetadataStore
@@ -21,20 +22,20 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.online.TopicInfo
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
-import org.apache.flink.api.scala._
 import org.apache.flink.configuration.CheckpointingOptions
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.configuration.StateBackendOptions
 import org.apache.flink.streaming.api.CheckpointingMode
+import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.api.scala.OutputTag
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.util.OutputTag
 import org.apache.spark.sql.Encoder
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
@@ -110,19 +111,19 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .flatMap(exprEval)
       .uid(s"spark-expr-eval-flatmap-$groupByName")
       .name(s"Spark expression eval for $groupByName")
-      .setParallelism(sourceStream.parallelism) // Use same parallelism as previous operator
+      .setParallelism(sourceStream.getParallelism) // Use same parallelism as previous operator
 
     val sparkExprEvalDSWithWatermarks: DataStream[Map[String, Any]] = sparkExprEvalDS
       .assignTimestampsAndWatermarks(watermarkStrategy)
       .uid(s"spark-expr-eval-timestamps-$groupByName")
       .name(s"Spark expression eval with timestamps for $groupByName")
-      .setParallelism(sourceStream.parallelism)
+      .setParallelism(sourceStream.getParallelism)
 
     val putRecordDS: DataStream[AvroCodecOutput] = sparkExprEvalDSWithWatermarks
       .flatMap(AvroCodecFn[T](groupByServingInfoParsed))
       .uid(s"avro-conversion-$groupByName")
       .name(s"Avro conversion for $groupByName")
-      .setParallelism(sourceStream.parallelism)
+      .setParallelism(sourceStream.getParallelism)
 
     AsyncKVStoreWriter.withUnorderedWaits(
       putRecordDS,
@@ -165,13 +166,13 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .flatMap(exprEval)
       .uid(s"spark-expr-eval-flatmap-$groupByName")
       .name(s"Spark expression eval for $groupByName")
-      .setParallelism(sourceStream.parallelism) // Use same parallelism as previous operator
+      .setParallelism(sourceStream.getParallelism) // Use same parallelism as previous operator
 
     val sparkExprEvalDSAndWatermarks: DataStream[Map[String, Any]] = sparkExprEvalDS
       .assignTimestampsAndWatermarks(watermarkStrategy)
       .uid(s"spark-expr-eval-timestamps-$groupByName")
       .name(s"Spark expression eval with timestamps for $groupByName")
-      .setParallelism(sourceStream.parallelism)
+      .setParallelism(sourceStream.getParallelism)
 
     val inputSchema: Seq[(String, DataType)] =
       exprEval.getOutputSchema.fields
@@ -187,7 +188,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     val trigger = new AlwaysFireOnElementTrigger()
 
     // We use Flink "Side Outputs" to track any late events that aren't computed.
-    val tilingLateEventsTag = OutputTag[Map[String, Any]]("tiling-late-events")
+    val tilingLateEventsTag = new OutputTag[Map[String, Any]]("tiling-late-events")
 
     // The tiling operator works the following way:
     // 1. Input: Spark expression eval (previous operator)
@@ -199,20 +200,21 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     // 6. A process window function does additional processing each time the AggregationFunction emits results
     //    - The only purpose of this window function is to mark tiles as closed so we can do client-side caching in SFS
     // 7. Output: TimestampedTile, containing the current IRs (Avro encoded) and the timestamp of the current element
-    val tilingDS: DataStream[TimestampedTile] =
+
+    val tilingDS: SingleOutputStreamOperator[TimestampedTile] =
       sparkExprEvalDSAndWatermarks
-        .keyBy(KeySelector.getKeySelectionFunction(groupByServingInfoParsed.groupBy))
+        .keyBy(KeySelectorBuilder.build(groupByServingInfoParsed.groupBy))
         .window(window)
         .trigger(trigger)
         .sideOutputLateData(tilingLateEventsTag)
         .aggregate(
           // See Flink's "ProcessWindowFunction with Incremental Aggregation"
-          preAggregator = new FlinkRowAggregationFunction(groupByServingInfoParsed.groupBy, inputSchema),
-          windowFunction = new FlinkRowAggProcessFunction(groupByServingInfoParsed.groupBy, inputSchema)
+          new FlinkRowAggregationFunction(groupByServingInfoParsed.groupBy, inputSchema),
+          new FlinkRowAggProcessFunction(groupByServingInfoParsed.groupBy, inputSchema)
         )
         .uid(s"tiling-01-$groupByName")
         .name(s"Tiling for $groupByName")
-        .setParallelism(sourceStream.parallelism)
+        .setParallelism(sourceStream.getParallelism)
 
     // Track late events
     tilingDS
@@ -220,13 +222,13 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .flatMap(new LateEventCounter(groupByName))
       .uid(s"tiling-side-output-01-$groupByName")
       .name(s"Tiling Side Output Late Data for $groupByName")
-      .setParallelism(sourceStream.parallelism)
+      .setParallelism(sourceStream.getParallelism)
 
     val putRecordDS: DataStream[AvroCodecOutput] = tilingDS
       .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed))
       .uid(s"avro-conversion-01-$groupByName")
       .name(s"Avro conversion for $groupByName")
-      .setParallelism(sourceStream.parallelism)
+      .setParallelism(sourceStream.getParallelism)
 
     AsyncKVStoreWriter.withUnorderedWaits(
       putRecordDS,
@@ -382,7 +384,7 @@ object FlinkJob {
       .addSink(new MetricsSink(flinkJob.groupByName))
       .uid(s"metrics-sink - ${flinkJob.groupByName}")
       .name(s"Metrics Sink for ${flinkJob.groupByName}")
-      .setParallelism(jobDatastream.parallelism)
+      .setParallelism(jobDatastream.getParallelism)
 
     env.execute(s"${flinkJob.groupByName}")
   }

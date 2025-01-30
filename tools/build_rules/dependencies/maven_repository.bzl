@@ -13,7 +13,7 @@ maven_repository = repository(
 
         # JUnit
         "junit:junit:4.13.2",
-        "org.junit.jupiter:junit-jupiter-api:5.10.5",
+        "org.junit.jupiter:junit-jupiter-api:5.9.1",
         "org.junit.platform:junit-platform-launcher:1.10.5",
         "org.junit.platform:junit-platform-reporting:1.10.5",
         "com.novocode:junit-interface:0.11",
@@ -32,6 +32,7 @@ maven_repository = repository(
         "org.apache.logging.log4j:log4j-api-scala_2.12:13.1.0",
         "org.apache.datasketches:datasketches-memory:3.0.2",
         "org.apache.datasketches:datasketches-java:6.1.1",
+        # jackson
         "com.fasterxml.jackson.core:jackson-core:2.15.2",
         "com.fasterxml.jackson.core:jackson-databind:2.15.2",
         "com.fasterxml.jackson.module:jackson-module-scala_2.12:2.15.2",
