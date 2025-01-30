@@ -509,8 +509,10 @@ lazy val orchestration = project
       "org.apache.logging.log4j" %% "log4j-api-scala" % "13.1.0",
       "org.apache.logging.log4j" % "log4j-core" % "2.20.0",
 //      "org.slf4j" % "slf4j-api" % slf4jApiVersion,
-      "org.scalatest" %% "scalatest" % "3.2.19" % "test"
-    )
+      "org.scalatest" %% "scalatest" % "3.2.19" % "test",
+      "io.vertx" % "vertx-web-client" % vertxVersion,
+    ),
+
   )
 
 ThisBuild / assemblyMergeStrategy := {

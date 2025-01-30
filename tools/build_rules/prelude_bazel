@@ -77,3 +77,15 @@ _CIRCE_DEPS = [
     scala_artifact("io.circe:circe-generic"),
     scala_artifact("io.circe:circe-parser"),
 ]
+
+_SCALA_TEST_DEPS = [
+    # Testing
+    scala_artifact("org.scalatest:scalatest-matchers-core"),
+    scala_artifact("org.scalatest:scalatest-core"),
+    scala_artifact("org.scalatest:scalatest"),
+    scala_artifact("org.scalatest:scalatest-flatspec"),
+    scala_artifact("org.scalatest:scalatest-shouldmatchers"),
+    scala_artifact("org.scalactic:scalactic"),
+    scala_artifact("org.scalatestplus:mockito-3-4"),
+    maven_artifact("org.scalatest:scalatest-compatible"),
+]
