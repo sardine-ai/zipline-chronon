@@ -690,7 +690,7 @@ object Driver {
       if (keyMapList.length > 1) {
         logger.info(s"Plan to send ${keyMapList.length} fetches with ${args.interval()} seconds interval")
       }
-      val fetcher = args.impl(args.serializableProps).buildFetcher(true, "FetcherCLI")
+      val fetcher = args.api.buildFetcher(true, "FetcherCLI")
       def iterate(): Unit = {
         keyMapList.foreach(keyMap => {
           logger.info(s"--- [START FETCHING for ${keyMap}] ---")
@@ -722,6 +722,8 @@ object Driver {
                 } else {
                   valMap.foreach { case (k, v) => tMap.put(k, v) }
                   logger.info(
+                    s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
+                  println(
                     s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
                 }
                 logger.info(s"Fetched in: $awaitTimeMs ms")

@@ -15,7 +15,7 @@
       "CUSTOMER_ID": "canary",
       "GCP_PROJECT_ID": "canary-443022",
       "GCP_REGION": "us-central1",
-      "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+      "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
       "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance"
     },
     "production": {
@@ -61,7 +61,7 @@
   },
   "quickstart": {
     "description": "Used for the quickstart example",
-    "namespace": "default"
+    "namespace": "canary-443022.data"
   },
   "risk": {
     "description": "Used for proof of concept",
