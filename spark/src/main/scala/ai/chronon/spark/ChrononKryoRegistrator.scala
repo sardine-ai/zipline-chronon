@@ -80,6 +80,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
     //kryo.setWarnUnregisteredClasses(true)
     val names = Seq(
       "java.time.LocalDateTime",
+      "java.time.LocalDate",
       "org.apache.hadoop.fs.Path",
       "org.apache.hadoop.fs.FileStatus",
       "org.apache.hadoop.fs.LocatedFileStatus",

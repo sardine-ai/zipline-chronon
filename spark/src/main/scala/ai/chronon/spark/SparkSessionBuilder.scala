@@ -22,6 +22,7 @@ import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.spark.SPARK_VERSION
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.internal.SQLConf
 import org.slf4j.LoggerFactory
 
 import java.io.File
@@ -130,6 +131,7 @@ object SparkSessionBuilder {
       .config("spark.sql.catalogImplementation", "hive")
       .config("spark.hadoop.hive.exec.max.dynamic.partitions", 30000)
       .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
+      .config(SQLConf.DATETIME_JAVA8API_ENABLED.key, true)
 
     // Staging queries don't benefit from the KryoSerializer and in fact may fail with buffer underflow in some cases.
     if (enforceKryoSerializer) {

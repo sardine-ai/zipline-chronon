@@ -6,7 +6,11 @@ import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
 import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystemConfiguration
 import com.google.cloud.hadoop.fs.gcs.HadoopConfigurationProperty
+import com.google.cloud.spark.bigquery.SparkBigQueryUtil
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.to_date
+import org.apache.spark.sql.internal.SQLConf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.scalatest.flatspec.AnyFlatSpec
@@ -46,6 +50,19 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
       case BigQueryFormat(_, _, _) => true
       case _                       => false
     })
+  }
+
+  it should "bigquery connector converts spark dates regardless of date setting" in {
+    val input = spark.createDataFrame(Seq((1, "2021-01-01"))).toDF("id", "ds")
+    spark.conf.set(SQLConf.DATETIME_JAVA8API_ENABLED.key, true)
+    val java8Date = input.select(col("id"), to_date(col("ds"))).collect.take(1).head.get(1)
+    assert(java8Date.isInstanceOf[java.time.LocalDate])
+    SparkBigQueryUtil.sparkDateToBigQuery(java8Date)
+
+    spark.conf.set(SQLConf.DATETIME_JAVA8API_ENABLED.key, false)
+    val nonJava8Date = input.select(col("id"), to_date(col("ds"))).collect.take(1).head.get(1)
+    assert(nonJava8Date.isInstanceOf[java.sql.Date])
+    SparkBigQueryUtil.sparkDateToBigQuery(nonJava8Date)
   }
 
   it should "integration testing bigquery native table" ignore {
