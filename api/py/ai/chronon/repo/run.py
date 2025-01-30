@@ -205,6 +205,7 @@ def download_only_once(url, path, skip_download=False):
         check_call("curl {} -o {} --connect-timeout 10".format(url, path))
 
 
+# NOTE: this is only for the open source chronon. For the internal zipline version, we have a different jar to download.
 @retry_decorator(retries=3, backoff=50)
 def download_jar(
         version,
@@ -407,10 +408,12 @@ class Runner:
         self.mode = args["mode"]
         self.online_jar = args["online_jar"]
         self.dataproc = args["dataproc"]
+        self.conf_type = args["conf_type"]
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
         # fetch online jar if necessary
-        if (self.mode in ONLINE_MODES) and (not args["sub_help"] and not self.dataproc) and not valid_jar:
+        if (self.mode in ONLINE_MODES) and (not args["sub_help"] and not self.dataproc) and not valid_jar and (
+                args.get("online_jar_fetch")):
             print("Downloading online_jar")
             self.online_jar = check_output("{}".format(args["online_jar_fetch"])).decode(
                 "utf-8"
@@ -446,6 +449,13 @@ class Runner:
             else 1
         )
         self.jar_path = jar_path
+
+        # If SPARK_HOME is set, also include it in the jar_path
+        spark_home_env_var = os.environ.get("SPARK_HOME")
+        if spark_home_env_var and os.path.exists(os.path.join(
+                spark_home_env_var, "jars")):
+            self.jar_path = f"{self.jar_path}:{spark_home_env_var}/jars/*"
+
         self.args = args["args"] if args["args"] else ""
         self.online_class = args["online_class"]
         self.app_name = args["app_name"]
@@ -461,151 +471,99 @@ class Runner:
         self.list_apps_cmd = args["list_apps"]
 
     def run(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            command_list = []
-            if self.mode == "info":
-                command_list.append(
-                    "python3 {script} --conf {conf} --ds {ds} --repo {repo}".format(
-                        script=self.render_info, conf=self.conf, ds=self.ds, repo=self.repo
+        command_list = []
+        if self.mode == "info":
+            command_list.append(
+                "python3 {script} --conf {conf} --ds {ds} --repo {repo}".format(
+                    script=self.render_info, conf=self.conf, ds=self.ds, repo=self.repo
+                )
+            )
+        elif (self.sub_help or (self.mode not in SPARK_MODES)) and not self.dataproc:
+            command_list.append(
+                "java -cp {jar} ai.chronon.spark.Driver {subcommand} {args}".format(
+                    jar=self.jar_path,
+                    args="--help" if self.sub_help else self._gen_final_args(),
+                    subcommand=ROUTES[self.conf_type][self.mode],
+                )
+            )
+        else:
+            if self.mode in ["streaming", "streaming-client"]:
+                # streaming mode
+                self.app_name = self.app_name.replace(
+                    "_streaming-client_", "_streaming_"
+                )  # If the job is running cluster mode we want to kill it.
+                print(
+                    "Checking to see if a streaming job by the name {} already exists".format(
+                        self.app_name
                     )
                 )
-            elif (self.sub_help or (self.mode not in SPARK_MODES)) and not self.dataproc:
-                command_list.append(
-                    "java -cp {jar} ai.chronon.spark.Driver {subcommand} {args}".format(
-                        jar=self.jar_path,
-                        args="--help" if self.sub_help else self._gen_final_args(),
-                        subcommand=ROUTES[self.conf_type][self.mode],
-                    )
+                running_apps = (
+                    check_output("{}".format(self.list_apps_cmd))
+                    .decode("utf-8")
+                    .split("\n")
                 )
-            else:
-                if self.mode in ["streaming", "streaming-client"]:
-                    # streaming mode
-                    self.app_name = self.app_name.replace(
-                        "_streaming-client_", "_streaming_"
-                    )  # If the job is running cluster mode we want to kill it.
+                running_app_map = {}
+                for app in running_apps:
+                    try:
+                        app_json = json.loads(app.strip())
+                        app_name = app_json["app_name"].strip()
+                        if app_name not in running_app_map:
+                            running_app_map[app_name] = []
+                        running_app_map[app_name].append(app_json)
+                    except Exception as ex:
+                        print("failed to process line into app: " + app)
+                        print(ex)
+
+                filtered_apps = running_app_map.get(self.app_name, [])
+                if len(filtered_apps) > 0:
                     print(
-                        "Checking to see if a streaming job by the name {} already exists".format(
-                            self.app_name
+                        "Found running apps by the name {} in \n{}\n".format(
+                            self.app_name,
+                            "\n".join([str(app) for app in filtered_apps]),
                         )
                     )
-                    running_apps = (
-                        check_output("{}".format(self.list_apps_cmd))
-                        .decode("utf-8")
-                        .split("\n")
+                    if self.mode == "streaming":
+                        assert (len(filtered_apps) == 1), "More than one found, please kill them all"
+                        print("All good. No need to start a new app.")
+                        return
+                    elif self.mode == "streaming-client":
+                        raise RuntimeError(
+                            "Attempting to submit an application in client mode, but there's already"
+                            " an existing one running."
+                        )
+                command = (
+                    "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} {additional_args}"
+                ).format(
+                    script=self.spark_submit,
+                    jar=self.jar_path,
+                    subcommand=ROUTES[self.conf_type][self.mode],
+                    args=self._gen_final_args(),
+                    additional_args=os.environ.get(
+                        "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
+                    ),
+                )
+                command_list.append(command)
+            else:
+
+                if self.parallelism > 1:
+                    assert self.start_ds is not None and self.ds is not None, (
+                        "To use parallelism, please specify --start-ds and --end-ds to "
+                        "break down into multiple backfill jobs"
                     )
-                    running_app_map = {}
-                    for app in running_apps:
-                        try:
-                            app_json = json.loads(app.strip())
-                            app_name = app_json["app_name"].strip()
-                            if app_name not in running_app_map:
-                                running_app_map[app_name] = []
-                            running_app_map[app_name].append(app_json)
-                        except Exception as ex:
-                            print("failed to process line into app: " + app)
-                            print(ex)
-
-                    filtered_apps = running_app_map.get(self.app_name, [])
-                    if len(filtered_apps) > 0:
-                        print(
-                            "Found running apps by the name {} in \n{}\n".format(
-                                self.app_name,
-                                "\n".join([str(app) for app in filtered_apps]),
-                            )
-                        )
-                        if self.mode == "streaming":
-                            assert (len(filtered_apps) == 1), "More than one found, please kill them all"
-                            print("All good. No need to start a new app.")
-                            return
-                        elif self.mode == "streaming-client":
-                            raise RuntimeError(
-                                "Attempting to submit an application in client mode, but there's already"
-                                " an existing one running."
-                            )
-                    command = (
-                        "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} {additional_args}"
-                    ).format(
-                        script=self.spark_submit,
-                        jar=self.jar_path,
-                        subcommand=ROUTES[self.conf_type][self.mode],
-                        args=self._gen_final_args(),
-                        additional_args=os.environ.get(
-                            "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
-                        ),
+                    date_ranges = split_date_range(
+                        self.start_ds, self.ds, self.parallelism
                     )
-                    command_list.append(command)
-                else:
-                    # Always download the jar for now so that we can pull
-                    # in any fixes or latest changes
-                    if self.dataproc:
-                        dataproc_jar = download_dataproc_jar(temp_dir, get_customer_id())
-
-                    if self.parallelism > 1:
-                        assert self.start_ds is not None and self.ds is not None, (
-                            "To use parallelism, please specify --start-ds and --end-ds to "
-                            "break down into multiple backfill jobs"
-                        )
-                        date_ranges = split_date_range(
-                            self.start_ds, self.ds, self.parallelism
-                        )
-                        for start_ds, end_ds in date_ranges:
-                            if not self.dataproc:
-                                command = (
-                                        "bash {script} --class ai.chronon.spark.Driver " +
-                                        "{jar} {subcommand} {args} {additional_args}"
-                                ).format(
-                                    script=self.spark_submit,
-                                    jar=self.jar_path,
-                                    subcommand=ROUTES[self.conf_type][self.mode],
-                                    args=self._gen_final_args(
-                                        start_ds=start_ds, end_ds=end_ds),
-                                    additional_args=os.environ.get(
-                                        "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
-                                    ),
-                                )
-                                command_list.append(command)
-                            else:
-                                user_args = (
-                                    "{subcommand} {args} {additional_args}"
-                                ).format(
-                                    subcommand=ROUTES[self.conf_type][self.mode],
-                                    args=self._gen_final_args(start_ds=self.start_ds,
-                                                              end_ds=end_ds,
-                                                              # overriding the conf here because we only want the
-                                                              # filename, not the full path. When we upload this to
-                                                              # GCS, the full path does get reflected on GCS. But
-                                                              # when we include the gcs file path as part of dataproc,
-                                                              # the file is copied to root and not the complete path
-                                                              # is copied.
-                                                              override_conf_path=extract_filename_from_path(
-                                                                  self.conf) if self.conf else None),
-                                    additional_args=os.environ.get(
-                                        "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
-                                    ),
-                                )
-                                local_files_to_upload_to_gcs = []
-                                if self.conf:
-                                    local_files_to_upload_to_gcs.append(
-                                        self.conf)
-
-                                dataproc_command = generate_dataproc_submitter_args(
-                                    local_files_to_upload_to_gcs=[self.conf],
-                                    # for now, self.conf is the only local file that requires uploading to gcs
-                                    user_args=user_args
-                                )
-
-                                command = f"java -cp {dataproc_jar} {DATAPROC_ENTRY} {dataproc_command}"
-                                command_list.append(command)
-                    else:
+                    for start_ds, end_ds in date_ranges:
                         if not self.dataproc:
                             command = (
-                                    "bash {script} --class ai.chronon.spark.Driver "
-                                    + "{jar} {subcommand} {args} {additional_args}"
+                                    "bash {script} --class ai.chronon.spark.Driver " +
+                                    "{jar} {subcommand} {args} {additional_args}"
                             ).format(
                                 script=self.spark_submit,
                                 jar=self.jar_path,
                                 subcommand=ROUTES[self.conf_type][self.mode],
-                                args=self._gen_final_args(self.start_ds),
+                                args=self._gen_final_args(
+                                    start_ds=start_ds, end_ds=end_ds),
                                 additional_args=os.environ.get(
                                     "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                                 ),
@@ -617,11 +575,13 @@ class Runner:
                             ).format(
                                 subcommand=ROUTES[self.conf_type][self.mode],
                                 args=self._gen_final_args(start_ds=self.start_ds,
-                                                          # overriding the conf here because we only want the filename,
-                                                          # not the full path. When we upload this to GCS, the full path
-                                                          # does get reflected on GCS. But when we include the gcs file
-                                                          # path as part of dataproc, the file is copied to root and
-                                                          # not the complete path is copied.
+                                                          end_ds=end_ds,
+                                                          # overriding the conf here because we only want the
+                                                          # filename, not the full path. When we upload this to
+                                                          # GCS, the full path does get reflected on GCS. But
+                                                          # when we include the gcs file path as part of dataproc,
+                                                          # the file is copied to root and not the complete path
+                                                          # is copied.
                                                           override_conf_path=extract_filename_from_path(
                                                               self.conf) if self.conf else None),
                                 additional_args=os.environ.get(
@@ -630,27 +590,71 @@ class Runner:
                             )
                             local_files_to_upload_to_gcs = []
                             if self.conf:
-                                local_files_to_upload_to_gcs.append(self.conf)
+                                local_files_to_upload_to_gcs.append(
+                                    self.conf)
 
                             dataproc_command = generate_dataproc_submitter_args(
+                                local_files_to_upload_to_gcs=[self.conf],
                                 # for now, self.conf is the only local file that requires uploading to gcs
-                                local_files_to_upload_to_gcs=local_files_to_upload_to_gcs,
                                 user_args=user_args
                             )
-                            command = f"java -cp {dataproc_jar} {DATAPROC_ENTRY} {dataproc_command}"
-                            command_list.append(command)
-
-            if len(command_list) > 1:
-                # parallel backfill mode
-                with multiprocessing.Pool(processes=int(self.parallelism)) as pool:
-                    logging.info(
-                        "Running args list {} with pool size {}".format(
-                            command_list, self.parallelism
+                            command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_command}"
+                        command_list.append(command)
+                else:
+                    if not self.dataproc:
+                        command = (
+                                "bash {script} --class ai.chronon.spark.Driver "
+                                + "{jar} {subcommand} {args} {additional_args}"
+                        ).format(
+                            script=self.spark_submit,
+                            jar=self.jar_path,
+                            subcommand=ROUTES[self.conf_type][self.mode],
+                            args=self._gen_final_args(self.start_ds),
+                            additional_args=os.environ.get(
+                                "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
+                            ),
                         )
+                        command_list.append(command)
+                    else:
+                        user_args = (
+                            "{subcommand} {args} {additional_args}"
+                        ).format(
+                            subcommand=ROUTES[self.conf_type][self.mode],
+                            args=self._gen_final_args(start_ds=self.start_ds,
+                                                      # overriding the conf here because we only want the filename,
+                                                      # not the full path. When we upload this to GCS, the full path
+                                                      # does get reflected on GCS. But when we include the gcs file
+                                                      # path as part of dataproc, the file is copied to root and
+                                                      # not the complete path is copied.
+                                                      override_conf_path=extract_filename_from_path(
+                                                          self.conf) if self.conf else None),
+                            additional_args=os.environ.get(
+                                "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
+                            ),
+                        )
+                        local_files_to_upload_to_gcs = []
+                        if self.conf:
+                            local_files_to_upload_to_gcs.append(self.conf)
+
+                        dataproc_command = generate_dataproc_submitter_args(
+                            # for now, self.conf is the only local file that requires uploading to gcs
+                            local_files_to_upload_to_gcs=local_files_to_upload_to_gcs,
+                            user_args=user_args
+                        )
+                        command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_command}"
+                    command_list.append(command)
+
+        if len(command_list) > 1:
+            # parallel backfill mode
+            with multiprocessing.Pool(processes=int(self.parallelism)) as pool:
+                logging.info(
+                    "Running args list {} with pool size {}".format(
+                        command_list, self.parallelism
                     )
-                    pool.map(check_call, command_list)
-            elif len(command_list) == 1:
-                check_call(command_list[0])
+                )
+                pool.map(check_call, command_list)
+        elif len(command_list) == 1:
+            check_call(command_list[0])
 
     def _gen_final_args(self, start_ds=None, end_ds=None, override_conf_path=None):
         base_args = MODE_ARGS[self.mode].format(
@@ -721,7 +725,9 @@ def set_defaults(ctx):
         "spark_streaming_submit_path": os.path.join(
             chronon_repo_path, "scripts/spark_streaming.sh"
         ),
-        "online_jar_fetch": os.path.join(chronon_repo_path, "scripts/fetch_online_jar.py"),
+        # NOTE: We don't want to ever call the fetch_online_jar.py script since we're working
+        # on our internal zipline fork of the chronon repo
+        # "online_jar_fetch": os.path.join(chronon_repo_path, "scripts/fetch_online_jar.py"),
         "conf_type": "group_bys",
         "online_args": os.environ.get("CHRONON_ONLINE_ARGS", ""),
         "chronon_jar": os.environ.get("CHRONON_DRIVER_JAR"),
@@ -777,7 +783,7 @@ def generate_dataproc_submitter_args(local_files_to_upload_to_gcs: List[str], us
     return final_args
 
 
-def download_dataproc_jar(destination_dir: str, customer_id: str):
+def download_dataproc_submitter_jar(destination_dir: str, customer_id: str):
     print("Downloading dataproc submitter jar from GCS...")
     bucket_name = f"zipline-artifacts-{customer_id}"
 
@@ -789,6 +795,20 @@ def download_dataproc_jar(destination_dir: str, customer_id: str):
     download_gcs_blob(bucket_name, source_blob_name,
                       dataproc_jar_destination_path)
     return dataproc_jar_destination_path
+
+
+def download_chronon_gcp_jar(destination_dir: str, customer_id: str):
+    print("Downloading chronon gcp jar from GCS...")
+    bucket_name = f"zipline-artifacts-{customer_id}"
+
+    file_name = "cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+
+    source_blob_name = f"jars/{file_name}"
+    chronon_gcp_jar_destination_path = f"{destination_dir}/{file_name}"
+
+    download_gcs_blob(bucket_name, source_blob_name,
+                      chronon_gcp_jar_destination_path)
+    return chronon_gcp_jar_destination_path
 
 
 @retry_decorator(retries=2, backoff=5)
@@ -867,20 +887,17 @@ def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, paralle
     click.echo("Running with args: {}".format(ctx.params))
     set_runtime_env(ctx.params)
     set_defaults(ctx)
-    jar_type = "embedded" if mode in MODES_USING_EMBEDDED else "uber"
     extra_args = (" " + online_args) if mode in ONLINE_MODES and online_args else ""
     ctx.params["args"] = " ".join(unknown_args) + extra_args
-    jar_path = (
-        chronon_jar
-        if chronon_jar
-        else download_jar(
-            version,
-            jar_type=jar_type,
-            release_tag=release_tag,
-            spark_version=os.environ.get("SPARK_VERSION", spark_version),
-        )
-    )
-    Runner(ctx.params, os.path.expanduser(jar_path)).run()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        if dataproc:
+            jar_path = download_dataproc_submitter_jar(temp_dir, get_customer_id())
+        elif chronon_jar:
+            jar_path = chronon_jar
+        else:
+            jar_path = download_chronon_gcp_jar(temp_dir, get_customer_id())
+
+        Runner(ctx.params, os.path.expanduser(jar_path)).run()
 
 
 if __name__ == "__main__":
