@@ -89,6 +89,7 @@ class Operation:
     APPROX_PERCENTILE = generic_collector(
         ttypes.Operation.APPROX_PERCENTILE, ["percentiles"], k=128
     )
+    BOUNDED_UNIQUE_COUNT = collector(ttypes.Operation.BOUNDED_UNIQUE_COUNT)
 
 
 def Aggregations(**agg_dict):
