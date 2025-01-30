@@ -24,6 +24,7 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.online.TileCodec
 import ai.chronon.spark.GenericRowHandler
 import ai.chronon.spark.TableUtils
+import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.io.BinaryEncoder
@@ -46,6 +47,7 @@ class InMemoryStream {
     row.schema.fieldNames.foreach(name => gr.put(name, row.getAs(name)))
 
     val writer = new SpecificDatumWriter[GenericRecord](schema)
+    writer.getData.addLogicalTypeConversion(new TimeConversions.DateConversion())
     val out = new ByteArrayOutputStream()
     val encoder: BinaryEncoder = EncoderFactory.get().binaryEncoder(out, null)
     writer.write(gr, encoder)

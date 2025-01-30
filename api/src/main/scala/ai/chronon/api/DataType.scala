@@ -163,6 +163,7 @@ case class MapType(keyType: DataType, valueType: DataType) extends DataType
 case class StructField(name: String, fieldType: DataType)
 
 // maps to java.sql.Date
+// maps to java.time.LocalDate if DATETIME_JAVA8API_ENABLED is true
 case object DateType extends DataType
 
 // maps to java.sql.Timestamp

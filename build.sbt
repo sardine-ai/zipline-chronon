@@ -1,6 +1,5 @@
-import sbt.Keys.{dependencyOverrides, libraryDependencies, *}
 import sbt.{Test, *}
-import sbt.Tests.{Group, SubProcess}
+import sbt.Keys.{dependencyOverrides, libraryDependencies, *}
 
 import scala.collection.Seq
 
@@ -111,7 +110,7 @@ val flink_all = Seq(
   "org.apache.flink" % "flink-clients",
   "org.apache.flink" % "flink-yarn",
   "org.apache.flink" % "flink-connector-kafka",
-  "org.apache.flink" % "flink-avro",
+  "org.apache.flink" % "flink-avro"
 ).map(_ % flink_1_17)
 
 val vertx_java = Seq(
@@ -210,7 +209,6 @@ lazy val spark = project
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
     libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
     libraryDependencies += "net.sf.py4j" % "py4j" % "0.10.9.9",
-
     libraryDependencies := libraryDependencies.value.map(_.exclude("org.slf4j", "slf4j-log4j12"))
   )
 
@@ -275,7 +273,7 @@ lazy val flink_kafka_ingest = project
     },
     assembly / packageOptions += Package.ManifestAttributes(
       ("Main-Class", "ai.chronon.flink.FlinkKafkaBeaconEventDriver")
-    ),
+    )
   )
 
 // GCP requires java 11, can't cross compile higher
@@ -292,14 +290,15 @@ lazy val cloud_gcp = project
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop3-2.2.26",
     libraryDependencies += "com.google.cloud.bigdataoss" % "gcsio" % "3.0.3", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/gcsio/src/main/java/com/google/cloud/hadoop/gcsio/GoogleCloudStorageFileSystem.java
     libraryDependencies += "com.google.cloud.bigdataoss" % "util-hadoop" % "3.0.0", // need it for https://github.com/GoogleCloudDataproc/hadoop-connectors/blob/master/util-hadoop/src/main/java/com/google/cloud/hadoop/util/HadoopConfigurationProperty.java
-    libraryDependencies += "com.google.cloud.spark" %% "spark-bigquery-with-dependencies" % "0.41.0",
+    libraryDependencies += "com.google.cloud.spark" %% "spark-bigquery-with-dependencies" % "0.41.1",
     libraryDependencies += "org.json4s" % "json4s-jackson_2.12" % "3.7.0-M11", // This version is pinned to the one spark uses in 3.X.X - see: https://github.com/apache/spark/pull/45838
     libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.0-M11",
     libraryDependencies += "org.json4s" %% "json4s-core" % "3.7.0-M11",
     libraryDependencies += "org.yaml" % "snakeyaml" % "2.3",
     libraryDependencies += "io.grpc" % "grpc-netty-shaded" % "1.62.2",
     libraryDependencies += "com.google.cloud.hosted.kafka" % "managed-kafka-auth-login-handler" % "1.0.3" excludeAll (
-      ExclusionRule(organization = "io.confluent", name = "kafka-schema-registry-client")
+      ExclusionRule(organization = "io.confluent",
+                    name = "kafka-schema-registry-client")
     ),
     libraryDependencies ++= avro,
     libraryDependencies ++= spark_all_provided,
@@ -348,7 +347,7 @@ lazy val frontend = (project in file("frontend"))
   .settings(
     buildFrontend := {
       println("Installing frontend dependencies...")
-      import scala.sys.process._
+      import scala.sys.process.*
       val npmCiResult = Process("npm ci", file("frontend")).!
 
       if (npmCiResult != 0) {
@@ -396,7 +395,7 @@ lazy val service_commons = (project in file("service_commons"))
         Seq("io.netty" % "netty-resolver-dns-native-macos" % "4.1.115.Final" classifier "osx-aarch_64")
       else
         Seq.empty
-    },
+    }
   )
 
 lazy val service = (project in file("service"))
