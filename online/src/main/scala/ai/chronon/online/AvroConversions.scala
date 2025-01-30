@@ -17,6 +17,7 @@
 package ai.chronon.online
 
 import ai.chronon.api._
+import org.apache.avro.LogicalTypes
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
 import org.apache.avro.generic.GenericData
@@ -25,16 +26,22 @@ import org.apache.avro.util.Utf8
 
 import java.nio.ByteBuffer
 import java.util
+import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 object AvroConversions {
 
+  @tailrec
   def toAvroValue(value: AnyRef, schema: Schema): Object =
     schema.getType match {
-      case Schema.Type.UNION  => toAvroValue(value, schema.getTypes.get(1))
-      case Schema.Type.LONG   => value.asInstanceOf[Long].asInstanceOf[Object]
+      case Schema.Type.UNION => toAvroValue(value, schema.getTypes.get(1))
+      case Schema.Type.LONG  => value.asInstanceOf[Long].asInstanceOf[Object]
+      case Schema.Type.INT
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
+        // Avro represents as java.time.LocalDate: https://github.com/apache/avro/blob/fe0261deecf22234bbd09251764152d4bf9a9c4a/lang/java/avro/src/main/java/org/apache/avro/data/TimeConversions.java#L38
+        value.asInstanceOf[java.time.LocalDate].asInstanceOf[Object]
       case Schema.Type.INT    => value.asInstanceOf[Int].asInstanceOf[Object]
       case Schema.Type.FLOAT  => value.asInstanceOf[Float].asInstanceOf[Object]
       case Schema.Type.DOUBLE => value.asInstanceOf[Double].asInstanceOf[Object]
@@ -48,9 +55,12 @@ object AvroConversions {
                    schema.getFields.asScala.toArray.map { field =>
                      StructField(field.name(), toChrononSchema(field.schema()))
                    })
-      case Schema.Type.ARRAY   => ListType(toChrononSchema(schema.getElementType))
-      case Schema.Type.MAP     => MapType(StringType, toChrononSchema(schema.getValueType))
-      case Schema.Type.STRING  => StringType
+      case Schema.Type.ARRAY  => ListType(toChrononSchema(schema.getElementType))
+      case Schema.Type.MAP    => MapType(StringType, toChrononSchema(schema.getValueType))
+      case Schema.Type.STRING => StringType
+      case Schema.Type.INT
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
+        DateType
       case Schema.Type.INT     => IntType
       case Schema.Type.LONG    => LongType
       case Schema.Type.FLOAT   => FloatType
@@ -108,6 +118,8 @@ object AvroConversions {
       case DoubleType  => Schema.create(Schema.Type.DOUBLE)
       case BinaryType  => Schema.create(Schema.Type.BYTES)
       case BooleanType => Schema.create(Schema.Type.BOOLEAN)
+      case DateType =>
+        LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT))
       case _ =>
         throw new UnsupportedOperationException(
           s"Cannot convert chronon type $dataType to avro type. Cast it to string please")
