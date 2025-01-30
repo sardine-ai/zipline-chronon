@@ -27,6 +27,7 @@ import ai.chronon.online.Fetcher.Response
 import ai.chronon.online.FetcherCache.BatchResponses
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online._
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.mockito.Answers
@@ -223,5 +224,48 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     assertFalse(fetcherBaseWithFlagStore.isCachingEnabled(buildGroupByWithCustomJson("test_groupby_2")))
     assertTrue(fetcherBaseWithFlagStore.isCachingEnabled(buildGroupByWithCustomJson("test_groupby_3")))
+  }
+
+  it should "fetch in the happy case" in {
+    val baseFetcher = new FetcherBase(mock[KVStore])
+    val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
+    val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
+      request -> Success(Map(
+        "key" -> "value"
+      ))
+    )
+
+    val result = baseFetcher.parseGroupByResponse("prefix", request, response)
+    assertEquals(result, Map("prefix_key" -> "value"))
+  }
+
+  it should "Not fetch with null keys" in {
+    val baseFetcher = new FetcherBase(mock[KVStore])
+    val request = Request(name = "name", keys = Map("email" -> null), atMillis = None, context = None)
+    val request2 = Request(name = "name2", keys = Map("email" -> null), atMillis = None, context = None)
+
+    val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
+      request2 -> Success(Map(
+        "key" -> "value"
+      ))
+    )
+
+    val result = baseFetcher.parseGroupByResponse("prefix", request, response)
+    result shouldBe Map()
+  }
+
+  it should "parse with missing keys" in {
+    val baseFetcher = new FetcherBase(mock[KVStore])
+    val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
+    val request2 = Request(name = "name2", keys = Map("email" -> "email"), atMillis = None, context = None)
+
+    val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
+      request2 -> Success(Map(
+        "key" -> "value"
+      ))
+    )
+
+    val result = baseFetcher.parseGroupByResponse("prefix", request, response)
+    result.keySet shouldBe Set("name_exception")
   }
 }
