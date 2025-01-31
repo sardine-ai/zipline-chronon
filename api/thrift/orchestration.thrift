@@ -270,6 +270,11 @@ union Dependency {
     2: optional TableDependency tableDependency
 }
 
+struct SourceWithFilter {
+    1: optional api.Source source
+    2: optional map<string,list<string>> excludeKeys
+}
+
 
 
 

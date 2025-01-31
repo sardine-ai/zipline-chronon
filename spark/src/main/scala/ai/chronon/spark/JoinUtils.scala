@@ -18,9 +18,11 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Constants
+import ai.chronon.api.DataModel.DataModel
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions._
+import ai.chronon.api.JoinPart
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
@@ -96,8 +98,7 @@ object JoinUtils {
     }
     Some(result)
   }
-
-  /** *
+  
     * Compute partition range to be filled for given join conf
     */
   def getRangesToFill(leftSource: ai.chronon.api.Source,
@@ -306,7 +307,7 @@ object JoinUtils {
 
   def genBloomFilterIfNeeded(
       joinPart: ai.chronon.api.JoinPart,
-      joinConf: ai.chronon.api.Join,
+      leftDataModel: DataModel,
       leftRowCount: Long,
       unfilledRange: PartitionRange,
       joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]]): Option[util.Map[String, BloomFilter]] = {
@@ -332,7 +333,7 @@ object JoinUtils {
     logger.info(s"""
            Generating bloom filter for joinPart:
            |  part name : ${joinPart.groupBy.metaData.name},
-           |  left type : ${joinConf.left.dataModel},
+           |  left type : ${leftDataModel},
            |  right type: ${joinPart.groupBy.dataModel},
            |  accuracy  : ${joinPart.groupBy.inferredAccuracy},
            |  part unfilled range: $unfilledRange,
@@ -441,4 +442,103 @@ object JoinUtils {
     }
 
   }
+
+  def skewFilter(keys: Option[Seq[String]] = None,
+                 skewKeys: Option[Map[String, Seq[String]]],
+                 leftKeyCols: Seq[String],
+                 joiner: String = " OR "): Option[String] = {
+    skewKeys.map { keysMap =>
+      val result = keysMap
+        .filterKeys(key =>
+          keys.forall {
+            _.contains(key)
+          })
+        .map {
+          case (leftKey, values) =>
+            assert(
+              leftKeyCols.contains(leftKey),
+              s"specified skew filter for $leftKey is not used as a key in any join part. " +
+                s"Please specify key columns in skew filters: [${leftKeyCols.mkString(", ")}]"
+            )
+            generateSkewFilterSql(leftKey, values)
+        }
+        .filter(_.nonEmpty)
+        .mkString(joiner)
+      logger.info(s"Generated join left side skew filter:\n    $result")
+      result
+    }
+  }
+
+  def partSkewFilter(joinPart: JoinPart,
+                     skewKeys: Option[Map[String, Seq[String]]],
+                     joiner: String = " OR "): Option[String] = {
+    skewKeys.flatMap { keys =>
+      val result = keys
+        .flatMap {
+          case (leftKey, values) =>
+            Option(joinPart.keyMapping)
+              .map(_.toScala.getOrElse(leftKey, leftKey))
+              .orElse(Some(leftKey))
+              .filter(joinPart.groupBy.keyColumns.contains(_))
+              .map(generateSkewFilterSql(_, values))
+        }
+        .filter(_.nonEmpty)
+        .mkString(joiner)
+
+      if (result.nonEmpty) {
+        logger.info(s"Generated join part skew filter for ${joinPart.groupBy.metaData.name}:\n    $result")
+        Some(result)
+      } else None
+    }
+  }
+
+  private def generateSkewFilterSql(key: String, values: Seq[String]): String = {
+    val nulls = Seq("null", "Null", "NULL")
+    val nonNullFilters = Some(s"$key NOT IN (${values.filterNot(nulls.contains).mkString(", ")})")
+    val nullFilters = if (values.exists(nulls.contains)) Some(s"$key IS NOT NULL") else None
+    (nonNullFilters ++ nullFilters).mkString(" AND ")
+  }
+
+  def findUnfilledRecords(bootstrapDfWithStats: DfWithStats, coveringSets: Seq[CoveringSet]): Option[DfWithStats] = {
+    val bootstrapDf = bootstrapDfWithStats.df
+    if (coveringSets.isEmpty || !bootstrapDf.columns.contains(Constants.MatchedHashes)) {
+      // this happens whether bootstrapParts is NULL for the JOIN and thus no metadata columns were created
+      return Some(bootstrapDfWithStats)
+    }
+    val filterExpr = CoveringSet.toFilterExpression(coveringSets)
+    logger.info(s"Using covering set filter: $filterExpr")
+    val filteredDf = bootstrapDf.where(filterExpr)
+    val filteredCount = filteredDf.count()
+    if (bootstrapDfWithStats.count == filteredCount) { // counting is faster than computing stats
+      Some(bootstrapDfWithStats)
+    } else if (filteredCount == 0) {
+      None
+    } else {
+      Some(DfWithStats(filteredDf)(bootstrapDfWithStats.partitionSpec))
+    }
+  }
+
+  def runSmallMode(tableUtils: TableUtils, leftDf: DataFrame): Boolean = {
+    if (tableUtils.smallModelEnabled) {
+      val thresholdCount = leftDf.limit(Some(tableUtils.smallModeNumRowsCutoff + 1).get).count()
+      val result = thresholdCount <= tableUtils.smallModeNumRowsCutoff
+      if (result) {
+        logger.info(s"Counted $thresholdCount rows, running join in small mode.")
+      } else {
+        logger.info(
+          s"Counted greater than ${tableUtils.smallModeNumRowsCutoff} rows, proceeding with normal computation.")
+      }
+      result
+    } else {
+      false
+    }
+  }
+
+  def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Map[String, Seq[String]] = {
+    jmap.toScala.map {
+      case (key, list) =>
+        key -> list.asScala
+    }
+  }
+
 }

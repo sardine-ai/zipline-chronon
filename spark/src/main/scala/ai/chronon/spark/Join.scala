@@ -90,6 +90,7 @@ class Join(joinConf: api.Join,
     SparkConversions.fromChrononSchema(StructType("", fields.toArray))
 
   /*
+<<<<<<< HEAD
    * For all external fields that are not already populated during the bootstrap step, fill in NULL.
    * This is so that if any derivations depend on the these external fields, they will still pass and not complain
    * about missing columns. This is necessary when we directly bootstrap a derived column and skip the base columns.
@@ -125,6 +126,8 @@ class Join(joinConf: api.Join,
   }
 
   /*
+=======
+>>>>>>> 94f8bb96 (WIP)
    * For all external fields that are not already populated during the group by backfill step, fill in NULL.
    * This is so that if any derivations depend on the these group by fields, they will still pass and not complain
    * about missing columns. This is necessary when we directly bootstrap a derived column and skip the base columns.
@@ -250,7 +253,8 @@ class Join(joinConf: api.Join,
     val bootstrapDf = if (usingBootstrappedLeft) {
       leftTaggedDf
     } else {
-      computeBootstrapTable(leftTaggedDf, leftRange, bootstrapInfo)
+      val bootstrapJob = new BootstrapJob(joinConfCloned, tableUtils, leftRange, skipFirstHole)
+      bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps)
     }
 
     val bootStrapWithStats = bootstrapDf.withStats
@@ -318,6 +322,55 @@ class Join(joinConf: api.Join,
                 assert(
                   leftRange.isSingleDay,
                   s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is $leftRange")
+                // if the join part contains ChrononRunDs macro, then we need to make sure the join is for a single day
+                val selects = Option(joinPart.groupBy.sources.toScala.map(_.query.selects).map(_.toScala))
+                if (
+                  selects.isDefined && selects.get.nonEmpty && selects.get.exists(selectsMap =>
+                    Option(selectsMap).isDefined && selectsMap.values.exists(_.contains(Constants.ChrononRunDs)))
+                ) {
+                  assert(
+                    leftRange.isSingleDay,
+                    s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is $leftRange")
+                }
+
+                val bloomFilterOpt = if (runSmallMode) {
+                  // If left DF is small, hardcode the key filter into the joinPart's GroupBy's where clause.
+                  injectKeyFilter(leftDf, joinPart)
+                  None
+                } else {
+                  joinLevelBloomMapOpt
+                }
+                // val df =
+                // computeRightTable(unfilledLeftDf, joinPart, leftRange, leftTimeRangeOpt, bloomFilterOpt, runSmallMode)
+                //  .map(df => joinPart -> df)
+
+                val runContext = JoinPartJobContext(unfilledLeftDf,
+                                                    bloomFilterOpt,
+                                                    joinConfCloned.partOutputTable(joinPart),
+                                                    leftTimeRangeOpt,
+                                                    tableProps,
+                                                    runSmallMode)
+
+                val skewKeys: Option[Map[String, Seq[String]]] = Option(joinConfCloned.skewKeys).map { jmap =>
+                  val scalaMap = jmap.toScala
+                  scalaMap.map {
+                    case (key, list) =>
+                      key -> list.asScala
+                  }
+                }
+
+                val leftOverwriteTable: Option[String] = if (usingBootstrappedLeft) {
+                  Option(joinConfCloned.metaData.bootstrapTable)
+                } else {
+                  None
+                }
+
+                val joinPartJob =
+                  new JoinPartJob(joinConfCloned.getLeft, joinPart, leftRange, tableUtils, skewKeys, leftOverwriteTable)
+                val df = joinPartJob.run(Some(runContext)).map(df => joinPart -> df)
+
+                Thread.currentThread().setName(s"done-$threadName")
+                df
               }
 
               val bloomFilterOpt = if (runSmallMode) {
@@ -461,103 +514,6 @@ class Join(joinConf: api.Join,
         df.drop(name)
       }
     }
-  }
-
-  /*
-   * The purpose of Bootstrap is to leverage input tables which contain pre-computed values, such that we can
-   * skip the computation for these record during the join-part computation step.
-   *
-   * The main goal here to join together the various bootstrap source to the left table, and in the process maintain
-   * relevant metadata such that we can easily tell which record needs computation or not in the following step.
-   */
-  override def computeBootstrapTable(leftDf: DataFrame,
-                                     range: PartitionRange,
-                                     bootstrapInfo: BootstrapInfo): DataFrame = {
-
-    def validateReservedColumns(df: DataFrame, table: String, columns: Seq[String]): Unit = {
-      val reservedColumnsContained = columns.filter(df.schema.fieldNames.contains)
-      assert(
-        reservedColumnsContained.isEmpty,
-        s"Table $table contains columns ${reservedColumnsContained.prettyInline} which are reserved by Chronon."
-      )
-    }
-
-    val startMillis = System.currentTimeMillis()
-
-    // verify left table does not have reserved columns
-    validateReservedColumns(leftDf, joinConfCloned.left.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
-
-    tableUtils
-      .unfilledRanges(bootstrapTable, range, skipFirstHole = skipFirstHole)
-      .getOrElse(Seq())
-      .foreach(unfilledRange => {
-        val parts = Option(joinConfCloned.bootstrapParts)
-          .map(_.toScala)
-          .getOrElse(Seq())
-
-        val initDf = leftDf
-          .prunePartition(unfilledRange)
-          // initialize an empty matched_hashes column for the purpose of later processing
-          .withColumn(Constants.MatchedHashes, typedLit[Array[String]](null))
-
-        val joinedDf = parts.foldLeft(initDf) { case (partialDf, part) =>
-          logger.info(s"\nProcessing Bootstrap from table ${part.table} for range $unfilledRange")
-
-          val bootstrapRange = if (part.isSetQuery) {
-            unfilledRange.intersect(PartitionRange(part.startPartition, part.endPartition))
-          } else {
-            unfilledRange
-          }
-          if (!bootstrapRange.valid) {
-            logger.info(s"partition range of bootstrap table ${part.table} is beyond unfilled range")
-            partialDf
-          } else {
-            var bootstrapDf =
-              tableUtils.scanDf(part.query,
-                                part.table,
-                                Some(Map(tableUtils.partitionColumn -> null)),
-                                range = Some(bootstrapRange))
-
-            // attach semantic_hash for either log or regular table bootstrap
-            validateReservedColumns(bootstrapDf, part.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
-            if (bootstrapDf.columns.contains(Constants.SchemaHash)) {
-              bootstrapDf = bootstrapDf.withColumn(Constants.BootstrapHash, col(Constants.SchemaHash))
-            } else {
-              bootstrapDf = bootstrapDf.withColumn(Constants.BootstrapHash, lit(part.semanticHash))
-            }
-
-            // include only necessary columns. in particular,
-            // this excludes columns that are NOT part of Join's output (either from GB or external source)
-            val includedColumns = bootstrapDf.columns
-              .filter(bootstrapInfo.fieldNames ++ part.keys(joinConfCloned, tableUtils.partitionColumn)
-                ++ Seq(Constants.BootstrapHash, tableUtils.partitionColumn))
-              .sorted
-
-            bootstrapDf = bootstrapDf
-              .select(includedColumns.map(col): _*)
-              // TODO: allow customization of deduplication logic
-              .dropDuplicates(part.keys(joinConfCloned, tableUtils.partitionColumn).toArray)
-
-            coalescedJoin(partialDf, bootstrapDf, part.keys(joinConfCloned, tableUtils.partitionColumn))
-              // as part of the left outer join process, we update and maintain matched_hashes for each record
-              // that summarizes whether there is a join-match for each bootstrap source.
-              // later on we use this information to decide whether we still need to re-run the backfill logic
-              .withColumn(Constants.MatchedHashes, set_add(col(Constants.MatchedHashes), col(Constants.BootstrapHash)))
-              .drop(Constants.BootstrapHash)
-          }
-        }
-
-        // include all external fields if not already bootstrapped
-        val enrichedDf = padExternalFields(joinedDf, bootstrapInfo)
-
-        // set autoExpand = true since log table could be a bootstrap part
-        enrichedDf.save(bootstrapTable, tableProps, autoExpand = true)
-      })
-
-    val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
-    logger.info(s"Finished computing bootstrap table ${joinConfCloned.metaData.bootstrapTable} in $elapsedMins minutes")
-
-    tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(range))
   }
 
   /*
