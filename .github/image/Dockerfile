@@ -5,14 +5,10 @@ FROM alpine:latest
 # Install necessary tools and Python
 RUN apk add --no-cache wget curl bash python3 py3-pip
 
-# Add Amazon Corretto repository
-RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazoncorretto.rsa.pub && \
-    echo "https://apk.corretto.aws/" >> /etc/apk/repositories && \
-    apk update
-RUN apk add --no-cache amazon-corretto-17
+RUN apk add --no-cache openjdk-17-jdk
 
 # java
-ENV JAVA_HOME=/usr/lib/jvm/default-jvm
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$PATH:$JAVA_HOME/bin
 
 # sbt for scala
