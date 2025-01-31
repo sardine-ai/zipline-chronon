@@ -1,14 +1,15 @@
 import { Api } from '$lib/api/api';
-import type { JoinTimeSeriesResponse, Model } from '$lib/types/Model/Model';
+import type { JoinTimeSeriesResponse } from '$lib/types/Model/Model';
 import type { MetricType } from '$lib/types/MetricType/MetricType';
 import { sortDrift, type SortDirection } from '$lib/util/sort';
+import type { IModel } from '$lib/types/codegen';
 
 const FALLBACK_START_TS = 1672531200000; // 2023-01-01
 const FALLBACK_END_TS = 1677628800000; // 2023-03-01
 
 export type JoinData = {
 	joinTimeseries: JoinTimeSeriesResponse;
-	model?: Model;
+	model?: IModel;
 	metricType: MetricType;
 	dateRange: {
 		startTimestamp: number;
@@ -36,11 +37,13 @@ async function fetchInitialData(
 			offset: undefined,
 			algorithm: metricType
 		}),
-		api.getModels()
+		api.getModelList()
 	]);
 
 	const sortedJoinTimeseries = sortDrift(joinTimeseries, sortDirection);
-	const modelToReturn = models.items.find((m) => m.join.name === joinName);
+	const modelToReturn = models.models?.find(
+		(m) => m.source?.joinSource?.join?.metaData?.name === joinName
+	);
 
 	return {
 		joinTimeseries: sortedJoinTimeseries,

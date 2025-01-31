@@ -1,10 +1,17 @@
 import { error } from '@sveltejs/kit';
+import type { FeatureResponse, JoinTimeSeriesResponse } from '$lib/types/Model/Model';
 import type {
-	FeatureResponse,
-	JoinsResponse,
-	JoinTimeSeriesResponse,
-	ModelsResponse
-} from '$lib/types/Model/Model';
+	Join,
+	GroupBy,
+	Model,
+	StagingQuery,
+	IJoinDriftRequestArgs,
+	IJoinDriftResponseArgs,
+	ITileSummarySeries,
+	IJoinSummaryRequestArgs
+} from '$lib/types/codegen';
+import { ConfType, DriftMetric } from '$lib/types/codegen';
+import type { ConfListResponse } from '$lib/types/codegen/ConfListResponse';
 
 export type ApiOptions = {
 	base?: string;
@@ -30,25 +37,35 @@ export class Api {
 		this.#accessToken = opts.accessToken;
 	}
 
-	// TODO: eventually move this to a model-specific file/decide on a good project structure for organizing api calls
-	async getModels() {
-		return this.#send<ModelsResponse>('models');
+	async getConf(name: string, type: ConfType) {
+		const params = new URLSearchParams({
+			confName: name,
+			confType: ConfType[type]
+		});
+		return this.#send<Join | GroupBy | Model>(`conf?${params.toString()}`);
 	}
 
-	async getJoins(offset: number = 0, limit: number = 10) {
-		const params = new URLSearchParams({
-			offset: offset.toString(),
-			limit: limit.toString()
-		});
-		return this.#send<JoinsResponse>(`joins?${params.toString()}`);
+	async getJoin(name: string): Promise<Join> {
+		return this.getConf(name, ConfType.JOIN) as Promise<Join>;
 	}
 
-	async search(term: string, limit: number = 20) {
+	async getGroupBy(name: string): Promise<GroupBy> {
+		return this.getConf(name, ConfType.GROUP_BY) as Promise<GroupBy>;
+	}
+
+	async getModel(name: string): Promise<Model> {
+		return this.getConf(name, ConfType.MODEL) as Promise<Model>;
+	}
+
+	async getStagingQuery(name: string): Promise<StagingQuery> {
+		return this.getConf(name, ConfType.STAGING_QUERY) as Promise<StagingQuery>;
+	}
+
+	async search(term: string) {
 		const params = new URLSearchParams({
-			term,
-			limit: limit.toString()
+			confName: term
 		});
-		return this.#send<ModelsResponse>(`search?${params.toString()}`);
+		return this.#send<ConfListResponse>(`search?${params.toString()}`);
 	}
 
 	async getJoinTimeseries({
@@ -112,6 +129,74 @@ export class Api {
 		});
 		return this.#send<FeatureResponse>(
 			`join/${joinId}/feature/${featureName}/timeseries?${params.toString()}`
+		);
+	}
+
+	async getConfList(type: ConfType): Promise<ConfListResponse> {
+		const params = new URLSearchParams({
+			confType: ConfType[type]
+		});
+		return this.#send<ConfListResponse>(`conf/list?${params.toString()}`);
+	}
+
+	async getJoinList(): Promise<ConfListResponse> {
+		return this.getConfList(ConfType.JOIN);
+	}
+
+	async getGroupByList(): Promise<ConfListResponse> {
+		return this.getConfList(ConfType.GROUP_BY);
+	}
+
+	async getModelList(): Promise<ConfListResponse> {
+		return this.getConfList(ConfType.MODEL);
+	}
+
+	async getStagingQueryList(): Promise<ConfListResponse> {
+		return this.getConfList(ConfType.STAGING_QUERY);
+	}
+
+	async getJoinDrift({
+		name,
+		startTs,
+		endTs,
+		offset = '10h',
+		algorithm = DriftMetric.PSI
+	}: IJoinDriftRequestArgs) {
+		const params = new URLSearchParams({
+			startTs: startTs.toString(),
+			endTs: endTs.toString(),
+			offset,
+			algorithm: DriftMetric[algorithm]
+		});
+		return this.#send<IJoinDriftResponseArgs>(`join/${name}/drift?${params.toString()}`);
+	}
+
+	async getColumnDrift({
+		name,
+		columnName,
+		startTs,
+		endTs,
+		offset = '10h',
+		algorithm = DriftMetric.PSI
+	}: IJoinDriftRequestArgs) {
+		const params = new URLSearchParams({
+			startTs: startTs.toString(),
+			endTs: endTs.toString(),
+			offset,
+			algorithm: DriftMetric[algorithm]
+		});
+		return this.#send<IJoinDriftResponseArgs>(
+			`join/${name}/column/${columnName}/drift?${params.toString()}`
+		);
+	}
+
+	async getColumnSummary({ name, columnName, startTs, endTs }: IJoinSummaryRequestArgs) {
+		const params = new URLSearchParams({
+			startTs: startTs.toString(),
+			endTs: endTs.toString()
+		});
+		return this.#send<ITileSummarySeries>(
+			`join/${name}/column/${columnName}/summary?${params.toString()}`
 		);
 	}
 

@@ -65,8 +65,3 @@ export type NullComparedFeatureResponse = {
 	oldValueCount: number;
 	newValueCount: number;
 };
-
-export type JoinsResponse = {
-	offset: number;
-	items: Join[];
-};

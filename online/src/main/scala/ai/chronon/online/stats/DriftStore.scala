@@ -84,11 +84,14 @@ class DriftStore(kvStore: KVStore,
     val tileKeyMap = tileKeysForJoin(joinConf, None, columnPrefix)
     val requestContextMap: Map[GetRequest, SummaryRequestContext] = tileKeyMap.flatMap {
       case (group, keys) =>
-        keys.map { key =>
-          val keyBytes = serializer.serialize(key)
-          val get = GetRequest(keyBytes, summaryDataset, startTsMillis = startMs, endTsMillis = endMs)
-          get -> SummaryRequestContext(get, key, group)
-        }
+        // Only create requests for keys that match our column prefix
+        keys
+          .filter(key => columnPrefix.forall(prefix => key.getColumn == prefix))
+          .map { key =>
+            val keyBytes = serializer.serialize(key)
+            val get = GetRequest(keyBytes, summaryDataset, startTsMillis = startMs, endTsMillis = endMs)
+            get -> SummaryRequestContext(get, key, group)
+          }
     }
 
     val responseFuture = kvStore.multiGet(requestContextMap.keys.toSeq)
