@@ -408,7 +408,7 @@ class Runner:
         self.mode = args["mode"]
         self.online_jar = args["online_jar"]
         self.dataproc = args["dataproc"]
-        self.conf_type = args["conf_type"]
+        self.conf_type = args.get("conf_type", "").replace("-", "_")  # in case user sets dash instead of underscore
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
         # fetch online jar if necessary
@@ -450,12 +450,6 @@ class Runner:
         )
         self.jar_path = jar_path
 
-        # If SPARK_HOME is set, also include it in the jar_path
-        spark_home_env_var = os.environ.get("SPARK_HOME")
-        if spark_home_env_var and os.path.exists(os.path.join(
-                spark_home_env_var, "jars")):
-            self.jar_path = f"{self.jar_path}:{spark_home_env_var}/jars/*"
-
         self.args = args["args"] if args["args"] else ""
         self.online_class = args["online_class"]
         self.app_name = args["app_name"]
@@ -479,9 +473,14 @@ class Runner:
                 )
             )
         elif (self.sub_help or (self.mode not in SPARK_MODES)) and not self.dataproc:
+            if self.mode == "fetch":
+                entrypoint = "ai.chronon.online.FetcherMain"
+            else:
+                entrypoint = "ai.chronon.spark.Driver"
             command_list.append(
-                "java -cp {jar} ai.chronon.spark.Driver {subcommand} {args}".format(
+                "java -cp {jar} {entrypoint} {subcommand} {args}".format(
                     jar=self.jar_path,
+                    entrypoint=entrypoint,
                     args="--help" if self.sub_help else self._gen_final_args(),
                     subcommand=ROUTES[self.conf_type][self.mode],
                 )
@@ -811,6 +810,20 @@ def download_chronon_gcp_jar(destination_dir: str, customer_id: str):
     return chronon_gcp_jar_destination_path
 
 
+def download_service_jar(destination_dir: str, customer_id: str):
+    print("Downloading service jar from GCS...")
+    bucket_name = f"zipline-artifacts-{customer_id}"
+
+    file_name = "service-0.1.0-SNAPSHOT.jar"
+
+    source_blob_name = f"jars/{file_name}"
+    service_jar_destination_path = f"{destination_dir}/{file_name}"
+
+    download_gcs_blob(bucket_name, source_blob_name,
+                      service_jar_destination_path)
+    return service_jar_destination_path
+
+
 @retry_decorator(retries=2, backoff=5)
 def download_gcs_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
@@ -895,7 +908,9 @@ def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, paralle
         elif chronon_jar:
             jar_path = chronon_jar
         else:
-            jar_path = download_chronon_gcp_jar(temp_dir, get_customer_id())
+            service_jar_path = download_service_jar(temp_dir, get_customer_id())
+            chronon_gcp_jar_path = download_chronon_gcp_jar(temp_dir, get_customer_id())
+            jar_path = f"{service_jar_path}:{chronon_gcp_jar_path}"
 
         Runner(ctx.params, os.path.expanduser(jar_path)).run()
 
