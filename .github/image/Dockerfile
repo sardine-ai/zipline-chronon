@@ -5,10 +5,10 @@ FROM alpine:latest
 # Install necessary tools and Python
 RUN apk add --no-cache wget curl bash python3 py3-pip
 
-RUN apk add --no-cache openjdk-17-jdk
+RUN apk add --no-cache openjdk17-jdk
 
 # java
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
 ENV PATH=$PATH:$JAVA_HOME/bin
 
 # sbt for scala
