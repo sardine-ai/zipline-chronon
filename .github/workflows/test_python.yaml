@@ -4,15 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'api/py/**'
-      - '.github/workflows/test_python.yaml'
   pull_request:
     branches:
       - main
-    paths:
-      - 'api/py/**'
-      - '.github/workflows/test_python.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -4,36 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'flink/**'
-      - 'aggregator/**'
-      - 'online/**'
-      - 'api/**'
-      - 'hub/**'
-      - 'service/**'
-      - 'service_commons/**'
-      - 'orchestration/**'
-      - 'cloud_gcp/**'
-      - 'cloud_aws/**'
-      - '.github/workflows/test_scala_no_spark.yaml'
-      - 'build.sbt'
   pull_request:
     branches:
       - main
-    paths:
-      - 'flink/**'
-      - 'aggregator/**'
-      - 'online/**'
-      - 'api/**'
-      - 'hub/**'
-      - 'service/**'
-      - 'service_commons/**'
-      - 'orchestration/**'
-      - 'cloud_gcp/**'
-      - 'cloud_aws/**'
-      - '.github/workflows/test_scala_no_spark.yaml'
-      - 'build.sbt'
-
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
