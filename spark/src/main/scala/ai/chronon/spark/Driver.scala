@@ -22,11 +22,10 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import ai.chronon.online.Api
-import ai.chronon.online.Fetcher
+import ai.chronon.online.FetcherMain
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
 import ai.chronon.online.MetadataStore
@@ -38,8 +37,6 @@ import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.streaming.JoinSourceRunner
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.DataFrame
@@ -69,9 +66,6 @@ import scala.concurrent.duration.DurationInt
 import scala.io.Source
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
 
 // useful to override spark.sql.extensions args - there is no good way to unset that conf apparently
 // so we give it dummy extensions
@@ -633,114 +627,9 @@ object Driver {
   object FetcherCli {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-    class Args extends Subcommand("fetch") with OnlineSubcommand {
-      val confPath: ScallopOption[String] = opt[String](required = false, descr = "Path to conf to fetch features")
-      val keyJson: ScallopOption[String] = opt[String](required = false, descr = "json of the keys to fetch")
-      val name: ScallopOption[String] = opt[String](required = false, descr = "name of the join/group-by to fetch")
-      val `type`: ScallopOption[String] =
-        choice(Seq("join", "group-by", "join-stats"), descr = "the type of conf to fetch", default = Some("join"))
-      val keyJsonFile: ScallopOption[String] = opt[String](
-        required = false,
-        descr = "file path to json of the keys to fetch",
-        short = 'f'
-      )
-      val atMillis: ScallopOption[Long] = opt[Long](
-        required = false,
-        descr = "timestamp to fetch the data at",
-        default = None
-      )
-      val interval: ScallopOption[Int] = opt[Int](
-        required = false,
-        descr = "interval between requests in seconds",
-        default = Some(1)
-      )
-      val loop: ScallopOption[Boolean] = opt[Boolean](
-        required = false,
-        descr = "flag - loop over the requests until manually killed",
-        default = Some(false)
-      )
-    }
-
+    class Args extends Subcommand("fetch") with FetcherMain.FetcherArgs {}
     def run(args: Args): Unit = {
-      if (args.keyJson.isEmpty && args.keyJsonFile.isEmpty) {
-        throw new Exception("At least one of keyJson and keyJsonFile should be specified!")
-      }
-      require(!args.confPath.isEmpty || !args.name.isEmpty, "--conf-path or --name should be specified!")
-      val objectMapper = new ObjectMapper().registerModule(DefaultScalaModule)
-      def readMap: String => Map[String, AnyRef] = { json =>
-        objectMapper.readValue(json, classOf[java.util.Map[String, AnyRef]]).asScala.toMap
-      }
-      def readMapList: String => Seq[Map[String, AnyRef]] = { jsonList =>
-        objectMapper
-          .readValue(jsonList, classOf[java.util.List[java.util.Map[String, AnyRef]]])
-          .asScala
-          .map(_.asScala.toMap)
-          .toSeq
-      }
-      val keyMapList =
-        if (args.keyJson.isDefined) {
-          Try(readMapList(args.keyJson())).toOption.getOrElse(Seq(readMap(args.keyJson())))
-        } else {
-          logger.info(s"Reading requests from ${args.keyJsonFile()}")
-          val file = Source.fromFile(args.keyJsonFile())
-          val mapList = file.getLines().map(json => readMap(json)).toList
-          file.close()
-          mapList
-        }
-      if (keyMapList.length > 1) {
-        logger.info(s"Plan to send ${keyMapList.length} fetches with ${args.interval()} seconds interval")
-      }
-      val fetcher = args.api.buildFetcher(true, "FetcherCLI")
-      def iterate(): Unit = {
-        keyMapList.foreach(keyMap => {
-          logger.info(s"--- [START FETCHING for ${keyMap}] ---")
-
-          val featureName = if (args.name.isDefined) {
-            args.name()
-          } else {
-            args.confPath().confPathToKey
-          }
-          lazy val joinConfOption: Option[api.Join] =
-            args.confPath.toOption.map(confPath => parseConf[api.Join](confPath))
-          val startNs = System.nanoTime
-          val requests = Seq(Fetcher.Request(featureName, keyMap, args.atMillis.toOption))
-          val resultFuture = if (args.`type`() == "join") {
-            fetcher.fetchJoin(requests, joinConfOption)
-          } else {
-            fetcher.fetchGroupBys(requests)
-          }
-          val result = Await.result(resultFuture, 5.seconds)
-          val awaitTimeMs = (System.nanoTime - startNs) / 1e6d
-
-          // treeMap to produce a sorted result
-          val tMap = new java.util.TreeMap[String, AnyRef]()
-          result.foreach(r =>
-            r.values match {
-              case Success(valMap) => {
-                if (valMap == null) {
-                  logger.info("No data present for the provided key.")
-                } else {
-                  valMap.foreach { case (k, v) => tMap.put(k, v) }
-                  logger.info(
-                    s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
-                  println(
-                    s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
-                }
-                logger.info(s"Fetched in: $awaitTimeMs ms")
-              }
-              case Failure(exception) => {
-                exception.printStackTrace()
-              }
-            })
-          Thread.sleep(args.interval() * 1000)
-
-        })
-      }
-      iterate()
-      while (args.loop()) {
-        logger.info("loop is set to true, start next iteration. will only exit if manually killed.")
-        iterate()
-      }
+      FetcherMain.run(args)
     }
   }
 
