@@ -189,11 +189,18 @@ object DataprocSubmitter {
       .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
 
   }
+
+  private val JAR_URI_ARG_PREFIX = "--jar-uri"
+  private val GCS_FILES_ARG_PREFIX = "--gcs-files"
+  private val JOB_TYPE_ARG_PREFIX = "--job-type"
+  private val MAIN_CLASS_PREFIX = "--main-class"
+  private val FLINK_MAIN_JAR_URI_ARG_PREFIX = "--flink-main-jar-uri"
+  private val FLINK_SAVEPOINT_URI_ARG_PREFIX = "--savepoint-uri"
+
   def main(args: Array[String]): Unit = {
-    val chrononJarUri = args.filter(_.startsWith("--chronon_jar_uri"))(0).split("=")(1)
 
     // search args array for prefix `--gcs_files`
-    val gcsFilesArgs = args.filter(_.startsWith("--gcs_files"))
+    val gcsFilesArgs = args.filter(_.startsWith(GCS_FILES_ARG_PREFIX))
     assert(gcsFilesArgs.length == 0 || gcsFilesArgs.length == 1)
 
     val gcsFiles = if (gcsFilesArgs.isEmpty) {
@@ -202,7 +209,14 @@ object DataprocSubmitter {
       gcsFilesArgs(0).split("=")(1).split(",")
     }
 
-    val userArgs = args.filter(f => !f.startsWith("--gcs_files") && !f.startsWith("--chronon_jar_uri"))
+    // Exclude args list that starts with `--gcs_files` or `--jar_uri`
+    val internalArgs = Set(GCS_FILES_ARG_PREFIX,
+                           JAR_URI_ARG_PREFIX,
+                           JOB_TYPE_ARG_PREFIX,
+                           MAIN_CLASS_PREFIX,
+                           FLINK_MAIN_JAR_URI_ARG_PREFIX,
+                           FLINK_SAVEPOINT_URI_ARG_PREFIX)
+    val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
 
     val required_vars = List.apply(
       "GCP_PROJECT_ID",
@@ -213,7 +227,6 @@ object DataprocSubmitter {
     if (missing_vars.nonEmpty) {
       throw new Exception(s"Missing required environment variables: ${missing_vars.mkString(", ")}")
     }
-
     val projectId = sys.env.getOrElse("GCP_PROJECT_ID", throw new Exception("GCP_PROJECT_ID not set"))
     val region = sys.env.getOrElse("GCP_REGION", throw new Exception("GCP_REGION not set"))
     val clusterName = sys.env
@@ -224,24 +237,43 @@ object DataprocSubmitter {
       region,
       clusterName
     )
+    val submitter = DataprocSubmitter(submitterConf)
 
-    val bigtableInstanceId = sys.env.getOrElse("GCP_BIGTABLE_INSTANCE_ID", "")
+    val jarUri = args.filter(_.startsWith(JAR_URI_ARG_PREFIX))(0).split("=")(1)
+    val mainClass = args.filter(_.startsWith(MAIN_CLASS_PREFIX))(0).split("=")(1)
+    val jobTypeValue = args.filter(_.startsWith(JOB_TYPE_ARG_PREFIX))(0).split("=")(1)
 
-    val gcpArgsToPass = Array.apply(
-      "--is-gcp",
-      s"--gcp-project-id=${projectId}",
-      s"--gcp-bigtable-instance-id=$bigtableInstanceId"
-    )
+    val (dataprocJobType, jobProps) = jobTypeValue.toLowerCase match {
+      case "spark" => (TypeSparkJob, Map(MainClass -> mainClass, JarURI -> jarUri))
+      case "flink" => {
+        val flinkMainJarUri = args.filter(_.startsWith(FLINK_MAIN_JAR_URI_ARG_PREFIX))(0).split("=")(1)
+        val baseJobProps = Map(MainClass -> mainClass, JarURI -> jarUri, FlinkMainJarURI -> flinkMainJarUri)
+        if (args.exists(_.startsWith(FLINK_SAVEPOINT_URI_ARG_PREFIX))) {
+          val savepointUri = args.filter(_.startsWith(FLINK_SAVEPOINT_URI_ARG_PREFIX))(0).split("=")(1)
+          (TypeFlinkJob, baseJobProps + (SavepointUri -> savepointUri))
+        } else (TypeFlinkJob, baseJobProps)
+      }
+      case _ => throw new Exception("Invalid job type")
+    }
 
-    val finalArgs = Array.concat(userArgs, gcpArgsToPass)
+    val finalArgs = dataprocJobType match {
+      case TypeSparkJob => {
+        val bigtableInstanceId = sys.env.getOrElse("GCP_BIGTABLE_INSTANCE_ID", "")
+        val gcpArgsToPass = Array.apply(
+          "--is-gcp",
+          s"--gcp-project-id=${projectId}",
+          s"--gcp-bigtable-instance-id=$bigtableInstanceId"
+        )
+        Array.concat(userArgs, gcpArgsToPass)
+      }
+      case TypeFlinkJob => userArgs
+    }
 
     println(finalArgs.mkString("Array(", ", ", ")"))
 
-    val a = DataprocSubmitter(submitterConf)
-
-    val jobId = a.submit(
-      TypeSparkJob,
-      Map(MainClass -> "ai.chronon.spark.Driver", JarURI -> chrononJarUri),
+    val jobId = submitter.submit(
+      dataprocJobType,
+      jobProps,
       gcsFiles.toList,
       finalArgs: _*
     )
