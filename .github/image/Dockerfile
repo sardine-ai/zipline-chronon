@@ -5,10 +5,14 @@ FROM alpine:latest
 # Install necessary tools and Python
 RUN apk add --no-cache wget curl bash python3 py3-pip
 
-RUN apk add --no-cache openjdk17-jdk
+# Add Amazon Corretto repository
+RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazoncorretto.rsa.pub && \
+    echo "https://apk.corretto.aws/" >> /etc/apk/repositories && \
+    apk update
+RUN apk add --no-cache amazon-corretto-17
 
 # java
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH=$PATH:$JAVA_HOME/bin
 
 # sbt for scala
@@ -28,6 +32,8 @@ RUN apk add --no-cache \
         autoconf \
         automake \
         libtool \
+        libc6-compat \
+        gcompat \
         curl && \
     curl -LSs https://archive.apache.org/dist/thrift/${THRIFT_VERSION}/thrift-${THRIFT_VERSION}.tar.gz -o thrift-${THRIFT_VERSION}.tar.gz && \
     tar -xzf thrift-${THRIFT_VERSION}.tar.gz && \
