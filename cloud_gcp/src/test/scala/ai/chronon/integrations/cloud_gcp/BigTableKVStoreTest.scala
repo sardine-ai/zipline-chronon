@@ -15,10 +15,7 @@ import com.google.cloud.bigtable.data.v2.BigtableDataSettings
 import com.google.cloud.bigtable.data.v2.models.Query
 import com.google.cloud.bigtable.data.v2.models.Row
 import com.google.cloud.bigtable.data.v2.models.RowMutation
-import com.google.cloud.bigtable.emulator.v2.BigtableEmulatorRule
-import org.junit.Rule
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import com.google.cloud.bigtable.emulator.v2.Emulator
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.mockito.Mockito.withSettings
@@ -33,16 +30,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 
-@RunWith(classOf[JUnit4])
-class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
+class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   import BigTableKVStore._
 
-  // ugly hacks to wire up the emulator. See: https://stackoverflow.com/questions/32160549/using-junit-rule-with-scalatest-e-g-temporaryfolder
-  val _bigtableEmulator: BigtableEmulatorRule = BigtableEmulatorRule.create()
-  @Rule
-  def bigtableEmulator: BigtableEmulatorRule = _bigtableEmulator
-
+  private var emulator: Emulator = _
   private var dataClient: BigtableDataClient = _
   private var adminClient: BigtableTableAdminClient = _
 
@@ -50,16 +42,18 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
   private val instanceId = "test-instance"
 
   before {
+    emulator = Emulator.createBundled
+    emulator.start()
     // Configure settings to use emulator
     val dataSettings = BigtableDataSettings
-      .newBuilderForEmulator(bigtableEmulator.getPort)
+      .newBuilderForEmulator(emulator.getPort)
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .setCredentialsProvider(NoCredentialsProvider.create())
       .build()
 
     val adminSettings = BigtableTableAdminSettings
-      .newBuilderForEmulator(bigtableEmulator.getPort)
+      .newBuilderForEmulator(emulator.getPort)
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .setCredentialsProvider(NoCredentialsProvider.create())

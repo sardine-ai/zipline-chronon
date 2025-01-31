@@ -9,6 +9,12 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
+      - 'hub/**'
+      - 'service/**'
+      - 'service_commons/**'
+      - 'orchestration/**'
+      - 'cloud_gcp/**'
+      - 'cloud_aws/**'
       - '.github/workflows/test_scala_no_spark.yaml'
       - 'build.sbt'
   pull_request:
@@ -19,6 +25,12 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
+      - 'hub/**'
+      - 'service/**'
+      - 'service_commons/**'
+      - 'orchestration/**'
+      - 'cloud_gcp/**'
+      - 'cloud_aws/**'
       - '.github/workflows/test_scala_no_spark.yaml'
       - 'build.sbt'
 
@@ -81,9 +93,22 @@ jobs:
           export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 service/test"
 
+      - name: Run service commons tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 service_commons/test"
+
       - name: Run orchestrator tests
         run: |
           export SBT_OPTS="-Xmx8G -Xms2G"
           sbt "++ 2.12.18 orchestration/test"
-          
-    
+
+      - name: Run cloud gcp tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 cloud_gcp/test"    
+
+      - name: Run cloud aws tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 cloud_aws/test"    
