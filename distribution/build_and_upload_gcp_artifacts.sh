@@ -41,10 +41,12 @@ echo "Building jars"
 sbt clean
 sbt cloud_gcp/assembly
 sbt cloud_gcp_submitter/assembly
+sbt flink/assembly
 sbt service/assembly
 
 CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/cloud_gcp/target/scala-2.12/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
 CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/cloud_gcp_submitter/target/scala-2.12/cloud_gcp_submitter-assembly-0.1.0-SNAPSHOT.jar"
+FLINK_JAR="$CHRONON_ROOT_DIR/flink/target/scala-2.12/flink-assembly-0.1.0-SNAPSHOT.jar"
 SERVICE_JAR="$CHRONON_ROOT_DIR/service/target/scala-2.12/service-0.1.0-SNAPSHOT.jar"
 
 if [ ! -f "$CLOUD_GCP_JAR" ]; then
@@ -59,6 +61,11 @@ fi
 
 if [ ! -f "$SERVICE_JAR" ]; then
     echo "$SERVICE_JAR not found"
+    exit 1
+fi
+
+if [ ! -f "$FLINK_JAR" ]; then
+    echo "$FLINK_JAR not found"
     exit 1
 fi
 
@@ -80,6 +87,7 @@ function upload_to_gcp() {
                 gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH";
                 gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH"
+                gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH"
               done
               echo "Succeeded"
               break;;

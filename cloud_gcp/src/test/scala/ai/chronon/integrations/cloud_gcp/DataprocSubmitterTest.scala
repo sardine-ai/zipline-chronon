@@ -61,13 +61,15 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
         // Include savepoint / checkpoint Uri to resume from where a job left off
         // SavepointUri -> "gs://zl-warehouse/flink-state/93686c72c3fd63f58d631e8388d8180d/chk-12",
-        JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"),
+        JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"
+      ),
       List.empty,
       "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
       "--groupby-name=our clients.listing_canary.actions_v1",
-      "-kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
+      "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
       "-ZGCP_PROJECT_ID=canary-443022",
-      "-ZGCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance")
+      "-ZGCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance"
+    )
   }
 
   it should "test flink kafka ingest job locally" ignore {
