@@ -185,7 +185,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     if (!tableReachable(tableName)) {
 
-      logger.error(s"Table $tableName is not reachable. Returning empty partitions.")
+      logger.info(s"Table $tableName is not reachable. Returning empty partitions.")
       return Seq.empty[String]
 
     }
@@ -194,7 +194,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
 
     if (partitions.isEmpty) {
-      logger.error(s"No partitions found for (reachable) table: $tableName")
+      logger.info(s"No partitions found for (reachable) table: $tableName")
     } else {
       logger.info(
         s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
