@@ -119,14 +119,17 @@ class TimeSeriesHandler(driftStore: DriftStore) {
     // check if we have a numeric / categorical feature. If the percentile drift series has non-null doubles
     // then we have a numeric feature at hand
     val isNumeric =
-      tileDriftSeries.percentileDriftSeries.asScala != null && tileDriftSeries.percentileDriftSeries.asScala
-        .exists(_ != null)
+      Option(tileDriftSeries.percentileDriftSeries).exists(series => series.asScala.exists(_ != null))
+
     val lhsList = if (metric == NullMetric) {
-      tileDriftSeries.nullRatioChangePercentSeries.asScala
+      Option(tileDriftSeries.nullRatioChangePercentSeries).map(_.asScala).getOrElse(Seq.empty)
     } else {
-      if (isNumeric) tileDriftSeries.percentileDriftSeries.asScala
-      else tileDriftSeries.histogramDriftSeries.asScala
+      if (isNumeric)
+        Option(tileDriftSeries.percentileDriftSeries).map(_.asScala).getOrElse(Seq.empty)
+      else
+        Option(tileDriftSeries.histogramDriftSeries).map(_.asScala).getOrElse(Seq.empty)
     }
+
     val points = lhsList.zip(tileDriftSeries.timestamps.asScala).map {
       case (v, ts) => TimeSeriesPoint(v, ts)
     }
