@@ -1,0 +1,62 @@
+name: Test non-spark Scala modules - 2
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no_spark_scala_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set SBT resources
+        run: |
+          echo "SBT_OPTS=-Xmx8G -Xms2G" >> $GITHUB_ENV
+
+      - name: Run hub tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 hub/test"
+
+      - name: Run service tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 service/test"
+
+      - name: Run service commons tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 service_commons/test"
+
+      - name: Run orchestrator tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 orchestration/test"
+
+      - name: Run cloud gcp tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 cloud_gcp/test"    
+
+      - name: Run cloud aws tests
+        run: |
+          export SBT_OPTS="-Xmx8G -Xms2G"
+          sbt "++ 2.12.18 cloud_aws/test"    

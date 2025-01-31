@@ -1,4 +1,4 @@
-name: Test non-spark Scala modules
+name: Test non-spark Scala modules - 1
 
 on:
   push:
@@ -55,33 +55,3 @@ jobs:
       - name: Run api tests
         run: |
           sbt "++ 2.12.18 api/test"
-
-      - name: Run hub tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 hub/test"
-
-      - name: Run service tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 service/test"
-
-      - name: Run service commons tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 service_commons/test"
-
-      - name: Run orchestrator tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 orchestration/test"
-
-      - name: Run cloud gcp tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 cloud_gcp/test"    
-
-      - name: Run cloud aws tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 cloud_aws/test"    
