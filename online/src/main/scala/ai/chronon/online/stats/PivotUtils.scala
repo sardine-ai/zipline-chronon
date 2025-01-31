@@ -95,7 +95,7 @@ object PivotUtils {
         if (isSetFunc(summary)) {
           JLong.valueOf(extract(summary))
         } else {
-          null
+          Constants.magicNullLong
         }
       }
     }

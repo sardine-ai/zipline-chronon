@@ -77,12 +77,7 @@ object Constants {
   val extensionsToIgnore: Array[String] = Array(".class", ".csv", ".java", ".scala", ".py", ".DS_Store")
   val foldersToIgnore: Array[String] = Array(".git")
 
-  // import base64
-  // text_bytes = "chronon".encode('utf-8')
-  // base64_str = base64.b64encode(text_bytes)
-  // int.from_bytes(base64.b64decode(base64_str), "big")
-  //
-  // output: 27980863399423854
-
-  val magicNullDouble: java.lang.Double = -27980863399423854.0
+  // A negative integer within the safe range for both long and double in JavaScript, Java, Scala, Python
+  val magicNullLong: java.lang.Long = -1234567890L
+  val magicNullDouble: java.lang.Double = -1234567890.0
 }
