@@ -1,6 +1,6 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//tools/build_rules/dependencies:defs.bzl", "get_jars_for_repository")
+
+package(default_visibility = ["//visibility:public"])
 
 SPARK_JARS = [
     scala_jar(
@@ -17,6 +17,10 @@ SPARK_JARS = [
     ),
     scala_jar(
         name = "spark-hive",
+        org = "org.apache.spark",
+    ),
+    scala_jar(
+        name = "spark-avro",
         org = "org.apache.spark",
     ),
     scala_jar(
@@ -38,14 +42,6 @@ SPARK_JARS = [
     jar(
         name = "hive-metastore",
         org = "org.apache.hive",
-    ),
-    jar(
-        name = "hive-exec",
-        org = "org.apache.hive",
-    ),
-    jar(
-        name = "hadoop-common",
-        org = "org.apache.hadoop",
     ),
     jar(
         name = "kryo_shaded",

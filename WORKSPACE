@@ -23,22 +23,29 @@ http_archive(
         "https://github.com/bazelbuild/rules_java/releases/download/7.0.6/rules_java-7.0.6.tar.gz",
     ],
 )
-load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
+
+load("@rules_java//java:repositories.bzl", "remote_jdk17_repos", "rules_java_dependencies", "rules_java_toolchains")
+
 rules_java_dependencies()
+
 rules_java_toolchains()
-load("@rules_java//java:repositories.bzl", "remote_jdk17_repos")
+
 remote_jdk17_repos()
 
 # For JVM support
 http_archive(
     name = "rules_jvm_external",
-    strip_prefix = "rules_jvm_external-6.6",
     sha256 = "3afe5195069bd379373528899c03a3072f568d33bd96fe037bd43b1f590535e7",
-    url = "https://github.com/bazel-contrib/rules_jvm_external/releases/download/6.6/rules_jvm_external-6.6.tar.gz"
+    strip_prefix = "rules_jvm_external-6.6",
+    url = "https://github.com/bazel-contrib/rules_jvm_external/releases/download/6.6/rules_jvm_external-6.6.tar.gz",
 )
+
 load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
+
 rules_jvm_external_deps()
+
 load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
+
 rules_jvm_external_setup()
 
 # For additional rulesets like java_test_suite
@@ -48,9 +55,13 @@ http_archive(
     strip_prefix = "rules_jvm-0.24.0",
     urls = ["https://github.com/bazel-contrib/rules_jvm/releases/download/v0.24.0/rules_jvm-v0.24.0.tar.gz"],
 )
+
 load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps")
+
 contrib_rules_jvm_deps()
+
 load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
+
 contrib_rules_jvm_setup()
 
 # For Scala support
@@ -60,15 +71,37 @@ http_archive(
     strip_prefix = "rules_scala-6.6.0",
     url = "https://github.com/bazelbuild/rules_scala/releases/download/v6.6.0/rules_scala-v6.6.0.tar.gz",
 )
+
 # Initialize Scala with specific version support
 load("@io_bazel_rules_scala//:scala_config.bzl", "scala_config")
+
 scala_config(scala_version = SCALA_VERSION)
+
+load("@io_bazel_rules_scala//scala:scala_maven_import_external.bzl", "scala_maven_import_external")
+
+scala_maven_import_external(
+    name = "scala_compiler_source_2_12_18",
+    artifact = "org.scala-lang:scala-compiler:%s:sources" % SCALA_VERSION,
+    artifact_sha256 = "f79ee80f140218253f2a38c9d73f8a9b552d06afce7a5f61cf08079a388e21df",
+    licenses = ["notice"],
+    server_urls = [
+        "https://repo1.maven.org/maven2",
+        "https://mirror.bazel.build/repo1.maven.org/maven2",
+    ],
+)
+
 load("@io_bazel_rules_scala//scala:scala.bzl", "scala_repositories")
+
 scala_repositories()
+
 load("@io_bazel_rules_scala//scala:toolchains.bzl", "scala_register_toolchains")
+
 scala_register_toolchains()
+
 load("@io_bazel_rules_scala//testing:scalatest.bzl", "scalatest_repositories", "scalatest_toolchain")
+
 scalatest_repositories()
+
 scalatest_toolchain()
 
 # For Protobuf support
@@ -80,10 +113,14 @@ http_archive(
         "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-21.7.tar.gz",
     ],
 )
+
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+
 rules_proto_dependencies()
+
 rules_proto_toolchains()
 
 # To load all dependencies used across our modules
 load("//tools/build_rules/dependencies:load_dependencies.bzl", "load_all_dependencies")
+
 load_all_dependencies()

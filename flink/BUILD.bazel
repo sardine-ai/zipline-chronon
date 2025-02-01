@@ -3,9 +3,9 @@ scala_library(
     srcs = glob(["src/main/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
+        "//aggregator:lib",
         "//api:lib",
         "//api:thrift",
-        "//aggregator:lib",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
         scala_artifact("org.scala-lang.modules:scala-java8-compat"),
@@ -13,13 +13,18 @@ scala_library(
         scala_artifact("org.rogach:scallop"),
         maven_artifact("io.dropwizard.metrics:metrics-core"),
         maven_artifact("org.apache.kafka:kafka-clients"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
+        maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
+        maven_artifact("org.apache.avro:avro"),
+        maven_artifact("io.confluent:kafka-schema-registry-client"),
     ],
 )
 
 test_deps = _FLINK_TEST_DEPS + [
     ":lib",
     "//online:lib",
-    "//online:test-lib",
     "//api:thrift",
     "//api:lib",
     "//aggregator:lib",
@@ -27,6 +32,14 @@ test_deps = _FLINK_TEST_DEPS + [
     # Libraries
     scala_artifact("org.scala-lang.modules:scala-java8-compat"),
     scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+    maven_artifact("org.slf4j:slf4j-api"),
+    maven_artifact("org.apache.logging.log4j:log4j-api"),
+    maven_artifact("org.apache.logging.log4j:log4j-core"),
+    maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
+    maven_artifact("org.apache.avro:avro"),
+    maven_artifact("io.confluent:kafka-schema-registry-client"),
+    maven_artifact("io.confluent:kafka-protobuf-provider"),
+    maven_artifact("org.apache.kafka:kafka-clients"),
     # Testing
     scala_artifact("org.scalatest:scalatest-matchers-core"),
     scala_artifact("org.scalatest:scalatest-core"),
@@ -53,13 +66,15 @@ scala_library(
 scala_test_suite(
     name = "test",
     srcs = glob(["src/test/**/*.scala"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib",],
+    deps = test_deps + [":test-lib"],
 )
 
 jvm_binary(
     name = "assembly",
-    # To exclude runtime dependencies not needed for flink environement in the cluster
+    # To exclude runtime dependencies not needed for flink environment in the cluster
     # otherwise we run into version conflict errors
     deploy_env = ["//tools/build_rules/flink:flink"],
     main_class = "ai.chronon.flink.FlinkJob",
@@ -68,7 +83,7 @@ jvm_binary(
 
 jvm_binary(
     name = "kafka-assembly",
-    # To exclude runtime dependencies not needed for flink environement in the cluster
+    # To exclude runtime dependencies not needed for flink environment in the cluster
     # otherwise we run into version conflict errors
     deploy_env = ["//tools/build_rules/flink:flink"],
     main_class = "ai.chronon.flink.FlinkKafkaBeaconEventDriver",

@@ -28,7 +28,6 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.online.test.TaggedFilterSuite
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import org.apache.spark.rdd.RDD

@@ -1,16 +1,17 @@
 package ai.chronon.flink.test
 
+import ai.chronon.api.ScalaJavaConversions.IteratorOps
+import ai.chronon.api.ScalaJavaConversions.JListOps
 import ai.chronon.flink.SparkExpressionEvalFn
-import org.apache.flink.api.scala._
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.api.scala.DataStreamUtils
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.spark.sql.Encoders
 import org.scalatest.flatspec.AnyFlatSpec
 
 class SparkExpressionEvalFnTest extends AnyFlatSpec {
 
   it should "basic spark expr eval sanity" in {
+
     val elements = Seq(
       E2ETestEvent("test1", 12, 1.5, 1699366993123L),
       E2ETestEvent("test2", 13, 1.6, 1699366993124L),
@@ -27,10 +28,10 @@ class SparkExpressionEvalFnTest extends AnyFlatSpec {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
 
-    val source: DataStream[E2ETestEvent] = env.fromCollection(elements)
+    val source: DataStream[E2ETestEvent] = env.fromCollection(elements.toJava)
     val sparkExprEvalDS = source.flatMap(sparkExprEval)
 
-    val result = new DataStreamUtils(sparkExprEvalDS).collect.toSeq
+    val result = sparkExprEvalDS.executeAndCollect().toScala.toSeq
     // let's check the size
     assert(result.size == elements.size, "Expect result sets to include all 3 rows")
     // let's check the id field

@@ -3,8 +3,8 @@ scala_library(
     srcs = glob(["src/main/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = [
-        "//api:thrift",
         "//api:lib",
+        "//api:thrift",
         "//online:lib",
         "//spark:lib",
         "//tools/build_rules/spark:spark-exec",
@@ -58,6 +58,7 @@ test_deps = [
     scala_artifact("com.google.cloud.spark:spark-bigquery-with-dependencies"),
     maven_artifact("com.google.api:gax"),
     maven_artifact("com.google.protobuf:protobuf-java"),
+    maven_artifact("org.apache.hadoop:hadoop-client-api"),
     # Testing
     scala_artifact("org.scalatest:scalatest-matchers-core"),
     scala_artifact("org.scalatest:scalatest-core"),
@@ -84,8 +85,8 @@ scala_library(
 scala_test_suite(
     name = "test",
     srcs = glob(["src/test/**/*.scala"]),
-    visibility = ["//visibility:public"],
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
     deps = test_deps + [":test-lib"],
 )

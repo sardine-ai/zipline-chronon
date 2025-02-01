@@ -11,8 +11,8 @@ import org.apache.flink.formats.avro.AvroInputFormat
 import org.apache.flink.formats.avro.AvroSerializationSchema
 import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo
 import org.apache.flink.formats.avro.utils.AvroKryoSerializerUtils
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
@@ -64,7 +64,7 @@ object FlinkKafkaBeaconEventDriver {
 
     val transformedStream: DataStream[GenericRecord] = stream
       .map(new DelayedSourceTransformFn(eventDelayMillis))
-      .setParallelism(stream.parallelism)
+      .setParallelism(stream.getParallelism)
 
     // Configure Kafka sink
     val serializationSchema = KafkaRecordSerializationSchema
@@ -93,7 +93,7 @@ object FlinkKafkaBeaconEventDriver {
     // Write to Kafka
     transformedStream
       .sinkTo(kafkaSink)
-      .setParallelism(transformedStream.parallelism)
+      .setParallelism(transformedStream.getParallelism)
 
     // Execute program
     env.execute("Periodic Kafka Beacon Data Producer")

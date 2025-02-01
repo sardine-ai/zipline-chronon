@@ -567,21 +567,21 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "ECommerceEvent",
       Array(
         ("event_name", StringType),
-        ("properties", MapType(StringType, StringType)),
+        ("properties", MapType(StringType, StringType))
       )
     )
     val addCartRow: Map[String, Any] = Map(
       "event_name" -> "backend_add_to_cart",
-      "properties" -> makeHashMap("listing_id" -> "1234"),
+      "properties" -> makeHashMap("listing_id" -> "1234")
     )
     val purchaseRow: Map[String, Any] = Map(
       "event_name" -> "backend_cart_payment",
-      "properties" -> makeHashMap("sold_listing_ids" -> "1234,5678,9012"),
+      "properties" -> makeHashMap("sold_listing_ids" -> "1234,5678,9012")
     )
 
     val listing_id = "EXPLODE(SPLIT(COALESCE(properties['sold_listing_ids'], properties['listing_id']), ','))"
-    val add_cart =  "IF(event_name = 'backend_add_to_cart', 1, 0)"
-    val purchase =  "IF(event_name = 'backend_cart_payment', 1, 0)"
+    val add_cart = "IF(event_name = 'backend_add_to_cart', 1, 0)"
+    val purchase = "IF(event_name = 'backend_cart_payment', 1, 0)"
 
     val selects = Seq(
       "listing_id" -> listing_id,

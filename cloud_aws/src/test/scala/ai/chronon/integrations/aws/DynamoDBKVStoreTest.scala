@@ -31,7 +31,7 @@ import scala.util.Try
 case class Model(modelId: String, modelName: String, online: Boolean)
 case class TimeSeries(joinName: String, featureName: String, tileTs: Long, metric: String, summary: Array[Double])
 
-class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
+class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   import DynamoDBKVStoreConstants._
 

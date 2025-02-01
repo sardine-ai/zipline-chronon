@@ -113,7 +113,7 @@ class ExtensionsTest extends AnyFlatSpec {
   }
 
   it should "group by keys should contain partition column" in {
-    val groupBy = spy(new GroupBy())
+    val groupBy = spy[GroupBy](new GroupBy())
     val baseKeys = List("a", "b")
     val partitionColumn = "ds"
     groupBy.accuracy = Accuracy.SNAPSHOT
@@ -127,7 +127,7 @@ class ExtensionsTest extends AnyFlatSpec {
   }
 
   it should "group by keys should contain time column for temporal accuracy" in {
-    val groupBy = spy(new GroupBy())
+    val groupBy = spy[GroupBy](new GroupBy())
     val baseKeys = List("a", "b")
     val partitionColumn = "ds"
     groupBy.accuracy = Accuracy.TEMPORAL

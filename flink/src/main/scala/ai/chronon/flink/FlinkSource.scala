@@ -1,7 +1,7 @@
 package ai.chronon.flink
 
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.scala.{DataStream => FlinkStream}
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 
 // TODO deprecate this in favor of Api.readTopic + Api.streamDecoder
 abstract class FlinkSource[T] extends Serializable {
@@ -14,5 +14,5 @@ abstract class FlinkSource[T] extends Serializable {
   def getDataStream(topic: String, groupByName: String)(
       env: StreamExecutionEnvironment,
       parallelism: Int
-  ): FlinkStream[T]
+  ): SingleOutputStreamOperator[T]
 }

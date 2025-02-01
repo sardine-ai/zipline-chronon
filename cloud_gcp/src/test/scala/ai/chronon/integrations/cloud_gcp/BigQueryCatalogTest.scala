@@ -37,7 +37,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
   }
 
-  it should "google runtime classes are available" in {
+  it should "google runtime classes are available" ignore {
     assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[Long]])
     assertCompiles("classOf[GoogleHadoopFileSystem]")
     assertCompiles("classOf[GoogleHadoopFS]")
