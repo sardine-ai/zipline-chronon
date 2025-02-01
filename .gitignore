@@ -11,6 +11,7 @@
 *.iml
 *.db
 .idea/
+.ijwb/
 **/local_warehouse/
 .eclipse
 **/.vscode/

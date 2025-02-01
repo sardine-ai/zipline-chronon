@@ -1,7 +1,7 @@
 package ai.chronon.flink.test.window
 
 import ai.chronon.api.Builders
-import ai.chronon.flink.window.KeySelector
+import ai.chronon.flink.window.KeySelectorBuilder
 import org.scalatest.flatspec.AnyFlatSpec
 
 class KeySelectorTest extends AnyFlatSpec {
@@ -11,15 +11,15 @@ class KeySelectorTest extends AnyFlatSpec {
       Map("number" -> 4242, "ip" -> "192.168.0.1", "user" -> "abc")
 
     val groupByWithOneEntityKey = Builders.GroupBy(keyColumns = Seq("number"))
-    val keyFunctionOne = KeySelector.getKeySelectionFunction(groupByWithOneEntityKey)
+    val keyFunctionOne = KeySelectorBuilder.build(groupByWithOneEntityKey)
     assert(
-      keyFunctionOne(sampleSparkExprEvalOutput) == List(4242)
+      keyFunctionOne.getKey(sampleSparkExprEvalOutput) == List(4242)
     )
 
     val groupByWithTwoEntityKey = Builders.GroupBy(keyColumns = Seq("number", "user"))
-    val keyFunctionTwo = KeySelector.getKeySelectionFunction(groupByWithTwoEntityKey)
+    val keyFunctionTwo = KeySelectorBuilder.build(groupByWithTwoEntityKey)
     assert(
-      keyFunctionTwo(sampleSparkExprEvalOutput) == List(4242, "abc")
+      keyFunctionTwo.getKey(sampleSparkExprEvalOutput) == List(4242, "abc")
     )
   }
 
@@ -31,9 +31,9 @@ class KeySelectorTest extends AnyFlatSpec {
     val map2: Map[String, Any] =
       Map("number" -> 4242, "ip" -> "10.0.0.1", "user" -> "notabc")
     val groupBySingleKey = Builders.GroupBy(keyColumns = Seq("number"))
-    val keyFunctionOne = KeySelector.getKeySelectionFunction(groupBySingleKey)
+    val keyFunctionOne = KeySelectorBuilder.build(groupBySingleKey)
     assert(
-      keyFunctionOne(map1).hashCode() == keyFunctionOne(map2).hashCode()
+      keyFunctionOne.getKey(map1).hashCode() == keyFunctionOne.getKey(map2).hashCode()
     )
 
     // TWO ENTITY KEYS
@@ -42,15 +42,15 @@ class KeySelectorTest extends AnyFlatSpec {
     val map4: Map[String, Any] =
       Map("ip" -> "192.168.0.1", "number" -> 4242, "user" -> "notabc")
     val groupByTwoKeys = Builders.GroupBy(keyColumns = Seq("number", "ip"))
-    val keyFunctionTwo = KeySelector.getKeySelectionFunction(groupByTwoKeys)
+    val keyFunctionTwo = KeySelectorBuilder.build(groupByTwoKeys)
     assert(
-      keyFunctionTwo(map3).hashCode() == keyFunctionTwo(map4).hashCode()
+      keyFunctionTwo.getKey(map3).hashCode() == keyFunctionTwo.getKey(map4).hashCode()
     )
 
     val map5: Map[String, Any] =
       Map("ip" -> "192.168.0.1", "number" -> null)
     val map6: Map[String, Any] =
       Map("ip" -> "192.168.0.1", "number" -> null)
-    assert(keyFunctionTwo(map5).hashCode() == keyFunctionTwo(map6).hashCode())
+    assert(keyFunctionTwo.getKey(map5).hashCode() == keyFunctionTwo.getKey(map6).hashCode())
   }
 }

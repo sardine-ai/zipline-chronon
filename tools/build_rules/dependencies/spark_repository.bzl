@@ -9,18 +9,25 @@ spark_repository = repository(
         "org.apache.spark:spark-sql_2.12:3.5.1",
         "org.apache.spark:spark-hive_2.12:3.5.1",
         "org.apache.spark:spark-streaming_2.12:3.5.1",
+        "org.apache.spark:spark-avro_2.12:3.5.1",
 
         # Hive dependencies
         "org.apache.hive:hive-metastore:2.3.9",
-        "org.apache.hive:hive-exec:2.3.9",
-
         "org.apache.curator:apache-curator:5.5.0",
     ],
     excluded_artifacts = [
-        "org.pentaho:pentaho-aggdesigner-algorithm",
         # Exclude commons-cli as it's picking up old 1.2 version which conflicts with our
         # Flink runtime as it needs 1.5.0 otherwise we run into this error
         # java.lang.NoSuchMethodError: 'org.apache.commons.cli.Option$Builder org.apache.commons.cli.Option.builder(java.lang.String)'
         "commons-cli:commons-cli",
+        # Spark is picking up old 3.3.0 version which conflicts with our
+        # Aggregator module as it needs latest 6.6.1 version.
+        "org.apache.datasketches:datasketches-memory",
+        "org.apache.datasketches:datasketches-java",
+        "com.google.protobuf:protobuf-java",
+        "com.google.protobuf:protobuf-util",
+        "com.google.guava:guava",
+        "org.apache.orc:orc-core",
+        "org.apache.orc:orc-mapreduce",
     ],
 )

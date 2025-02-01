@@ -18,33 +18,35 @@ class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
     val tileDriftSeries = new TileDriftSeries()
 
     val percentileDrifts: Seq[JDouble] = Seq(0.1, null, Double.PositiveInfinity, Double.NaN, 0.5)
-      .map(v => 
+      .map(v =>
         if (v == null || (v != null && (v.asInstanceOf[Double].isInfinite || v.asInstanceOf[Double].isNaN)))
           Constants.magicNullDouble
         else
-          v.asInstanceOf[JDouble]
-      )
+          v.asInstanceOf[JDouble])
 
     val percentileDriftsList: java.util.List[JDouble] = percentileDrifts.toJava
     tileDriftSeries.setPercentileDriftSeries(percentileDriftsList)
 
     val jsonStr = ThriftJsonCodec.toJsonStr(tileDriftSeries)
 
-    jsonStr should be (s"""{"percentileDriftSeries":[0.1,${Constants.magicNullDouble},${Constants.magicNullDouble},${Constants.magicNullDouble},0.5]}""")
+    jsonStr should be(
+      s"""{"percentileDriftSeries":[0.1,${Constants.magicNullDouble},${Constants.magicNullDouble},${Constants.magicNullDouble},0.5]}""")
   }
 
   it should "deserialize double values correctly" in {
-    val json = s"""{"percentileDriftSeries":[0.1,${Constants.magicNullDouble},${Constants.magicNullDouble},${Constants.magicNullDouble},0.5]}"""
-    
-    val series = ThriftJsonCodec.fromJsonStr[TileDriftSeries](json, true, classOf[TileDriftSeries])(manifest[TileDriftSeries])
-    
+    val json =
+      s"""{"percentileDriftSeries":[0.1,${Constants.magicNullDouble},${Constants.magicNullDouble},${Constants.magicNullDouble},0.5]}"""
+
+    val series =
+      ThriftJsonCodec.fromJsonStr[TileDriftSeries](json, true, classOf[TileDriftSeries])(manifest[TileDriftSeries])
+
     val drifts = series.getPercentileDriftSeries.asScala.toList
-    drifts.size should be (5)
-    drifts(0) should be (0.1)
-    drifts(1) should be (Constants.magicNullDouble)
-    drifts(2) should be (Constants.magicNullDouble)
-    drifts(3) should be (Constants.magicNullDouble)
-    drifts(4) should be (0.5)
+    drifts.size should be(5)
+    drifts(0) should be(0.1)
+    drifts(1) should be(Constants.magicNullDouble)
+    drifts(2) should be(Constants.magicNullDouble)
+    drifts(3) should be(Constants.magicNullDouble)
+    drifts(4) should be(0.5)
   }
 
   "TileSummarySeries" should "serialize with nulls and special long values" in {
@@ -58,21 +60,23 @@ class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
 
     val jsonStr = ThriftJsonCodec.toJsonStr(tileSummarySeries)
 
-    jsonStr should be (s"""{"count":[100,${Constants.magicNullLong},9223372036854775807,${Constants.magicNullLong},500]}""")
+    jsonStr should be(
+      s"""{"count":[100,${Constants.magicNullLong},9223372036854775807,${Constants.magicNullLong},500]}""")
   }
 
   it should "deserialize long values correctly" in {
     val json = s"""{"count":[100,${Constants.magicNullLong},9223372036854775807,${Constants.magicNullLong},500]}"""
-    
-    val series = ThriftJsonCodec.fromJsonStr[TileSummarySeries](json, true, classOf[TileSummarySeries])(manifest[TileSummarySeries])
-    
+
+    val series = ThriftJsonCodec.fromJsonStr[TileSummarySeries](json, true, classOf[TileSummarySeries])(
+      manifest[TileSummarySeries])
+
     val counts = series.getCount.asScala.toList
-    counts.size should be (5)
-    counts(0) should be (100L)
-    counts(1) should be (Constants.magicNullLong)
-    counts(2) should be (Long.MaxValue)
-    counts(3) should be (Constants.magicNullLong)
-    counts(4) should be (500L)
+    counts.size should be(5)
+    counts(0) should be(100L)
+    counts(1) should be(Constants.magicNullLong)
+    counts(2) should be(Long.MaxValue)
+    counts(3) should be(Constants.magicNullLong)
+    counts(4) should be(500L)
   }
 
 }
