@@ -81,9 +81,9 @@ class StatsComputeTest extends AnyFlatSpec {
     )
     val df = DataFrameGen.events(spark, schema, 100000, 10)
     val stats = new StatsCompute(df, Seq("user"), "generatedTest")
-    val aggregator = StatsGenerator.buildAggregator(
-      stats.metrics,
-      StructType.from("generatedTest", toChrononSchema(stats.selectedDf.schema)))
+    val aggregator =
+      StatsGenerator.buildAggregator(stats.metrics,
+                                     StructType.from("generatedTest", toChrononSchema(stats.selectedDf.schema)))
     val daily = stats.dailySummary(aggregator, timeBucketMinutes = 0).toFlatDf
 
     logger.info("Daily Stats")
@@ -110,9 +110,9 @@ class StatsComputeTest extends AnyFlatSpec {
       .events(spark, schema, 100000, 10)
       .drop(Constants.TimeColumn)
     val stats = new StatsCompute(df, Seq("user"), "noTsTest")
-    val aggregator = StatsGenerator.buildAggregator(
-      stats.metrics,
-      StructType.from("noTsTest", toChrononSchema(stats.selectedDf.schema)))
+    val aggregator =
+      StatsGenerator.buildAggregator(stats.metrics,
+                                     StructType.from("noTsTest", toChrononSchema(stats.selectedDf.schema)))
     val daily = stats.dailySummary(aggregator, timeBucketMinutes = 0).toFlatDf
 
     logger.info("Daily Stats")
@@ -141,9 +141,9 @@ class StatsComputeTest extends AnyFlatSpec {
       .events(spark, schema, 100000, 10)
       .withColumn("byte_column", lit(byteSample))
     val stats = new StatsCompute(df, Seq("user"), "byteTest")
-    val aggregator = StatsGenerator.buildAggregator(
-      stats.metrics,
-      StructType.from("byteTest", toChrononSchema(stats.selectedDf.schema)))
+    val aggregator =
+      StatsGenerator.buildAggregator(stats.metrics,
+                                     StructType.from("byteTest", toChrononSchema(stats.selectedDf.schema)))
     val daily = stats.dailySummary(aggregator, timeBucketMinutes = 0).toFlatDf
 
     logger.info("Daily Stats")

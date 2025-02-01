@@ -23,7 +23,6 @@ import ai.chronon.api.Builders
 import ai.chronon.api.Operation
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.online.test.TaggedFilterSuite
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.Join

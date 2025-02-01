@@ -84,10 +84,11 @@ class CollectionExtensionsTest extends AnyFlatSpec with Matchers {
     list.add("2")
     list.add("3")
 
-    val result = list.flatMap(s =>
-      if (s.toInt % 2 == 0) Iterator(s, s)
-      else Iterator.empty
-    ).toList
+    val result = list
+      .flatMap(s =>
+        if (s.toInt % 2 == 0) Iterator(s, s)
+        else Iterator.empty)
+      .toList
 
     result shouldBe List("2", "2")
   }
@@ -120,7 +121,7 @@ class CollectionExtensionsTest extends AnyFlatSpec with Matchers {
     val iterator = Iterator(obj1, obj2, obj1)
     val distinctObjs = iterator.distinct
     distinctObjs should have length 2
-    distinctObjs should contain allOf(obj1, obj2)
+    distinctObjs should contain allOf (obj1, obj2)
   }
 
   "JMapExtension" should "handle safeGet with null map" in {

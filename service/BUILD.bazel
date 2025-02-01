@@ -27,6 +27,8 @@ test_deps = _VERTX_TEST_DEPS + [
     maven_artifact("junit:junit"),
     maven_artifact("org.junit.platform:junit-platform-launcher"),
     maven_artifact("org.junit.platform:junit-platform-reporting"),
+    maven_artifact("net.bytebuddy:byte-buddy"),
+    maven_artifact("net.bytebuddy:byte-buddy-agent"),
 ]
 
 java_library(
@@ -39,7 +41,7 @@ java_library(
 java_test_suite(
     name = "test",
     srcs = glob(["src/test/**/*.java"]),
+    runner = "junit4",
     visibility = ["//visibility:public"],
-    runner = "junit5",
     deps = test_deps + [":test-lib"],
 )

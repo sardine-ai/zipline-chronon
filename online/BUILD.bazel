@@ -3,10 +3,10 @@ scala_library(
     srcs = glob(["src/main/**/*.scala"]) + glob(["src/main/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = [
-        "//api:thrift",
-        "//api:lib",
-        "//tools/build_rules/spark:spark-exec",
         "//aggregator:lib",
+        "//api:lib",
+        "//api:thrift",
+        "//tools/build_rules/spark:spark-exec",
         scala_artifact("org.scala-lang.modules:scala-java8-compat"),
         scala_artifact("org.json4s:json4s-core"),
         scala_artifact("org.json4s:json4s-jackson"),
@@ -24,6 +24,9 @@ scala_library(
         maven_artifact("org.slf4j:slf4j-api"),
         maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("com.google.code.gson:gson"),
+        maven_artifact("org.apache.avro:avro"),
+        maven_artifact("org.apache.thrift:libthrift"),
+        maven_artifact("org.apache.kafka:kafka-clients"),
     ],
 )
 
@@ -38,6 +41,7 @@ test_deps = [
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
     maven_artifact("com.google.code.gson:gson"),
+    maven_artifact("org.apache.hive:hive-exec"),
     # Testing
     scala_artifact("org.scalatest:scalatest-matchers-core"),
     scala_artifact("org.scalatest:scalatest-core"),
@@ -52,6 +56,8 @@ test_deps = [
     maven_artifact("org.scalatest:scalatest-compatible"),
     maven_artifact("junit:junit"),
     maven_artifact("com.novocode:junit-interface"),
+    maven_artifact("net.bytebuddy:byte-buddy"),
+    maven_artifact("net.bytebuddy:byte-buddy-agent"),
 ]
 
 scala_library(
@@ -64,6 +70,7 @@ scala_library(
 scala_test_suite(
     name = "test",
     srcs = glob(["src/test/**/*.scala"]),
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
     deps = test_deps + [":test-lib"],
 )

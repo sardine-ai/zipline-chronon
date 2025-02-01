@@ -1,10 +1,10 @@
-load("@rules_jvm_external//:defs.bzl", "artifact")
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
-load("@rules_jvm_external//:defs.bzl", "maven_install")
+load("@rules_jvm_external//:defs.bzl", "artifact", "maven_install")
 load(":all_repositories.bzl", "all_repositories")
 
 _repository_urls = [
-   "https://repo1.maven.org/maven2/",
+    "https://repo1.maven.org/maven2/",
+    "https://packages.confluent.io/maven/",
 ]
 
 def load_all_dependencies():
@@ -14,6 +14,7 @@ def load_all_dependencies():
             artifacts = repository.artifacts,
             repositories = _repository_urls,
             fetch_sources = True,
+            version_conflict_policy = "pinned",
             duplicate_version_warning = "error",
             fail_if_repin_required = True,
             resolve_timeout = 5000,

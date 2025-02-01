@@ -16,7 +16,12 @@ class DataRangeTest extends AnyFlatSpec with Matchers {
 
   "collapseToRange" should "collapse consecutive partitions into ranges" in {
     val partitions = List(
-      "2020-01-01", "2020-01-02", "2020-01-03", "2020-01-05", "2020-01-07", "2020-01-08"
+      "2020-01-01",
+      "2020-01-02",
+      "2020-01-03",
+      "2020-01-05",
+      "2020-01-07",
+      "2020-01-08"
     )
 
     val expectedRanges = Seq(
@@ -46,7 +51,7 @@ class DataRangeTest extends AnyFlatSpec with Matchers {
 
     val result = collapseToRange(partitions)
 
-    result should be (empty)
+    result should be(empty)
   }
 
   it should "handle non-consecutive dates" in {

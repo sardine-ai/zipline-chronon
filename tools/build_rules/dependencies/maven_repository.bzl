@@ -59,8 +59,27 @@ maven_repository = repository(
         "io.micrometer:micrometer-registry-statsd:1.13.6",
         "net.sf.py4j:py4j:0.10.9.9",
 
+        # grpc
+        "io.grpc:grpc-core:1.62.2",  # required by bigtable
+        "io.grpc:grpc-api:1.62.2",
+
         # Kafka
         "org.apache.kafka:kafka-clients:3.9.0",
+        "io.confluent:kafka-schema-registry-client:7.8.0",
+        "io.confluent:kafka-protobuf-provider:7.8.0",
+        "com.google.protobuf:protobuf-java-util:3.25.1",
+        "com.google.protobuf:protobuf-java:3.25.1",
+
+        # Avro
+        "org.apache.avro:avro:1.11.3",
+
+        # Hive
+        "org.apache.hive:hive-metastore:2.3.9",
+        # !!! this is a dangerous dependency - only used in //online:test-lib - please don't use it anywhere else
+        "org.apache.hive:hive-exec:2.3.9",
+
+        # Hadoop
+        "org.apache.hadoop:hadoop-client-api:3.3.4",
 
         # Google Cloud
         "com.google.cloud:google-cloud-bigquery:2.42.0",
@@ -69,10 +88,10 @@ maven_repository = repository(
         "com.google.cloud:google-cloud-dataproc:4.52.0",
         # Have to specify in group:artifact:packaging:version format if version doesn't start with a digit
         # Code reference: https://github.com/bazel-contrib/rules_jvm_external/blob/master/private/lib/coordinates.bzl#L44
-        "com.google.cloud.bigdataoss:gcs-connector:jar:hadoop3-2.2.6",
+        "com.google.cloud.bigdataoss:gcs-connector:jar:hadoop3-2.2.26",
         "com.google.cloud.bigdataoss:gcsio:3.0.3",
         "com.google.cloud.bigdataoss:util-hadoop:3.0.0",
-        "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.41.0",
+        "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.41.1",
         "com.google.cloud:google-cloud-bigtable-emulator:0.178.0",
 
         # Flink
@@ -82,6 +101,7 @@ maven_repository = repository(
         "org.apache.flink:flink-yarn:1.17.0",
         "org.apache.flink:flink-runtime:1.17.0",
         "org.apache.flink:flink-connector-kafka:1.17.0",
+        "org.apache.flink:flink-connector-files:1.17.0",
         "org.apache.flink:flink-avro:1.17.0",
         "org.apache.flink:flink-runtime:1.17.0:tests",
         "org.apache.flink:flink-test-utils:1.17.0",
@@ -102,6 +122,7 @@ maven_repository = repository(
         "io.circe:circe-parser_2.12:0.14.9",
     ],
     excluded_artifacts = [
+        "org.pentaho:pentaho-aggdesigner-algorithm",
         # Exclude Hadoop from the assembled JAR
         # Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
         # superinterface org.apache.hadoop.hdfs.web.TokenAspect$TokenManagementDelegator
@@ -117,6 +138,5 @@ maven_repository = repository(
         "org.apache.hadoop:hadoop-yarn-client",
         "org.apache.hadoop:hadoop-yarn-common",
     ],
-    overrides = {
-    },
+    overrides = {},
 )

@@ -15,10 +15,7 @@ import com.google.cloud.bigtable.data.v2.BigtableDataSettings
 import com.google.cloud.bigtable.data.v2.models.Query
 import com.google.cloud.bigtable.data.v2.models.Row
 import com.google.cloud.bigtable.data.v2.models.RowMutation
-import com.google.cloud.bigtable.emulator.v2.BigtableEmulatorRule
-import org.junit.Rule
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import com.google.cloud.bigtable.emulator.v2.Emulator
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.mockito.Mockito.withSettings
@@ -33,15 +30,29 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 
-@RunWith(classOf[JUnit4])
-class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
+class EmulatorWrapper {
+  private var emulator: Emulator = null
+
+  /** Initializes the Bigtable emulator before a test runs. */
+  def before(): Unit = {
+    emulator = Emulator.createBundled
+    emulator.start()
+  }
+
+  /** Stops the Bigtable emulator after a test finishes. */
+  def after(): Unit = {
+    emulator.stop()
+    emulator = null
+  }
+
+  def getPort = emulator.getPort
+}
+
+class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   import BigTableKVStore._
 
-  // ugly hacks to wire up the emulator. See: https://stackoverflow.com/questions/32160549/using-junit-rule-with-scalatest-e-g-temporaryfolder
-  val _bigtableEmulator: BigtableEmulatorRule = BigtableEmulatorRule.create()
-  @Rule
-  def bigtableEmulator: BigtableEmulatorRule = _bigtableEmulator
+  val emulatorWrapper = new EmulatorWrapper
 
   private var dataClient: BigtableDataClient = _
   private var adminClient: BigtableTableAdminClient = _
@@ -50,16 +61,18 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
   private val instanceId = "test-instance"
 
   before {
+    emulatorWrapper.before()
+
     // Configure settings to use emulator
     val dataSettings = BigtableDataSettings
-      .newBuilderForEmulator(bigtableEmulator.getPort)
+      .newBuilderForEmulator(emulatorWrapper.getPort)
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .setCredentialsProvider(NoCredentialsProvider.create())
       .build()
 
     val adminSettings = BigtableTableAdminSettings
-      .newBuilderForEmulator(bigtableEmulator.getPort)
+      .newBuilderForEmulator(emulatorWrapper.getPort)
       .setProjectId(projectId)
       .setInstanceId(instanceId)
       .setCredentialsProvider(NoCredentialsProvider.create())
@@ -68,6 +81,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
     // Create clients
     dataClient = BigtableDataClient.create(dataSettings)
     adminClient = BigtableTableAdminClient.create(adminSettings)
+
   }
 
   it should "big table creation" in {
@@ -187,7 +201,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
   }
 
   it should "multiput failures" in {
-    val mockDataClient: BigtableDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
+    val mockDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
     val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
 
@@ -209,7 +223,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter{
   }
 
   it should "multiget failures" in {
-    val mockDataClient: BigtableDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
+    val mockDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
     val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
     val serverStreamingCallable = mock[ServerStreamingCallable[Query, Row]]

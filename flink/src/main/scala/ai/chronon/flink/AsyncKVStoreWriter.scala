@@ -8,9 +8,9 @@ import ai.chronon.online.KVStore.PutRequest
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
 import org.apache.flink.streaming.api.datastream.AsyncDataStream
+import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.functions.async.ResultFuture
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
-import org.apache.flink.streaming.api.scala.DataStream
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -30,21 +30,18 @@ object AsyncKVStoreWriter {
                          featureGroupName: String,
                          timeoutMillis: Long = defaultTimeoutMillis,
                          capacity: Int = kvStoreConcurrency): DataStream[WriteResponse] = {
-    // We use the Java API here as we have encountered issues in integration tests in the
-    // past using the Scala async datastream API.
-    new DataStream(
-      AsyncDataStream
-        .unorderedWait(
-          inputDS.javaStream,
-          kvStoreWriterFn,
-          timeoutMillis,
-          TimeUnit.MILLISECONDS,
-          capacity
-        )
-        .uid(s"kvstore-writer-async-$featureGroupName")
-        .name(s"async kvstore writes for $featureGroupName")
-        .setParallelism(inputDS.parallelism)
-    )
+
+    AsyncDataStream
+      .unorderedWait(
+        inputDS,
+        kvStoreWriterFn,
+        timeoutMillis,
+        TimeUnit.MILLISECONDS,
+        capacity
+      )
+      .uid(s"kvstore-writer-async-$featureGroupName")
+      .name(s"async kvstore writes for $featureGroupName")
+      .setParallelism(inputDS.getParallelism)
   }
 
   /**

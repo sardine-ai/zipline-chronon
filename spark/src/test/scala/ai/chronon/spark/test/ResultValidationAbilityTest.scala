@@ -33,7 +33,7 @@ import org.rogach.scallop.ScallopConf
 import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpec
 
-class ResultValidationAbilityTest extends AnyFlatSpec with BeforeAndAfter{
+class ResultValidationAbilityTest extends AnyFlatSpec with BeforeAndAfter {
   val confPath = "joins/team/example_join.v1"
   val spark: SparkSession = SparkSessionBuilder.build("test", local = true)
   val mockTableUtils: TableUtils = mock(classOf[TableUtils])
