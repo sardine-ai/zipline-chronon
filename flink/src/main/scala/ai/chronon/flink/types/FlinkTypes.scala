@@ -43,8 +43,11 @@ class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long]) {
   * @param keys the GroupBy entity keys
   * @param tileBytes encoded tile IR
   * @param latestTsMillis timestamp of the current event being processed
+  *
+  * Changed keys type to Seq[Any] instead of List[Any] otherwise we are running into accessing head of null list
+  * runtime error for tests which is very weird and was hard to debug the root cause.
   */
-class TimestampedTile(var keys: List[Any], var tileBytes: Array[Byte], var latestTsMillis: Long) {
+class TimestampedTile(var keys: Seq[Any], var tileBytes: Array[Byte], var latestTsMillis: Long) {
   def this() = this(List(), Array(), 0L)
 
   override def toString: String =

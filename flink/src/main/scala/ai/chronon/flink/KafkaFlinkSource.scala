@@ -4,11 +4,10 @@ import ai.chronon.online.TopicChecker
 import ai.chronon.online.TopicInfo
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.serialization.DeserializationSchema
-import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.connector.kafka.source.KafkaSource
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.spark.sql.Row
 
@@ -33,7 +32,7 @@ class KafkaFlinkSource(kafkaBootstrap: Option[String],
   implicit val parallelism: Int = TopicChecker.getPartitions(topicInfo.name, bootstrap, topicInfo.params)
 
   override def getDataStream(topic: String, groupByName: String)(env: StreamExecutionEnvironment,
-                                                                 parallelism: Int): DataStream[Row] = {
+                                                                 parallelism: Int): SingleOutputStreamOperator[Row] = {
     val kafkaSource = KafkaSource
       .builder[Row]()
       .setTopics(topicInfo.name)

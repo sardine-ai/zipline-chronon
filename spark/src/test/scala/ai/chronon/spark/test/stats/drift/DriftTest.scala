@@ -36,9 +36,9 @@ class DriftTest extends AnyFlatSpec with Matchers {
   implicit val spark: SparkSession = SparkSessionBuilder.build(namespace, local = true)
   implicit val tableUtils: TableUtils = TableUtils(spark)
   tableUtils.createDatabase(namespace)
-  
+
   @transient private lazy val logger = LoggerFactory.getLogger(getClass.getName)
-  
+
   def showTable(name: String)(implicit tableUtils: TableUtils): Unit = {
     logger.info(s"Showing table $name".yellow)
     val df = tableUtils.loadTable(name)

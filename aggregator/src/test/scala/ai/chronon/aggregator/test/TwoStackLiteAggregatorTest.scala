@@ -44,17 +44,16 @@ class TwoStackLiteAggregatorTest extends AnyFlatSpec {
     assertEquals(null, bankersBuffer.query) // null
     Seq(7, 8, 9).map(x => Integer.valueOf(x)).foreach(i => bankersBuffer.push(i))
     def assertBufferEquals(a: Seq[Int], b: java.util.ArrayList[Integer]): Unit = {
-      if(a==null || b == null) {
+      if (a == null || b == null) {
         assertEquals(a, b)
       } else {
-        assertArrayEquals(
-          Option(a).map(_.map(x => Integer.valueOf(x).asInstanceOf[AnyRef]).toArray).orNull,
-          Option(b).map(_.toArray).orNull)
+        assertArrayEquals(Option(a).map(_.map(x => Integer.valueOf(x).asInstanceOf[AnyRef]).toArray).orNull,
+                          Option(b).map(_.toArray).orNull)
       }
     }
     assertBufferEquals(Seq(8, 9), bankersBuffer.query)
     bankersBuffer.pop()
-    assertBufferEquals(Seq(8, 9),bankersBuffer.query)
+    assertBufferEquals(Seq(8, 9), bankersBuffer.query)
     bankersBuffer.pop()
     assertBufferEquals(Seq(9), bankersBuffer.query)
     bankersBuffer.pop()
@@ -76,18 +75,13 @@ class TwoStackLiteAggregatorTest extends AnyFlatSpec {
         Operation.AVERAGE,
         "num",
         Seq(new Window(1, TimeUnit.DAYS), new Window(1, TimeUnit.HOURS), new Window(30, TimeUnit.DAYS))),
-      Builders.Aggregation(
-        Operation.AVERAGE,
-        "num"),
+      Builders.Aggregation(Operation.AVERAGE, "num"),
       Builders.Aggregation(
         Operation.TOP_K,
         "num",
         Seq(new Window(1, TimeUnit.DAYS), new Window(1, TimeUnit.HOURS), new Window(30, TimeUnit.DAYS)),
         argMap = Map("k" -> "300")),
-      Builders.Aggregation(
-        Operation.TOP_K,
-        "num",
-        argMap = Map("k" -> "300"))
+      Builders.Aggregation(Operation.TOP_K, "num", argMap = Map("k" -> "300"))
     )
 
     timer.publish("setup")
@@ -104,12 +98,13 @@ class TwoStackLiteAggregatorTest extends AnyFlatSpec {
 //    )
 //    val naiveIrs = naiveAggregator.aggregate(events, queries).map(sawtoothAggregator.windowedAggregator.finalize)
 //    timer.publish("naive")
-    val bankersAggregator = new TwoStackLiteAggregator(
-      StructType("", columns.map(c => StructField(c.name, c.`type`)).toArray),
-      aggregations)
+    val bankersAggregator =
+      new TwoStackLiteAggregator(StructType("", columns.map(c => StructField(c.name, c.`type`)).toArray), aggregations)
 
     // will finalize by default
-    val bankersIrs = bankersAggregator.slidingSawtoothWindow(queries.sorted.iterator, events.sortBy(_.ts).iterator, events.length).toArray
+    val bankersIrs = bankersAggregator
+      .slidingSawtoothWindow(queries.sorted.iterator, events.sortBy(_.ts).iterator, events.length)
+      .toArray
     timer.publish("sorting + banker")
 
     val sawtoothIrs = sawtoothAggregate(events, queries, aggregations, schema)
@@ -122,8 +117,9 @@ class TwoStackLiteAggregatorTest extends AnyFlatSpec {
     // sawtooth                  914 ms
 
     val gson = new Gson()
-    bankersIrs.zip(sawtoothIrs).foreach{case (bankers, sawtooth) =>
-      assertEquals(gson.toJson(sawtooth), gson.toJson(bankers))
+    bankersIrs.zip(sawtoothIrs).foreach {
+      case (bankers, sawtooth) =>
+        assertEquals(gson.toJson(sawtooth), gson.toJson(bankers))
     }
   }
 

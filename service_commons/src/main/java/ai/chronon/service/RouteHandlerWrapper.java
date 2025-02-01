@@ -127,7 +127,7 @@ public class RouteHandlerWrapper {
         };
     }
 
-    private static <I> I createInputFromParams(Map<String, String> params, Class<I> inputClass) throws Exception {
+    public static <I> I createInputFromParams(Map<String, String> params, Class<I> inputClass) throws Exception {
         // Create new instance using no-args constructor
         I input = inputClass.getDeclaredConstructor().newInstance();
 
