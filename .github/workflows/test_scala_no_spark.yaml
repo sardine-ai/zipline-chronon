@@ -42,21 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java for bazel
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '11'
-
-      - name: Setup Bazel
-        uses: bazelbuild/setup-bazelisk@v3
-
-      - name: Mount bazel cache
-        uses: actions/cache@v4
-        with:
-          path: "~/.cache/bazel"
-          key: bazel
-
       - name: Set SBT resources
         run: |
           echo "SBT_OPTS=-Xmx8G -Xms2G" >> $GITHUB_ENV

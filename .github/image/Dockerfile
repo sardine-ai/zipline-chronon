@@ -19,6 +19,10 @@ ENV PATH=$PATH:$JAVA_HOME/bin
 RUN curl -L "https://github.com/sbt/sbt/releases/download/v1.8.2/sbt-1.8.2.tgz" | tar -xz -C /usr/local
 ENV PATH="/usr/local/sbt/bin:${PATH}"
 
+# Install Bazel
+ADD https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64 /usr/local/bin/bazel
+RUN chmod 755 /usr/local/bin/bazel
+
 # thrift
 ARG THRIFT_VERSION=0.21.0
 RUN apk add --no-cache \
