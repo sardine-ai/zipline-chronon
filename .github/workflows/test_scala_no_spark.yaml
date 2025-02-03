@@ -42,6 +42,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify Java installation
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          ls -l $JAVA_HOME
+          ls -l $JAVA_HOME/lib
+
       - name: Set SBT resources
         run: |
           echo "SBT_OPTS=-Xmx8G -Xms2G" >> $GITHUB_ENV
