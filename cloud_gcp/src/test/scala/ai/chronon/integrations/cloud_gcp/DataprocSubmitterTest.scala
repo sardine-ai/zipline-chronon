@@ -2,6 +2,7 @@ package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark
 import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
+import ai.chronon.spark.JobSubmitterConstants.FlinkStateUri
 import ai.chronon.spark.JobSubmitterConstants.JarURI
 import ai.chronon.spark.JobSubmitterConstants.MainClass
 import com.google.api.gax.rpc.UnaryCallable
@@ -61,7 +62,9 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
         // Include savepoint / checkpoint Uri to resume from where a job left off
         // SavepointUri -> "gs://zl-warehouse/flink-state/93686c72c3fd63f58d631e8388d8180d/chk-12",
-        JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"
+        JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar",
+        // This is where we write out checkpoints / persist state while the job is running
+        FlinkStateUri -> "gs://zl-warehouse/flink-state"
       ),
       List.empty,
       "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
@@ -81,7 +84,9 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         Map(
           MainClass -> "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
           FlinkMainJarURI -> "gs://zipline-jars/flink_kafka_ingest-assembly-0.1.0-SNAPSHOT.jar",
-          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar"
+          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar",
+          // This is where we write out checkpoints / persist state while the job is running
+          FlinkStateUri -> "gs://zl-warehouse/flink-state"
         ),
         List.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
