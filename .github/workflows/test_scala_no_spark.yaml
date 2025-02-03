@@ -48,8 +48,7 @@ jobs:
 
       - name: Run Flink tests
         run: |
-          export SBT_OPTS="-Xmx24G -Xms4G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "++ 2.12.18 flink/test"
+          bazel test //flink:test
 
       - name: Run Async KV Store writer test
         run: |
