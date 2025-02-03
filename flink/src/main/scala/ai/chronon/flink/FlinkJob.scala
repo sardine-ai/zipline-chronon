@@ -7,6 +7,7 @@ import ai.chronon.api.DataType
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.flink.FlinkJob.watermarkStrategy
+import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
@@ -318,11 +319,11 @@ object FlinkJob {
             val topicInfo = TopicInfo.parse(topicUri)
 
             val schemaProvider =
-              topicInfo.params.get("registry_url") match {
+              topicInfo.params.get(RegistryHostKey) match {
                 case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
                 case None =>
                   throw new IllegalArgumentException(
-                    "We only support schema registry based schema lookups. Missing registry_url in topic config")
+                    s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
               }
 
             val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)

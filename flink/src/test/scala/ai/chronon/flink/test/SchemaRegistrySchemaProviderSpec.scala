@@ -1,6 +1,7 @@
 package ai.chronon.flink.test
 
 import ai.chronon.flink.SchemaRegistrySchemaProvider
+import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.online.TopicInfo
 import io.confluent.kafka.schemaregistry.SchemaProvider
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
@@ -14,7 +15,7 @@ import scala.jdk.CollectionConverters._
 
 class MockSchemaRegistrySchemaProvider(conf: Map[String, String], mockSchemaRegistryClient: MockSchemaRegistryClient)
     extends SchemaRegistrySchemaProvider(conf) {
-  override def buildSchemaRegistryClient(registryUrl: String): MockSchemaRegistryClient = mockSchemaRegistryClient
+  override def buildSchemaRegistryClient(schemeString: String, registryHost: String, maybePortString: Option[String]): MockSchemaRegistryClient = mockSchemaRegistryClient
 }
 
 class SchemaRegistrySchemaProviderSpec extends AnyFlatSpec {
@@ -23,7 +24,7 @@ class SchemaRegistrySchemaProviderSpec extends AnyFlatSpec {
   val protoSchemaProvider: SchemaProvider = new ProtobufSchemaProvider
   val schemaRegistryClient = new MockSchemaRegistryClient(Seq(avroSchemaProvider, protoSchemaProvider).asJava)
   val schemaRegistrySchemaProvider =
-    new MockSchemaRegistrySchemaProvider(Map("registry_url" -> "http://localhost:8081"), schemaRegistryClient)
+    new MockSchemaRegistrySchemaProvider(Map(RegistryHostKey -> "localhost"), schemaRegistryClient)
 
   it should "fail if the schema subject is not found" in {
     val topicInfo = new TopicInfo("test-topic", "kafka", Map.empty)
