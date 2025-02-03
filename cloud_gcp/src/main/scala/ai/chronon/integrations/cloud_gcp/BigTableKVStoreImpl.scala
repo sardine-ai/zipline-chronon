@@ -271,7 +271,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   // Using the individual mutate calls allows us to easily return fine-grained success/failure information in the form
   // our callers expect.
   override def multiPut(requests: Seq[KVStore.PutRequest]): Future[Seq[Boolean]] = {
-    logger.info(s"Performing multi-put for ${requests.size} requests")
+    logger.debug(s"Performing multi-put for ${requests.size} requests")
     val resultFutures = {
       requests.map { request =>
         val tableId = mapDatasetToTable(request.dataset)
