@@ -130,10 +130,10 @@ RENDER_INFO_DEFAULT_SCRIPT = "scripts/render_info.py"
 
 # GCP DATAPROC SPECIFIC CONSTANTS
 DATAPROC_ENTRY = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter"
-ZIPLINE_ONLINE_JAR_DEFAULT = "cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+ZIPLINE_ONLINE_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
 ZIPLINE_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.cloud_gcp.GcpApiImpl"
 ZIPLINE_FLINK_JAR_DEFAULT = "flink-assembly-0.1.0-SNAPSHOT.jar"
-ZIPLINE_DATAPROC_SUBMITTER_JAR = "cloud_gcp_submitter-assembly-0.1.0-SNAPSHOT.jar"
+ZIPLINE_DATAPROC_SUBMITTER_JAR = "cloud_gcp_submitter_deploy.jar"
 
 
 class DataprocJobType(Enum):
