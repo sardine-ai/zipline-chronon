@@ -1,5 +1,5 @@
 scala_library(
-    name = "lib",
+    name = "cloud_gcp_lib",
     srcs = glob(["src/main/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = [
@@ -36,8 +36,14 @@ scala_library(
     ],
 )
 
+jvm_binary(
+    name = "cloud_gcp_submitter",
+    main_class = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter",
+    runtime_deps = [":cloud_gcp_lib"],
+)
+
 test_deps = [
-    ":lib",
+    ":cloud_gcp_lib",
     "//api:thrift",
     "//api:lib",
     "//online:lib",
@@ -76,17 +82,18 @@ test_deps = [
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "cloud_gcp_test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
+
 scala_test_suite(
-    name = "test",
+    name = "cloud_gcp_test",
     srcs = glob(["src/test/**/*.scala"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":cloud_gcp_test_lib"],
 )

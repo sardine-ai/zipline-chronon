@@ -39,13 +39,14 @@ fi
 
 echo "Building jars"
 sbt clean
-sbt cloud_gcp/assembly
-sbt cloud_gcp_submitter/assembly
 sbt flink/assembly
 sbt service/assembly
 
-CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/cloud_gcp/target/scala-2.12/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
-CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/cloud_gcp_submitter/target/scala-2.12/cloud_gcp_submitter-assembly-0.1.0-SNAPSHOT.jar"
+bazel build //cloud_gcp:lib_deploy.jar
+bazel build //cloud_gcp:submitter_deploy.jar
+
+CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/lib_deploy.jar"
+CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/submitter_deploy.jar"
 FLINK_JAR="$CHRONON_ROOT_DIR/flink/target/scala-2.12/flink-assembly-0.1.0-SNAPSHOT.jar"
 SERVICE_JAR="$CHRONON_ROOT_DIR/service/target/scala-2.12/service-0.1.0-SNAPSHOT.jar"
 
