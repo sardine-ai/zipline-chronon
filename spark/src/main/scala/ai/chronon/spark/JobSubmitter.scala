@@ -22,4 +22,5 @@ object JobSubmitterConstants {
   val JarURI = "jarUri"
   val FlinkMainJarURI = "flinkMainJarUri"
   val SavepointUri = "savepointUri"
+  val FlinkStateUri = "flinkStateUri"
 }
