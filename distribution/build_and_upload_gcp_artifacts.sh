@@ -42,11 +42,11 @@ sbt clean
 sbt flink/assembly
 sbt service/assembly
 
-bazel build //cloud_gcp:lib_deploy.jar
-bazel build //cloud_gcp:submitter_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
 
-CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/lib_deploy.jar"
-CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/submitter_deploy.jar"
+CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
+CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_submitter_deploy.jar"
 FLINK_JAR="$CHRONON_ROOT_DIR/flink/target/scala-2.12/flink-assembly-0.1.0-SNAPSHOT.jar"
 SERVICE_JAR="$CHRONON_ROOT_DIR/service/target/scala-2.12/service-0.1.0-SNAPSHOT.jar"
 
