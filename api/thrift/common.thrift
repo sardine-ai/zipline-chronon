@@ -12,3 +12,10 @@ struct Window {
     1: i32 length
     2: TimeUnit timeUnit
 }
+
+enum ConfigType {
+    STAGING_QUERY = 1
+    GROUP_BY = 2
+    JOIN = 3
+    MODEL = 4
+}
