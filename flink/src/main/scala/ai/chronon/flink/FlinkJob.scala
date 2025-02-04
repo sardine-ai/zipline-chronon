@@ -152,7 +152,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
         "Tiling is enabled.")
 
-    val tilingWindowSizeInMillis: Option[Long] =
+    val tilingWindowSizeInMillis: Long =
       ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
 
     // we expect parallelism on the source stream to be set by the source provider
@@ -180,7 +180,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
         .toSeq
 
     val window = TumblingEventTimeWindows
-      .of(Time.milliseconds(tilingWindowSizeInMillis.get))
+      .of(Time.milliseconds(tilingWindowSizeInMillis))
       .asInstanceOf[WindowAssigner[Map[String, Any], TimeWindow]]
 
     // An alternative to AlwaysFireOnElementTrigger can be used: BufferedProcessingTimeTrigger.
@@ -225,7 +225,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .setParallelism(sourceStream.getParallelism)
 
     val putRecordDS: DataStream[AvroCodecOutput] = tilingDS
-      .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed))
+      .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed, tilingWindowSizeInMillis))
       .uid(s"avro-conversion-01-$groupByName")
       .name(s"Avro conversion for $groupByName")
       .setParallelism(sourceStream.getParallelism)
