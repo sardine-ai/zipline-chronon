@@ -49,9 +49,8 @@ object SparkSessionBuilder {
     // Create pattern layout with colors
     val patternLayout = builder
       .newLayout("PatternLayout")
-      .addAttribute(
-        "pattern",
-        "%cyan{%d{yyyy/MM/dd HH:mm:ss}} %highlight{%-5level} %style{%file:%line}{ITALIC,GREEN} - %message%n")
+      .addAttribute("pattern",
+                    "%cyan{%d{yyyy/MM/dd HH:mm:ss}} %highlight{%-5level} %style{%file:%line}{GREEN} - %message%n")
       .addAttribute("disableAnsi", "false")
 
     console.add(patternLayout)

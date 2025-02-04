@@ -18,7 +18,6 @@ def generate_java_files_using_thrift(ctx):
             inputs = [src_file],
             executable = thrift_path,
             arguments = [
-                "-strict",
                 "--gen",
                 "java:generated_annotations=undated",
                 "-out",
