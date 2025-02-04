@@ -48,6 +48,7 @@ jobs:
           java -version
           ls -l $JAVA_HOME
           ls -l $JAVA_HOME/lib
+          echo $LD_LIBRARY_PATH
 
       - name: Set SBT resources
         run: |
