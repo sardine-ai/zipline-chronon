@@ -66,6 +66,7 @@ RUN python3 -m pip install --break-system-packages --upgrade pip && \
 # spark uses snappy to write files, snappy needs gcompat
 RUN apk add gcompat
 
+ENV LD_LIBRARY_PATH=/usr/lib/jvm/java-17-amazon-corretto/lib/server
 # Verify installations
 RUN java -version && \
     thrift -version && \
