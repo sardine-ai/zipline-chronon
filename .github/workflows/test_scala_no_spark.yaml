@@ -42,48 +42,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set SBT resources
+      - name: Setup Bazel cache credentials
         run: |
-          echo "SBT_OPTS=-Xmx8G -Xms2G" >> $GITHUB_ENV
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Run Flink tests
         run: |
-          export SBT_OPTS="-Xmx24G -Xms4G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "++ 2.12.18 flink/test"
-
-      - name: Run Async KV Store writer test
-        run: |
-          sbt "++ 2.12.18 flink/testOnly -- -n asyncKVStoreWriterTest"
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //flink:test
 
       - name: Run Aggregator tests
         run: |
-          sbt "++ 2.12.18 aggregator/test"
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //aggregator:test
 
       - name: Run Online tests
         run: |
-          sbt "++ 2.12.18 online/test"
-
-      - name: Run Catalyst Util tests
-        run: |
-          sbt "++ 2.12.18 online/testOnly -- -n catalystUtilHiveUdfTest"      
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //online:test
 
       - name: Run api tests
         run: |
-          sbt "++ 2.12.18 api/test"
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //api:test
 
       - name: Run hub tests
         run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 hub/test"
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //hub:test
 
       - name: Run service tests
         run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 service/test"
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //service:test
 
       - name: Run orchestrator tests
         run: |
-          export SBT_OPTS="-Xmx8G -Xms2G"
-          sbt "++ 2.12.18 orchestration/test"
-          
-    
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //orchestration:test

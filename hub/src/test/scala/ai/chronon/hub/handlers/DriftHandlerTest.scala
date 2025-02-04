@@ -42,7 +42,7 @@ class DriftHandlerTest {
     series.setPercentileDriftSeries(List(0.1: java.lang.Double).asJava)
     series.setHistogramDriftSeries(List(0.2: java.lang.Double).asJava)
     series.setCountChangePercentSeries(List(0.3: java.lang.Double).asJava)
-
+    
     val key = new TileSeriesKey()
     key.setColumn(testColumnName)
     series.setKey(key)
@@ -54,7 +54,7 @@ class DriftHandlerTest {
     series.setTimestamps(List(timestamp: java.lang.Long).asJava)
     series.setPercentiles(List(List(0.1: java.lang.Double, 0.5: java.lang.Double, 0.9: java.lang.Double).asJava).asJava)
     series.setCount(List(100L: java.lang.Long).asJava)
-
+    
     val key = new TileSeriesKey()
     key.setColumn(testColumnName)
     series.setKey(key)
@@ -72,15 +72,14 @@ class DriftHandlerTest {
     request.setAlgorithm(DriftMetric.JENSEN_SHANNON)
 
     val mockDriftSeries = List(createMockDriftSeries(baseTimestamp))
-    when(
-      mockedDriftStore.getDriftSeries(
-        anyString(),
-        any[DriftMetric],
-        any[Window],
-        anyLong(),
-        anyLong(),
-        any[Option[String]]
-      )).thenReturn(Success(Future.successful(mockDriftSeries)))
+    when(mockedDriftStore.getDriftSeries(
+      anyString(),
+      any[DriftMetric],
+      any[Window],
+      anyLong(),
+      anyLong(),
+      any[Option[String]]
+    )).thenReturn(Success(Future.successful(mockDriftSeries)))
 
     val response = handler.getJoinDrift(request)
     assertNotNull(response.getDriftSeries)
@@ -99,15 +98,14 @@ class DriftHandlerTest {
     request.setAlgorithm(DriftMetric.JENSEN_SHANNON)
 
     val mockDriftSeries = List(createMockDriftSeries(baseTimestamp))
-    when(
-      mockedDriftStore.getDriftSeries(
-        anyString(),
-        any[DriftMetric],
-        any[Window],
-        anyLong(),
-        anyLong(),
-        any[Option[String]]
-      )).thenReturn(Success(Future.successful(mockDriftSeries)))
+    when(mockedDriftStore.getDriftSeries(
+      anyString(),
+      any[DriftMetric],
+      any[Window],
+      anyLong(),
+      anyLong(),
+      any[Option[String]]
+    )).thenReturn(Success(Future.successful(mockDriftSeries)))
 
     val response = handler.getJoinDrift(request)
     assertNotNull(response.getDriftSeries)
@@ -121,7 +119,7 @@ class DriftHandlerTest {
     request.setOffset("invalid")
     request.setStartTs(baseTimestamp - TimeUnit.HOURS.toMillis(24))
     request.setEndTs(baseTimestamp)
-
+    
     handler.getJoinDrift(request)
   }
 
@@ -134,13 +132,12 @@ class DriftHandlerTest {
     request.setEndTs(baseTimestamp)
 
     val mockSummarySeries = List(createMockSummarySeries(baseTimestamp))
-    when(
-      mockedDriftStore.getSummarySeries(
-        anyString(),
-        anyLong(),
-        anyLong(),
-        any[Option[String]]
-      )).thenReturn(Success(Future.successful(mockSummarySeries)))
+    when(mockedDriftStore.getSummarySeries(
+      anyString(),
+      anyLong(),
+      anyLong(),
+      any[Option[String]]
+    )).thenReturn(Success(Future.successful(mockSummarySeries)))
 
     val response = handler.getColumnSummary(request)
     assertNotNull(response)
@@ -156,7 +153,7 @@ class DriftHandlerTest {
     request.setStartTs(baseTimestamp)
     request.setEndTs(baseTimestamp - TimeUnit.HOURS.toMillis(24))
     // We don't need to set offset or algorithm since the timestamp validation should happen first
-
+    
     handler.getJoinDrift(request)
   }
 
@@ -171,15 +168,14 @@ class DriftHandlerTest {
     // Not setting algorithm should use default
 
     val mockDriftSeries = List(createMockDriftSeries(baseTimestamp))
-    when(
-      mockedDriftStore.getDriftSeries(
-        anyString(),
-        any[DriftMetric],
-        any[Window],
-        anyLong(),
-        anyLong(),
-        any[Option[String]]
-      )).thenReturn(Success(Future.successful(mockDriftSeries)))
+    when(mockedDriftStore.getDriftSeries(
+      anyString(),
+      any[DriftMetric],
+      any[Window],
+      anyLong(),
+      anyLong(),
+      any[Option[String]]
+    )).thenReturn(Success(Future.successful(mockDriftSeries)))
 
     val response = handler.getJoinDrift(request)
     assertNotNull(response.getDriftSeries)
@@ -196,15 +192,14 @@ class DriftHandlerTest {
     // Not setting columnName
 
     val mockDriftSeries = List(createMockDriftSeries(baseTimestamp))
-    when(
-      mockedDriftStore.getDriftSeries(
-        anyString(),
-        any[DriftMetric],
-        any[Window],
-        anyLong(),
-        anyLong(),
-        any[Option[String]]
-      )).thenReturn(Success(Future.successful(mockDriftSeries)))
+    when(mockedDriftStore.getDriftSeries(
+      anyString(),
+      any[DriftMetric],
+      any[Window],
+      anyLong(),
+      anyLong(),
+      any[Option[String]]
+    )).thenReturn(Success(Future.successful(mockDriftSeries)))
 
     val response = handler.getJoinDrift(request)
     assertNotNull(response.getDriftSeries)

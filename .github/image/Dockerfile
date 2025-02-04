@@ -1,15 +1,9 @@
-FROM alpine:latest
+FROM ubuntu:latest
 
 # build using command: docker build --progress=plain -t chronon-base .
 
 # Install necessary tools and Python
-RUN apk add --no-cache wget curl bash python3 py3-pip
-
-# Add Amazon Corretto repository
-RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazoncorretto.rsa.pub && \
-    echo "https://apk.corretto.aws/" >> /etc/apk/repositories && \
-    apk update
-RUN apk add --no-cache amazon-corretto-17
+RUN apt update && apt install -y wget curl bash python3 python3-pip openjdk-17-jdk python3.12-venv
 
 # java
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm
@@ -21,15 +15,16 @@ ENV PATH="/usr/local/sbt/bin:${PATH}"
 
 # bazel
 RUN curl -fsSL "https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-amd64" -o /usr/local/bin/bazel
-ENV PATH="/usr/local/bin/bazel:${PATH}"
+RUN chmod +x /usr/local/bin/bazel
+ENV PATH="/usr/local/bin:${PATH}"
 
 # thrift
 ARG THRIFT_VERSION=0.21.0
-RUN apk add --no-cache \
-        build-base \
+RUN apt install -y \
+        build-essential \
         cmake \
-        boost-dev \
-        openssl-dev \
+        libboost-dev \
+        libssl-dev \
         libevent-dev \
         bison \
         flex \
@@ -45,11 +40,11 @@ RUN apk add --no-cache \
     make install && \
     cd .. && \
     rm -rf thrift-${THRIFT_VERSION} thrift-${THRIFT_VERSION}.tar.gz && \
-    apk del \
-        build-base \
+    apt purge -y \
+        build-essential \
         cmake \
-        boost-dev \
-        openssl-dev \
+        libboost-dev \
+        libssl-dev \
         libevent-dev \
         bison \
         flex \
@@ -57,20 +52,22 @@ RUN apk add --no-cache \
         automake \
         libtool \
         curl && \
-    rm -rf /var/cache/apk/*
+    apt autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and install some common Python packages
-RUN python3 -m pip install --break-system-packages --upgrade pip && \
-    pip3 install --break-system-packages pytest tox flake8
+RUN pip3 install --break-system-packages pytest tox flake8
 
-# spark uses snappy to write files, snappy needs gcompat
-RUN apk add gcompat
+RUN apt update && apt install -y build-essential git
+RUN mkdir -p /usr/lib/jvm && ln -s /usr/lib/jvm/java-17-openjdk-amd64/ /usr/lib/jvm/default-jvm
 
 # Verify installations
 RUN java -version && \
     thrift -version && \
     python3 --version  && \
-    pip3 --version
+    pip3 --version && \
+    bazel --version && \
+    git --version
 
 # Set working directory
 WORKDIR /app

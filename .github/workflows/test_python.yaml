@@ -33,20 +33,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python virtual environment
+      - name: Configure Git
         run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Set up Python virtual environment
+        shell: bash
+        run: |          
           python3 -m venv chronon_py_env
           source chronon_py_env/bin/activate
 
       - name: Run Chronon Python lint
+        shell: bash
         run: |
           source chronon_py_env/bin/activate
           cd api/py/ai/chronon
           pip install importlib-metadata==4.11.4
           pip install flake8
-          flake8 --extend-ignore=W605,Q000,F631
+          flake8 --extend-ignore=W605,Q000,F631 --exclude=cli
 
       - name: Run Chronon Python tests
+        shell: bash
         run: |
           source chronon_py_env/bin/activate
           thrift --gen py -out api/py/ api/thrift/common.thrift

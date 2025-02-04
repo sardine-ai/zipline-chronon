@@ -32,15 +32,14 @@ class ConfHandlerTest {
   def setUp(): Unit = {
     MockitoAnnotations.openMocks(this)
     handler = new ConfHandler(mockedStore)
-
+    
     when(mockedStore.configRegistryCache).thenReturn(mockedCache)
-    when(mockedCache.apply("default")).thenReturn(
-      LoadedConfs(
-        joins = defaultRegistry.joins,
-        groupBys = defaultRegistry.groupBys,
-        stagingQueries = defaultRegistry.stagingQueries,
-        models = defaultRegistry.models
-      ))
+    when(mockedCache.apply("default")).thenReturn(LoadedConfs(
+      joins = defaultRegistry.joins,
+      groupBys = defaultRegistry.groupBys,
+      stagingQueries = defaultRegistry.stagingQueries,
+      models = defaultRegistry.models
+    ))
   }
 
   @Test
@@ -50,7 +49,7 @@ class ConfHandlerTest {
     request.setConfName("test_join_1")
 
     val result = handler.getConf(request)
-
+    
     assertNotNull(result.getJoin)
     assertEquals("test_join_1", result.getJoin.getMetaData.getName)
   }
@@ -62,7 +61,7 @@ class ConfHandlerTest {
     request.setConfName("test_model_1")
 
     val result = handler.getConf(request)
-
+    
     assertNotNull(result.getModel)
     assertEquals("test_model_1", result.getModel.getMetaData.getName)
   }
@@ -74,7 +73,7 @@ class ConfHandlerTest {
     request.setConfName("test_groupby_1")
 
     val result = handler.getConf(request)
-
+    
     assertNotNull(result.getGroupBy)
     assertEquals("test_groupby_1", result.getGroupBy.getMetaData.getName)
   }
@@ -86,7 +85,7 @@ class ConfHandlerTest {
     request.setConfName("test_query_1")
 
     val result = handler.getConf(request)
-
+    
     assertNotNull(result.getStagingQuery)
     assertEquals("test_query_1", result.getStagingQuery.getMetaData.getName)
   }
@@ -209,7 +208,7 @@ class ConfHandlerTest {
     request.setConfName("1")
 
     val result = handler.searchConf(request)
-
+    
     assertEquals(1, result.getJoins.size())
     assertEquals(1, result.getModels.size())
     assertEquals(1, result.getGroupBys.size())
@@ -248,17 +247,17 @@ object MockConfigRegistry {
       createMockJoin("test_join_2"),
       createMockJoin("test_join_3")
     )
-
+    
     val models: Seq[Model] = Seq(
       createMockModel("test_model_1"),
       createMockModel("test_model_2")
     )
-
+    
     val groupBys: Seq[GroupBy] = Seq(
       createMockGroupBy("test_groupby_1"),
       createMockGroupBy("test_groupby_2")
     )
-
+    
     val stagingQueries: Seq[StagingQuery] = Seq(
       createMockStagingQuery("test_query_1"),
       createMockStagingQuery("test_query_2")
@@ -294,4 +293,4 @@ object MockConfigRegistry {
     query.setMetaData(createMetaData(name))
     query
   }
-}
+} 
