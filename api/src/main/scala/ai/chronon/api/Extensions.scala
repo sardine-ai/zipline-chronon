@@ -99,6 +99,13 @@ object Extensions {
         s"${millis}ms"
       }
     }
+
+    // Returns the start of the window that contains the timestamp
+    // As an example consider a 1hr window: 3600 * 1000. If the timestamp is 1735733820000 (2025-01-01 12:17:00)
+    // the start of the window is 1735732800000 (2025-01-01 12:00:00)
+    def windowStartMillis(timestampMs: Long, windowSizeMs: Long): Long = {
+      timestampMs - (timestampMs % windowSizeMs)
+    }
   }
 
   implicit class MetadataOps(metaData: MetaData) {
