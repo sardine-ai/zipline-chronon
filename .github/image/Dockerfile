@@ -3,7 +3,7 @@ FROM alpine:latest
 # build using command: docker build --progress=plain -t chronon-base .
 
 # Install necessary tools and Python
-RUN apk add --no-cache wget curl bash python3 py3-pip
+RUN apk add --no-cache wget curl bash python3 py3-pip gcc g++
 
 # Add Amazon Corretto repository
 RUN wget -O /etc/apk/keys/amazoncorretto.rsa.pub https://apk.corretto.aws/amazoncorretto.rsa.pub && \
