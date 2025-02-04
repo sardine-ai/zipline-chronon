@@ -1,5 +1,6 @@
 package ai.chronon.flink.test
 
+import ai.chronon.api.TilingUtils
 import ai.chronon.flink.FlinkJob
 import ai.chronon.flink.SparkExpressionEvalFn
 import ai.chronon.flink.types.TimestampedIR
@@ -34,7 +35,10 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
   ): TimestampedTile = {
     // Decode the key bytes into a GenericRecord
     val tileBytes = in.valueBytes
-    val record = groupByServingInfoParsed.keyCodec.decode(in.keyBytes)
+    // Deserialize the TileKey object and pull out the entity key bytes
+    val tileKey = TilingUtils.deserializeTileKey(in.keyBytes)
+    val keyBytes = tileKey.keyBytes.asScala.toArray.map(_.asInstanceOf[Byte])
+    val record = groupByServingInfoParsed.keyCodec.decode(keyBytes)
 
     // Get all keys we expect to be in the GenericRecord
     val decodedKeys: List[String] =

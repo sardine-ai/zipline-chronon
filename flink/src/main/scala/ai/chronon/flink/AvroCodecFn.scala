@@ -3,8 +3,11 @@ package ai.chronon.flink
 import ai.chronon.api.Constants
 import ai.chronon.api.DataModel
 import ai.chronon.api.Extensions.GroupByOps
+import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.Query
+import ai.chronon.api.TilingUtils
 import ai.chronon.api.{StructType => ChrononStructType}
+import ai.chronon.fetcher.TileKey
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.AvroConversions
@@ -126,9 +129,10 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
   * that can be written out to the KV store (PutRequest object).
   *
   * @param groupByServingInfoParsed The GroupBy we are working with
+  * @param tilingWindowSizeMs The size of the tiling window in milliseconds
   * @tparam T The input data type
   */
-case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
+case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed, tilingWindowSizeMs: Long)
     extends BaseAvroCodecFn[TimestampedTile, AvroCodecOutput] {
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
@@ -158,18 +162,27 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
     // 'keys' is a map of (key name in schema -> key value), e.g. Map("card_number" -> "4242-4242-4242-4242")
     // We convert to AnyRef because Chronon expects an AnyRef (for scala <> java interoperability reasons).
     val keys: Map[String, AnyRef] = keyColumns.zip(in.keys.map(_.asInstanceOf[AnyRef])).toMap
-    val keyBytes = keyToBytes(in.keys.toArray)
+    val entityKeyBytes = keyToBytes(in.keys.toArray)
+
+    val tileKey = new TileKey()
+    val tileStart = WindowUtils.windowStartMillis(tsMills, tilingWindowSizeMs)
+    tileKey.setDataset(streamingDataset)
+    tileKey.setKeyBytes(entityKeyBytes.toList.asJava.asInstanceOf[java.util.List[java.lang.Byte]])
+    tileKey.setTileSizeMillis(tilingWindowSizeMs)
+    tileKey.setTileStartTimestampMillis(tileStart)
+
     val valueBytes = in.tileBytes
 
     logger.debug(
       s"""
         |Avro converting tile to PutRequest - tile=${in}
         |groupBy=${groupByServingInfoParsed.groupBy.getMetaData.getName} tsMills=$tsMills keys=$keys
-        |keyBytes=${java.util.Base64.getEncoder.encodeToString(keyBytes)}
+        |keyBytes=${java.util.Base64.getEncoder.encodeToString(entityKeyBytes)}
         |valueBytes=${java.util.Base64.getEncoder.encodeToString(valueBytes)}
         |streamingDataset=$streamingDataset""".stripMargin
     )
 
-    new AvroCodecOutput(keyBytes, valueBytes, streamingDataset, tsMills)
+    val tileKeyBytes = TilingUtils.serializeTileKey(tileKey)
+    new AvroCodecOutput(tileKeyBytes, valueBytes, streamingDataset, tsMills)
   }
 }
