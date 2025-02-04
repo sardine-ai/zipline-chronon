@@ -238,26 +238,33 @@ def _write_obj(
     obj_class = type(obj)
     class_name = obj_class.__name__
     name = name.split(".", 1)[1]
+
     _print_highlighted(f"{class_name} Team", team_name)
     _print_highlighted(f"{class_name} Name", name)
+
     obj_folder_name = get_folder_name_from_class_name(class_name)
     output_path = os.path.join(full_output_root, obj_folder_name, team_name)
     output_file = os.path.join(output_path, name)
     skip_reasons = validator.can_skip_materialize(obj)
+
     if not force_compile and skip_reasons:
         reasons = ", ".join(skip_reasons)
         _print_warning(f"Skipping {class_name} {name}: {reasons}")
         if os.path.exists(output_file):
             _print_warning(f"old file exists for skipped config: {output_file}")
         return False
+
     validation_errors = validator.validate_obj(obj)
+
     if validation_errors:
         _print_error(
             f"Could not write {class_name} {name}", ", ".join(validation_errors)
         )
         return False
+
     if force_overwrite:
         _print_warning(f"Force overwrite {class_name} {name}")
+
     elif not validator.safe_to_overwrite(obj):
         _print_error(
             f"Cannot overwrite {class_name} {name} with existing online conf",
@@ -265,6 +272,7 @@ def _write_obj(
         )
         return False
     _write_obj_as_json(name, obj, output_file, obj_class)
+
     return True
 
 

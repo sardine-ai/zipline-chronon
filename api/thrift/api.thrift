@@ -5,7 +5,7 @@ include "common.thrift"
 include "observability.thrift"
 
 // cd /path/to/chronon
-// thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
+// thrift --gen py -out api/py/ api/thrift/api.thrift
 
 struct Query {
     1: optional map<string, string> selects
@@ -233,6 +233,8 @@ struct MetaData {
     // join streaming makes sense & join upload probably also makes sense
     // (These just aren't implemented yet)
     // The inner map should contain environment variables
+
+    // DEPRECATED
     9: optional map<string, map<string, string>> modeToEnvMap
     // enable job to compute consistency metrics
     10: optional bool consistencyCheck
@@ -248,6 +250,8 @@ struct MetaData {
 
     // specify how to compute drift
     15: optional observability.DriftSpec driftSpec
+
+    16: optional EnvironmentVariables env
 }
 
 
@@ -432,4 +436,22 @@ struct Model {
     3: optional TDataType outputSchema
     4: optional Source source
     5: optional map<string, string> modelParams
+}
+
+struct EnvironmentVariables {
+    1: optional map<string, string> common
+    2: optional map<string, string> backfill
+    3: optional map<string, string> upload
+    4: optional map<string, string> streaming
+}
+
+struct Team {
+    1: optional string name
+    2: optional string description
+    3: optional string email
+
+    10: optional string outputNamespace
+    11: optional map<string, string> tableProperties
+
+    20: optional EnvironmentVariables env
 }

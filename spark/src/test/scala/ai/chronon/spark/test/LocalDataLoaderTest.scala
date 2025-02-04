@@ -15,16 +15,11 @@
  */
 
 package ai.chronon.spark.test
-
-import ai.chronon.spark.LocalDataLoader
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.test.LocalDataLoaderTest.spark
 import com.google.common.io.Files
 import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
-import org.junit.Assert.assertEquals
-import org.scalatest.flatspec.AnyFlatSpec
 
 import java.io.File
 
@@ -41,31 +36,33 @@ object LocalDataLoaderTest {
   }
 }
 
-class LocalDataLoaderTest extends AnyFlatSpec {
+// Not needed since we are doing this via interactive.py
 
-  it should "load data file as table should be correct" in {
-    val resourceURL = Option(getClass.getResource("/local_data_csv/test_table_1_data.csv"))
-      .getOrElse(throw new IllegalStateException("Required test resource not found"))
-    val file = new File(resourceURL.getFile)
-    val nameSpaceAndTable = "test.table"
-    LocalDataLoader.loadDataFileAsTable(file, spark, nameSpaceAndTable)
-
-    val loadedDataDf = spark.sql(s"SELECT * FROM $nameSpaceAndTable")
-    val expectedColumns = Set("id_listing_view_event", "id_product", "dim_product_type", "ds")
-
-    loadedDataDf.columns.foreach(column => expectedColumns.contains(column))
-    assertEquals(3, loadedDataDf.count())
-  }
-
-  it should "load data recursively should be correct" in {
-    val resourceURI = getClass.getResource("/local_data_csv")
-    val path = new File(resourceURI.getFile)
-    LocalDataLoader.loadDataRecursively(path, spark)
-
-    val loadedDataDf = spark.sql("SELECT * FROM local_data_csv.test_table_1_data")
-    val expectedColumns = Set("id_listing_view_event", "id_product", "dim_product_type", "ds")
-
-    loadedDataDf.columns.foreach(column => expectedColumns.contains(column))
-    assertEquals(3, loadedDataDf.count())
-  }
-}
+//class LocalDataLoaderTest extends AnyFlatSpec {
+//
+//  it should "load data file as table should be correct" in {
+//    val resourceURL = Option(getClass.getResource("/local_data_csv/test_table_1_data.csv"))
+//      .getOrElse(throw new IllegalStateException("Required test resource not found"))
+//    val file = new File(resourceURL.getFile)
+//    val nameSpaceAndTable = "test.table"
+//    LocalDataLoader.loadDataFileAsTable(file, spark, nameSpaceAndTable)
+//
+//    val loadedDataDf = spark.sql(s"SELECT * FROM $nameSpaceAndTable")
+//    val expectedColumns = Set("id_listing_view_event", "id_product", "dim_product_type", "ds")
+//
+//    loadedDataDf.columns.foreach(column => expectedColumns.contains(column))
+//    assertEquals(3, loadedDataDf.count())
+//  }
+//
+//  it should "load data recursively should be correct" in {
+//    val resourceURI = getClass.getResource("/local_data_csv")
+//    val path = new File(resourceURI.getFile)
+//    LocalDataLoader.loadDataRecursively(path, spark)
+//
+//    val loadedDataDf = spark.sql("SELECT * FROM local_data_csv.test_table_1_data")
+//    val expectedColumns = Set("id_listing_view_event", "id_product", "dim_product_type", "ds")
+//
+//    loadedDataDf.columns.foreach(column => expectedColumns.contains(column))
+//    assertEquals(3, loadedDataDf.count())
+//  }
+//}
