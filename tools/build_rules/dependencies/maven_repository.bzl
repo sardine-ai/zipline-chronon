@@ -64,7 +64,7 @@ maven_repository = repository(
         "io.grpc:grpc-api:1.62.2",
 
         # Kafka
-        "org.apache.kafka:kafka-clients:3.9.0",
+        "org.apache.kafka:kafka-clients:3.8.1",
         "io.confluent:kafka-schema-registry-client:7.8.0",
         "io.confluent:kafka-protobuf-provider:7.8.0",
         "com.google.protobuf:protobuf-java-util:3.25.1",
@@ -93,6 +93,7 @@ maven_repository = repository(
         "com.google.cloud.bigdataoss:util-hadoop:3.0.0",
         "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.41.1",
         "com.google.cloud:google-cloud-bigtable-emulator:0.178.0",
+        "com.google.cloud.hosted.kafka:managed-kafka-auth-login-handler:1.0.3",
 
         # Flink
         "org.apache.flink:flink-streaming-scala_2.12:1.17.0",
