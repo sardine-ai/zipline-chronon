@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 from ai.chronon.cli.compile import parse_teams
 from ai.chronon.cli.compile.compile_context import CompileContext, ConfigInfo
@@ -10,8 +10,6 @@ import ai.chronon.cli.compile.serializer as serializer
 import ai.chronon.cli.logger as logger
 
 from ai.chronon.api.common.ttypes import ConfigType
-
-import time
 
 logger = logger.get_logger()
 
@@ -23,81 +21,109 @@ class CompileResult:
     error_dict: Dict[str, List[str]]
 
 
-def main(compile_context: CompileContext) -> Dict[ConfigType, CompileResult]:
+class Compiler:
 
-    config_infos = compile_context.config_infos
+    def __init__(self, compile_context: CompileContext):
+        self.compile_context = compile_context
 
-    compile_results = {}
+        from rich.console import Console
 
-    from rich.console import Console
+        self.console = Console()
 
-    console = Console()
+    def compile(
+        self, compile_context: CompileContext
+    ) -> Dict[ConfigType, CompileResult]:
 
-    with console.status("[bold green]Loading...", spinner="dots") as status:
+        config_infos = compile_context.config_infos
 
-        for config_info in config_infos:
+        compile_results = {}
 
-            compile_result = CompileResult(
-                config_info=config_info, obj_dict={}, error_dict={}
-            )
+        from rich.console import Console
 
-            compile_results[config_info.config_type] = compile_result
+        console = Console()
 
-            input_dir = compile_context.input_dir(config_info.cls)
-            output_dir = compile_context.output_dir(config_info.cls)
+        with console.status("[bold green]Loading...", spinner="dots") as status:
 
-            compiled_objects = parser.from_folder(config_info.cls, input_dir)
+            for config_info in config_infos:
 
-            for co in compiled_objects:
+                compile_results[config_info.config_type] = self._parse_and_write_folder(
+                    config_info
+                )
 
-                if co.obj:
+        return compile_results
 
-                    errors = _write_config_or_return_errors(
-                        co.name, co.obj, config_info, compile_context
-                    )
+    def _parse_and_write_folder(self, config_info: ConfigInfo) -> CompileResult:
 
-                    parse_teams.update_metadata(co.obj, compile_context.teams_dict)
+        compile_result = CompileResult(
+            config_info=config_info, obj_dict={}, error_dict={}
+        )
 
-                    if errors:
-                        compile_result.error_dict[co.name] = errors
+        input_dir = self.compile_context.input_dir(config_info.cls)
+        output_dir = self.compile_context.output_dir(config_info.cls)
 
-                        for error in errors:
-                            logger.error(f"Error processing {co.name}: {error}")
+        compiled_objects = parser.from_folder(config_info.cls, input_dir)
 
-                    else:
-                        compile_result.obj_dict[co.name] = co.obj
+        objects, errors = self._write_objects_in_folder(compiled_objects)
+
+        if objects:
+            compile_result.obj_dict.update(objects)
+
+        if errors:
+            compile_result.error_dict.update(errors)
+
+        success_to_total = (
+            f"{len(compile_result.obj_dict)}/{len(compile_result.obj_dict)}"
+        )
+
+        logger.info(
+            f"Wrote {success_to_total} {config_info.cls.__name__}-s to {output_dir}. "
+            f"With {len(compile_result.error_dict)} errors."
+        )
+
+        return compile_result
+
+    def _write_objects_in_folder(
+        self, compiled_objects: List[parser.CompiledObj]
+    ) -> Tuple[Dict[str, Any], Dict[str, List[str]]]:
+
+        error_dict = {}
+        object_dict = {}
+
+        for co in compiled_objects:
+
+            if co.obj:
+
+                errors = self._write_object(co.obj)
+
+                parse_teams.update_metadata(co.obj, self.compile_context.teams_dict)
+
+                if errors:
+                    error_dict[co.name] = errors
+
+                    for error in errors:
+                        logger.error(f"Error processing {co.name}: {error}")
 
                 else:
-                    compile_result.error_dict[co.file] = co.error
-                    logger.error(f"Error processing file {co.file}: {co.error}")
+                    object_dict[co.name] = co.obj
 
-            success_to_total = (
-                f"{len(compile_result.obj_dict)}/{len(compile_result.obj_dict)}"
-            )
+            else:
+                error_dict[co.file] = co.error
+                logger.error(f"Error processing file {co.file}: {co.error}")
 
-            logger.info(
-                f"Wrote {success_to_total} {config_info.cls.__name__}-s to {output_dir}. "
-                f"With {len(compile_result.error_dict)} errors."
-            )
+        return object_dict, error_dict
 
-    return compile_results
+    def _write_object(self, obj: Any) -> Optional[List[str]]:
 
+        errors = self.compile_context.validator.validate_obj(obj)
+        if errors:
+            return errors
 
-def _write_config_or_return_errors(
-    name: str, obj: Any, config_info: ConfigInfo, compile_context: CompileContext
-) -> Optional[List[str]]:
+        output_path = self.compile_context.output_path(obj)
 
-    errors = compile_context.validator.validate_obj(obj)
-    if errors:
-        return errors
+        folder = os.path.dirname(output_path)
 
-    logger.debug(f"{name}: \n  {obj}, \n  {config_info}")
-    output_path = compile_context.output_path(obj)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
 
-    folder = os.path.dirname(output_path)
-
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-
-    with open(output_path, "w") as f:
-        f.write(serializer.thrift_simple_json(obj))
+        with open(output_path, "w") as f:
+            f.write(serializer.thrift_simple_json(obj))

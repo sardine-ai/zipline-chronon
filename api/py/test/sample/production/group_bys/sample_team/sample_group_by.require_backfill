@@ -1,0 +1,60 @@
+{
+  "metaData": {
+    "name": "sample_team.sample_group_by.require_backfill",
+    "production": 0,
+    "customJson": "{\"lag\": 0, \"groupby_tags\": null, \"column_tags\": {}}",
+    "dependencies": [
+      "{\"name\": \"wait_for_sample_namespace.sample_team_sample_staging_query_v1_ds\", \"spec\": \"sample_namespace.sample_team_sample_staging_query_v1/ds={{ ds }}\", \"start\": \"2021-03-01\", \"end\": null}"
+    ],
+    "tableProperties": {
+      "source": "chronon"
+    },
+    "outputNamespace": "sample_namespace",
+    "team": "sample_team",
+    "offlineSchedule": "@daily"
+  },
+  "sources": [
+    {
+      "entities": {
+        "snapshotTable": "sample_namespace.sample_team_sample_staging_query_v1",
+        "query": {
+          "selects": {
+            "impressed_unique_count_1d": "impressed_unique_count_1d",
+            "viewed_unique_count_1d": "viewed_unique_count_1d",
+            "s2CellId": "s2CellId",
+            "place_id": "place_id"
+          },
+          "startPartition": "2021-03-01",
+          "setups": []
+        }
+      }
+    }
+  ],
+  "keyColumns": [
+    "s2CellId",
+    "place_id"
+  ],
+  "aggregations": [
+    {
+      "inputColumn": "impressed_unique_count_1d",
+      "operation": 7,
+      "argMap": {}
+    },
+    {
+      "inputColumn": "viewed_unique_count_1d",
+      "operation": 7,
+      "argMap": {}
+    }
+  ],
+  "backfillStartDate": "2023-01-01",
+  "derivations": [
+    {
+      "name": "derived_field",
+      "expression": ""
+    },
+    {
+      "name": "*",
+      "expression": "*"
+    }
+  ]
+}

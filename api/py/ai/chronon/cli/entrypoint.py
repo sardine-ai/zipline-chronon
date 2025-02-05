@@ -2,7 +2,8 @@ import click
 from datetime import datetime, timedelta
 import subprocess
 
-import ai.chronon.cli.compile.compiler as compiler
+from ai.chronon.cli.compile.compiler import Compiler
+from ai.chronon.cli.compile.compile_context import CompileContext
 
 
 def get_current_branch():
@@ -27,8 +28,9 @@ def cli():
 def sync(branch):
     """Sync data for the specified branch"""
     click.echo(f"Syncing data for {branch} branch")
-    compile_context = compiler.CompileContext()
-    compiler.main(compile_context)
+    compile_context = CompileContext()
+    compiler = Compiler(compile_context)
+    compiler.compile(compile_context)
 
 
 @cli.command()
