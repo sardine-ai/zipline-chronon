@@ -48,6 +48,61 @@ python3 -m pip install -U tox build
 git clone git@github.com:zipline-ai/chronon.git
 ```
 
+## Bazel Setup
+
+### Configuring IntelliJ
+
+- Install `Bazel For IntelliJ` Plugin
+- Follow File > Import Bazel Project
+   - Select root directory as workspace
+   - Use `.bazelproject` as project view file
+- We should see a bazel icon in the top right corner to the left of search bar
+   - Used for incremental sync after build config changes
+- We can directly build and test all our targets from IntelliJ
+
+### Remote Caching
+
+We enabled remote caching for all our builds/tests for both local development and CI.
+As part of that change we would need to do gcloud auth to read/write from remote cache stored in our BigTable bucket for the local dev builds.
+
+### Build Uber Jars for deployment
+```shell
+# Command
+bazel build //{module}:{target}_deploy.jar
+
+# Cloud Gcp Jar
+# Creates uber jar in {Workspace}/bazel-bin/cloud_gcp folder with name cloud_gcp_lib_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
+
+# Flink Jars
+bazel build //flink:flink_assembly_deploy.jar
+bazel build //flink:flink_kafka_assembly_deploy.jar
+```
+
+### All tests for a specific module
+Also it's lot easier to just run from IntelliJ
+```shell
+# Example: bazel test //api:tests
+bazel test //{module}:{test_target}
+```
+### Only test individual test file within a module
+```shell
+# Example: bazel test //api:tests_test_suite_src_test_scala_ai_chronon_api_test_DataPointerTest.scala
+bazel test //{module}:{test_target}_test_suite_{test_file_path}
+```
+
+### To clean the repository for a fresh build
+```shell
+# Removes build outputs and action cache.
+bazel clean
+# This leaves workspace as if Bazel was never run.
+# Does additional cleanup compared to above command and should also be generally faster
+bazel clean --expunge
+```
+
+## Old SBT Setup
+
 ### Configuring IntelliJ
 
 - Open the project from the root `chronon` directory. 
@@ -82,8 +137,6 @@ git clone git@github.com:zipline-ai/chronon.git
 - Run an [example test](https://github.com/zipline-ai/chronon/blob/main/spark/src/test/scala/ai/chronon/spark/test/bootstrap/LogBootstrapTest.scala) in Chronon to verify that you’ve set things up correctly.
 
   From CLI: `sbt "testOnly ai.chronon.spark.test.TableUtilsFormatTest"`
-
-
 
 
 **Troubleshooting**
@@ -131,18 +184,6 @@ sbt dependencyBrowseGraph
 sbt dependencyBrowseTree
 ```
 
-#### Using bazel
-All tests for a specific module
-```shell
-# Example: bazel test //api:api-test
-bazel test //{module}:{test_target}
-```
-Specific submodule tests
-```shell
-# Example: bazel test //api:api-test_test_suite_src_test_scala_ai_chronon_api_test_DataPointerTest.scala
-bazel test //{module}:{test_target}_test_suite_{submodule_test_path}
-```
-
 # Chronon Build Process
 * Inside the `$CHRONON_OS` directory.
 
@@ -179,21 +220,6 @@ sbt assembly
 ### Building a fat jar for just one submodule
 ```shell
 sbt 'spark/assembly'
-```
-## Using bazel
-
-### To clean the repository for a fresh build
-```shell
-# Removes build outputs and action cache.
-bazel clean
-# This leaves workspace as if Bazel was never run.
-# Does additional cleanup compared to above command and should also be generally faster
-bazel clean --expunge
-```
-### Build a fat jar for just one module
-```shell
-# Example: bazel build //api:api-lib
-bazel build //{module}:{build_target}
 ```
 
 # Chronon Artifacts Publish Process

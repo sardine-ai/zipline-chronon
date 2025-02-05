@@ -5,7 +5,7 @@ scala_library(
     deps = [
         "//aggregator:lib",
         "//api:lib",
-        "//api:thrift",
+        "//api:thrift_java",
         "//tools/build_rules/spark:spark-exec",
         scala_artifact("org.scala-lang.modules:scala-java8-compat"),
         scala_artifact("org.json4s:json4s-core"),
@@ -33,7 +33,7 @@ scala_library(
 
 test_deps = [
     ":lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//api:lib",
     "//aggregator:lib",
     "//tools/build_rules/spark:spark-exec",
@@ -62,16 +62,16 @@ test_deps = [
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 scala_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
 )
