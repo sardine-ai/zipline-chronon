@@ -5,7 +5,7 @@ scala_library(
     deps = [
         "//aggregator:lib",
         "//api:lib",
-        "//api:thrift",
+        "//api:thrift_java",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
@@ -47,9 +47,9 @@ scala_library(
 test_deps = [
     ":lib",
     "//aggregator:lib",
-    "//aggregator:test-lib",
+    "//aggregator:test_lib",
     "//api:lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//online:lib",
     "//tools/build_rules/spark:spark-exec",
     # Library
@@ -86,24 +86,24 @@ test_deps = [
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 scala_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     data = glob(["spark/src/test/resources/**/*"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
 )
 
 jvm_binary(
-    name = "assembly",
+    name = "spark_assembly",
     deploy_env = ["//tools/build_rules/spark:spark"],
     main_class = "ai.chronon.spark.Driver",
     runtime_deps = [":lib"],

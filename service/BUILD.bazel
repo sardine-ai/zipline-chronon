@@ -32,16 +32,16 @@ test_deps = _VERTX_TEST_DEPS + [
 ]
 
 java_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 java_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.java"]),
     runner = "junit4",
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
 )

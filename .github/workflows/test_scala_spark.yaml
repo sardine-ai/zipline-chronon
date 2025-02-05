@@ -44,4 +44,4 @@ jobs:
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //spark:test
+            //spark:tests

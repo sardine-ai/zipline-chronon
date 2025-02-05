@@ -4,7 +4,7 @@ scala_library(
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + _CIRCE_DEPS + [
         "//api:lib",
-        "//api:thrift",
+        "//api:thrift_java",
         "//online:lib",
         "//service_commons:lib",
         "//spark:lib",
@@ -25,7 +25,7 @@ scala_library(
 
 test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
     ":lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//api:lib",
     "//online:lib",
     "//spark:lib",
@@ -54,7 +54,7 @@ test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     resources = glob(["src/test/resources/**/*"]),
     visibility = ["//visibility:public"],
@@ -62,10 +62,10 @@ scala_library(
 )
 
 scala_junit_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     data = glob(["src/test/resources/**/*"]),
     resources = glob(["hub/src/test/resources/**/*"]),
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
 )

@@ -51,46 +51,46 @@ jobs:
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //flink:test
+            //flink:tests
 
       - name: Run Aggregator tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //aggregator:test
+            //aggregator:tests
 
       - name: Run Online tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //online:test
+            //online:tests
 
       - name: Run api tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //api:test
+            //api:tests
 
       - name: Run hub tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //hub:test
+            //hub:tests
 
       - name: Run service tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //service:test
+            //service:tests
 
       - name: Run orchestrator tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            //orchestration:test
+            //orchestration:tests
