@@ -3,3 +3,4 @@ build --java_runtime_version=11
 build --remote_cache=https://storage.googleapis.com/zipline-bazel-cache
 build --google_default_credentials
 test --test_output=errors
+test --test_timeout=900
