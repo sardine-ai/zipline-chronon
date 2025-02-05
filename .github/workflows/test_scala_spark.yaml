@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  other_spark_tests:
+  spark_tests:
     runs-on: ubuntu-8_cores-32_gb
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -44,4 +44,5 @@ jobs:
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx8G -Xms2G" \
             //spark:tests

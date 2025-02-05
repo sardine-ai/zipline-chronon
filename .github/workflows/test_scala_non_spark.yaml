@@ -9,7 +9,7 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
-      - '.github/workflows/test_scala_no_spark.yaml'
+      - '.github/workflows/test_scala_non_spark.yaml'
       - 'build.sbt'
   pull_request:
     branches:
@@ -19,7 +19,7 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
-      - '.github/workflows/test_scala_no_spark.yaml'
+      - '.github/workflows/test_scala_non_spark.yaml'
       - 'build.sbt'
 
 
@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  no_spark_scala_tests:
+  non_spark_tests:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
