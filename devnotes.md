@@ -50,6 +50,21 @@ git clone git@github.com:zipline-ai/chronon.git
 
 ## Bazel Setup
 
+### Installing Bazel
+
+#### On Mac
+```shell
+# Install bazelisk and it automatically pulls right bazel binary
+brew install bazelisk
+```
+
+#### On Linux
+```shell
+sudo curl -L "https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-amd64" -o /usr/local/bin/bazel
+sudo chmod +x /usr/local/bin/bazel
+export PATH="/usr/local/bin:${PATH}"
+```
+
 ### Configuring IntelliJ
 
 - Install `Bazel For IntelliJ` Plugin
@@ -64,6 +79,10 @@ git clone git@github.com:zipline-ai/chronon.git
 
 We enabled remote caching for all our builds/tests for both local development and CI.
 As part of that change we would need to do gcloud auth to read/write from remote cache stored in our BigTable bucket for the local dev builds.
+
+### Java not found error on Mac
+
+In case you run into this error the fix is to manually download and install amazon corretto-17 from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html)
 
 ### Build Uber Jars for deployment
 ```shell
@@ -159,8 +178,7 @@ materialize  --input_path=<path/to/conf>
 ```
 
 ### Testing
-We are currently migrating our build tool to bazel from sbt.
-#### Using sbt
+
 All tests
 ```shell
 sbt test
