@@ -69,3 +69,9 @@ scala_junit_suite(
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )
+
+jvm_binary(
+    name = "hub_assembly",
+    main_class = "ai.chronon.service.ChrononServiceLauncher",
+    runtime_deps = [":lib"],
+)
