@@ -6,9 +6,6 @@ java_binary(
     name = "flink",
     main_class = "None",  #hack
     runtime_deps = [
-        # mark the flink-streaming scala as provided as otherwise we end up with some extra Flink classes in our jar
-        # and errors at runtime like: java.io.InvalidClassException: org.apache.flink.streaming.api.scala.DataStream$$anon$1; local class incompatible
-        scala_artifact("org.apache.flink:flink-streaming-scala"),
         # Exclude Guava from the assembled JAR
         # Else we hit an error - java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument(...)
         maven_artifact("com.google.guava:guava"),
