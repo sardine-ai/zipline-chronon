@@ -45,3 +45,9 @@ java_test_suite(
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )
+
+jvm_binary(
+    name = "service_assembly",
+    main_class = "ai.chronon.service.ChrononServiceLauncher",
+    runtime_deps = [":lib"],
+)

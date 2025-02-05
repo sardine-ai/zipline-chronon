@@ -97,6 +97,12 @@ bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
 # Flink Jars
 bazel build //flink:flink_assembly_deploy.jar
 bazel build //flink:flink_kafka_assembly_deploy.jar
+
+# Service Jar
+bazel build //service:service_assembly_deploy.jar
+
+# Hub Jar
+bazel build //hub:hub_assembly_deploy.jar
 ```
 
 ### All tests for a specific module
