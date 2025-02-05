@@ -26,10 +26,6 @@ class Compiler:
     def __init__(self, compile_context: CompileContext):
         self.compile_context = compile_context
 
-        from rich.console import Console
-
-        self.console = Console()
-
     def compile(
         self, compile_context: CompileContext
     ) -> Dict[ConfigType, CompileResult]:
@@ -38,17 +34,11 @@ class Compiler:
 
         compile_results = {}
 
-        from rich.console import Console
+        for config_info in config_infos:
 
-        console = Console()
-
-        with console.status("[bold green]Loading...", spinner="dots") as status:
-
-            for config_info in config_infos:
-
-                compile_results[config_info.config_type] = self._parse_and_write_folder(
-                    config_info
-                )
+            compile_results[config_info.config_type] = self._parse_and_write_folder(
+                config_info
+            )
 
         return compile_results
 
