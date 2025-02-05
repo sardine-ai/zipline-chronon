@@ -4,7 +4,7 @@ scala_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api:lib",
-        "//api:thrift",
+        "//api:thrift_java",
         "//online:lib",
         "//spark:lib",
         "//tools/build_rules/spark:spark-exec",
@@ -46,7 +46,7 @@ jvm_binary(
 
 test_deps = [
     ":cloud_gcp_lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//api:lib",
     "//online:lib",
     "//spark:lib",
@@ -84,7 +84,7 @@ test_deps = [
 ]
 
 scala_library(
-    name = "cloud_gcp_test_lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
@@ -92,10 +92,10 @@ scala_library(
 
 
 scala_test_suite(
-    name = "cloud_gcp_test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":cloud_gcp_test_lib"],
+    deps = test_deps + [":test_lib"],
 )
