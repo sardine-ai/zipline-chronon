@@ -1,22 +1,19 @@
 <script lang="ts">
-	import { connect, type EChartsType, type EChartOption } from 'echarts';
 	import { queryParameters } from 'sveltekit-search-params';
+	import type { DomainType } from 'layerchart/utils/scales';
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import PercentileChart from '$lib/components/PercentileChart.svelte';
 	import { getSortParamsConfig, getSortParamKey, sortDistributions } from '$lib/util/sort';
 	import type { FeatureResponse } from '$src/lib/types/Model/Model.js';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
 	import ObservabilityNavTabs from '$routes/joins/[slug]/observability/ObservabilityNavTabs.svelte';
 	import { Separator } from '$src/lib/components/ui/separator';
-	import ModelTable from '$routes/joins/[slug]/observability/ModelTable.svelte';
-	import { untrack } from 'svelte';
+	import ModelTable from '../ModelTable.svelte';
+	import PercentileLineChart from '$src/lib/components/charts/PercentileLineChart.svelte';
 
 	const { data } = $props();
 
 	let isFeatureMonitoringOpen = $state(true);
-
-	let distributionCharts: { [key: string]: EChartsType } = $state({});
 
 	let isLoadingDistributions = $state(true);
 	let distributions: FeatureResponse[] = $state([]);
@@ -37,54 +34,12 @@
 	});
 	const sortedDistributions = $derived(sortDistributions(distributions, params[sortKey]));
 
-	$effect(() => {
-		connectCharts();
-	});
-
-	function connectCharts() {
-		const allCharts = Object.values(distributionCharts);
-		connect(allCharts);
-	}
-
-	let isZoomed = $state(false);
-	let currentZoomState = $state({ start: 0, end: 100 });
-
-	function handleZoom(event: CustomEvent<EChartOption.DataZoom>) {
-		const detail = event.detail as {
-			start?: number;
-			end?: number;
-			batch?: Array<{ startValue: number; endValue: number }>;
-		};
-		const start = detail.start ?? detail.batch?.[0]?.startValue ?? 0;
-		const end = detail.end ?? detail.batch?.[0]?.endValue ?? 100;
-		isZoomed = start !== 0 || end !== 100;
-		currentZoomState = { start, end };
-	}
+	let xDomain = $state<DomainType | undefined>(null);
+	let isZoomed = $derived(xDomain != null);
 
 	function resetZoom() {
-		Object.values(distributionCharts).forEach((chart) => {
-			chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
-		});
-
-		currentZoomState = { start: 0, end: 100 };
-		isZoomed = false;
+		xDomain = null;
 	}
-
-	$effect(() => {
-		const allCharts = Object.values(distributionCharts);
-		if (allCharts.length) {
-			untrack(() => {
-				if (currentZoomState.start !== 0 && currentZoomState.end !== 100) {
-					allCharts.forEach((chart) => {
-						chart.dispatchAction({
-							type: 'dataZoom',
-							batch: [{ startValue: currentZoomState.start, endValue: currentZoomState.end }]
-						});
-					});
-				}
-			});
-		}
-	});
 </script>
 
 {#if data.model}
@@ -119,11 +74,14 @@
 			{#each sortedDistributions as feature}
 				<CollapsibleSection title={feature.feature} size="small" open={true}>
 					{#snippet collapsibleContent()}
-						<PercentileChart
-							data={feature.current ?? null}
-							bind:chartInstance={distributionCharts[feature.feature]}
-							on:datazoom={handleZoom}
-						/>
+						<div class="h-[230px]">
+							<PercentileLineChart
+								data={feature?.current ?? []}
+								{xDomain}
+								onbrushend={(e) => (xDomain = e.xDomain)}
+								renderContext="canvas"
+							/>
+						</div>
 					{/snippet}
 				</CollapsibleSection>
 			{/each}
