@@ -29,5 +29,9 @@ spark_repository = repository(
         "com.google.guava:guava",
         "org.apache.orc:orc-core",
         "org.apache.orc:orc-mapreduce",
+        # Exclude rocksdb from the assembled JARs that pull this in (e.g. flink, cloud_gcp) as we want to exclude
+        # the rockdb library and rely on those part of the dist / env
+        # Else we hit an error - NoSuchMethodError: 'void org.rocksdb.WriteBatch.remove
+        "org.rocksdb:rocksdbjni",
     ],
 )
