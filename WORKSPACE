@@ -48,22 +48,6 @@ load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
 
 rules_jvm_external_setup()
 
-# For additional rulesets like java_test_suite
-http_archive(
-    name = "contrib_rules_jvm",
-    sha256 = "2412e22bc1eb9d3a5eae15180f304140f1aad3f8184dbd99c845fafde0964559",
-    strip_prefix = "rules_jvm-0.24.0",
-    urls = ["https://github.com/bazel-contrib/rules_jvm/releases/download/v0.24.0/rules_jvm-v0.24.0.tar.gz"],
-)
-
-load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps")
-
-contrib_rules_jvm_deps()
-
-load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
-
-contrib_rules_jvm_setup()
-
 # For Scala support
 http_archive(
     name = "io_bazel_rules_scala",
