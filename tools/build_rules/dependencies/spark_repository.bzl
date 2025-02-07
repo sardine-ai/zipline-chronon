@@ -1,8 +1,10 @@
 load("@rules_jvm_external//:specs.bzl", "maven")
 load(":defs.bzl", "repository")
 
+SPARK_REPOSITORY_NAME = "spark"
+
 spark_repository = repository(
-    name = "spark",
+    name = SPARK_REPOSITORY_NAME,
     provided = True,
     artifacts = [
         # Spark artifacts - for scala 2.12

@@ -13,6 +13,3 @@ def jar(org, name, rev = None, classifier = None):
 def scala_jar(org, name, rev = None, classifier = None):
     name = "{}_{}".format(name, SCALA_MAJOR_VERSION)
     return jar(org, name, rev, classifier)
-
-def exclude(org, name):
-    return "@maven//:" + org + ":" + name
