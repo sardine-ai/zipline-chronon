@@ -96,3 +96,6 @@ releases
 
 # Bazel temporary output
 /bazel-*
+
+# Local bazelrc setup
+.bazelrc.local
