@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ResetZoomButton from '$lib/components/ResetZoomButton.svelte';
-	import MetricTypeToggle from '$lib/components/MetricTypeToggle.svelte';
+	import DriftMetricToggle from '$lib/components/DriftMetricToggle.svelte';
 	import DateRangeSelector from '$lib/components/DateRangeSelector.svelte';
 	import ActionButtons from '$lib/components/ActionButtons.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -46,7 +46,7 @@
 		{/if}
 		<DateRangeSelector />
 		{#if context === 'drift'}
-			<MetricTypeToggle />
+			<DriftMetricToggle />
 		{/if}
 	</div>
 

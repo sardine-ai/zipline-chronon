@@ -2,14 +2,18 @@
 	import { untrack, type ComponentProps } from 'svelte';
 	import { BarChart, PieChart } from 'layerchart';
 	import type { DomainType } from 'layerchart/utils/scales';
+	import { entries, sort } from '@layerstack/utils';
+	import { rollups } from 'd3';
+	import { queryParameters } from 'sveltekit-search-params';
+	import { sub, type Duration } from 'date-fns';
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import type { FeatureResponse } from '$lib/types/Model/Model';
+	import type { ITileSummarySeries } from '$src/lib/types/codegen';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { Api } from '$lib/api/api';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { formatDate } from '$lib/util/format';
-	import { METRIC_SCALES } from '$lib/types/MetricType/MetricType';
+	import { DRIFT_METRIC_SCALES } from '$lib/util/drift-metric';
 	import ChartControls from '$lib/components/ChartControls.svelte';
 	import type { JoinData } from '$routes/joins/[slug]/services/joins.service';
 	import ModelTable from '$routes/joins/[slug]/observability/ModelTable.svelte';
@@ -25,6 +29,8 @@
 	} from '$lib/components/charts/common';
 	import { cn } from '$src/lib/utils';
 	import { isMacOS } from '$src/lib/util/browser';
+	import { getSortParamKey, getSortParamsConfig } from '$src/lib/util/sort';
+	import { NULL_VALUE } from '$src/lib/constants/common';
 
 	type FeaturesLineChartProps = ComponentProps<typeof FeaturesLineChart>;
 
@@ -32,8 +38,31 @@
 
 	const { data }: { data: JoinData } = $props();
 
-	const metricTypeDomain = $derived.by(() => {
-		const scale = METRIC_SCALES[data.metricType];
+	const sortContext = 'drift';
+	const sortKey = getSortParamKey(sortContext);
+	const params = queryParameters(getSortParamsConfig(sortContext), {
+		pushHistory: false,
+		showDefaults: false
+	});
+	const sortDirection = $derived(params[sortKey]);
+
+	const baselineOffset: Duration = { days: 7 };
+
+	// Group by group name and sort groups and columns
+	const driftSeriesByGroupName = $derived(
+		sort(
+			rollups(
+				data.joinDrift.driftSeries,
+				(values) => sort(values, (d) => d.key.column, sortDirection),
+				(d) => d.key?.groupName ?? 'Unknown'
+			),
+			(d) => d[0],
+			sortDirection
+		)
+	);
+
+	const driftMetricDomain = $derived.by(() => {
+		const scale = DRIFT_METRIC_SCALES[data.driftMetric];
 		return [scale.min, scale.max];
 	});
 
@@ -51,60 +80,43 @@
 	}
 
 	let groupSectionStates: { [key: string]: boolean } = $state(
-		untrack(() => Object.fromEntries(data.joinTimeseries.items.map((group) => [group.name, true])))
+		untrack(() => Object.fromEntries(driftSeriesByGroupName.map((d) => [d[0], true])))
 	);
 
-	let percentileData: FeatureResponse | null = $state(null);
-	let comparedFeatureData: FeatureResponse | null = $state(null);
-	let nullData: FeatureResponse | null = $state(null);
+	let columnSummaryData: ITileSummarySeries | null = $state(null);
+	let columnSummaryBaselineData: ITileSummarySeries | null = $state(null);
 
 	async function selectSeriesPoint(seriesPoint: typeof selectedSeriesPoint) {
 		selectedSeriesPoint = seriesPoint;
 
 		if (seriesPoint) {
 			try {
-				const featureName = seriesPoint.series.key.toString();
+				const joinName =
+					data.joinDrift.driftSeries[0].key?.nodeName?.replace('/', '.') ?? 'Unknown';
+				const columnName = seriesPoint.series.key.toString();
 
-				// TODO: Add loading state
-				const [featureData, nullFeatureData] = await Promise.all([
-					api.getFeatureTimeseries({
-						joinId: data.joinTimeseries.name,
-						featureName,
+				// TODO: Add loading and error states
+				const [_columnSummaryData, _columnSummaryBaselineData] = await Promise.all([
+					api.getColumnSummary({
+						name: joinName,
+						columnName: columnName,
 						startTs: data.dateRange.startTimestamp,
-						endTs: data.dateRange.endTimestamp,
-						granularity: 'percentile',
-						metricType: 'drift',
-						metrics: 'value',
-						offset: '1D',
-						algorithm: 'psi'
+						endTs: data.dateRange.endTimestamp
 					}),
-					api.getFeatureTimeseries({
-						joinId: data.joinTimeseries.name,
-						featureName,
-						startTs: data.dateRange.startTimestamp,
-						endTs: data.dateRange.endTimestamp,
-						metricType: 'drift',
-						metrics: 'null',
-						offset: '1D',
-						algorithm: 'psi',
-						granularity: 'percentile'
+					api.getColumnSummary({
+						name: joinName,
+						columnName: columnName,
+						startTs: Number(sub(new Date(data.dateRange.startTimestamp), baselineOffset)),
+						endTs: Number(sub(new Date(data.dateRange.endTimestamp), baselineOffset))
 					})
 				]);
 
-				if (featureData.isNumeric) {
-					percentileData = featureData;
-					comparedFeatureData = null;
-				} else {
-					percentileData = null;
-					comparedFeatureData = featureData;
-				}
-
-				nullData = nullFeatureData;
+				columnSummaryData = _columnSummaryData;
+				columnSummaryBaselineData = _columnSummaryBaselineData;
 			} catch (error) {
 				console.error('Error fetching data:', error);
-				percentileData = null;
-				comparedFeatureData = null;
-				nullData = null;
+				columnSummaryData = null;
+				columnSummaryBaselineData = null;
 			}
 		}
 	}
@@ -136,22 +148,22 @@
 		<ObservabilityNavTabs />
 
 		<div>
-			{#each data.joinTimeseries.items as group, i (group.name)}
+			{#each driftSeriesByGroupName as [groupName, values], i (groupName)}
 				<CollapsibleSection
-					title={group.name}
+					title={groupName}
 					size="small"
-					bind:open={groupSectionStates[group.name]}
+					bind:open={groupSectionStates[groupName]}
 				>
 					{#snippet collapsibleContent()}
 						<div
 							class={cn(
 								'h-[274px]',
-								i === data.joinTimeseries.items.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
+								i === driftSeriesByGroupName.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
 							)}
 						>
 							<FeaturesLineChart
-								data={group.items}
-								yDomain={metricTypeDomain}
+								data={values}
+								yDomain={driftMetricDomain}
 								onpointclick={(e, { series, data }) => {
 									selectSeriesPoint({ series: series, data: data as unknown as DateValue });
 								}}
@@ -209,16 +221,18 @@
 
 		<ScrollArea class="flex-grow px-7">
 			{#if selectedSeriesPoint}
-				{@const selectedGroup = data.joinTimeseries.items.find((group) =>
-					group.items.some((item) => item.feature === selectedSeriesPoint?.series.key)
-				)}
-				{#if selectedGroup}
-					<CollapsibleSection title={selectedGroup.name} open={true}>
+				{@const [groupName, values] =
+					driftSeriesByGroupName.find(([_, values]) =>
+						values.some((value) => value.key?.column === selectedSeriesPoint?.series.key)
+					) ?? []}
+
+				{#if groupName && values}
+					<CollapsibleSection title={groupName} open={true}>
 						{#snippet collapsibleContent()}
 							<div class="h-[274px]">
 								<FeaturesLineChart
-									data={selectedGroup.items}
-									yDomain={metricTypeDomain}
+									data={values}
+									yDomain={driftMetricDomain}
 									markPoint={selectedSeriesPoint?.data}
 									onpointclick={(e, { series, data }) => {
 										selectSeriesPoint({ series: series, data: data as unknown as DateValue });
@@ -236,12 +250,12 @@
 				{/if}
 			{/if}
 
-			{#if percentileData}
+			{#if columnSummaryData?.percentiles}
 				<CollapsibleSection title="Percentiles" open={true}>
 					{#snippet collapsibleContent()}
 						<div class="h-[230px]">
 							<PercentileLineChart
-								data={percentileData?.current ?? []}
+								data={columnSummaryData!}
 								{xDomain}
 								onbrushend={(e) => (xDomain = e.xDomain)}
 								tooltip={{ locked: lockedTooltip }}
@@ -251,8 +265,29 @@
 				</CollapsibleSection>
 			{/if}
 
-			{#if comparedFeatureData}
+			{#if columnSummaryData?.timestamps && Object.keys(columnSummaryData?.histogram ?? {}).length > 0}
 				{@const timestamp = Number(selectedSeriesPoint?.data.date)}
+				{@const timestampIndex = columnSummaryData.timestamps.findIndex(
+					(ts) => (ts as unknown as number) === timestamp
+				)}
+				{@const currentData = entries(
+					columnSummaryData.histogram as unknown as Record<string, number[]>
+				).map(([key, values]) => {
+					const value = values[timestampIndex];
+					return {
+						label: key,
+						value: value === NULL_VALUE ? null : value
+					};
+				})}
+				{@const baselineData = entries(
+					(columnSummaryBaselineData?.histogram ?? {}) as unknown as Record<string, number[]>
+				).map(([key, values]) => {
+					const value = values[timestampIndex];
+					return {
+						label: key,
+						value: value === NULL_VALUE ? null : value
+					};
+				})}
 				<CollapsibleSection title="Data Distribution" open={true}>
 					{#snippet collapsibleContent()}
 						<div class="h-[230px]">
@@ -262,12 +297,12 @@
 								series={[
 									{
 										key: 'baseline',
-										data: comparedFeatureData?.baseline?.filter((d) => d.ts === timestamp) ?? [],
+										data: baselineData,
 										color: '#4B92FF' // TODO: copied from ECharts defaults
 									},
 									{
 										key: 'current',
-										data: comparedFeatureData?.current?.filter((d) => d.ts === timestamp) ?? [],
+										data: currentData,
 										color: '#7DFFB3' // TODO: copied from ECharts defaults
 									}
 								]}
@@ -283,48 +318,52 @@
 						</div>
 					{/snippet}
 				</CollapsibleSection>
+			{/if}
+
+			{#if columnSummaryData?.timestamps && columnSummaryData?.nullCount}
+				{@const timestamp = Number(selectedSeriesPoint?.data.date)}
+				{@const timestampIndex = columnSummaryData.timestamps.findIndex(
+					(ts) => (ts as unknown as number) === timestamp
+				)}
+				{@const currentNullValue = columnSummaryData.nullCount[timestampIndex] as unknown as number}
+				{@const baselineNullValue = columnSummaryBaselineData?.nullCount?.[
+					timestampIndex
+				] as unknown as number}
 
 				<CollapsibleSection title="Null Ratio" open={true}>
 					{#snippet collapsibleContent()}
-						{#if nullData}
-							{@const currentData = nullData.current?.find((point) => point.ts === timestamp)}
-							{@const baselineData = nullData.baseline?.find((point) => point.ts === timestamp)}
-
-							<div class="grid grid-cols-2 gap-3">
-								{#each [{ label: 'Baseline', data: baselineData }, { label: 'Current', data: currentData }] as c}
-									{#if c.data}
-										<!-- TODO: Remove mockNullValue once data is populated -->
-										{@const mockNullValue = Math.random() * 100}
-										<div class="grid gap-2">
-											<div class="h-[230px]">
-												<!--  TODO: colors copied from ECharts defaults -->
-												<PieChart
-													data={[
-														{
-															label: 'Null Value Percentage',
-															// value: c.data.nullValue
-															value: mockNullValue
-														},
-														{
-															label: 'Non-null Value Percentage',
-															// value: 100 - c.data.nullValue
-															value: 100 - mockNullValue
-														}
-													]}
-													key="label"
-													value="value"
-													cRange={['#4B92FF', '#7DFFB3']}
-													{...pieChartProps}
-												/>
-											</div>
-											<div class="text-center text-xs text-surface-content">
-												{c.label}
-											</div>
-										</div>
-									{/if}
-								{/each}
-							</div>
-						{/if}
+						<div class="grid grid-cols-2 gap-3">
+							{#each [{ label: 'Baseline', value: baselineNullValue }, { label: 'Current', value: currentNullValue }] as c}
+								<!-- TODO: Remove mockNullValue once data is populated -->
+								{@const mockNullValue = Math.random() * 100}
+								<div class="grid gap-2">
+									<div class="h-[230px]">
+										<!--  TODO: colors copied from ECharts defaults -->
+										<PieChart
+											data={[
+												{
+													label: 'Null Value Percentage',
+													// value: c.value
+													value: mockNullValue
+												},
+												{
+													label: 'Non-null Value Percentage',
+													// value: 100 - c.value
+													value: 100 - mockNullValue
+												}
+											]}
+											key="label"
+											value="value"
+											cRange={['#4B92FF', '#7DFFB3']}
+											{...pieChartProps}
+										/>
+									</div>
+									<div class="text-center text-xs text-surface-content">
+										{c.label}
+									</div>
+								</div>
+							{/each}
+						</div>
 					{/snippet}
 				</CollapsibleSection>
 			{/if}

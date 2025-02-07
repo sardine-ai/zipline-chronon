@@ -1,31 +1,28 @@
 import { Api } from '$lib/api/api';
 
 export const load = async ({ parent, fetch }) => {
-	const { joinTimeseries, dateRange } = await parent();
+	const { joinDrift, dateRange } = await parent();
 	const api = new Api({ fetch });
 
-	// Get all unique feature names across all groups
-	const allFeatures = Array.from(
-		new Set(joinTimeseries.items.flatMap((group) => group.items.map((item) => item.feature)))
-	);
+	const joinName = joinDrift.driftSeries[0].key?.nodeName?.replace('/', '.') ?? 'Unknown';
+	const columnNames = joinDrift.driftSeries.map((ds) => ds.key?.column ?? 'Unknown');
 
-	// Fetch percentile data for each feature
-	const distributionsPromise = Promise.all(
-		allFeatures.map((featureName) =>
-			api.getFeatureTimeseries({
-				joinId: joinTimeseries.name,
-				featureName,
+	// Fetch percentile data for each column
+	// TODO: Ignoring errored columns but maybe we should show them in an error state instead
+	const distributionsPromise = Promise.allSettled(
+		columnNames.map((columnName) =>
+			api.getColumnSummary({
+				name: joinName,
+				columnName: columnName,
 				startTs: dateRange.startTimestamp,
-				endTs: dateRange.endTimestamp,
-				granularity: 'percentile',
-				metricType: 'drift',
-				metrics: 'value',
-				offset: '1D',
-				algorithm: 'psi'
+				endTs: dateRange.endTimestamp
 			})
 		)
 	).then((responses) => {
-		return responses.filter((response) => response.isNumeric);
+		return responses
+			.filter((response) => response.status === 'fulfilled')
+			.map((response) => response.value)
+			.filter((value) => value.percentiles);
 	});
 
 	return {

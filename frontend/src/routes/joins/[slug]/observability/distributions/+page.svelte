@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { queryParameters } from 'sveltekit-search-params';
 	import type { DomainType } from 'layerchart/utils/scales';
+	import { sort } from '@layerstack/utils';
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import { getSortParamsConfig, getSortParamKey, sortDistributions } from '$lib/util/sort';
-	import type { FeatureResponse } from '$src/lib/types/Model/Model.js';
+	import { getSortParamsConfig, getSortParamKey } from '$lib/util/sort';
+	import type { ITileSummarySeries } from '$src/lib/types/codegen';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
 	import ObservabilityNavTabs from '$routes/joins/[slug]/observability/ObservabilityNavTabs.svelte';
 	import { Separator } from '$src/lib/components/ui/separator';
@@ -16,7 +17,7 @@
 	let isFeatureMonitoringOpen = $state(true);
 
 	let isLoadingDistributions = $state(true);
-	let distributions: FeatureResponse[] = $state([]);
+	let distributions: ITileSummarySeries[] = $state([]);
 	try {
 		data.distributionsPromise.then((d) => {
 			distributions = d;
@@ -32,7 +33,7 @@
 		pushHistory: false,
 		showDefaults: false
 	});
-	const sortedDistributions = $derived(sortDistributions(distributions, params[sortKey]));
+	const sortedDistributions = $derived(sort(distributions, (d) => d.key?.column, params[sortKey]));
 
 	let xDomain = $state<DomainType | undefined>(null);
 	let isZoomed = $derived(xDomain != null);
@@ -71,12 +72,12 @@
 		{:else if distributions.length === 0}
 			<div class="mt-6">No distribution data available</div>
 		{:else}
-			{#each sortedDistributions as feature}
-				<CollapsibleSection title={feature.feature} size="small" open={true}>
+			{#each sortedDistributions as distribution}
+				<CollapsibleSection title={distribution.key?.column ?? 'Unknown'} size="small" open={true}>
 					{#snippet collapsibleContent()}
 						<div class="h-[230px]">
 							<PercentileLineChart
-								data={feature?.current ?? []}
+								data={distribution}
 								{xDomain}
 								onbrushend={(e) => (xDomain = e.xDomain)}
 								renderContext="canvas"

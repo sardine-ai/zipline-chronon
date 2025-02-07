@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { ComponentProps } from 'svelte';
 	import { accessor, Circle, findRelatedData, Line, LineChart, Tooltip } from 'layerchart';
-	import { scaleOrdinal } from 'd3';
+	import { scaleOrdinal, zip } from 'd3';
+	import { Int64 } from '@creditkarma/thrift-server-core';
 
 	import { colors, lineChartProps, tooltipProps, type DateValue } from './common';
-	import type { TimeSeriesItem } from '$lib/types/Model/Model';
+	import type { ITileDriftSeries } from '$src/lib/types/codegen';
 	import { formatDate, formatValue } from '$lib/util/format';
 	import { Badge } from '../ui/badge';
 	import { isMacOS } from '$src/lib/util/browser';
@@ -14,7 +15,7 @@
 	type BrushProps = Exclude<LineChartProps['brush'], undefined | boolean>;
 
 	type Props = {
-		data: { feature: string; points: TimeSeriesItem[] }[];
+		data: ITileDriftSeries[];
 		markPoint?: DateValue;
 		onitemclick?: (item: {
 			series: NonNullable<LineChartProps['series']>[number];
@@ -26,23 +27,27 @@
 
 	let { data, markPoint, onitemclick, onbrushend, ...restProps }: Props = $props();
 
-	const features = $derived([...new Set(data.map((d) => d.feature))]);
-	const colorScale = $derived(scaleOrdinal<string>().domain(features).range(colors));
+	const columns = $derived([...new Set(data.map((d) => d.key?.column ?? 'Unknown'))]);
+	const colorScale = $derived(scaleOrdinal<string>().domain(columns).range(colors));
 </script>
 
 <LineChart
 	x="date"
 	y="value"
 	series={data.map((d) => {
+		const timestamps = d.timestamps ?? [];
+		const column = d.key?.column ?? 'Unknown';
+		// `percentileDriftSeries` = numeric column, `histogramDriftSeries` = categorical column
+		const values = d.percentileDriftSeries ?? d.histogramDriftSeries ?? [];
 		return {
-			key: d.feature,
-			data: d.points.map((p) => {
+			key: column,
+			data: zip<Int64 | number>(timestamps, values).map(([ts, value]) => {
 				return {
-					date: new Date(p.ts),
-					value: p.value === NULL_VALUE ? null : p.value
+					date: new Date(ts as number),
+					value: value === NULL_VALUE ? null : value
 				};
 			}),
-			color: colorScale(d.feature)
+			color: colorScale(column)
 		};
 	})}
 	padding={{ left: 24, bottom: 48 }}

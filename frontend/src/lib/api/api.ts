@@ -1,14 +1,13 @@
 import { error } from '@sveltejs/kit';
-import type { FeatureResponse, JoinTimeSeriesResponse } from '$lib/types/Model/Model';
 import type {
 	Join,
 	GroupBy,
 	Model,
 	StagingQuery,
 	IJoinDriftRequestArgs,
-	IJoinDriftResponseArgs,
 	ITileSummarySeries,
-	IJoinSummaryRequestArgs
+	IJoinSummaryRequestArgs,
+	IJoinDriftResponse
 } from '$lib/types/codegen';
 import { ConfType, DriftMetric } from '$lib/types/codegen';
 import type { ConfListResponse } from '$lib/types/codegen/ConfListResponse';
@@ -68,70 +67,6 @@ export class Api {
 		return this.#send<ConfListResponse>(`search?${params.toString()}`);
 	}
 
-	async getJoinTimeseries({
-		joinId,
-		startTs,
-		endTs,
-		metricType = 'drift',
-		metrics = 'null',
-		offset = '10h',
-		algorithm = 'psi'
-	}: {
-		joinId: string;
-		startTs: number;
-		endTs: number;
-		metricType?: string;
-		metrics?: string;
-		offset?: string;
-		algorithm?: string;
-	}) {
-		const params = new URLSearchParams({
-			startTs: startTs.toString(),
-			endTs: endTs.toString(),
-			metricType,
-			metrics,
-			offset,
-			algorithm
-		});
-
-		return this.#send<JoinTimeSeriesResponse>(`join/${joinId}/timeseries?${params.toString()}`);
-	}
-
-	async getFeatureTimeseries({
-		joinId,
-		featureName,
-		startTs,
-		endTs,
-		metricType = 'drift',
-		metrics = 'null',
-		offset = '10h',
-		algorithm = 'psi',
-		granularity = 'aggregates'
-	}: {
-		joinId: string;
-		featureName: string;
-		startTs: number;
-		endTs: number;
-		metricType?: string;
-		metrics?: string;
-		offset?: string;
-		algorithm?: string;
-		granularity?: string;
-	}) {
-		const params = new URLSearchParams({
-			startTs: startTs.toString(),
-			endTs: endTs.toString(),
-			metricType,
-			metrics,
-			offset,
-			algorithm,
-			granularity
-		});
-		return this.#send<FeatureResponse>(
-			`join/${joinId}/feature/${featureName}/timeseries?${params.toString()}`
-		);
-	}
-
 	async getConfList(type: ConfType): Promise<ConfListResponse> {
 		const params = new URLSearchParams({
 			confType: ConfType[type]
@@ -168,7 +103,7 @@ export class Api {
 			offset,
 			algorithm: DriftMetric[algorithm]
 		});
-		return this.#send<IJoinDriftResponseArgs>(`join/${name}/drift?${params.toString()}`);
+		return this.#send<IJoinDriftResponse>(`join/${name}/drift?${params.toString()}`);
 	}
 
 	async getColumnDrift({
@@ -185,7 +120,7 @@ export class Api {
 			offset,
 			algorithm: DriftMetric[algorithm]
 		});
-		return this.#send<IJoinDriftResponseArgs>(
+		return this.#send<IJoinDriftResponse>(
 			`join/${name}/column/${columnName}/drift?${params.toString()}`
 		);
 	}

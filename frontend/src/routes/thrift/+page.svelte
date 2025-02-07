@@ -78,16 +78,6 @@
 			});
 
 		api
-			.getJoinTimeseries({
-				joinId: 'risk.user_transactions.txn_join',
-				startTs: 1673308800000,
-				endTs: 1674172800000
-			})
-			.then((oldData) => {
-				console.log('Old drift data:', oldData);
-			});
-
-		api
 			.getJoinDrift({
 				name: 'risk.user_transactions.txn_join',
 				startTs: 1673308800000,
@@ -95,17 +85,6 @@
 			})
 			.then((newData) => {
 				console.log('New drift data:', newData);
-			});
-
-		api
-			.getFeatureTimeseries({
-				joinId: 'risk.user_transactions.txn_join',
-				featureName: 'dim_merchant_preferred_language',
-				startTs: 1673308800000,
-				endTs: 1674172800000
-			})
-			.then((oldData) => {
-				console.log('Old feature drift data:', oldData);
 			});
 
 		api

@@ -4,13 +4,16 @@
 	import merge from 'lodash/merge';
 
 	import { lineChartProps } from './common';
-	import type { TimeSeriesItem } from '$lib/types/Model/Model';
+	import type { ITileSummarySeries } from '$src/lib/types/codegen';
+	import { zip } from 'd3';
+	import { Int64 } from '@creditkarma/thrift-server-core';
+	import { NULL_VALUE } from '$src/lib/constants/common';
 
 	type LineChartProps = ComponentProps<typeof LineChart>;
 	type BrushProps = Exclude<LineChartProps['brush'], undefined | boolean>;
 
 	type Props = {
-		data: TimeSeriesItem[];
+		data: ITileSummarySeries;
 		onbrushend?: BrushProps['onbrushend'];
 	} & Omit<LineChartProps, 'data'>;
 
@@ -21,21 +24,21 @@
 	x="date"
 	y="value"
 	series={[
-		{ label: 'p95', color: '#4B92FF' },
-		{ label: 'p50', color: '#7DFFB3' },
-		{ label: 'p5', color: '#FDDD61' }
+		{ label: 'p95', color: '#4B92FF', index: 19 },
+		{ label: 'p50', color: '#7DFFB3', index: 10 },
+		{ label: 'p5', color: '#FDDD61', index: 1 }
 	].map((c) => {
+		const timestamps = data.timestamps ?? [];
+		const values = data.percentiles?.[c.index] ?? [];
+
 		return {
 			key: c.label,
-			data:
-				data
-					?.filter((d) => d.label === c.label)
-					.map((d) => {
-						return {
-							date: new Date(d.ts),
-							value: d.value
-						};
-					}) ?? [],
+			data: zip<Int64 | number>(timestamps, values).map(([ts, value]) => {
+				return {
+					date: new Date(ts as number),
+					value: value === NULL_VALUE ? null : value
+				};
+			}),
 			color: c.color
 		};
 	})}

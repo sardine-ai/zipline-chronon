@@ -76,8 +76,6 @@ public class HubVerticle extends AbstractVerticle {
 
         // time series endpoints
         DriftStore driftStore = new DriftStore(inMemoryKVStore, Constants.TiledSummaryDataset(), Constants.MetadataDataset());
-        router.get("/api/v1/join/:name/timeseries").handler(new TimeSeriesHandler(driftStore).joinDriftHandler());
-        router.get("/api/v1/join/:join/feature/:name/timeseries").handler(new TimeSeriesHandler(driftStore).featureDriftHandler());
 
         DriftHandler driftHandler = new DriftHandler(driftStore);
         router.get("/api/v1/join/:name/drift").handler(RouteHandlerWrapper.createHandler(driftHandler::getJoinDrift, JoinDriftRequest.class));

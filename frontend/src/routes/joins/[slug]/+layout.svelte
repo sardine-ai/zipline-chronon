@@ -13,7 +13,7 @@
 	const pageName = $derived(page.url.pathname.split('/').at(-1));
 </script>
 
-<PageHeader title={data.joinTimeseries.name} />
+<PageHeader title={data.joinDrift.driftSeries[0].key?.nodeName ?? 'Unknown'} />
 
 <Tabs value={pageName} class="w-full">
 	<TabsList>
