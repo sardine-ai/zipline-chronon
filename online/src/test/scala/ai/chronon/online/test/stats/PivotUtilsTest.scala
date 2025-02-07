@@ -88,9 +88,9 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     ))
 
     val expectedHistogram = Map(
-      "A" -> List(10L, null).asJava,
+      "A" -> List(10L, Constants.magicNullLong).asJava,
       "B" -> List(20L, 30L).asJava,
-      "C" -> List(null, 40L).asJava
+      "C" -> List(Constants.magicNullLong, 40L).asJava
     ).asJava
 
     result.getHistogram.asScala.mapValues(_.asScala.toList) shouldEqual
