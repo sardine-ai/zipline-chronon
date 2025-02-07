@@ -109,7 +109,7 @@ const config = {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
-				sans: ['Geist Mono', 'Geist', ...fontFamily.sans]
+				sans: ['Geist Mono', 'Geist', 'Inter', ...fontFamily.sans]
 			},
 			fontSize: {
 				'3xl-medium': [
