@@ -236,5 +236,100 @@ public class RouteHandlerWrapper {
 
         throw new IllegalArgumentException("Unsupported type: " + targetType.getTypeName());
     }
+
+    public static Map<String, String> convertPojoToMap(Object pojo) {
+        Map<String, String> result = new HashMap<>();
+        Class<?> pojoClass = pojo.getClass();
+
+        // Get all getters
+        Map<String, Method> getters = Arrays.stream(pojoClass.getMethods())
+                .filter(RouteHandlerWrapper::isGetter)
+                .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromGetter, method -> method));
+
+        // Process each getter
+        for (Map.Entry<String, Method> entry : getters.entrySet()) {
+            try {
+                Object value = entry.getValue().invoke(pojo);
+                if (value != null) {
+                    result.put(entry.getKey(), convertToString(value));
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Error converting field " + entry.getKey(), e);
+            }
+        }
+
+        return result;
+    }
+
+    private static boolean isGetter(Method method) {
+        String name = method.getName();
+
+        return (name.startsWith("get") || name.startsWith("is")) &&
+                !name.equals("getClass") &&
+                method.getParameterCount() == 0 &&
+                method.getReturnType() != void.class;
+    }
+
+    private static String getFieldNameFromGetter(Method method) {
+        String methodName = method.getName();
+        String fieldName;
+
+        if (methodName.startsWith("get")) {
+            fieldName = methodName.substring(3);
+        } else if (methodName.startsWith("is")) {
+            fieldName = methodName.substring(2);
+        } else {
+            throw new IllegalArgumentException("Not a getter method: " + methodName);
+        }
+
+        return fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
+    }
+
+    private static String convertToString(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        Class<?> valueClass = value.getClass();
+
+        // Handle primitive types and their wrappers
+        if (valueClass.isPrimitive() ||
+                Number.class.isAssignableFrom(valueClass) ||
+                Boolean.class == valueClass ||
+                String.class == valueClass) {
+            return String.valueOf(value);
+        }
+
+        // Handle enums
+        if (valueClass.isEnum()) {
+            try {
+                // Try toString first in case there's a custom implementation
+                String stringValue = value.toString();
+                // If toString returns the same as name(), use the standard enum name
+                if (stringValue.equals(((Enum<?>) value).name())) {
+                    return ((Enum<?>) value).name();
+                }
+                return stringValue;
+            } catch (Exception e) {
+                return ((Enum<?>) value).name();
+            }
+        }
+
+        // Handle Lists
+        if (List.class.isAssignableFrom(valueClass)) {
+            return ((List<?>) value).stream()
+                    .map(RouteHandlerWrapper::convertToString)
+                    .collect(Collectors.joining(","));
+        }
+
+        // Handle Maps
+        if (Map.class.isAssignableFrom(valueClass)) {
+            return ((Map<?, ?>) value).entrySet().stream()
+                    .map(e -> convertToString(e.getKey()) + ":" + convertToString(e.getValue()))
+                    .collect(Collectors.joining(","));
+        }
+
+        throw new IllegalArgumentException("Unsupported type: " + valueClass.getName());
+    }
 }
 
