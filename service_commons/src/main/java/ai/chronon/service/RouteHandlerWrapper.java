@@ -2,7 +2,6 @@ package ai.chronon.service;
 
 import ai.chronon.api.thrift.*;
 import ai.chronon.api.thrift.protocol.TBinaryProtocol;
-import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol;
 import ai.chronon.api.thrift.transport.TTransportException;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
@@ -51,6 +50,7 @@ public class RouteHandlerWrapper {
     private static final ThreadLocal<Base64.Encoder> base64Encoder = ThreadLocal.withInitial(Base64::getEncoder);
     private static final ThreadLocal<Base64.Decoder> base64Decoder = ThreadLocal.withInitial(Base64::getDecoder);
 
+
     public static <T extends TBase> T deserializeTBinaryBase64(String base64Data, Class<? extends TBase> clazz) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, TException {
         byte[] binaryData = base64Decoder.get().decode(base64Data);
         T tb = (T) clazz.getDeclaredConstructor().newInstance();
@@ -87,20 +87,8 @@ public class RouteHandlerWrapper {
 
                 String responseFormat = ctx.request().getHeader(RESPONSE_CONTENT_TYPE_HEADER);
                 if (responseFormat == null || responseFormat.equals("application/json")) {
-                    try {
-                        TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
-                        String jsonString = serializer.toString((TBase)output);
-                        ctx.response()
-                           .setStatusCode(200)
-                           .putHeader("content-type", JSON_TYPE_VALUE)
-                           .end(jsonString);
-                    } catch (TException e) {
-                        LOGGER.error("Failed to serialize response", e);
-                        throw new RuntimeException(e);
-                    } catch (Exception e) {
-                        LOGGER.error("Unexpected error during serialization", e);
-                        throw new RuntimeException(e);
-                    }
+                    // Send json response
+                    ctx.response().setStatusCode(200).putHeader("content-type", JSON_TYPE_VALUE).end(JsonObject.mapFrom(output).encode());
                 } else {
                     if (!responseFormat.equals(TBINARY_B64_TYPE_VALUE)) {
                         throw new IllegalArgumentException(String.format("Unsupported response-content-type: %s. Supported values are: %s and %s", responseFormat, JSON_TYPE_VALUE, TBINARY_B64_TYPE_VALUE));
@@ -235,101 +223,6 @@ public class RouteHandlerWrapper {
         }
 
         throw new IllegalArgumentException("Unsupported type: " + targetType.getTypeName());
-    }
-
-    public static Map<String, String> convertPojoToMap(Object pojo) {
-        Map<String, String> result = new HashMap<>();
-        Class<?> pojoClass = pojo.getClass();
-
-        // Get all getters
-        Map<String, Method> getters = Arrays.stream(pojoClass.getMethods())
-                .filter(RouteHandlerWrapper::isGetter)
-                .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromGetter, method -> method));
-
-        // Process each getter
-        for (Map.Entry<String, Method> entry : getters.entrySet()) {
-            try {
-                Object value = entry.getValue().invoke(pojo);
-                if (value != null) {
-                    result.put(entry.getKey(), convertToString(value));
-                }
-            } catch (Exception e) {
-                throw new RuntimeException("Error converting field " + entry.getKey(), e);
-            }
-        }
-
-        return result;
-    }
-
-    private static boolean isGetter(Method method) {
-        String name = method.getName();
-
-        return (name.startsWith("get") || name.startsWith("is")) &&
-                !name.equals("getClass") &&
-                method.getParameterCount() == 0 &&
-                method.getReturnType() != void.class;
-    }
-
-    private static String getFieldNameFromGetter(Method method) {
-        String methodName = method.getName();
-        String fieldName;
-
-        if (methodName.startsWith("get")) {
-            fieldName = methodName.substring(3);
-        } else if (methodName.startsWith("is")) {
-            fieldName = methodName.substring(2);
-        } else {
-            throw new IllegalArgumentException("Not a getter method: " + methodName);
-        }
-
-        return fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
-    }
-
-    private static String convertToString(Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        Class<?> valueClass = value.getClass();
-
-        // Handle primitive types and their wrappers
-        if (valueClass.isPrimitive() ||
-                Number.class.isAssignableFrom(valueClass) ||
-                Boolean.class == valueClass ||
-                String.class == valueClass) {
-            return String.valueOf(value);
-        }
-
-        // Handle enums
-        if (valueClass.isEnum()) {
-            try {
-                // Try toString first in case there's a custom implementation
-                String stringValue = value.toString();
-                // If toString returns the same as name(), use the standard enum name
-                if (stringValue.equals(((Enum<?>) value).name())) {
-                    return ((Enum<?>) value).name();
-                }
-                return stringValue;
-            } catch (Exception e) {
-                return ((Enum<?>) value).name();
-            }
-        }
-
-        // Handle Lists
-        if (List.class.isAssignableFrom(valueClass)) {
-            return ((List<?>) value).stream()
-                    .map(RouteHandlerWrapper::convertToString)
-                    .collect(Collectors.joining(","));
-        }
-
-        // Handle Maps
-        if (Map.class.isAssignableFrom(valueClass)) {
-            return ((Map<?, ?>) value).entrySet().stream()
-                    .map(e -> convertToString(e.getKey()) + ":" + convertToString(e.getValue()))
-                    .collect(Collectors.joining(","));
-        }
-
-        throw new IllegalArgumentException("Unsupported type: " + valueClass.getName());
     }
 }
 
