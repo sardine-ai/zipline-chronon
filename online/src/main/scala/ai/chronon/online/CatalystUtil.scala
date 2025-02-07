@@ -63,6 +63,11 @@ object CatalystUtil {
       .config("spark.sql.adaptive.enabled", "false")
       .config("spark.sql.legacy.timeParserPolicy", "LEGACY")
       .config("spark.ui.enabled", "false")
+      // the default column reader batch size is 4096 - spark reads that many rows into memory buffer at once.
+      // that causes ooms on large columns.
+      // for derivations we only need to read one row at a time.
+      // for interactive we set the limit to 16.
+      .config("spark.sql.parquet.columnarReaderBatchSize", "16")
       .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
     assert(spark.sessionState.conf.wholeStageEnabled)
