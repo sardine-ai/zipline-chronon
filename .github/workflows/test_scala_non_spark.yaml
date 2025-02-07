@@ -9,6 +9,10 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
+      - 'hub/**'
+      - 'orchestration/**'
+      - 'service/**'
+      - 'cloud_gcp/**'
       - '.github/workflows/test_scala_non_spark.yaml'
       - 'build.sbt'
   pull_request:
@@ -19,6 +23,10 @@ on:
       - 'aggregator/**'
       - 'online/**'
       - 'api/**'
+      - 'hub/**'
+      - 'orchestration/**'
+      - 'service/**'
+      - 'cloud_gcp/**'
       - '.github/workflows/test_scala_non_spark.yaml'
       - 'build.sbt'
 
@@ -94,3 +102,10 @@ jobs:
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //orchestration:tests
+
+      - name: Run cloud gcp tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //cloud_gcp:tests
