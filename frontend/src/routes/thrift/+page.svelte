@@ -129,6 +129,17 @@
 			.then((columnSummary) => {
 				console.log('Column summary data:', columnSummary);
 			});
+
+		api
+			.getColumnSummary({
+				name: 'risk.user_transactions.txn_join',
+				columnName: 'dim_merchant_account_type',
+				startTs: 1673308800000,
+				endTs: 1674172800000
+			})
+			.then((columnSummary) => {
+				console.log('Merchant account type summary:', columnSummary);
+			});
 	});
 </script>
 
