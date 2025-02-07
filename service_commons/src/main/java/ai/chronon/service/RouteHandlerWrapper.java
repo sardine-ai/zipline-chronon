@@ -2,6 +2,7 @@ package ai.chronon.service;
 
 import ai.chronon.api.thrift.*;
 import ai.chronon.api.thrift.protocol.TBinaryProtocol;
+import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol;
 import ai.chronon.api.thrift.transport.TTransportException;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
@@ -50,7 +51,6 @@ public class RouteHandlerWrapper {
     private static final ThreadLocal<Base64.Encoder> base64Encoder = ThreadLocal.withInitial(Base64::getEncoder);
     private static final ThreadLocal<Base64.Decoder> base64Decoder = ThreadLocal.withInitial(Base64::getDecoder);
 
-
     public static <T extends TBase> T deserializeTBinaryBase64(String base64Data, Class<? extends TBase> clazz) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, TException {
         byte[] binaryData = base64Decoder.get().decode(base64Data);
         T tb = (T) clazz.getDeclaredConstructor().newInstance();
@@ -87,8 +87,20 @@ public class RouteHandlerWrapper {
 
                 String responseFormat = ctx.request().getHeader(RESPONSE_CONTENT_TYPE_HEADER);
                 if (responseFormat == null || responseFormat.equals("application/json")) {
-                    // Send json response
-                    ctx.response().setStatusCode(200).putHeader("content-type", JSON_TYPE_VALUE).end(JsonObject.mapFrom(output).encode());
+                    try {
+                        TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
+                        String jsonString = serializer.toString((TBase)output);
+                        ctx.response()
+                                .setStatusCode(200)
+                                .putHeader("content-type", JSON_TYPE_VALUE)
+                                .end(jsonString);
+                    } catch (TException e) {
+                        LOGGER.error("Failed to serialize response", e);
+                        throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        LOGGER.error("Unexpected error during serialization", e);
+                        throw new RuntimeException(e);
+                    }
                 } else {
                     if (!responseFormat.equals(TBINARY_B64_TYPE_VALUE)) {
                         throw new IllegalArgumentException(String.format("Unsupported response-content-type: %s. Supported values are: %s and %s", responseFormat, JSON_TYPE_VALUE, TBINARY_B64_TYPE_VALUE));
@@ -121,9 +133,9 @@ public class RouteHandlerWrapper {
 
 
         Map<String, Method> setters = SETTER_CACHE.computeIfAbsent(inputClass, cls ->
-             Arrays.stream(cls.getMethods())
-                    .filter(RouteHandlerWrapper::isSetter)
-                    .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromSetter, method -> method))
+                Arrays.stream(cls.getMethods())
+                        .filter(RouteHandlerWrapper::isSetter)
+                        .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromSetter, method -> method))
         );
 
         // Find and invoke setters for matching parameters
@@ -225,4 +237,3 @@ public class RouteHandlerWrapper {
         throw new IllegalArgumentException("Unsupported type: " + targetType.getTypeName());
     }
 }
-

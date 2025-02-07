@@ -16,7 +16,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,24 +48,24 @@ class RouteHandlerWrapperTest {
 
         // Create handler for pojo
         Function<TestInput, TestOutput> transformer = input ->
-            new TestOutput(
-                    input.getUserId(),
-                    String.format("Status: %s, Role: %s, Accuracy: %s, Limit: %d, Amount: %.2f, Active: %b, Items: %s, Props: %s",
-                            input.getStatus(),
-                            input.getRole(),
-                            input.getAccuracy(),
-                            input.getLimit(),
-                            input.getAmount(),
-                            input.isActive(),
-                            input.getItems() != null ? String.join(",", input.getItems()) : "null",
-                            input.getProps() != null ?
-                                    input.getProps().entrySet()
-                                            .stream()
-                                            .map(entry -> entry.getKey() + ":" + entry.getValue())
-                                            .collect(Collectors.joining(","))
-                                    : "null"
-                    )
-            );
+                new TestOutput(
+                        input.getUserId(),
+                        String.format("Status: %s, Role: %s, Accuracy: %s, Limit: %d, Amount: %.2f, Active: %b, Items: %s, Props: %s",
+                                input.getStatus(),
+                                input.getRole(),
+                                input.getAccuracy(),
+                                input.getLimit(),
+                                input.getAmount(),
+                                input.isActive(),
+                                input.getItems() != null ? String.join(",", input.getItems()) : "null",
+                                input.getProps() != null ?
+                                        input.getProps().entrySet()
+                                                .stream()
+                                                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                                                .collect(Collectors.joining(","))
+                                        : "null"
+                        )
+                );
 
         // Create handler for thrift
         Function<TileKey, TileKey> thriftTransformer = input -> input;
