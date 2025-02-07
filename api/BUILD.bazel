@@ -31,8 +31,8 @@ scala_library(
         maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("org.apache.commons:commons-lang3"),
         maven_artifact("com.google.code.gson:gson"),
-        scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-        scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
+        maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+        maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
     ],
 )
 
@@ -51,10 +51,10 @@ scala_test_suite(
         maven_artifact("junit:junit"),
         maven_artifact("com.novocode:junit-interface"),
         maven_artifact("org.mockito:mockito-core"),
-        scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
-        scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-        scala_artifact("org.scalatest:scalatest"),
-        scala_artifact("org.scalatest:scalatest-flatspec"),
-        scala_artifact("org.scalatest:scalatest-funsuite"),
+        maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
+        maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+        maven_scala_artifact("org.scalatest:scalatest"),
+        maven_scala_artifact("org.scalatest:scalatest-flatspec"),
+        maven_scala_artifact("org.scalatest:scalatest-funsuite"),
     ],
 )
