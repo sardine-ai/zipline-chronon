@@ -1,8 +1,10 @@
 load("@rules_jvm_external//:specs.bzl", "maven")
 load(":defs.bzl", "repository", "versioned_artifacts")
 
+MAVEN_REPOSITORY_NAME = "maven"
+
 maven_repository = repository(
-    name = "maven",
+    name = MAVEN_REPOSITORY_NAME,
     pinned = False,
     artifacts = [
         "org.scala-lang.modules:scala-collection-compat_2.12:2.6.0",

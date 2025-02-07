@@ -1,11 +1,13 @@
 load("@rules_jvm_external//:defs.bzl", _rje_artifact = "artifact")
-load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION")
 load("//tools/build_rules:jar_library.bzl", "jar_library")
+load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION")
+load("//tools/build_rules/dependencies:maven_repository.bzl", "MAVEN_REPOSITORY_NAME")
+load("//tools/build_rules/dependencies:spark_repository.bzl", "SPARK_REPOSITORY_NAME")
 
 def _safe_name(coord):
     return coord.replace(":", "_").replace(".", "_").replace("-", "_")
 
-def maven_artifact(coord, repository_name = "maven"):
+def _get_artifact(coord, repository_name):
     """
     Helper macro to translate Maven coordinates into Bazel deps. Example:
     java_library(
@@ -33,9 +35,22 @@ def maven_artifact(coord, repository_name = "maven"):
         )
     return safe_name
 
-def scala_artifact(coord, repository_name = "maven"):
+# For specifying dependencies pulled from Maven Repository in our build targets
+# Example: maven_artifact("com.google.guava:guava")
+def maven_artifact(coord):
+    return _get_artifact(coord, MAVEN_REPOSITORY_NAME)
+
+# For specifying scala related dependencies pulled from Maven Repository in our build targets
+# Example: maven_scala_artifact("org.rogach:scallop"),
+def maven_scala_artifact(coord):
     """
     Same as "maven_artifact" but appends the current Scala version to the Maven coordinate.
     """
     full_coord = coord + "_" + SCALA_MAJOR_VERSION
-    return maven_artifact(full_coord, repository_name)
+    return _get_artifact(full_coord, MAVEN_REPOSITORY_NAME)
+
+# For specifying dependencies pulled from Spark Repository in our build targets
+# Example: maven_artifact("com.google.guava:guava")
+def spark_artifact(coord):
+    return _get_artifact(coord, SPARK_REPOSITORY_NAME)
+

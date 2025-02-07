@@ -1,7 +1,8 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@rules_jvm_external//:defs.bzl", "artifact")
+load("//tools/build_rules/dependencies:maven_repository.bzl", "MAVEN_REPOSITORY_NAME")
 
-DEFAULT_PROVIDED_REPO = "maven"  # For backwards compatability
+DEFAULT_PROVIDED_REPO = MAVEN_REPOSITORY_NAME  # For backwards compatability
 
 def jar_library(name, jars = [], overrides = {}, visibility = ["//visibility:public"], **kwargs):
 
