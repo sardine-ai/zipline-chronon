@@ -629,11 +629,7 @@ object GroupBy {
                        accuracy: api.Accuracy,
                        mutations: Boolean = false): DataFrame = {
 
-    val sourceTableIsPartitioned = tableUtils.isPartitioned(source.table)
-
-    val intersectedRange: Option[PartitionRange] = if (sourceTableIsPartitioned) {
-      Some(getIntersectedRange(source, queryRange, tableUtils, window))
-    } else None
+    val intersectedRange: PartitionRange = getIntersectedRange(source, queryRange, tableUtils, window)
 
     var metaColumns: Map[String, String] = Map(tableUtils.partitionColumn -> null)
     if (mutations) {
@@ -659,7 +655,7 @@ object GroupBy {
          |""".stripMargin)
     metaColumns ++= timeMapping
 
-    val partitionConditions = intersectedRange.map(tableUtils.whereClauses(_)).getOrElse(Seq.empty)
+    val partitionConditions = tableUtils.whereClauses(intersectedRange)
 
     logger.info(s"""
          |Rendering source query:
@@ -677,8 +673,6 @@ object GroupBy {
     val selects = Option(source.query.selects)
       .map(_.toScala.map(keyValue => {
         if (keyValue._2.contains(Constants.ChrononRunDs)) {
-          assert(intersectedRange.isDefined && intersectedRange.get.isSingleDay,
-                 "ChrononRunDs is only supported for single day queries")
           val parametricMacro = ParametricMacro(Constants.ChrononRunDs, _ => queryRange.start)
           (keyValue._1, parametricMacro.replace(keyValue._2))
         } else {
