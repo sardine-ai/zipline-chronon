@@ -123,7 +123,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       true
     } catch {
       case ex: Exception =>
-        logger.debug(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
+        logger.warn(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
              |Call path:
              |${cleanStackTrace(ex).yellow}
              |""".stripMargin)
