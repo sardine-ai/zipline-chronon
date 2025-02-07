@@ -91,9 +91,9 @@ public class RouteHandlerWrapper {
                         TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
                         String jsonString = serializer.toString((TBase)output);
                         ctx.response()
-                                .setStatusCode(200)
-                                .putHeader("content-type", JSON_TYPE_VALUE)
-                                .end(jsonString);
+                            .setStatusCode(200)
+                            .putHeader("content-type", JSON_TYPE_VALUE)
+                            .end(jsonString);
                     } catch (TException e) {
                         LOGGER.error("Failed to serialize response", e);
                         throw new RuntimeException(e);
@@ -134,8 +134,8 @@ public class RouteHandlerWrapper {
 
         Map<String, Method> setters = SETTER_CACHE.computeIfAbsent(inputClass, cls ->
                 Arrays.stream(cls.getMethods())
-                        .filter(RouteHandlerWrapper::isSetter)
-                        .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromSetter, method -> method))
+                    .filter(RouteHandlerWrapper::isSetter)
+                    .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromSetter, method -> method))
         );
 
         // Find and invoke setters for matching parameters
