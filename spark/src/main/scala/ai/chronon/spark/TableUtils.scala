@@ -182,25 +182,28 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   def partitions(tableName: String, subPartitionsFilter: Map[String, String] = Map.empty): Seq[String] = {
+    try {
+      val format = tableReadFormat(tableName)
+      val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
 
-    if (!tableReachable(tableName)) {
+      if (partitions.isEmpty) {
+        logger.info(s"No partitions found for (reachable) table: $tableName")
+      } else {
+        logger.info(
+          s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
+      }
 
-      logger.info(s"Table $tableName is not reachable. Returning empty partitions.")
-      return Seq.empty[String]
-
+      partitions
+    } catch {
+      case e: Exception =>
+        logger.error(
+          s"Failed to get partitions for table $tableName. " +
+            "Either the table is not yet created, or there was an error in reading the partitions.",
+          e.getMessage
+        )
+        logger.debug(s"Failed to get partitions for table $tableName.", e)
+        Seq.empty
     }
-
-    val format = tableReadFormat(tableName)
-    val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
-
-    if (partitions.isEmpty) {
-      logger.info(s"No partitions found for (reachable) table: $tableName")
-    } else {
-      logger.info(
-        s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
-    }
-
-    partitions
   }
 
   // Given a table and a query extract the schema of the columns involved as input.
@@ -743,6 +746,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  wheres: Seq[String],
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
+
     val dp = DataPointer.from(table, sparkSession)
     var df = sparkSession.read.load(dp)
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
@@ -766,8 +770,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val whereStr = allWheres.map(w => s"($w)").mkString(" AND ")
       df = df.where(whereStr)
     }
+
     val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
     val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
+
     df.coalesce(coalesceFactor * parallelism)
   }
 
