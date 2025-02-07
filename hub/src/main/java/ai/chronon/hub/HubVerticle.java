@@ -3,6 +3,8 @@ package ai.chronon.hub;
 import ai.chronon.api.Constants;
 import ai.chronon.hub.handlers.*;
 import ai.chronon.hub.store.MonitoringModelStore;
+import ai.chronon.observability.JoinDriftRequest;
+import ai.chronon.observability.JoinSummaryRequest;
 import ai.chronon.observability.TileKey;
 import ai.chronon.online.Api;
 import ai.chronon.online.KVStore;
@@ -58,10 +60,10 @@ public class HubVerticle extends AbstractVerticle {
 
         // Add routes for metadata retrieval
         MonitoringModelStore store = new MonitoringModelStore(api);
-        router.get("/api/v1/models").handler(new ModelsHandler(store));
-        router.get("/api/v1/join/:name").handler(new JoinsHandler(store).getHandler());
-        router.get("/api/v1/joins").handler(new JoinsHandler(store).listHandler());
-        router.get("/api/v1/search").handler(new SearchHandler(store));
+        ConfHandler confHandler = new ConfHandler(store);
+        router.get("/api/v1/conf").handler(RouteHandlerWrapper.createHandler(confHandler::getConf, ConfRequest.class));
+        router.get("/api/v1/conf/list").handler(RouteHandlerWrapper.createHandler(confHandler::getConfList, ConfListRequest.class));
+        router.get("/api/v1/search").handler(RouteHandlerWrapper.createHandler(confHandler::searchConf, ConfRequest.class));
         router.get("/api/v1/:name/job/type/:type").handler(RouteHandlerWrapper.createHandler(JobTracker::handle, JobTrackerRequest.class));
 
         // hacked up in mem kv store bulkPut
@@ -77,6 +79,11 @@ public class HubVerticle extends AbstractVerticle {
         router.get("/api/v1/join/:name/timeseries").handler(new TimeSeriesHandler(driftStore).joinDriftHandler());
         router.get("/api/v1/join/:join/feature/:name/timeseries").handler(new TimeSeriesHandler(driftStore).featureDriftHandler());
 
+        DriftHandler driftHandler = new DriftHandler(driftStore);
+        router.get("/api/v1/join/:name/drift").handler(RouteHandlerWrapper.createHandler(driftHandler::getJoinDrift, JoinDriftRequest.class));
+        router.get("/api/v1/join/:name/column/:columnName/drift").handler(RouteHandlerWrapper.createHandler(driftHandler::getColumnDrift, JoinDriftRequest.class));
+        router.get("/api/v1/join/:name/column/:columnName/summary").handler(RouteHandlerWrapper.createHandler(driftHandler::getColumnSummary, JoinSummaryRequest.class));
+        
         // Start HTTP server
         HttpServerOptions httpOptions =
                 new HttpServerOptions()

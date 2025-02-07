@@ -20,6 +20,10 @@ SPARK_JARS = [
         org = "org.apache.spark",
     ),
     scala_jar(
+        name = "spark-avro",
+        org = "org.apache.spark",
+    ),
+    scala_jar(
         name = "spark-sketch",
         org = "org.apache.spark",
     ),
@@ -38,14 +42,6 @@ SPARK_JARS = [
     jar(
         name = "hive-metastore",
         org = "org.apache.hive",
-    ),
-    jar(
-        name = "hive-exec",
-        org = "org.apache.hive",
-    ),
-    jar(
-        name = "hadoop-common",
-        org = "org.apache.hadoop",
     ),
     jar(
         name = "kryo_shaded",

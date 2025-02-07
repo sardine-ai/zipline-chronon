@@ -5,7 +5,7 @@ scala_library(
     deps = [
         "//aggregator:lib",
         "//api:lib",
-        "//api:thrift",
+        "//api:thrift_java",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
@@ -39,17 +39,18 @@ scala_library(
         maven_artifact("io.netty:netty-codec"),
         scala_artifact("io.delta:delta-spark"),
         maven_artifact("net.sf.py4j:py4j"),
+        maven_artifact("org.apache.avro:avro"),
+        maven_artifact("org.apache.thrift:libthrift"),
     ],
 )
 
 test_deps = [
     ":lib",
     "//aggregator:lib",
-    "//aggregator:test-lib",
+    "//aggregator:test_lib",
     "//api:lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//online:lib",
-    "//online:test-lib",
     "//tools/build_rules/spark:spark-exec",
     # Library
     maven_artifact("com.google.code.gson:gson"),
@@ -65,6 +66,10 @@ test_deps = [
     scala_artifact("org.json4s:json4s-jackson"),
     scala_artifact("org.json4s:json4s-ast"),
     maven_artifact("org.yaml:snakeyaml"),
+    maven_artifact("org.apache.avro:avro"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact("org.apache.hive:hive-exec"),
     # Testing
     scala_artifact("org.scalatest:scalatest-matchers-core"),
     scala_artifact("org.scalatest:scalatest-core"),
@@ -81,23 +86,24 @@ test_deps = [
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 scala_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
+    data = glob(["spark/src/test/resources/**/*"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
 )
 
 jvm_binary(
-    name = "assembly",
+    name = "spark_assembly",
     deploy_env = ["//tools/build_rules/spark:spark"],
     main_class = "ai.chronon.spark.Driver",
     runtime_deps = [":lib"],

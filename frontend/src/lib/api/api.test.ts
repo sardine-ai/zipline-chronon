@@ -30,9 +30,9 @@ describe('API module', () => {
 				text: () => Promise.resolve(JSON.stringify(mockResponse))
 			});
 
-			const result = await api.getModels();
+			const result = await api.getModelList();
 
-			expect(mockFetch).toHaveBeenCalledWith(`/api/v1/models`, {
+			expect(mockFetch).toHaveBeenCalledWith(`/api/v1/conf/list?confType=MODEL`, {
 				method: 'GET',
 				headers: {
 					'Content-Type': 'application/json'
@@ -47,7 +47,7 @@ describe('API module', () => {
 				text: () => Promise.resolve('')
 			});
 
-			const result = await api.getModels();
+			const result = await api.getModelList();
 
 			expect(result).toEqual({});
 		});
@@ -58,7 +58,7 @@ describe('API module', () => {
 				status: 404
 			});
 
-			await api.getModels();
+			await api.getModelList();
 
 			expect(error).toHaveBeenCalledWith(404);
 		});

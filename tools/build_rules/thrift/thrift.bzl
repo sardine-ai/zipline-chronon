@@ -18,7 +18,6 @@ def generate_java_files_using_thrift(ctx):
             inputs = [src_file],
             executable = thrift_path,
             arguments = [
-                "-strict",
                 "--gen",
                 "java:generated_annotations=undated",
                 "-out",
@@ -48,7 +47,7 @@ def create_jar_file(ctx, input_directories):
 
     return jar_file
 
-def _thrift_java_library_impl(ctx):
+def _thrift_gen_library_impl(ctx):
     thrift_output_directories = generate_java_files_using_thrift(ctx)
     final_output_directories = replace_java_files_with_custom_thrift_package_prefix(ctx, thrift_output_directories)
     jar_file = create_jar_file(ctx, final_output_directories)
@@ -85,8 +84,8 @@ def replace_java_files_with_custom_thrift_package_prefix(ctx, input_directories)
 
     return output_directories
 
-_thrift_java_library = rule(
-    implementation = _thrift_java_library_impl,
+_thrift_gen_library = rule(
+    implementation = _thrift_gen_library_impl,
     attrs = {
         "srcs": attr.label_list(
             allow_files = [".thrift"],
@@ -101,11 +100,14 @@ _thrift_java_library = rule(
     },
 )
 
-def thrift_java_library(name, srcs, **kwargs):
-    _thrift_java_library(
+# Currently only supports java files generation
+# TODO: To make it more generic for handling other languages
+def thrift_gen_library(name, srcs, **kwargs):
+    _thrift_gen_library(
         name = name,
         srcs = srcs,
         thrift_binary = select({
+            "@platforms//os:macos": "/opt/homebrew/bin/thrift",
             "//conditions:default": "/usr/local/bin/thrift",
         }),
         **kwargs

@@ -4,9 +4,7 @@ import ai.chronon.online.LRUCache
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import org.scalatest.flatspec.AnyFlatSpec
 
-
 class LRUCacheTest extends AnyFlatSpec {
-
 
   it should "gets nothing when there is nothing" in {
     val testCache: CaffeineCache[String, String] = LRUCache[String, String]("testCache")

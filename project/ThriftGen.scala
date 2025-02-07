@@ -25,7 +25,7 @@ object ThriftGen {
   }
 
   def replaceInFile(file: File): Unit = {
-    val source = scala.io.Source.fromFile(file)
+    val source = scala.io.Source.fromFile(file, "UTF-8")
     val content = source.mkString
     source.close()
     val newContent = content.replace("org.apache.thrift", "ai.chronon.api.thrift")

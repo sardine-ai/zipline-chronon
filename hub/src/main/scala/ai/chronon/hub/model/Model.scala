@@ -57,10 +57,4 @@ case class ComparedFeatureTimeSeries(feature: String,
                                      current: Seq[TimeSeriesPoint])
 case class GroupByTimeSeries(name: String, items: Seq[FeatureTimeSeries])
 
-// Currently search only covers joins
-case class ListModelResponse(offset: Int, items: Seq[Model])
-case class SearchJoinResponse(offset: Int, items: Seq[Join])
-case class ListJoinResponse(offset: Int, items: Seq[Join])
-
-case class ModelTimeSeriesResponse(id: String, items: Seq[TimeSeriesPoint])
 case class JoinTimeSeriesResponse(name: String, items: Seq[GroupByTimeSeries])

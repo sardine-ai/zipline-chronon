@@ -48,6 +48,86 @@ python3 -m pip install -U tox build
 git clone git@github.com:zipline-ai/chronon.git
 ```
 
+## Bazel Setup
+
+### Installing Bazel
+
+#### On Mac
+```shell
+# Install bazelisk and it automatically pulls right bazel binary
+brew install bazelisk
+```
+
+#### On Linux
+```shell
+sudo curl -L "https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-amd64" -o /usr/local/bin/bazel
+sudo chmod +x /usr/local/bin/bazel
+export PATH="/usr/local/bin:${PATH}"
+```
+
+### Configuring IntelliJ
+
+- Install `Bazel For IntelliJ` Plugin
+- Follow File > Import Bazel Project
+   - Select root directory as workspace
+   - Use `.bazelproject` as project view file
+- We should see a bazel icon in the top right corner to the left of search bar
+   - Used for incremental sync after build config changes
+- We can directly build and test all our targets from IntelliJ
+
+### Remote Caching
+
+We enabled remote caching for all our builds/tests for both local development and CI.
+As part of that change we would need to do gcloud auth to read/write from remote cache stored in our BigTable bucket for the local dev builds.
+
+### Java not found error on Mac
+
+In case you run into this error the fix is to manually download and install amazon corretto-17 from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html)
+
+### Build Uber Jars for deployment
+```shell
+# Command
+bazel build //{module}:{target}_deploy.jar
+
+# Cloud Gcp Jar
+# Creates uber jar in {Workspace}/bazel-bin/cloud_gcp folder with name cloud_gcp_lib_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
+
+# Flink Jars
+bazel build //flink:flink_assembly_deploy.jar
+bazel build //flink:flink_kafka_assembly_deploy.jar
+
+# Service Jar
+bazel build //service:service_assembly_deploy.jar
+
+# Hub Jar
+bazel build //hub:hub_assembly_deploy.jar
+```
+
+### All tests for a specific module
+Also it's lot easier to just run from IntelliJ
+```shell
+# Example: bazel test //api:tests
+bazel test //{module}:{test_target}
+```
+### Only test individual test file within a module
+```shell
+# Example: bazel test //api:tests_test_suite_src_test_scala_ai_chronon_api_test_DataPointerTest.scala
+bazel test //{module}:{test_target}_test_suite_{test_file_path}
+```
+
+### To clean the repository for a fresh build
+```shell
+# Removes build outputs and action cache.
+bazel clean
+# This leaves workspace as if Bazel was never run.
+# Does additional cleanup compared to above command and should also be generally faster
+bazel clean --expunge
+```
+
+## Old SBT Setup
+
 ### Configuring IntelliJ
 
 - Open the project from the root `chronon` directory. 
@@ -84,8 +164,6 @@ git clone git@github.com:zipline-ai/chronon.git
   From CLI: `sbt "testOnly ai.chronon.spark.test.TableUtilsFormatTest"`
 
 
-
-
 **Troubleshooting**
 
 Try the following if you are seeing flaky issues in IntelliJ 
@@ -106,8 +184,7 @@ materialize  --input_path=<path/to/conf>
 ```
 
 ### Testing
-We are currently migrating our build tool to bazel from sbt.
-#### Using sbt
+
 All tests
 ```shell
 sbt test
@@ -129,18 +206,6 @@ sbt dependencyBrowseGraph
 
 # Tree based view of all the dependencies
 sbt dependencyBrowseTree
-```
-
-#### Using bazel
-All tests for a specific module
-```shell
-# Example: bazel test //api:api-test
-bazel test //{module}:{test_target}
-```
-Specific submodule tests
-```shell
-# Example: bazel test //api:api-test_test_suite_src_test_scala_ai_chronon_api_test_DataPointerTest.scala
-bazel test //{module}:{test_target}_test_suite_{submodule_test_path}
 ```
 
 # Chronon Build Process
@@ -179,21 +244,6 @@ sbt assembly
 ### Building a fat jar for just one submodule
 ```shell
 sbt 'spark/assembly'
-```
-## Using bazel
-
-### To clean the repository for a fresh build
-```shell
-# Removes build outputs and action cache.
-bazel clean
-# This leaves workspace as if Bazel was never run.
-# Does additional cleanup compared to above command and should also be generally faster
-bazel clean --expunge
-```
-### Build a fat jar for just one module
-```shell
-# Example: bazel build //api:api-lib
-bazel build //{module}:{build_target}
 ```
 
 # Chronon Artifacts Publish Process
@@ -392,3 +442,20 @@ You can invoke this command as below
 zpush "Your commit message"
 ```
 > Note: The quotes are necessary for multi-word commit message.
+
+## Connect remotely to API Docker JVM
+
+The java process within the container is started with remote debugging [enabled](https://github.com/zipline-ai/chronon/blob/main/docker-init/start.sh#L46) on port 5005 and [exposed](https://github.com/zipline-ai/chronon/blob/main/docker-init/compose.yaml#L70) on the host as `localhost:5005`.  This helps you debug frontend code by triggering a breakpoint in IntelliJ when some code in the frontend is run (i.e. api call, etc)
+
+To connect to the process within the container via IntelliJ, follow these steps:
+
+1. Open IntelliJ and go to `Run` > `Edit Configurations`.
+2. Click the `+` button to add a new configuration.
+3. Select `Remote JVM Debug` from the list.
+4. Enter `localhost:5005` as the host and port (defaults)
+5. Click `Debug`.
+6. Set a breakpoint in the code you want to debug.
+7. Run the frontend code that will call the api (or call the API endpoint directly such as with `curl`/Postman/etc).
+8. When the breakpoint is hit, you can inspect variables, step through the code, etc.
+
+For more details see IntelliJ remote debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.html)

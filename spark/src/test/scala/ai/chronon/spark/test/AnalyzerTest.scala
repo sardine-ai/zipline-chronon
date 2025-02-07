@@ -386,23 +386,26 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     val testSchema = List(
       Column("key", api.StringType, 10),
       Column("col1", api.IntType, 10),
-      Column("col2", api.IntType, 10),
+      Column("col2", api.IntType, 10)
     )
 
     val viewsTable = s"$namespace.test_table"
     option match {
       case "default" => {
-        DataFrameGen.events(spark, testSchema, count = 100, partitions = 20)
+        DataFrameGen
+          .events(spark, testSchema, count = 100, partitions = 20)
           .save(viewsTable)
       }
       case "nulls" => {
-        DataFrameGen.events(spark, testSchema, count = 100, partitions = 20)
+        DataFrameGen
+          .events(spark, testSchema, count = 100, partitions = 20)
           .withColumn("ts", lit(null).cast("bigint")) // set ts to null to test analyzer
           .save(viewsTable)
       }
       case "out_of_range" => {
-        DataFrameGen.events(spark, testSchema, count = 100, partitions = 20)
-          .withColumn("ts", col("ts")*lit(1000)) // convert to nanoseconds to test analyzer
+        DataFrameGen
+          .events(spark, testSchema, count = 100, partitions = 20)
+          .withColumn("ts", col("ts") * lit(1000)) // convert to nanoseconds to test analyzer
           .save(viewsTable)
       }
       case _ => {
@@ -411,9 +414,9 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     }
 
     val out = Builders.Source.events(
-        query = Builders.Query(selects = Builders.Selects("col1", "col2"), startPartition = oneYearAgo),
-        table = viewsTable
-      )
+      query = Builders.Query(selects = Builders.Selects("col1", "col2"), startPartition = oneYearAgo),
+      table = viewsTable
+    )
 
     out
 

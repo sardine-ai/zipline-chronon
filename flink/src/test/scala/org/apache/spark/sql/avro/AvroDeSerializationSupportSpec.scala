@@ -1,5 +1,6 @@
 package org.apache.spark.sql.avro
 
+import ai.chronon.flink.test.UserAvroSchema
 import ai.chronon.online.AvroCodec
 import org.apache.avro.generic.GenericData
 import org.apache.flink.api.common.serialization.DeserializationSchema
@@ -10,25 +11,20 @@ import org.apache.flink.util.UserCodeClassLoader
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.JavaConverters._
-import scala.io.Source
 
-class DummyInitializationContext extends SerializationSchema.InitializationContext with DeserializationSchema.InitializationContext {
+class DummyInitializationContext
+    extends SerializationSchema.InitializationContext
+    with DeserializationSchema.InitializationContext {
   override def getMetricGroup = new UnregisteredMetricsGroup
 
-  override def getUserCodeClassLoader: UserCodeClassLoader = SimpleUserCodeClassLoader.create(classOf[DummyInitializationContext].getClassLoader)
+  override def getUserCodeClassLoader: UserCodeClassLoader =
+    SimpleUserCodeClassLoader.create(classOf[DummyInitializationContext].getClassLoader)
 }
 
 class AvroDeSerializationSupportSpec extends AnyFlatSpec {
 
   it should "deserialize avro data" in {
-    val schemaSrc = Source.fromURL(getClass.getClassLoader.getResource("user.avsc"))
-    val schemaStr =
-      try {
-        schemaSrc.mkString
-      } finally {
-        schemaSrc.close()
-      }
-
+    val schemaStr = UserAvroSchema.schema.toString(true)
     val (encoder, deserSchema) = AvroDeserializationSupport.build("test-topic", schemaStr)
     deserSchema.open(new DummyInitializationContext)
     val recordBytes = AvroObjectCreator.createDummyRecordBytes(schemaStr)
@@ -43,15 +39,10 @@ class AvroDeSerializationSupportSpec extends AnyFlatSpec {
   }
 
   it should "deserialize avro data with schema id" in {
-    val schemaSrc = Source.fromURL(getClass.getClassLoader.getResource("user.avsc"))
-    val schemaStr =
-      try {
-        schemaSrc.mkString
-      } finally {
-        schemaSrc.close()
-      }
+    val schemaStr = UserAvroSchema.schema.toString(true)
 
-    val (encoder, deserSchema) = AvroDeserializationSupport.build("test-topic", schemaStr, schemaRegistryWireFormat = true)
+    val (encoder, deserSchema) =
+      AvroDeserializationSupport.build("test-topic", schemaStr, schemaRegistryWireFormat = true)
     deserSchema.open(new DummyInitializationContext)
     val recordBytes = AvroObjectCreator.createDummyRecordBytes(schemaStr)
     val recordBytesWithSchemaId = Array[Byte](0, 0, 0, 0, 123) ++ recordBytes
@@ -64,14 +55,8 @@ class AvroDeSerializationSupportSpec extends AnyFlatSpec {
   }
 
   it should "skip avro data that can't be deserialized" in {
-    val schemaSrc = Source.fromURL(getClass.getClassLoader.getResource("user.avsc"))
-    val schemaStr =
-      try {
-        schemaSrc.mkString
-      } finally {
-        schemaSrc.close()
-      }
 
+    val schemaStr = UserAvroSchema.schema.toString(true)
     val (_, deserSchema) = AvroDeserializationSupport.build("test-topic", schemaStr)
     deserSchema.open(new DummyInitializationContext)
     val recordBytes = AvroObjectCreator.createDummyRecordBytes(schemaStr)

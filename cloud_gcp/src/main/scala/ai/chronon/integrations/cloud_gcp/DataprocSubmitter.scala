@@ -2,6 +2,7 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.JobAuth
 import ai.chronon.spark.JobSubmitter
 import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
+import ai.chronon.spark.JobSubmitterConstants.FlinkStateUri
 import ai.chronon.spark.JobSubmitterConstants.JarURI
 import ai.chronon.spark.JobSubmitterConstants.MainClass
 import ai.chronon.spark.JobSubmitterConstants.SavepointUri
@@ -66,8 +67,10 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       case TypeFlinkJob =>
         val mainJarUri =
           jobProperties.getOrElse(FlinkMainJarURI, throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
+        val flinkStateUri =
+          jobProperties.getOrElse(FlinkStateUri, throw new RuntimeException(s"Missing expected $FlinkStateUri"))
         val maybeSavepointUri = jobProperties.get(SavepointUri)
-        buildFlinkJob(mainClass, mainJarUri, jarUri, maybeSavepointUri, args: _*)
+        buildFlinkJob(mainClass, mainJarUri, jarUri, flinkStateUri, maybeSavepointUri, args: _*)
     }
 
     val jobPlacement = JobPlacement
@@ -104,11 +107,9 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
   private def buildFlinkJob(mainClass: String,
                             mainJarUri: String,
                             jarUri: String,
+                            flinkStateUri: String,
                             maybeSavePointUri: Option[String],
                             args: String*): Job.Builder = {
-
-    // TODO leverage a setting in teams.json when that's wired up
-    val checkpointsDir = "gs://zl-warehouse/flink-state"
 
     // JobManager is primarily responsible for coordinating the job (task slots, checkpoint triggering) and not much else
     // so 4G should suffice.
@@ -127,10 +128,14 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         "taskmanager.memory.process.size" -> "64G",
         "taskmanager.memory.network.min" -> "1G",
         "taskmanager.memory.network.max" -> "2G",
+        // explicitly set the number of task slots as otherwise it defaults to the number of cores
+        "taskmanager.numberOfTaskSlots" -> "4",
         "taskmanager.memory.managed.fraction" -> "0.5f",
+        // default is 256m, we seem to be close to the limit so we give ourselves some headroom
+        "taskmanager.memory.jvm-metaspace.size" -> "512m",
         "yarn.classpath.include-user-jar" -> "FIRST",
-        "state.savepoints.dir" -> checkpointsDir,
-        "state.checkpoints.dir" -> checkpointsDir,
+        "state.savepoints.dir" -> flinkStateUri,
+        "state.checkpoints.dir" -> flinkStateUri,
         // override the local dir for rocksdb as the default ends up being too large file name size wise
         "state.backend.rocksdb.localdir" -> "/tmp/flink-state",
         "state.checkpoint-storage" -> "filesystem"
@@ -189,11 +194,18 @@ object DataprocSubmitter {
       .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
 
   }
+
+  private val JAR_URI_ARG_PREFIX = "--jar-uri"
+  private val GCS_FILES_ARG_PREFIX = "--gcs-files"
+  private val JOB_TYPE_ARG_PREFIX = "--job-type"
+  private val MAIN_CLASS_PREFIX = "--main-class"
+  private val FLINK_MAIN_JAR_URI_ARG_PREFIX = "--flink-main-jar-uri"
+  private val FLINK_SAVEPOINT_URI_ARG_PREFIX = "--savepoint-uri"
+
   def main(args: Array[String]): Unit = {
-    val chrononJarUri = args.filter(_.startsWith("--chronon_jar_uri"))(0).split("=")(1)
 
     // search args array for prefix `--gcs_files`
-    val gcsFilesArgs = args.filter(_.startsWith("--gcs_files"))
+    val gcsFilesArgs = args.filter(_.startsWith(GCS_FILES_ARG_PREFIX))
     assert(gcsFilesArgs.length == 0 || gcsFilesArgs.length == 1)
 
     val gcsFiles = if (gcsFilesArgs.isEmpty) {
@@ -202,7 +214,14 @@ object DataprocSubmitter {
       gcsFilesArgs(0).split("=")(1).split(",")
     }
 
-    val userArgs = args.filter(f => !f.startsWith("--gcs_files") && !f.startsWith("--chronon_jar_uri"))
+    // Exclude args list that starts with `--gcs_files` or `--jar_uri`
+    val internalArgs = Set(GCS_FILES_ARG_PREFIX,
+                           JAR_URI_ARG_PREFIX,
+                           JOB_TYPE_ARG_PREFIX,
+                           MAIN_CLASS_PREFIX,
+                           FLINK_MAIN_JAR_URI_ARG_PREFIX,
+                           FLINK_SAVEPOINT_URI_ARG_PREFIX)
+    val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
 
     val required_vars = List.apply(
       "GCP_PROJECT_ID",
@@ -213,7 +232,6 @@ object DataprocSubmitter {
     if (missing_vars.nonEmpty) {
       throw new Exception(s"Missing required environment variables: ${missing_vars.mkString(", ")}")
     }
-
     val projectId = sys.env.getOrElse("GCP_PROJECT_ID", throw new Exception("GCP_PROJECT_ID not set"))
     val region = sys.env.getOrElse("GCP_REGION", throw new Exception("GCP_REGION not set"))
     val clusterName = sys.env
@@ -224,24 +242,48 @@ object DataprocSubmitter {
       region,
       clusterName
     )
+    val submitter = DataprocSubmitter(submitterConf)
 
-    val bigtableInstanceId = sys.env.getOrElse("GCP_BIGTABLE_INSTANCE_ID", "")
+    val jarUri = args.filter(_.startsWith(JAR_URI_ARG_PREFIX))(0).split("=")(1)
+    val mainClass = args.filter(_.startsWith(MAIN_CLASS_PREFIX))(0).split("=")(1)
+    val jobTypeValue = args.filter(_.startsWith(JOB_TYPE_ARG_PREFIX))(0).split("=")(1)
 
-    val gcpArgsToPass = Array.apply(
-      "--is-gcp",
-      s"--gcp-project-id=${projectId}",
-      s"--gcp-bigtable-instance-id=$bigtableInstanceId"
-    )
+    val (dataprocJobType, jobProps) = jobTypeValue.toLowerCase match {
+      case "spark" => (TypeSparkJob, Map(MainClass -> mainClass, JarURI -> jarUri))
+      case "flink" => {
+        val flinkStateUri = sys.env.getOrElse("FLINK_STATE_URI", throw new Exception("FLINK_STATE_URI not set"))
 
-    val finalArgs = Array.concat(userArgs, gcpArgsToPass)
+        val flinkMainJarUri = args.filter(_.startsWith(FLINK_MAIN_JAR_URI_ARG_PREFIX))(0).split("=")(1)
+        val baseJobProps = Map(MainClass -> mainClass,
+                               JarURI -> jarUri,
+                               FlinkMainJarURI -> flinkMainJarUri,
+                               FlinkStateUri -> flinkStateUri)
+        if (args.exists(_.startsWith(FLINK_SAVEPOINT_URI_ARG_PREFIX))) {
+          val savepointUri = args.filter(_.startsWith(FLINK_SAVEPOINT_URI_ARG_PREFIX))(0).split("=")(1)
+          (TypeFlinkJob, baseJobProps + (SavepointUri -> savepointUri))
+        } else (TypeFlinkJob, baseJobProps)
+      }
+      case _ => throw new Exception("Invalid job type")
+    }
+
+    val finalArgs = dataprocJobType match {
+      case TypeSparkJob => {
+        val bigtableInstanceId = sys.env.getOrElse("GCP_BIGTABLE_INSTANCE_ID", "")
+        val gcpArgsToPass = Array.apply(
+          "--is-gcp",
+          s"--gcp-project-id=${projectId}",
+          s"--gcp-bigtable-instance-id=$bigtableInstanceId"
+        )
+        Array.concat(userArgs, gcpArgsToPass)
+      }
+      case TypeFlinkJob => userArgs
+    }
 
     println(finalArgs.mkString("Array(", ", ", ")"))
 
-    val a = DataprocSubmitter(submitterConf)
-
-    val jobId = a.submit(
-      TypeSparkJob,
-      Map(MainClass -> "ai.chronon.spark.Driver", JarURI -> chrononJarUri),
+    val jobId = submitter.submit(
+      dataprocJobType,
+      jobProps,
       gcsFiles.toList,
       finalArgs: _*
     )

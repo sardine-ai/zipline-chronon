@@ -34,7 +34,6 @@ import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
 import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
-import ai.chronon.online.test.TaggedFilterSuite
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.utils.MockApi

@@ -65,7 +65,10 @@ abstract class CStream[+T: ClassTag] {
     }
   }
 
-  def zipChunk[Other](other: CStream[Other], minSize: Int = 0, maxSize: Int = 20, nullRate: Double = 0.1): CStream[Any] = {
+  def zipChunk[Other](other: CStream[Other],
+                      minSize: Int = 0,
+                      maxSize: Int = 20,
+                      nullRate: Double = 0.1): CStream[Any] = {
     def nextKey(): T = next()
     def nextValue(): Other = other.next()
 
@@ -91,9 +94,12 @@ object CStream {
                     count: Int,
                     roundMillis: Int = 1,
                     maxTs: Long = System.currentTimeMillis()): Array[Long] =
-    new CStream.TimeStream(window, roundMillis, maxTs).gen(count).toArray.sorted(new Ordering[Any] {
-      override def compare(x: Any, y: Any): Int = x.asInstanceOf[Long].compareTo(y.asInstanceOf[Long])
-    })
+    new CStream.TimeStream(window, roundMillis, maxTs)
+      .gen(count)
+      .toArray
+      .sorted(new Ordering[Any] {
+        override def compare(x: Any, y: Any): Int = x.asInstanceOf[Long].compareTo(y.asInstanceOf[Long])
+      })
 
   def genPartitions(count: Int, partitionSpec: PartitionSpec): Array[String] = {
     val today = partitionSpec.at(System.currentTimeMillis())
@@ -178,7 +184,7 @@ case class Column(name: String, `type`: DataType, cardinality: Int, chunkSize: I
         }
       case IntType    => new IntStream(cardinality, nullRate)
       case DoubleType => new DoubleStream(cardinality, nullRate)
-      case FloatType => new FloatStream(cardinality, nullRate)
+      case FloatType  => new FloatStream(cardinality, nullRate)
       case LongType =>
         name match {
           case Constants.TimeColumn => new TimeStream(new Window(cardinality, TimeUnit.DAYS))

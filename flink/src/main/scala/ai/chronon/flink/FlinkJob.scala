@@ -7,13 +7,13 @@ import ai.chronon.api.DataType
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.flink.FlinkJob.watermarkStrategy
+import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.flink.window.AlwaysFireOnElementTrigger
 import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
-
 import ai.chronon.flink.window.KeySelectorBuilder
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
@@ -152,7 +152,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
         "Tiling is enabled.")
 
-    val tilingWindowSizeInMillis: Option[Long] =
+    val tilingWindowSizeInMillis: Long =
       ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
 
     // we expect parallelism on the source stream to be set by the source provider
@@ -180,7 +180,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
         .toSeq
 
     val window = TumblingEventTimeWindows
-      .of(Time.milliseconds(tilingWindowSizeInMillis.get))
+      .of(Time.milliseconds(tilingWindowSizeInMillis))
       .asInstanceOf[WindowAssigner[Map[String, Any], TimeWindow]]
 
     // An alternative to AlwaysFireOnElementTrigger can be used: BufferedProcessingTimeTrigger.
@@ -188,7 +188,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     val trigger = new AlwaysFireOnElementTrigger()
 
     // We use Flink "Side Outputs" to track any late events that aren't computed.
-    val tilingLateEventsTag = new OutputTag[Map[String, Any]]("tiling-late-events")
+    val tilingLateEventsTag = new OutputTag[Map[String, Any]]("tiling-late-events") {}
 
     // The tiling operator works the following way:
     // 1. Input: Spark expression eval (previous operator)
@@ -225,7 +225,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .setParallelism(sourceStream.getParallelism)
 
     val putRecordDS: DataStream[AvroCodecOutput] = tilingDS
-      .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed))
+      .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed, tilingWindowSizeInMillis))
       .uid(s"avro-conversion-01-$groupByName")
       .name(s"Avro conversion for $groupByName")
       .setParallelism(sourceStream.getParallelism)
@@ -319,11 +319,11 @@ object FlinkJob {
             val topicInfo = TopicInfo.parse(topicUri)
 
             val schemaProvider =
-              topicInfo.params.get("registry_url") match {
+              topicInfo.params.get(RegistryHostKey) match {
                 case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
                 case None =>
                   throw new IllegalArgumentException(
-                    "We only support schema registry based schema lookups. Missing registry_url in topic config")
+                    s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
               }
 
             val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)

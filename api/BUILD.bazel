@@ -1,11 +1,29 @@
-load("//tools/build_rules/thrift:thrift.bzl", "thrift_java_library")
+load("//tools/build_rules/thrift:thrift.bzl", "thrift_gen_library")
+
+thrift_gen_library(
+    name = "thrift_gen",
+    srcs = glob(["thrift/*.thrift"]),
+)
+
+java_library(
+    name = "thrift_java",
+    srcs = [":thrift_gen"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        maven_artifact("javax.annotation:javax.annotation.api"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
+        maven_artifact("org.apache.commons:commons-lang3"),
+        maven_artifact("com.google.code.gson:gson"),
+    ],
+)
 
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala", "src/main/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = [
-        ":thrift",
+        ":thrift_java",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
@@ -19,11 +37,11 @@ scala_library(
 )
 
 scala_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = [
-        ":thrift",
+        ":thrift_java",
         ":lib",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
@@ -38,23 +56,5 @@ scala_test_suite(
         scala_artifact("org.scalatest:scalatest"),
         scala_artifact("org.scalatest:scalatest-flatspec"),
         scala_artifact("org.scalatest:scalatest-funsuite"),
-    ],
-)
-
-thrift_java_library(
-    name = "thrift-java",
-    srcs = glob(["thrift/*.thrift"]),
-)
-
-java_library(
-    name = "thrift",
-    srcs = [":thrift-java"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        maven_artifact("javax.annotation:javax.annotation.api"),
-        maven_artifact("org.slf4j:slf4j-api"),
-        maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
-        maven_artifact("org.apache.commons:commons-lang3"),
-        maven_artifact("com.google.code.gson:gson"),
     ],
 )

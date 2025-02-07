@@ -30,6 +30,7 @@ import time
 from typing import List
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+from enum import Enum
 
 ONLINE_ARGS = "--online-jar={online_jar} --online-class={online_class} "
 OFFLINE_ARGS = "--conf-path={conf_path} --end-date={ds} "
@@ -129,8 +130,15 @@ RENDER_INFO_DEFAULT_SCRIPT = "scripts/render_info.py"
 
 # GCP DATAPROC SPECIFIC CONSTANTS
 DATAPROC_ENTRY = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter"
-ZIPLINE_ONLINE_JAR_DEFAULT = "cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+ZIPLINE_ONLINE_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
 ZIPLINE_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.cloud_gcp.GcpApiImpl"
+ZIPLINE_FLINK_JAR_DEFAULT = "flink-assembly-0.1.0-SNAPSHOT.jar"
+ZIPLINE_DATAPROC_SUBMITTER_JAR = "cloud_gcp_submitter_deploy.jar"
+
+
+class DataprocJobType(Enum):
+    SPARK = "spark"
+    FLINK = "flink"
 
 
 def retry_decorator(retries=3, backoff=20):
@@ -408,7 +416,14 @@ class Runner:
         self.mode = args["mode"]
         self.online_jar = args["online_jar"]
         self.dataproc = args["dataproc"]
-        self.conf_type = args["conf_type"]
+        self.conf_type = args.get("conf_type", "").replace("-", "_")  # in case user sets dash instead of underscore
+
+        # streaming flink
+        self.groupby_name = args.get("groupby_name")
+        self.kafka_bootstrap = args.get("kafka_bootstrap")
+        self.mock_source = args.get("mock_source")
+        self.savepoint_uri = args.get("savepoint_uri")
+
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
         # fetch online jar if necessary
@@ -450,12 +465,6 @@ class Runner:
         )
         self.jar_path = jar_path
 
-        # If SPARK_HOME is set, also include it in the jar_path
-        spark_home_env_var = os.environ.get("SPARK_HOME")
-        if spark_home_env_var and os.path.exists(os.path.join(
-                spark_home_env_var, "jars")):
-            self.jar_path = f"{self.jar_path}:{spark_home_env_var}/jars/*"
-
         self.args = args["args"] if args["args"] else ""
         self.online_class = args["online_class"]
         self.app_name = args["app_name"]
@@ -470,6 +479,93 @@ class Runner:
             self.spark_submit = args["spark_submit_path"]
         self.list_apps_cmd = args["list_apps"]
 
+    def run_flink_streaming(self):
+        user_args = {
+            "--groupby-name": self.groupby_name,
+            "--kafka-bootstrap": self.kafka_bootstrap,
+            "--online-class": ZIPLINE_ONLINE_CLASS_DEFAULT,
+            "-ZGCP_PROJECT_ID": get_gcp_project_id(),
+            "-ZGCP_BIGTABLE_INSTANCE_ID": get_gcp_bigtable_instance_id(),
+            "--savepoint-uri": self.savepoint_uri
+        }
+
+        flag_args = {
+            "--mock-source": self.mock_source
+        }
+        flag_args_str = " ".join(key for key, value in flag_args.items() if value)
+
+        user_args_str = " ".join(f"{key}={value}" for key, value in user_args.items() if value)
+
+        dataproc_args = generate_dataproc_submitter_args(
+            job_type=DataprocJobType.FLINK,
+            user_args=" ".join([user_args_str, flag_args_str])
+        )
+        command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
+        return command
+
+    def run_spark_streaming(self):
+        # streaming mode
+        self.app_name = self.app_name.replace(
+            "_streaming-client_", "_streaming_"
+        )  # If the job is running cluster mode we want to kill it.
+        print(
+            "Checking to see if a streaming job by the name {} already exists".format(
+                self.app_name
+            )
+        )
+        running_apps = (
+            check_output("{}".format(self.list_apps_cmd))
+            .decode("utf-8")
+            .split("\n")
+        )
+        running_app_map = {}
+        for app in running_apps:
+            try:
+                app_json = json.loads(app.strip())
+                app_name = app_json["app_name"].strip()
+                if app_name not in running_app_map:
+                    running_app_map[app_name] = []
+                running_app_map[app_name].append(app_json)
+            except Exception as ex:
+                print("failed to process line into app: " + app)
+                print(ex)
+
+        filtered_apps = running_app_map.get(self.app_name, [])
+        if len(filtered_apps) > 0:
+            print(
+                "Found running apps by the name {} in \n{}\n".format(
+                    self.app_name,
+                    "\n".join([str(app) for app in filtered_apps]),
+                )
+            )
+            if self.mode == "streaming":
+                assert (len(filtered_apps) == 1), "More than one found, please kill them all"
+                print("All good. No need to start a new app.")
+                return
+            elif self.mode == "streaming-client":
+                raise RuntimeError(
+                    "Attempting to submit an application in client mode, but there's already"
+                    " an existing one running."
+                )
+        command = (
+            "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} {additional_args}"
+        ).format(
+            script=self.spark_submit,
+            jar=self.jar_path,
+            subcommand=ROUTES[self.conf_type][self.mode],
+            args=self._gen_final_args(),
+            additional_args=os.environ.get(
+                "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
+            ),
+        )
+        return command
+
+    def run_streaming(self):
+        if self.dataproc:
+            return self.run_flink_streaming()
+        else:
+            return self.run_spark_streaming()
+
     def run(self):
         command_list = []
         if self.mode == "info":
@@ -479,9 +575,14 @@ class Runner:
                 )
             )
         elif (self.sub_help or (self.mode not in SPARK_MODES)) and not self.dataproc:
+            if self.mode == "fetch":
+                entrypoint = "ai.chronon.online.FetcherMain"
+            else:
+                entrypoint = "ai.chronon.spark.Driver"
             command_list.append(
-                "java -cp {jar} ai.chronon.spark.Driver {subcommand} {args}".format(
+                "java -cp {jar} {entrypoint} {subcommand} {args}".format(
                     jar=self.jar_path,
+                    entrypoint=entrypoint,
                     args="--help" if self.sub_help else self._gen_final_args(),
                     subcommand=ROUTES[self.conf_type][self.mode],
                 )
@@ -489,59 +590,7 @@ class Runner:
         else:
             if self.mode in ["streaming", "streaming-client"]:
                 # streaming mode
-                self.app_name = self.app_name.replace(
-                    "_streaming-client_", "_streaming_"
-                )  # If the job is running cluster mode we want to kill it.
-                print(
-                    "Checking to see if a streaming job by the name {} already exists".format(
-                        self.app_name
-                    )
-                )
-                running_apps = (
-                    check_output("{}".format(self.list_apps_cmd))
-                    .decode("utf-8")
-                    .split("\n")
-                )
-                running_app_map = {}
-                for app in running_apps:
-                    try:
-                        app_json = json.loads(app.strip())
-                        app_name = app_json["app_name"].strip()
-                        if app_name not in running_app_map:
-                            running_app_map[app_name] = []
-                        running_app_map[app_name].append(app_json)
-                    except Exception as ex:
-                        print("failed to process line into app: " + app)
-                        print(ex)
-
-                filtered_apps = running_app_map.get(self.app_name, [])
-                if len(filtered_apps) > 0:
-                    print(
-                        "Found running apps by the name {} in \n{}\n".format(
-                            self.app_name,
-                            "\n".join([str(app) for app in filtered_apps]),
-                        )
-                    )
-                    if self.mode == "streaming":
-                        assert (len(filtered_apps) == 1), "More than one found, please kill them all"
-                        print("All good. No need to start a new app.")
-                        return
-                    elif self.mode == "streaming-client":
-                        raise RuntimeError(
-                            "Attempting to submit an application in client mode, but there's already"
-                            " an existing one running."
-                        )
-                command = (
-                    "bash {script} --class ai.chronon.spark.Driver {jar} {subcommand} {args} {additional_args}"
-                ).format(
-                    script=self.spark_submit,
-                    jar=self.jar_path,
-                    subcommand=ROUTES[self.conf_type][self.mode],
-                    args=self._gen_final_args(),
-                    additional_args=os.environ.get(
-                        "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
-                    ),
-                )
+                command = self.run_streaming()
                 command_list.append(command)
             else:
 
@@ -593,12 +642,12 @@ class Runner:
                                 local_files_to_upload_to_gcs.append(
                                     self.conf)
 
-                            dataproc_command = generate_dataproc_submitter_args(
+                            dataproc_args = generate_dataproc_submitter_args(
                                 local_files_to_upload_to_gcs=[self.conf],
                                 # for now, self.conf is the only local file that requires uploading to gcs
                                 user_args=user_args
                             )
-                            command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_command}"
+                            command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
                         command_list.append(command)
                 else:
                     if not self.dataproc:
@@ -636,12 +685,12 @@ class Runner:
                         if self.conf:
                             local_files_to_upload_to_gcs.append(self.conf)
 
-                        dataproc_command = generate_dataproc_submitter_args(
+                        dataproc_args = generate_dataproc_submitter_args(
                             # for now, self.conf is the only local file that requires uploading to gcs
                             local_files_to_upload_to_gcs=local_files_to_upload_to_gcs,
                             user_args=user_args
                         )
-                        command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_command}"
+                        command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
                     command_list.append(command)
 
         if len(command_list) > 1:
@@ -656,20 +705,22 @@ class Runner:
         elif len(command_list) == 1:
             check_call(command_list[0])
 
-    def _gen_final_args(self, start_ds=None, end_ds=None, override_conf_path=None):
+    def _gen_final_args(self, start_ds=None, end_ds=None, override_conf_path=None, **kwargs):
         base_args = MODE_ARGS[self.mode].format(
             conf_path=override_conf_path if override_conf_path else self.conf,
             ds=end_ds if end_ds else self.ds,
             online_jar=self.online_jar,
-            online_class=self.online_class,
+            online_class=self.online_class
         )
         base_args = base_args + f" --conf-type={self.conf_type} " if self.conf_type else base_args
 
         override_start_partition_arg = (
-            " --start-partition-override=" + start_ds if start_ds else ""
+            "--start-partition-override=" + start_ds if start_ds else ""
         )
 
-        final_args = base_args + " " + str(self.args) + override_start_partition_arg
+        additional_args = " ".join(f"--{key.replace('_', '-')}={value}" for key, value in kwargs.items() if value)
+
+        final_args = " ".join([base_args, str(self.args), override_start_partition_arg, additional_args])
 
         return final_args
 
@@ -754,7 +805,16 @@ def get_gcp_project_id() -> str:
     return gcp_project_id
 
 
-def generate_dataproc_submitter_args(local_files_to_upload_to_gcs: List[str], user_args: str):
+def get_gcp_bigtable_instance_id() -> str:
+    gcp_bigtable_instance_id = os.environ.get('GCP_BIGTABLE_INSTANCE_ID')
+    if not gcp_bigtable_instance_id:
+        raise ValueError(
+            'Please set GCP_BIGTABLE_INSTANCE_ID environment variable')
+    return gcp_bigtable_instance_id
+
+
+def generate_dataproc_submitter_args(user_args: str, job_type: DataprocJobType = DataprocJobType.SPARK,
+                                     local_files_to_upload_to_gcs: List[str] = []):
     customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
 
     gcs_files = []
@@ -773,21 +833,39 @@ def generate_dataproc_submitter_args(local_files_to_upload_to_gcs: List[str], us
 
     gcs_file_args = ",".join(gcs_files)
 
-    # include chronon jar uri. should also already be in the bucket
-    chronon_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + \
-                      "/jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+    # include jar uri. should also already be in the bucket
+    jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + \
+              f"/jars/{ZIPLINE_ONLINE_JAR_DEFAULT}"
 
-    final_args = (f"{user_args} --additional-conf-path=additional-confs.yaml --gcs_files={gcs_file_args} "
-                  f"--chronon_jar_uri={chronon_jar_uri}")
+    final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
-    return final_args
+    if job_type == DataprocJobType.FLINK:
+        main_class = "ai.chronon.flink.FlinkJob"
+        flink_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + f"/jars/{ZIPLINE_FLINK_JAR_DEFAULT}"
+        return final_args.format(
+            user_args=user_args,
+            jar_uri=jar_uri,
+            job_type=job_type.value,
+            main_class=main_class
+        ) + f" --flink-main-jar-uri={flink_jar_uri}"
+
+    elif job_type == DataprocJobType.SPARK:
+        main_class = "ai.chronon.spark.Driver"
+        return final_args.format(
+            user_args=user_args,
+            jar_uri=jar_uri,
+            job_type=job_type.value,
+            main_class=main_class
+        ) + f" --additional-conf-path=additional-confs.yaml --gcs-files={gcs_file_args}"
+    else:
+        raise ValueError(f"Invalid job type: {job_type}")
 
 
 def download_dataproc_submitter_jar(destination_dir: str, customer_id: str):
     print("Downloading dataproc submitter jar from GCS...")
     bucket_name = f"zipline-artifacts-{customer_id}"
 
-    file_name = "cloud_gcp_submitter-assembly-0.1.0-SNAPSHOT.jar"
+    file_name = ZIPLINE_DATAPROC_SUBMITTER_JAR
 
     source_blob_name = f"jars/{file_name}"
     dataproc_jar_destination_path = f"{destination_dir}/{file_name}"
@@ -801,7 +879,7 @@ def download_chronon_gcp_jar(destination_dir: str, customer_id: str):
     print("Downloading chronon gcp jar from GCS...")
     bucket_name = f"zipline-artifacts-{customer_id}"
 
-    file_name = "cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"
+    file_name = ZIPLINE_ONLINE_JAR_DEFAULT
 
     source_blob_name = f"jars/{file_name}"
     chronon_gcp_jar_destination_path = f"{destination_dir}/{file_name}"
@@ -809,6 +887,20 @@ def download_chronon_gcp_jar(destination_dir: str, customer_id: str):
     download_gcs_blob(bucket_name, source_blob_name,
                       chronon_gcp_jar_destination_path)
     return chronon_gcp_jar_destination_path
+
+
+def download_service_jar(destination_dir: str, customer_id: str):
+    print("Downloading service jar from GCS...")
+    bucket_name = f"zipline-artifacts-{customer_id}"
+
+    file_name = "service-0.1.0-SNAPSHOT.jar"
+
+    source_blob_name = f"jars/{file_name}"
+    service_jar_destination_path = f"{destination_dir}/{file_name}"
+
+    download_gcs_blob(bucket_name, source_blob_name,
+                      service_jar_destination_path)
+    return service_jar_destination_path
 
 
 @retry_decorator(retries=2, backoff=5)
@@ -879,10 +971,16 @@ def upload_gcs_blob(bucket_name, source_file_name, destination_blob_name):
 @click.option("--list-apps", help="command/script to list running jobs on the scheduler")
 @click.option("--render-info", help="Path to script rendering additional information of the given config. "
                                     "Only applicable when mode is set to info")
+@click.option("--groupby-name", help="Name of groupby to be used for groupby streaming")
+@click.option("--kafka-bootstrap", help="Kafka bootstrap server in host:port format")
+@click.option("--mock-source", is_flag=True,
+              help="Use a mocked data source instead of a real source for groupby-streaming Flink.")
+@click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
 @click.pass_context
 def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar, online_class,
          version, spark_version, spark_submit_path, spark_streaming_submit_path, online_jar_fetch, sub_help, conf_type,
-         online_args, chronon_jar, release_tag, list_apps, render_info):
+         online_args, chronon_jar, release_tag, list_apps, render_info, groupby_name, kafka_bootstrap, mock_source,
+         savepoint_uri):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
     set_runtime_env(ctx.params)
@@ -895,7 +993,9 @@ def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, paralle
         elif chronon_jar:
             jar_path = chronon_jar
         else:
-            jar_path = download_chronon_gcp_jar(temp_dir, get_customer_id())
+            service_jar_path = download_service_jar(temp_dir, get_customer_id())
+            chronon_gcp_jar_path = download_chronon_gcp_jar(temp_dir, get_customer_id())
+            jar_path = f"{service_jar_path}:{chronon_gcp_jar_path}"
 
         Runner(ctx.params, os.path.expanduser(jar_path)).run()
 

@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +26,7 @@ def event_group_by():
     This is an event source, not streaming
     """
     from sample.group_bys.sample_team.sample_group_by_from_module import v1
+
     return v1
 
 
@@ -42,57 +42,65 @@ def event_source(event_group_by):
 @pytest.fixture
 def group_by_requiring_backfill():
     from sample.group_bys.sample_team.sample_group_by import require_backfill
-    #utils.__set_name(group_by_requiring_backfill, api.GroupBy, "group")
+
+    utils.__set_name(group_by_requiring_backfill, api.GroupBy, "group")
     return require_backfill
 
 
 @pytest.fixture
 def online_group_by_requiring_streaming():
     from sample.group_bys.sample_team.entity_sample_group_by_from_module import v1
+
     return v1
 
 
 @pytest.fixture
 def basic_staging_query():
     from sample.staging_queries.sample_team.sample_staging_query import v1
+
     return v1
 
 
 @pytest.fixture
 def basic_join():
     from sample.joins.sample_team.sample_join import v1
+
     return v1
 
 
 @pytest.fixture
 def never_scheduled_join():
     from sample.joins.sample_team.sample_join import never
+
     return never
 
 
 @pytest.fixture
 def consistency_check_join():
     from sample.joins.sample_team.sample_join import consistency_check
+
     return consistency_check
 
 
 @pytest.fixture
 def no_log_flattener_join():
     from sample.joins.sample_team.sample_join import no_log_flattener
+
     return no_log_flattener
 
 
 @pytest.fixture
 def label_part_join():
     from sample.joins.sample_team.sample_label_join import v1
+
     return v1
 
 
 def test_edit_distance():
-    assert utils.edit_distance('test', 'test') == 0
-    assert utils.edit_distance('test', 'testy') > 0
+    assert utils.edit_distance("test", "test") == 0
+    assert utils.edit_distance("test", "testy") > 0
     assert utils.edit_distance("test", "testing") <= (
-            utils.edit_distance("test", "tester") + utils.edit_distance("tester", "testing")
+        utils.edit_distance("test", "tester") + utils.edit_distance("tester", "testing")
     )
 
 
@@ -112,8 +120,7 @@ def test_dedupe_in_order():
 
 
 def test_get_applicable_mode_for_group_bys(
-        group_by_requiring_backfill,
-        online_group_by_requiring_streaming
+    group_by_requiring_backfill, online_group_by_requiring_streaming
 ):
     modes = utils.get_applicable_modes(group_by_requiring_backfill)
     assert "backfill" in modes
@@ -131,11 +138,11 @@ def test_get_applicable_mode_for_staging_query(basic_staging_query):
 
 
 def test_get_applicable_mode_for_joins(
-        basic_join,
-        never_scheduled_join,
-        consistency_check_join,
-        no_log_flattener_join,
-        label_part_join
+    basic_join,
+    never_scheduled_join,
+    consistency_check_join,
+    no_log_flattener_join,
+    label_part_join,
 ):
     modes = utils.get_applicable_modes(basic_join)
     assert "backfill" in modes
@@ -161,19 +168,16 @@ def test_get_applicable_mode_for_joins(
     assert "label-join" in modes
 
 
-def test_get_related_table_names_for_group_bys(
-        group_by_requiring_backfill,
-        online_group_by_requiring_streaming
-):
-    with open('test/sample/production/group_bys/sample_team/entity_sample_group_by_from_module.v1') as conf_file:
-        json = conf_file.read()
-        group_by = json2thrift(json, api.GroupBy)
-        tables = utils.get_related_table_names(group_by)
-        assert any(table.endswith("_upload") for table in tables)
+def dopen(path):
+    full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), path)
+    print(full_path)
+    return open(full_path)
 
 
 def test_get_related_table_names_for_group_bys():
-    with open('test/sample/production/group_bys/sample_team/entity_sample_group_by_from_module.v1') as conf_file:
+    with dopen(
+        "test/sample/production/group_bys/sample_team/entity_sample_group_by_from_module.v1"
+    ) as conf_file:
         json = conf_file.read()
         group_by = json2thrift(json, api.GroupBy)
         tables = utils.get_related_table_names(group_by)
@@ -189,7 +193,7 @@ def test_get_related_table_names_for_group_bys():
 
 
 def test_get_related_table_names_for_simple_joins():
-    with open('test/sample/production/joins/sample_team/sample_join.v1') as conf_file:
+    with dopen("test/sample/production/joins/sample_team/sample_join.v1") as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
         tables = utils.get_related_table_names(join)
@@ -207,7 +211,9 @@ def test_get_related_table_names_for_simple_joins():
 
 
 def test_get_related_table_names_for_label_joins():
-    with open('test/sample/production/joins/sample_team/sample_label_join.v1') as conf_file:
+    with dopen(
+        "test/sample/production/joins/sample_team/sample_label_join.v1"
+    ) as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
         tables = utils.get_related_table_names(join)
@@ -226,7 +232,9 @@ def test_get_related_table_names_for_label_joins():
 
 
 def test_get_related_table_names_for_consistency_joins():
-    with open('test/sample/production/joins/sample_team/sample_join.consistency_check') as conf_file:
+    with dopen(
+        "test/sample/production/joins/sample_team/sample_join.consistency_check"
+    ) as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
         tables = utils.get_related_table_names(join)
@@ -245,7 +253,12 @@ def test_get_related_table_names_for_consistency_joins():
 
 
 def test_get_related_table_names_for_bootstrap_joins():
-    with open('test/sample/production/joins/sample_team/sample_join_bootstrap.v1') as conf_file:
+    import os
+
+    print("Current working directory:", os.getcwd())
+    with dopen(
+        "test/sample/production/joins/sample_team/sample_join_bootstrap.v1"
+    ) as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
         tables = utils.get_related_table_names(join)
@@ -264,25 +277,48 @@ def test_get_related_table_names_for_bootstrap_joins():
 
 
 @pytest.mark.parametrize(
-    "materialized_group_by,table_name", [
-        ("entity_sample_group_by_from_module.v1", "chronon_db.sample_team_entity_sample_group_by_from_module_v1"),
-        ("event_sample_group_by.v1", "sample_namespace.sample_team_event_sample_group_by_v1"),
+    "materialized_group_by,table_name",
+    [
+        (
+            "entity_sample_group_by_from_module.v1",
+            "chronon_db.sample_team_entity_sample_group_by_from_module_v1",
+        ),
+        (
+            "event_sample_group_by.v1",
+            "sample_namespace.sample_team_event_sample_group_by_v1",
+        ),
         ("group_by_with_kwargs.v1", "chronon_db.sample_team_group_by_with_kwargs_v1"),
-        ("sample_chaining_group_by", "sample_namespace.sample_team_sample_chaining_group_by"),
+        (
+            "sample_chaining_group_by",
+            "sample_namespace.sample_team_sample_chaining_group_by",
+        ),
     ],
 )
 def test_group_by_table_names(repo, materialized_group_by, table_name):
-    gb = file2thrift(os.path.join(repo, "production/group_bys/sample_team", materialized_group_by), api.GroupBy)
+    gb = file2thrift(
+        os.path.join(repo, "production/group_bys/sample_team", materialized_group_by),
+        api.GroupBy,
+    )
     assert utils.group_by_output_table_name(gb, True) == table_name
 
 
 @pytest.mark.parametrize(
-    "materialized_join,table_name", [
-        ("sample_chaining_join.v1",
-         "chronon_db.sample_team_sample_chaining_join_v1_sample_team_sample_chaining_group_by"),
-        ("sample_join.v1", "sample_namespace.sample_team_sample_join_v1_sample_team_sample_group_by_v1"),
+    "materialized_join,table_name",
+    [
+        (
+            "sample_chaining_join.v1",
+            "chronon_db.sample_team_sample_chaining_join_v1_sample_team_sample_chaining_group_by",
+        ),
+        (
+            "sample_join.v1",
+            "sample_namespace.sample_team_sample_join_v1_sample_team_sample_group_by_v1",
+        ),
     ],
 )
 def test_join_part_table_names(repo, materialized_join, table_name):
-    join = file2thrift(os.path.join(repo, "production/joins/sample_team", materialized_join), api.Join)
-    assert utils.join_part_output_table_name(join, join.joinParts[0], True) == table_name
+    join = file2thrift(
+        os.path.join(repo, "production/joins/sample_team", materialized_join), api.Join
+    )
+    assert (
+        utils.join_part_output_table_name(join, join.joinParts[0], True) == table_name
+    )

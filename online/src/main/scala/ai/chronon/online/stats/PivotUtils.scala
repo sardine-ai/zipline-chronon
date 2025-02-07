@@ -65,7 +65,12 @@ object PivotUtils {
 
     // entire set of keys
     allKeys.foreach { key =>
-      val values = maps.iterator.map(m => if (m == null) null.asInstanceOf[T] else m.get(key))
+      val values = maps.iterator.map { m =>
+        if (m == null || m.get(key) == null)
+          Constants.magicNullLong.asInstanceOf[T]
+        else
+          m.get(key)
+      }
       val list = new JArrayList[T](maps.length)
       values.foreach { list.add }
       result.put(key, list)
@@ -95,7 +100,7 @@ object PivotUtils {
         if (isSetFunc(summary)) {
           JLong.valueOf(extract(summary))
         } else {
-          null
+          Constants.magicNullLong
         }
       }
     }

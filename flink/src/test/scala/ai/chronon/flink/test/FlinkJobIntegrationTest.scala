@@ -1,5 +1,6 @@
 package ai.chronon.flink.test
 
+import ai.chronon.api.TilingUtils
 import ai.chronon.flink.FlinkJob
 import ai.chronon.flink.SparkExpressionEvalFn
 import ai.chronon.flink.types.TimestampedIR
@@ -19,7 +20,7 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
 
-class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
+class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
   val flinkCluster = new MiniClusterWithClientResource(
     new MiniClusterResourceConfiguration.Builder()
@@ -29,12 +30,15 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
 
   // Decode a PutRequest into a TimestampedTile
   def avroConvertPutRequestToTimestampedTile[T](
-                                                 in: WriteResponse,
-                                                 groupByServingInfoParsed: GroupByServingInfoParsed
+      in: WriteResponse,
+      groupByServingInfoParsed: GroupByServingInfoParsed
   ): TimestampedTile = {
     // Decode the key bytes into a GenericRecord
     val tileBytes = in.valueBytes
-    val record = groupByServingInfoParsed.keyCodec.decode(in.keyBytes)
+    // Deserialize the TileKey object and pull out the entity key bytes
+    val tileKey = TilingUtils.deserializeTileKey(in.keyBytes)
+    val keyBytes = tileKey.keyBytes.asScala.toArray.map(_.asInstanceOf[Byte])
+    val record = groupByServingInfoParsed.keyCodec.decode(keyBytes)
 
     // Get all keys we expect to be in the GenericRecord
     val decodedKeys: List[String] =
@@ -132,14 +136,14 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter{
     writeEventCreatedDS.size shouldBe elements.size
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
-    writeEventCreatedDS.map(_.tsMillis).toSet shouldBe  elements.map(_.created).toSet
+    writeEventCreatedDS.map(_.tsMillis).toSet shouldBe elements.map(_.created).toSet
 
     // check that all the writes were successful
     writeEventCreatedDS.map(_.status) shouldBe Seq(true, true, true)
 
     // Assert that the pre-aggregates/tiles are correct
     // Get a list of the final IRs for each key.
-    val finalIRsPerKey: Map[List[Any], List[Any]] = writeEventCreatedDS
+    val finalIRsPerKey: Map[Seq[Any], List[Any]] = writeEventCreatedDS
       .map(writeEvent => {
         // First, we work back from the PutRequest decode it to TimestampedTile and then TimestampedIR
         val timestampedTile =

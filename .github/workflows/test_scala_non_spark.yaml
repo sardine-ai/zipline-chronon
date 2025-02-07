@@ -1,0 +1,111 @@
+name: Test non-spark Scala modules
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'flink/**'
+      - 'aggregator/**'
+      - 'online/**'
+      - 'api/**'
+      - 'hub/**'
+      - 'orchestration/**'
+      - 'service/**'
+      - 'cloud_gcp/**'
+      - '.github/workflows/test_scala_non_spark.yaml'
+      - 'build.sbt'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'flink/**'
+      - 'aggregator/**'
+      - 'online/**'
+      - 'api/**'
+      - 'hub/**'
+      - 'orchestration/**'
+      - 'service/**'
+      - 'cloud_gcp/**'
+      - '.github/workflows/test_scala_non_spark.yaml'
+      - 'build.sbt'
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  non_spark_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run Flink tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //flink:tests
+
+      - name: Run Aggregator tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //aggregator:tests
+
+      - name: Run Online tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //online:tests
+
+      - name: Run api tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //api:tests
+
+      - name: Run hub tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //hub:tests
+
+      - name: Run service tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //service:tests
+
+      - name: Run orchestrator tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //orchestration:tests
+
+      - name: Run cloud gcp tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //cloud_gcp:tests

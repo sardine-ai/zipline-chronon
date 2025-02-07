@@ -115,3 +115,39 @@ struct Submission {
     20: optional i64 finishedTs
     21: optional DateRange dateRange
 }
+
+enum ConfType{
+   STAGING_QUERY = 1
+   GROUP_BY = 2
+   JOIN = 3
+   MODEL = 4
+}
+
+struct ConfRequest {
+   1: optional string confName
+   2: optional ConfType confType
+   
+   // one of either branch or version are set - otherwise we will pull conf for main branch
+   3: optional string branch 
+   4: optional string version
+}
+
+/**
+  * lists all confs of the specified type
+  */
+struct ConfListRequest {
+  1: optional ConfType confType
+  
+  // if not specified we will pull conf list for main branch
+  2: optional string branch
+}
+
+/**
+  * Response for listing configurations of a specific type
+  */
+struct ConfListResponse {
+  1: optional list<api.Join> joins
+  2: optional list<api.GroupBy> groupBys
+  3: optional list<api.Model> models
+  4: optional list<api.StagingQuery> stagingQueries
+}

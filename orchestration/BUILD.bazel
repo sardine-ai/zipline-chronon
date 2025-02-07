@@ -4,7 +4,7 @@ scala_library(
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + [
         "//api:lib",
-        "//api:thrift",
+        "//api:thrift_java",
         "//online:lib",
         scala_artifact("org.apache.logging.log4j:log4j-api-scala"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
@@ -14,7 +14,7 @@ scala_library(
 
 test_deps = [
     ":lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//api:lib",
     "//online:lib",
     "//service_commons:lib",
@@ -25,15 +25,15 @@ test_deps = [
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + _SCALA_TEST_DEPS + test_deps,
 )
 
 scala_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
 )

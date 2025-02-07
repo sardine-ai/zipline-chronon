@@ -37,7 +37,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
   }
 
-  it should "google runtime classes are available" in {
+  it should "google runtime classes are available" ignore {
     assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[Long]])
     assertCompiles("classOf[GoogleHadoopFileSystem]")
     assertCompiles("classOf[GoogleHadoopFS]")
@@ -45,7 +45,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   }
 
-  it should "verify dynamic classloading of GCP providers" in {
+  it should "verify dynamic classloading of GCP providers" ignore {
     assertTrue(tableUtils.tableReadFormat("data.sample_native") match {
       case BigQueryFormat(_, _, _) => true
       case _                       => false

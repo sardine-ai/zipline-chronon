@@ -68,15 +68,14 @@ class MonitoringModelStoreTest extends MockitoSugar with Matchers {
 
   private def generateListResponse(): Future[ListResponse] = {
     val paths = Seq(
-      "joins/user_transactions.txn_join",
-      "group_bys/transaction_events.txn_group_by_merchant",
-      "group_bys/transaction_events.txn_group_by_user",
-      "models/transaction_model.v1"
+      "hub/src/test/resources/joins/user_transactions.txn_join",
+      "hub/src/test/resources/group_bys/transaction_events.txn_group_by_merchant",
+      "hub/src/test/resources/group_bys/transaction_events.txn_group_by_user",
+      "hub/src/test/resources/models/transaction_model.v1"
     )
 
     val kvStrs = paths.map { path =>
-      val confResource = getClass.getResource(s"/$path")
-      val src = Source.fromFile(confResource.getPath)
+      val src = Source.fromFile(s"$path")
       (path, src.mkString)
     }
 

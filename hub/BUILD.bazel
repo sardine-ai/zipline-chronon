@@ -3,8 +3,8 @@ scala_library(
     srcs = glob(["src/main/**/*.scala"]) + glob(["src/main/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + _CIRCE_DEPS + [
-        "//api:thrift",
         "//api:lib",
+        "//api:thrift_java",
         "//online:lib",
         "//service_commons:lib",
         "//spark:lib",
@@ -25,7 +25,7 @@ scala_library(
 
 test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
     ":lib",
-    "//api:thrift",
+    "//api:thrift_java",
     "//api:lib",
     "//online:lib",
     "//spark:lib",
@@ -49,18 +49,29 @@ test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
     maven_artifact("org.scalatest:scalatest-compatible"),
     maven_artifact("junit:junit"),
     maven_artifact("com.novocode:junit-interface"),
+    maven_artifact("net.bytebuddy:byte-buddy"),
+    maven_artifact("net.bytebuddy:byte-buddy-agent"),
 ]
 
 scala_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
+    resources = glob(["src/test/resources/**/*"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
-scala_test_suite(
-    name = "test",
+scala_junit_suite(
+    name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
+    data = glob(["src/test/resources/**/*"]),
+    resources = glob(["hub/src/test/resources/**/*"]),
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
+)
+
+jvm_binary(
+    name = "hub_assembly",
+    main_class = "ai.chronon.service.ChrononServiceLauncher",
+    runtime_deps = [":lib"],
 )

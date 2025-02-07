@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  other_spark_tests:
+  spark_tests:
     runs-on: ubuntu-8_cores-32_gb
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -35,85 +35,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run other spark tests
+      - name: Setup Bazel cache credentials
         run: |
-          export SBT_OPTS="-Xmx24G -Xms4G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly"
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
-  join_spark_tests:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run spark join tests
+      - name: Run Spark tests
         run: |
-          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly -- -n jointest"
-
-  table_utils_delta_format_spark_tests:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run table utils format test for Delta Lake
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly ai.chronon.spark.test.TableUtilsFormatTest"
-        env:
-          format_test: deltalake
-  
-  mutation_spark_tests:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run spark mutations tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly -- -n mutationstest"
-
-  fetcher_spark_tests:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run spark fetcher tests
-        run: |
-          export SBT_OPTS="-Xmx8G -Xms2G --add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
-          sbt "spark/testOnly -- -n fetchertest"
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx8G -Xms2G" \
+            //spark:tests

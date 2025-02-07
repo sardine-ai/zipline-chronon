@@ -145,7 +145,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     queryResults.contains(query) shouldBe true
     queryResults.get(query).map(_.values) match {
       case Some(Failure(_: IllegalStateException)) => succeed
-      case _                                        => fail()
+      case _                                       => fail()
     }
 
     // GroupBy request sent to KV store for the query
@@ -230,9 +230,10 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val baseFetcher = new FetcherBase(mock[KVStore])
     val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
     val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
-      request -> Success(Map(
-        "key" -> "value"
-      ))
+      request -> Success(
+        Map(
+          "key" -> "value"
+        ))
     )
 
     val result = baseFetcher.parseGroupByResponse("prefix", request, response)
@@ -245,9 +246,10 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val request2 = Request(name = "name2", keys = Map("email" -> null), atMillis = None, context = None)
 
     val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
-      request2 -> Success(Map(
-        "key" -> "value"
-      ))
+      request2 -> Success(
+        Map(
+          "key" -> "value"
+        ))
     )
 
     val result = baseFetcher.parseGroupByResponse("prefix", request, response)
@@ -260,9 +262,10 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val request2 = Request(name = "name2", keys = Map("email" -> "email"), atMillis = None, context = None)
 
     val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
-      request2 -> Success(Map(
-        "key" -> "value"
-      ))
+      request2 -> Success(
+        Map(
+          "key" -> "value"
+        ))
     )
 
     val result = baseFetcher.parseGroupByResponse("prefix", request, response)

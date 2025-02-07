@@ -27,19 +27,27 @@ test_deps = _VERTX_TEST_DEPS + [
     maven_artifact("junit:junit"),
     maven_artifact("org.junit.platform:junit-platform-launcher"),
     maven_artifact("org.junit.platform:junit-platform-reporting"),
+    maven_artifact("net.bytebuddy:byte-buddy"),
+    maven_artifact("net.bytebuddy:byte-buddy-agent"),
 ]
 
 java_library(
-    name = "test-lib",
+    name = "test_lib",
     srcs = glob(["src/test/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 java_test_suite(
-    name = "test",
+    name = "tests",
     srcs = glob(["src/test/**/*.java"]),
+    runner = "junit4",
     visibility = ["//visibility:public"],
-    runner = "junit5",
-    deps = test_deps + [":test-lib"],
+    deps = test_deps + [":test_lib"],
+)
+
+jvm_binary(
+    name = "service_assembly",
+    main_class = "ai.chronon.service.ChrononServiceLauncher",
+    runtime_deps = [":lib"],
 )

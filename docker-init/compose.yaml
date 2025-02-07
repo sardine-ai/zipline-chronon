@@ -67,6 +67,7 @@ services:
       - STATSD_HOST=statsd
     ports:
       - "9000:9000"
+      - "5005:5005"
     healthcheck:
       interval: 1s
       retries: 5

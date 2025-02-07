@@ -21,6 +21,7 @@ import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import io.vertx.ext.web.RequestBody
 import io.vertx.ext.web.RoutingContext
+import org.junit.After
 import org.junit.Assert._
 import org.junit.Before
 import org.junit.Test
@@ -53,6 +54,7 @@ class TimeSeriesHandlerTest extends EitherValues {
   @Mock var response: HttpServerResponse = _
   @Mock var requestBody: RequestBody = _
   @Mock var mockedStore: DriftStore = _
+  private var mocks: AutoCloseable = _
 
   val mockCategories: Seq[String] = Seq("a", "b", "c")
 
@@ -62,7 +64,7 @@ class TimeSeriesHandlerTest extends EitherValues {
 
   @Before
   def setUp(context: TestContext): Unit = {
-    MockitoAnnotations.openMocks(this)
+    mocks = MockitoAnnotations.openMocks(this)
     vertx = Vertx.vertx
     joinDriftHandler = new TimeSeriesHandler(mockedStore).joinDriftHandler
     featureDriftHandler = new TimeSeriesHandler(mockedStore).featureDriftHandler
@@ -74,6 +76,13 @@ class TimeSeriesHandlerTest extends EitherValues {
     when(mockedStore.executionContext).thenReturn(ExecutionContext.global)
   }
 
+  @After
+  def tearDown(): Unit = {
+    if (mocks != null) {
+      mocks.close() // Yes, you should explicitly close it
+    }
+  }
+
   @Test
   def test_joinTsLookup_Send400BadMetricChoice(context: TestContext): Unit = {
     val async = context.async
@@ -83,10 +92,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   // we don't support skew atm
@@ -99,10 +109,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -114,10 +125,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -129,10 +141,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -144,17 +157,19 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
   def test_joinTsLookup_Send5xxFailedDriftStoreLookup(context: TestContext): Unit = {
     val async = context.async
 
-    when(mockedStore.getDriftSeries(any(), any(), any(), any(), any(), any())).thenReturn(Failure(new IllegalArgumentException("Some internal error")))
+    when(mockedStore.getDriftSeries(any(), any(), any(), any(), any(), any()))
+      .thenReturn(Failure(new IllegalArgumentException("Some internal error")))
 
     val startTs = 1725926400000L // 09/10/2024 00:00 UTC
     val endTs = 1726106400000L // 09/12/2024 02:00 UTC
@@ -164,10 +179,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(500)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(500)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -188,26 +204,29 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     joinDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val bodyText = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val bodyText = responseCaptor.getValue
 
-      val modelTSResponse: Either[Error, JoinTimeSeriesResponse] = decode[JoinTimeSeriesResponse](bodyText)
-      assertTrue(modelTSResponse.isRight)
-      val tsResponse = modelTSResponse.right.value
-      assertEquals(tsResponse.name, "my_join")
-      assertTrue(tsResponse.items.nonEmpty)
+        val modelTSResponse: Either[Error, JoinTimeSeriesResponse] = decode[JoinTimeSeriesResponse](bodyText)
+        assertTrue(modelTSResponse.isRight)
+        val tsResponse = modelTSResponse.right.value
+        assertEquals(tsResponse.name, "my_join")
+        assertTrue(tsResponse.items.nonEmpty)
 
-      val expectedLength = expectedHours(startTs, endTs)
-      tsResponse.items.foreach { grpByTs =>
-        assertFalse(grpByTs.items.isEmpty)
-        grpByTs.items.foreach(featureTs => assertEquals(featureTs.points.length, expectedLength))
+        val expectedLength = expectedHours(startTs, endTs)
+        tsResponse.items.foreach { grpByTs =>
+          assertFalse(grpByTs.items.isEmpty)
+          grpByTs.items.foreach(featureTs => assertEquals(featureTs.points.length, expectedLength))
+        }
+
+        async.complete()
       }
-
-      async.complete()
-    })
+    )
   }
 
   @Test
@@ -220,10 +239,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   // skew is unsupported atm
@@ -237,10 +257,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -253,10 +274,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -269,10 +291,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -285,10 +308,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -301,10 +325,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -317,10 +342,11 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(400)
-      async.complete()
-    })
+    vertx.setTimer(1000,
+                   _ => {
+                     verify(response).setStatusCode(400)
+                     async.complete()
+                   })
   }
 
   @Test
@@ -343,21 +369,24 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val bodyText = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val bodyText = responseCaptor.getValue
 
-      val featureTSResponse: Either[Error, FeatureTimeSeries] = decode[FeatureTimeSeries](bodyText)
-      assertTrue(featureTSResponse.isRight)
-      val tsResponse = featureTSResponse.right.value
-      assertEquals(tsResponse.feature, "my_feature_0")
-      val expectedLength = expectedHours(startTs, endTs)
-      assertEquals(tsResponse.points.length, expectedLength)
+        val featureTSResponse: Either[Error, FeatureTimeSeries] = decode[FeatureTimeSeries](bodyText)
+        assertTrue(featureTSResponse.isRight)
+        val tsResponse = featureTSResponse.right.value
+        assertEquals(tsResponse.feature, "my_feature_0")
+        val expectedLength = expectedHours(startTs, endTs)
+        assertEquals(tsResponse.points.length, expectedLength)
 
-      async.complete()
-    })
+        async.complete()
+      }
+    )
   }
 
   @Test
@@ -367,11 +396,19 @@ class TimeSeriesHandlerTest extends EitherValues {
     val startTs = 1725926400000L // 09/10/2024 00:00 UTC
     val endTs = 1726106400000L // 09/12/2024 02:00 UTC
 
-    val mockedSummarySeriesResponseA = generateSummarySeries(startTs, endTs, "my_join", "my_groupby", "my_feature", ValuesMetric, true)
+    val mockedSummarySeriesResponseA =
+      generateSummarySeries(startTs, endTs, "my_join", "my_groupby", "my_feature", ValuesMetric, true)
     val offset = Duration.apply(7, TimeUnit.DAYS)
     val mockedSummarySeriesResponseB =
-      generateSummarySeries(startTs - offset.toMillis, endTs - offset.toMillis, "my_join", "my_groupby", "my_feature", ValuesMetric, true)
-    when(mockedStore.getSummarySeries(any(), any(), any(), any())).thenReturn(mockedSummarySeriesResponseA, mockedSummarySeriesResponseB)
+      generateSummarySeries(startTs - offset.toMillis,
+                            endTs - offset.toMillis,
+                            "my_join",
+                            "my_groupby",
+                            "my_feature",
+                            ValuesMetric,
+                            true)
+    when(mockedStore.getSummarySeries(any(), any(), any(), any()))
+      .thenReturn(mockedSummarySeriesResponseA, mockedSummarySeriesResponseB)
 
     val multiMap = buildFeatureQueryParams(startTs, endTs, "drift", "value", "percentile", Some("10h"), Some("psi"))
     when(routingContext.queryParams()).thenReturn(multiMap)
@@ -383,30 +420,33 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val bodyText = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val bodyText = responseCaptor.getValue
 
-      val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] = decode[ComparedFeatureTimeSeries](bodyText)
-      assertTrue(featureTSResponse.isRight)
-      val tsResponse = featureTSResponse.right.value
-      assertEquals(tsResponse.feature, "my_feature")
+        val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] = decode[ComparedFeatureTimeSeries](bodyText)
+        assertTrue(featureTSResponse.isRight)
+        val tsResponse = featureTSResponse.right.value
+        assertEquals(tsResponse.feature, "my_feature")
 
-      assertEquals(tsResponse.current.length, tsResponse.baseline.length)
-      tsResponse.current.zip(tsResponse.baseline).foreach {
-        case (current, baseline) =>
-          assertEquals( (current.ts - baseline.ts), offset.toMillis)
+        assertEquals(tsResponse.current.length, tsResponse.baseline.length)
+        tsResponse.current.zip(tsResponse.baseline).foreach {
+          case (current, baseline) =>
+            assertEquals((current.ts - baseline.ts), offset.toMillis)
+        }
+
+        // expect one entry per percentile for each time series point
+        val expectedLength = DriftStore.breaks(20).length * expectedHours(startTs, endTs)
+        assertEquals(tsResponse.current.length, expectedLength)
+        assertEquals(tsResponse.baseline.length, expectedLength)
+
+        async.complete()
       }
-
-      // expect one entry per percentile for each time series point
-      val expectedLength = DriftStore.breaks(20).length * expectedHours(startTs, endTs)
-      assertEquals(tsResponse.current.length, expectedLength)
-      assertEquals(tsResponse.baseline.length, expectedLength)
-
-      async.complete()
-    })
+    )
   }
 
   @Test
@@ -416,11 +456,19 @@ class TimeSeriesHandlerTest extends EitherValues {
     val startTs = 1725926400000L // 09/10/2024 00:00 UTC
     val endTs = 1726106400000L // 09/12/2024 02:00 UTC
 
-    val mockedSummarySeriesResponseA = generateSummarySeries(startTs, endTs, "my_join", "my_groupby", "my_feature", ValuesMetric, false)
+    val mockedSummarySeriesResponseA =
+      generateSummarySeries(startTs, endTs, "my_join", "my_groupby", "my_feature", ValuesMetric, false)
     val offset = Duration.apply(7, TimeUnit.DAYS)
     val mockedSummarySeriesResponseB =
-      generateSummarySeries(startTs - offset.toMillis, endTs - offset.toMillis, "my_join", "my_groupby", "my_feature", ValuesMetric, false)
-    when(mockedStore.getSummarySeries(any(), any(), any(), any())).thenReturn(mockedSummarySeriesResponseA, mockedSummarySeriesResponseB)
+      generateSummarySeries(startTs - offset.toMillis,
+                            endTs - offset.toMillis,
+                            "my_join",
+                            "my_groupby",
+                            "my_feature",
+                            ValuesMetric,
+                            false)
+    when(mockedStore.getSummarySeries(any(), any(), any(), any()))
+      .thenReturn(mockedSummarySeriesResponseA, mockedSummarySeriesResponseB)
 
     val multiMap = buildFeatureQueryParams(startTs, endTs, "drift", "value", "percentile", Some("10h"), Some("psi"))
     when(routingContext.queryParams()).thenReturn(multiMap)
@@ -432,35 +480,42 @@ class TimeSeriesHandlerTest extends EitherValues {
 
     // Trigger call// Trigger call
     featureDriftHandler.handle(routingContext)
-    vertx.setTimer(1000, _ => {
-      verify(response).setStatusCode(200)
-      verify(response).putHeader("content-type", "application/json")
-      verify(response).end(responseCaptor.capture)
-      val bodyText = responseCaptor.getValue
+    vertx.setTimer(
+      1000,
+      _ => {
+        verify(response).setStatusCode(200)
+        verify(response).putHeader("content-type", "application/json")
+        verify(response).end(responseCaptor.capture)
+        val bodyText = responseCaptor.getValue
 
-      val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] = decode[ComparedFeatureTimeSeries](bodyText)
-      assertTrue(featureTSResponse.isRight)
-      val tsResponse = featureTSResponse.right.value
-      assertEquals(tsResponse.feature, "my_feature")
-      assertEquals(tsResponse.current.length, tsResponse.baseline.length)
+        val featureTSResponse: Either[Error, ComparedFeatureTimeSeries] = decode[ComparedFeatureTimeSeries](bodyText)
+        assertTrue(featureTSResponse.isRight)
+        val tsResponse = featureTSResponse.right.value
+        assertEquals(tsResponse.feature, "my_feature")
+        assertEquals(tsResponse.current.length, tsResponse.baseline.length)
 
-      // expect one entry per category for each time series point
-      val expectedLength = mockCategories.length * expectedHours(startTs, endTs)
-      assertEquals(tsResponse.current.length, expectedLength)
+        // expect one entry per category for each time series point
+        val expectedLength = mockCategories.length * expectedHours(startTs, endTs)
+        assertEquals(tsResponse.current.length, expectedLength)
 
-      tsResponse.current.zip(tsResponse.baseline).foreach {
-        case (current, baseline) =>
-          assertEquals( (current.ts - baseline.ts), offset.toMillis)
-          assertFalse(current.label.isEmpty)
-          assertFalse(baseline.label.isEmpty)
+        tsResponse.current.zip(tsResponse.baseline).foreach {
+          case (current, baseline) =>
+            assertEquals((current.ts - baseline.ts), offset.toMillis)
+            assertFalse(current.label.isEmpty)
+            assertFalse(baseline.label.isEmpty)
+        }
+
+        async.complete()
       }
-
-      async.complete()
-    })
+    )
   }
 
-
-  private def buildJoinQueryParams(startTs: Long, endTs: Long, metricType: String, metrics: String, offset: Option[String], algorithm: Option[String]): MultiMap = {
+  private def buildJoinQueryParams(startTs: Long,
+                                   endTs: Long,
+                                   metricType: String,
+                                   metrics: String,
+                                   offset: Option[String],
+                                   algorithm: Option[String]): MultiMap = {
     val multiMap = MultiMap.caseInsensitiveMultiMap
     multiMap.add("startTs", startTs.toString)
     multiMap.add("endTs", endTs.toString)
@@ -473,7 +528,13 @@ class TimeSeriesHandlerTest extends EitherValues {
     multiMap
   }
 
-  private def buildFeatureQueryParams(startTs: Long, endTs: Long, metricType: String, metrics: String, granularity: String, offset: Option[String], algorithm: Option[String]): MultiMap = {
+  private def buildFeatureQueryParams(startTs: Long,
+                                      endTs: Long,
+                                      metricType: String,
+                                      metrics: String,
+                                      granularity: String,
+                                      offset: Option[String],
+                                      algorithm: Option[String]): MultiMap = {
     val baseMultiMap = buildJoinQueryParams(startTs, endTs, metricType, metrics, offset, algorithm)
     baseMultiMap.add("granularity", granularity)
     baseMultiMap
@@ -483,7 +544,11 @@ class TimeSeriesHandlerTest extends EitherValues {
     Duration(endTs - startTs, TimeUnit.MILLISECONDS).toHours
   }
 
-  private def generateDriftSeries(startTs: Long, endTs: Long, join: String, numGroups: Int, numFeaturesPerGroup: Int): Try[Future[Seq[TileDriftSeries]]] = {
+  private def generateDriftSeries(startTs: Long,
+                                  endTs: Long,
+                                  join: String,
+                                  numGroups: Int,
+                                  numFeaturesPerGroup: Int): Try[Future[Seq[TileDriftSeries]]] = {
     val result = for {
       group <- 0 until numGroups
       feature <- 0 until numFeaturesPerGroup
@@ -498,12 +563,17 @@ class TimeSeriesHandlerTest extends EitherValues {
       val tileDriftSeries = new TileDriftSeries()
       tileDriftSeries.setKey(tileKey)
 
-      val timestamps = (startTs until endTs by (Duration(1, TimeUnit.HOURS).toMillis)).toList.map(JLong.valueOf(_)).asJava
+      val timestamps =
+        (startTs until endTs by (Duration(1, TimeUnit.HOURS).toMillis)).toList.map(JLong.valueOf(_)).asJava
       // if feature name ends in an even digit we consider it continuous and generate mock data accordingly
       // else we generate mock data for a categorical feature
       val isNumeric = if (feature % 2 == 0) true else false
-      val percentileDrifts = if (isNumeric) List.fill(timestamps.size())(JDouble.valueOf(0.12)).asJava else List.fill[JDouble](timestamps.size())(null).asJava
-      val histogramDrifts = if (isNumeric) List.fill[JDouble](timestamps.size())(null).asJava else List.fill(timestamps.size())(JDouble.valueOf(0.23)).asJava
+      val percentileDrifts =
+        if (isNumeric) List.fill(timestamps.size())(JDouble.valueOf(0.12)).asJava
+        else List.fill[JDouble](timestamps.size())(null).asJava
+      val histogramDrifts =
+        if (isNumeric) List.fill[JDouble](timestamps.size())(null).asJava
+        else List.fill(timestamps.size())(JDouble.valueOf(0.23)).asJava
       val nullRationChangePercents = List.fill(timestamps.size())(JDouble.valueOf(0.25)).asJava
       tileDriftSeries.setTimestamps(timestamps)
       tileDriftSeries.setPercentileDriftSeries(percentileDrifts)
@@ -513,7 +583,13 @@ class TimeSeriesHandlerTest extends EitherValues {
     Success(Future.successful(result))
   }
 
-  private def generateSummarySeries(startTs: Long, endTs: Long, join: String, groupBy: String, featureName: String, metric: Metric, isNumeric: Boolean): Try[Future[Seq[TileSummarySeries]]] = {
+  private def generateSummarySeries(startTs: Long,
+                                    endTs: Long,
+                                    join: String,
+                                    groupBy: String,
+                                    featureName: String,
+                                    metric: Metric,
+                                    isNumeric: Boolean): Try[Future[Seq[TileSummarySeries]]] = {
     val tileKey = new TileSeriesKey()
     tileKey.setNodeName(join)
     tileKey.setGroupName(groupBy)
@@ -529,16 +605,20 @@ class TimeSeriesHandlerTest extends EitherValues {
       tileSummarySeries.setNullCount(List.fill(timestamps.length)(JLong.valueOf(1)).asJava)
     } else {
       if (isNumeric) {
-        val percentileList = DriftStore.breaks(20).map {
-          _ =>
+        val percentileList = DriftStore
+          .breaks(20)
+          .map { _ =>
             List.fill(timestamps.length)(JDouble.valueOf(0.12)).asJava
-        }.asJava
+          }
+          .asJava
         tileSummarySeries.setPercentiles(percentileList)
       } else {
-        val histogramMap = mockCategories.map {
-          category =>
+        val histogramMap = mockCategories
+          .map { category =>
             category -> List.fill(timestamps.length)(JLong.valueOf(1)).asJava
-        }.toMap.asJava
+          }
+          .toMap
+          .asJava
         tileSummarySeries.setHistogram(histogramMap)
       }
     }

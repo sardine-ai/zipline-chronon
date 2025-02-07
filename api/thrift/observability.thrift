@@ -140,3 +140,23 @@ struct DriftSpec {
     // default drift metric to use
     6: optional DriftMetric driftMetric = DriftMetric.JENSEN_SHANNON
 }
+
+struct JoinDriftRequest {
+    1: required string name
+    2: required i64 startTs
+    3: required i64 endTs
+    6: optional string offset // Format: "24h" or "7d"
+    7: optional DriftMetric algorithm
+    8: optional string columnName
+}
+
+struct JoinDriftResponse {
+    1: required list<TileDriftSeries> driftSeries
+}
+
+struct JoinSummaryRequest {
+    1: required string name
+    2: required i64 startTs
+    3: required i64 endTs
+    8: required string columnName
+}

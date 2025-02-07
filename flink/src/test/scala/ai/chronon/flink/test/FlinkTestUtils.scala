@@ -41,8 +41,9 @@ case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: L
 
 class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestEvent] {
 
-  override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
-                                                               parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
+  override def getDataStream(topic: String, groupName: String)(
+      env: StreamExecutionEnvironment,
+      parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
     env.fromCollection(mockEvents.toJava)
   }
 }
@@ -55,8 +56,9 @@ class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSour
         override def extractTimestamp(event: E2ETestEvent, previousElementTimestamp: Long): Long =
           event.created
       })
-  override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
-                                                               parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
+  override def getDataStream(topic: String, groupName: String)(
+      env: StreamExecutionEnvironment,
+      parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
     env.fromCollection(mockEvents.toJava).assignTimestampsAndWatermarks(watermarkStrategy)
   }
 }

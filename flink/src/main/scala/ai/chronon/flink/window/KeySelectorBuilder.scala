@@ -22,13 +22,18 @@ object KeySelectorBuilder {
     * Flink SparkExprEval DataStream by color and size, so all events with the same (color, size) are sent to the same
     * operator.
     */
-  def build(groupBy: GroupBy): KeySelector[Map[String, Any], List[Any]] = {
+  def build(groupBy: GroupBy): KeySelector[Map[String, Any], Seq[Any]] = {
     // List uses MurmurHash.seqHash for its .hashCode(), which gives us hashing based on content.
     // (instead of based on the instance, which is the case for Array).
-    val groupByKeys: List[String] = groupBy.keyColumns.asScala.toList
+    val groupByKeys: Seq[String] = groupBy.keyColumns.asScala
     logger.info(
       f"Creating key selection function for Flink app. groupByKeys=$groupByKeys"
     )
-    (sparkEvalOutput: Map[String, Any]) => groupByKeys.collect(sparkEvalOutput)
+    // Create explicit KeySelector instead of lambda
+    new KeySelector[Map[String, Any], Seq[Any]] {
+      override def getKey(sparkEvalOutput: Map[String, Any]): Seq[Any] = {
+        groupByKeys.collect(sparkEvalOutput)
+      }
+    }
   }
 }

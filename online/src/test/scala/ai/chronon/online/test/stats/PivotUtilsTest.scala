@@ -88,9 +88,9 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     ))
 
     val expectedHistogram = Map(
-      "A" -> List(10L, null).asJava,
+      "A" -> List(10L, Constants.magicNullLong).asJava,
       "B" -> List(20L, 30L).asJava,
-      "C" -> List(null, 40L).asJava
+      "C" -> List(Constants.magicNullLong, 40L).asJava
     ).asJava
 
     result.getHistogram.asScala.mapValues(_.asScala.toList) shouldEqual
@@ -113,7 +113,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
       (ts3, 3000L)
     ))
 
-    result.getCount.asScala shouldEqual List(100L, null, 300L)
+    result.getCount.asScala.toList shouldEqual List(100L, Constants.magicNullLong, 300L)
   }
 
   it should "preserve timestamp order" in {
@@ -312,5 +312,63 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     series.size shouldBe 2
     series(0) shouldBe Constants.magicNullDouble
     series(1) shouldBe 0.5
+  }
+
+  it should "handle Long.MAX_VALUE and magicNullLong values" in {
+    val ts1 = new TileSummary()
+    ts1.setCount(Long.MaxValue)
+
+    val ts2 = new TileSummary()
+    // count is not set, should become magicNullLong
+
+    val ts3 = new TileSummary()
+    ts3.setCount(100L)
+
+    val result = pivot(Array(
+      (ts1, 1000L),
+      (ts2, 2000L),
+      (ts3, 3000L)
+    ))
+
+    result.getCount.asScala shouldEqual List(Long.MaxValue, Constants.magicNullLong, 100L)
+  }
+
+  it should "handle all null Long values" in {
+    val ts1 = new TileSummary()
+    val ts2 = new TileSummary()
+    val ts3 = new TileSummary()
+    // no counts set for any summary
+
+    val result = pivot(Array(
+      (ts1, 1000L),
+      (ts2, 2000L),
+      (ts3, 3000L)
+    ))
+
+    // Since all values are unset, they should all be magicNullLong rather than null
+    result.getCount.asScala.toList shouldEqual List.fill(3)(Constants.magicNullLong)
+  }
+
+  it should "handle mixed null and non-null Long fields" in {
+    val ts1 = new TileSummary()
+    ts1.setCount(100L)
+    ts1.setNullCount(10L)
+
+    val ts2 = new TileSummary()
+    // count not set
+    ts2.setNullCount(20L)
+
+    val ts3 = new TileSummary()
+    ts3.setCount(300L)
+    // nullCount not set
+
+    val result = pivot(Array(
+      (ts1, 1000L),
+      (ts2, 2000L),
+      (ts3, 3000L)
+    ))
+
+    result.getCount.asScala shouldEqual List(100L, Constants.magicNullLong, 300L)
+    result.getNullCount.asScala shouldEqual List(10L, 20L, Constants.magicNullLong)
   }
 }

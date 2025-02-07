@@ -11,7 +11,6 @@
 		CommandEmpty
 	} from '$lib/components/ui/command/';
 	import { Api } from '$lib/api/api';
-	import type { Model } from '$lib/types/Model/Model';
 	import debounce from 'lodash/debounce';
 	import { onDestroy, onMount } from 'svelte';
 	import {
@@ -23,7 +22,12 @@
 	import { goto } from '$app/navigation';
 	import { isMacOS } from '$lib/util/browser';
 	import { Badge } from '$lib/components/ui/badge';
-	import { getEntity, type Entity } from '$lib/types/Entity/Entity';
+	import {
+		getEntity,
+		type Entity,
+		EntityTypes,
+		type EntityWithType
+	} from '$lib/types/Entity/Entity';
 
 	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
 	import IconAdjustmentsHorizontal from '~icons/heroicons/adjustments-horizontal-16-solid';
@@ -45,7 +49,7 @@
 	const { navItems, user }: Props = $props();
 
 	let open = $state(false);
-	let searchResults: Model[] = $state([]);
+	let searchResults: EntityWithType[] = $state([]);
 	let isMac: boolean | undefined = $state(undefined);
 
 	const api = new Api();
@@ -53,7 +57,16 @@
 	const debouncedSearch = debounce(async () => {
 		if (input.length > 0) {
 			const response = await api.search(input);
-			searchResults = response.items;
+			searchResults = [
+				...(response.joins?.map((item) => ({ ...item, entityType: EntityTypes.JOINS })) || []),
+				...(response.groupBys?.map((item) => ({ ...item, entityType: EntityTypes.GROUPBYS })) ||
+					[]),
+				...(response.models?.map((item) => ({ ...item, entityType: EntityTypes.MODELS })) || []),
+				...(response.stagingQueries?.map((item) => ({
+					...item,
+					entityType: EntityTypes.STAGINGQUERIES
+				})) || [])
+			];
 		} else {
 			searchResults = [];
 		}
@@ -235,15 +248,18 @@
 			{/if}
 		{:else}
 			<CommandGroup heading={`Search for "${input}"`}>
-				{#each searchResults as entity (entity.name)}
+				{#each searchResults as entity}
 					<!-- todo: enable this once we have data for all joins -->
 					<CommandItem
-						disabled={entity.name !== 'risk.user_transactions.txn_join'}
+						disabled={entity.metaData?.name !== 'risk.user_transactions.txn_join'}
 						onSelect={() =>
-							handleSelect(`${getEntity('joins').path}/${encodeURIComponent(entity.name)}`)}
+							handleSelect(
+								`${getEntity(entity.entityType).path}/${encodeURIComponent(entity.metaData?.name || '')}`
+							)}
 					>
-						{@const IconJoins = getEntity('joins').icon}
-						<IconJoins />
+						{@const IconEntity = getEntity(entity.entityType).icon}
+						<IconEntity />
+						{entity.metaData?.name}
 					</CommandItem>
 				{/each}
 			</CommandGroup>

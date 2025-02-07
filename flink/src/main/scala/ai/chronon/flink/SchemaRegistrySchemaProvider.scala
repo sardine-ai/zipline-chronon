@@ -9,19 +9,45 @@ import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.avro.AvroDeserializationSupport
 
+/**
+  * SchemaProvider that uses the Confluent Schema Registry to fetch schemas for topics.
+  * Can be configured as: topic = "kafka://topic-name/registry_host=host/[registry_port=port]/[registry_scheme=http]/[subject=subject]"
+  * Port, scheme and subject are optional. If port is missing, we assume the host is pointing to a LB address / such that
+  * forwards to the right host + port. Scheme defaults to http. Subject defaults to the topic name + "-value" (based on schema
+  * registry conventions).
+  */
 class SchemaRegistrySchemaProvider(conf: Map[String, String]) extends SchemaProvider(conf) {
+  import SchemaRegistrySchemaProvider._
 
-  private val schemaRegistryUrl: String =
-    conf.getOrElse("registry_url", throw new IllegalArgumentException("registry_url not set"))
+  private val schemaRegistryHost: String =
+    conf.getOrElse(RegistryHostKey, throw new IllegalArgumentException(s"$RegistryHostKey not set"))
+
+  // port is optional as many folks configure just the host as it's behind an LB
+  private val schemaRegistryPortString: Option[String] = conf.get(RegistryPortKey)
+
+  // default to http if not set
+  private val schemaRegistrySchemeString: String = conf.getOrElse(RegistrySchemeKey, "http")
+
   private val CacheCapacity: Int = 10
 
-  private val schemaRegistryClient: SchemaRegistryClient = buildSchemaRegistryClient(schemaRegistryUrl)
+  private val schemaRegistryClient: SchemaRegistryClient =
+    buildSchemaRegistryClient(schemaRegistrySchemeString, schemaRegistryHost, schemaRegistryPortString)
 
-  private[flink] def buildSchemaRegistryClient(registryUrl: String): SchemaRegistryClient =
-    new CachedSchemaRegistryClient(registryUrl, CacheCapacity)
+  private[flink] def buildSchemaRegistryClient(schemeString: String,
+                                               registryHost: String,
+                                               maybePortString: Option[String]): SchemaRegistryClient = {
+    maybePortString match {
+      case Some(portString) =>
+        val registryUrl = s"$schemeString://$registryHost:$portString"
+        new CachedSchemaRegistryClient(registryUrl, CacheCapacity)
+      case None =>
+        val registryUrl = s"$schemeString://$registryHost"
+        new CachedSchemaRegistryClient(registryUrl, CacheCapacity)
+    }
+  }
 
   override def buildEncoderAndDeserSchema(topicInfo: TopicInfo): (Encoder[Row], DeserializationSchema[Row]) = {
-    val subject = topicInfo.params.getOrElse("subject", s"${topicInfo.name}-value")
+    val subject = topicInfo.params.getOrElse(RegistrySubjectKey, s"${topicInfo.name}-value")
     val parsedSchema =
       try {
         val metadata = schemaRegistryClient.getLatestSchemaMetadata(subject)
@@ -42,4 +68,11 @@ class SchemaRegistrySchemaProvider(conf: Map[String, String]) extends SchemaProv
       case _ => throw new IllegalArgumentException(s"Unsupported schema type: ${parsedSchema.schemaType()}")
     }
   }
+}
+
+object SchemaRegistrySchemaProvider {
+  val RegistryHostKey = "registry_host"
+  val RegistryPortKey = "registry_port"
+  val RegistrySchemeKey = "registry_scheme"
+  val RegistrySubjectKey = "subject"
 }

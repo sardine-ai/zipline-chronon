@@ -317,7 +317,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
   def testSchemaEvolution(namespace: String, joinSuiteV1: JoinTestSuite, joinSuiteV2: JoinTestSuite): Unit = {
 
     require(joinSuiteV1.joinConf.metaData.name == joinSuiteV2.joinConf.metaData.name,
-      "Schema evolution can only be tested on changes of the SAME join")
+            "Schema evolution can only be tested on changes of the SAME join")
 
     val tableUtils: TableUtils = TableUtils(spark)
     val inMemoryKvStore = OnlineUtils.buildInMemoryKVStore(namespace)

@@ -125,7 +125,7 @@ class FlinkRowAggregationFunction(
 class FlinkRowAggProcessFunction(
     groupBy: GroupBy,
     inputSchema: Seq[(String, DataType)]
-) extends ProcessWindowFunction[TimestampedIR, TimestampedTile, List[Any], TimeWindow] {
+) extends ProcessWindowFunction[TimestampedIR, TimestampedTile, Seq[Any], TimeWindow] {
 
   @transient private[flink] var tileCodec: TileCodec = _
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -149,8 +149,8 @@ class FlinkRowAggProcessFunction(
     * Process events emitted from the aggregate function.
     * Output format: (keys, encoded tile IR, timestamp of the event being processed)
     * */
-  override def process(keys: List[Any],
-                       context: ProcessWindowFunction[TimestampedIR, TimestampedTile, List[Any], TimeWindow]#Context,
+  override def process(keys: Seq[Any],
+                       context: ProcessWindowFunction[TimestampedIR, TimestampedTile, Seq[Any], TimeWindow]#Context,
                        elements: lang.Iterable[TimestampedIR],
                        out: Collector[TimestampedTile]): Unit = {
     val windowEnd = context.window.getEnd

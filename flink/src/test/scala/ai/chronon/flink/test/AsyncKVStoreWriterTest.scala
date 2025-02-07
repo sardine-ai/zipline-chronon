@@ -23,7 +23,8 @@ class AsyncKVStoreWriterTest extends AnyFlatSpec {
   it should "write successfully" in {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
 
-    val requests = IntStream.range(0, 5)
+    val requests = IntStream
+      .range(0, 5)
       .mapToObj(i => new AvroCodecOutput(i.toString.getBytes, "test".getBytes, "my_dataset", eventTs))
       .collect(Collectors.toList())
     val source: DataStream[AvroCodecOutput] = env.fromCollection(requests)
@@ -48,11 +49,11 @@ class AsyncKVStoreWriterTest extends AnyFlatSpec {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val source: DataStream[AvroCodecOutput] = env
       .fromCollection(
-        IntStream.range(0, 5)
+        IntStream
+          .range(0, 5)
           .mapToObj(i => new AvroCodecOutput(i.toString.getBytes, "test".getBytes, "my_dataset", eventTs))
           .collect(Collectors.toList())
       )
-
 
     val mockApi = mock[Api]
     val withRetries =
