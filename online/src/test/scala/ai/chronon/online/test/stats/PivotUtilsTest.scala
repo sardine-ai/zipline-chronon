@@ -168,6 +168,29 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
       expectedStringLengthPercentiles.asScala.map(_.asScala.toList)
   }
 
+  it should "handle null values in percentiles lists" in {
+    val ts1 = new TileSummary()
+    ts1.setPercentiles(List[java.lang.Double](1.0, null, 3.0).map(d => if (d == null) null else Double.box(d)).asJava)
+
+    val ts2 = new TileSummary()
+    ts2.setPercentiles(List[java.lang.Double](4.0, 5.0, null).map(d => if (d == null) null else Double.box(d)).asJava)
+
+    val result = pivot(Array(
+      (ts1, 1000L),
+      (ts2, 2000L)
+    ))
+
+    // After pivot, we expect nulls to be replaced with magicNullDouble
+    val expected = List(
+      List(1.0, 4.0).asJava,
+      List(Constants.magicNullDouble, 5.0).asJava,
+      List(3.0, Constants.magicNullDouble).asJava
+    ).asJava
+
+    result.getPercentiles.asScala.map(_.asScala.toList) shouldEqual
+      expected.asScala.map(_.asScala.toList)
+  }
+
   "pivot_drift" should "handle empty input" in {
     val result = pivot(Array.empty[(TileDrift, Long)])
     result.getPercentileDriftSeries shouldBe null

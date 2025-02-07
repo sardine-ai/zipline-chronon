@@ -44,7 +44,16 @@ object PivotUtils {
       var seriesIndex = 0
       while (seriesIndex < seriesLength) {
         val list = lists(seriesIndex)
-        val value: T = if (list == null) null.asInstanceOf[T] else list.get(pctIndex)
+        val value: T = if (list == null) {
+          null.asInstanceOf[T]
+        } else {
+          val v = list.get(pctIndex)
+          if (v == null || (v.isInstanceOf[Double] && v.asInstanceOf[Double].isNaN)) {
+            Constants.magicNullDouble.asInstanceOf[T]
+          } else {
+            v
+          }
+        }
         row.add(value)
         seriesIndex += 1
       }
