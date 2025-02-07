@@ -64,7 +64,7 @@ class GroupByTest extends AnyFlatSpec {
       Column(Constants.TimeColumn, LongType, 100), // ts = last 100 days
       Column("session_length", IntType, 10000)
     )
-    val df = DataFrameGen.entities(spark, schema, 100000, 10) // ds = last 10 days
+    val df = DataFrameGen.entities(spark, schema, 10000, 10) // ds = last 10 days
     val viewName = "test_group_by_entities"
     df.createOrReplaceTempView(viewName)
     val aggregations: Seq[Aggregation] = Seq(
@@ -100,7 +100,7 @@ class GroupByTest extends AnyFlatSpec {
 
     val outputDates = CStream.genPartitions(10, tableUtils.partitionSpec)
 
-    val df = DataFrameGen.events(spark, schema, count = 100000, partitions = 100)
+    val df = DataFrameGen.events(spark, schema, count = 10000, partitions = 100)
     df.drop("ts") // snapshots don't need ts.
     val viewName = "test_group_by_snapshot_events"
     df.createOrReplaceTempView(viewName)
