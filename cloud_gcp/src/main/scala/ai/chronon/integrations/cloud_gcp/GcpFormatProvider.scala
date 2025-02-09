@@ -1,9 +1,16 @@
 package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
-import ai.chronon.spark.format.Hive
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQuery
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQueryOptions
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.ExternalTableDefinition
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.FormatOptions
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.JobInfo
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.StandardTableDefinition
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.Table
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableDefinition
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
 import org.apache.spark.sql.SparkSession
 
 import scala.jdk.CollectionConverters._
@@ -22,12 +29,15 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
   lazy val bigQueryClient: BigQuery = bqOptions.getService
 
   override def resolveTableName(tableName: String): String =
-    format(tableName) match {
-      case GCS(uri, _) => uri
-      case _           => tableName
-    }
+    format(tableName)
+      .map {
+        case GCS(uri, _)             => uri
+        case BigQueryFormat(_, _, _) => tableName
+        case _                       => tableName
+      }
+      .getOrElse(tableName)
 
-  override def readFormat(tableName: String): Format = format(tableName)
+  override def readFormat(tableName: String): Option[Format] = format(tableName)
 
   override def writeFormat(table: String): Format = {
     val tableId = BigQueryUtil.parseTableId(table)
@@ -49,8 +59,7 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         val formatOptions = definition.getFormatOptions
           .asInstanceOf[FormatOptions]
         val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
-        val uri = scala
-          .Option(externalTable.getHivePartitioningOptions)
+        val uri = Option(externalTable.getHivePartitioningOptions)
           .map(_.getSourceUriPrefix)
           .getOrElse {
             val uris = externalTable.getSourceUris.asScala
@@ -66,18 +75,12 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
       case _ => throw new IllegalStateException(s"Cannot support table of type: ${table.getFriendlyName}")
     }
 
-  private def format(tableName: String): Format = {
+  private def format(tableName: String): Option[Format] = {
 
     val btTableIdentifier: TableId = BigQueryUtil.parseTableId(tableName)
-
-    val table = bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable)
-
-    // lookup bq for the table, if not fall back to hive
-    scala
-      .Option(table)
+    val table = Option(bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable))
+    table
       .map(getFormat)
-      .getOrElse(
-        scala.Option(btTableIdentifier.getProject).map(BigQueryFormat(_, bigQueryClient, Map.empty)).getOrElse(Hive))
 
   }
 }

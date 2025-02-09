@@ -15,7 +15,7 @@ trait FormatProvider extends Serializable {
 
   def sparkSession: SparkSession
 
-  def readFormat(tableName: String): Format
+  def readFormat(tableName: String): Option[Format]
 
   def writeFormat(tableName: String): Format
 
