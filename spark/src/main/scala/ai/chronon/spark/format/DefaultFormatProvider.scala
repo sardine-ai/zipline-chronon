@@ -14,15 +14,15 @@ case class DefaultFormatProvider(sparkSession: SparkSession) extends FormatProvi
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  // Checks the format of a given table by checking the format it's written out as
-  override def readFormat(tableName: String): Format = {
-    if (isIcebergTable(tableName)) {
+  // Checks the format of a given table if it exists.
+  override def readFormat(tableName: String): Option[Format] = {
+    Option(if (isIcebergTable(tableName)) {
       Iceberg
     } else if (isDeltaTable(tableName)) {
       DeltaLake
-    } else {
+    } else if (sparkSession.catalog.tableExists(tableName)) {
       Hive
-    }
+    } else { null })
   }
 
   private def isIcebergTable(tableName: String): Boolean =

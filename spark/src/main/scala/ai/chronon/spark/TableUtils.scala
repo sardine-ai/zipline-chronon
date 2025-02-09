@@ -93,7 +93,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
-  @transient implicit private[spark] lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
+  @transient implicit lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   private val cacheLevel: Option[StorageLevel] = Try {
     if (cacheLevelString == "NONE") None
@@ -119,8 +119,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def tableReachable(tableName: String): Boolean = {
     try {
-      loadTable(tableName)
-      true
+      tableReadFormat(tableName).isDefined
     } catch {
       case ex: Exception =>
         logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
@@ -157,7 +156,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def tableReadFormat(tableName: String): Format = tableFormatProvider.readFormat(tableName)
+  def tableReadFormat(tableName: String): Option[Format] = tableFormatProvider.readFormat(tableName)
 
   // Needs provider
   // return all specified partition columns in a table in format of Map[partitionName, PartitionValue]
@@ -165,7 +164,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     if (!tableReachable(tableName)) return Seq.empty[Map[String, String]]
 
-    val format = tableReadFormat(tableName)
+    val format = tableReadFormat(tableName).getOrElse(
+      throw new IllegalStateException(
+        s"Could not determine read format of table ${tableName}. It is no longer reachable."))
     val partitionSeq = format.partitions(tableName)(sparkSession)
 
     if (partitionColumnsFilter.isEmpty) {
@@ -182,28 +183,21 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   def partitions(tableName: String, subPartitionsFilter: Map[String, String] = Map.empty): Seq[String] = {
-    try {
-      val format = tableReadFormat(tableName)
-      val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
 
-      if (partitions.isEmpty) {
-        logger.info(s"No partitions found for (reachable) table: $tableName")
-      } else {
-        logger.info(
-          s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
-      }
+    tableReadFormat(tableName)
+      .map((format) => {
+        val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
 
-      partitions
-    } catch {
-      case e: Exception =>
-        logger.error(
-          s"Failed to get partitions for table $tableName. " +
-            "Either the table is not yet created, or there was an error in reading the partitions.",
-          e.getMessage
-        )
-        logger.debug(s"Failed to get partitions for table $tableName.", e)
-        Seq.empty
-    }
+        if (partitions.isEmpty) {
+          logger.info(s"No partitions found for table: $tableName")
+        } else {
+          logger.info(
+            s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
+        }
+        partitions
+      })
+      .getOrElse(Seq.empty)
+
   }
 
   // Given a table and a query extract the schema of the columns involved as input.
