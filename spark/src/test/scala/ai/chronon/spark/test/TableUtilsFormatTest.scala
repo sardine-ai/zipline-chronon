@@ -18,6 +18,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -142,6 +143,13 @@ class TableUtilsFormatTest extends AnyFlatSpec {
 
     testInsertPartitions(spark, tableUtils, tableName, format, df1, df2, ds1 = "2022-10-01", ds2 = "2022-10-02")
   }
+
+  it should "return empty read format if table doesn't exist" in {
+    val dbName = s"db_${System.currentTimeMillis()}"
+    val tableName = s"$dbName.test_table_nonexistent_$format"
+    assertTrue(tableUtils.tableReadFormat(tableName).isEmpty)
+    assertFalse(tableUtils.tableReachable(tableName))
+  }
 }
 
 object TableUtilsFormatTest {
@@ -180,7 +188,7 @@ object TableUtilsFormatTest {
     tableUtils.insertPartitions(df2, tableName, autoExpand = true)
 
     // check that we wrote out a table in the right format
-    val readTableFormat = tableUtils.tableReadFormat(tableName).toString
+    val readTableFormat = tableUtils.tableReadFormat(tableName).get.toString
     assertTrue(s"Mismatch in table format: $readTableFormat; expected: $format", readTableFormat.toLowerCase == format)
 
     // check we have all the partitions written

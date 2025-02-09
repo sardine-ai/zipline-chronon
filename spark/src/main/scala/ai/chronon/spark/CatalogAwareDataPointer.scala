@@ -11,7 +11,7 @@ case class CatalogAwareDataPointer(inputTableOrPath: String, formatProvider: For
   }
 
   override lazy val readOptions: Map[String, String] = {
-    formatProvider.readFormat(inputTableOrPath).options
+    formatProvider.readFormat(inputTableOrPath).map(_.options).getOrElse(Map.empty)
   }
 
   override lazy val writeOptions: Map[String, String] = {
@@ -19,7 +19,7 @@ case class CatalogAwareDataPointer(inputTableOrPath: String, formatProvider: For
   }
 
   override lazy val readFormat: Option[String] = {
-    Option(formatProvider.readFormat(inputTableOrPath)).map(_.name)
+    formatProvider.readFormat(inputTableOrPath).map(_.name)
   }
 
   override lazy val writeFormat: Option[String] = {
