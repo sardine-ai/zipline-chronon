@@ -45,11 +45,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   }
 
-  it should "verify dynamic classloading of GCP providers" ignore {
-    assertTrue(tableUtils.tableReadFormat("data.sample_native") match {
-      case BigQueryFormat(_, _, _) => true
-      case _                       => false
-    })
+  it should "verify dynamic classloading of GCP providers" in {
+    assertTrue(tableUtils.tableFormatProvider.isInstanceOf[GcpFormatProvider])
   }
 
   it should "bigquery connector converts spark dates regardless of date setting" in {

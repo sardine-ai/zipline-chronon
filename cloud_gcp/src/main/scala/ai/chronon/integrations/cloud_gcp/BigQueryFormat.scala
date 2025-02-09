@@ -70,69 +70,66 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     val table = tableIdentifier.getTable
     val database =
       Option(tableIdentifier.getDataset).getOrElse(throw new IllegalArgumentException("database required!"))
-    try {
 
-      // See: https://cloud.google.com/bigquery/docs/information-schema-columns
-      val partColsSql =
-        s"""
+    // See: https://cloud.google.com/bigquery/docs/information-schema-columns
+    val partColsSql =
+      s"""
            |SELECT column_name FROM `${project}.${database}.INFORMATION_SCHEMA.COLUMNS`
            |WHERE table_name = '${table}' AND is_partitioning_column = 'YES'
            |
            |""".stripMargin
 
-      val partitionCol = sparkSession.read
-        .format("bigquery")
-        .option("project", project)
-        // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
-        // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
-        .option("viewsEnabled", true)
-        .option("materializationDataset", database)
-        .load(partColsSql)
-        .as[String]
-        .collect
-        .headOption
-        .getOrElse(throw new UnsupportedOperationException(s"No partition column for table ${tableName} found."))
+    val partitionCol = sparkSession.read
+      .format("bigquery")
+      .option("project", project)
+      // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+      // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+      .option("viewsEnabled", true)
+      .option("materializationDataset", database)
+      .load(partColsSql)
+      .as[String]
+      .collect
+      .headOption
+      .getOrElse(throw new UnsupportedOperationException(s"No partition column for table ${tableName} found."))
 
-      // See: https://cloud.google.com/bigquery/docs/information-schema-partitions
-      val partValsSql =
-        s"""
+    // See: https://cloud.google.com/bigquery/docs/information-schema-partitions
+    val partValsSql =
+      s"""
            |SELECT partition_id FROM `${project}.${database}.INFORMATION_SCHEMA.PARTITIONS`
            |WHERE table_name = '${table}'
            |
            |""".stripMargin
 
-      // TODO: remove temporary hack. this is done because the existing raw data is in the date format yyyy-MM-dd
-      //  but partition values in bigquery's INFORMATION_SCHEMA.PARTITIONS are in yyyyMMdd format.
-      //  moving forward, for bigquery gcp we should default to storing raw data in yyyyMMdd format.
-      val partitionFormat = sparkSession.conf.get("spark.chronon.partition.format", "yyyyMMdd")
+    // TODO: remove temporary hack. this is done because the existing raw data is in the date format yyyy-MM-dd
+    //  but partition values in bigquery's INFORMATION_SCHEMA.PARTITIONS are in yyyyMMdd format.
+    //  moving forward, for bigquery gcp we should default to storing raw data in yyyyMMdd format.
+    val partitionFormat = sparkSession.conf.get("spark.chronon.partition.format", "yyyyMMdd")
 
-      val partitionInfoDf = sparkSession.read
-        .format("bigquery")
-        .option("project", project)
-        // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
-        // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
-        .option("viewsEnabled", true)
-        .option("materializationDataset", database)
-        .load(partValsSql)
+    val partitionInfoDf = sparkSession.read
+      .format("bigquery")
+      .option("project", project)
+      // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+      // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+      .option("viewsEnabled", true)
+      .option("materializationDataset", database)
+      .load(partValsSql)
 
-      val partitionVals = partitionInfoDf
-        .select(
-          date_format(
-            to_date(
-              col("partition_id"),
-              "yyyyMMdd" // Note: this "yyyyMMdd" format is hardcoded but we need to change it to be something else.
-            ),
-            partitionFormat)
-            .as("partition_id"))
-        .na // Should filter out '__NULL__' and '__UNPARTITIONED__'. See: https://cloud.google.com/bigquery/docs/partitioned-tables#date_timestamp_partitioned_tables
-        .drop()
-        .as[String]
-        .collect
-        .toList
+    val partitionVals = partitionInfoDf
+      .select(
+        date_format(
+          to_date(
+            col("partition_id"),
+            "yyyyMMdd" // Note: this "yyyyMMdd" format is hardcoded but we need to change it to be something else.
+          ),
+          partitionFormat)
+          .as("partition_id"))
+      .na // Should filter out '__NULL__' and '__UNPARTITIONED__'. See: https://cloud.google.com/bigquery/docs/partitioned-tables#date_timestamp_partitioned_tables
+      .drop()
+      .as[String]
+      .collect
+      .toList
 
-      partitionVals.map((p) => Map(partitionCol -> p))
-
-    }
+    partitionVals.map((p) => Map(partitionCol -> p))
 
   }
 
