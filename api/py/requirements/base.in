@@ -1,4 +1,6 @@
 click
 thrift==0.21.0
 google-cloud-storage==2.19.0
+google-cloud-bigquery-storage
 pyspark==3.5.4
+sqlglot
