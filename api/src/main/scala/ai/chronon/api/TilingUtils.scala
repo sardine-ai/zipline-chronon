@@ -7,6 +7,7 @@ import ai.chronon.api.thrift.protocol.TProtocolFactory
 import ai.chronon.fetcher.TileKey
 
 import java.io.Serializable
+import scala.jdk.CollectionConverters._
 
 // Convenience functions for working with tiling
 object TilingUtils {
@@ -32,5 +33,17 @@ object TilingUtils {
     val key = new TileKey()
     binaryDeserializer.get().deserialize(key, bytes)
     key
+  }
+
+  def buildTileKey(dataset: String,
+                   keyBytes: Array[Byte],
+                   tileSizeMs: Option[Long],
+                   tileStartTs: Option[Long]): TileKey = {
+    val tileKey = new TileKey()
+    tileKey.setDataset(dataset)
+    tileKey.setKeyBytes(keyBytes.toList.asJava.asInstanceOf[java.util.List[java.lang.Byte]])
+    tileSizeMs.foreach(tileKey.setTileSizeMillis)
+    tileStartTs.foreach(tileKey.setTileStartTimestampMillis)
+    tileKey
   }
 }
