@@ -2,6 +2,8 @@ package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.online.Api
 import ai.chronon.online.ExternalSourceRegistry
+import ai.chronon.online.FlagStore
+import ai.chronon.online.FlagStoreConstants
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import ai.chronon.online.LoggableResponse
@@ -15,7 +17,22 @@ import com.google.cloud.bigtable.data.v2.BigtableDataClient
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings
 import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 
+import java.util
+
 class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
+
+  // For now we have a flag store that relies on some hardcoded values. Over time we can replace this with something
+  // more sophisticated (e.g. service / teams.json based flags)
+  val tilingEnabledFlagStore: FlagStore = (flagName: String, _: util.Map[String, String]) => {
+    if (flagName == FlagStoreConstants.TILING_ENABLED) {
+      true
+    } else {
+      false
+    }
+  }
+
+  // We set the flag store to always return true for tiling enabled
+  setFlagStore(tilingEnabledFlagStore)
 
   override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde =
     new AvroSerde(groupByServingInfoParsed.streamChrononSchema)

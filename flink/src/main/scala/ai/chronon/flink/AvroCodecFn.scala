@@ -7,7 +7,6 @@ import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.Query
 import ai.chronon.api.TilingUtils
 import ai.chronon.api.{StructType => ChrononStructType}
-import ai.chronon.fetcher.TileKey
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.AvroConversions
@@ -164,12 +163,8 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
     val keys: Map[String, AnyRef] = keyColumns.zip(in.keys.map(_.asInstanceOf[AnyRef])).toMap
     val entityKeyBytes = keyToBytes(in.keys.toArray)
 
-    val tileKey = new TileKey()
     val tileStart = WindowUtils.windowStartMillis(tsMills, tilingWindowSizeMs)
-    tileKey.setDataset(streamingDataset)
-    tileKey.setKeyBytes(entityKeyBytes.toList.asJava.asInstanceOf[java.util.List[java.lang.Byte]])
-    tileKey.setTileSizeMillis(tilingWindowSizeMs)
-    tileKey.setTileStartTimestampMillis(tileStart)
+    val tileKey = TilingUtils.buildTileKey(streamingDataset, entityKeyBytes, Some(tilingWindowSizeMs), Some(tileStart))
 
     val valueBytes = in.tileBytes
 
