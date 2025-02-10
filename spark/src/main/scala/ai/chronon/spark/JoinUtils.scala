@@ -90,11 +90,9 @@ object JoinUtils {
         df.filter(sf)
       })
       .getOrElse(df)
-    if (result.isEmpty) {
-      logger.info(s"Left side query below produced 0 rows in range $range.")
-      if (!allowEmpty) {
-        return None
-      }
+    if (!allowEmpty && result.isEmpty) {
+      logger.info(s"Left side query below produced 0 rows in range $range, and allowEmpty=false.")
+      return None
     }
     Some(result)
   }
