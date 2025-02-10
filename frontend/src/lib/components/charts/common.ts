@@ -23,6 +23,20 @@ export const colors = [
 	'#CB5587'
 ];
 
+export const xAxisProps = {
+	placement: 'bottom' as const,
+	classes: {
+		tickLabel: 'fill-neutral-700 text-xs'
+	}
+};
+
+export const yAxisProps = {
+	placement: 'left' as const,
+	classes: {
+		tickLabel: 'fill-neutral-700 text-xs'
+	}
+};
+
 export const tooltipProps = {
 	root: {
 		variant: 'none',
@@ -44,7 +58,11 @@ export const tooltipProps = {
 } satisfies NonNullable<ComponentProps<typeof LineChart>['props']>['tooltip'];
 
 export const highlightProps = {
-	motion: false
+	motion: false,
+	points: {
+		r: 8,
+		strokeWidth: 4
+	}
 } satisfies NonNullable<ComponentProps<typeof LineChart>['props']>['highlight'];
 
 export const barChartProps = {
@@ -60,7 +78,9 @@ export const lineChartProps = {
 	},
 	props: {
 		tooltip: tooltipProps,
-		highlight: highlightProps
+		highlight: highlightProps,
+		xAxis: xAxisProps,
+		yAxis: yAxisProps
 	}
 } satisfies NonNullable<ComponentProps<typeof LineChart>>;
 

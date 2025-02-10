@@ -51,11 +51,20 @@
 		};
 	})}
 	padding={{ left: 24, bottom: 48 }}
-	legend={{ placement: 'bottom-left', classes: { root: 'right-0 overflow-auto scrollbar-none' } }}
+	legend={{
+		placement: 'bottom-left',
+		classes: {
+			root: 'right-0 overflow-auto scrollbar-none',
+			swatch: 'h-2 w-2 rounded-full',
+			label: 'text-sm',
+			item: () => 'flex items-center gap-2'
+		}
+	}}
 	renderContext="canvas"
 	{...lineChartProps}
 	{...restProps}
 	brush={{ onbrushend }}
+	tooltip={{ hideDelay: 150 }}
 >
 	<svelte:fragment slot="aboveMarks" let:xScale let:yScale>
 		{#if markPoint}
@@ -72,7 +81,14 @@
 		{/if}
 	</svelte:fragment>
 
-	<svelte:fragment slot="tooltip" let:x let:y let:height let:visibleSeries>
+	<svelte:fragment
+		slot="tooltip"
+		let:x
+		let:y
+		let:height
+		let:visibleSeries
+		let:setHighlightSeriesKey
+	>
 		<Tooltip.Root {...tooltipProps.root} x="data" y={height + 24} pointerEvents let:data>
 			<Tooltip.Header {...tooltipProps.header}>
 				{formatDate(x(data))}
@@ -87,6 +103,8 @@
 					<button
 						class="col-span-full grid grid-cols-[1fr,auto] gap-6 hover:bg-neutral-400 py-2 px-3 rounded"
 						onclick={() => onitemclick?.({ series: s, data: seriesTooltipData, value })}
+						onmouseenter={() => setHighlightSeriesKey(s.key)}
+						onmouseleave={() => setHighlightSeriesKey(null)}
 					>
 						<Tooltip.Item
 							label={s.label ?? (s.key !== 'default' ? s.key : 'value')}
