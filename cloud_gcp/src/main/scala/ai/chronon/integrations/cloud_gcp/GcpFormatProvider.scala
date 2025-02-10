@@ -45,7 +45,10 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     assert(scala.Option(tableId.getDataset).isDefined, s"dataset required for ${table}")
 
     val sparkOptions: Map[String, String] = Map(
-      "writeMethod" -> "direct",
+      "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
+      "writeMethod" -> "indirect",
+      "materializationProject" -> tableId.getProject,
+      "materializationDataset" -> tableId.getDataset,
       "createDisposition" -> JobInfo.CreateDisposition.CREATE_NEVER.name
     )
 
