@@ -18,11 +18,7 @@ package ai.chronon.online
 
 import ai.chronon.api.Constants
 import ai.chronon.api.StructType
-import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.KVStore.GetResponse
-import ai.chronon.online.KVStore.ListRequest
-import ai.chronon.online.KVStore.ListResponse
-import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.KVStore._
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -42,7 +38,7 @@ import scala.util.Try
 
 object KVStore {
   // a scan request essentially for the keyBytes
-  // afterTsMillis - is used to limit the scan to more recent data
+  // startTsMillis - is used to limit the scan to more recent data
   // endTsMillis - end range of the scan (starts from afterTsMillis to endTsMillis)
   case class GetRequest(keyBytes: Array[Byte],
                         dataset: String,
@@ -228,7 +224,7 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
 
   private var timeoutMillis: Long = 10000
 
-  private var flagStore: FlagStore = null
+  var flagStore: FlagStore = null
 
   def setFlagStore(customFlagStore: FlagStore): Unit = { flagStore = customFlagStore }
 

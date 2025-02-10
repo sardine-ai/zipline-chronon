@@ -27,6 +27,8 @@ import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.Fetcher.Response
 import ai.chronon.online.Fetcher.StatsRequest
+import ai.chronon.online.FlagStore
+import ai.chronon.online.FlagStoreConstants
 import ai.chronon.online.JavaRequest
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.LoggableResponseBase64
@@ -54,6 +56,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.lang
+import java.util
 import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.collection.Seq
@@ -592,12 +595,25 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
                            endDs: String,
                            namespace: String,
                            consistencyCheck: Boolean,
-                           dropDsOnWrite: Boolean): Unit = {
+                           dropDsOnWrite: Boolean,
+                           enableTiling: Boolean = false): Unit = {
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
     implicit val tableUtils: TableUtils = TableUtils(spark)
     val kvStoreFunc = () => OnlineUtils.buildInMemoryKVStore("FetcherTest")
     val inMemoryKvStore = kvStoreFunc()
+
+    val tilingEnabledFlagStore = new FlagStore {
+      override def isSet(flagName: String, attributes: util.Map[String, String]): lang.Boolean = {
+        if (flagName == FlagStoreConstants.TILING_ENABLED) {
+          enableTiling
+        } else {
+          false
+        }
+      }
+    }
+
     val mockApi = new MockApi(kvStoreFunc, namespace)
+    mockApi.setFlagStore(tilingEnabledFlagStore)
 
     val joinedDf = new ai.chronon.spark.Join(joinConf, endDs, tableUtils).computeJoin()
     val joinTable = s"$namespace.join_test_expected_${joinConf.metaData.cleanName}"
@@ -611,7 +627,8 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
                         namespace,
                         endDs,
                         jp.groupBy,
-                        dropDsOnWrite = dropDsOnWrite))
+                        dropDsOnWrite = dropDsOnWrite,
+                        tilingEnabled = enableTiling))
 
     // Extract queries for the EndDs from the computedJoin results and eliminating computed aggregation values
     val endDsEvents = {
@@ -739,8 +756,8 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
 
   it should "test temporal tiled fetch join deterministic" in {
     val namespace = "deterministic_tiled_fetch"
-    val joinConf = generateEventOnlyData(namespace, groupByCustomJson = Some("{\"enable_tiling\": true}"))
-    compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
+    val joinConf = generateEventOnlyData(namespace)
+    compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true, enableTiling = true)
   }
 
   // test soft-fail on missing keys

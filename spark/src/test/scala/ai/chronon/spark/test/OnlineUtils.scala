@@ -16,6 +16,7 @@
 
 package ai.chronon.spark.test
 
+import ai.chronon.aggregator.windowing.ResolutionUtils
 import ai.chronon.api
 import ai.chronon.api.Accuracy
 import ai.chronon.api.Constants
@@ -23,6 +24,7 @@ import ai.chronon.api.DataModel
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.TilingUtils
 import ai.chronon.online.AvroConversions
 import ai.chronon.online.KVStore
 import ai.chronon.spark.GenericRowHandler
@@ -48,8 +50,8 @@ object OnlineUtils {
                    ds: String,
                    namespace: String,
                    debug: Boolean,
-                   dropDsOnWrite: Boolean): Unit = {
-    val isTiled = groupByConf.isTilingEnabled
+                   dropDsOnWrite: Boolean,
+                   isTiled: Boolean): Unit = {
     val inputStreamDf = groupByConf.dataModel match {
       case DataModel.Entities =>
         assert(!isTiled, "Tiling is not supported for Entity groupBy's yet (Only Event groupBy are supported)")
@@ -93,10 +95,9 @@ object OnlineUtils {
         val tileBytes = entry._3
 
         val keyBytes = keyToBytes(keys)
-
-        KVStore.PutRequest(keyBytes, tileBytes, groupByConf.streamingDataset, Some(timestamp))
+        val tileKey = TilingUtils.buildTileKey(groupByConf.streamingDataset, keyBytes, Some(ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfo.groupBy)), None)
+        KVStore.PutRequest(TilingUtils.serializeTileKey(tileKey), tileBytes, groupByConf.streamingDataset, Some(timestamp))
       }
-
       inMemoryKvStore.multiPut(putRequests)
     } else {
       val groupByStreaming =
@@ -151,7 +152,8 @@ object OnlineUtils {
             debug: Boolean = false,
             // TODO: I don't fully understand why this is needed, but this is a quirk of the test harness
             // we need to fix the quirk and drop this flag
-            dropDsOnWrite: Boolean = false): Unit = {
+            dropDsOnWrite: Boolean = false,
+            tilingEnabled: Boolean = false): Unit = {
     val prevDs = tableUtils.partitionSpec.before(endDs)
     GroupByUpload.run(groupByConf, prevDs, Some(tableUtils))
     inMemoryKvStore.bulkPut(groupByConf.metaData.uploadTable, groupByConf.batchDataset, null)
@@ -170,7 +172,8 @@ object OnlineUtils {
                                  endDs,
                                  namespace,
                                  debug,
-                                 dropDsOnWrite)
+                                 dropDsOnWrite,
+                                 tilingEnabled)
       }
     }
   }

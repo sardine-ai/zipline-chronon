@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.api.TilingUtils
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.GetResponse
 import ai.chronon.online.KVStore.ListRequest
@@ -259,7 +260,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     // generate some hourly timestamps from 10/04/24 00:00 to 10/16
     val fakePayload = """{"name": "my_key", "my_feature": "123""""
     val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
-    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key", tsRange, fakePayload)
+    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key".getBytes, tsRange, fakePayload)
 
     // query in time range: 10/05/24 00:00 to 10/10
     val queryStartsTs = 1728086400000L
@@ -279,7 +280,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     // generate some hourly timestamps from 10/04/24 00:00 to 10/16
     val fakePayload = """{"name": "my_key", "my_feature": "123""""
     val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
-    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key", tsRange, fakePayload)
+    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key".getBytes, tsRange, fakePayload)
 
     // query in time range: 10/05/24 00:00 to 10/06/24 00:00
     val queryStartsTs = 1728086400000L
@@ -299,7 +300,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     // generate some hourly timestamps from 10/04/24 00:00 to 10/16
     val fakePayload = """{"name": "my_key", "my_feature": "123""""
     val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
-    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key", tsRange, fakePayload)
+    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key".getBytes, tsRange, fakePayload)
 
     // query in time range: 10/05/24 00:00 to 10/05/24 22:20
     val queryStartsTs = 1728086400000L
@@ -321,7 +322,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val dataStartTs = 1728000000000L
     val dataEndTs = 1729036800000L
     val tsRange = (dataStartTs until dataEndTs by 1.hour.toMillis)
-    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key", tsRange, fakePayload)
+    writeGeneratedTimeSeriesData(kvStore, dataset, "my_key".getBytes, tsRange, fakePayload)
 
     // query in time range: 10/15/24 00:00 to 10/30/24 00:00
     val queryStartsTs = 1728950400000L
@@ -334,15 +335,184 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTimeSeriesPoints, fakePayload)
   }
 
+  // Test repeated writes to the same streaming tile - should return the latest value
+  it should "repeated streaming tile updates return latest value" in {
+    val dataset = "GROUPBY_STREAMING"
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
+    kvStore.create(dataset)
+
+    // tile timestamp - 10/04/24 00:00
+    val tileTimestamp = 1728000000000L
+    val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(tileTimestamp))
+    val tileKeyBytes = TilingUtils.serializeTileKey(tileKey)
+
+    // write a series of updates to the tile to mimic streaming updates
+    for (i <- 0 to 10) {
+      val fakePayload = s"""{"name": "my_key", "my_feature_ir": "$i""""
+      writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(tileTimestamp + i * 1000), fakePayload)
+    }
+
+    // query in time range: 10/04/24 00:00 to 10/04/24 10:00 (we just expect the one tile though)
+    val queryStartsTs = 1728000000000L
+    val queryEndTs = 1728036000000L
+    val readTileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), None)
+    val readKeyBytes = TilingUtils.serializeTileKey(readTileKey)
+
+    val getRequest1 = GetRequest(readKeyBytes, dataset, Some(queryStartsTs), Some(queryEndTs))
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
+    getResult1.size shouldBe 1
+    val expectedTiles = Seq(tileTimestamp)
+    val expectedPayload = """{"name": "my_key", "my_feature_ir": "10"""" // latest value
+    validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTiles, expectedPayload)
+  }
+
+  // Test write and query of a simple tiled dataset across multiple days
+  it should "streaming tiled query_multiple days" in {
+    val dataset = "GROUPBY_STREAMING"
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
+    kvStore.create(dataset)
+
+    // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
+    val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
+    val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
+    val tileKeys = tsRange.map {
+      ts =>
+        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+        TilingUtils.serializeTileKey(tileKey)
+    }
+
+    tsRange.zip(tileKeys).foreach {
+      case (ts, tileKeyBytes) =>
+        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    }
+
+
+    // query in time range: 10/05/24 00:00 to 10/10
+    val queryStartsTs = 1728086400000L
+    val queryEndTs = 1728518400000L
+    val readTileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), None)
+    val readKeyBytes = TilingUtils.serializeTileKey(readTileKey)
+
+    val getRequest1 = GetRequest(readKeyBytes, dataset, Some(queryStartsTs), Some(queryEndTs))
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
+    getResult1.size shouldBe 1
+    val expectedTiles = (queryStartsTs to queryEndTs by 1.hour.toMillis).toSeq
+    validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTiles, fakePayload)
+  }
+
+  // Test write and query of a simple tiled dataset for one full day
+  it should "streaming tiled query_one day" in {
+    val dataset = "GROUPBY_STREAMING"
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
+    kvStore.create(dataset)
+
+    // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
+    val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
+    val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
+    val tileKeys = tsRange.map {
+      ts =>
+        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+        TilingUtils.serializeTileKey(tileKey)
+    }
+
+    tsRange.zip(tileKeys).foreach {
+      case (ts, tileKeyBytes) =>
+        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    }
+
+
+    // query in time range: 10/05/24 00:00 to 10/06/24 00:00
+    val queryStartsTs = 1728086400000L
+    val queryEndTs = 1728172800000L
+    val readTileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), None)
+    val readKeyBytes = TilingUtils.serializeTileKey(readTileKey)
+
+    val getRequest1 = GetRequest(readKeyBytes, dataset, Some(queryStartsTs), Some(queryEndTs))
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
+    getResult1.size shouldBe 1
+    val expectedTiles = (queryStartsTs to queryEndTs by 1.hour.toMillis).toSeq
+    validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTiles, fakePayload)
+  }
+
+  // Test write and query of a simple tiled dataset for a subset of a day
+  it should "streaming tiled query_same day" in {
+    val dataset = "GROUPBY_STREAMING"
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
+    kvStore.create(dataset)
+
+    // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
+    val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
+    val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
+    val tileKeys = tsRange.map {
+      ts =>
+        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+        TilingUtils.serializeTileKey(tileKey)
+    }
+
+    tsRange.zip(tileKeys).foreach {
+      case (ts, tileKeyBytes) =>
+        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    }
+
+
+    // query in time range: 10/05/24 00:00 to 10/05/24 22:20
+    val queryStartsTs = 1728086400000L
+    val queryEndTs = 1728166800000L
+    val readTileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), None)
+    val readKeyBytes = TilingUtils.serializeTileKey(readTileKey)
+
+    val getRequest1 = GetRequest(readKeyBytes, dataset, Some(queryStartsTs), Some(queryEndTs))
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
+    getResult1.size shouldBe 1
+    val expectedTiles = (queryStartsTs to queryEndTs by 1.hour.toMillis).toSeq
+    validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTiles, fakePayload)
+  }
+
+  it should "streaming tiled query_days without data" in {
+    val dataset = "GROUPBY_STREAMING"
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
+    kvStore.create(dataset)
+
+    // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
+    val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
+    val dataStartTs = 1728000000000L
+    val dataEndTs = 1729036800000L
+    val tsRange = (dataStartTs until dataEndTs by 1.hour.toMillis)
+    val tileKeys = tsRange.map {
+      ts =>
+        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+        TilingUtils.serializeTileKey(tileKey)
+    }
+
+    tsRange.zip(tileKeys).foreach {
+      case (ts, tileKeyBytes) =>
+        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    }
+
+
+    // query in time range: 10/15/24 00:00 to 10/30/24 00:00
+    val queryStartsTs = 1728950400000L
+    val queryEndTs = 1730246400000L
+    val readTileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), None)
+    val readKeyBytes = TilingUtils.serializeTileKey(readTileKey)
+
+    val getRequest1 = GetRequest(readKeyBytes, dataset, Some(queryStartsTs), Some(queryEndTs))
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
+    getResult1.size shouldBe 1
+    // we expect results to only cover the time range where we have data
+    val expectedTiles = (queryStartsTs until dataEndTs by 1.hour.toMillis).toSeq
+    validateTimeSeriesValueExpectedPayload(getResult1.head, expectedTiles, fakePayload)
+  }
+
   private def writeGeneratedTimeSeriesData(kvStore: BigTableKVStoreImpl,
                                            dataset: String,
-                                           key: String,
+                                           keyBytes: Array[Byte],
                                            tsRange: Seq[Long],
                                            payload: String): Unit = {
     val points = Seq.fill(tsRange.size)(payload)
     val putRequests = tsRange.zip(points).map {
       case (ts, point) =>
-        PutRequest(key.getBytes, point.getBytes, dataset, Some(ts))
+        PutRequest(keyBytes, point.getBytes, dataset, Some(ts))
     }
 
     val putResult = Await.result(kvStore.multiPut(putRequests), 1.second)
