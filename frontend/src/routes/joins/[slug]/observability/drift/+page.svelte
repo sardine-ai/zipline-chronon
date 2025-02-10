@@ -9,7 +9,6 @@
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import type { ITileSummarySeries } from '$src/lib/types/codegen';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { Api } from '$lib/api/api';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { formatDate } from '$lib/util/format';
@@ -219,7 +218,7 @@
 			/>
 		</DialogHeader>
 
-		<ScrollArea class="flex-grow px-7">
+		<div class="flex-grow px-7 overflow-y-auto">
 			{#if selectedSeriesPoint}
 				{@const [groupName, values] =
 					driftSeriesByGroupName.find(([_, values]) =>
@@ -367,7 +366,7 @@
 					{/snippet}
 				</CollapsibleSection>
 			{/if}
-		</ScrollArea>
+		</div>
 	</DialogContent>
 </Dialog>
 

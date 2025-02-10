@@ -119,15 +119,35 @@
 		--job-queued-bg: 0 0% 16%;
 		--job-queued-border: 0 0% 24%;
 		--job-queued-active-border: 0 0% 40%;
+
+		--scrollcolor: hsla(0, 0%, 13%, 1);
+		--scrollbackground: transparent;
+		scrollbar-color: var(--scrollcolor) var(--scrollbackground);
 	}
 }
 
 @layer base {
 	* {
 		@apply border-border antialiased;
+		scrollbar-width: thin;
 	}
 	body {
 		@apply bg-background text-foreground;
+	}
+
+	::-webkit-scrollbar {
+		border-radius: 1rem;
+		background: var(--scrollbackground);
+	}
+
+	::-webkit-scrollbar-thumb {
+		border-radius: 1rem;
+		background: var(--scrollcolor);
+	}
+
+	::-webkit-scrollbar-track {
+		border-radius: 1rem;
+		background: var(--scrollbackground);
 	}
 }
 

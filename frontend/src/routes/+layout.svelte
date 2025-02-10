@@ -5,7 +5,6 @@
 	import NavigationSlider from '$lib/components/NavigationSlider.svelte';
 	import NavigationBar from '$lib/components/NavigationBar.svelte';
 	import BreadcrumbNav from '$lib/components/BreadcrumbNav.svelte';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { entityConfig } from '$lib/types/Entity/Entity';
 
 	let { children }: { children: Snippet } = $props();
@@ -33,11 +32,11 @@
 		<div
 			class="absolute top-0 left-0 w-full h-4 border-l border-t border-border rounded-tl-xl z-20"
 		></div>
-		<ScrollArea class="flex-1">
+		<div class="flex-1 overflow-y-auto">
 			<div class="px-8 py-5">
 				<BreadcrumbNav {breadcrumbs} class="mb-[38px]" />
 				{@render children()}
 			</div>
-		</ScrollArea>
+		</div>
 	</main>
 </div>
