@@ -99,3 +99,6 @@ releases
 
 # Local bazelrc setup
 .bazelrc.local
+
+# Bazel mod files (currently unused)
+MODULE.bazel*

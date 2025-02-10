@@ -16,6 +16,7 @@ import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.flink.window.KeySelectorBuilder
 import ai.chronon.online.Api
+import ai.chronon.online.FlagStoreConstants
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.mapAsJavaMapConverter
 
 /**
   * Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
@@ -96,6 +98,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     *  (with the above 4 operators and parallelism as injected by the user).
     */
   def runGroupByJob(env: StreamExecutionEnvironment): DataStream[WriteResponse] = {
+
     logger.info(
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
         "Tiling is disabled.")
@@ -377,8 +380,13 @@ object FlinkJob {
 
     env.configure(config)
 
-    val jobDatastream = flinkJob
-      .runGroupByJob(env)
+    val jobDatastream = if (api.flagStore.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].asJava)) {
+      flinkJob
+        .runTiledGroupByJob(env)
+    } else {
+      flinkJob
+        .runGroupByJob(env)
+    }
 
     jobDatastream
       .addSink(new MetricsSink(flinkJob.groupByName))

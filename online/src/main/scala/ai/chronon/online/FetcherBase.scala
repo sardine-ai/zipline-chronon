@@ -19,6 +19,7 @@ package ai.chronon.online
 import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.windowing
 import ai.chronon.aggregator.windowing.FinalBatchIr
+import ai.chronon.aggregator.windowing.ResolutionUtils
 import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
 import ai.chronon.aggregator.windowing.TiledIr
 import ai.chronon.api.Constants.MetadataDataset
@@ -134,7 +135,7 @@ class FetcherBase(kvStore: KVStore,
       val batchIr: FinalBatchIr =
         getBatchIrFromBatchResponse(batchResponses, batchBytes, servingInfo, toBatchIr, keys)
 
-      val output: Array[Any] = if (servingInfo.isTilingEnabled) {
+      val output: Array[Any] = if (isTilingEnabled(flagStore)) {
         val streamingIrs: Iterator[TiledIr] = streamingResponses.iterator
           .filter(tVal => tVal.millis >= servingInfo.batchEndTsMillis)
           .flatMap { tVal =>
@@ -365,8 +366,21 @@ class FetcherBase(kvStore: KVStore,
             val streamingRequestOpt = groupByServingInfo.groupByOps.inferredAccuracy match {
               // fetch batch(ir) and streaming(input) and aggregate
               case Accuracy.TEMPORAL =>
+                // Build a tile key for the streaming request
+                // When we build support for layering, we can expand this out into a utility that builds n tile keys for n layers
+                val keyBytes = if (isTilingEnabled(flagStore)) {
+                  val tileKey = TilingUtils.buildTileKey(
+                    groupByServingInfo.groupByOps.streamingDataset,
+                    streamingKeyBytes,
+                    Some(ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfo.groupBy)),
+                    None
+                  )
+                  TilingUtils.serializeTileKey(tileKey)
+                } else {
+                  streamingKeyBytes
+                }
                 Some(
-                  GetRequest(streamingKeyBytes,
+                  GetRequest(keyBytes,
                              groupByServingInfo.groupByOps.streamingDataset,
                              Some(groupByServingInfo.batchEndTsMillis)))
               // no further aggregation is required - the value in KvStore is good as is
@@ -718,4 +732,10 @@ object FetcherBase {
       endTs: Option[Long],
       context: Metrics.Context
   )
+
+  private[online] def isTilingEnabled(flagStore: FlagStore): Boolean = {
+    Option(flagStore)
+      .map(_.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].asJava))
+      .exists(_.asInstanceOf[Boolean])
+  }
 }
