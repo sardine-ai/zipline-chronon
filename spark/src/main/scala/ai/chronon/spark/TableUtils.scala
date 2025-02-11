@@ -454,6 +454,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                   sortByCols: Seq[String] = Seq.empty): Unit = {
     wrapWithCache(s"repartition & write to $tableName", df) {
       logger.info("Repartitioning before writing...")
+      df.show(5)
       val dataPointer = DataPointer.from(tableName, sparkSession)
       val repartitioned =
         if (sparkSession.conf.get("spark.chronon.write.repartition", true.toString).toBoolean)
@@ -762,6 +763,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val allWheres = wheres ++ rangeWheres
     if (allWheres.nonEmpty) {
       val whereStr = allWheres.map(w => s"($w)").mkString(" AND ")
+      logger.info(s"""Where str: $whereStr""")
       df = df.where(whereStr)
     }
 
