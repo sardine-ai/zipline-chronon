@@ -91,18 +91,19 @@ scala_maven_import_external(
 )
 
 load("@io_bazel_rules_scala//scala:scala.bzl", "scala_repositories")
-
 scala_repositories()
 
 load("@io_bazel_rules_scala//scala:toolchains.bzl", "scala_register_toolchains")
-
 scala_register_toolchains()
 
 load("@io_bazel_rules_scala//testing:scalatest.bzl", "scalatest_repositories", "scalatest_toolchain")
-
 scalatest_repositories()
-
 scalatest_toolchain()
+
+# For scalafmt
+load("@io_bazel_rules_scala//scala/scalafmt:scalafmt_repositories.bzl", "scalafmt_default_config", "scalafmt_repositories")
+scalafmt_default_config()
+scalafmt_repositories()
 
 # For Protobuf support
 http_archive(

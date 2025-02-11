@@ -15,10 +15,9 @@ class AssignIntervalsTest extends AnyFlatSpec with Matchers {
 
     val result = AssignIntervals.on(ptiles = percentiles.map(_.toDouble), breaks = breaks.map(_.toDouble))
 
-    expected.zip(result).foreach {
-      case (e, r) =>
-        println(s"exp: $e res: $r")
-        r shouldEqual e
+    expected.zip(result).foreach { case (e, r) =>
+      println(s"exp: $e res: $r")
+      r shouldEqual e
     }
   }
 }

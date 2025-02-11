@@ -44,8 +44,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.Failure
 import scala.util.Success
 
-/**
-  * BigTable based KV store implementation. We store a few kinds of data in our KV store:
+/** BigTable based KV store implementation. We store a few kinds of data in our KV store:
   * 1) Entity data - An example is thrift serialized Groupby / Join configs. If entities are updated / rewritten, we
   * serve the latest version.
   * 2) Timeseries data - This is either our batch IRs or streaming tiles for feature fetching. It also
@@ -173,11 +172,10 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
           KVStore.GetResponse(request, Success(timedValues))
 
         }
-        .recover {
-          case e: Exception =>
-            logger.error("Error getting values", e)
-            metricsContext.increment("multiGet.bigtable_errors", s"exception:${e.getClass.getName}")
-            KVStore.GetResponse(request, Failure(e))
+        .recover { case e: Exception =>
+          logger.error("Error getting values", e)
+          metricsContext.increment("multiGet.bigtable_errors", s"exception:${e.getClass.getName}")
+          KVStore.GetResponse(request, Failure(e))
         }
     }
 
@@ -259,13 +257,11 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         ListResponse(request, Success(listValues), propsMap)
 
       }
-      .recover {
+      .recover { case e: Exception =>
+        logger.error("Error listing values", e)
+        metricsContext.increment("list.bigtable_errors", s"exception:${e.getClass.getName}")
 
-        case e: Exception =>
-          logger.error("Error listing values", e)
-          metricsContext.increment("list.bigtable_errors", s"exception:${e.getClass.getName}")
-
-          ListResponse(request, Failure(e), Map.empty)
+        ListResponse(request, Failure(e), Map.empty)
 
       }
   }
@@ -313,11 +309,10 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
             metricsContext.increment("multiPut.successes")
             true
           }
-          .recover {
-            case e: Exception =>
-              logger.error("Error putting data", e)
-              metricsContext.increment("multiPut.failures", s"exception:${e.getClass.getName}")
-              false
+          .recover { case e: Exception =>
+            logger.error("Error putting data", e)
+            metricsContext.increment("multiPut.failures", s"exception:${e.getClass.getName}")
+            false
           }
       }
     }
@@ -428,8 +423,7 @@ object BigTableKVStore {
   case object StreamingTable extends TableType
   case object TileSummaries extends TableType
 
-  /**
-    * row key (with tiling) convention:
+  /** row key (with tiling) convention:
     * <dataset>#<entity-key>#<start_date>#<tile_size>
     *
     *  row key (without tiling) convention:

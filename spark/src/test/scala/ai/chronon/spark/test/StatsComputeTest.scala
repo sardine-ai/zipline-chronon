@@ -127,8 +127,7 @@ class StatsComputeTest extends AnyFlatSpec {
     denormalized.show(truncate = false)
   }
 
-  /**
-    * Test to make sure aggregations are generated when it makes sense.
+  /** Test to make sure aggregations are generated when it makes sense.
     * Example, percentiles are not currently supported for byte.
     */
   it should "generated summary byte" in {

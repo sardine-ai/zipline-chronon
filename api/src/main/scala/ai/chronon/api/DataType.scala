@@ -107,8 +107,8 @@ object DataType {
   def toTDataType(dataType: DataType): TDataType = {
     def toParams(params: (String, DataType)*): util.List[DataField] = {
       params
-        .map {
-          case (name, dType) => new DataField().setName(name).setDataType(toTDataType(dType))
+        .map { case (name, dType) =>
+          new DataField().setName(name).setDataType(toTDataType(dType))
         }
         .toList
         .toJava

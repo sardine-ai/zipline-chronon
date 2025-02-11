@@ -7,8 +7,7 @@ import org.slf4j.LoggerFactory
 import scala.util.Success
 import scala.util.Try
 
-/**
-  * Default format provider implementation based on default Chronon supported open source library versions.
+/** Default format provider implementation based on default Chronon supported open source library versions.
   */
 case class DefaultFormatProvider(sparkSession: SparkSession) extends FormatProvider {
 

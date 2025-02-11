@@ -60,8 +60,7 @@ object DataFrameGen {
     gen(spark, columns :+ Column(TableUtils(spark).partitionColumn, StringType, partitions), count)
   }
 
-  /**
-    * Mutations and snapshots generation.
+  /** Mutations and snapshots generation.
     * To generate data for mutations we first generate random entities events.
     * We set these as insert mutations.
     * Then we take a sample of rows and mutate them with an is_before and after at a mutation_ts after
@@ -138,8 +137,8 @@ object DataFrameGen {
       .keyBy(aggregator.aggregatorKey(_))
       .aggregateByKey(aggregator.init)(aggregator.update, aggregator.merge)
       .mapValues(aggregator.finalize(_))
-      .map {
-        case (key, value) => aggregator.toRow(key, value)
+      .map { case (key, value) =>
+        aggregator.toRow(key, value)
       }
 
     val snapshotDf = spark.createDataFrame(snapshotRdd, aggregator.outputSchema)

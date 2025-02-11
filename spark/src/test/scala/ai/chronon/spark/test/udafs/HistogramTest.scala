@@ -75,12 +75,14 @@ class HistogramTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   "MapHistogramAggregator" should "work correctly in SQL queries and handle nulls" in {
-    val result = spark.sql("""
+    val result = spark
+      .sql("""
       SELECT group, map_histogram(data) as histogram
       FROM map_data
       GROUP BY group
       ORDER BY group
-    """).collect()
+    """)
+      .collect()
 
     result should have length 3
     result(0).getAs[String]("group") shouldBe "group1"
@@ -92,12 +94,14 @@ class HistogramTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   "HistogramAggregator" should "work correctly in SQL queries and handle nulls" in {
-    val result = spark.sql("""
+    val result = spark
+      .sql("""
       SELECT group, string_histogram(data) as histogram
       FROM string_data
       GROUP BY group
       ORDER BY group
-    """).collect()
+    """)
+      .collect()
 
     result should have length 3
     result(0).getAs[String]("group") shouldBe "group1"
@@ -109,12 +113,14 @@ class HistogramTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   "ArrayStringHistogramAggregator" should "work correctly in SQL queries and handle nulls" in {
-    val result = spark.sql("""
+    val result = spark
+      .sql("""
       SELECT group, array_string_histogram(data) as histogram
       FROM array_data
       GROUP BY group
       ORDER BY group
-    """).collect()
+    """)
+      .collect()
 
     result should have length 3
     result(0).getAs[String]("group") shouldBe "group1"

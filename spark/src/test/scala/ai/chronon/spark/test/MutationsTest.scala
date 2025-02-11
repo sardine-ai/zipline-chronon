@@ -107,8 +107,7 @@ class MutationsTest extends AnyFlatSpec with TaggedFilterSuite {
   val joinTable: String = s"${joinName.replace(".", "_")}"
   val groupByTable: String = s"${joinName.replace(".", "_")}_${groupByName.replace(".", "_")}"
 
-  /**
-    * Join the expected rows against the computed DataFrame and check the row count is exact.
+  /** Join the expected rows against the computed DataFrame and check the row count is exact.
     * @param computed Dataframe that's the output of the job.
     * @param expectedRows Rows
     * @return If the expected rows are in the dataframe.
@@ -145,8 +144,8 @@ class MutationsTest extends AnyFlatSpec with TaggedFilterSuite {
     if (totalExpectedRows == joinRdd.count()) return true
     println("Failed to assert equality!")
     println("== Joined RDD (listing_id, ts, rating_average)")
-    val readableRDD = joinRdd.map {
-      case ((id, ts, event, avg, ds), _) => Row(id, ts, event, avg, ds)
+    val readableRDD = joinRdd.map { case ((id, ts, event, avg, ds), _) =>
+      Row(id, ts, event, avg, ds)
     }
     spark.createDataFrame(readableRDD, expectedSchema).show()
     println("== Expected")
@@ -227,8 +226,7 @@ class MutationsTest extends AnyFlatSpec with TaggedFilterSuite {
     runner.computeJoin()
   }
 
-  /**
-    * Compute the no windows average based on the tables using pure sql
+  /** Compute the no windows average based on the tables using pure sql
     * @return Expected Dataframe that should be returned by Chronon.
     */
   def computeSimpleAverageThroughSql(testNamespace: String): DataFrame = {
@@ -312,8 +310,7 @@ class MutationsTest extends AnyFlatSpec with TaggedFilterSuite {
     expected
   }
 
-  /**
-    * Compute the no windows last based on the tables using pure sql
+  /** Compute the no windows last based on the tables using pure sql
     * This helps cover the TimedAggregator part of the code.
     * @return Expected Dataframe that should be returned by Chronon.
     */

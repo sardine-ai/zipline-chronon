@@ -335,7 +335,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
       decoded.df.schema
         .filter(field =>
           reqColumns
-          // handle nested struct, only the parent struct is needed here
+            // handle nested struct, only the parent struct is needed here
             .map(col => if (col.contains(".")) col.split("\\.")(0) else col)
             .contains(field.name))
         .toSet

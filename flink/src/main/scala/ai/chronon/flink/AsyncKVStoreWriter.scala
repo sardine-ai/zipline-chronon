@@ -44,8 +44,7 @@ object AsyncKVStoreWriter {
       .setParallelism(inputDS.getParallelism)
   }
 
-  /**
-    * This was moved to flink-rpc-akka in Flink 1.16 and made private, so we reproduce the direct execution context here
+  /** This was moved to flink-rpc-akka in Flink 1.16 and made private, so we reproduce the direct execution context here
     */
   private class DirectExecutionContext extends ExecutionContext {
     override def execute(runnable: Runnable): Unit =
@@ -60,8 +59,7 @@ object AsyncKVStoreWriter {
   private val ExecutionContextInstance: ExecutionContext = new DirectExecutionContext
 }
 
-/**
-  * Async Flink writer function to help us write to the KV store.
+/** Async Flink writer function to help us write to the KV store.
   * @param onlineImpl - Instantiation of the Chronon API to help create KV store objects
   * @param featureGroupName Name of the FG we're writing to
   */

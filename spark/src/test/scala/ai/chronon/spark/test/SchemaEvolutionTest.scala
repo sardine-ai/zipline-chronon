@@ -366,20 +366,20 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     val newGroupBys = joinSuiteV2.groupBys.filter(gb => !joinSuiteV1.groupBys.exists(g => g.name == gb.name))
     val existingGroupBys = joinSuiteV2.groupBys.filter(gb => joinSuiteV1.groupBys.exists(g => g.name == gb.name))
     val removedGroupBys = joinSuiteV1.groupBys.filter(gb => !joinSuiteV2.groupBys.exists(g => g.name == gb.name))
-    val existingSubMapExpected = joinSuiteV2.fetchExpectations._2.filter {
-      case (key, _) => existingGroupBys.exists(gb => key.contains(gb.name))
+    val existingSubMapExpected = joinSuiteV2.fetchExpectations._2.filter { case (key, _) =>
+      existingGroupBys.exists(gb => key.contains(gb.name))
     }
-    val newSubMapExpected = joinSuiteV2.fetchExpectations._2.filter {
-      case (key, _) => newGroupBys.exists(gb => key.contains(gb.name))
+    val newSubMapExpected = joinSuiteV2.fetchExpectations._2.filter { case (key, _) =>
+      newGroupBys.exists(gb => key.contains(gb.name))
     }
-    val newSubMapActual = response3.values.get.filter {
-      case (key, _) => newGroupBys.exists(gb => key.contains(gb.name))
+    val newSubMapActual = response3.values.get.filter { case (key, _) =>
+      newGroupBys.exists(gb => key.contains(gb.name))
     }
-    val existingSubMapActual = response3.values.get.filter {
-      case (key, _) => existingGroupBys.exists(gb => key.contains(gb.name))
+    val existingSubMapActual = response3.values.get.filter { case (key, _) =>
+      existingGroupBys.exists(gb => key.contains(gb.name))
     }
-    val removedSubMapOriginalData = joinSuiteV1.fetchExpectations._2.filter {
-      case (key, _) => removedGroupBys.exists(gb => key.contains(gb.name))
+    val removedSubMapOriginalData = joinSuiteV1.fetchExpectations._2.filter { case (key, _) =>
+      removedGroupBys.exists(gb => key.contains(gb.name))
     }
     assertEquals(existingSubMapActual, existingSubMapExpected)
     val newGroupByCount = newGroupBys.length

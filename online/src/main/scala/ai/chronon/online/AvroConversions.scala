@@ -67,8 +67,8 @@ object AvroConversions {
       case Schema.Type.DOUBLE  => DoubleType
       case Schema.Type.BYTES   => BinaryType
       case Schema.Type.BOOLEAN => BooleanType
-      case Schema.Type.UNION   => toChrononSchema(schema.getTypes.get(1)) // unions are only used to represent nullability
-      case _                   => throw new UnsupportedOperationException(s"Cannot convert avro type ${schema.getType.toString}")
+      case Schema.Type.UNION => toChrononSchema(schema.getTypes.get(1)) // unions are only used to represent nullability
+      case _ => throw new UnsupportedOperationException(s"Cannot convert avro type ${schema.getType.toString}")
     }
   }
 
@@ -137,8 +137,8 @@ object AvroConversions {
       { (data: Iterator[Any], elemDataType: DataType, providedSchema: Option[Schema]) =>
         val schema = providedSchema.getOrElse(AvroConversions.fromChrononSchema(elemDataType))
         val record = new GenericData.Record(schema)
-        data.zipWithIndex.foreach {
-          case (value1, idx) => record.put(idx, value1)
+        data.zipWithIndex.foreach { case (value1, idx) =>
+          record.put(idx, value1)
         }
         record
       },

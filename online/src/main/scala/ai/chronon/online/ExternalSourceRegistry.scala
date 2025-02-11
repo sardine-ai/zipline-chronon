@@ -60,24 +60,23 @@ class ExternalSourceRegistry extends Serializable {
     // we make issue one batch request per external source and flatten out it later
     val responsesByNameF: List[Future[Seq[Response]]] = requests
       .groupBy(_.name)
-      .map {
-        case (name, requests) =>
-          if (handlerMap.contains(name)) {
-            val ctx = context.copy(groupBy = s"${Constants.ExternalPrefix}_$name")
-            val responses = handlerMap(name).fetch(requests)
-            responses.map { responses =>
-              val failures = responses.count(_.values.isFailure)
-              ctx.distribution("response.latency", System.currentTimeMillis() - startTime)
-              ctx.count("response.failures", failures)
-              ctx.count("response.successes", responses.size - failures)
-              responses
-            }
-          } else {
-            val failure = Failure(
-              new IllegalArgumentException(
-                s"$name is not registered among handlers: [${handlerMap.keys.mkString(", ")}]"))
-            Future(requests.map(request => Response(request, failure)))
+      .map { case (name, requests) =>
+        if (handlerMap.contains(name)) {
+          val ctx = context.copy(groupBy = s"${Constants.ExternalPrefix}_$name")
+          val responses = handlerMap(name).fetch(requests)
+          responses.map { responses =>
+            val failures = responses.count(_.values.isFailure)
+            ctx.distribution("response.latency", System.currentTimeMillis() - startTime)
+            ctx.count("response.failures", failures)
+            ctx.count("response.successes", responses.size - failures)
+            responses
           }
+        } else {
+          val failure = Failure(
+            new IllegalArgumentException(
+              s"$name is not registered among handlers: [${handlerMap.keys.mkString(", ")}]"))
+          Future(requests.map(request => Response(request, failure)))
+        }
       }
       .toList
 

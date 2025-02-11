@@ -152,7 +152,7 @@ object SparkSessionBuilder {
       logger.info(s"Building local spark session with warehouse at $warehouseDir")
       val metastoreDb = s"jdbc:derby:;databaseName=$warehouseDir/metastore_db;create=true"
       baseBuilder
-      // use all threads - or the tests will be slow
+        // use all threads - or the tests will be slow
         .master("local[*]")
         .config("spark.kryo.registrationRequired", s"${localWarehouseLocation.isEmpty}")
         .config("spark.local.dir", s"/tmp/$userName/${name}_$warehouseId")
@@ -187,7 +187,7 @@ object SparkSessionBuilder {
 
     val builder = if (local) {
       baseBuilder
-      // use all threads - or the tests will be slow
+        // use all threads - or the tests will be slow
         .master("local[*]")
         .config("spark.local.dir", s"/tmp/$userName/chronon-spark-streaming")
         .config("spark.kryo.registrationRequired", "true")

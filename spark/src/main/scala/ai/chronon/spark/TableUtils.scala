@@ -55,8 +55,7 @@ import scala.collection.mutable
 import scala.util.Failure
 import scala.util.Try
 
-/**
-  * Trait to track the table format in use by a Chronon dataset and some utility methods to help
+/** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
   */
 
@@ -98,10 +97,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   private val cacheLevel: Option[StorageLevel] = Try {
     if (cacheLevelString == "NONE") None
     else Some(StorageLevel.fromString(cacheLevelString))
-  }.recover {
-    case ex: Throwable =>
-      new RuntimeException(s"Failed to create cache level from string: $cacheLevelString", ex).printStackTrace()
-      None
+  }.recover { case ex: Throwable =>
+    new RuntimeException(s"Failed to create cache level from string: $cacheLevelString", ex).printStackTrace()
+    None
   }.get
 
   val joinPartParallelism: Int = sparkSession.conf.get("spark.chronon.join.part.parallelism", "1").toInt
@@ -440,10 +438,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val t: T = func
       clear()
       t
-    }.recoverWith {
-      case ex: Exception =>
-        clear()
-        Failure(ex)
+    }.recoverWith { case ex: Exception =>
+      clear()
+      Failure(ex)
     }
   }
 
@@ -715,8 +712,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     /* check if any old columns are skipped in new field and send warning */
     val updatedFieldsMap = newSchema.fields.map(field => (field.name, field)).toMap
-    val excludedFields = existingFieldsMap.filter {
-      case (name, _) => !updatedFieldsMap.contains(name)
+    val excludedFields = existingFieldsMap.filter { case (name, _) =>
+      !updatedFieldsMap.contains(name)
     }.toSeq
 
     if (excludedFields.nonEmpty) {

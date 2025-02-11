@@ -48,8 +48,7 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.mapAsJavaMapConverter
 
-/**
-  * Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
+/** Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
   *
   * There are two versions of the job, tiled and untiled. The untiled version writes out raw events while the tiled
   * version writes out pre-aggregates. See the `runGroupByJob` and `runTiledGroupByJob` methods for more details.
@@ -83,8 +82,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
   // The source of our Flink application is a  topic
   val topic: String = groupByServingInfoParsed.groupBy.streamingSource.get.topic
 
-  /**
-    * The "untiled" version of the Flink app.
+  /** The "untiled" version of the Flink app.
     *
     *  At a high level, the operators are structured as follows:
     *    source -> Spark expression eval -> Avro conversion -> KV store writer
@@ -135,8 +133,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     )
   }
 
-  /**
-    * The "tiled" version of the Flink app.
+  /** The "tiled" version of the Flink app.
     *
     * The operators are structured as follows:
     *  1.  source - Reads objects of type T (specific case class, Thrift / Proto) from a  topic
@@ -347,9 +344,8 @@ object FlinkJob {
             )
 
           }
-          .recover {
-            case e: Exception =>
-              throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
+          .recover { case e: Exception =>
+            throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
           }
           .get
       }

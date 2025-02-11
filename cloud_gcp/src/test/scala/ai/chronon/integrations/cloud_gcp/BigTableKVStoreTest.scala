@@ -375,17 +375,14 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
     val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
     val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
-    val tileKeys = tsRange.map {
-      ts =>
-        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
-        TilingUtils.serializeTileKey(tileKey)
+    val tileKeys = tsRange.map { ts =>
+      val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+      TilingUtils.serializeTileKey(tileKey)
     }
 
-    tsRange.zip(tileKeys).foreach {
-      case (ts, tileKeyBytes) =>
-        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    tsRange.zip(tileKeys).foreach { case (ts, tileKeyBytes) =>
+      writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
     }
-
 
     // query in time range: 10/05/24 00:00 to 10/10
     val queryStartsTs = 1728086400000L
@@ -409,17 +406,14 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
     val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
     val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
-    val tileKeys = tsRange.map {
-      ts =>
-        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
-        TilingUtils.serializeTileKey(tileKey)
+    val tileKeys = tsRange.map { ts =>
+      val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+      TilingUtils.serializeTileKey(tileKey)
     }
 
-    tsRange.zip(tileKeys).foreach {
-      case (ts, tileKeyBytes) =>
-        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    tsRange.zip(tileKeys).foreach { case (ts, tileKeyBytes) =>
+      writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
     }
-
 
     // query in time range: 10/05/24 00:00 to 10/06/24 00:00
     val queryStartsTs = 1728086400000L
@@ -443,17 +437,14 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
     val fakePayload = """{"name": "my_key", "my_feature_ir": "123""""
     val tsRange = (1728000000000L until 1729036800000L by 1.hour.toMillis)
-    val tileKeys = tsRange.map {
-      ts =>
-        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
-        TilingUtils.serializeTileKey(tileKey)
+    val tileKeys = tsRange.map { ts =>
+      val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+      TilingUtils.serializeTileKey(tileKey)
     }
 
-    tsRange.zip(tileKeys).foreach {
-      case (ts, tileKeyBytes) =>
-        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    tsRange.zip(tileKeys).foreach { case (ts, tileKeyBytes) =>
+      writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
     }
-
 
     // query in time range: 10/05/24 00:00 to 10/05/24 22:20
     val queryStartsTs = 1728086400000L
@@ -478,17 +469,14 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val dataStartTs = 1728000000000L
     val dataEndTs = 1729036800000L
     val tsRange = (dataStartTs until dataEndTs by 1.hour.toMillis)
-    val tileKeys = tsRange.map {
-      ts =>
-        val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
-        TilingUtils.serializeTileKey(tileKey)
+    val tileKeys = tsRange.map { ts =>
+      val tileKey = TilingUtils.buildTileKey(dataset, "my_key".getBytes, Some(1.hour.toMillis), Some(ts))
+      TilingUtils.serializeTileKey(tileKey)
     }
 
-    tsRange.zip(tileKeys).foreach {
-      case (ts, tileKeyBytes) =>
-        writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
+    tsRange.zip(tileKeys).foreach { case (ts, tileKeyBytes) =>
+      writeGeneratedTimeSeriesData(kvStore, dataset, tileKeyBytes, Seq(ts), fakePayload)
     }
-
 
     // query in time range: 10/15/24 00:00 to 10/30/24 00:00
     val queryStartsTs = 1728950400000L
@@ -510,9 +498,8 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
                                            tsRange: Seq[Long],
                                            payload: String): Unit = {
     val points = Seq.fill(tsRange.size)(payload)
-    val putRequests = tsRange.zip(points).map {
-      case (ts, point) =>
-        PutRequest(keyBytes, point.getBytes, dataset, Some(ts))
+    val putRequests = tsRange.zip(points).map { case (ts, point) =>
+      PutRequest(keyBytes, point.getBytes, dataset, Some(ts))
     }
 
     val putResult = Await.result(kvStore.multiPut(putRequests), 1.second)

@@ -115,31 +115,28 @@ class RowAggregatorTest extends AnyFlatSpec {
 
     val (firstRows, secondRows) = rows.splitAt(3)
 
-    val firstResult = firstRows.foldLeft(rowAggregator.init) {
-      case (merged, input) =>
-        rowAggregator.update(merged, input)
-        merged
+    val firstResult = firstRows.foldLeft(rowAggregator.init) { case (merged, input) =>
+      rowAggregator.update(merged, input)
+      merged
     }
 
-    val secondResult = secondRows.foldLeft(rowAggregator.init) {
-      case (merged, input) =>
-        rowAggregator.update(merged, input)
-        merged
+    val secondResult = secondRows.foldLeft(rowAggregator.init) { case (merged, input) =>
+      rowAggregator.update(merged, input)
+      merged
     }
 
     rowAggregator.merge(firstResult, secondResult)
 
     val forDeletion = firstResult.clone()
 
-    rowsToDelete.foldLeft(forDeletion) {
-      case (ir, inp) =>
-        rowAggregator.delete(ir, inp)
-        ir
+    rowsToDelete.foldLeft(forDeletion) { case (ir, inp) =>
+      rowAggregator.delete(ir, inp)
+      ir
     }
     val finalized = rowAggregator.finalize(forDeletion)
 
-    expectedVals.zip(finalized).zip(rowAggregator.outputSchema.map(_._1)).foreach {
-      case ((expected, actual), _) => assertEquals(expected, actual)
+    expectedVals.zip(finalized).zip(rowAggregator.outputSchema.map(_._1)).foreach { case ((expected, actual), _) =>
+      assertEquals(expected, actual)
     }
   }
 }

@@ -55,8 +55,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)
 
-  /**
-    * This test group by is trying to get the latest rating of listings a user viewed in the last 7 days.
+  /** This test group by is trying to get the latest rating of listings a user viewed in the last 7 days.
     * Parent Join: lasted price a certain user viewed
     * Chained Join: latest rating of the listings the user viewed in the last 7 days
     */
@@ -104,11 +103,10 @@ class ChainingFetcherTest extends AnyFlatSpec {
       ratingSchema -> ratingData
     )
 
-    sourceData.foreach {
-      case (schema, rows) =>
-        spark
-          .createDataFrame(rows.toJava, SparkConversions.fromChrononSchema(schema))
-          .save(s"$namespace.${schema.name}")
+    sourceData.foreach { case (schema, rows) =>
+      spark
+        .createDataFrame(rows.toJava, SparkConversions.fromChrononSchema(schema))
+        .save(s"$namespace.${schema.name}")
 
     }
     logger.info("saved all data hand written for fetcher test")

@@ -49,8 +49,8 @@ case class JoinCodec(conf: JoinOps,
       StructType(
         s"join_combined_${conf.join.metaData.cleanName}",
         // derived values take precedence in case of collision
-        (baseMap ++ derivedMap).map {
-          case (name, dataTye) => StructField(name, dataTye)
+        (baseMap ++ derivedMap).map { case (name, dataTye) =>
+          StructField(name, dataTye)
         }.toArray
       )
     } else {
