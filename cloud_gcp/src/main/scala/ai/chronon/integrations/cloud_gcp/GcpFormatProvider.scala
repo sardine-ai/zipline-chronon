@@ -2,6 +2,8 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.format.Format
 import ai.chronon.spark.format.FormatProvider
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
+import com.google.cloud.spark.bigquery.SparkBigQueryConfig
+import com.google.cloud.spark.bigquery.SparkBigQueryConfig.IntermediateFormat
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQuery
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.ExternalTableDefinition
@@ -47,6 +49,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
     val sparkOptions: Map[String, String] = Map(
       "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
       "writeMethod" -> "indirect",
+      SparkBigQueryConfig.INTERMEDIATE_FORMAT_OPTION -> IntermediateFormat.PARQUET.getDataSource,
+      SparkBigQueryConfig.ENABLE_LIST_INFERENCE -> true.toString,
       "materializationProject" -> tableId.getProject,
       "materializationDataset" -> tableId.getDataset,
       "createDisposition" -> JobInfo.CreateDisposition.CREATE_NEVER.name
