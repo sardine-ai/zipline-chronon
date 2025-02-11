@@ -135,7 +135,7 @@ ZIPLINE_ONLINE_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
 ZIPLINE_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.cloud_gcp.GcpApiImpl"
 ZIPLINE_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
 ZIPLINE_DATAPROC_SUBMITTER_JAR = "cloud_gcp_submitter_deploy.jar"
-ZIPLINE_SERVICE_JAR = "service-0.1.0-SNAPSHOT.jar"
+ZIPLINE_SERVICE_JAR = "service_assembly_deploy.jar"
 
 ZIPLINE_DIRECTORY = "/tmp/zipline"
 
