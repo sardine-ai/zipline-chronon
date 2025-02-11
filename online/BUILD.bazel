@@ -23,6 +23,8 @@ scala_library(
         maven_scala_artifact("com.softwaremill.sttp.model:core"),
         maven_scala_artifact("com.softwaremill.sttp.shared:core"),
         maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("com.google.code.gson:gson"),
         maven_artifact("org.apache.avro:avro"),
