@@ -6,9 +6,8 @@ import org.apache.flink.streaming.api.windowing.triggers.Trigger
 import org.apache.flink.streaming.api.windowing.triggers.TriggerResult
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 
-/**
-  * Custom Flink Trigger that fires on every event received.
-  * */
+/** Custom Flink Trigger that fires on every event received.
+  */
 class AlwaysFireOnElementTrigger extends Trigger[Map[String, Any], TimeWindow] {
   override def onElement(
       element: Map[String, Any],
@@ -49,8 +48,7 @@ class AlwaysFireOnElementTrigger extends Trigger[Map[String, Any], TimeWindow] {
   ): Unit = {}
 }
 
-/**
-  * BufferedProcessingTimeTrigger is a custom Trigger that fires at most every 'bufferSizeMillis' within a window.
+/** BufferedProcessingTimeTrigger is a custom Trigger that fires at most every 'bufferSizeMillis' within a window.
   * It is intended for incremental window aggregations using event-time semantics.
   *
   * Purpose: This trigger exists as an optimization to reduce the number of writes to our online store and better handle
@@ -85,14 +83,13 @@ class AlwaysFireOnElementTrigger extends Trigger[Map[String, Any], TimeWindow] {
   *        this causes a timer to be set for timestamp = 500 ms
   *    Timer set for 500ms fires.
   *        we emit the preAggregate [A, B, C].
-  * */
+  */
 class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Map[String, Any], TimeWindow] {
   // Each pane has its own state. A Flink pane is an actual instance of a defined window for a given key.
   private val nextTimerTimestampStateDescriptor =
     new ValueStateDescriptor[java.lang.Long]("nextTimerTimestampState", classOf[java.lang.Long])
 
-  /**
-    * When an element arrives, set up a processing time trigger to fire after `bufferSizeMillis`.
+  /** When an element arrives, set up a processing time trigger to fire after `bufferSizeMillis`.
     * If a timer is already set, we don't want to create a new one.
     *
     * Late events are treated the same way as regular events; they will still get buffered.
@@ -117,8 +114,7 @@ class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Map[
     TriggerResult.CONTINUE
   }
 
-  /**
-    * When the processing-time timer set up in `onElement` fires, we emit the results without purging the window.
+  /** When the processing-time timer set up in `onElement` fires, we emit the results without purging the window.
     * i.e., we keep the current pre-aggregates/IRs in the window so we can continue aggregating.
     *
     * Note: We don't need to PURGE the window anywhere. Flink will do that automatically when a window expires.
@@ -138,8 +134,7 @@ class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Map[
     TriggerResult.FIRE
   }
 
-  /**
-    * Fire any elements left in the buffer if the window ends before the last processing-time timer is fired.
+  /** Fire any elements left in the buffer if the window ends before the last processing-time timer is fired.
     * This can happen because we are using event-time semantics for the window, and processing-time for the buffer timer.
     *
     * Flink automatically sets up an event timer for the end of the window (+ allowed lateness) as soon as it
@@ -160,8 +155,7 @@ class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Map[
     }
   }
 
-  /**
-    * When a window is being purged (e.g., because it has expired), we delete timers and state.
+  /** When a window is being purged (e.g., because it has expired), we delete timers and state.
     *
     * This function is called immediately after our 'onEventTime' which fires at the end of the window.
     * See 'onEventTime' in Flink's 'WindowOperator.java'.

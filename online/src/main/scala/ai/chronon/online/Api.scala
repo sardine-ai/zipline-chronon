@@ -103,11 +103,10 @@ trait KVStore {
   def get(request: GetRequest): Future[GetResponse] = {
     multiGet(Seq(request))
       .map(_.head)
-      .recover {
-        case e: java.util.NoSuchElementException =>
-          logger.error(
-            s"Failed request against ${request.dataset} check the related task to the upload of the dataset (GroupByUpload or MetadataUpload)")
-          throw e
+      .recover { case e: java.util.NoSuchElementException =>
+        logger.error(
+          s"Failed request against ${request.dataset} check the related task to the upload of the dataset (GroupByUpload or MetadataUpload)")
+        throw e
       }
   }
 
@@ -134,8 +133,7 @@ object StringArrayConverter {
   }
 }
 
-/**
-  * ==== MUTATION vs. EVENT ====
+/** ==== MUTATION vs. EVENT ====
   * Mutation is the general case of an Event
   * Imagine a user impression/view stream - impressions/views are immutable events
   * Imagine a stream of changes to a credit card transaction stream.

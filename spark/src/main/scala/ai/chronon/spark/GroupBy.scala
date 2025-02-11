@@ -162,15 +162,14 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val hops = hopsAggregate(endTimes.min, resolution)
 
     hops
-      .flatMap {
-        case (keys, hopsArrays) =>
-          // filter out if the all the irs are nulls
-          val irs = sawtoothAggregator.computeWindows(hopsArrays, shiftedEndTimes)
-          irs.indices.flatMap { i =>
-            val result = normalizeOrFinalize(irs(i))
-            if (result.forall(_ == null)) None
-            else Some((keys.data :+ tableUtils.partitionSpec.at(endTimes(i)), result))
-          }
+      .flatMap { case (keys, hopsArrays) =>
+        // filter out if the all the irs are nulls
+        val irs = sawtoothAggregator.computeWindows(hopsArrays, shiftedEndTimes)
+        irs.indices.flatMap { i =>
+          val result = normalizeOrFinalize(irs(i))
+          if (result.forall(_ == null)) None
+          else Some((keys.data :+ tableUtils.partitionSpec.at(endTimes(i)), result))
+        }
       }
   }
 
@@ -180,8 +179,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   def snapshotEvents(partitionRange: PartitionRange): DataFrame =
     toDf(snapshotEventsBase(partitionRange), Seq((tableUtils.partitionColumn, StringType)))
 
-  /**
-    * Support for entities with mutations.
+  /** Support for entities with mutations.
     * Three way join between:
     *   Queries: grouped by key and dsOf[ts]
     *   Snapshot[InputDf]: Grouped by key and ds providing a FinalBatchIR to be extended.
@@ -262,25 +260,23 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val queryValuesRDD = queriesByKeys
       .leftOuterJoin(snapshotByKeys)
       .leftOuterJoin(mutationsByKeys)
-      .map {
-        case ((keyWithHash: KeyWithHash, ds: String), ((timeQueries, eodIr), dayMutations)) =>
-          val sortedQueries = timeQueries.map { TimeTuple.getTs }
-          val finalizedEodIr = eodIr.orNull
+      .map { case ((keyWithHash: KeyWithHash, ds: String), ((timeQueries, eodIr), dayMutations)) =>
+        val sortedQueries = timeQueries.map { TimeTuple.getTs }
+        val finalizedEodIr = eodIr.orNull
 
-          val irs = sawtoothAggregator.lambdaAggregateIrMany(tableUtils.partitionSpec.epochMillis(ds),
-                                                             finalizedEodIr,
-                                                             dayMutations.orNull,
-                                                             sortedQueries)
-          ((keyWithHash, ds), (timeQueries, sortedQueries.indices.map(i => normalizeOrFinalize(irs(i)))))
+        val irs = sawtoothAggregator.lambdaAggregateIrMany(tableUtils.partitionSpec.epochMillis(ds),
+                                                           finalizedEodIr,
+                                                           dayMutations.orNull,
+                                                           sortedQueries)
+        ((keyWithHash, ds), (timeQueries, sortedQueries.indices.map(i => normalizeOrFinalize(irs(i)))))
       }
 
     val outputRdd = queryValuesRDD
-      .flatMap {
-        case ((keyHasher, _), (queriesTimeTuple, finalizedAggregations)) =>
-          val queries = queriesTimeTuple.map { TimeTuple.getTs }
-          queries.indices.map { idx =>
-            (keyHasher.data ++ queriesTimeTuple(idx).toArray, finalizedAggregations(idx))
-          }
+      .flatMap { case ((keyHasher, _), (queriesTimeTuple, finalizedAggregations)) =>
+        val queries = queriesTimeTuple.map { TimeTuple.getTs }
+        queries.indices.map { idx =>
+          (keyHasher.data ++ queriesTimeTuple(idx).toArray, finalizedAggregations(idx))
+        }
       }
     toDf(outputRdd, Seq(Constants.TimeColumn -> LongType, tableUtils.partitionColumn -> StringType))
   }
@@ -331,12 +327,11 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val headStartsWithIrs = queriesByHeadStarts.keys
       .groupByKey()
       .leftOuterJoin(hopsRdd)
-      .flatMap {
-        case (keys, (headStarts, hopsOpt)) =>
-          val headStartsArray = headStarts.toArray
-          util.Arrays.sort(headStartsArray)
-          val headStartIrs = sawtoothAggregator.computeWindows(hopsOpt.orNull, headStartsArray)
-          headStartsArray.indices.map { i => (keys, headStartsArray(i)) -> headStartIrs(i) }
+      .flatMap { case (keys, (headStarts, hopsOpt)) =>
+        val headStartsArray = headStarts.toArray
+        util.Arrays.sort(headStartsArray)
+        val headStartIrs = sawtoothAggregator.computeWindows(hopsOpt.orNull, headStartsArray)
+        headStartsArray.indices.map { i => (keys, headStartsArray(i)) -> headStartIrs(i) }
       }
 
     // this can be fused into hop generation
@@ -732,23 +727,22 @@ object GroupBy {
         logger.info(s"Group By ranges to compute: ${stepRanges.map {
           _.toString()
         }.pretty}")
-        stepRanges.zipWithIndex.foreach {
-          case (range, index) =>
-            logger.info(s"Computing group by for range: $range [${index + 1}/${stepRanges.size}]")
-            val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)
-            val outputDf = groupByConf.dataModel match {
-              // group by backfills have to be snapshot only
-              case Entities => groupByBackfill.snapshotEntities
-              case Events   => groupByBackfill.snapshotEvents(range)
-            }
-            if (!groupByConf.hasDerivations) {
-              outputDf.save(outputTable, tableProps)
-            } else {
-              val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns)
-              val result = outputDf.select(finalOutputColumns: _*)
-              result.save(outputTable, tableProps)
-            }
-            logger.info(s"Wrote to table $outputTable, into partitions: $range")
+        stepRanges.zipWithIndex.foreach { case (range, index) =>
+          logger.info(s"Computing group by for range: $range [${index + 1}/${stepRanges.size}]")
+          val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)
+          val outputDf = groupByConf.dataModel match {
+            // group by backfills have to be snapshot only
+            case Entities => groupByBackfill.snapshotEntities
+            case Events   => groupByBackfill.snapshotEvents(range)
+          }
+          if (!groupByConf.hasDerivations) {
+            outputDf.save(outputTable, tableProps)
+          } else {
+            val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns)
+            val result = outputDf.select(finalOutputColumns: _*)
+            result.save(outputTable, tableProps)
+          }
+          logger.info(s"Wrote to table $outputTable, into partitions: $range")
         }
         logger.info(s"Wrote to table $outputTable for range: $groupByUnfilledRange")
 
@@ -760,8 +754,8 @@ object GroupBy {
     if (exceptions.nonEmpty) {
       val length = exceptions.length
       val fullMessage = exceptions.zipWithIndex
-        .map {
-          case (message, index) => s"[${index + 1}/$length exceptions]\n$message"
+        .map { case (message, index) =>
+          s"[${index + 1}/$length exceptions]\n$message"
         }
         .mkString("\n")
       throw new Exception(fullMessage)

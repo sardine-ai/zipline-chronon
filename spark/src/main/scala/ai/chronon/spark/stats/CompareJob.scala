@@ -35,8 +35,7 @@ import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-/**
-  * Compare Job for comparing data between joins, staging queries and raw queries.
+/** Compare Job for comparing data between joins, staging queries and raw queries.
   * Leverage the compare module for computation between sources.
   */
 class CompareJob(
@@ -116,8 +115,7 @@ class CompareJob(
 object CompareJob {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  /**
-    * Extract the discrepancy metrics (like missing records, data mismatch) from the hourly compare metrics, consolidate
+  /** Extract the discrepancy metrics (like missing records, data mismatch) from the hourly compare metrics, consolidate
     * them into aggregations by day, which format is specified in the `partitionSpec`
     *
     * @param metrics contains hourly aggregations of compare metrics of the generated df and expected df
@@ -128,30 +126,29 @@ object CompareJob {
     metrics.series
       .groupBy(t => partitionSpec.at(t._1))
       .mapValues(_.map(_._2))
-      .map {
-        case (day, values) =>
-          val aggValue = values.map { aggMetrics =>
-            val leftNullSum: Long = aggMetrics
-              .filterKeys(_.endsWith("left_null_sum"))
-              .values
-              .map(_.asInstanceOf[Long])
-              .reduceOption(_ max _)
-              .getOrElse(0)
-            val rightNullSum: Long = aggMetrics
-              .filterKeys(_.endsWith("right_null_sum"))
-              .values
-              .map(_.asInstanceOf[Long])
-              .reduceOption(_ max _)
-              .getOrElse(0)
-            val mismatchSum: Long = aggMetrics
-              .filterKeys(_.endsWith("mismatch_sum"))
-              .values
-              .map(_.asInstanceOf[Long])
-              .reduceOption(_ max _)
-              .getOrElse(0)
-            leftNullSum + rightNullSum + mismatchSum
-          }.sum
-          (day, aggValue)
+      .map { case (day, values) =>
+        val aggValue = values.map { aggMetrics =>
+          val leftNullSum: Long = aggMetrics
+            .filterKeys(_.endsWith("left_null_sum"))
+            .values
+            .map(_.asInstanceOf[Long])
+            .reduceOption(_ max _)
+            .getOrElse(0)
+          val rightNullSum: Long = aggMetrics
+            .filterKeys(_.endsWith("right_null_sum"))
+            .values
+            .map(_.asInstanceOf[Long])
+            .reduceOption(_ max _)
+            .getOrElse(0)
+          val mismatchSum: Long = aggMetrics
+            .filterKeys(_.endsWith("mismatch_sum"))
+            .values
+            .map(_.asInstanceOf[Long])
+            .reduceOption(_ max _)
+            .getOrElse(0)
+          leftNullSum + rightNullSum + mismatchSum
+        }.sum
+        (day, aggValue)
       }
       .toList
       .filter(_._2 > 0)
@@ -165,9 +162,8 @@ object CompareJob {
         "No discrepancies found for data mismatches and missing counts. " +
           "It is highly recommended to explore the full metrics.")
     } else {
-      consolidatedData.foreach {
-        case (date, mismatchCount) =>
-          logger.info(s"Found $mismatchCount mismatches on date '$date'")
+      consolidatedData.foreach { case (date, mismatchCount) =>
+        logger.info(s"Found $mismatchCount mismatches on date '$date'")
       }
     }
     consolidatedData

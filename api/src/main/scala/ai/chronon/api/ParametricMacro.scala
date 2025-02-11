@@ -33,14 +33,13 @@ case class ParametricMacro(value: String, func: Map[String, String] => String) {
       fragments.append(str.substring(startIndex, m.start))
       val argMap = Option(m.group(1)).map { args =>
         val inner = args.substring(1, args.length - 1)
-        val parsed = inner.split(",").foldLeft(Seq.empty[String]) {
-          case (argSeq, token) =>
-            assert(token.count(_ == '=') <= 1)
-            if (token.contains("=")) {
-              argSeq :+ token
-            } else {
-              argSeq.tail :+ (argSeq.head + "," + token)
-            }
+        val parsed = inner.split(",").foldLeft(Seq.empty[String]) { case (argSeq, token) =>
+          assert(token.count(_ == '=') <= 1)
+          if (token.contains("=")) {
+            argSeq :+ token
+          } else {
+            argSeq.tail :+ (argSeq.head + "," + token)
+          }
         }
         logger.info(parsed.mkString(","))
         parsed.map(_.split("=").map(_.trim)).map(x => x(0) -> x(1)).toMap

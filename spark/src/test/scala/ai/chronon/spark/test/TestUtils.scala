@@ -431,8 +431,7 @@ object TestUtils {
     joinConf
   }
 
-  /**
-    * This test group by is trying to get the price of listings a user viewed in the last 7 days. The source
+  /** This test group by is trying to get the price of listings a user viewed in the last 7 days. The source
     * of groupby is a Join source which computes the the last accuracy price for a given listing.
     *
     * @return a group by with a join source

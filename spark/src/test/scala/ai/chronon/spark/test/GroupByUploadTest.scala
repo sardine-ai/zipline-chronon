@@ -315,9 +315,8 @@ class GroupByUploadTest extends AnyFlatSpec {
     )
     logger.info(gson.toJson(categoryRatingResults))
     logger.info(gson.toJson(expectedCategoryRatings))
-    categoryRatingResults.zip(expectedCategoryRatings).foreach {
-      case (actual, expected) =>
-        assertEquals(actual, expected)
+    categoryRatingResults.zip(expectedCategoryRatings).foreach { case (actual, expected) =>
+      assertEquals(actual, expected)
     }
   }
 }

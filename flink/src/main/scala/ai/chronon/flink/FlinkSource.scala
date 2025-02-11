@@ -6,8 +6,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 // TODO deprecate this in favor of Api.readTopic + Api.streamDecoder
 abstract class FlinkSource[T] extends Serializable {
 
-  /**
-    * Return a Flink DataStream for the given topic and groupBy.
+  /** Return a Flink DataStream for the given topic and groupBy.
     *
     * When implementing a source, you should also make a conscious decision about your allowed lateness strategy.
     */

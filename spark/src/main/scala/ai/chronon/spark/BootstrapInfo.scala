@@ -141,12 +141,12 @@ object BootstrapInfo {
       val projections = joinConf.derivationsScala.derivationProjection(baseDf.columns)
       val projectionMap = projections.toMap
       val derivedDf = baseDf.select(
-        projections.map {
-          case (name, expression) => expr(expression).as(name)
+        projections.map { case (name, expression) =>
+          expr(expression).as(name)
         }: _*
       )
-      SparkConversions.toChrononSchema(derivedDf.schema).map {
-        case (name, dataType) => (StructField(name, dataType), projectionMap(name))
+      SparkConversions.toChrononSchema(derivedDf.schema).map { case (name, dataType) =>
+        (StructField(name, dataType), projectionMap(name))
       }
     } else {
       Array.empty[(StructField, String)]
@@ -222,8 +222,8 @@ object BootstrapInfo {
 
         val valueFields = SparkConversions
           .toChrononSchema(schema)
-          .filterNot {
-            case (name, _) => part.keys(joinConf, tableUtils.partitionColumn).contains(name) || name == "ts"
+          .filterNot { case (name, _) =>
+            part.keys(joinConf, tableUtils.partitionColumn).contains(name) || name == "ts"
           }
           .map(field => StructField(field._1, field._2))
 
@@ -250,16 +250,15 @@ object BootstrapInfo {
       if (derivedSchema.isEmpty) {
         joinPartMetadata.valueSchema.map { structField => structField -> Seq(structField) }.toMap
       } else {
-        derivedSchema.flatMap {
-          case (derivedField, expression) =>
-            // Check if the expression contains any fields from the join part by string matching.
-            val identifiers = identifierRegex.findAllIn(expression).toSet
-            val requiredBaseColumns = joinPartMetadata.valueSchema.filter(f => identifiers(f.name))
-            if (requiredBaseColumns.nonEmpty) {
-              Some(derivedField -> requiredBaseColumns.toSeq)
-            } else {
-              None
-            }
+        derivedSchema.flatMap { case (derivedField, expression) =>
+          // Check if the expression contains any fields from the join part by string matching.
+          val identifiers = identifierRegex.findAllIn(expression).toSet
+          val requiredBaseColumns = joinPartMetadata.valueSchema.filter(f => identifiers(f.name))
+          if (requiredBaseColumns.nonEmpty) {
+            Some(derivedField -> requiredBaseColumns.toSeq)
+          } else {
+            None
+          }
         }.toMap
       }
     }
@@ -329,9 +328,8 @@ object BootstrapInfo {
     logger.info(s"""Bootstrap Info for Log Bootstraps
          |Log Hashes: ${logHashes.keys.prettyInline}
          |""".stripMargin)
-    tableHashes.foreach {
-      case (hash, (schema, _)) =>
-        logger.info(s"""Bootstrap Info for Table Bootstraps
+    tableHashes.foreach { case (hash, (schema, _)) =>
+      logger.info(s"""Bootstrap Info for Table Bootstraps
            |Table Hash: $hash
            |Bootstrap Schema:
            |${stringify(schema)}

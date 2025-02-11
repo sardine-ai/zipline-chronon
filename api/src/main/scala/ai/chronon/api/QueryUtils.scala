@@ -27,8 +27,8 @@ object QueryUtils {
   def buildSelects(selects: Map[String, String], fillIfAbsent: Option[Map[String, String]] = None): Seq[String] = {
 
     def toProjections(m: Map[String, String]): Seq[String] =
-      m.map {
-        case (col, expr) => if ((expr == col) || (expr == null)) s"`$col`" else s"$expr as `$col`"
+      m.map { case (col, expr) =>
+        if ((expr == col) || (expr == null)) s"`$col`" else s"$expr as `$col`"
       }.toSeq
 
     (Option(selects), fillIfAbsent) match {

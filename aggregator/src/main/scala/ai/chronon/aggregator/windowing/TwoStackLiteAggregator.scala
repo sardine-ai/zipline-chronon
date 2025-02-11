@@ -46,11 +46,10 @@ class TwoStackLiteAggregator(inputSchema: StructType,
   val perWindowAggregators: Array[PerWindowAggregator] = allParts.iterator.zipWithIndex.toArray
     .filter { case (p, _) => p.window != null }
     .groupBy { case (p, _) => p.window }
-    .map {
-      case (w, ps) =>
-        val parts = ps.map(_._1)
-        val idxs = ps.map(_._2)
-        PerWindowAggregator(w, new RowAggregator(inputSchemaTuples, parts), idxs)
+    .map { case (w, ps) =>
+      val parts = ps.map(_._1)
+      val idxs = ps.map(_._2)
+      PerWindowAggregator(w, new RowAggregator(inputSchemaTuples, parts), idxs)
     }
     .toArray
 
@@ -162,58 +161,57 @@ class TwoStackLiteAggregator(inputSchema: StructType,
   }
 }
 
-/**
-    A sliding window is basically a queue. Whenever a new element is added
-    to its tail, an older element is to be removed from its head.
-
-    We don't know an easy O(1) way of maintaining maximum in a queue.
-    BUT: we _do_ know:
-
-        1. An easy O(1) way to maintain maximum in a _stack_:
-
-            Whenever we pop, we do it as usual for a stack.
-
-            Whenever we push, we push not just a value but a Pair(value, currentMaxValue).
-            whereas currentMaxValue is the maximum of value and currentMaxValue
-            of the stack's previous top element.
-
-            This ensures that currentMaxValue on the stack's top always contains maximum
-            across the whole stack. And that maximum is always at our service (at the top).
-
-            Example:
-
-                Push(3):    {3,3}
-
-                Push(1):    {1,3}
-                            {3,3}
-
-                Push(5):    {5,5}
-                            {1,3}
-                            {3,3}
-
-                Pop():      {1,3}
-                            {3,3}
-
-                Pop():      {3,3}
-
-                Push(6):    {6,6}
-                            {3,3}
-
-        2. An easy way of building a queue out of two stacks.
-
-            We create stack1 and stack2.
-
-            Whenever we enqueue, we always enqueue to stack2 (and maintain maximum in it,
-            as described above).
-
-            Whenever we dequeue, we first check if stack1 is empty.
-                If it is empty, then we put everything from stack2 into stack1 (while again
-                maintaining maximum in it). This process reverses the order of elements
-                ("the last shall be first and the first last") - and that's what we need.
-            Then we pop an element from stack1 and return it.
-
-            Whenever we need to know the current maximum in the queue,
-            we simply return maximum of both stacks.
-Courtesy:
-https://leetcode.com/problems/sliding-window-maximum/solutions/2029522/C-or-Elegant-solution-with-_two_-stacks-or-O(n)-or-Detailed-explanation-or-Easy-to-remember/
+/**    A sliding window is basically a queue. Whenever a new element is added
+  *    to its tail, an older element is to be removed from its head.
+  *
+  *    We don't know an easy O(1) way of maintaining maximum in a queue.
+  *    BUT: we _do_ know:
+  *
+  *        1. An easy O(1) way to maintain maximum in a _stack_:
+  *
+  *            Whenever we pop, we do it as usual for a stack.
+  *
+  *            Whenever we push, we push not just a value but a Pair(value, currentMaxValue).
+  *            whereas currentMaxValue is the maximum of value and currentMaxValue
+  *            of the stack's previous top element.
+  *
+  *            This ensures that currentMaxValue on the stack's top always contains maximum
+  *            across the whole stack. And that maximum is always at our service (at the top).
+  *
+  *            Example:
+  *
+  *                Push(3):    {3,3}
+  *
+  *                Push(1):    {1,3}
+  *                            {3,3}
+  *
+  *                Push(5):    {5,5}
+  *                            {1,3}
+  *                            {3,3}
+  *
+  *                Pop():      {1,3}
+  *                            {3,3}
+  *
+  *                Pop():      {3,3}
+  *
+  *                Push(6):    {6,6}
+  *                            {3,3}
+  *
+  *        2. An easy way of building a queue out of two stacks.
+  *
+  *            We create stack1 and stack2.
+  *
+  *            Whenever we enqueue, we always enqueue to stack2 (and maintain maximum in it,
+  *            as described above).
+  *
+  *            Whenever we dequeue, we first check if stack1 is empty.
+  *                If it is empty, then we put everything from stack2 into stack1 (while again
+  *                maintaining maximum in it). This process reverses the order of elements
+  *                ("the last shall be first and the first last") - and that's what we need.
+  *            Then we pop an element from stack1 and return it.
+  *
+  *            Whenever we need to know the current maximum in the queue,
+  *            we simply return maximum of both stacks.
+  * Courtesy:
+  * https://leetcode.com/problems/sliding-window-maximum/solutions/2029522/C-or-Elegant-solution-with-_two_-stacks-or-O(n)-or-Detailed-explanation-or-Easy-to-remember/
   */

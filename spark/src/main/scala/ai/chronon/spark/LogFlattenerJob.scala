@@ -41,8 +41,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-/**
-  * Purpose of LogFlattenerJob is to unpack serialized Avro data from online requests and flatten each field
+/** Purpose of LogFlattenerJob is to unpack serialized Avro data from online requests and flatten each field
   * (both keys and values) into individual columns and save to an offline "flattened" log table.
   *
   * Steps:
@@ -193,8 +192,8 @@ class LogFlattenerJob(session: SparkSession,
   private def buildTableProperties(schemaMap: Map[String, String]): Map[String, String] = {
     def escape(str: String): String = str.replace("""\""", """\\""")
     (LogFlattenerJob.readSchemaTableProperties(tableUtils, joinConf.metaData.loggedTable) ++ schemaMap)
-      .map {
-        case (key, value) => (escape(s"${Constants.SchemaHash}_$key"), escape(value))
+      .map { case (key, value) =>
+        (escape(s"${Constants.SchemaHash}_$key"), escape(value))
       }
   }
 
@@ -257,8 +256,8 @@ object LogFlattenerJob {
     val curTblProps = tableUtils.getTableProperties(logTable).getOrElse(Map.empty)
     curTblProps
       .filterKeys(_.startsWith(Constants.SchemaHash))
-      .map {
-        case (key, value) => (key.substring(Constants.SchemaHash.length + 1), value)
+      .map { case (key, value) =>
+        (key.substring(Constants.SchemaHash.length + 1), value)
       }
   }
 }

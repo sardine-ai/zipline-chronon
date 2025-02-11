@@ -68,13 +68,12 @@ class MetadataStore(kvStore: KVStore,
     kvStore
       .getString(confKey, dataset, timeoutMillis)
       .map(conf => ThriftJsonCodec.fromJsonStr[T](conf, false, clazz))
-      .recoverWith {
-        case th: Throwable =>
-          Failure(
-            new RuntimeException(
-              s"Couldn't fetch ${clazz.getName} for key $confKey. Perhaps metadata upload wasn't successful.",
-              th
-            ))
+      .recoverWith { case th: Throwable =>
+        Failure(
+          new RuntimeException(
+            s"Couldn't fetch ${clazz.getName} for key $confKey. Perhaps metadata upload wasn't successful.",
+            th
+          ))
       }
   }
 
@@ -83,13 +82,12 @@ class MetadataStore(kvStore: KVStore,
     val dataset = NameByTeamEndPointName
     kvStore
       .getStringArray(team, dataset, timeoutMillis)
-      .recoverWith {
-        case th: Throwable =>
-          Failure(
-            new RuntimeException(
-              s"Couldn't fetch ${clazz.getName} for key $team. Perhaps metadata upload wasn't successful.",
-              th
-            ))
+      .recoverWith { case th: Throwable =>
+        Failure(
+          new RuntimeException(
+            s"Couldn't fetch ${clazz.getName} for key $team. Perhaps metadata upload wasn't successful.",
+            th
+          ))
       }
   }
 
@@ -97,11 +95,10 @@ class MetadataStore(kvStore: KVStore,
     new TTLCache[String, Try[Seq[String]]](
       { team =>
         getEntityListByTeam[GroupBy]("group_bys/" + team)
-          .recover {
-            case e: java.util.NoSuchElementException =>
-              logger.error(
-                s"Failed to fetch conf for team $team at group_bys/$team, please check metadata upload to make sure the metadata has been uploaded")
-              throw e
+          .recover { case e: java.util.NoSuchElementException =>
+            logger.error(
+              s"Failed to fetch conf for team $team at group_bys/$team, please check metadata upload to make sure the metadata has been uploaded")
+            throw e
           }
       },
       { team => Metrics.Context(environment = "group_by.list.fetch", groupBy = team) }
@@ -112,11 +109,10 @@ class MetadataStore(kvStore: KVStore,
     new TTLCache[String, Try[Seq[String]]](
       { team =>
         getEntityListByTeam[Join]("joins/" + team)
-          .recover {
-            case e: java.util.NoSuchElementException =>
-              logger.error(
-                s"Failed to fetch conf for team $team at joins/$team, please check metadata upload to make sure the metadata has been uploaded")
-              throw e
+          .recover { case e: java.util.NoSuchElementException =>
+            logger.error(
+              s"Failed to fetch conf for team $team at joins/$team, please check metadata upload to make sure the metadata has been uploaded")
+            throw e
           }
       },
       { team => Metrics.Context(environment = "join.list.fetch", groupBy = team) }
@@ -127,11 +123,10 @@ class MetadataStore(kvStore: KVStore,
     { name =>
       val startTimeMs = System.currentTimeMillis()
       val result = getConf[Join](s"joins/$name")
-        .recover {
-          case e: java.util.NoSuchElementException =>
-            logger.error(
-              s"Failed to fetch conf for join $name at joins/$name, please check metadata upload to make sure the join metadata for $name has been uploaded")
-            throw e
+        .recover { case e: java.util.NoSuchElementException =>
+          logger.error(
+            s"Failed to fetch conf for join $name at joins/$name, please check metadata upload to make sure the join metadata for $name has been uploaded")
+          throw e
         }
         .map(new JoinOps(_))
       val context =
@@ -158,10 +153,9 @@ class MetadataStore(kvStore: KVStore,
   def getSchemaFromKVStore(dataset: String, key: String): AvroCodec = {
     kvStore
       .getString(key, dataset, timeoutMillis)
-      .recover {
-        case e: java.util.NoSuchElementException =>
-          logger.error(s"Failed to retrieve $key for $dataset. Is it possible that hasn't been uploaded?")
-          throw e
+      .recover { case e: java.util.NoSuchElementException =>
+        logger.error(s"Failed to retrieve $key for $dataset. Is it possible that hasn't been uploaded?")
+        throw e
       }
       .map(AvroCodec.of(_))
       .get

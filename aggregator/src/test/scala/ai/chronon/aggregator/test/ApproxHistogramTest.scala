@@ -156,11 +156,10 @@ class ApproxHistogramTest extends AnyFlatSpec {
 
     (1L until values.head._2).foreach(_ => ir = agg.update(ir, values.head._1))
 
-    values.tail.foreach({
-      case (k, v) =>
-        (1L to v).foreach(_ => {
-          ir = agg.update(ir, k)
-        })
+    values.tail.foreach({ case (k, v) =>
+      (1L to v).foreach(_ => {
+        ir = agg.update(ir, k)
+      })
     })
 
     ir

@@ -112,9 +112,8 @@ object Driver {
 
     val startPartitionOverride: ScallopOption[String] =
       opt[String](required = false,
-                  descr =
-                    "Start date to compute offline backfill, " +
-                      "this start date will override start partition specified in conf.")
+                  descr = "Start date to compute offline backfill, " +
+                    "this start date will override start partition specified in conf.")
 
     private val endDateInternal: ScallopOption[String] =
       opt[String](name = "end-date",
@@ -184,10 +183,9 @@ object Driver {
           additionalConfig = additionalConfs
         )
       if (localTableMapping.nonEmpty) {
-        localTableMapping.foreach {
-          case (table, filePath) =>
-            val file = new File(filePath)
-            LocalDataLoader.loadDataFileAsTable(file, session, table)
+        localTableMapping.foreach { case (table, filePath) =>
+          val file = new File(filePath)
+          LocalDataLoader.loadDataFileAsTable(file, session, table)
         }
       } else if (localDataPath.isDefined) {
         val dir = new File(localDataPath())
@@ -648,8 +646,8 @@ object Driver {
       // trigger creates of the datasets before we proceed with writes
       acceptedEndPoints.foreach(e => args.metaDataStore.create(e))
 
-      val putRequestsSeq: Seq[Future[scala.collection.Seq[Boolean]]] = kvMap.toSeq.map {
-        case (endPoint, kvMap) => args.metaDataStore.put(kvMap, endPoint)
+      val putRequestsSeq: Seq[Future[scala.collection.Seq[Boolean]]] = kvMap.toSeq.map { case (endPoint, kvMap) =>
+        args.metaDataStore.put(kvMap, endPoint)
       }
       val res = putRequestsSeq.flatMap(putRequests => Await.result(putRequests, 1.hour))
       logger.info(
@@ -771,15 +769,14 @@ object Driver {
       val possiblePaths = Seq(path, tail, SparkFiles.get(tail))
       val statuses = possiblePaths.map(p => p -> new File(p).exists())
 
-      val messages = statuses.map {
-        case (file, present) =>
-          val suffix = if (present) {
-            val fileSize = Files.size(Paths.get(file))
-            s"exists ${FileUtils.byteCountToDisplaySize(fileSize)}"
-          } else {
-            "is not found"
-          }
-          s"$file $suffix"
+      val messages = statuses.map { case (file, present) =>
+        val suffix = if (present) {
+          val fileSize = Files.size(Paths.get(file))
+          s"exists ${FileUtils.byteCountToDisplaySize(fileSize)}"
+        } else {
+          "is not found"
+        }
+        s"$file $suffix"
       }
       logger.info(s"File Statuses:\n  ${messages.mkString("\n  ")}")
       statuses.find(_._2 == true).map(_._1)

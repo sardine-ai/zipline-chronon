@@ -22,8 +22,7 @@ import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 
-/**
-  * Simple Aggregator class to generate snapshots from mutations based on the
+/** Simple Aggregator class to generate snapshots from mutations based on the
   * latest mutation Ts.
   */
 class SnapshotAggregator(inputSchema: StructType,

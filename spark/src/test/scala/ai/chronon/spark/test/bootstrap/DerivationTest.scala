@@ -395,16 +395,15 @@ class DerivationTest extends AnyFlatSpec {
           )
         )),
       joinParts = Seq(joinPart),
-      derivations =
-        (if (wildcardSelection) {
-           Seq(Derivation("*", "*"))
-         } else {
-           Seq.empty
-         }) :+ Builders.Derivation(
-          name = "user_amount_30d_minus_15d",
-          expression =
-            "unit_test_user_transactions_amount_dollars_sum_30d - unit_test_user_transactions_amount_dollars_sum_15d"
-        ),
+      derivations = (if (wildcardSelection) {
+                       Seq(Derivation("*", "*"))
+                     } else {
+                       Seq.empty
+                     }) :+ Builders.Derivation(
+        name = "user_amount_30d_minus_15d",
+        expression =
+          "unit_test_user_transactions_amount_dollars_sum_30d - unit_test_user_transactions_amount_dollars_sum_15d"
+      ),
       rowIds = Seq("request_id"),
       metaData = Builders.MetaData(name = "test.derivations_logging", namespace = namespace, team = "chronon")
     )

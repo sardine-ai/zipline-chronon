@@ -1186,8 +1186,7 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
     assertFalse(computed.isEmpty)
   }
 
-  /**
-    * Create a event table as left side, 3 group bys as right side.
+  /** Create a event table as left side, 3 group bys as right side.
     * Generate data using DataFrameGen and save to the tables.
     * Create a join with only one join part selected.
     * Run computeJoin().

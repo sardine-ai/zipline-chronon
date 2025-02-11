@@ -110,9 +110,7 @@ class InMemoryStream {
     input.toDF
   }
 
-  /**
-    *
-    * @param spark SparkSession
+  /** @param spark SparkSession
     * @param inputDf Input dataframe of raw event rows
     * @param groupBy GroupBy
     * @return Array[(Array[Any], Array[Byte]) where Array[Any] is the list of keys and Array[Byte]

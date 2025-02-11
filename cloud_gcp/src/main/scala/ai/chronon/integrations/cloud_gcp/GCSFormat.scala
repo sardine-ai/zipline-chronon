@@ -18,8 +18,7 @@ case class GCS(sourceUri: String, fileFormat: String) extends Format {
 
   override def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]] = {
 
-    /**
-      * Given:
+    /** Given:
       *  hdfs://<host>:<port>/ path/ to/ partition/ a=1/ b=hello/ c=3.14
       *  hdfs://<host>:<port>/ path/ to/ partition/ a=2/ b=world/ c=6.28
       *
@@ -36,7 +35,6 @@ case class GCS(sourceUri: String, fileFormat: String) extends Format {
       *      Partition(
       *        values = Row(2, "world", 6.28),
       *        path = "hdfs://<host>:<port>/ path/ to/ partition/ a=2/ b=world/ c=6.28")))
-      *
       */
     val partitionSpec = sparkSession.read
       .format(fileFormat)
@@ -66,12 +64,10 @@ case class GCS(sourceUri: String, fileFormat: String) extends Format {
 
     roundTripped
       .map(part =>
-        partitionColumns.fields.iterator.zipWithIndex.map {
-
-          case (field, idx) =>
-            val fieldName = field.name
-            val fieldValue = part.get(idx)
-            fieldName -> fieldValue.toString // Just going to cast this as a string.
+        partitionColumns.fields.iterator.zipWithIndex.map { case (field, idx) =>
+          val fieldName = field.name
+          val fieldValue = part.get(idx)
+          fieldName -> fieldValue.toString // Just going to cast this as a string.
 
         }.toMap)
   }

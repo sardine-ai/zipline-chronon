@@ -15,7 +15,10 @@ import scala.jdk.CollectionConverters._
 
 class MockSchemaRegistrySchemaProvider(conf: Map[String, String], mockSchemaRegistryClient: MockSchemaRegistryClient)
     extends SchemaRegistrySchemaProvider(conf) {
-  override def buildSchemaRegistryClient(schemeString: String, registryHost: String, maybePortString: Option[String]): MockSchemaRegistryClient = mockSchemaRegistryClient
+  override def buildSchemaRegistryClient(schemeString: String,
+                                         registryHost: String,
+                                         maybePortString: Option[String]): MockSchemaRegistryClient =
+    mockSchemaRegistryClient
 }
 
 class SchemaRegistrySchemaProviderSpec extends AnyFlatSpec {

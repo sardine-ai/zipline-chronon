@@ -106,19 +106,17 @@ class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable
       .rdd
       .keyBy(keyBuilder)
       .aggregateByKey(sawtoothOnlineAggregator.init)( // shuffle point
-        seqOp = {
-          case (batchIr, row) =>
-            sawtoothOnlineAggregator.update(batchIr, SparkConversions.toChrononRow(row, groupBy.tsIndex))
+        seqOp = { case (batchIr, row) =>
+          sawtoothOnlineAggregator.update(batchIr, SparkConversions.toChrononRow(row, groupBy.tsIndex))
         },
         combOp = sawtoothOnlineAggregator.merge
       )
       .mapValues(sawtoothOnlineAggregator.normalizeBatchIr)
-      .map {
-        case (keyWithHash: KeyWithHash, finalBatchIr: FinalBatchIr) =>
-          val irArray = new Array[Any](2)
-          irArray.update(0, finalBatchIr.collapsed)
-          irArray.update(1, finalBatchIr.tailHops)
-          keyWithHash.data -> irArray
+      .map { case (keyWithHash: KeyWithHash, finalBatchIr: FinalBatchIr) =>
+        val irArray = new Array[Any](2)
+        irArray.update(0, finalBatchIr.collapsed)
+        irArray.update(1, finalBatchIr.tailHops)
+        keyWithHash.data -> irArray
       }
     KvRdd(outputRdd, groupBy.keySchema, irSchema)
   }

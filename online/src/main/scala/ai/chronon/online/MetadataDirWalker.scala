@@ -67,8 +67,7 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
       }
   }
 
-  /**
-    * Iterate over the list of files and extract the key value pairs for each file
+  /** Iterate over the list of files and extract the key value pairs for each file
     * @return Map of endpoint -> (Map of key -> List of values)
     *         e.g. (
     *            CHRONON_METADATA_BY_TEAM -> (team -> List("join1", "join2")),

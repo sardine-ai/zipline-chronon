@@ -111,11 +111,10 @@ object ObservabilityDemo {
       driftSeries = Await.result(driftSeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
     }
 
-    val (nulls, totals) = driftSeries.iterator.foldLeft(0 -> 0) {
-      case ((nulls, total), s) =>
-        val currentNulls = s.getPercentileDriftSeries.iterator().toScala.count(_ == null)
-        val currentCount = s.getPercentileDriftSeries.size()
-        (nulls + currentNulls, total + currentCount)
+    val (nulls, totals) = driftSeries.iterator.foldLeft(0 -> 0) { case ((nulls, total), s) =>
+      val currentNulls = s.getPercentileDriftSeries.iterator().toScala.count(_ == null)
+      val currentCount = s.getPercentileDriftSeries.size()
+      (nulls + currentNulls, total + currentCount)
     }
 
     logger.info(s"""
@@ -136,15 +135,14 @@ object ObservabilityDemo {
       summarySeries = Await.result(summarySeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
     }
 
-    val (summaryNulls, summaryTotals) = summarySeries.iterator.foldLeft(0 -> 0) {
-      case ((nulls, total), s) =>
-        if (s.getPercentiles == null) {
-          (nulls + 1) -> (total + 1)
-        } else {
-          val currentNulls = s.getPercentiles.iterator().toScala.count(_ == null)
-          val currentCount = s.getPercentiles.size()
-          (nulls + currentNulls, total + currentCount)
-        }
+    val (summaryNulls, summaryTotals) = summarySeries.iterator.foldLeft(0 -> 0) { case ((nulls, total), s) =>
+      if (s.getPercentiles == null) {
+        (nulls + 1) -> (total + 1)
+      } else {
+        val currentNulls = s.getPercentiles.iterator().toScala.count(_ == null)
+        val currentCount = s.getPercentiles.size()
+        (nulls + currentNulls, total + currentCount)
+      }
     }
 
     val server = new DataServer(driftSeries, summarySeries)

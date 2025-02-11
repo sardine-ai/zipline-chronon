@@ -66,8 +66,7 @@ class FetcherBase(kvStore: KVStore,
     with FetcherCache {
   import FetcherBase._
 
-  /**
-    * A groupBy request is split into batchRequest and optionally a streamingRequest. This method decodes bytes
+  /** A groupBy request is split into batchRequest and optionally a streamingRequest. This method decodes bytes
     * (of the appropriate avro schema) into chronon rows aggregates further if necessary.
     */
   private def constructGroupByResponse(batchResponses: BatchResponses,
@@ -244,8 +243,7 @@ class FetcherBase(kvStore: KVStore,
                          ((responseBytes.toDouble / totalResponseBytes.toDouble) * latencyMillis).toLong)
   }
 
-  /**
-    * Get the latest serving information based on a batch response.
+  /** Get the latest serving information based on a batch response.
     *
     * The underlying metadata store used to store the latest GroupByServingInfoParsed will be updated if needed.
     *
@@ -273,8 +271,7 @@ class FetcherBase(kvStore: KVStore,
     }
   }
 
-  /**
-    * If `batchEndTs` is ahead of `groupByServingInfo.batchEndTsMillis`, update the MetadataStore with the new
+  /** If `batchEndTs` is ahead of `groupByServingInfo.batchEndTsMillis`, update the MetadataStore with the new
     * timestamp. In practice, this means that new batch data has landed, so future kvstore requests should fetch
     * streaming data after the new batchEndTsMillis.
     *
@@ -290,11 +287,10 @@ class FetcherBase(kvStore: KVStore,
                      |Forcing an update of schema.""".stripMargin)
       getGroupByServingInfo
         .force(name)
-        .recover {
-          case ex: Throwable =>
-            logger.error(s"Couldn't update GroupByServingInfo of $name. Proceeding with the old one.", ex)
-            ex.printStackTrace()
-            groupByServingInfo
+        .recover { case ex: Throwable =>
+          logger.error(s"Couldn't update GroupByServingInfo of $name. Proceeding with the old one.", ex)
+          ex.printStackTrace()
+          groupByServingInfo
         }
         .get
     } else {
@@ -346,9 +342,8 @@ class FetcherBase(kvStore: KVStore,
               // TODO: only gets hit in cli path - make this code path just use avro schema to decode keys directly in cli
               // TODO: Remove this code block
               case ex: Exception =>
-                val castedKeys = groupByServingInfo.keyChrononSchema.fields.map {
-                  case StructField(name, typ) =>
-                    name -> ColumnAggregator.castTo(request.keys.getOrElse(name, null), typ)
+                val castedKeys = groupByServingInfo.keyChrononSchema.fields.map { case StructField(name, typ) =>
+                  name -> ColumnAggregator.castTo(request.keys.getOrElse(name, null), typ)
                 }.toMap
                 try {
                   batchKeyBytes =
@@ -430,101 +425,99 @@ class FetcherBase(kvStore: KVStore,
             .flatMap(_.get.map(v => Option(v.bytes).map(_.length).getOrElse(0)))
             .sum
 
-        val responses: Seq[Response] = groupByRequestToKvRequest.iterator.map {
-          case (request, requestMetaTry) =>
-            val responseMapTry: Try[Map[String, AnyRef]] = requestMetaTry.map { requestMeta =>
-              val GroupByRequestMeta(groupByServingInfo, batchRequest, streamingRequestOpt, _, context) = requestMeta
+        val responses: Seq[Response] = groupByRequestToKvRequest.iterator.map { case (request, requestMetaTry) =>
+          val responseMapTry: Try[Map[String, AnyRef]] = requestMetaTry.map { requestMeta =>
+            val GroupByRequestMeta(groupByServingInfo, batchRequest, streamingRequestOpt, _, context) = requestMeta
 
-              context.count("multi_get.batch.size", allRequestsToFetch.length)
-              context.distribution("multi_get.bytes", totalResponseValueBytes)
-              context.distribution("multi_get.response.length", kvResponses.length)
-              context.distribution("multi_get.latency.millis", multiGetMillis)
+            context.count("multi_get.batch.size", allRequestsToFetch.length)
+            context.distribution("multi_get.bytes", totalResponseValueBytes)
+            context.distribution("multi_get.response.length", kvResponses.length)
+            context.distribution("multi_get.latency.millis", multiGetMillis)
 
-              // pick the batch version with highest timestamp
-              val batchResponses: BatchResponses =
-                // Check if the get request was cached. If so, use the cache. Otherwise, try to get it from response.
-                cachedRequests.get(batchRequest) match {
-                  case None =>
-                    BatchResponses(
-                      responsesMap
-                        .getOrElse(
-                          batchRequest,
-                          // Fail if response is neither in responsesMap nor in cache
-                          Failure(new IllegalStateException(
-                            s"Couldn't find corresponding response for $batchRequest in responseMap or cache"))
-                        ))
-                  case Some(cachedResponse: CachedBatchResponse) => cachedResponse
-                }
-
-              val streamingResponsesOpt =
-                streamingRequestOpt.map(responsesMap.getOrElse(_, Success(Seq.empty)).getOrElse(Seq.empty))
-              val queryTs = request.atMillis.getOrElse(System.currentTimeMillis())
-              val groupByResponse: Map[String, AnyRef] =
-                try {
-                  if (debug)
-                    logger.info(
-                      s"Constructing response for groupBy: ${groupByServingInfo.groupByOps.metaData.getName} " +
-                        s"for keys: ${request.keys}")
-                  constructGroupByResponse(batchResponses,
-                                           streamingResponsesOpt,
-                                           groupByServingInfo,
-                                           queryTs,
-                                           startTimeMs,
-                                           multiGetMillis,
-                                           context,
-                                           totalResponseValueBytes,
-                                           request.keys)
-                } catch {
-                  case ex: Exception =>
-                    // not all exceptions are due to stale schema, so we want to control how often we hit kv store
-                    getGroupByServingInfo.refresh(groupByServingInfo.groupByOps.metaData.name)
-                    context.incrementException(ex)
-                    ex.printStackTrace()
-                    throw ex
-                }
-              if (groupByServingInfo.groupBy.hasDerivations) {
-                val derivedMapTry: Try[Map[String, AnyRef]] = Try {
-                  applyDeriveFunc(groupByServingInfo.deriveFunc, request, groupByResponse)
-                }
-                val derivedMap = derivedMapTry match {
-                  case Success(derivedMap) =>
-                    derivedMap
-                  // If the derivation failed we want to return the exception map and rename only derivation
-                  case Failure(exception) => {
-                    context.incrementException(exception)
-                    val derivedExceptionMap =
-                      Map("derivation_fetch_exception" -> exception.traceString.asInstanceOf[AnyRef])
-                    val renameOnlyDeriveFunction =
-                      buildRenameOnlyDerivationFunction(groupByServingInfo.groupBy.derivationsScala)
-                    val renameOnlyDerivedMapTry: Try[Map[String, AnyRef]] = Try {
-                      renameOnlyDeriveFunction(request.keys, groupByResponse)
-                        .mapValues(_.asInstanceOf[AnyRef])
-                        .toMap
-                    }
-                    // if the rename only derivation also failed we want to return the exception map
-                    val renameOnlyDerivedMap: Map[String, AnyRef] = renameOnlyDerivedMapTry match {
-                      case Success(renameOnlyDerivedMap) =>
-                        renameOnlyDerivedMap
-                      case Failure(exception) =>
-                        context.incrementException(exception)
-                        Map("derivation_rename_exception" -> exception.traceString.asInstanceOf[AnyRef])
-                    }
-                    renameOnlyDerivedMap ++ derivedExceptionMap
-                  }
-                }
-                derivedMap
-              } else {
-                groupByResponse
+            // pick the batch version with highest timestamp
+            val batchResponses: BatchResponses =
+              // Check if the get request was cached. If so, use the cache. Otherwise, try to get it from response.
+              cachedRequests.get(batchRequest) match {
+                case None =>
+                  BatchResponses(
+                    responsesMap
+                      .getOrElse(
+                        batchRequest,
+                        // Fail if response is neither in responsesMap nor in cache
+                        Failure(new IllegalStateException(
+                          s"Couldn't find corresponding response for $batchRequest in responseMap or cache"))
+                      ))
+                case Some(cachedResponse: CachedBatchResponse) => cachedResponse
               }
+
+            val streamingResponsesOpt =
+              streamingRequestOpt.map(responsesMap.getOrElse(_, Success(Seq.empty)).getOrElse(Seq.empty))
+            val queryTs = request.atMillis.getOrElse(System.currentTimeMillis())
+            val groupByResponse: Map[String, AnyRef] =
+              try {
+                if (debug)
+                  logger.info(
+                    s"Constructing response for groupBy: ${groupByServingInfo.groupByOps.metaData.getName} " +
+                      s"for keys: ${request.keys}")
+                constructGroupByResponse(batchResponses,
+                                         streamingResponsesOpt,
+                                         groupByServingInfo,
+                                         queryTs,
+                                         startTimeMs,
+                                         multiGetMillis,
+                                         context,
+                                         totalResponseValueBytes,
+                                         request.keys)
+              } catch {
+                case ex: Exception =>
+                  // not all exceptions are due to stale schema, so we want to control how often we hit kv store
+                  getGroupByServingInfo.refresh(groupByServingInfo.groupByOps.metaData.name)
+                  context.incrementException(ex)
+                  ex.printStackTrace()
+                  throw ex
+              }
+            if (groupByServingInfo.groupBy.hasDerivations) {
+              val derivedMapTry: Try[Map[String, AnyRef]] = Try {
+                applyDeriveFunc(groupByServingInfo.deriveFunc, request, groupByResponse)
+              }
+              val derivedMap = derivedMapTry match {
+                case Success(derivedMap) =>
+                  derivedMap
+                // If the derivation failed we want to return the exception map and rename only derivation
+                case Failure(exception) => {
+                  context.incrementException(exception)
+                  val derivedExceptionMap =
+                    Map("derivation_fetch_exception" -> exception.traceString.asInstanceOf[AnyRef])
+                  val renameOnlyDeriveFunction =
+                    buildRenameOnlyDerivationFunction(groupByServingInfo.groupBy.derivationsScala)
+                  val renameOnlyDerivedMapTry: Try[Map[String, AnyRef]] = Try {
+                    renameOnlyDeriveFunction(request.keys, groupByResponse)
+                      .mapValues(_.asInstanceOf[AnyRef])
+                      .toMap
+                  }
+                  // if the rename only derivation also failed we want to return the exception map
+                  val renameOnlyDerivedMap: Map[String, AnyRef] = renameOnlyDerivedMapTry match {
+                    case Success(renameOnlyDerivedMap) =>
+                      renameOnlyDerivedMap
+                    case Failure(exception) =>
+                      context.incrementException(exception)
+                      Map("derivation_rename_exception" -> exception.traceString.asInstanceOf[AnyRef])
+                  }
+                  renameOnlyDerivedMap ++ derivedExceptionMap
+                }
+              }
+              derivedMap
+            } else {
+              groupByResponse
             }
-            Response(request, responseMapTry)
+          }
+          Response(request, responseMapTry)
         }.toList
         responses
       }
   }
 
-  /**
-    * Convert an array of bytes to a FinalBatchIr.
+  /** Convert an array of bytes to a FinalBatchIr.
     */
   def toBatchIr(bytes: Array[Byte], gbInfo: GroupByServingInfoParsed): FinalBatchIr = {
     if (bytes == null) return null
@@ -582,12 +575,11 @@ class FetcherBase(kvStore: KVStore,
         request.copy(context = joinContext) -> decomposedTry
       }
 
-    val groupByRequests = joinDecomposed.flatMap {
-      case (_, gbTry) =>
-        gbTry match {
-          case Failure(_)        => Iterator.empty
-          case Success(requests) => requests.iterator.flatMap(_.left.toOption).map(_.request)
-        }
+    val groupByRequests = joinDecomposed.flatMap { case (_, gbTry) =>
+      gbTry match {
+        case Failure(_)        => Iterator.empty
+        case Success(requests) => requests.iterator.flatMap(_.left.toOption).map(_.request)
+      }
     }
 
     val groupByResponsesFuture = fetchGroupBys(groupByRequests)
@@ -596,29 +588,28 @@ class FetcherBase(kvStore: KVStore,
     groupByResponsesFuture
       .map { groupByResponses =>
         val responseMap = groupByResponses.iterator.map { response => response.request -> response.values }.toMap
-        val responses = joinDecomposed.iterator.map {
-          case (joinRequest, decomposedRequestsTry) =>
-            val joinValuesTry = decomposedRequestsTry.map { groupByRequestsWithPrefix =>
-              groupByRequestsWithPrefix.iterator.flatMap {
-                case Right(keyMissingException) => {
-                  Map(keyMissingException.requestName + "_exception" -> keyMissingException.getMessage)
-                }
-                case Left(PrefixedRequest(prefix, groupByRequest)) =>
-                  parseGroupByResponse(prefix, groupByRequest, responseMap)
-              }.toMap
-            }
-            joinValuesTry match {
-              case Failure(ex) => joinRequest.context.foreach(_.incrementException(ex))
-              case Success(responseMap) =>
-                joinRequest.context.foreach { ctx =>
-                  ctx.distribution("response.keys.count", responseMap.size)
-                }
-            }
-            joinRequest.context.foreach { ctx =>
-              ctx.distribution("internal.latency.millis", System.currentTimeMillis() - startTimeMs)
-              ctx.increment("internal.request.count")
-            }
-            Response(joinRequest, joinValuesTry)
+        val responses = joinDecomposed.iterator.map { case (joinRequest, decomposedRequestsTry) =>
+          val joinValuesTry = decomposedRequestsTry.map { groupByRequestsWithPrefix =>
+            groupByRequestsWithPrefix.iterator.flatMap {
+              case Right(keyMissingException) => {
+                Map(keyMissingException.requestName + "_exception" -> keyMissingException.getMessage)
+              }
+              case Left(PrefixedRequest(prefix, groupByRequest)) =>
+                parseGroupByResponse(prefix, groupByRequest, responseMap)
+            }.toMap
+          }
+          joinValuesTry match {
+            case Failure(ex) => joinRequest.context.foreach(_.incrementException(ex))
+            case Success(responseMap) =>
+              joinRequest.context.foreach { ctx =>
+                ctx.distribution("response.keys.count", responseMap.size)
+              }
+          }
+          joinRequest.context.foreach { ctx =>
+            ctx.distribution("internal.latency.millis", System.currentTimeMillis() - startTimeMs)
+            ctx.increment("internal.request.count")
+          }
+          Response(joinRequest, joinValuesTry)
         }.toSeq
         responses
       }
@@ -657,8 +648,7 @@ class FetcherBase(kvStore: KVStore,
       .get
   }
 
-  /**
-    * Fetch method to simulate a random access interface for Chronon
+  /** Fetch method to simulate a random access interface for Chronon
     * by distributing requests to relevant GroupBys. This is a batch
     * API which allows the caller to provide a sequence of ColumnSpec
     * queries and receive a mapping of results.
@@ -678,45 +668,42 @@ class FetcherBase(kvStore: KVStore,
 
     // Generate a mapping from ColumnSpec query --> GroupBy request
     val groupByRequestsByQuery: Map[ColumnSpec, Request] =
-      columnSpecs.map {
-        case query =>
-          val prefix = query.prefix.getOrElse("")
-          val requestName = s"${query.groupByName}.${query.columnName}"
-          val keyMap = query.keyMapping.getOrElse(Map())
-          query -> PrefixedRequest(prefix, Request(requestName, keyMap, Some(startTimeMs), None)).request
+      columnSpecs.map { case query =>
+        val prefix = query.prefix.getOrElse("")
+        val requestName = s"${query.groupByName}.${query.columnName}"
+        val keyMap = query.keyMapping.getOrElse(Map())
+        query -> PrefixedRequest(prefix, Request(requestName, keyMap, Some(startTimeMs), None)).request
       }.toMap
 
     // Start I/O and generate a mapping from query --> GroupBy response
     val groupByResponsesFuture = fetchGroupBys(groupByRequestsByQuery.values.toList)
     groupByResponsesFuture.map { groupByResponses =>
       val resultsByRequest = groupByResponses.iterator.map { response => response.request -> response.values }.toMap
-      val responseByQuery = groupByRequestsByQuery.map {
-        case (query, request) =>
-          val results = resultsByRequest
-            .getOrElse(
-              request,
-              Failure(new IllegalStateException(s"Couldn't find a groupBy response for $request in response map"))
-            )
-            .map { valueMap =>
-              if (valueMap != null) {
-                valueMap.map {
-                  case (aggName, aggValue) =>
-                    val resultKey = query.prefix.map(p => s"${p}_${aggName}").getOrElse(aggName)
-                    resultKey -> aggValue
-                }
-              } else {
-                Map.empty[String, AnyRef]
+      val responseByQuery = groupByRequestsByQuery.map { case (query, request) =>
+        val results = resultsByRequest
+          .getOrElse(
+            request,
+            Failure(new IllegalStateException(s"Couldn't find a groupBy response for $request in response map"))
+          )
+          .map { valueMap =>
+            if (valueMap != null) {
+              valueMap.map { case (aggName, aggValue) =>
+                val resultKey = query.prefix.map(p => s"${p}_${aggName}").getOrElse(aggName)
+                resultKey -> aggValue
               }
+            } else {
+              Map.empty[String, AnyRef]
             }
-            .recoverWith { // capture exception as a key
-              case ex: Throwable =>
-                if (debug || Math.random() < 0.001) {
-                  logger.error(s"Failed to fetch $request", ex)
-                }
-                Failure(ex)
-            }
-          val response = Response(request, results)
-          query -> response
+          }
+          .recoverWith { // capture exception as a key
+            case ex: Throwable =>
+              if (debug || Math.random() < 0.001) {
+                logger.error(s"Failed to fetch $request", ex)
+              }
+              Failure(ex)
+          }
+        val response = Response(request, results)
+        query -> response
       }
 
       responseByQuery

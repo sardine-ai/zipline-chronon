@@ -1,6 +1,7 @@
 scala_library(
     name = "cloud_gcp_lib",
     srcs = glob(["src/main/**/*.scala"]),
+    format = True,
     visibility = ["//visibility:public"],
     deps = [
         "//api:lib",
@@ -86,10 +87,10 @@ test_deps = [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
+    format = True,
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
-
 
 scala_test_suite(
     name = "tests",

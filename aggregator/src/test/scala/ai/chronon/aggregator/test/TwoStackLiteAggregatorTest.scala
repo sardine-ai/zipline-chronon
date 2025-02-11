@@ -117,9 +117,8 @@ class TwoStackLiteAggregatorTest extends AnyFlatSpec {
     // sawtooth                  914 ms
 
     val gson = new Gson()
-    bankersIrs.zip(sawtoothIrs).foreach {
-      case (bankers, sawtooth) =>
-        assertEquals(gson.toJson(sawtooth), gson.toJson(bankers))
+    bankersIrs.zip(sawtoothIrs).foreach { case (bankers, sawtooth) =>
+      assertEquals(gson.toJson(sawtooth), gson.toJson(bankers))
     }
   }
 

@@ -133,22 +133,18 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     stepDays.foreach(metrics.gauge("step_days", _))
     val stepRanges = stepDays.map(leftFeatureRange.steps).getOrElse(Seq(leftFeatureRange))
     logger.info(s"Label Join left ranges to compute: ${stepRanges.map { _.toString }.pretty}")
-    stepRanges.zipWithIndex.foreach {
-      case (range, index) =>
-        val startMillis = System.currentTimeMillis()
-        val progress = s"| [${index + 1}/${stepRanges.size}]"
-        logger.info(s"Computing label join for range: $range  Label DS: ${labelDS.getOrElse(today)} $progress")
-        JoinUtils.leftDf(joinConf, range, tableUtils).map { leftDfInRange =>
-          computeRange(leftDfInRange, range, sanitizedLabelDs)
-            .save(outputLabelTable,
-                  confTableProps,
-                  Seq(Constants.LabelPartitionColumn, tableUtils.partitionColumn),
-                  true)
-          val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
-          metrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
-          metrics.gauge(Metrics.Name.PartitionCount, range.partitions.length)
-          logger.info(s"Wrote to table $outputLabelTable, into partitions: $range $progress in $elapsedMins mins")
-        }
+    stepRanges.zipWithIndex.foreach { case (range, index) =>
+      val startMillis = System.currentTimeMillis()
+      val progress = s"| [${index + 1}/${stepRanges.size}]"
+      logger.info(s"Computing label join for range: $range  Label DS: ${labelDS.getOrElse(today)} $progress")
+      JoinUtils.leftDf(joinConf, range, tableUtils).map { leftDfInRange =>
+        computeRange(leftDfInRange, range, sanitizedLabelDs)
+          .save(outputLabelTable, confTableProps, Seq(Constants.LabelPartitionColumn, tableUtils.partitionColumn), true)
+        val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
+        metrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
+        metrics.gauge(Metrics.Name.PartitionCount, range.partitions.length)
+        logger.info(s"Wrote to table $outputLabelTable, into partitions: $range $progress in $elapsedMins mins")
+      }
     }
     logger.info(s"Wrote to table $outputLabelTable, into partitions: $leftFeatureRange")
     finalResult
@@ -270,8 +266,8 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     }
 
     // apply key-renaming to key columns
-    val keyRenamedRight = joinPart.rightToLeft.foldLeft(rightDf) {
-      case (rightDf, (rightKey, leftKey)) => rightDf.withColumnRenamed(rightKey, leftKey)
+    val keyRenamedRight = joinPart.rightToLeft.foldLeft(rightDf) { case (rightDf, (rightKey, leftKey)) =>
+      rightDf.withColumnRenamed(rightKey, leftKey)
     }
 
     val nonValueColumns = joinPart.rightToLeft.keys.toArray ++ Array(Constants.TimeColumn,

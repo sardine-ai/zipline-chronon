@@ -32,8 +32,8 @@ object Builders {
     }
 
     def exprs(clauses: (String, String)*): Map[String, String] = {
-      clauses.map {
-        case (col, expr) => col -> expr
+      clauses.map { case (col, expr) =>
+        col -> expr
       }.toMap
     }
   }
