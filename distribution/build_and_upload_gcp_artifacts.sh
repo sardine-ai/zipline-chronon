@@ -38,17 +38,16 @@ if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
 fi
 
 echo "Building jars"
-#sbt clean
-#sbt service/assembly
 
 bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
 bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
 bazel build //flink:flink_assembly_deploy.jar
+bazel build //service:service_assembly_deploy.jar
 
 CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
 CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_submitter_deploy.jar"
 FLINK_JAR="$CHRONON_ROOT_DIR/bazel-bin/flink/flink_assembly_deploy.jar"
-#SERVICE_JAR="$CHRONON_ROOT_DIR/service/target/scala-2.12/service-0.1.0-SNAPSHOT.jar"
+SERVICE_JAR="$CHRONON_ROOT_DIR/bazel-bin/service/service_assembly_deploy.jar"
 
 if [ ! -f "$CLOUD_GCP_JAR" ]; then
     echo "$CLOUD_GCP_JAR not found"
@@ -60,10 +59,10 @@ if [ ! -f "$CLOUD_GCP_SUBMITTER_JAR" ]; then
     exit 1
 fi
 
-#if [ ! -f "$SERVICE_JAR" ]; then
-#    echo "$SERVICE_JAR not found"
-#    exit 1
-#fi
+if [ ! -f "$SERVICE_JAR" ]; then
+    echo "$SERVICE_JAR not found"
+    exit 1
+fi
 
 if [ ! -f "$FLINK_JAR" ]; then
     echo "$FLINK_JAR not found"
@@ -86,7 +85,7 @@ function upload_to_gcp() {
                 ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars
                 gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH";
                 gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH";
-#                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH"
+                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH"
                 gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH"
               done
