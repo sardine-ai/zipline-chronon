@@ -133,6 +133,59 @@ bazel clean
 bazel clean --expunge
 ```
 
+## Pushing code
+
+We run formatting a auto-fixing for scala code. CI will fail if you don't do this
+To simplify your CLI - add the following snippet to your zshrc
+
+```sh
+alias bazel_scalafmt='bazel query '\''kind("scala_library.*", //...)'\'' | xargs -I {} bazel run {}.format'
+
+function zpush() {
+    if [ $# -eq 0 ]; then
+        echo "Error: Please provide a commit message."
+        return 1
+    fi
+
+    local commit_message="$1"
+
+    bazel_scalafmt && \
+    git add -u && \
+    git commit -m "$commit_message" && \
+    git push
+
+    if [ $? -eq 0 ]; then
+        echo "Successfully compiled, formatted, committed, and pushed changes."
+    else
+        echo "An error occurred during the process."
+    fi
+}
+```
+
+You can invoke this command as below
+
+```
+zpush "Your commit message"
+```
+> Note: The quotes are necessary for multi-word commit message.
+
+## Connect remotely to API Docker JVM
+
+The java process within the container is started with remote debugging [enabled](https://github.com/zipline-ai/chronon/blob/main/docker-init/start.sh#L46) on port 5005 and [exposed](https://github.com/zipline-ai/chronon/blob/main/docker-init/compose.yaml#L70) on the host as `localhost:5005`.  This helps you debug frontend code by triggering a breakpoint in IntelliJ when some code in the frontend is run (i.e. api call, etc)
+
+To connect to the process within the container via IntelliJ, follow these steps:
+
+1. Open IntelliJ and go to `Run` > `Edit Configurations`.
+2. Click the `+` button to add a new configuration.
+3. Select `Remote JVM Debug` from the list.
+4. Enter `localhost:5005` as the host and port (defaults)
+5. Click `Debug`.
+6. Set a breakpoint in the code you want to debug.
+7. Run the frontend code that will call the api (or call the API endpoint directly such as with `curl`/Postman/etc).
+8. When the breakpoint is hit, you can inspect variables, step through the code, etc.
+
+For more details see IntelliJ remote debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.html)
+
 ## Old SBT Setup
 
 ### Configuring IntelliJ
@@ -412,57 +465,3 @@ import $cp.spark.target.`scala-2.12`.`spark-assembly-0.0.63-SNAPSHOT.jar`
 ```
 
 Now you can import the chronon classes and use them directly from repl for testing.
-
-
-### Pushing code
-
-We run formatting a auto-fixing for scala code. CI will fail if you don't do this
-To simplify your CLI - add the following snippet to your zshrc
-
-```sh
-function zpush() {
-    if [ $# -eq 0 ]; then
-        echo "Error: Please provide a commit message."
-        return 1
-    fi
-
-    local commit_message="$1"
-
-    sbt compile && \
-    sbt scalafixAll && \
-    sbt scalafmt && \
-    git add -u && \
-    git commit -m "$commit_message" && \
-    git push
-
-    if [ $? -eq 0 ]; then
-        echo "Successfully compiled, formatted, committed, and pushed changes."
-    else
-        echo "An error occurred during the process."
-    fi
-}
-```
-
-You can invoke this command as below
-
-```
-zpush "Your commit message"
-```
-> Note: The quotes are necessary for multi-word commit message.
-
-## Connect remotely to API Docker JVM
-
-The java process within the container is started with remote debugging [enabled](https://github.com/zipline-ai/chronon/blob/main/docker-init/start.sh#L46) on port 5005 and [exposed](https://github.com/zipline-ai/chronon/blob/main/docker-init/compose.yaml#L70) on the host as `localhost:5005`.  This helps you debug frontend code by triggering a breakpoint in IntelliJ when some code in the frontend is run (i.e. api call, etc)
-
-To connect to the process within the container via IntelliJ, follow these steps:
-
-1. Open IntelliJ and go to `Run` > `Edit Configurations`.
-2. Click the `+` button to add a new configuration.
-3. Select `Remote JVM Debug` from the list.
-4. Enter `localhost:5005` as the host and port (defaults)
-5. Click `Debug`.
-6. Set a breakpoint in the code you want to debug.
-7. Run the frontend code that will call the api (or call the API endpoint directly such as with `curl`/Postman/etc).
-8. When the breakpoint is hit, you can inspect variables, step through the code, etc.
-
-For more details see IntelliJ remote debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.html)
