@@ -64,7 +64,10 @@
 	{...lineChartProps}
 	{...restProps}
 	brush={{ onbrushend }}
-	tooltip={{ hideDelay: 150 }}
+	tooltip={{
+		hideDelay: 150,
+		...(typeof restProps.tooltip === 'object' ? restProps.tooltip : null)
+	}}
 >
 	<svelte:fragment slot="aboveMarks" let:xScale let:yScale>
 		{#if markPoint}
