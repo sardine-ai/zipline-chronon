@@ -42,6 +42,7 @@ struct NodeKey {
     1: optional string name
 
     2: optional LogicalType logicalType
+    3: optional PhysicalNodeType physicalType
 
     /**
     * represents the computation of the node including the computation of all its parents
