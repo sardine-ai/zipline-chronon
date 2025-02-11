@@ -104,8 +104,8 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
     // set the working directory to /chronon instead of $MODULE_DIR in configuration if Intellij fails testing
     val singleFileDirWalker = new MetadataDirWalker(confResource.getPath, acceptedEndPoints)
     val singleFileKvMap = singleFileDirWalker.run
-    val singleFilePut: Seq[Future[scala.collection.Seq[Boolean]]] = singleFileKvMap.toSeq.map {
-      case (_, kvMap) => singleFileMetadataStore.put(kvMap, singleFileDataSet)
+    val singleFilePut: Seq[Future[scala.collection.Seq[Boolean]]] = singleFileKvMap.toSeq.map { case (_, kvMap) =>
+      singleFileMetadataStore.put(kvMap, singleFileDataSet)
     }
     singleFilePut.flatMap(putRequests => Await.result(putRequests, Duration.Inf))
 
@@ -125,8 +125,8 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
     val directoryDataDirWalker =
       new MetadataDirWalker(confResource.getPath.replace(s"/$joinPath", ""), acceptedEndPoints)
     val directoryDataKvMap = directoryDataDirWalker.run
-    val directoryPut = directoryDataKvMap.toSeq.map {
-      case (_, kvMap) => directoryMetadataStore.put(kvMap, directoryDataSetDataSet)
+    val directoryPut = directoryDataKvMap.toSeq.map { case (_, kvMap) =>
+      directoryMetadataStore.put(kvMap, directoryDataSetDataSet)
     }
     directoryPut.flatMap(putRequests => Await.result(putRequests, Duration.Inf))
     val dirResponse =
@@ -146,8 +146,7 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
     assertFalse(emptyRes.latest.isSuccess)
   }
 
-  /**
-    * Generate deterministic data for testing and checkpointing IRs and streaming data.
+  /** Generate deterministic data for testing and checkpointing IRs and streaming data.
     */
   def generateMutationData(namespace: String): api.Join = {
     tableUtils.createDatabase(namespace)
@@ -221,11 +220,10 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
       snapshotSchema -> snapshotData
     )
 
-    sourceData.foreach {
-      case (schema, rows) =>
-        spark
-          .createDataFrame(rows.toJava, SparkConversions.fromChrononSchema(schema))
-          .save(s"$namespace.${schema.name}")
+    sourceData.foreach { case (schema, rows) =>
+      spark
+        .createDataFrame(rows.toJava, SparkConversions.fromChrononSchema(schema))
+        .save(s"$namespace.${schema.name}")
 
     }
     logger.info("saved all data hand written for fetcher test")
@@ -522,15 +520,14 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
       ratingsSchema -> ratingEventData
     )
 
-    sourceData.foreach {
-      case (schema, rows) =>
-        val tableName = s"$namespace.${schema.name}"
+    sourceData.foreach { case (schema, rows) =>
+      val tableName = s"$namespace.${schema.name}"
 
-        spark.sql(s"DROP TABLE IF EXISTS $tableName")
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
 
-        spark
-          .createDataFrame(rows.toJava, SparkConversions.fromChrononSchema(schema))
-          .save(tableName)
+      spark
+        .createDataFrame(rows.toJava, SparkConversions.fromChrononSchema(schema))
+        .save(tableName)
     }
     println("saved all data hand written for fetcher test")
 
@@ -757,7 +754,12 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
   it should "test temporal tiled fetch join deterministic" in {
     val namespace = "deterministic_tiled_fetch"
     val joinConf = generateEventOnlyData(namespace)
-    compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true, enableTiling = true)
+    compareTemporalFetch(joinConf,
+                         "2021-04-10",
+                         namespace,
+                         consistencyCheck = false,
+                         dropDsOnWrite = true,
+                         enableTiling = true)
   }
 
   // test soft-fail on missing keys
@@ -834,13 +836,12 @@ object FetcherTestUtil {
             responses.map(resps => resps.zip(oldReqs).map { case (resp, req) => resp.copy(request = req) })
           System.currentTimeMillis() -> fixedResponses
         }
-        .flatMap {
-          case (start, future) =>
-            val result = Await.result(future, Duration(10000, SECONDS)) // todo: change back to millis
-            val latency = System.currentTimeMillis() - start
-            latencySum += latency
-            latencyCount += 1
-            result
+        .flatMap { case (start, future) =>
+          val result = Await.result(future, Duration(10000, SECONDS)) // todo: change back to millis
+          val latency = System.currentTimeMillis() - start
+          latencySum += latency
+          latencyCount += 1
+          result
         }
         .toList
       val latencyMillis = latencySum.toFloat / latencyCount.toFloat

@@ -20,7 +20,11 @@ java_library(
 
 scala_library(
     name = "lib",
-    srcs = glob(["src/main/**/*.scala", "src/main/**/*.java"]),
+    srcs = glob([
+        "src/main/**/*.scala",
+        "src/main/**/*.java",
+    ]),
+    format = True,
     visibility = ["//visibility:public"],
     deps = [
         ":thrift_java",
@@ -36,25 +40,44 @@ scala_library(
     ],
 )
 
+test_deps = [
+    ":lib",
+    ":thrift_java",
+    "//tools/build_rules/spark:spark-exec",
+    # Libraries
+    maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact("org.slf4j:slf4j-api"),
+    maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
+    # Testing
+    maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
+    maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+    maven_scala_artifact("org.scalatest:scalatest-matchers-core"),
+    maven_scala_artifact("org.scalatest:scalatest-core"),
+    maven_scala_artifact("org.scalatest:scalatest"),
+    maven_scala_artifact("org.scalatest:scalatest-flatspec"),
+    maven_scala_artifact("org.scalatest:scalatest-funsuite"),
+    maven_scala_artifact("org.scalatest:scalatest-shouldmatchers"),
+    maven_scala_artifact("org.scalactic:scalactic"),
+    maven_scala_artifact("org.scalatestplus:mockito-3-4"),
+    maven_scala_artifact("org.mockito:mockito-scala"),
+    maven_artifact("org.mockito:mockito-core"),
+    maven_artifact("org.scalatest:scalatest-compatible"),
+    maven_artifact("junit:junit"),
+    maven_artifact("com.novocode:junit-interface"),
+]
+
+scala_library(
+    name = "test-lib",
+    srcs = glob(["src/test/**/*.scala"]),
+    format = True,
+    visibility = ["//visibility:public"],
+    deps = test_deps,
+)
+
 scala_test_suite(
     name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
-    deps = [
-        ":thrift_java",
-        ":lib",
-        "//tools/build_rules/spark:spark-exec",
-        maven_artifact("com.fasterxml.jackson.core:jackson-core"),
-        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
-        maven_artifact("org.slf4j:slf4j-api"),
-        maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
-        maven_artifact("junit:junit"),
-        maven_artifact("com.novocode:junit-interface"),
-        maven_artifact("org.mockito:mockito-core"),
-        maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
-        maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-        maven_scala_artifact("org.scalatest:scalatest"),
-        maven_scala_artifact("org.scalatest:scalatest-flatspec"),
-        maven_scala_artifact("org.scalatest:scalatest-funsuite"),
-    ],
+    deps = test_deps + [":test-lib"],
 )

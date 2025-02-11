@@ -92,12 +92,11 @@ object TileDriftCalculator {
 
     summariesWithTimestamps.iterator
       .filter { case (_, ts) => ts >= startMs }
-      .map {
-        case (summary, ts) =>
-          val previousTs = ts - lookBackMs
-          val previousSummary = summariesByTimestamp.get(previousTs)
-          val drift = previousSummary.map(between(summary, _, metric)).getOrElse(new TileDrift())
-          drift -> ts
+      .map { case (summary, ts) =>
+        val previousTs = ts - lookBackMs
+        val previousSummary = summariesByTimestamp.get(previousTs)
+        val drift = previousSummary.map(between(summary, _, metric)).getOrElse(new TileDrift())
+        drift -> ts
       }
       .toArray
   }

@@ -13,8 +13,8 @@ case class TableTestUtils(override val sparkSession: SparkSession) extends Table
       val partitionSpecs = partitions
         .map { partition =>
           val mainSpec = s"$partitionColumn='$partition'"
-          val specs = mainSpec +: subPartitionFilters.map {
-            case (key, value) => s"$key='$value'"
+          val specs = mainSpec +: subPartitionFilters.map { case (key, value) =>
+            s"$key='$value'"
           }.toSeq
           specs.mkString("PARTITION (", ",", ")")
         }

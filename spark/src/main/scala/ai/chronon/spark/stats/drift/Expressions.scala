@@ -91,9 +91,8 @@ object Expressions {
       funcs.foreach(_(row, columnTileSummaries))
       val tileTimestamp = row.getLong(tileIndex)
       val partition = row.getString(partitionIndex)
-      columnTileSummaries.iterator.map {
-        case (colName, tileSummaries) =>
-          TileRow(partition, tileTimestamp, keyBuilder(colName, row), tileSummaries)
+      columnTileSummaries.iterator.map { case (colName, tileSummaries) =>
+        TileRow(partition, tileTimestamp, keyBuilder(colName, row), tileSummaries)
       }.toSeq
     }
   }
@@ -165,7 +164,7 @@ object Expressions {
             case types.StringType         => ce(null, Agg.arrStrUniq)
             case types.DoubleType         => ce(null, Agg.arrDblUniq)
             case eType if isScalar(eType) => ce(Inp.arrDblCast, Agg.arrDblUniq)
-            case _                        => throw new UnsupportedOperationException(s"Unsupported array element type $elemType")
+            case _ => throw new UnsupportedOperationException(s"Unsupported array element type $elemType")
           }
         // TODO: measure and handle map key cardinality
         case types.MapType(_, vType, _) =>
@@ -173,7 +172,7 @@ object Expressions {
             case types.StringType         => ce(Inp.mapVals, Agg.arrStrUniq)
             case types.DoubleType         => ce(Inp.mapVals, Agg.arrDblUniq)
             case eType if isScalar(eType) => ce(Inp.mapDblCast, Agg.arrDblUniq)
-            case _                        => throw new UnsupportedOperationException(s"Unsupported map value type $vType")
+            case _ => throw new UnsupportedOperationException(s"Unsupported map value type $vType")
           }
         case _ => throw new UnsupportedOperationException(s"Unsupported data type $dataType")
       }
@@ -237,18 +236,18 @@ object Expressions {
               se(null, Agg.arrNulls, MetricName.innerNullCount) ++
                 se(null, Agg.arrCount, MetricName.innerCount) ++
                 se(Inp.cLen, Agg.ptile, MetricName.lengthPercentiles) ++ (elemType match {
-                case types.StringType         => se(Inp.len, Agg.ptile, MetricName.lengthPercentiles)
-                case eType if isScalar(eType) => se(Inp.arrDblCast, Agg.arrPtile, MetricName.percentiles)
-                case _                        => Seq.empty
-              })
+                  case types.StringType         => se(Inp.len, Agg.ptile, MetricName.lengthPercentiles)
+                  case eType if isScalar(eType) => se(Inp.arrDblCast, Agg.arrPtile, MetricName.percentiles)
+                  case _                        => Seq.empty
+                })
             case types.MapType(_, vType, _) =>
               se(Inp.mapVals, Agg.arrNulls, MetricName.innerNullCount) ++
                 se(Inp.mapVals, Agg.arrCount, MetricName.innerCount) ++
                 se(Inp.cLen, Agg.ptile, MetricName.lengthPercentiles) ++ (vType match {
-                case types.StringType         => se(Inp.lenVals, Agg.arrPtile, MetricName.stringLengthPercentiles)
-                case eType if isScalar(eType) => se(Inp.mapDblCast, Agg.arrPtile, MetricName.percentiles)
-                case _                        => Seq.empty
-              })
+                  case types.StringType         => se(Inp.lenVals, Agg.arrPtile, MetricName.stringLengthPercentiles)
+                  case eType if isScalar(eType) => se(Inp.mapDblCast, Agg.arrPtile, MetricName.percentiles)
+                  case _                        => Seq.empty
+                })
             case _ => throw new UnsupportedOperationException(s"Unsupported data type $dataType")
           }
       }

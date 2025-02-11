@@ -19,8 +19,7 @@ import scala.jdk.CollectionConverters._
 
 case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
 
-  /**
-    * Order of Precedence for Default Project:
+  /** Order of Precedence for Default Project:
     * - Explicitly configured project in code (e.g., setProjectId()).
     * - GOOGLE_CLOUD_PROJECT environment variable.
     * - project_id from the ADC service account JSON file.

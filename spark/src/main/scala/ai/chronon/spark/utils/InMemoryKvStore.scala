@@ -60,8 +60,8 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
             null
           else
             valueSeries
-              .filter {
-                case (version, _) => req.startTsMillis.forall(version >= _) && req.endTsMillis.forall(version <= _)
+              .filter { case (version, _) =>
+                req.startTsMillis.forall(version >= _) && req.endTsMillis.forall(version <= _)
               } // filter version
               .map { case (version, bytes) => TimedValue(bytes, version) }
         }
@@ -82,12 +82,11 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
     }
 
   override def multiPut(putRequests: collection.Seq[KVStore.PutRequest]): Future[collection.Seq[Boolean]] = {
-    val result = putRequests.map {
-      case PutRequest(keyBytes, valueBytes, dataset, millis) =>
-        val table = database.get(dataset)
-        val key = encode(keyBytes)
-        table.compute(key, putFunc(millis.getOrElse(System.currentTimeMillis()) -> valueBytes))
-        true
+    val result = putRequests.map { case PutRequest(keyBytes, valueBytes, dataset, millis) =>
+      val table = database.get(dataset)
+      val key = encode(keyBytes)
+      table.compute(key, putFunc(millis.getOrElse(System.currentTimeMillis()) -> valueBytes))
+      true
     }
 
     Future {
@@ -137,9 +136,8 @@ class InMemoryKvStore(tableUtils: () => TableUtils) extends KVStore with Seriali
         val tableEntry = innerIt.next()
         val key = tableEntry.getKey
         val value = tableEntry.getValue
-        value.foreach {
-          case (version, data) =>
-            logger.info(s"table: $tableName, key: $key, value: $data, version: $version")
+        value.foreach { case (version, data) =>
+          logger.info(s"table: $tableName, key: $key, value: $data, version: $version")
         }
       }
     }

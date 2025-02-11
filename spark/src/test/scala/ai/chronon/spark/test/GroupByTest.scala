@@ -167,8 +167,7 @@ class GroupByTest extends AnyFlatSpec {
     val computed = resultDf.select("user", "ts", "listing_view_last30", "listing_view_count")
     computed.show()
 
-    val expected = eventDf.sqlContext.sql(
-      """
+    val expected = eventDf.sqlContext.sql("""
          |SELECT
          |      events_last_k.user as user,
          |      queries_last_k.ts as ts,
@@ -259,9 +258,8 @@ class GroupByTest extends AnyFlatSpec {
     val naiveRdd = queriesByKey.leftOuterJoin(eventsByKey).flatMap {
       case (key, (queries: Array[Long], events: Option[Iterator[RowWrapper]])) =>
         val irs = naiveAggregator.aggregate(events.map(_.toSeq).orNull, queries)
-        queries.zip(irs).map {
-          case (query: Long, ir: Array[Any]) =>
-            (key.data :+ query, groupBy.windowAggregator.finalize(ir))
+        queries.zip(irs).map { case (query: Long, ir: Array[Any]) =>
+          (key.data :+ query, groupBy.windowAggregator.finalize(ir))
         }
     }
     val naiveDf = groupBy.toDf(naiveRdd, Seq((Constants.TimeColumn, SparkLongType)))

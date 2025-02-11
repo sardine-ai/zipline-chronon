@@ -93,8 +93,9 @@ case class DataStream(df: DataFrame, partitions: Int, topicInfo: TopicInfo) {
 
     val atLeastOneKeyIsPresent =
       Option(keys)
-        .map(_.map { key => s"${selectsOption.map(_(key)).getOrElse(key)} IS NOT NULL" }
-          .mkString(" OR "))
+        .map(
+          _.map { key => s"${selectsOption.map(_(key)).getOrElse(key)} IS NOT NULL" }
+            .mkString(" OR "))
         .map(where => s"($where)")
     val baseWheres = Option(query.wheres).map(_.toScala).getOrElse(Seq.empty[String])
     val whereClauses = baseWheres ++ atLeastOneKeyIsPresent :+ timeIsPresent

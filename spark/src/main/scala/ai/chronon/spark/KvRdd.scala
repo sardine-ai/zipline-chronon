@@ -83,17 +83,16 @@ case class KvRdd(data: RDD[(Array[Any], Array[Any])], keySchema: StructType, val
   val withTime = false
 
   def toAvroDf(jsonPercent: Int = 1): DataFrame = {
-    val avroRdd: RDD[Row] = data.map {
-      case (keys: Array[Any], values: Array[Any]) =>
-        // json encoding is very expensive (50% of entire job).
-        // We only do it for a specified fraction to retain debuggability.
-        val (keyJson, valueJson) = if (math.random < jsonPercent.toDouble / 100) {
-          (keyToJson(keys), valueToJson(values))
-        } else {
-          (null, null)
-        }
-        val result: Array[Any] = Array(keyToBytes(keys), valueToBytes(values), keyJson, valueJson)
-        new GenericRow(result)
+    val avroRdd: RDD[Row] = data.map { case (keys: Array[Any], values: Array[Any]) =>
+      // json encoding is very expensive (50% of entire job).
+      // We only do it for a specified fraction to retain debuggability.
+      val (keyJson, valueJson) = if (math.random < jsonPercent.toDouble / 100) {
+        (keyToJson(keys), valueToJson(values))
+      } else {
+        (null, null)
+      }
+      val result: Array[Any] = Array(keyToBytes(keys), valueToBytes(values), keyJson, valueJson)
+      new GenericRow(result)
     }
     logger.info(s"""
           |key schema:
@@ -105,12 +104,11 @@ case class KvRdd(data: RDD[(Array[Any], Array[Any])], keySchema: StructType, val
   }
 
   override def toFlatDf: DataFrame = {
-    val flatRdd: RDD[Row] = data.map {
-      case (keys: Array[Any], values: Array[Any]) =>
-        val result = new Array[Any](keys.length + values.length)
-        System.arraycopy(keys, 0, result, 0, keys.length)
-        System.arraycopy(values, 0, result, keys.length, values.length)
-        SparkConversions.toSparkRow(result, flatZSchema, GenericRowHandler.func).asInstanceOf[GenericRow]
+    val flatRdd: RDD[Row] = data.map { case (keys: Array[Any], values: Array[Any]) =>
+      val result = new Array[Any](keys.length + values.length)
+      System.arraycopy(keys, 0, result, 0, keys.length)
+      System.arraycopy(values, 0, result, keys.length, values.length)
+      SparkConversions.toSparkRow(result, flatZSchema, GenericRowHandler.func).asInstanceOf[GenericRow]
     }
     sparkSession.createDataFrame(flatRdd, flatSchema)
   }
@@ -126,15 +124,14 @@ case class TimedKvRdd(data: RDD[(Array[Any], Array[Any], Long)],
 
   // TODO make json percent configurable
   def toAvroDf: DataFrame = {
-    val avroRdd: RDD[Row] = data.map {
-      case (keys, values, ts) =>
-        val (keyJson, valueJson) = if (math.random < 0.01) {
-          (keyToJson(keys), valueToJson(values))
-        } else {
-          (null, null)
-        }
-        val result: Array[Any] = Array(keyToBytes(keys), valueToBytes(values), keyJson, valueJson, ts)
-        new GenericRow(result)
+    val avroRdd: RDD[Row] = data.map { case (keys, values, ts) =>
+      val (keyJson, valueJson) = if (math.random < 0.01) {
+        (keyToJson(keys), valueToJson(values))
+      } else {
+        (null, null)
+      }
+      val result: Array[Any] = Array(keyToBytes(keys), valueToBytes(values), keyJson, valueJson, ts)
+      new GenericRow(result)
     }
 
     val schemasStr = Seq(keyZSchema, valueZSchema).map(AvroConversions.fromChrononSchema(_).toString(true))
@@ -172,13 +169,12 @@ case class TimedKvRdd(data: RDD[(Array[Any], Array[Any], Long)],
   }
 
   override def toFlatDf: DataFrame = {
-    val flatRdd: RDD[Row] = data.map {
-      case (keys, values, ts) =>
-        val result = new Array[Any](keys.length + values.length + 1)
-        System.arraycopy(keys, 0, result, 0, keys.length)
-        System.arraycopy(values, 0, result, keys.length, values.length)
-        result(result.length - 1) = ts
-        SparkConversions.toSparkRow(result, flatZSchema, GenericRowHandler.func).asInstanceOf[GenericRow]
+    val flatRdd: RDD[Row] = data.map { case (keys, values, ts) =>
+      val result = new Array[Any](keys.length + values.length + 1)
+      System.arraycopy(keys, 0, result, 0, keys.length)
+      System.arraycopy(values, 0, result, keys.length, values.length)
+      result(result.length - 1) = ts
+      SparkConversions.toSparkRow(result, flatZSchema, GenericRowHandler.func).asInstanceOf[GenericRow]
     }
     sparkSession.createDataFrame(flatRdd, flatSchema)
   }

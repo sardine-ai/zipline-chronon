@@ -106,28 +106,27 @@ class PartitionRunner[T](verb: String,
     val ranges = computeRanges
     val n = ranges.length
     var side: Option[T] = None
-    ranges.zipWithIndex.foreach {
-      case ((inputRange, outputRange), i) =>
-        println(s"""
+    ranges.zipWithIndex.foreach { case ((inputRange, outputRange), i) =>
+      println(s"""
            |Computing range ${i + 1}/$n
            |input: $inputTable (${inputRange.start} -> ${inputRange.end})
            |output: $outputTable (${outputRange.start} -> ${outputRange.end})
            |""".stripMargin.yellow)
-        val inputFilter = inputRange.whereClauses(tu.partitionColumn).mkString(" AND ")
-        val inputDf = tu.loadTable(inputTable).filter(inputFilter)
-        val (outputDf, sideVal) = computeFunc(inputDf)
-        side = Option(sideVal)
-        if (outputDf.columns.contains(tu.partitionColumn)) {
-          outputDf.save(outputTable)
-        } else {
-          outputDf.saveUnPartitioned(outputTable)
-        }
-        println(s"""
+      val inputFilter = inputRange.whereClauses(tu.partitionColumn).mkString(" AND ")
+      val inputDf = tu.loadTable(inputTable).filter(inputFilter)
+      val (outputDf, sideVal) = computeFunc(inputDf)
+      side = Option(sideVal)
+      if (outputDf.columns.contains(tu.partitionColumn)) {
+        outputDf.save(outputTable)
+      } else {
+        outputDf.saveUnPartitioned(outputTable)
+      }
+      println(s"""
            |Finished computing range ${i + 1}/$n
            |input: $inputTable (${inputRange.start} -> ${inputRange.end})
            |output: $outputTable (${outputRange.start} -> ${outputRange.end})
            |""".stripMargin.green)
-        postFunc.foreach(_(sideVal))
+      postFunc.foreach(_(sideVal))
     }
     side
   }

@@ -25,8 +25,7 @@ import org.apache.datasketches.memory.Memory
 import java.util
 import scala.collection.Seq
 
-/**
-  * Module managing FeatureStats Schema, Aggregations to be used by type and aggregator construction.
+/** Module managing FeatureStats Schema, Aggregations to be used by type and aggregator construction.
   *
   * Stats Aggregation has an offline/ batch component and an online component.
   * The metrics defined for stats depend on the schema of the join. The dataTypes and column names.
@@ -45,23 +44,21 @@ object StatsGenerator {
   val finalizedPercentilesSeries: Array[Double] = Array(0.05, 0.25, 0.5, 0.75, 0.95)
   val ignoreColumns: Seq[String] = Seq(api.Constants.TimeColumn, "ds", "date_key", "date", "datestamp")
 
-  /**
-    * InputTransform acts as a signal of how to process the metric.
+  /** InputTransform acts as a signal of how to process the metric.
     *
     * IsNull: Check if the input is null.
     *
     * Raw: Operate in the input column.
     *
     * One: lit(true) in spark. Used for row counts leveraged to obtain null rate values.
-    * */
+    */
   object InputTransform extends Enumeration {
     type InputTransform = Value
     val IsNull, Raw, One = Value
   }
   import InputTransform._
 
-  /**
-    * MetricTransform represents a single statistic built on top of an input column.
+  /** MetricTransform represents a single statistic built on top of an input column.
     */
   case class MetricTransform(name: String,
                              expression: InputTransform,
@@ -69,8 +66,7 @@ object StatsGenerator {
                              suffix: String = "",
                              argMap: util.Map[String, String] = null)
 
-  /**
-    * Post processing for finalized values or IRs when generating a time series of stats.
+  /** Post processing for finalized values or IRs when generating a time series of stats.
     * In the case of percentiles for examples we reduce to 5 values in order to generate candlesticks.
     */
   def SeriesFinalizer(key: String, value: AnyRef): AnyRef = {
@@ -115,17 +111,16 @@ object StatsGenerator {
   /** For the schema of the data define metrics to be aggregated */
   def buildMetrics(fields: Seq[(String, api.DataType)]): Seq[MetricTransform] = {
     val metrics = fields
-      .flatMap {
-        case (name, dataType) =>
-          if (ignoreColumns.contains(name)) {
-            Seq.empty
-          } else if (api.DataType.isNumeric(dataType) && dataType != api.ByteType) {
-            // ByteTypes are not supported due to Avro Encodings and limited support on aggregators.
-            // Needs to be casted on source if required.
-            numericTransforms(name)
-          } else {
-            anyTransforms(name)
-          }
+      .flatMap { case (name, dataType) =>
+        if (ignoreColumns.contains(name)) {
+          Seq.empty
+        } else if (api.DataType.isNumeric(dataType) && dataType != api.ByteType) {
+          // ByteTypes are not supported due to Avro Encodings and limited support on aggregators.
+          // Needs to be casted on source if required.
+          numericTransforms(name)
+        } else {
+          anyTransforms(name)
+        }
       }
       .sortBy(_.name)
     metrics :+ MetricTransform(totalColumn, InputTransform.One, api.Operation.COUNT)
@@ -147,8 +142,7 @@ object StatsGenerator {
     linfSimple.asInstanceOf[AnyRef]
   }
 
-  /**
-    * PSI is a measure of the difference between two probability distributions.
+  /** PSI is a measure of the difference between two probability distributions.
     * However, it's not defined for cases where a bin can have zero elements in either distribution
     * (meant for continuous measures). In order to support PSI for discrete measures we add a small eps value to
     * perturb the distribution in bins.

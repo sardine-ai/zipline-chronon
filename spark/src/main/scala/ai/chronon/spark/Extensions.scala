@@ -52,8 +52,8 @@ object Extensions {
       // pad the first column so that the second column is aligned vertically
       val padding = schemaTuples.map(_._1.length).max
       schemaTuples
-        .map {
-          case (typ, name) => s"  ${typ.padTo(padding, ' ')} : $name"
+        .map { case (typ, name) =>
+          s"  ${typ.padTo(padding, ' ')} : $name"
         }
         .mkString("\n")
     }
@@ -191,11 +191,10 @@ object Extensions {
       udf((x: Object) => if (x != null) f.mightContain(x) else true)
 
     def filterBloom(bloomMap: util.Map[String, BloomFilter]): DataFrame =
-      bloomMap.entrySet().iterator().toScala.foldLeft(df) {
-        case (dfIter, entry) =>
-          val col = entry.getKey
-          val bloom = entry.getValue
-          dfIter.where(mightContain(bloom)(dfIter(col)))
+      bloomMap.entrySet().iterator().toScala.foldLeft(df) { case (dfIter, entry) =>
+        val col = entry.getKey
+        val bloom = entry.getValue
+        dfIter.where(mightContain(bloom)(dfIter(col)))
       }
 
     // math for computing bloom size

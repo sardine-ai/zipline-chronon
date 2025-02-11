@@ -2,8 +2,7 @@ package ai.chronon.spark.test
 
 import org.scalatest._
 
-/**
-  * SuiteMixin that skips execution of the tests in a suite if the tests are not triggered
+/** SuiteMixin that skips execution of the tests in a suite if the tests are not triggered
   * by the specific tagName. As an example:
   * sbt test -> Will skip the test suite
   * sbt spark/test -> Will skip the test suite

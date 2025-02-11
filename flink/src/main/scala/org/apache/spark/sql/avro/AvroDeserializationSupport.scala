@@ -45,11 +45,10 @@ class AvroDeserializationSchema(topicName: String, jsonSchema: String, schemaReg
     def doDeserialize(messageBytes: Array[Byte], errorMessage: String): Try[InternalRow] = {
       Try {
         avroDeserializer.nullSafeEval(messageBytes).asInstanceOf[InternalRow]
-      }.recover {
-        case e: Exception =>
-          logger.error(errorMessage, e)
-          deserializationErrorCounter.inc()
-          null
+      }.recover { case e: Exception =>
+        logger.error(errorMessage, e)
+        deserializationErrorCounter.inc()
+        null
       }
     }
 
@@ -69,11 +68,10 @@ class AvroDeserializationSchema(topicName: String, jsonSchema: String, schemaReg
     }
 
     // return null in case of failure. This allows us to skip the message according to the Flink API
-    val deserTry = maybeMessage.map(m => sparkRowDeser(m)).recover {
-      case e: Exception =>
-        logger.error("Failed to deserialize InternalRow to Row", e)
-        deserializationErrorCounter.inc()
-        null
+    val deserTry = maybeMessage.map(m => sparkRowDeser(m)).recover { case e: Exception =>
+      logger.error("Failed to deserialize InternalRow to Row", e)
+      deserializationErrorCounter.inc()
+      null
     }
 
     deserTry.get

@@ -74,8 +74,8 @@ class JoinUtilsTest extends AnyFlatSpec {
       null
     )
 
-    expected.zip(actual).map {
-      case (e, a) => e == a
+    expected.zip(actual).map { case (e, a) =>
+      e == a
     }
   }
 
@@ -104,8 +104,8 @@ class JoinUtilsTest extends AnyFlatSpec {
       true, true, false, null, false, null
     )
 
-    expected.zip(actual).map {
-      case (e, a) => e == a
+    expected.zip(actual).map { case (e, a) =>
+      e == a
     }
   }
 

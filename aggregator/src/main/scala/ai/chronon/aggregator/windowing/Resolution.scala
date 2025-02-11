@@ -64,10 +64,9 @@ object DailyResolution extends Resolution {
 
 object ResolutionUtils {
 
-  /**
-    * Find the smallest tail window resolution in a GroupBy. Returns 1D if the GroupBy does not define any windows (all-time aggregates).
+  /** Find the smallest tail window resolution in a GroupBy. Returns 1D if the GroupBy does not define any windows (all-time aggregates).
     * The window resolutions are: 5 min for a GroupBy a window < 12 hrs, 1 hr for < 12 days, 1 day for > 12 days.
-    * */
+    */
   def getSmallestWindowResolutionInMillis(groupBy: GroupBy): Long =
     Option(
       groupBy.aggregations.toScala.toArray

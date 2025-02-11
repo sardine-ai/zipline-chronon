@@ -6,16 +6,14 @@ import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters._
 
-/**
-  * A KeySelector is what Flink uses to determine how to partition a DataStream. In a distributed environment, the
+/** A KeySelector is what Flink uses to determine how to partition a DataStream. In a distributed environment, the
   * KeySelector guarantees that events with the same key always end up in the same machine.
   * If invoked multiple times on the same object, the returned key must be the same.
   */
 object KeySelectorBuilder {
   private[this] lazy val logger = LoggerFactory.getLogger(getClass)
 
-  /**
-    * Given a GroupBy, create a function to key the output of a SparkExprEval operator by the entities defined in the
+  /** Given a GroupBy, create a function to key the output of a SparkExprEval operator by the entities defined in the
     * GroupBy. The function returns a List of size equal to the number of keys in the GroupBy.
     *
     * For example, if a GroupBy is defined as "GroupBy(..., keys=["color", "size"], ...), the function will key the

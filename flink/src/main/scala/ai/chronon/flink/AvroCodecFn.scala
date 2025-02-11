@@ -20,8 +20,7 @@ import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters._
 
-/**
-  * Base class for the Avro conversion Flink operator.
+/** Base class for the Avro conversion Flink operator.
   *
   * Subclasses should override the RichFlatMapFunction methods (flatMap) and groupByServingInfoParsed.
   *
@@ -84,8 +83,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   }
 }
 
-/**
-  * A Flink function that is responsible for converting the Spark expr eval output and converting that to a form
+/** A Flink function that is responsible for converting the Spark expr eval output and converting that to a form
   * that can be written out to the KV store (PutRequest object)
   * @param groupByServingInfoParsed The GroupBy we are working with
   * @tparam T The input data type
@@ -123,8 +121,7 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
   }
 }
 
-/**
-  * A Flink function that is responsible for converting an array of pre-aggregates (aka a tile) to a form
+/** A Flink function that is responsible for converting an array of pre-aggregates (aka a tile) to a form
   * that can be written out to the KV store (PutRequest object).
   *
   * @param groupByServingInfoParsed The GroupBy we are working with

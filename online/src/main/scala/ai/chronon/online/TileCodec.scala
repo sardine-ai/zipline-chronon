@@ -49,8 +49,7 @@ object TileCodec {
   }
 }
 
-/**
-  * TileCodec is a helper class that allows for the creation of pre-aggregated tiles of feature values.
+/** TileCodec is a helper class that allows for the creation of pre-aggregated tiles of feature values.
   * These pre-aggregated tiles can be used in the serving layer to compute the final feature values along
   * with batch pre-aggregates produced by GroupByUploads.
   * The pre-aggregated tiles are serialized as Avro and indicate whether the tile is complete or not (partial aggregates)

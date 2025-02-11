@@ -64,7 +64,7 @@ object JoinUtils {
       }
     })
 
-  /***
+  /** *
     * Util methods for join computation
     */
 
@@ -97,7 +97,7 @@ object JoinUtils {
     Some(result)
   }
 
-  /***
+  /** *
     * Compute partition range to be filled for given join conf
     */
   def getRangesToFill(leftSource: ai.chronon.api.Source,
@@ -131,7 +131,7 @@ object JoinUtils {
     PartitionRange(leftStart, leftEnd)(tableUtils.partitionSpec)
   }
 
-  /***
+  /** *
     * join left and right dataframes, merging any shared columns if exists by the coalesce rule.
     * fails if there is any data type mismatch between shared columns.
     *
@@ -173,7 +173,7 @@ object JoinUtils {
     finalDf
   }
 
-  /***
+  /** *
     * Method to create or replace a view for feature table joining with labels.
     * Label columns will be prefixed with "label" or custom prefix for easy identification
     */
@@ -219,7 +219,7 @@ object JoinUtils {
     tableUtils.sql(sqlStatement)
   }
 
-  /***
+  /** *
     * Method to create a view with latest available label_ds for a given ds. This view is built
     * on top of final label view which has all label versions available.
     * This view will inherit the final label view properties as well.
@@ -233,13 +233,12 @@ object JoinUtils {
     assert(labelTableName.nonEmpty, "Not able to locate underlying label table for partitions")
 
     val labelMapping: Map[String, Seq[PartitionRange]] = getLatestLabelMapping(labelTableName, tableUtils)
-    val caseDefinitions = labelMapping.flatMap {
-      case (ds: String, ranges: Seq[PartitionRange]) =>
-        ranges
-          .map(range =>
-            "WHEN " + range.betweenClauses(
-              tableUtils.partitionColumn) + s" THEN ${Constants.LabelPartitionColumn} = '$ds'")
-          .toList
+    val caseDefinitions = labelMapping.flatMap { case (ds: String, ranges: Seq[PartitionRange]) =>
+      ranges
+        .map(range =>
+          "WHEN " + range.betweenClauses(
+            tableUtils.partitionColumn) + s" THEN ${Constants.LabelPartitionColumn} = '$ds'")
+        .toList
     }
 
     val createFragment = s"""CREATE OR REPLACE VIEW $viewName"""
@@ -269,8 +268,7 @@ object JoinUtils {
     tableUtils.sql(sqlStatement)
   }
 
-  /**
-    * compute the mapping label_ds -> PartitionRange of ds which has this label_ds as latest version
+  /** compute the mapping label_ds -> PartitionRange of ds which has this label_ds as latest version
     *  - Get all partitions from table
     *  - For each ds, find the latest available label_ds
     *  - Reverse the mapping and get the ds partition range for each label version(label_ds)
@@ -301,8 +299,7 @@ object JoinUtils {
     labelMap.groupBy(_._2).map { case (v, kvs) => (v, tableUtils.chunk(kvs.keySet.toSet)) }
   }
 
-  /**
-    * Generate a Bloom filter for 'joinPart' when the row count to be backfilled falls below a specified threshold.
+  /** Generate a Bloom filter for 'joinPart' when the row count to be backfilled falls below a specified threshold.
     * This method anticipates that there will likely be a substantial number of rows on the right side that need to be filtered out.
     * @return bloomfilter map option for right part
     */
@@ -316,9 +313,8 @@ object JoinUtils {
 
     val rightBlooms = joinLevelBloomMapOpt.map { joinBlooms =>
       joinPart.rightToLeft.iterator
-        .map {
-          case (rightCol, leftCol) =>
-            rightCol -> joinBlooms.get(leftCol)
+        .map { case (rightCol, leftCol) =>
+          rightCol -> joinBlooms.get(leftCol)
         }
         .toMap
         .asJava
@@ -327,9 +323,8 @@ object JoinUtils {
     // print bloom sizes
     val bloomSizes = rightBlooms.map { blooms =>
       val sizes = blooms.asScala
-        .map {
-          case (rightCol, bloom) =>
-            s"$rightCol -> ${bloom.bitSize()}"
+        .map { case (rightCol, bloom) =>
+          s"$rightCol -> ${bloom.bitSize()}"
         }
       logger.info(s"Bloom sizes: ${sizes.mkString(", ")}")
     }
@@ -365,33 +360,32 @@ object JoinUtils {
       }.toMap
 
       groupByKeyExpressions
-        .map {
-          case (keyName, groupByKeyExpression) =>
-            val leftSideKeyName = joinPart.rightToLeft(keyName)
-            logger.info(
-              s"KeyName: $keyName, leftSide KeyName: $leftSideKeyName , Join right to left: ${joinPart.rightToLeft
-                .mkString(", ")}")
-            val values = collectedLeft.map(row => row.getAs[Any](leftSideKeyName))
-            // Check for null keys, warn if found, err if all null
-            val (notNullValues, nullValues) = values.partition(_ != null)
-            if (notNullValues.isEmpty) {
-              throw new RuntimeException(
-                s"No not-null keys found for key: $keyName. Check source table or where clauses.")
-            } else if (!nullValues.isEmpty) {
-              logger.warn(s"Found ${nullValues.length} null keys for key: $keyName.")
-            }
+        .map { case (keyName, groupByKeyExpression) =>
+          val leftSideKeyName = joinPart.rightToLeft(keyName)
+          logger.info(
+            s"KeyName: $keyName, leftSide KeyName: $leftSideKeyName , Join right to left: ${joinPart.rightToLeft
+              .mkString(", ")}")
+          val values = collectedLeft.map(row => row.getAs[Any](leftSideKeyName))
+          // Check for null keys, warn if found, err if all null
+          val (notNullValues, nullValues) = values.partition(_ != null)
+          if (notNullValues.isEmpty) {
+            throw new RuntimeException(
+              s"No not-null keys found for key: $keyName. Check source table or where clauses.")
+          } else if (!nullValues.isEmpty) {
+            logger.warn(s"Found ${nullValues.length} null keys for key: $keyName.")
+          }
 
-            // Escape single quotes in string values for spark sql
-            def escapeSingleQuotes(s: String): String = s.replace("'", "\\'")
+          // Escape single quotes in string values for spark sql
+          def escapeSingleQuotes(s: String): String = s.replace("'", "\\'")
 
-            // String manipulate to form valid SQL
-            val valueSet = notNullValues.map {
-              case s: String => s"'${escapeSingleQuotes(s)}'" // Add single quotes for string values
-              case other     => other.toString // Keep other types (like Int) as they are
-            }.toSet
+          // String manipulate to form valid SQL
+          val valueSet = notNullValues.map {
+            case s: String => s"'${escapeSingleQuotes(s)}'" // Add single quotes for string values
+            case other     => other.toString // Keep other types (like Int) as they are
+          }.toSet
 
-            // Form the final WHERE clause for injection
-            s"$groupByKeyExpression in (${valueSet.mkString(sep = ",")})"
+          // Form the final WHERE clause for injection
+          s"$groupByKeyExpression in (${valueSet.mkString(sep = ",")})"
         }
         .foreach { whereClause =>
           logger.info(s"Injecting where clause: $whereClause into groupBy: ${joinPart.groupBy.metaData.name}")

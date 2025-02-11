@@ -50,9 +50,8 @@ object CreationUtils {
   def alterTablePropertiesSql(tableName: String, properties: Map[String, String]): String = {
     // Only SQL api exists for setting TBLPROPERTIES
     val propertiesString = properties
-      .map {
-        case (key, value) =>
-          s"'$key' = '$value'"
+      .map { case (key, value) =>
+        s"'$key' = '$value'"
       }
       .mkString(", ")
     s"ALTER TABLE $tableName SET TBLPROPERTIES ($propertiesString)"

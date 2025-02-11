@@ -52,60 +52,49 @@ object FastHashing {
     logger.info(s"Generating key builder over keys:\n${keySchema.pretty}\n")
     val keyIndices: Array[Int] = keys.map(schema.fieldIndex)
     // the hash function generation won't be in the hot path - so its okay to
-    val hashFunctions: Array[(Hasher, Row) => Unit] = keys.zip(keyIndices).map {
-      case (key, index) =>
-        val typ = schema.fields(index).dataType
-        val hashFunction: (Hasher, Row) => Unit = typ match {
-          case IntegerType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putInt(row.getAs[Int](index))
-          }
-          case LongType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putLong(row.getAs[Long](index))
-          }
-          case ShortType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putShort(row.getAs[Short](index))
-          }
-          case StringType => {
-            case (hasher: Hasher, row: Row) =>
-              // putString has changed between guava versions and makes Chronon less friendly when
-              // dealing with build conflicts, so we instead use putBytes
-              hasher.putBytes(row.getAs[String](index).getBytes(Utf8))
-          }
-          case BinaryType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putBytes(row.getAs[Array[Byte]](index))
-          }
-          case BooleanType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putBoolean(row.getAs[Boolean](index))
-          }
-          case FloatType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putFloat(row.getAs[Float](index))
-          }
-          case DoubleType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putDouble(row.getAs[Double](index))
-          }
-          case DateType => {
-            case (hasher: Hasher, row: Row) =>
-              // Date is internally represented in spark as a integer representing the
-              // number of days since 1970-01-01
-              hasher.putInt(row.getAs[Int](index))
-          }
-          case TimestampType => {
-            case (hasher: Hasher, row: Row) =>
-              hasher.putLong(row.getAs[Long](index))
-          }
-          case _ =>
-            throw new UnsupportedOperationException(
-              s"Hashing unsupported for key column: $key of type: $typ"
-            )
+    val hashFunctions: Array[(Hasher, Row) => Unit] = keys.zip(keyIndices).map { case (key, index) =>
+      val typ = schema.fields(index).dataType
+      val hashFunction: (Hasher, Row) => Unit = typ match {
+        case IntegerType => { case (hasher: Hasher, row: Row) =>
+          hasher.putInt(row.getAs[Int](index))
         }
-        hashFunction
+        case LongType => { case (hasher: Hasher, row: Row) =>
+          hasher.putLong(row.getAs[Long](index))
+        }
+        case ShortType => { case (hasher: Hasher, row: Row) =>
+          hasher.putShort(row.getAs[Short](index))
+        }
+        case StringType => { case (hasher: Hasher, row: Row) =>
+          // putString has changed between guava versions and makes Chronon less friendly when
+          // dealing with build conflicts, so we instead use putBytes
+          hasher.putBytes(row.getAs[String](index).getBytes(Utf8))
+        }
+        case BinaryType => { case (hasher: Hasher, row: Row) =>
+          hasher.putBytes(row.getAs[Array[Byte]](index))
+        }
+        case BooleanType => { case (hasher: Hasher, row: Row) =>
+          hasher.putBoolean(row.getAs[Boolean](index))
+        }
+        case FloatType => { case (hasher: Hasher, row: Row) =>
+          hasher.putFloat(row.getAs[Float](index))
+        }
+        case DoubleType => { case (hasher: Hasher, row: Row) =>
+          hasher.putDouble(row.getAs[Double](index))
+        }
+        case DateType => { case (hasher: Hasher, row: Row) =>
+          // Date is internally represented in spark as a integer representing the
+          // number of days since 1970-01-01
+          hasher.putInt(row.getAs[Int](index))
+        }
+        case TimestampType => { case (hasher: Hasher, row: Row) =>
+          hasher.putLong(row.getAs[Long](index))
+        }
+        case _ =>
+          throw new UnsupportedOperationException(
+            s"Hashing unsupported for key column: $key of type: $typ"
+          )
+      }
+      hashFunction
     }
 
     { row: Row =>

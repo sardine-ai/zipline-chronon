@@ -435,14 +435,13 @@ class FrequentItems[T: FrequentItemsFriendly](val mapSize: Int, val errorType: E
     val items = ir.sketch.getFrequentItems(errorType).map(sk => sk.getItem -> sk.getEstimate)
     val heap = mutable.PriorityQueue[(T, Long)]()(Ordering.by(_._2))
 
-    items.foreach({
-      case (key, value) =>
-        if (heap.size < mapSize) {
-          heap.enqueue((key, value))
-        } else if (heap.head._2 < value) {
-          heap.dequeue()
-          heap.enqueue((key, value))
-        }
+    items.foreach({ case (key, value) =>
+      if (heap.size < mapSize) {
+        heap.enqueue((key, value))
+      } else if (heap.head._2 < value) {
+        heap.dequeue()
+        heap.enqueue((key, value))
+      }
     })
 
     val result = new util.HashMap[String, Long]()

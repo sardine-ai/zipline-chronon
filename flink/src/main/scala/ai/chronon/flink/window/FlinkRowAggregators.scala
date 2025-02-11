@@ -23,8 +23,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-/**
-  * Wrapper Flink aggregator around Chronon's RowAggregator. Relies on Flink to pass in
+/** Wrapper Flink aggregator around Chronon's RowAggregator. Relies on Flink to pass in
   * the correct set of events for the tile. As the aggregates produced by this function
   * are used on the serving side along with other pre-aggregates, we don't 'finalize' the
   * Chronon RowAggregator and instead return the intermediate representation.
@@ -145,10 +144,9 @@ class FlinkRowAggProcessFunction(
     eventProcessingErrorCounter = metricsGroup.counter("event_processing_error")
   }
 
-  /**
-    * Process events emitted from the aggregate function.
+  /** Process events emitted from the aggregate function.
     * Output format: (keys, encoded tile IR, timestamp of the event being processed)
-    * */
+    */
   override def process(keys: Seq[Any],
                        context: ProcessWindowFunction[TimestampedIR, TimestampedTile, Seq[Any], TimeWindow]#Context,
                        elements: lang.Iterable[TimestampedIR],

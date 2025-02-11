@@ -8,8 +8,7 @@ import java.util.Objects
 // schema evolution (https://nightlies.apache.org/flink/flink-docs-release-1.17/docs/dev/datastream/fault-tolerance/serialization/schema_evolution/)
 // This allows us to add / remove fields without requiring us to migrate the state using dual write / read patterns.
 
-/**
-  * Combines the IR (intermediate result) with the timestamp of the event being processed.
+/** Combines the IR (intermediate result) with the timestamp of the event being processed.
   * We need the timestamp of the event processed so we can calculate processing lag down the line.
   *
   * Example: for a GroupBy with 2 windows, we'd have TimestampedTile( [IR for window 1, IR for window 2], timestamp ).
@@ -35,8 +34,7 @@ class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long]) {
     }
 }
 
-/**
-  * Combines the entity keys, the encoded IR (intermediate result), and the timestamp of the event being processed.
+/** Combines the entity keys, the encoded IR (intermediate result), and the timestamp of the event being processed.
   *
   * We need the timestamp of the event processed so we can calculate processing lag down the line.
   *
@@ -67,8 +65,7 @@ class TimestampedTile(var keys: Seq[Any], var tileBytes: Array[Byte], var latest
     }
 }
 
-/**
-  * Output emitted by the AvroCodecFn operator. This is fed into the Async KV store writer and objects of this type are persisted
+/** Output emitted by the AvroCodecFn operator. This is fed into the Async KV store writer and objects of this type are persisted
   * while taking checkpoints.
   */
 class AvroCodecOutput(var keyBytes: Array[Byte], var valueBytes: Array[Byte], var dataset: String, var tsMillis: Long) {
@@ -93,8 +90,7 @@ class AvroCodecOutput(var keyBytes: Array[Byte], var valueBytes: Array[Byte], va
     }
 }
 
-/**
-  * Output records emitted by the AsyncKVStoreWriter. Objects of this type are persisted while taking checkpoints.
+/** Output records emitted by the AsyncKVStoreWriter. Objects of this type are persisted while taking checkpoints.
   */
 class WriteResponse(var keyBytes: Array[Byte],
                     var valueBytes: Array[Byte],
