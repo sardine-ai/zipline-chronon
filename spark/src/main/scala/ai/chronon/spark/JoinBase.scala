@@ -435,8 +435,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     }
 
     // Run validations before starting the job
-    val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
-    val analyzer = new Analyzer(tableUtils, joinConfCloned, today, today, silenceMode = true)
+    val analyzer = new Analyzer(tableUtils, joinConfCloned, endPartition, endPartition, silenceMode = true)
     try {
       analyzer.analyzeJoin(joinConfCloned, validationAssert = true)
       metrics.gauge(Metrics.Name.validationSuccess, 1)
