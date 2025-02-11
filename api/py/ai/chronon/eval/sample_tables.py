@@ -12,7 +12,7 @@ def sample_with_query(table, query) -> str:
     assert os.path.exists(
         local_warehouse
     ), f"""
-Can't find local_warehouse @ {local_warehouse}. 
+Can't find local_warehouse @ {local_warehouse}.
 Please set the proper CHRONON_ROOT, and run 'mkdir -p $CHRONON_ROOT/local_warehouse'
 """
 
@@ -33,7 +33,7 @@ Please set the proper CHRONON_ROOT, and run 'mkdir -p $CHRONON_ROOT/local_wareho
 def sample_tables(table_names: List[str]) -> None:
 
     for table in table_names:
-        query = f"SELECT * FROM {table} LIMIT 1000"
+        query = f"SELECT * FROM {table} LIMIT 10000 WHERE _DATE > '2025-01-09'"
         sample_with_query(table, query)
 
 
@@ -53,34 +53,11 @@ def _sample_trino(query, output_path):
     raise NotImplementedError("Trino sampling is not yet implemented")
 
 
-# def _sample_bigquery(query: str, output_path: str, limit=1000) -> str:
-#     """
-#     Creates a sampled setfrom BigQuery for the local_warehouse
-#     """
-
-#     from google.cloud import bigquery
-
-#     project_id = os.getenv("GCP_PROJECT_ID")
-#     assert project_id, "Please set the GCP_PROJECT_ID environment variable"
-
-#     client = bigquery.Client(project=project_id)
-
-#     print("Fetching from BigQuery... (this might take a while)")
-#     results = client.query_and_wait(query, max_results=limit)
-#     df = results.to_dataframe()
-#     print("Writing to parquet from BigQuery results...")
-#     df.to_parquet(output_path)
-
-#     print(f"Wrote results to {output_path}")
-#     return output_path
-
-
 def _sample_bigquery(query, destination_path):
     from google.cloud.bigquery_storage import BigQueryReadClient
     from google.cloud.bigquery_storage_v1.types import ReadSession
     from google.cloud.bigquery_storage_v1.types import DataFormat
     from google.cloud import bigquery
-    import pyarrow as pa
     import pyarrow.parquet as pq
     import os
 
@@ -111,7 +88,7 @@ def _sample_bigquery(query, destination_path):
 
     # Read using Arrow
     stream = bqstorage_client.read_rows(session.streams[0].name)
-    table = stream.to_arrow()
+    table = stream.to_arrow(read_session=session)
 
     # Write to Parquet directly
     pq.write_table(table, destination_path)
