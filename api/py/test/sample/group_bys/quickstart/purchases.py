@@ -27,7 +27,9 @@ source = Source(
         topic=None,  # See the 'returns' GroupBy for an example that has a streaming source configured. In this case, this would be the streaming source topic that can be listened to for realtime events
         query=Query(
             selects=select(
-                "user_id", "purchase_price"
+                "user_id",
+                "purchase_price",
+                bucket_rand="'1'"
             ),  # Select the fields we care about
             time_column="ts",
         ),  # The event time
@@ -57,6 +59,11 @@ v1 = GroupBy(
         Aggregation(
             input_column="purchase_price",
             operation=Operation.LAST_K(10),
+        ),
+        Aggregation(
+            input_column="purchase_price",
+            operation=Operation.LAST_K(15),
+            buckets=["bucket_rand"],
         ),
     ],
 )
