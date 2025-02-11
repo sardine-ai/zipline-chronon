@@ -80,6 +80,13 @@ export PATH="/usr/local/bin:${PATH}"
 We enabled remote caching for all our builds/tests for both local development and CI.
 As part of that change we would need to do gcloud auth to read/write from remote cache stored in our BigTable bucket for the local dev builds.
 
+#### For passing GCloud Auth credentials to Bazel
+Create a new .bazelrc.local file with the following content. Also feel free to specify any local overrides to the build/test options here.
+This file is git-ignored.
+```
+build --google_credentials=/Users/{username}/.config/gcloud/application_default_credentials.json
+```
+
 ### Java not found error on Mac
 
 In case you run into this error the fix is to manually download and install amazon corretto-17 from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html)
