@@ -23,10 +23,13 @@ class TableScan:
     def table_name(self, local_table_view) -> str:
         return self.view_name() if local_table_view else self.table
 
-    def raw_scan_query(self, local_table_view: bool = True, limit=1000) -> str:
-        return f"SELECT * FROM {self.table_name(local_table_view)} WHERE {self.partition_col} = '{self.partition_date}' LIMIT {limit}"
+    def raw_scan_query(self, local_table_view: bool = True, limit=100000) -> str:
+        return f"""
+SELECT * FROM {self.table_name(local_table_view)} WHERE event_name = 'view_listing'
+LIMIT {limit}
+"""
 
-    def scan_query(self, local_table_view=True, limit=1000) -> str:
+    def scan_query(self, local_table_view=True, limit=10000) -> str:
         selects = []
         base_selects = self.query.selects.copy()
 
@@ -44,9 +47,7 @@ class TableScan:
         select_clauses = ",\n    ".join(selects)
 
         where_clauses = (
-            "AND\n    " + (" AND\n    ".join(self.query.wheres))
-            if self.query.wheres
-            else ""
+            " AND\n    ".join(self.query.wheres) if self.query.wheres else "1=1"
         )
 
         return f"""
@@ -55,7 +56,8 @@ SELECT
 FROM
     {self.table_name(local_table_view)}
 WHERE
-    {self.partition_col} = '{self.partition_date}' {where_clauses}
+    _DATE > '2025-01-09' AND
+    {where_clauses}
 LIMIT
     {limit}
 """
@@ -68,7 +70,7 @@ two_days_ago = (datetime.now() - timedelta(days=2)).strftime(DEFAULT_DATE_FORMAT
 
 
 def get_date(query: chronon.Query) -> Tuple[str, str]:
-    assert query and query.selects, f"please specify source.query.selects"
+    assert query and query.selects, "please specify source.query.selects"
 
     partition_col = query.selects.get("ds", DEFAULT_DATE_COLUMN)
     partition_date = coalesce(query.endPartition, two_days_ago)
