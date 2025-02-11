@@ -522,28 +522,27 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     }
 
     logger.info(s"Join ranges to compute: ${effectiveRanges.map { _.toString() }.pretty}")
-    effectiveRanges.zipWithIndex.foreach {
-      case (range, index) =>
-        val startMillis = System.currentTimeMillis()
-        val progress = s"| [${index + 1}/${effectiveRanges.size}]"
-        logger.info(s"Computing join for range: ${range.toString()}  $progress")
-        leftDf(joinConfCloned, range, tableUtils).map { leftDfInRange =>
-          if (showDf) leftDfInRange.prettyPrint()
-          // set autoExpand = true to ensure backward compatibility due to column ordering changes
-          val finalDf = computeRange(leftDfInRange, range, bootstrapInfo, runSmallMode, useBootstrapForLeft)
-          if (selectedJoinParts.isDefined) {
-            assert(finalDf.isEmpty,
-                   "The arg `selectedJoinParts` is defined, so no final join is required. `finalDf` should be empty")
-            logger.info(s"Skipping writing to the output table for range: ${range.toString()}  $progress")
-          } else {
-            finalDf.get.save(outputTable, tableProps, autoExpand = true)
-            val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
-            metrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
-            metrics.gauge(Metrics.Name.PartitionCount, range.partitions.length)
-            logger.info(
-              s"Wrote to table $outputTable, into partitions: ${range.toString()} $progress in $elapsedMins mins")
-          }
+    effectiveRanges.zipWithIndex.foreach { case (range, index) =>
+      val startMillis = System.currentTimeMillis()
+      val progress = s"| [${index + 1}/${effectiveRanges.size}]"
+      logger.info(s"Computing join for range: ${range.toString()}  $progress")
+      leftDf(joinConfCloned, range, tableUtils).map { leftDfInRange =>
+        if (showDf) leftDfInRange.prettyPrint()
+        // set autoExpand = true to ensure backward compatibility due to column ordering changes
+        val finalDf = computeRange(leftDfInRange, range, bootstrapInfo, runSmallMode, useBootstrapForLeft)
+        if (selectedJoinParts.isDefined) {
+          assert(finalDf.isEmpty,
+                 "The arg `selectedJoinParts` is defined, so no final join is required. `finalDf` should be empty")
+          logger.info(s"Skipping writing to the output table for range: ${range.toString()}  $progress")
+        } else {
+          finalDf.get.save(outputTable, tableProps, autoExpand = true)
+          val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
+          metrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
+          metrics.gauge(Metrics.Name.PartitionCount, range.partitions.length)
+          logger.info(
+            s"Wrote to table $outputTable, into partitions: ${range.toString()} $progress in $elapsedMins mins")
         }
+      }
     }
     if (selectedJoinParts.isDefined) {
       logger.info("Skipping final join because selectedJoinParts is defined.")

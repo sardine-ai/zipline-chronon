@@ -1,6 +1,7 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
+    format = True,
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
         "//aggregator:lib",
@@ -60,6 +61,7 @@ test_deps = _FLINK_TEST_DEPS + [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
+    format = True,
     visibility = ["//visibility:public"],
     deps = test_deps,
 )

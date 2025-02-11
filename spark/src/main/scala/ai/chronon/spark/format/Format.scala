@@ -28,8 +28,8 @@ trait Format {
 
     partitionSeq.flatMap { partitionMap =>
       if (
-        subPartitionsFilter.forall {
-          case (k, v) => partitionMap.get(k).contains(v)
+        subPartitionsFilter.forall { case (k, v) =>
+          partitionMap.get(k).contains(v)
         }
       ) {
         partitionMap.get(partitionColumn)

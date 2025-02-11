@@ -14,8 +14,7 @@ import scala.collection.JavaConverters._
 class ConfHandler(store: MonitoringModelStore) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  /**
-    * Returns a specific configuration by name and type
+  /** Returns a specific configuration by name and type
     */
   def getConf(req: ConfRequest): LogicalNode = {
     logger.debug(s"Retrieving ${req.getConfName} of type ${req.getConfType}")
@@ -38,8 +37,7 @@ class ConfHandler(store: MonitoringModelStore) {
     node
   }
 
-  /**
-    * Finds a specific configuration by name within a sequence of configs
+  /** Finds a specific configuration by name within a sequence of configs
     */
   private def findConfig[T](configs: Seq[T], configType: String, name: String): T = {
     configs
@@ -47,8 +45,7 @@ class ConfHandler(store: MonitoringModelStore) {
       .getOrElse(throw new RuntimeException(s"Unable to retrieve $configType $name"))
   }
 
-  /**
-    * Returns all configurations of a specific type
+  /** Returns all configurations of a specific type
     */
   def getConfList(req: ConfListRequest): ConfListResponse = {
     logger.debug(s"Retrieving all configurations of type ${req.getConfType}")
@@ -70,8 +67,7 @@ class ConfHandler(store: MonitoringModelStore) {
     response
   }
 
-  /**
-    * Returns configurations matching the search criteria
+  /** Returns configurations matching the search criteria
     */
   def searchConf(req: ConfRequest): ConfListResponse = {
     logger.debug(s"Searching for configurations matching '${req.getConfName}' of type ${req.getConfType}")

@@ -71,9 +71,8 @@ object RelevantLeftForJoinPart {
 
     // relevant left column computations for the right side
     // (adding new but unrelated selects to left source shouldn't affect these)
-    val leftKeyExpressions = joinPart.rightToLeft.map {
-      case (rightKey, leftKey) =>
-        ColumnExpression(rightKey, leftQuery.getSelects.safeGet(leftKey))
+    val leftKeyExpressions = joinPart.rightToLeft.map { case (rightKey, leftKey) =>
+      ColumnExpression(rightKey, leftQuery.getSelects.safeGet(leftKey))
     }.toArray
 
     // time is only relevant if left is events

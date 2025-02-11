@@ -82,16 +82,15 @@ class DriftStore(kvStore: KVStore,
 
     val serializer: TSerializer = binarySerializer.get()
     val tileKeyMap = tileKeysForJoin(joinConf, None, columnPrefix)
-    val requestContextMap: Map[GetRequest, SummaryRequestContext] = tileKeyMap.flatMap {
-      case (group, keys) =>
-        // Only create requests for keys that match our column prefix
-        keys
-          .filter(key => columnPrefix.forall(prefix => key.getColumn == prefix))
-          .map { key =>
-            val keyBytes = serializer.serialize(key)
-            val get = GetRequest(keyBytes, summaryDataset, startTsMillis = startMs, endTsMillis = endMs)
-            get -> SummaryRequestContext(get, key, group)
-          }
+    val requestContextMap: Map[GetRequest, SummaryRequestContext] = tileKeyMap.flatMap { case (group, keys) =>
+      // Only create requests for keys that match our column prefix
+      keys
+        .filter(key => columnPrefix.forall(prefix => key.getColumn == prefix))
+        .map { key =>
+          val keyBytes = serializer.serialize(key)
+          val get = GetRequest(keyBytes, summaryDataset, startTsMillis = startMs, endTsMillis = endMs)
+          get -> SummaryRequestContext(get, key, group)
+        }
     }
 
     val responseFuture = kvStore.multiGet(requestContextMap.keys.toSeq)
@@ -166,9 +165,8 @@ class DriftStore(kvStore: KVStore,
     } else {
       val oldRange = oldRangeOpt.get
       val oldSummaries = getSummaries(join, Some(oldRange.startMs), Some(oldRange.endMs), columnPrefix)
-      Future.sequence(Seq(currentSummaries, oldSummaries)).map {
-        case Seq(current, old) =>
-          old ++ current
+      Future.sequence(Seq(currentSummaries, oldSummaries)).map { case Seq(current, old) =>
+        old ++ current
       }
     }
   }

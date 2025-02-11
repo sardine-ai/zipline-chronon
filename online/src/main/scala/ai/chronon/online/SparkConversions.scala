@@ -125,15 +125,13 @@ object SparkConversions {
   }
 
   def fromChrononSchema(schema: Seq[(String, api.DataType)]): StructType =
-    StructType(schema.map {
-      case (name, zType) =>
-        StructField(name, fromChrononType(zType))
+    StructType(schema.map { case (name, zType) =>
+      StructField(name, fromChrononType(zType))
     }.toSeq)
 
   def fromChrononSchema(schema: api.StructType): StructType =
-    StructType(schema.fields.map {
-      case api.StructField(name, zType) =>
-        StructField(name, fromChrononType(zType))
+    StructType(schema.fields.map { case api.StructField(name, zType) =>
+      StructField(name, fromChrononType(zType))
     })
 
   def toSparkRow(value: Any, dataType: api.DataType, extraneousRecord: Any => Array[Any] = null): Any = {

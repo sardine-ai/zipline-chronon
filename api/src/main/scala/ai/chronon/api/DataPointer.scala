@@ -66,15 +66,15 @@ object DataPointer extends RegexParsers {
     }
 
   private def catalogWithOptionalFormat: Parser[(String, Option[String])] =
-    """[a-zA-Z0-9]+""".r ~ opt("+" ~> """[a-zA-Z0-9]+""".r) ^^ {
-      case catalog ~ format => (catalog, format)
+    """[a-zA-Z0-9]+""".r ~ opt("+" ~> """[a-zA-Z0-9]+""".r) ^^ { case catalog ~ format =>
+      (catalog, format)
     }
 
   private def options: Parser[Map[String, String]] = "(" ~> repsep(option, ",") <~ ")" ^^ (_.toMap)
 
   private def option: Parser[(String, String)] =
-    ("""[^=,]+""".r <~ "=") ~ """[^,)]+""".r ^^ {
-      case key ~ value => (key.trim, value.trim)
+    ("""[^=,]+""".r <~ "=") ~ """[^,)]+""".r ^^ { case key ~ value =>
+      (key.trim, value.trim)
     }
 
   private def tableOrPath: Parser[String] = """[^:]+""".r

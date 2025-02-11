@@ -14,7 +14,6 @@ on:
       - 'service/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_non_spark.yaml'
-      - 'build.sbt'
   pull_request:
     branches:
       - main
@@ -28,7 +27,6 @@ on:
       - 'service/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_non_spark.yaml'
-      - 'build.sbt'
 
 
 concurrency:

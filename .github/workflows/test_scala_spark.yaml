@@ -7,14 +7,12 @@ on:
     paths:
       - 'spark/**'
       - '.github/workflows/test_scala_spark.yaml'
-      - 'build.sbt'
   pull_request:
     branches:
       - main
     paths:
       - 'spark/**'
       - '.github/workflows/test_scala_spark.yaml'
-      - 'build.sbt'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

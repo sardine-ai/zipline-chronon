@@ -26,17 +26,14 @@ import scala.collection.mutable
 case class BatchIr(collapsed: Array[Any], tailHops: HopsAggregator.IrMapType)
 case class FinalBatchIr(collapsed: Array[Any], tailHops: HopsAggregator.OutputArrayType)
 
-/**
-  * Mutations processing starts with an end of the day snapshot FinalBatchIR.
+/** Mutations processing starts with an end of the day snapshot FinalBatchIR.
   * On top of this FinalBatchIR mutations are processed.
-  *
   *
   * update/merge/finalize are related to snapshot data. As such they follow the snapshot Schema
   * and aggregators.
   * However mutations come into play later in the group by and a finalized version of the snapshot
   * data is created to be processed with the mutations rows.
   * Since the dataframe inputs are aligned between mutations and snapshot (input) no additional schema is needed.
-  *
   */
 class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
                                  inputSchema: Seq[(String, DataType)],
@@ -106,8 +103,7 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
   def finalizeSnapshot(batchIr: BatchIr): FinalBatchIr =
     FinalBatchIr(batchIr.collapsed, Option(batchIr.tailHops).map(hopsAggregator.toTimeSortedArray).orNull)
 
-  /**
-    * Go through the aggregators and update or delete the intermediate with the information of the row if relevant.
+  /** Go through the aggregators and update or delete the intermediate with the information of the row if relevant.
     * Useful for both online and mutations
     */
   def updateIr(ir: Array[Any], row: Row, queryTs: Long, hasReversal: Boolean = false): Unit = {
@@ -142,8 +138,7 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
     }
   }
 
-  /**
-    * Update the intermediate results with tail hops data from a FinalBatchIr.
+  /** Update the intermediate results with tail hops data from a FinalBatchIr.
     */
   def mergeTailHops(ir: Array[Any], queryTs: Long, batchEndTs: Long, batchIr: FinalBatchIr): Array[Any] = {
     var i: Int = 0
@@ -171,8 +166,7 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
     ir
   }
 
-  /**
-    * Given aggregations FinalBatchIRs at the end of the Snapshot (batchEndTs) and mutation and query times,
+  /** Given aggregations FinalBatchIRs at the end of the Snapshot (batchEndTs) and mutation and query times,
     * determine the values at the query times for the aggregations.
     * This is pretty much a mix of online with extra work for multiple queries ts support.
     */

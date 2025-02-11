@@ -5,8 +5,7 @@ import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-/**
-  * Utility to create a cache with LRU semantics.
+/** Utility to create a cache with LRU semantics.
   *
   * The original purpose of having an LRU cache in Chronon is to cache KVStore calls and decoded IRs
   * in the Fetcher. This helps decrease to feature serving latency.
@@ -14,8 +13,7 @@ import org.slf4j.LoggerFactory
 object LRUCache {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  /**
-    * Build a bounded, thread-safe Caffeine cache that stores KEY-VALUE pairs.
+  /** Build a bounded, thread-safe Caffeine cache that stores KEY-VALUE pairs.
     *
     * @param cacheName Name of the cache
     * @param maximumSize Maximum number of entries in the cache
@@ -40,8 +38,7 @@ object LRUCache {
     cache
   }
 
-  /**
-    * Report metrics for a Caffeine cache. The "cache" tag is added to all metrics.
+  /** Report metrics for a Caffeine cache. The "cache" tag is added to all metrics.
     *
     * @param metricsContext Metrics.Context for recording metrics
     * @param cache          Caffeine cache to get metrics from

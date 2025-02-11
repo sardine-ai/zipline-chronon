@@ -67,9 +67,8 @@ class RepoIndexSpec extends AnyFlatSpec with Matchers with Logging {
 
       val actualVersions = VersionUpdate.toMap(updates)
 
-      expectedVersions.foreach {
-        case (name, expectedVersion) =>
-          actualVersions.get(name) shouldBe Some(expectedVersion)
+      expectedVersions.foreach { case (name, expectedVersion) =>
+        actualVersions.get(name) shouldBe Some(expectedVersion)
       }
 
       VersionUpdate.print(updates)

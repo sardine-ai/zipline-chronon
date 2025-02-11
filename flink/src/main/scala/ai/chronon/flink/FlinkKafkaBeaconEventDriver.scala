@@ -100,8 +100,7 @@ object FlinkKafkaBeaconEventDriver {
   }
 
   def buildAvroSchema(): Schema = {
-    new Schema.Parser().parse(
-      """
+    new Schema.Parser().parse("""
     {
       "type": "record",
       "name": "Beacon",

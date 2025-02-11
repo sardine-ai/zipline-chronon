@@ -9,8 +9,7 @@ import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.avro.AvroDeserializationSupport
 
-/**
-  * SchemaProvider that uses the Confluent Schema Registry to fetch schemas for topics.
+/** SchemaProvider that uses the Confluent Schema Registry to fetch schemas for topics.
   * Can be configured as: topic = "kafka://topic-name/registry_host=host/[registry_port=port]/[registry_scheme=http]/[subject=subject]"
   * Port, scheme and subject are optional. If port is missing, we assume the host is pointing to a LB address / such that
   * forwards to the right host + port. Scheme defaults to http. Subject defaults to the topic name + "-value" (based on schema

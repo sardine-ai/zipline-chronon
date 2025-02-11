@@ -135,23 +135,21 @@ class Analyzer(tableUtils: TableUtils,
       .sample(sampleFraction)
       .rdd
       .treeAggregate(init)(
-        seqOp = {
-          case (sketches, row) =>
-            var i = 0
-            while (i < colsLength) {
-              sketches(i).sketch.update(row.getString(i))
-              i += 1
-            }
-            sketches
+        seqOp = { case (sketches, row) =>
+          var i = 0
+          while (i < colsLength) {
+            sketches(i).sketch.update(row.getString(i))
+            i += 1
+          }
+          sketches
         },
-        combOp = {
-          case (sketches1, sketches2) =>
-            var i = 0
-            while (i < colsLength) {
-              sketches1(i).sketch.merge(sketches2(i).sketch)
-              i += 1
-            }
-            sketches1
+        combOp = { case (sketches1, sketches2) =>
+          var i = 0
+          while (i < colsLength) {
+            sketches1(i).sketch.merge(sketches2(i).sketch)
+            i += 1
+          }
+          sketches1
         }
       )
       .map(_.sketch.getFrequentItems(ErrorType.NO_FALSE_POSITIVES))
@@ -164,9 +162,8 @@ class Analyzer(tableUtils: TableUtils,
   def analyze(df: DataFrame, keys: Array[String], sourceTable: String): String = {
     val result = skewKeysWithTsAndCount(df, keys, count, sample)
     val header = s"Analyzing frequent keys from table $sourceTable over columns: [${keys.mkString(", ")}]"
-    val colPrints = result.flatMap {
-      case (col, skewKeys) =>
-        Seq(s"  $col") ++ skewKeys.map { case (name, count) => s"    $name: $count" }
+    val colPrints = result.flatMap { case (col, skewKeys) =>
+      Seq(s"  $col") ++ skewKeys.map { case (name, count) => s"    $name: $count" }
     }
     (header +: colPrints).mkString("\n")
   }
@@ -372,9 +369,8 @@ class Analyzer(tableUtils: TableUtils,
     if (gbStartPartitions.nonEmpty) {
       logger.info(
         "-- Following GroupBy-s contains a startPartition. Please check if any startPartition will conflict with your backfill. --")
-      gbStartPartitions.foreach {
-        case (gbName, startPartitions) =>
-          logger.info(s"    $gbName : ${startPartitions.mkString(",")}".yellow)
+      gbStartPartitions.foreach { case (gbName, startPartitions) =>
+        logger.info(s"    $gbName : ${startPartitions.mkString(",")}".yellow)
       }
     }
 
@@ -505,10 +501,9 @@ class Analyzer(tableUtils: TableUtils,
                          |right-${groupBy.dataModel.toString.low.yellow},
                          |accuracy-${groupBy.inferredAccuracy.toString.low.yellow}
                          |expected earliest available data partition: $expectedStart\n""".stripMargin.red)
-              tableToPartitions.foreach {
-                case (table, _, startOpt, endOpt) =>
-                  logger.info(
-                    s"Table $table startPartition ${startOpt.getOrElse("empty")} endPartition ${endOpt.getOrElse("empty")}")
+              tableToPartitions.foreach { case (table, _, startOpt, endOpt) =>
+                logger.info(
+                  s"Table $table startPartition ${startOpt.getOrElse("empty")} endPartition ${endOpt.getOrElse("empty")}")
               }
               val tables = tableToPartitions.map(_._1)
               List((tables.mkString(", "), groupBy.metaData.name, expectedStart))
@@ -555,8 +550,7 @@ class Analyzer(tableUtils: TableUtils,
     mapTimestampChecks
   }
 
-  /**
-    * This method can be used to trigger the assertion checks
+  /** This method can be used to trigger the assertion checks
     * or print the summary stats once the timestamp checks have been run
     * @param timestampCheckMap
     * @param configType
@@ -601,9 +595,8 @@ class Analyzer(tableUtils: TableUtils,
     val values = row.toSeq
     columns
       .zip(values)
-      .map {
-        case (column, value) =>
-          (column, value.toString)
+      .map { case (column, value) =>
+        (column, value.toString)
       }
       .toMap
   }

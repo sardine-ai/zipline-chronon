@@ -416,8 +416,7 @@ object Extensions {
       }
     }
 
-    /**
-      * If the streaming topic has additional args. Parse them to be used by streamingImpl.
+    /** If the streaming topic has additional args. Parse them to be used by streamingImpl.
       * Example: kafkatopic/schema=deserializationClass/version=2.0/host=host_url/port=9999
       * -> Map(schema -> deserializationClass, version -> 2.0, host -> host_url, port -> 9999)
       */
@@ -432,8 +431,7 @@ object Extensions {
         .toMap
     }
 
-    /**
-      * Topic without kwargs
+    /** Topic without kwargs
       */
     def cleanTopic: String = source.topic.cleanSpec
 
@@ -582,8 +580,8 @@ object Extensions {
       val wheres = baseWheres ++ timeWheres(timeColumn)
 
       val allSelects = Option(selects).map(fillIfAbsent ++ _).map { m =>
-        m.map {
-          case (name, expr) => s"($expr) AS $name"
+        m.map { case (name, expr) =>
+          s"($expr) AS $name"
         }.toSeq
       }
       QueryParts(allSelects, wheres)
@@ -705,8 +703,8 @@ object Extensions {
       if (missingKeys.nonEmpty && !externalPart.source.isContextualSource) {
         throw KeyMissingException(externalPart.source.metadata.name, missingKeys.toSeq, query)
       }
-      rightToLeft.map {
-        case (rightKey, leftKey) => rightKey -> query.getOrElse(leftKey, null).asInstanceOf[AnyRef]
+      rightToLeft.map { case (rightKey, leftKey) =>
+        rightKey -> query.getOrElse(leftKey, null).asInstanceOf[AnyRef]
       }.toMap
     }
 
@@ -741,8 +739,8 @@ object Extensions {
       val rightToRight = joinPart.groupBy.keyColumns.toScala.map { key => key -> key }.toMap
       Option(joinPart.keyMapping)
         .map { leftToRight =>
-          val rToL = leftToRight.toScala.map {
-            case (left, right) => right -> left
+          val rToL = leftToRight.toScala.map { case (left, right) =>
+            right -> left
           }.toMap
           rightToRight ++ rToL
         }
@@ -790,8 +788,7 @@ object Extensions {
 
   implicit class BootstrapPartOps(val bootstrapPart: BootstrapPart) extends Serializable {
 
-    /**
-      * Compress the info such that the hash can be stored at record and
+    /** Compress the info such that the hash can be stored at record and
       * used to track which records are populated by which bootstrap tables
       */
     def semanticHash: String = {
@@ -956,9 +953,8 @@ object Extensions {
       val partsToDrop = if (leftChanged(oldSemanticHash)) {
         partHashes(oldSemanticHash).keys.toSeq
       } else {
-        val changed = partHashes(newSemanticHash).flatMap {
-          case (key, newVal) =>
-            oldSemanticHash.get(key).filter(_ != newVal).map(_ => key)
+        val changed = partHashes(newSemanticHash).flatMap { case (key, newVal) =>
+          oldSemanticHash.get(key).filter(_ != newVal).map(_ => key)
         }
         val deleted = partHashes(oldSemanticHash).keys.filterNot(newSemanticHash.contains)
         (changed ++ deleted).toSeq
@@ -995,14 +991,13 @@ object Extensions {
             keys.forall {
               _.contains(key)
             })
-          .map {
-            case (leftKey, values) =>
-              assert(
-                leftKeyCols.contains(leftKey),
-                s"specified skew filter for $leftKey is not used as a key in any join part. " +
-                  s"Please specify key columns in skew filters: [${leftKeyCols.mkString(", ")}]"
-              )
-              generateSkewFilterSql(leftKey, values.toScala.toSeq)
+          .map { case (leftKey, values) =>
+            assert(
+              leftKeyCols.contains(leftKey),
+              s"specified skew filter for $leftKey is not used as a key in any join part. " +
+                s"Please specify key columns in skew filters: [${leftKeyCols.mkString(", ")}]"
+            )
+            generateSkewFilterSql(leftKey, values.toScala.toSeq)
           }
           .filter(_.nonEmpty)
           .mkString(joiner)
@@ -1014,13 +1009,12 @@ object Extensions {
     def partSkewFilter(joinPart: JoinPart, joiner: String = " OR "): Option[String] = {
       Option(join.skewKeys).flatMap { jmap =>
         val result = jmap.toScala
-          .flatMap {
-            case (leftKey, values) =>
-              Option(joinPart.keyMapping)
-                .map(_.toScala.getOrElse(leftKey, leftKey))
-                .orElse(Some(leftKey))
-                .filter(joinPart.groupBy.keyColumns.contains(_))
-                .map(generateSkewFilterSql(_, values.toScala))
+          .flatMap { case (leftKey, values) =>
+            Option(joinPart.keyMapping)
+              .map(_.toScala.getOrElse(leftKey, leftKey))
+              .orElse(Some(leftKey))
+              .filter(joinPart.groupBy.keyColumns.contains(_))
+              .map(generateSkewFilterSql(_, values.toScala))
           }
           .filter(_.nonEmpty)
           .mkString(joiner)
@@ -1177,8 +1171,8 @@ object Extensions {
     def finalOutputColumn(baseColumns: Seq[String]): Seq[Column] = {
       val projections = derivationProjection(baseColumns)
       val finalOutputColumns = projections
-        .flatMap {
-          case (name, expression) => Some(expr(expression).as(name))
+        .flatMap { case (name, expression) =>
+          Some(expr(expression).as(name))
         }
       finalOutputColumns.toSeq
     }

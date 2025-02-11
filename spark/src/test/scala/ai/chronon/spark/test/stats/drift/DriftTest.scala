@@ -109,11 +109,10 @@ class DriftTest extends AnyFlatSpec with Matchers {
     )
     val driftSeries = Await.result(driftSeriesFuture.get, Duration.create(10, TimeUnit.SECONDS))
 
-    val (nulls, totals) = driftSeries.iterator.foldLeft(0 -> 0) {
-      case ((nulls, total), s) =>
-        val currentNulls = Option(s.getPercentileDriftSeries).map(_.iterator().toScala.count(_ == null)).getOrElse(0)
-        val currentCount = Option(s.getPercentileDriftSeries).map(_.size()).getOrElse(0)
-        (nulls + currentNulls, total + currentCount)
+    val (nulls, totals) = driftSeries.iterator.foldLeft(0 -> 0) { case ((nulls, total), s) =>
+      val currentNulls = Option(s.getPercentileDriftSeries).map(_.iterator().toScala.count(_ == null)).getOrElse(0)
+      val currentCount = Option(s.getPercentileDriftSeries).map(_.size()).getOrElse(0)
+      (nulls + currentNulls, total + currentCount)
     }
 
     logger.info(s"""drift totals: $totals
@@ -131,15 +130,14 @@ class DriftTest extends AnyFlatSpec with Matchers {
       endMs
     )
     val summarySeries = Await.result(summarySeriesFuture.get, Duration.create(100, TimeUnit.SECONDS))
-    val (summaryNulls, summaryTotals) = summarySeries.iterator.foldLeft(0 -> 0) {
-      case ((nulls, total), s) =>
-        if (s.getPercentiles == null) {
-          (nulls + 1) -> (total + 1)
-        } else {
-          val currentNulls = s.getPercentiles.iterator().toScala.count(_ == null)
-          val currentCount = s.getPercentiles.size()
-          (nulls + currentNulls, total + currentCount)
-        }
+    val (summaryNulls, summaryTotals) = summarySeries.iterator.foldLeft(0 -> 0) { case ((nulls, total), s) =>
+      if (s.getPercentiles == null) {
+        (nulls + 1) -> (total + 1)
+      } else {
+        val currentNulls = s.getPercentiles.iterator().toScala.count(_ == null)
+        val currentCount = s.getPercentiles.size()
+        (nulls + currentNulls, total + currentCount)
+      }
     }
     logger.info(s"""summary ptile totals: $summaryTotals
          |summary ptile nulls: $summaryNulls
@@ -213,24 +211,22 @@ class DriftTest extends AnyFlatSpec with Matchers {
                                                    isNumeric: Boolean,
                                                    metric: Metric): Seq[TimeSeriesPoint] = {
     if (metric == NullMetric) {
-      summarySeries.nullCount.toScala.zip(summarySeries.timestamps.toScala).map {
-        case (nullCount, ts) => TimeSeriesPoint(0, ts, nullValue = Some(nullCount.intValue()))
+      summarySeries.nullCount.toScala.zip(summarySeries.timestamps.toScala).map { case (nullCount, ts) =>
+        TimeSeriesPoint(0, ts, nullValue = Some(nullCount.intValue()))
       }
     } else {
       if (isNumeric) {
         val percentileSeriesPerBreak = summarySeries.percentiles.toScala
         val timeStamps = summarySeries.timestamps.toScala
         val breaks = DriftStore.breaks(20)
-        percentileSeriesPerBreak.zip(breaks).flatMap {
-          case (percentileSeries, break) =>
-            percentileSeries.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value, ts, Some(break)) }
+        percentileSeriesPerBreak.zip(breaks).flatMap { case (percentileSeries, break) =>
+          percentileSeries.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value, ts, Some(break)) }
         }
       } else {
         val histogramOfSeries = summarySeries.histogram.toScala
         val timeStamps = summarySeries.timestamps.toScala
-        histogramOfSeries.flatMap {
-          case (label, values) =>
-            values.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value.toDouble, ts, Some(label)) }
+        histogramOfSeries.flatMap { case (label, values) =>
+          values.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value.toDouble, ts, Some(label)) }
         }.toSeq
       }
     }

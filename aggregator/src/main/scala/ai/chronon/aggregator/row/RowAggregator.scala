@@ -36,32 +36,31 @@ class RowAggregator(val inputSchema: Seq[(String, DataType)], val aggregationPar
   val indices: Range = 0 until length
   // has to be array for fast random access
   val columnAggregators: Array[ColumnAggregator] = {
-    aggregationParts.zipWithIndex.map {
-      case (spec: AggregationPart, aggregatorIndex: Int) =>
-        val ((_, inputType), inputIndex) = {
-          inputSchema.zipWithIndex.find(_._1._1 == spec.inputColumn).get
-        }
+    aggregationParts.zipWithIndex.map { case (spec: AggregationPart, aggregatorIndex: Int) =>
+      val ((_, inputType), inputIndex) = {
+        inputSchema.zipWithIndex.find(_._1._1 == spec.inputColumn).get
+      }
 
-        val bucketIndex: Option[Int] = Option(spec.bucket).map { bucketCol =>
-          val bIndex = inputSchema.indexWhere(_._1 == bucketCol)
-          assert(bIndex != -1, s"bucketing column: $bucketCol is not found in input: ${inputSchema.map(_._1)}")
-          val bucketType = inputSchema(bIndex)._2
-          assert(bucketType == StringType, s"bucketing column: $bucketCol needs to be a string, but found $bucketType")
-          bIndex
-        }
-        try {
-          ColumnAggregator.construct(
-            inputType,
-            spec,
-            ColumnIndices(inputIndex, aggregatorIndex),
-            bucketIndex
-          )
-        } catch {
-          case e: Exception =>
-            throw new RuntimeException(
-              s"Failed to create ${spec.operation} aggregator for ${spec.inputColumn} column of type $inputType",
-              e)
-        }
+      val bucketIndex: Option[Int] = Option(spec.bucket).map { bucketCol =>
+        val bIndex = inputSchema.indexWhere(_._1 == bucketCol)
+        assert(bIndex != -1, s"bucketing column: $bucketCol is not found in input: ${inputSchema.map(_._1)}")
+        val bucketType = inputSchema(bIndex)._2
+        assert(bucketType == StringType, s"bucketing column: $bucketCol needs to be a string, but found $bucketType")
+        bIndex
+      }
+      try {
+        ColumnAggregator.construct(
+          inputType,
+          spec,
+          ColumnIndices(inputIndex, aggregatorIndex),
+          bucketIndex
+        )
+      } catch {
+        case e: Exception =>
+          throw new RuntimeException(
+            s"Failed to create ${spec.operation} aggregator for ${spec.inputColumn} column of type $inputType",
+            e)
+      }
     }
   }.toArray
 

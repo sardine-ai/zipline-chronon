@@ -2,8 +2,7 @@ package ai.chronon.orchestration.utils
 
 import scala.collection.mutable
 
-/**
-  * [[SequenceMap]] maintains a sequence of unique values for each key
+/** [[SequenceMap]] maintains a sequence of unique values for each key
   * while preserving the first insertion order and returning the index of the first-insertion.
   *
   * [[RepoIndex]] needs to compute versions of the whole repo on every call to its [[addNodes]] method.

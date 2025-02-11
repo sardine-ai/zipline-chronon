@@ -12,8 +12,7 @@ import org.apache.spark.sql.functions.udf
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 
-/**
-  * This Spark app handles loading data via Spark's BigTable connector (https://github.com/GoogleCloudDataproc/spark-bigtable-connector) into BigTable.
+/** This Spark app handles loading data via Spark's BigTable connector (https://github.com/GoogleCloudDataproc/spark-bigtable-connector) into BigTable.
   * At the moment this uses the DF support in the BT connector. A limitation with this connector is that it does not support
   * setting the timestamp on the individual cells we write out. For GroupBy Uploads, this is fine as we can set the timestamp
   * to that of the endDs + span. If we need to tweak this behavior, we'll need to reach for the RDD version of these connector classes (BigtableRDD.writeRDD).

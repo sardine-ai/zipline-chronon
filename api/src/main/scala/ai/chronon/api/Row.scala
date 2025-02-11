@@ -40,8 +40,7 @@ trait Row {
   }
 }
 
-/**
-  * SchemaTraverser aids in the traversal of the given SchemaType.
+/** SchemaTraverser aids in the traversal of the given SchemaType.
   * In some cases (eg avro), it is more performant to create the
   * top-level schema once and then traverse it top-to-bottom, rather
   * than recreating at each node.
@@ -147,8 +146,8 @@ object Row {
         value match {
           case arr: Array[Any] =>
             composer(
-              arr.iterator.zipWithIndex.map {
-                case (value, idx) => edit(value, fields(idx).fieldType, getFieldSchema(fields(idx)))
+              arr.iterator.zipWithIndex.map { case (value, idx) =>
+                edit(value, fields(idx).fieldType, getFieldSchema(fields(idx)))
               },
               dataType,
               schemaTraverser.map(_.currentNode)
@@ -166,8 +165,8 @@ object Row {
           case value: Any =>
             assert(extraneousRecord != null, s"No handler for $value of class ${value.getClass}")
             composer(
-              extraneousRecord(value).iterator.zipWithIndex.map {
-                case (value, idx) => edit(value, fields(idx).fieldType, getFieldSchema(fields(idx)))
+              extraneousRecord(value).iterator.zipWithIndex.map { case (value, idx) =>
+                edit(value, fields(idx).fieldType, getFieldSchema(fields(idx)))
               },
               dataType,
               schemaTraverser.map(_.currentNode)

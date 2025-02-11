@@ -122,33 +122,32 @@ class MonitoringModelStore(apiImpl: Api) {
       .map { seqAB =>
         val seqKVStrings = seqAB.map(kv =>
           (new String(kv.keyBytes, StandardCharsets.UTF_8), new String(kv.valueBytes, StandardCharsets.UTF_8)))
-        val result = seqKVStrings.foldLeft(LoadedConfs()) {
-          case (confs, kv) =>
-            kv._1 match {
-              case value if value.contains("joins/") =>
-                LoadedConfs(confs.joins ++ Seq(getConf[api.Join](kv._2)),
-                            confs.groupBys,
-                            confs.stagingQueries,
-                            confs.models)
-              case value if value.contains("group_bys/") =>
-                LoadedConfs(confs.joins,
-                            confs.groupBys ++ Seq(getConf[api.GroupBy](kv._2)),
-                            confs.stagingQueries,
-                            confs.models)
-              case value if value.contains("staging_queries/") =>
-                LoadedConfs(confs.joins,
-                            confs.groupBys,
-                            confs.stagingQueries ++ Seq(getConf[api.StagingQuery](kv._2)),
-                            confs.models)
-              case value if value.contains("models/") =>
-                LoadedConfs(confs.joins,
-                            confs.groupBys,
-                            confs.stagingQueries,
-                            confs.models ++ Seq(getConf[api.Model](kv._2)))
-              case _ =>
-                logger.error(s"Unable to parse list response key: ${kv._1}")
-                LoadedConfs()
-            }
+        val result = seqKVStrings.foldLeft(LoadedConfs()) { case (confs, kv) =>
+          kv._1 match {
+            case value if value.contains("joins/") =>
+              LoadedConfs(confs.joins ++ Seq(getConf[api.Join](kv._2)),
+                          confs.groupBys,
+                          confs.stagingQueries,
+                          confs.models)
+            case value if value.contains("group_bys/") =>
+              LoadedConfs(confs.joins,
+                          confs.groupBys ++ Seq(getConf[api.GroupBy](kv._2)),
+                          confs.stagingQueries,
+                          confs.models)
+            case value if value.contains("staging_queries/") =>
+              LoadedConfs(confs.joins,
+                          confs.groupBys,
+                          confs.stagingQueries ++ Seq(getConf[api.StagingQuery](kv._2)),
+                          confs.models)
+            case value if value.contains("models/") =>
+              LoadedConfs(confs.joins,
+                          confs.groupBys,
+                          confs.stagingQueries,
+                          confs.models ++ Seq(getConf[api.Model](kv._2)))
+            case _ =>
+              logger.error(s"Unable to parse list response key: ${kv._1}")
+              LoadedConfs()
+          }
         }
         logger.info(
           s"Finished one batch load of configs. Loaded: ${result.joins.length} joins; " +
@@ -156,10 +155,9 @@ class MonitoringModelStore(apiImpl: Api) {
             s"${result.stagingQueries.length} staging queries")
         result
       }
-      .recover {
-        case e: Exception =>
-          logger.error("Caught an exception", e)
-          LoadedConfs(Seq.empty, Seq.empty, Seq.empty, Seq.empty)
+      .recover { case e: Exception =>
+        logger.error("Caught an exception", e)
+        LoadedConfs(Seq.empty, Seq.empty, Seq.empty, Seq.empty)
       }
       .get
   }

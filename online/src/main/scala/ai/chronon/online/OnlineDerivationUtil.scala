@@ -32,20 +32,18 @@ object OnlineDerivationUtil {
   }
 
   def buildRenameOnlyDerivationFunction(derivationsScala: List[Derivation]): DerivationFunc = {
-    {
-      case (_: Map[String, Any], values: Any) =>
-        reintroduceExceptions(derivationsScala.applyRenameOnlyDerivation(
-                                Option(values).getOrElse(Map.empty[String, Any]).asInstanceOf[Map[String, Any]]),
-                              values)
+    { case (_: Map[String, Any], values: Any) =>
+      reintroduceExceptions(derivationsScala.applyRenameOnlyDerivation(
+                              Option(values).getOrElse(Map.empty[String, Any]).asInstanceOf[Map[String, Any]]),
+                            values)
     }
   }
 
   private def buildDerivationFunctionWithSql(
       catalystUtil: PooledCatalystUtil
   ): DerivationFunc = {
-    {
-      case (keys: Map[String, Any], values: Map[String, Any]) =>
-        reintroduceExceptions(catalystUtil.performSql(keys ++ values).headOption.orNull, values)
+    { case (keys: Map[String, Any], values: Map[String, Any]) =>
+      reintroduceExceptions(catalystUtil.performSql(keys ++ values).headOption.orNull, values)
     }
   }
 

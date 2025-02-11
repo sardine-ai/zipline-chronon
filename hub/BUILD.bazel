@@ -1,6 +1,7 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]) + glob(["src/main/**/*.java"]),
+    format = True,
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + _CIRCE_DEPS + [
         "//api:lib",
@@ -56,6 +57,7 @@ test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
+    format = True,
     resources = glob(["src/test/resources/**/*"]),
     visibility = ["//visibility:public"],
     deps = test_deps,
