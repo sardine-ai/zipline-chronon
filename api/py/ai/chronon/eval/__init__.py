@@ -108,6 +108,9 @@ def _get_spark() -> SparkSession:
             .config("spark.driver.bindAddress", "127.0.0.1")
             .config("spark.driver.host", "127.0.0.1")
             .config("spark.sql.parquet.columnarReaderBatchSize", "16")
+            .config("spark.executor.memory", "4g")
+            .config("spark.driver.memory", "4g")
+            .config("spark.driver.maxResultSize", "2g")
             .getOrCreate()
         )
     return _spark
