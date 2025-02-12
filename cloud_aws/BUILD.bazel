@@ -1,0 +1,53 @@
+scala_library(
+    name = "cloud_aws_lib",
+    srcs = glob(["src/main/**/*.scala"]),
+    visibility = ["//visibility:public"],
+    format = True,
+    deps = [
+        maven_artifact("software.amazon.awssdk:dynamodb"),
+        maven_artifact("software.amazon.awssdk:regions"),
+        maven_artifact("software.amazon.awssdk:aws-core"),
+        maven_artifact("software.amazon.awssdk:sdk-core"),
+        maven_artifact("software.amazon.awssdk:utils"),
+        maven_artifact("com.google.guava:guava"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+        "//spark:lib",
+        "//online:lib",
+        "//api:lib",
+        "//api:thrift_java",
+    ],
+)
+
+test_deps = [
+    ":cloud_aws_lib",
+    "//online:lib",
+    maven_artifact("software.amazon.awssdk:dynamodb"),
+    maven_artifact("software.amazon.awssdk:regions"),
+    maven_artifact("software.amazon.awssdk:aws-core"),
+    maven_artifact("software.amazon.awssdk:sdk-core"),
+    maven_artifact("software.amazon.awssdk:utils"),
+    maven_artifact("software.amazon.awssdk:auth"),
+    maven_artifact("software.amazon.awssdk:identity-spi"),
+    maven_scala_artifact("org.typelevel:cats-core"),
+    maven_artifact("com.amazonaws:DynamoDBLocal"),
+    maven_scala_artifact("com.chuusai:shapeless"),
+] + _CIRCE_DEPS + _SCALA_TEST_DEPS
+
+scala_library(
+    name = "test_lib",
+    srcs = glob(["src/test/**/*.scala"]),
+    format = True,
+    visibility = ["//visibility:public"],
+    deps = test_deps,
+)
+
+
+scala_test_suite(
+    name = "tests",
+    srcs = glob(["src/test/**/*.scala"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)

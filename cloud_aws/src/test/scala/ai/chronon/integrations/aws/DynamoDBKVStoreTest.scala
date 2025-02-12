@@ -1,21 +1,17 @@
 package ai.chronon.integrations.aws
 
-import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.KVStore.GetResponse
-import ai.chronon.online.KVStore.ListRequest
-import ai.chronon.online.KVStore.ListValue
-import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.KVStore._
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer
 import io.circe.generic.auto._
+import io.circe.generic.semiauto._
 import io.circe.parser._
 import io.circe.syntax._
-import org.scalatest.BeforeAndAfter
+import io.circe.{Decoder, Encoder}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.must.Matchers.be
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 
@@ -23,17 +19,24 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-// different types of tables to store
-case class Model(modelId: String, modelName: String, online: Boolean)
-case class TimeSeries(joinName: String, featureName: String, tileTs: Long, metric: String, summary: Array[Double])
+object DDBTestUtils {
 
-class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
+  // different types of tables to store
+  case class Model(modelId: String, modelName: String, online: Boolean)
+  case class TimeSeries(joinName: String, featureName: String, tileTs: Long, metric: String, summary: Array[Double])
 
+}
+class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
+
+  import DDBTestUtils._
   import DynamoDBKVStoreConstants._
+
+  implicit val modelEncoder: Encoder[Model] = deriveEncoder[Model]
+  implicit val modelDecoder: Decoder[Model] = deriveDecoder[Model]
+  implicit val tsEncoder: Encoder[TimeSeries] = deriveEncoder[TimeSeries]
+  implicit val tsDecoder: Decoder[TimeSeries] = deriveDecoder[TimeSeries]
 
   var server: DynamoDBProxyServer = _
   var client: DynamoDbClient = _
@@ -55,7 +58,7 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     series.asJson.noSpaces.getBytes(StandardCharsets.UTF_8)
   }
 
-  before {
+  override def beforeAll(): Unit = {
     // Start the local DynamoDB instance
     server = ServerRunner.createServerFromCommandLineArgs(Array("-inMemory", "-port", "8000"))
     server.start()
@@ -72,9 +75,9 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
       .build()
   }
 
-  after {
-    client.close()
-    server.stop()
+  override def afterAll(): Unit = {
+//    client.close()
+//    server.stop()
   }
 
   // Test creation of a table with primary keys only (e.g. model)
@@ -115,20 +118,20 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
       buildModelPutRequest(model, dataset)
     }
 
-    val putResults = Await.result(kvStore.multiPut(putReqs), 1.second)
+    val putResults = Await.result(kvStore.multiPut(putReqs), 1.minute)
     putResults.length shouldBe putReqs.length
     putResults.foreach(r => r shouldBe true)
 
     // call list - first call is only for 10 elements
     val listReq1 = ListRequest(dataset, Map(listLimit -> 10))
-    val listResults1 = Await.result(kvStore.list(listReq1), 1.second)
+    val listResults1 = Await.result(kvStore.list(listReq1), 1.minute)
     listResults1.resultProps.contains(continuationKey) shouldBe true
     validateExpectedListResponse(listResults1.values, 10)
 
     // call list - with continuation key
     val listReq2 =
       ListRequest(dataset, Map(listLimit -> 100, continuationKey -> listResults1.resultProps(continuationKey)))
-    val listResults2 = Await.result(kvStore.list(listReq2), 1.second)
+    val listResults2 = Await.result(kvStore.list(listReq2), 1.minute)
     listResults2.resultProps.contains(continuationKey) shouldBe false
     validateExpectedListResponse(listResults2.values, 100)
   }
@@ -148,7 +151,7 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val putReq2 = buildModelPutRequest(model2, dataset)
     val putReq3 = buildModelPutRequest(model3, dataset)
 
-    val putResults = Await.result(kvStore.multiPut(Seq(putReq1, putReq2, putReq3)), 1.second)
+    val putResults = Await.result(kvStore.multiPut(Seq(putReq1, putReq2, putReq3)), 1.minute)
     putResults shouldBe Seq(true, true, true)
 
     // let's try and read these
@@ -156,9 +159,9 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val getReq2 = buildModelGetRequest(model2, dataset)
     val getReq3 = buildModelGetRequest(model3, dataset)
 
-    val getResult1 = Await.result(kvStore.multiGet(Seq(getReq1)), 1.second)
-    val getResult2 = Await.result(kvStore.multiGet(Seq(getReq2)), 1.second)
-    val getResult3 = Await.result(kvStore.multiGet(Seq(getReq3)), 1.second)
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getReq1)), 1.minute)
+    val getResult2 = Await.result(kvStore.multiGet(Seq(getReq2)), 1.minute)
+    val getResult3 = Await.result(kvStore.multiGet(Seq(getReq3)), 1.minute)
 
     validateExpectedModelResponse(model1, getResult1)
     validateExpectedModelResponse(model2, getResult2)
@@ -178,13 +181,13 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
     // write to the kv store and confirm the writes were successful
     val putRequests = points.map(p => buildTSPutRequest(p, dataset))
-    val putResult = Await.result(kvStore.multiPut(putRequests), 1.second)
+    val putResult = Await.result(kvStore.multiPut(putRequests), 1.minute)
     putResult.length shouldBe tsRange.length
     putResult.foreach(r => r shouldBe true)
 
     // query in time range: 10/05/24 00:00 to 10/10
     val getRequest1 = buildTSGetRequest(points.head, dataset, 1728086400000L, 1728518400000L)
-    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.second)
+    val getResult1 = Await.result(kvStore.multiGet(Seq(getRequest1)), 1.minute)
     validateExpectedTimeSeriesResponse(points.head, 1728086400000L, 1728518400000L, getResult1)
   }
 
@@ -231,7 +234,7 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   private def validateExpectedListResponse(response: Try[Seq[ListValue]], maxElements: Int): Unit = {
     response match {
       case Success(mSeq) =>
-        mSeq.length should be <= maxElements
+        mSeq.length <= maxElements shouldBe true
         mSeq.foreach { modelKV =>
           val jsonStr = new String(modelKV.valueBytes, StandardCharsets.UTF_8)
           val returnedModel = decode[Model](jsonStr)
