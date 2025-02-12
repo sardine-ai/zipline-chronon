@@ -133,6 +133,8 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         "taskmanager.memory.managed.fraction" -> "0.5f",
         // default is 256m, we seem to be close to the limit so we give ourselves some headroom
         "taskmanager.memory.jvm-metaspace.size" -> "512m",
+        // bump this a bit as Kafka and KV stores often need direct buffers
+        "taskmanager.memory.task.off-heap.size" -> "1G",
         "yarn.classpath.include-user-jar" -> "FIRST",
         "state.savepoints.dir" -> flinkStateUri,
         "state.checkpoints.dir" -> flinkStateUri,
