@@ -1,5 +1,7 @@
 package ai.chronon.hub.model
 
+import scala.collection.immutable.Seq
+
 /** Captures some details related to ML models registered with Zipline to surface in the Hub UI */
 case class GroupBy(name: String, features: Seq[String])
 case class Join(name: String,

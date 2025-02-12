@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory
 
 import java.util
 import scala.collection.JavaConverters._
-import scala.collection.Seq
 
 class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

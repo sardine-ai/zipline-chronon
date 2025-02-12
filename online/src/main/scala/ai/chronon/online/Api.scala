@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.function.Consumer
-import scala.collection.Seq
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
@@ -35,6 +34,7 @@ import scala.concurrent.duration.MILLISECONDS
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import scala.collection.immutable.Seq
 
 object KVStore {
   // a scan request essentially for the keyBytes
@@ -129,7 +129,7 @@ object StringArrayConverter {
   // Method to convert a byte array back to an array of strings by decoding Base64
   def bytesToStrings(bytes: Array[Byte]): Seq[String] = {
     val encodedString = new String(bytes, StandardCharsets.UTF_8)
-    encodedString.split(",").map(s => new String(Base64.getDecoder.decode(s), StandardCharsets.UTF_8))
+    encodedString.split(",").map(s => new String(Base64.getDecoder.decode(s), StandardCharsets.UTF_8)).toList
   }
 }
 

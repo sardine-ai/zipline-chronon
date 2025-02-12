@@ -30,7 +30,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
 import java.util.concurrent.Executors
-import scala.collection.Seq
+import scala.collection.mutable.WrappedArray
 import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
@@ -99,9 +99,9 @@ class Join(joinConf: api.Join,
     val nonContextualFields = toSparkSchema(
       bootstrapInfo.externalParts
         .filter(!_.externalPart.isContextual)
-        .flatMap(part => part.keySchema ++ part.valueSchema))
+        .flatMap(part => part.keySchema ++ part.valueSchema).toSeq)
     val contextualFields = toSparkSchema(
-      bootstrapInfo.externalParts.filter(_.externalPart.isContextual).flatMap(_.keySchema))
+      bootstrapInfo.externalParts.filter(_.externalPart.isContextual).flatMap(_.keySchema).toSeq)
 
     def withNonContextualFields(df: DataFrame): DataFrame = padFields(df, nonContextualFields)
 
@@ -130,7 +130,7 @@ class Join(joinConf: api.Join,
    * about missing columns. This is necessary when we directly bootstrap a derived column and skip the base columns.
    */
   private def padGroupByFields(baseJoinDf: DataFrame, bootstrapInfo: BootstrapInfo): DataFrame = {
-    val groupByFields = toSparkSchema(bootstrapInfo.joinParts.flatMap(_.valueSchema))
+    val groupByFields = toSparkSchema(bootstrapInfo.joinParts.flatMap(_.valueSchema).toSeq)
     padFields(baseJoinDf, groupByFields)
   }
 
@@ -151,7 +151,7 @@ class Join(joinConf: api.Join,
           val hashes = if (row.isNullAt(0)) {
             Seq()
           } else {
-            row.getAs[mutable.WrappedArray[String]](0)
+            row.getAs[WrappedArray[String]](0).toIndexedSeq
           }
           (hashes, row.getAs[Long](1))
         }.toSeq
@@ -159,9 +159,9 @@ class Join(joinConf: api.Join,
 
     val partsToCompute: Seq[JoinPartMetadata] = {
       if (selectedJoinParts.isEmpty) {
-        bootstrapInfo.joinParts
+        bootstrapInfo.joinParts.toSeq
       } else {
-        bootstrapInfo.joinParts.filter(part => selectedJoinParts.get.contains(part.joinPart.fullPrefix))
+        bootstrapInfo.joinParts.filter(part => selectedJoinParts.get.contains(part.joinPart.fullPrefix)).toSeq
       }
     }
 
@@ -184,7 +184,7 @@ class Join(joinConf: api.Join,
           CoveringSet(hashes, rowCount, isCovering)
         }
         (joinPartMetadata, coveringSets)
-      }
+      }.toSeq
 
     logger.info(
       s"\n======= CoveringSet for Join ${joinConfCloned.metaData.name} for PartitionRange(${leftRange.start}, ${leftRange.end}) =======\n")
@@ -212,7 +212,7 @@ class Join(joinConf: api.Join,
       val sql = QueryUtils.build(null, partTable, wheres)
       logger.info(s"Pulling data from joinPart table with: $sql")
       (joinPart, tableUtils.scanDfBase(null, partTable, List.empty, wheres, None))
-    }
+    }.toSeq
   }
 
   override def computeFinalJoin(leftDf: DataFrame, leftRange: PartitionRange, bootstrapInfo: BootstrapInfo): Unit = {
@@ -538,7 +538,7 @@ class Join(joinConf: api.Join,
               // TODO: allow customization of deduplication logic
               .dropDuplicates(part.keys(joinConfCloned, tableUtils.partitionColumn).toArray)
 
-            coalescedJoin(partialDf, bootstrapDf, part.keys(joinConfCloned, tableUtils.partitionColumn))
+            coalescedJoin(partialDf, bootstrapDf, part.keys(joinConfCloned, tableUtils.partitionColumn).toSeq)
               // as part of the left outer join process, we update and maintain matched_hashes for each record
               // that summarizes whether there is a join-match for each bootstrap source.
               // later on we use this information to decide whether we still need to re-run the backfill logic

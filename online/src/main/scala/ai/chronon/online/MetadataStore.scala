@@ -29,7 +29,6 @@ import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
 import scala.collection.immutable.SortedMap
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future

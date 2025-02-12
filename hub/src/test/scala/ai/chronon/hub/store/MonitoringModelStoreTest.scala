@@ -13,6 +13,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
+import scala.collection.immutable.Seq
 
 import java.nio.charset.StandardCharsets
 import scala.concurrent.ExecutionContext

@@ -31,7 +31,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions._
 
-import scala.collection.Seq
 
 // This class generates dataframes given certain dataTypes, cardinalities and rowCounts of data
 // Nulls are injected for all types

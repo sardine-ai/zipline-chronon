@@ -19,6 +19,7 @@ package ai.chronon.api
 import java.nio.charset.Charset
 import java.util.concurrent
 import scala.concurrent.duration.Duration
+import scala.collection.immutable.Seq
 
 object Constants {
   val TimeColumn: String = "ts"

@@ -3,6 +3,7 @@ package ai.chronon.flink.window
 import ai.chronon.api.GroupBy
 import org.apache.flink.api.java.functions.KeySelector
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import scala.jdk.CollectionConverters._
 

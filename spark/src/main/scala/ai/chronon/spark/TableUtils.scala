@@ -49,7 +49,6 @@ import java.io.StringWriter
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.util.Failure
@@ -174,7 +173,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
 
       partitionSeq.map { partitionMap =>
-        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key))
+        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key)).toMap
       }
 
     }
@@ -693,7 +692,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     })
 
     if (inconsistentFields.nonEmpty) {
-      throw IncompatibleSchemaException(inconsistentFields)
+      throw IncompatibleSchemaException(inconsistentFields.toSeq)
     }
 
     val newFieldDefinitions = newFields.map(newField => s"${newField.name} ${newField.dataType.catalogString}")
@@ -793,8 +792,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def partitionRange(table: String): PartitionRange = {
     val parts = partitions(table)
-    val minPartition = parts.reduceOption(Ordering[String].min).orNull
-    val maxPartition = parts.reduceOption(Ordering[String].max).orNull
+    val minPartition = parts.minOption.orNull
+    val maxPartition = parts.maxOption.orNull
     PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }

@@ -23,7 +23,6 @@ import org.apache.datasketches.kll.KllFloatsSketch
 import org.apache.datasketches.memory.Memory
 
 import java.util
-import scala.collection.Seq
 
 /** Module managing FeatureStats Schema, Aggregations to be used by type and aggregator construction.
   *
@@ -91,7 +90,7 @@ object StatsGenerator {
   /** Build RowAggregator to use for computing stats on a dataframe based on metrics */
   def buildAggregator(metrics: Seq[MetricTransform], selectedSchema: api.StructType): RowAggregator = {
     val aggParts = metrics.flatMap { m => Seq(buildAggPart(m)) }
-    new RowAggregator(selectedSchema.unpack, aggParts)
+    new RowAggregator(selectedSchema.unpack.toSeq, aggParts)
   }
 
   /** Stats applied to any column */

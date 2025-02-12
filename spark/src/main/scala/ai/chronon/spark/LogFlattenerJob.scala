@@ -35,7 +35,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util.Base64
-import scala.collection.Seq
 import scala.collection.mutable
 import scala.util.Failure
 import scala.util.Success
@@ -218,7 +217,7 @@ class LogFlattenerJob(session: SparkSession,
       val schemaStringsMap = fetchSchemas(schemaHashes)
 
       // we do not have exact joinConf at time of logging, and since it is not used during flattening, we pass in null
-      val schemaMap = schemaStringsMap.mapValues(LoggingSchema.parseLoggingSchema).map(identity)
+      val schemaMap = schemaStringsMap.mapValues(LoggingSchema.parseLoggingSchema).map(identity).toMap
       val flattenedDf = flattenKeyValueBytes(rawDf, schemaMap)
 
       val schemaTblProps = buildTableProperties(schemaStringsMap)
@@ -258,6 +257,6 @@ object LogFlattenerJob {
       .filterKeys(_.startsWith(Constants.SchemaHash))
       .map { case (key, value) =>
         (key.substring(Constants.SchemaHash.length + 1), value)
-      }
+      }.toMap
   }
 }

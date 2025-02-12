@@ -43,7 +43,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.TimeZone
-import scala.collection.Seq
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.SECONDS

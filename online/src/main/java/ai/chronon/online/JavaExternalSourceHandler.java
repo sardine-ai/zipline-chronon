@@ -16,7 +16,7 @@
 
 package ai.chronon.online;
 
-import scala.collection.Seq;
+import scala.collection.immutable.Seq;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 import ai.chronon.api.ScalaJavaConversions;
@@ -49,7 +49,7 @@ public abstract class JavaExternalSourceHandler extends ExternalSourceHandler {
                             .stream()
                             .map(JavaResponse::toScala)
                             .collect(Collectors.toList());
-                    return ScalaJavaConversions.toScala(jListSMap);
+                    return ScalaJavaConversions.toScala(jListSMap).toList();
                 }
         );
         return FutureConverters.toScala(mapJFuture);

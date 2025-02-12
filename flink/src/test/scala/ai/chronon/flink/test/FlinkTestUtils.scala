@@ -28,6 +28,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.when
 import org.mockito.Mockito.withSettings
 import org.scalatestplus.mockito.MockitoSugar.mock
+import scala.collection.immutable.Seq
 
 import java.time.Duration
 import java.util

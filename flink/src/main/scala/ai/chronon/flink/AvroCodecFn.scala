@@ -17,6 +17,7 @@ import org.apache.flink.metrics.Counter
 import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import scala.jdk.CollectionConverters._
 

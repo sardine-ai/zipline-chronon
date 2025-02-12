@@ -232,7 +232,7 @@ class Summarizer(api: Api,
     spark.udf.register("array_dbl_distinct", udaf(new ArrayApproxDistinct[Double]()))
     val aggregated = inputTransformed.selectExpr(exprs.map(_._2): _*)
     aggregated.schema.fields.map { f => f.name -> f.dataType }.toMap
-    val counts = aggregated.collect().head.getValuesMap[Long](aggregated.columns).mapValues(_.toDouble)
+    val counts = aggregated.collect().head.getValuesMap[Long](aggregated.columns).mapValues(_.toDouble).toMap
     logger.info(s"Counts for each field:\n  ${counts.mkString(",\n  ")}")
 
     // verify that all slices are low cardinality
@@ -346,7 +346,7 @@ class SummaryPacker(confPath: String,
       ))
 
     val packedDf = tu.sparkSession.createDataFrame(packedRdd, packedSchema)
-    packedDf -> Unit
+    packedDf -> ()
   }
 }
 

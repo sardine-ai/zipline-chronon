@@ -31,11 +31,11 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.util
 import java.util.regex.Pattern
-import scala.collection.Seq
 import scala.collection.mutable
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import scala.collection.immutable.Seq
 
 object Extensions {
 

@@ -10,6 +10,7 @@ import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.stats.DriftStore
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await

@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar
+import scala.collection.immutable.Seq
 
 class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 

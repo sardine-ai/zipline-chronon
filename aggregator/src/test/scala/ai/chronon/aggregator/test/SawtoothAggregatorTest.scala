@@ -28,7 +28,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
-import scala.collection.Seq
 import scala.collection.mutable
 
 class Timer {
@@ -56,7 +55,7 @@ class SawtoothAggregatorTest extends AnyFlatSpec {
     val events = CStream.gen(columns, 10000).rows
     val schema = columns.map(_.schema)
 
-    val aggregations: Seq[Aggregation] = collection.immutable.Seq(
+    val aggregations: Seq[Aggregation] = Seq(
       Builders.Aggregation(
         Operation.AVERAGE,
         "num",

@@ -7,7 +7,8 @@ import ai.chronon.online.stats.PivotUtils.pivot
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.collection.JavaConverters._
+//import scala.collection.JavaConverters._
+import ai.chronon.api.ScalaJavaConversions._
 
 class PivotUtilsTest extends AnyFlatSpec with Matchers {
 
@@ -21,38 +22,38 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
 
   it should "handle single entry" in {
     val ts = new TileSummary()
-    ts.setPercentiles(List(1.0, 2.0, 3.0).map(Double.box).asJava)
+    ts.setPercentiles(List(1.0, 2.0, 3.0).map(Double.box).toJava)
     ts.setCount(100L)
-    ts.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).asJava)
+    ts.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).toMap.toJava)
 
     val timestamp = 1234L
     val result = pivot(Array((ts, timestamp)))
 
     result.getPercentiles
     // Check percentiles
-    result.getPercentiles.asScala.map(_.asScala) shouldEqual Array(Array(1.0), Array(2.0), Array(3.0))
+    result.getPercentiles.toScala.map(_.toScala) shouldEqual Array(Array(1.0), Array(2.0), Array(3.0))
 
     // Check count
-    result.getCount.asScala shouldEqual List(100L)
+    result.getCount.toScala shouldEqual List(100L)
 
     // Check histogram
     val expectedHistogram = Map(
-      "A" -> List(10L).asJava,
-      "B" -> List(20L).asJava
-    ).asJava
-    result.getHistogram.asScala.mapValues(_.asScala.toList) shouldEqual
-      expectedHistogram.asScala.mapValues(_.asScala.toList)
+      "A" -> List(10L).toJava,
+      "B" -> List(20L).toJava
+    ).toJava
+    result.getHistogram.toScala.mapValues(_.toScala.toList) shouldEqual
+      expectedHistogram.toScala.mapValues(_.toScala.toList)
 
     // Check timestamps
-    result.getTimestamps.asScala shouldEqual List(timestamp)
+    result.getTimestamps.toScala shouldEqual List(timestamp)
   }
 
   it should "correctly transpose percentiles for multiple entries" in {
     val ts1 = new TileSummary()
-    ts1.setPercentiles(List(1.0, 2.0, 3.0).map(Double.box).asJava)
+    ts1.setPercentiles(List(1.0, 2.0, 3.0).map(Double.box).toJava)
 
     val ts2 = new TileSummary()
-    ts2.setPercentiles(List(4.0, 5.0, 6.0).map(Double.box).asJava)
+    ts2.setPercentiles(List(4.0, 5.0, 6.0).map(Double.box).toJava)
 
     val result = pivot(
       Array(
@@ -66,21 +67,21 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     //                       [3.0, 6.0]]
 
     val expected = List(
-      List(1.0, 4.0).asJava,
-      List(2.0, 5.0).asJava,
-      List(3.0, 6.0).asJava
-    ).asJava
+      List(1.0, 4.0).toJava,
+      List(2.0, 5.0).toJava,
+      List(3.0, 6.0).toJava
+    ).toJava
 
-    result.getPercentiles.asScala.map(_.asScala.toList) shouldEqual
-      expected.asScala.map(_.asScala.toList)
+    result.getPercentiles.toScala.map(_.toScala.toList) shouldEqual
+      expected.toScala.map(_.toScala.toList)
   }
 
   it should "handle histogram merging for multiple entries" in {
     val ts1 = new TileSummary()
-    ts1.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).asJava)
+    ts1.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).toMap.toJava)
 
     val ts2 = new TileSummary()
-    ts2.setHistogram(Map("B" -> 30L, "C" -> 40L).mapValues(Long.box).asJava)
+    ts2.setHistogram(Map("B" -> 30L, "C" -> 40L).mapValues(Long.box).toMap.toJava)
 
     val result = pivot(
       Array(
@@ -89,13 +90,13 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
       ))
 
     val expectedHistogram = Map(
-      "A" -> List(10L, Constants.magicNullLong).asJava,
-      "B" -> List(20L, 30L).asJava,
-      "C" -> List(Constants.magicNullLong, 40L).asJava
-    ).asJava
+      "A" -> List(10L, Constants.magicNullLong).toJava,
+      "B" -> List(20L, 30L).toJava,
+      "C" -> List(Constants.magicNullLong, 40L).toJava
+    ).toJava
 
-    result.getHistogram.asScala.mapValues(_.asScala.toList) shouldEqual
-      expectedHistogram.asScala.mapValues(_.asScala.toList)
+    result.getHistogram.toScala.mapValues(_.toScala.toList) shouldEqual
+      expectedHistogram.toScala.mapValues(_.toScala.toList)
   }
 
   it should "handle null values in input" in {
@@ -115,7 +116,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (ts3, 3000L)
       ))
 
-    result.getCount.asScala.toList shouldEqual List(100L, Constants.magicNullLong, 300L)
+    result.getCount.toScala.toList shouldEqual List(100L, Constants.magicNullLong, 300L)
   }
 
   it should "preserve timestamp order" in {
@@ -132,18 +133,18 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     val result = pivot(input)
 
     // Should be sorted
-    result.getTimestamps.asScala shouldEqual List(1000L, 2000L, 3000L)
-    result.getCount.asScala shouldEqual List(100L, 100L, 100L)
+    result.getTimestamps.toScala shouldEqual List(1000L, 2000L, 3000L)
+    result.getCount.toScala shouldEqual List(100L, 100L, 100L)
   }
 
   it should "handle length percentiles and string length percentiles" in {
     val ts1 = new TileSummary()
-    ts1.setLengthPercentiles(List(1, 2, 3).map(Int.box).asJava)
-    ts1.setStringLengthPercentiles(List(10, 20).map(Int.box).asJava)
+    ts1.setLengthPercentiles(List(1, 2, 3).map(Int.box).toJava)
+    ts1.setStringLengthPercentiles(List(10, 20).map(Int.box).toJava)
 
     val ts2 = new TileSummary()
-    ts2.setLengthPercentiles(List(4, 5, 6).map(Int.box).asJava)
-    ts2.setStringLengthPercentiles(List(30, 40).map(Int.box).asJava)
+    ts2.setLengthPercentiles(List(4, 5, 6).map(Int.box).toJava)
+    ts2.setStringLengthPercentiles(List(30, 40).map(Int.box).toJava)
 
     val result = pivot(
       Array(
@@ -153,30 +154,30 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
 
     // Check length percentiles transposition
     val expectedLengthPercentiles = List(
-      List(1, 4).asJava,
-      List(2, 5).asJava,
-      List(3, 6).asJava
-    ).asJava
+      List(1, 4).toJava,
+      List(2, 5).toJava,
+      List(3, 6).toJava
+    ).toJava
 
-    result.getLengthPercentiles.asScala.map(_.asScala.toList) shouldEqual
-      expectedLengthPercentiles.asScala.map(_.asScala.toList)
+    result.getLengthPercentiles.toScala.map(_.toScala.toList) shouldEqual
+      expectedLengthPercentiles.toScala.map(_.toScala.toList)
 
     // Check string length percentiles transposition
     val expectedStringLengthPercentiles = List(
-      List(10, 30).asJava,
-      List(20, 40).asJava
-    ).asJava
+      List(10, 30).toJava,
+      List(20, 40).toJava
+    ).toJava
 
-    result.getStringLengthPercentiles.asScala.map(_.asScala.toList) shouldEqual
-      expectedStringLengthPercentiles.asScala.map(_.asScala.toList)
+    result.getStringLengthPercentiles.toScala.map(_.toScala.toList) shouldEqual
+      expectedStringLengthPercentiles.toScala.map(_.toScala.toList)
   }
 
   it should "handle null values in percentiles lists" in {
     val ts1 = new TileSummary()
-    ts1.setPercentiles(List[java.lang.Double](1.0, null, 3.0).map(d => if (d == null) null else Double.box(d)).asJava)
+    ts1.setPercentiles(List[java.lang.Double](1.0, null, 3.0).map(d => if (d == null) null else Double.box(d)).toJava)
 
     val ts2 = new TileSummary()
-    ts2.setPercentiles(List[java.lang.Double](4.0, 5.0, null).map(d => if (d == null) null else Double.box(d)).asJava)
+    ts2.setPercentiles(List[java.lang.Double](4.0, 5.0, null).map(d => if (d == null) null else Double.box(d)).toJava)
 
     val result = pivot(
       Array(
@@ -186,13 +187,13 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
 
     // After pivot, we expect nulls to be replaced with magicNullDouble
     val expected = List(
-      List(1.0, 4.0).asJava,
-      List(Constants.magicNullDouble, 5.0).asJava,
-      List(3.0, Constants.magicNullDouble).asJava
-    ).asJava
+      List(1.0, 4.0).toJava,
+      List(Constants.magicNullDouble, 5.0).toJava,
+      List(3.0, Constants.magicNullDouble).toJava
+    ).toJava
 
-    result.getPercentiles.asScala.map(_.asScala.toList) shouldEqual
-      expected.asScala.map(_.asScala.toList)
+    result.getPercentiles.toScala.map(_.toScala.toList) shouldEqual
+      expected.toScala.map(_.toScala.toList)
   }
 
   "pivot_drift" should "handle empty input" in {
@@ -217,10 +218,10 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     val timestamp = 1234L
     val result = pivot(Array((drift, timestamp)))
 
-    result.getPercentileDriftSeries.asScala shouldEqual List(0.5)
-    result.getHistogramDriftSeries.asScala shouldEqual List(0.3)
-    result.getCountChangePercentSeries.asScala shouldEqual List(10.0)
-    result.getTimestamps.asScala shouldEqual List(timestamp)
+    result.getPercentileDriftSeries.toScala shouldEqual List(0.5)
+    result.getHistogramDriftSeries.toScala shouldEqual List(0.3)
+    result.getCountChangePercentSeries.toScala shouldEqual List(10.0)
+    result.getTimestamps.toScala shouldEqual List(timestamp)
   }
 
   it should "handle multiple entries with all fields set" in {
@@ -250,15 +251,15 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (drift2, 2000L)
       ))
 
-    result.getPercentileDriftSeries.asScala shouldEqual List(0.5, 0.6)
-    result.getHistogramDriftSeries.asScala shouldEqual List(0.3, 0.4)
-    result.getCountChangePercentSeries.asScala shouldEqual List(10.0, 12.0)
-    result.getNullRatioChangePercentSeries.asScala shouldEqual List(5.0, 6.0)
-    result.getInnerCountChangePercentSeries.asScala shouldEqual List(2.0, 3.0)
-    result.getInnerNullCountChangePercentSeries.asScala shouldEqual List(1.0, 2.0)
-    result.getLengthPercentilesDriftSeries.asScala shouldEqual List(0.2, 0.3)
-    result.getStringLengthPercentilesDriftSeries.asScala shouldEqual List(0.1, 0.2)
-    result.getTimestamps.asScala shouldEqual List(1000L, 2000L)
+    result.getPercentileDriftSeries.toScala shouldEqual List(0.5, 0.6)
+    result.getHistogramDriftSeries.toScala shouldEqual List(0.3, 0.4)
+    result.getCountChangePercentSeries.toScala shouldEqual List(10.0, 12.0)
+    result.getNullRatioChangePercentSeries.toScala shouldEqual List(5.0, 6.0)
+    result.getInnerCountChangePercentSeries.toScala shouldEqual List(2.0, 3.0)
+    result.getInnerNullCountChangePercentSeries.toScala shouldEqual List(1.0, 2.0)
+    result.getLengthPercentilesDriftSeries.toScala shouldEqual List(0.2, 0.3)
+    result.getStringLengthPercentilesDriftSeries.toScala shouldEqual List(0.1, 0.2)
+    result.getTimestamps.toScala shouldEqual List(1000L, 2000L)
   }
 
   it should "handle null values in input" in {
@@ -280,13 +281,13 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (drift3, 3000L)
       ))
 
-    result.getPercentileDriftSeries.asScala.map(Option(_).map(_.doubleValue)) shouldEqual
+    result.getPercentileDriftSeries.toScala.map(Option(_).map(_.doubleValue)) shouldEqual
       List(Some(0.5), Some(Constants.magicNullDouble), Some(0.7))
 
-    result.getCountChangePercentSeries.asScala.map(Option(_).map(_.doubleValue)) shouldEqual
+    result.getCountChangePercentSeries.toScala.map(Option(_).map(_.doubleValue)) shouldEqual
       List(Some(10.0), Some(Constants.magicNullDouble), Some(30.0))
 
-    result.getHistogramDriftSeries.asScala shouldBe null // since no values were ever set
+    result.getHistogramDriftSeries.toScala shouldBe null // since no values were ever set
   }
 
   it should "preserve timestamp order" in {
@@ -303,8 +304,8 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     val result = pivot(input)
 
     // Should be sorted
-    result.getTimestamps.asScala shouldEqual List(1000L, 2000L, 3000L)
-    result.getPercentileDriftSeries.asScala shouldEqual List(0.5, 0.5, 0.5)
+    result.getTimestamps.toScala shouldEqual List(1000L, 2000L, 3000L)
+    result.getPercentileDriftSeries.toScala shouldEqual List(0.5, 0.5, 0.5)
   }
 
   it should "return null for series where no values were ever set" in {
@@ -320,10 +321,10 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (drift2, 2000L)
       ))
 
-    result.getPercentileDriftSeries.asScala shouldEqual List(0.5, 0.6)
-    result.getHistogramDriftSeries.asScala shouldBe null // never set
-    result.getCountChangePercentSeries.asScala shouldBe null // never set
-    result.getTimestamps.asScala shouldEqual List(1000L, 2000L)
+    result.getPercentileDriftSeries.toScala shouldEqual List(0.5, 0.6)
+    result.getHistogramDriftSeries.toScala shouldBe null // never set
+    result.getCountChangePercentSeries.toScala shouldBe null // never set
+    result.getTimestamps.toScala shouldEqual List(1000L, 2000L)
   }
 
   it should "handle Double.NaN values" in {
@@ -339,7 +340,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (drift2, 2000L)
       ))
 
-    val series = result.getPercentileDriftSeries.asScala.toList
+    val series = result.getPercentileDriftSeries.toScala.toList
     series.size shouldBe 2
     series(0) shouldBe Constants.magicNullDouble
     series(1) shouldBe 0.5
@@ -362,7 +363,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (ts3, 3000L)
       ))
 
-    result.getCount.asScala shouldEqual List(Long.MaxValue, Constants.magicNullLong, 100L)
+    result.getCount.toScala shouldEqual List(Long.MaxValue, Constants.magicNullLong, 100L)
   }
 
   it should "handle all null Long values" in {
@@ -379,7 +380,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
       ))
 
     // Since all values are unset, they should all be magicNullLong rather than null
-    result.getCount.asScala.toList shouldEqual List.fill(3)(Constants.magicNullLong)
+    result.getCount.toScala.toList shouldEqual List.fill(3)(Constants.magicNullLong)
   }
 
   it should "handle mixed null and non-null Long fields" in {
@@ -402,7 +403,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
         (ts3, 3000L)
       ))
 
-    result.getCount.asScala shouldEqual List(100L, Constants.magicNullLong, 300L)
-    result.getNullCount.asScala shouldEqual List(10L, 20L, Constants.magicNullLong)
+    result.getCount.toScala shouldEqual List(100L, Constants.magicNullLong, 300L)
+    result.getNullCount.toScala shouldEqual List(10L, 20L, Constants.magicNullLong)
   }
 }

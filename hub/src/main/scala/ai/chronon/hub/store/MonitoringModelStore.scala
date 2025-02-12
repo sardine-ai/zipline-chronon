@@ -24,6 +24,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
+import scala.collection.immutable.Seq
 
 case class LoadedConfs(joins: Seq[api.Join] = Seq.empty,
                        groupBys: Seq[api.GroupBy] = Seq.empty,

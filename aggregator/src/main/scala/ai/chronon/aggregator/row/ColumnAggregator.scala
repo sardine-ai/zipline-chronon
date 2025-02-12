@@ -87,7 +87,7 @@ class VectorDispatcher[Input, IR](agg: SimpleAggregator[Input, IR, _],
     val inputVal = inputRow.get(columnIndices.input)
     if (inputVal == null) return null
     val anyIterator = inputVal match {
-      case inputSeq: collection.Seq[Any]  => inputSeq.iterator
+      case inputSeq: Seq[Any]  => inputSeq.iterator
       case inputList: util.ArrayList[Any] => inputList.iterator().asScala
     }
     anyIterator.filter { _ != null }.map { toTypedInput }

@@ -22,7 +22,6 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.types._
 
 import java.util
-import scala.collection.Seq
 import scala.collection.mutable
 
 // wrapper class of spark ai.chronon.aggregator.row that the RowAggregator can work with

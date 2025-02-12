@@ -44,7 +44,6 @@ import com.google.gson.Gson
 
 import java.util
 import scala.collection.JavaConverters._
-import scala.collection.Seq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Failure
@@ -318,7 +317,7 @@ class FetcherBase(kvStore: KVStore,
   // 2. encodes keys as keyAvroSchema
   // 3. Based on accuracy, fetches streaming + batch data and aggregates further.
   // 4. Finally converted to outputSchema
-  def fetchGroupBys(requests: scala.collection.Seq[Request]): Future[scala.collection.Seq[Response]] = {
+  def fetchGroupBys(requests: Seq[Request]): Future[Seq[Response]] = {
     // split a groupBy level request into its kvStore level requests
     val groupByRequestToKvRequest: Seq[(Request, Try[GroupByRequestMeta])] = requests.iterator
       .filter(r => r.keys == null || r.keys.values == null || r.keys.values.exists(_ != null))
@@ -542,11 +541,11 @@ class FetcherBase(kvStore: KVStore,
 
   // prioritize passed in joinOverrides over the ones in metadata store
   // used in stream-enrichment and in staging testing
-  def fetchJoin(requests: scala.collection.Seq[Request],
-                joinConf: Option[Join] = None): Future[scala.collection.Seq[Response]] = {
+  def fetchJoin(requests: Seq[Request],
+                joinConf: Option[Join] = None): Future[Seq[Response]] = {
     val startTimeMs = System.currentTimeMillis()
     // convert join requests to groupBy requests
-    val joinDecomposed: scala.collection.Seq[(Request, Try[Seq[Either[PrefixedRequest, KeyMissingException]]])] =
+    val joinDecomposed: Seq[(Request, Try[Seq[Either[PrefixedRequest, KeyMissingException]]])] =
       requests.map { request =>
         val joinTry: Try[JoinOps] = if (joinConf.isEmpty) {
           getJoinConf(request.name)

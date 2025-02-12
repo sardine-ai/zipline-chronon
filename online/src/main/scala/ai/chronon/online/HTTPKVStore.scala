@@ -13,9 +13,9 @@ class HTTPKVStore(host: String = "localhost", port: Int = 9000) extends KVStore 
   val backend: SttpBackend[Identity, Any] = HttpClientSyncBackend()
   val baseUrl: String = s"http://$host:$port/api/v1/dataset"
 
-  override def multiGet(requests: collection.Seq[KVStore.GetRequest]): Future[collection.Seq[KVStore.GetResponse]] = ???
+  override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = ???
 
-  override def multiPut(putRequests: collection.Seq[KVStore.PutRequest]): Future[collection.Seq[Boolean]] = {
+  override def multiPut(putRequests: Seq[KVStore.PutRequest]): Future[Seq[Boolean]] = {
     if (putRequests.isEmpty) {
       Future.successful(Seq.empty)
     } else {
@@ -49,7 +49,7 @@ class HTTPKVStore(host: String = "localhost", port: Int = 9000) extends KVStore 
     s"""{ "keyBytes": "${keyBase64}", "valueBytes": "${valueBase64}", "dataset": "${request.dataset}", "tsMillis": ${request.tsMillis.orNull}}""".stripMargin
   }
 
-  def jsonList(requests: collection.Seq[PutRequest]): String = {
+  def jsonList(requests: Seq[PutRequest]): String = {
     val requestsJson = requests.map(jsonString(_)).mkString(", ")
 
     s"[ $requestsJson ]"

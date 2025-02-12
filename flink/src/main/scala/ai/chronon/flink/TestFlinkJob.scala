@@ -36,6 +36,7 @@ import org.apache.spark.sql.avro.AvroDeserializationSupport
 import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
 

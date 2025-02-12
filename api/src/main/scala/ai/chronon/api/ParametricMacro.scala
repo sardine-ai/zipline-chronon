@@ -20,6 +20,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
+import scala.collection.immutable.Seq
 
 // takes a map of macro names and functions and applies the functions on macro arguments
 case class ParametricMacro(value: String, func: Map[String, String] => String) {

@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util
 import scala.collection.JavaConverters._
-import scala.collection.Seq
 
 abstract class JoinBase(val joinConfCloned: api.Join,
                         endPartition: String,
@@ -317,7 +316,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
         genGroupBy(shiftedPartitionRange).temporalEntities(renamedLeftDf)
     }
     val rightDfWithDerivations = if (joinPart.groupBy.hasDerivations) {
-      val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(rightDf.columns)
+      val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(rightDf.columns).toSeq
       val result = rightDf.select(finalOutputColumns: _*)
       result
     } else {
@@ -351,7 +350,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     (rangeToFill,
      tableUtils
        .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConfCloned.left.table)), skipFirstHole = skipFirstHole)
-       .getOrElse(Seq.empty))
+       .getOrElse(Seq.empty).toSeq)
   }
 
   def computeLeft(overrideStartPartition: Option[String] = None): Unit = {

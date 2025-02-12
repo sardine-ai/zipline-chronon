@@ -34,7 +34,6 @@ import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.util.Try
@@ -108,7 +107,7 @@ object BootstrapInfo {
           }
           val dummyOutputDf = tableUtils.sparkSession
             .createDataFrame(tableUtils.sparkSession.sparkContext.parallelize(immutable.Seq[Row]()), sparkSchema)
-          val finalOutputColumns = part.groupBy.derivationsScala.finalOutputColumn(dummyOutputDf.columns)
+          val finalOutputColumns = part.groupBy.derivationsScala.finalOutputColumn(dummyOutputDf.columns).toSeq
           val derivedDummyOutputDf = dummyOutputDf.select(finalOutputColumns: _*)
           val columns = SparkConversions.toChrononSchema(
             StructType(derivedDummyOutputDf.schema.filterNot(keyAndPartitionFields.contains)))
@@ -143,7 +142,7 @@ object BootstrapInfo {
       val derivedDf = baseDf.select(
         projections.map { case (name, expression) =>
           expr(expression).as(name)
-        }: _*
+        }.toSeq: _*
       )
       SparkConversions.toChrononSchema(derivedDf.schema).map { case (name, dataType) =>
         (StructField(name, dataType), projectionMap(name))

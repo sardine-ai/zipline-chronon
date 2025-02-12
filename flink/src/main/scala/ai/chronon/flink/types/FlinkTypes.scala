@@ -2,6 +2,7 @@ package ai.chronon.flink.types
 
 import java.util
 import java.util.Objects
+import scala.collection.immutable.Seq
 
 // This file contains PoJo classes that are persisted while taking checkpoints in Chronon's Flink jobs. This falls primarily
 // in two buckets - tiled state and KV store incoming / outgoing records. The classes used in these cases need to allow for state

@@ -28,6 +28,7 @@ import org.junit.Assert.assertTrue
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.when
 import org.scalatest.flatspec.AnyFlatSpec
+import scala.collection.immutable.Seq
 
 import java.util.Arrays
 

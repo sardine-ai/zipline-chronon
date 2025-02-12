@@ -19,6 +19,7 @@ import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.jdk.CollectionConverters.asScalaBufferConverter
+import scala.collection.immutable.Seq
 
 class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 

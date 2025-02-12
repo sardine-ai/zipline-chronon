@@ -26,7 +26,6 @@ import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Row
 
 import java.util
-import scala.collection.Seq
 
 // Head Sliding, Tail Hopping Window - effective window size when plotted against query timestamp
 // will look the edge of sawtooth - instead of like a straight line.

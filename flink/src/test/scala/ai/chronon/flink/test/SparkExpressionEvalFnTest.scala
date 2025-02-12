@@ -7,6 +7,7 @@ import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.spark.sql.Encoders
 import org.scalatest.flatspec.AnyFlatSpec
+import scala.collection.immutable.Seq
 
 class SparkExpressionEvalFnTest extends AnyFlatSpec {
 

@@ -31,7 +31,6 @@ import java.util
 import java.util.Base64
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
-import scala.collection.Seq
 import scala.concurrent.Future
 import scala.util.Success
 
@@ -49,7 +48,7 @@ class MockStreamBuilder extends StreamBuilder {
 
 class MockApi(kvStore: () => KVStore, val namespace: String) extends Api(null) {
   class PlusOneExternalHandler extends ExternalSourceHandler {
-    override def fetch(requests: collection.Seq[Fetcher.Request]): Future[collection.Seq[Fetcher.Response]] = {
+    override def fetch(requests: Seq[Fetcher.Request]): Future[Seq[Fetcher.Response]] = {
       Future(
         requests.map(req =>
           Response(req,

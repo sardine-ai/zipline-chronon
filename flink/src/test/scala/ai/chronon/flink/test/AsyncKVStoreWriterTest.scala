@@ -11,6 +11,7 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 
 import java.util.stream.Collectors
 import java.util.stream.IntStream
+import scala.collection.immutable.Seq
 import scala.collection.convert.ImplicitConversions.`iterator asScala`
 
 class AsyncKVStoreWriterTest extends AnyFlatSpec {

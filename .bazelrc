@@ -8,7 +8,7 @@ common:scala_2.12 --repo_env=SCALA_VERSION=2.12.18
 common:scala_2.13 --repo_env=SCALA_VERSION=2.13.12
 
 # Default scala version to 2.13
-common --repo_env=SCALA_VERSION=2.13.12
+common --repo_env=SCALA_VERSION=2.12.18
 
 s
 build --remote_cache=https://storage.googleapis.com/zipline-bazel-cache

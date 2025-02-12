@@ -45,7 +45,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
-import scala.collection.Seq
 import scala.collection.mutable
 
 class GroupBy(val aggregations: Seq[api.Aggregation],
@@ -738,7 +737,7 @@ object GroupBy {
           if (!groupByConf.hasDerivations) {
             outputDf.save(outputTable, tableProps)
           } else {
-            val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns)
+            val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns).toSeq
             val result = outputDf.select(finalOutputColumns: _*)
             result.save(outputTable, tableProps)
           }

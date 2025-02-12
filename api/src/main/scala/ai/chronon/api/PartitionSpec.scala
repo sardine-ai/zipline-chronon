@@ -24,6 +24,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.TimeZone
+import scala.collection.immutable.Seq
 
 case class PartitionSpec(format: String, spanMillis: Long) {
   private def partitionFormatter =

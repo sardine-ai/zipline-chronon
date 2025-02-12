@@ -8,6 +8,7 @@ import ai.chronon.hub.store.MonitoringModelStore
 import ai.chronon.orchestration.LogicalNode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import scala.collection.JavaConverters._
 

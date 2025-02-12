@@ -17,6 +17,7 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import java.lang
 import scala.util.Failure

@@ -1,7 +1,7 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
-    format = True,
+    #    format = True,
     visibility = ["//visibility:public"],
     deps = [
         "//api:lib",
@@ -50,7 +50,7 @@ test_deps = [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = True,
+    #    format = True,
     visibility = ["//visibility:public"],
     deps = test_deps,
 )

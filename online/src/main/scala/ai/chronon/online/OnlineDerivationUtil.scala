@@ -9,7 +9,6 @@ import ai.chronon.api.StructField
 import ai.chronon.api.StructType
 import ai.chronon.online.Fetcher.Request
 
-import scala.collection.Seq
 
 object OnlineDerivationUtil {
   type DerivationFunc = (Map[String, Any], Map[String, Any]) => Map[String, Any]
@@ -88,7 +87,7 @@ object OnlineDerivationUtil {
     val baseExpressions = if (derivationsScala.derivationsContainStar) {
       baseValueSchema
         .filterNot { derivationsScala.derivationExpressionSet contains _.name }
-        .map(sf => sf.name -> sf.name)
+        .map(sf => sf.name -> sf.name).toSeq
     } else { Seq.empty }
     val expressions = baseExpressions ++ derivationsScala.derivationsWithoutStar.map { d => d.name -> d.expression }
     new PooledCatalystUtil(expressions, StructType("all", (keySchema ++ baseValueSchema).toArray ++ timeFields))
@@ -101,7 +100,7 @@ object OnlineDerivationUtil {
   ): Seq[StructField] = {
     if (derivationsScala.areDerivationsRenameOnly) {
       val baseExpressions = if (derivationsScala.derivationsContainStar) {
-        baseValueSchema.filterNot { derivationsScala.derivationExpressionSet contains _.name }
+        baseValueSchema.filterNot { derivationsScala.derivationExpressionSet contains _.name }.toSeq
       } else {
         Seq.empty
       }

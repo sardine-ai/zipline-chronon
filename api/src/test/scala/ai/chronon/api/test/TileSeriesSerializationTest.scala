@@ -7,10 +7,10 @@ import ai.chronon.observability.TileDriftSeries
 import ai.chronon.observability.TileSummarySeries
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import scala.collection.immutable.Seq
 
 import java.lang.{Double => JDouble}
 import java.lang.{Long => JLong}
-//import scala.jdk.CollectionConverters.asScalaBufferConverter
 
 class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
 

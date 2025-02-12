@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function
-import scala.collection.Seq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -74,7 +73,7 @@ object CatalystUtil {
     spark
   }
 
-  case class PoolKey(expressions: collection.Seq[(String, String)], inputSchema: StructType)
+  case class PoolKey(expressions: Seq[(String, String)], inputSchema: StructType)
   val poolMap: PoolMap[PoolKey, CatalystUtil] = new PoolMap[PoolKey, CatalystUtil](pi =>
     new CatalystUtil(pi.inputSchema, pi.expressions))
 }
@@ -112,7 +111,7 @@ class PoolMap[Key, Value](createFunc: Key => Value, maxSize: Int = 100, initialS
   }
 }
 
-class PooledCatalystUtil(expressions: collection.Seq[(String, String)], inputSchema: StructType) {
+class PooledCatalystUtil(expressions: Seq[(String, String)], inputSchema: StructType) {
   private val poolKey = PoolKey(expressions, inputSchema)
   private val cuPool = poolMap.getPool(PoolKey(expressions, inputSchema))
   def performSql(values: Map[String, Any]): Seq[Map[String, Any]] =
@@ -272,6 +271,6 @@ class CatalystUtil(inputSchema: StructType,
       case unknown => throw new RuntimeException(s"Unrecognized stage in codegen: ${unknown.getClass}")
     }
 
-    (func, df.schema)
+    (func.andThen(_.toSeq), df.schema)
   }
 }

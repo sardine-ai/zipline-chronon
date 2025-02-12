@@ -20,6 +20,7 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api.ScalaJavaConversions.MapOps
+import scala.collection.immutable.Seq
 
 // utilized by both streaming and batch
 object QueryUtils {
@@ -46,7 +47,7 @@ object QueryUtils {
   // to be present in the table that the generated query runs on.
   def build(selects: Map[String, String],
             table: String,
-            wheres: scala.collection.Seq[String],
+            wheres: Seq[String],
             fillIfAbsent: Option[Map[String, String]] = None): String = {
 
     val finalSelects = buildSelects(selects, fillIfAbsent)

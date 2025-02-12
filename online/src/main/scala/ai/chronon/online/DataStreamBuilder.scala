@@ -25,7 +25,6 @@ import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try

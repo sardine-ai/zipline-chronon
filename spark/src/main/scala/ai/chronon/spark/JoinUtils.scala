@@ -275,7 +275,7 @@ object JoinUtils {
     *
     * @return Mapping of the label ds ->  partition ranges of ds which has this label available as latest
     */
-  def getLatestLabelMapping(tableName: String, tableUtils: TableUtils): Map[String, collection.Seq[PartitionRange]] = {
+  def getLatestLabelMapping(tableName: String, tableUtils: TableUtils): Map[String, Seq[PartitionRange]] = {
     val partitions = tableUtils.allPartitions(tableName)
     assert(
       partitions.head.keys.equals(Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn)),
@@ -296,7 +296,7 @@ object JoinUtils {
       }
     })
 
-    labelMap.groupBy(_._2).map { case (v, kvs) => (v, tableUtils.chunk(kvs.keySet.toSet)) }
+    labelMap.groupBy(_._2).map { case (v, kvs) => (v, tableUtils.chunk(kvs.keySet.toSet).toSeq) }
   }
 
   /** Generate a Bloom filter for 'joinPart' when the row count to be backfilled falls below a specified threshold.
@@ -405,7 +405,7 @@ object JoinUtils {
 
   def tablesToRecompute(joinConf: ai.chronon.api.Join,
                         outputTable: String,
-                        tableUtils: TableUtils): collection.Seq[String] = {
+                        tableUtils: TableUtils): Seq[String] = {
     // Finds all join output tables (join parts and final table) that need recomputing (in monolithic spark job mode)
     val gson = new Gson()
     (for (
@@ -415,7 +415,7 @@ object JoinUtils {
     ) yield {
       logger.info(s"Comparing Hashes:\nNew: ${joinConf.semanticHash},\nOld: $oldSemanticHash")
       joinConf.tablesToDrop(oldSemanticHash)
-    }).getOrElse(collection.Seq.empty)
+    }).getOrElse(Seq.empty)
   }
 
   def shouldRecomputeLeft(joinConf: ai.chronon.api.Join, outputTable: String, tableUtils: TableUtils): Boolean = {

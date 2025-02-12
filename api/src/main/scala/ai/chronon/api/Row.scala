@@ -19,6 +19,7 @@ package ai.chronon.api
 import java.util
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.collection.mutable
+import scala.collection.immutable.Seq
 
 trait Row {
   def get(index: Int): Any

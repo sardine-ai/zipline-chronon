@@ -42,6 +42,7 @@ import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Serialization
 import org.slf4j.LoggerFactory
+import scala.collection.immutable.Seq
 
 import java.time.Duration
 import scala.concurrent.duration.DurationInt

@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Serialization
+import scala.collection.immutable.Seq
 
 // Canary test app that can point to a source data file and will emit an event to Kafka periodically with an updated timestamp
 object FlinkKafkaBeaconEventDriver {

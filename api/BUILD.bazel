@@ -24,7 +24,7 @@ scala_library(
         "src/main/**/*.scala",
         "src/main/**/*.java",
     ]),
-    format = True,
+    #    format = True,
     visibility = ["//visibility:public"],
     deps = [
         ":thrift_java",
@@ -78,7 +78,7 @@ test_deps = [
 scala_library(
     name = "test-lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = True,
+    #    format = True,
     visibility = ["//visibility:public"],
     deps = test_deps,
 )

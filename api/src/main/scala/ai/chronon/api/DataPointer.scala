@@ -1,5 +1,6 @@
 package ai.chronon.api
 import scala.util.parsing.combinator._
+import scala.collection.immutable.Seq
 
 abstract class DataPointer {
   def tableOrPath: String

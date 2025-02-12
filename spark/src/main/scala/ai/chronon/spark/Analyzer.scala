@@ -49,7 +49,6 @@ import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

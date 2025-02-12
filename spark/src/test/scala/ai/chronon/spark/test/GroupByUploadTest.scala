@@ -223,7 +223,7 @@ class GroupByUploadTest extends AnyFlatSpec {
           mutationTopic = s"${reviewsTable}_mutations",
           mutationTable = s"${reviewsTable}_mutations"
         )),
-      keyColumns = collection.Seq("review"),
+      keyColumns = Seq("review"),
       aggregations = Seq(
         Builders.Aggregation(
           operation = Operation.LAST,
@@ -245,7 +245,7 @@ class GroupByUploadTest extends AnyFlatSpec {
           query = Builders.Query(selects =
             Builders.Selects("review", "review_attrs_listing_last", "rating", "category_ratings", "ts"))
         )),
-      keyColumns = collection.Seq("review_attrs_listing_last"),
+      keyColumns = Seq("review_attrs_listing_last"),
       aggregations = Seq(
         Builders.Aggregation(
           operation = Operation.AVERAGE,

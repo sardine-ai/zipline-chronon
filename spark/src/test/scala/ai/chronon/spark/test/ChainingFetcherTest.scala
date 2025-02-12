@@ -43,7 +43,6 @@ import org.slf4j.LoggerFactory
 import java.lang
 import java.util.TimeZone
 import java.util.concurrent.Executors
-import scala.collection.Seq
 import scala.concurrent.ExecutionContext
 
 class ChainingFetcherTest extends AnyFlatSpec {

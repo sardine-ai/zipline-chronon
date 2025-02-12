@@ -3,6 +3,7 @@ package ai.chronon.api
 //import scala.collection.parallel.ParSeq
 //import scala.collection._
 import scala.jdk.CollectionConverters._
+import scala.collection.immutable.Seq
 
 object ScalaJavaConversions {
 

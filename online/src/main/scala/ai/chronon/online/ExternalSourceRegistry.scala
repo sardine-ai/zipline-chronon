@@ -20,7 +20,6 @@ import ai.chronon.api.Constants
 import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.Fetcher.Response
 
-import scala.collection.Seq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future

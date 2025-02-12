@@ -59,7 +59,6 @@ import java.lang
 import java.util
 import java.util.TimeZone
 import java.util.concurrent.Executors
-import scala.collection.Seq
 import scala.compat.java8.FutureConverters
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
@@ -104,7 +103,7 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
     // set the working directory to /chronon instead of $MODULE_DIR in configuration if Intellij fails testing
     val singleFileDirWalker = new MetadataDirWalker(confResource.getPath, acceptedEndPoints)
     val singleFileKvMap = singleFileDirWalker.run
-    val singleFilePut: Seq[Future[scala.collection.Seq[Boolean]]] = singleFileKvMap.toSeq.map { case (_, kvMap) =>
+    val singleFilePut: Seq[Future[Seq[Boolean]]] = singleFileKvMap.toSeq.map { case (_, kvMap) =>
       singleFileMetadataStore.put(kvMap, singleFileDataSet)
     }
     singleFilePut.flatMap(putRequests => Await.result(putRequests, Duration.Inf))

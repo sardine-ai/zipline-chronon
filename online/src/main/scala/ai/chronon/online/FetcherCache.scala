@@ -16,7 +16,6 @@ import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
 import scala.util.Success
 import scala.util.Try
 

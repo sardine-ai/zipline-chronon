@@ -123,7 +123,7 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
   // Needs consistency with mutationDf Schema for backfill group by. (Shared queries)
   // Additional columns used for mutations are stored
   def mutationChrononSchema: StructType = {
-    val fields: scala.collection.Seq[StructField] = inputChrononSchema ++ Constants.MutationFields
+    val fields: Seq[StructField] = inputChrononSchema ++ Constants.MutationFields
     StructType("MUTATION_SCHEMA", fields.toArray)
   }
 

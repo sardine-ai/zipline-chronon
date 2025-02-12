@@ -19,8 +19,8 @@ package ai.chronon.online;
 import ai.chronon.online.Fetcher.Request;
 import ai.chronon.online.Fetcher.Response;
 import scala.collection.Iterator;
-import scala.collection.Seq;
 import scala.Option;
+import scala.collection.immutable.Seq;
 import scala.collection.mutable.ArrayBuffer;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
@@ -131,7 +131,7 @@ public class JavaFetcher {
 
   private CompletableFuture<List<JavaResponse>> convertResponsesWithTs(Future<FetcherResponseWithTs> responses, boolean isGroupBy, long startTs) {
     return FutureConverters.toJava(responses).toCompletableFuture().thenApply(resps -> {
-      List<JavaResponse> jResps = toJavaResponses(resps.responses());
+      List<JavaResponse> jResps = toJavaResponses(resps.responses().toList());
       List<String> requestNames = jResps.stream().map(jResp -> jResp.request.name).collect(Collectors.toList());
       instrument(requestNames, isGroupBy, "java.response_conversion.latency.millis", resps.endTs());
       instrument(requestNames, isGroupBy, "java.overall.latency.millis", startTs);
@@ -168,7 +168,7 @@ public class JavaFetcher {
       Request convertedRequest = request.toScalaRequest();
       scalaRequests.$plus$eq(convertedRequest);
     }
-    Seq<Request> scalaRequestsSeq = scalaRequests.toSeq();
+    Seq<Request> scalaRequestsSeq = scalaRequests.toList();
     instrument(requests.stream().map(jReq -> jReq.name).collect(Collectors.toList()), isGroupBy, "java.request_conversion.latency.millis", startTs);
     return scalaRequestsSeq;
   }
