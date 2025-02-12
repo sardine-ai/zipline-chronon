@@ -1,23 +1,10 @@
 import os
 from pathlib import Path
 from typing import List
+from ai.chronon.eval.table_scan import local_warehouse
 
-local_warehouse = Path(os.getenv("CHRONON_ROOT", os.getcwd())) / "local_warehouse/"
 
-
-def sample_with_query(table, query) -> str:
-    output_file = table + ".parquet"
-
-    # ensure local_warehouse exists
-    assert os.path.exists(
-        local_warehouse
-    ), f"""
-Can't find local_warehouse @ {local_warehouse}.
-Please set the proper CHRONON_ROOT, and run 'mkdir -p $CHRONON_ROOT/local_warehouse'
-"""
-
-    output_path = Path(local_warehouse) / output_file
-
+def sample_with_query(table, query, output_path) -> str:
     # if file exists, skip
     if os.path.exists(output_path):
         print(f"File {output_path} already exists. Skipping sampling.")
@@ -33,8 +20,8 @@ Please set the proper CHRONON_ROOT, and run 'mkdir -p $CHRONON_ROOT/local_wareho
 def sample_tables(table_names: List[str]) -> None:
 
     for table in table_names:
-        query = f"SELECT * FROM {table} LIMIT 10000 WHERE _DATE > '2025-01-09'"
-        sample_with_query(table, query)
+        query = f"SELECT * FROM {table} LIMIT 10000"
+        sample_with_query(table, query, local_warehouse / f"{table}.parquet")
 
 
 _sampling_engine = os.getenv("CHRONON_SAMPLING_ENGINE", "bigquery")
@@ -53,7 +40,22 @@ def _sample_trino(query, output_path):
     raise NotImplementedError("Trino sampling is not yet implemented")
 
 
-def _sample_bigquery(query, destination_path):
+def _sample_bigquery(query, output_path):
+
+    from google.cloud import bigquery
+
+    project_id = os.getenv("GCP_PROJECT_ID")
+    assert project_id, "Please set the GCP_PROJECT_ID environment variable"
+
+    client = bigquery.Client(project=project_id)
+
+    results = client.query_and_wait(query)
+
+    df = results.to_dataframe()
+    df.to_parquet(output_path)
+
+
+def _sample_bigquery_fast(query, destination_path):
     from google.cloud.bigquery_storage import BigQueryReadClient
     from google.cloud.bigquery_storage_v1.types import ReadSession
     from google.cloud.bigquery_storage_v1.types import DataFormat
