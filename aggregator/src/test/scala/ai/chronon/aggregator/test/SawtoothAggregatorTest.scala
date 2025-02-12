@@ -56,7 +56,7 @@ class SawtoothAggregatorTest extends AnyFlatSpec {
     val events = CStream.gen(columns, 10000).rows
     val schema = columns.map(_.schema)
 
-    val aggregations: Seq[Aggregation] = Seq(
+    val aggregations: Seq[Aggregation] = collection.immutable.Seq(
       Builders.Aggregation(
         Operation.AVERAGE,
         "num",

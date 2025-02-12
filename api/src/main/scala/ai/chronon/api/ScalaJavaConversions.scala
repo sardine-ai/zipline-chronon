@@ -1,6 +1,7 @@
 package ai.chronon.api
 
-import scala.collection.parallel.ParSeq
+//import scala.collection.parallel.ParSeq
+//import scala.collection._
 import scala.jdk.CollectionConverters._
 
 object ScalaJavaConversions {
@@ -17,7 +18,7 @@ object ScalaJavaConversions {
     if (list == null) {
       null
     } else {
-      list.asScala
+      list.asScala.toSeq
     }
   }
 
@@ -65,15 +66,15 @@ object ScalaJavaConversions {
       }
     }
   }
-  implicit class IterableOps[T](it: Iterable[T]) {
-    def parallel: ParSeq[T] = {
-      if (it == null) {
-        null
-      } else {
-        it.toSeq.par
-      }
-    }
-  }
+//  implicit class IterableOps[T](it: Iterable[T]) {
+//    def parallel: ParSeq[T] = {
+//      if (it == null) {
+//        null
+//      } else {
+//        it.toSeq.par
+//      }
+//    }
+//  }
   implicit class MapOps[K, V](map: java.util.Map[K, V]) {
     def toScala: Map[K, V] = {
       if (map == null) {

@@ -21,7 +21,7 @@ import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.observability.DriftSpec
 
-import scala.collection.Seq
+//import scala.collection.Seq
 
 // mostly used by tests to define confs easily
 object Builders {

@@ -55,7 +55,7 @@ class DriftStore(kvStore: KVStore,
           key.setSizeMillis(tileSizeMillis)
           key
         }
-    }
+    }.toMap
   }
 
   private case class SummaryRequestContext(request: GetRequest, tileKey: TileKey, groupName: String)
@@ -117,7 +117,7 @@ class DriftStore(kvStore: KVStore,
 
           SummaryResponseContext(summaries, tileKey, groupName)
         }
-      }
+      }.toSeq
 
       // handle failures
       val responseContexts: Seq[SummaryResponseContext] = responseContextTries.flatMap {

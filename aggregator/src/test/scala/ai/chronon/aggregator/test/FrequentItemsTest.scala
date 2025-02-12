@@ -8,7 +8,8 @@ import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
-import scala.jdk.CollectionConverters._
+//import scala.jdk.CollectionConverters._
+import ai.chronon.api.ScalaJavaConversions._
 
 class FrequentItemsTest extends AnyFlatSpec {
   it should "non power of two and truncate" in {
@@ -157,5 +158,5 @@ class FrequentItemsTest extends AnyFlatSpec {
     (sketch, ir)
   }
 
-  def toHashMap[T](map: Map[T, Long]): java.util.HashMap[T, Long] = new java.util.HashMap[T, Long](map.asJava)
+  def toHashMap[T](map: Map[T, Long]): java.util.HashMap[T, Long] = new java.util.HashMap[T, Long](map.toJava)
 }

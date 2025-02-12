@@ -49,7 +49,7 @@ class HTTPKVStore(host: String = "localhost", port: Int = 9000) extends KVStore 
     s"""{ "keyBytes": "${keyBase64}", "valueBytes": "${valueBase64}", "dataset": "${request.dataset}", "tsMillis": ${request.tsMillis.orNull}}""".stripMargin
   }
 
-  def jsonList(requests: Seq[PutRequest]): String = {
+  def jsonList(requests: collection.Seq[PutRequest]): String = {
     val requestsJson = requests.map(jsonString(_)).mkString(", ")
 
     s"[ $requestsJson ]"

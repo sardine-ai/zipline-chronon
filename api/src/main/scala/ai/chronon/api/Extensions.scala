@@ -281,14 +281,14 @@ object Extensions {
           for (window <- windows) {
             perWindow += WindowMapping(
               Builders.AggregationPart(agg.operation,
-                                       agg.inputColumn,
-                                       window,
-                                       Option(agg.argMap)
-                                         .map(
-                                           _.toScala.toMap
-                                         )
-                                         .orNull,
-                                       bucket),
+                agg.inputColumn,
+                window,
+                Option(agg.argMap)
+                  .map(
+                    _.toScala.toMap
+                  )
+                  .orNull,
+                bucket),
               counter
             )
           }
@@ -417,9 +417,9 @@ object Extensions {
     }
 
     /** If the streaming topic has additional args. Parse them to be used by streamingImpl.
-      * Example: kafkatopic/schema=deserializationClass/version=2.0/host=host_url/port=9999
-      * -> Map(schema -> deserializationClass, version -> 2.0, host -> host_url, port -> 9999)
-      */
+     * Example: kafkatopic/schema=deserializationClass/version=2.0/host=host_url/port=9999
+     * -> Map(schema -> deserializationClass, version -> 2.0, host -> host_url, port -> 9999)
+     */
     def topicTokens: Map[String, String] = {
       source.topic
         .split("/")
@@ -432,7 +432,7 @@ object Extensions {
     }
 
     /** Topic without kwargs
-      */
+     */
     def cleanTopic: String = source.topic.cleanSpec
 
   }
@@ -465,8 +465,8 @@ object Extensions {
       val models = groupBy.sources.toScala
         .map(_.dataModel)
       assert(models.distinct.length == 1,
-             s"All source of the groupBy: ${groupBy.metaData.name} " +
-               "should be of the same type. Either 'Events' or 'Entities'")
+        s"All source of the groupBy: ${groupBy.metaData.name} " +
+          "should be of the same type. Either 'Events' or 'Entities'")
       models.head
     }
 
@@ -572,7 +572,7 @@ object Extensions {
       val fillIfAbsent = (groupBy.dataModel match {
         case DataModel.Entities =>
           Map(Constants.ReversalColumn -> Constants.ReversalColumn,
-              Constants.MutationTimeColumn -> Constants.MutationTimeColumn)
+            Constants.MutationTimeColumn -> Constants.MutationTimeColumn)
         case DataModel.Events => Map(Constants.TimeColumn -> timeColumn)
       })
 
@@ -609,8 +609,8 @@ object Extensions {
           case DataModel.Entities =>
             Some(
               Map(Constants.TimeColumn -> timeColumn,
-                  Constants.ReversalColumn -> null,
-                  Constants.MutationTimeColumn -> null))
+                Constants.ReversalColumn -> null,
+                Constants.MutationTimeColumn -> null))
           case DataModel.Events => Some(Map(Constants.TimeColumn -> timeColumn))
         }
         val keys = groupBy.getKeyColumns.toScala
@@ -789,8 +789,8 @@ object Extensions {
   implicit class BootstrapPartOps(val bootstrapPart: BootstrapPart) extends Serializable {
 
     /** Compress the info such that the hash can be stored at record and
-      * used to track which records are populated by which bootstrap tables
-      */
+     * used to track which records are populated by which bootstrap tables
+     */
     def semanticHash: String = {
       val newPart = bootstrapPart.deepCopy()
       bootstrapPart.unsetMetaData()
@@ -917,7 +917,7 @@ object Extensions {
 
     def outputColumnsByGroup: Map[String, Array[String]] = {
       val preDeriveCols = (joinPartColumns ++ externalPartColumns)
-      val preDerivedWithoutRenamed = preDeriveCols.mapValues(_.filterNot(renamedColumns.contains))
+      val preDerivedWithoutRenamed = preDeriveCols.mapValues(_.filterNot(renamedColumns.contains)).toMap
       val derivedColumns: Array[String] = Option(join.derivations) match {
         case Some(derivations) => derivations.toScala.map { _.getName }.filter(_ == "*").toArray
         case None              => Array.empty

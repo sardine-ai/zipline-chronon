@@ -1,7 +1,7 @@
 package ai.chronon.api.test
 
 import ai.chronon.api.Constants
-import ai.chronon.api.ScalaJavaConversions.JListOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.observability.TileDriftSeries
 import ai.chronon.observability.TileSummarySeries
@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.lang.{Double => JDouble}
 import java.lang.{Long => JLong}
-import scala.jdk.CollectionConverters.asScalaBufferConverter
+//import scala.jdk.CollectionConverters.asScalaBufferConverter
 
 class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
 
@@ -40,7 +40,7 @@ class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
     val series =
       ThriftJsonCodec.fromJsonStr[TileDriftSeries](json, true, classOf[TileDriftSeries])(manifest[TileDriftSeries])
 
-    val drifts = series.getPercentileDriftSeries.asScala.toList
+    val drifts = series.getPercentileDriftSeries.toScala
     drifts.size should be(5)
     drifts(0) should be(0.1)
     drifts(1) should be(Constants.magicNullDouble)
@@ -70,7 +70,7 @@ class TileSeriesSerializationTest extends AnyFlatSpec with Matchers {
     val series = ThriftJsonCodec.fromJsonStr[TileSummarySeries](json, true, classOf[TileSummarySeries])(
       manifest[TileSummarySeries])
 
-    val counts = series.getCount.asScala.toList
+    val counts = series.getCount.toScala
     counts.size should be(5)
     counts(0) should be(100L)
     counts(1) should be(Constants.magicNullLong)

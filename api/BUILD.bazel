@@ -38,6 +38,14 @@ scala_library(
         maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
         maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
     ],
+    #    ] + select_for_scala_version(
+    #        before_2_13 = [
+    #            maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+    #        ],
+    #        since_2_13 = [
+    #            maven_scala_artifact("org.scala-lang.modules:scala-parallel-collections"),
+    #        ],
+    #    ),
 )
 
 test_deps = [

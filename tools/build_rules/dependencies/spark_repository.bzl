@@ -13,6 +13,12 @@ spark_repository = repository(
         "org.apache.spark:spark-streaming_2.12:3.5.1",
         "org.apache.spark:spark-avro_2.12:3.5.1",
 
+        # Spark artifacts - for scala 2.13
+        "org.apache.spark:spark-sql_2.13:3.5.1",
+        "org.apache.spark:spark-hive_2.13:3.5.1",
+        "org.apache.spark:spark-streaming_2.13:3.5.1",
+        "org.apache.spark:spark-avro_2.13:3.5.1",
+
         # Hive dependencies
         "org.apache.hive:hive-metastore:2.3.9",
         "org.apache.curator:apache-curator:5.5.0",

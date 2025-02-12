@@ -1,7 +1,7 @@
 workspace(name = "chronon")
 
 # Scala version used across the project
-SCALA_VERSION = "2.12.18"
+DEFAULT_SCALA_VERSION = "2.13.12"
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
@@ -74,21 +74,20 @@ http_archive(
 
 # Initialize Scala with specific version support
 load("@io_bazel_rules_scala//:scala_config.bzl", "scala_config")
+scala_config(scala_version = DEFAULT_SCALA_VERSION)
 
-scala_config(scala_version = SCALA_VERSION)
-
-load("@io_bazel_rules_scala//scala:scala_maven_import_external.bzl", "scala_maven_import_external")
-
-scala_maven_import_external(
-    name = "scala_compiler_source_2_12_18",
-    artifact = "org.scala-lang:scala-compiler:%s:sources" % SCALA_VERSION,
-    artifact_sha256 = "f79ee80f140218253f2a38c9d73f8a9b552d06afce7a5f61cf08079a388e21df",
-    licenses = ["notice"],
-    server_urls = [
-        "https://repo1.maven.org/maven2",
-        "https://mirror.bazel.build/repo1.maven.org/maven2",
-    ],
-)
+# load("@io_bazel_rules_scala//scala:scala_maven_import_external.bzl", "scala_maven_import_external")
+#
+# scala_maven_import_external(
+#     name = "scala_compiler_source_2_12_18",
+#     artifact = "org.scala-lang:scala-compiler:%s:sources" % SCALA_VERSION,
+#     artifact_sha256 = "f79ee80f140218253f2a38c9d73f8a9b552d06afce7a5f61cf08079a388e21df",
+#     licenses = ["notice"],
+#     server_urls = [
+#         "https://repo1.maven.org/maven2",
+#         "https://mirror.bazel.build/repo1.maven.org/maven2",
+#     ],
+# )
 
 load("@io_bazel_rules_scala//scala:scala.bzl", "scala_repositories")
 scala_repositories()
