@@ -163,8 +163,13 @@ object GroupByUpload {
         if (Option(query.selects).isEmpty) fullInputSchema
         else {
           val selects = query.selects.toScala ++ Map(Constants.TimeColumn -> query.timeColumn)
+
+          /** We don't need to actually use the real table here since we're just trying to extract columns
+            * from a static query. We use a dummy table here since users with bigquery tables would have three part
+            * names instead of a two part typical spark table name
+            */
           val streamingQuery =
-            QueryUtils.build(selects, rootTable, query.wheres.toScala)
+            QueryUtils.build(selects, "default.dummy_table", query.wheres.toScala)
           val reqColumns = tableUtils.getColumnsFromQuery(streamingQuery)
           types.StructType(fullInputSchema.filter(col => reqColumns.contains(col.name)))
         }
