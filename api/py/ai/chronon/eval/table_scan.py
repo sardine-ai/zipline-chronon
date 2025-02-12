@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import hashlib
+import os
 from pathlib import Path
 import re
 from typing import List, Tuple
@@ -10,8 +11,6 @@ import ai.chronon.api.ttypes as chronon
 def clean_table_name(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
-
-import os
 
 local_warehouse = Path(os.getenv("CHRONON_ROOT", os.getcwd())) / "local_warehouse/"
 # create local_warehouse if it doesn't exist
@@ -50,10 +49,10 @@ class TableScan:
 
     def raw_scan_query(self, local_table_view: bool = True, limit=10000) -> str:
         return f"""
-SELECT * FROM {self.table_name(local_table_view)} 
-WHERE 
+SELECT * FROM {self.table_name(local_table_view)}
+WHERE
     {self.where_block()}
-LIMIT {limit} 
+LIMIT {limit}
 """
 
     def scan_query(self, local_table_view=True, limit=1000) -> str:
@@ -90,8 +89,6 @@ DEFAULT_DATE_COLUMN = "_date"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d"
 
 two_days_ago = (datetime.now() - timedelta(days=2)).strftime(DEFAULT_DATE_FORMAT)
-
-import os
 
 _sample_date = os.getenv("SAMPLE_DATE", two_days_ago)
 
