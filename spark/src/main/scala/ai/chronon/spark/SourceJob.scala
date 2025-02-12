@@ -57,9 +57,8 @@ class SourceJob(sourceWithFilter: SourceWithFilter, tableUtils: TableUtils, rang
   private def formatFilterString(keys: Option[Map[String, Seq[String]]] = None): Option[String] = {
     keys.map { keyMap =>
       keyMap
-        .map {
-          case (keyName, values) =>
-            generateSkewFilterSql(keyName, values)
+        .map { case (keyName, values) =>
+          generateSkewFilterSql(keyName, values)
         }
         .filter(_.nonEmpty)
         .mkString(" OR ")

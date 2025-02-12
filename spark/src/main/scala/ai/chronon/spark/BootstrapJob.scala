@@ -78,53 +78,51 @@ class BootstrapJob(join: api.Join, tableUtils: TableUtils, range: PartitionRange
           // initialize an empty matched_hashes column for the purpose of later processing
           .withColumn(Constants.MatchedHashes, typedLit[Array[String]](null))
 
-        val joinedDf = parts.foldLeft(initDf) {
-          case (partialDf, part) =>
-            logger.info(s"\nProcessing Bootstrap from table ${part.table} for range $unfilledRange")
+        val joinedDf = parts.foldLeft(initDf) { case (partialDf, part) =>
+          logger.info(s"\nProcessing Bootstrap from table ${part.table} for range $unfilledRange")
 
-            val bootstrapRange = if (part.isSetQuery) {
-              unfilledRange.intersect(PartitionRange(part.startPartition, part.endPartition))
+          val bootstrapRange = if (part.isSetQuery) {
+            unfilledRange.intersect(PartitionRange(part.startPartition, part.endPartition))
+          } else {
+            unfilledRange
+          }
+          if (!bootstrapRange.valid) {
+            logger.info(s"partition range of bootstrap table ${part.table} is beyond unfilled range")
+            partialDf
+          } else {
+            var bootstrapDf =
+              tableUtils.scanDf(part.query,
+                                part.table,
+                                Some(Map(tableUtils.partitionColumn -> null)),
+                                range = Some(bootstrapRange))
+
+            // attach semantic_hash for either log or regular table bootstrap
+            validateReservedColumns(bootstrapDf, part.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
+            if (bootstrapDf.columns.contains(Constants.SchemaHash)) {
+              bootstrapDf = bootstrapDf.withColumn(Constants.BootstrapHash, col(Constants.SchemaHash))
             } else {
-              unfilledRange
+              bootstrapDf = bootstrapDf.withColumn(Constants.BootstrapHash, lit(part.semanticHash))
             }
-            if (!bootstrapRange.valid) {
-              logger.info(s"partition range of bootstrap table ${part.table} is beyond unfilled range")
-              partialDf
-            } else {
-              var bootstrapDf =
-                tableUtils.scanDf(part.query,
-                                  part.table,
-                                  Some(Map(tableUtils.partitionColumn -> null)),
-                                  range = Some(bootstrapRange))
 
-              // attach semantic_hash for either log or regular table bootstrap
-              validateReservedColumns(bootstrapDf, part.table, Seq(Constants.BootstrapHash, Constants.MatchedHashes))
-              if (bootstrapDf.columns.contains(Constants.SchemaHash)) {
-                bootstrapDf = bootstrapDf.withColumn(Constants.BootstrapHash, col(Constants.SchemaHash))
-              } else {
-                bootstrapDf = bootstrapDf.withColumn(Constants.BootstrapHash, lit(part.semanticHash))
-              }
+            // include only necessary columns. in particular,
+            // this excludes columns that are NOT part of Join's output (either from GB or external source)
+            val includedColumns = bootstrapDf.columns
+              .filter(bootstrapInfo.fieldNames ++ part.keys(join, tableUtils.partitionColumn)
+                ++ Seq(Constants.BootstrapHash, tableUtils.partitionColumn))
+              .sorted
 
-              // include only necessary columns. in particular,
-              // this excludes columns that are NOT part of Join's output (either from GB or external source)
-              val includedColumns = bootstrapDf.columns
-                .filter(bootstrapInfo.fieldNames ++ part.keys(join, tableUtils.partitionColumn)
-                  ++ Seq(Constants.BootstrapHash, tableUtils.partitionColumn))
-                .sorted
+            bootstrapDf = bootstrapDf
+              .select(includedColumns.map(col): _*)
+              // TODO: allow customization of deduplication logic
+              .dropDuplicates(part.keys(join, tableUtils.partitionColumn).toArray)
 
-              bootstrapDf = bootstrapDf
-                .select(includedColumns.map(col): _*)
-                // TODO: allow customization of deduplication logic
-                .dropDuplicates(part.keys(join, tableUtils.partitionColumn).toArray)
-
-              coalescedJoin(partialDf, bootstrapDf, part.keys(join, tableUtils.partitionColumn))
+            coalescedJoin(partialDf, bootstrapDf, part.keys(join, tableUtils.partitionColumn))
               // as part of the left outer join process, we update and maintain matched_hashes for each record
               // that summarizes whether there is a join-match for each bootstrap source.
               // later on we use this information to decide whether we still need to re-run the backfill logic
-                .withColumn(Constants.MatchedHashes,
-                            set_add(col(Constants.MatchedHashes), col(Constants.BootstrapHash)))
-                .drop(Constants.BootstrapHash)
-            }
+              .withColumn(Constants.MatchedHashes, set_add(col(Constants.MatchedHashes), col(Constants.BootstrapHash)))
+              .drop(Constants.BootstrapHash)
+          }
         }
 
         // include all external fields if not already bootstrapped
@@ -158,32 +156,30 @@ class BootstrapJob(join: api.Join, tableUtils: TableUtils, range: PartitionRange
 
     // Ensure keys and values for contextual fields are consistent even if only one of them is explicitly bootstrapped
     def withContextualFields(df: DataFrame): DataFrame =
-      contextualFields.foldLeft(df) {
-        case (df, field) =>
-          var newDf = df
-          if (!newDf.columns.contains(field.name)) {
-            newDf = newDf.withColumn(field.name, lit(null).cast(field.dataType))
-          }
-          val prefixedName = s"${Constants.ContextualPrefix}_${field.name}"
-          if (!newDf.columns.contains(prefixedName)) {
-            newDf = newDf.withColumn(prefixedName, lit(null).cast(field.dataType))
-          }
-          newDf
-            .withColumn(field.name, coalesce(col(field.name), col(prefixedName)))
-            .withColumn(prefixedName, coalesce(col(field.name), col(prefixedName)))
+      contextualFields.foldLeft(df) { case (df, field) =>
+        var newDf = df
+        if (!newDf.columns.contains(field.name)) {
+          newDf = newDf.withColumn(field.name, lit(null).cast(field.dataType))
+        }
+        val prefixedName = s"${Constants.ContextualPrefix}_${field.name}"
+        if (!newDf.columns.contains(prefixedName)) {
+          newDf = newDf.withColumn(prefixedName, lit(null).cast(field.dataType))
+        }
+        newDf
+          .withColumn(field.name, coalesce(col(field.name), col(prefixedName)))
+          .withColumn(prefixedName, coalesce(col(field.name), col(prefixedName)))
       }
 
     withContextualFields(withNonContextualFields(bootstrapDf))
   }
 
   private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
-    structType.foldLeft(df) {
-      case (df, field) =>
-        if (df.columns.contains(field.name)) {
-          df
-        } else {
-          df.withColumn(field.name, lit(null).cast(field.dataType))
-        }
+    structType.foldLeft(df) { case (df, field) =>
+      if (df.columns.contains(field.name)) {
+        df
+      } else {
+        df.withColumn(field.name, lit(null).cast(field.dataType))
+      }
     }
   }
 

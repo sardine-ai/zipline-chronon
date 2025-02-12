@@ -353,9 +353,8 @@ class Join(joinConf: api.Join,
 
                 val skewKeys: Option[Map[String, Seq[String]]] = Option(joinConfCloned.skewKeys).map { jmap =>
                   val scalaMap = jmap.toScala
-                  scalaMap.map {
-                    case (key, list) =>
-                      key -> list.asScala
+                  scalaMap.map { case (key, list) =>
+                    key -> list.asScala
                   }
                 }
 
