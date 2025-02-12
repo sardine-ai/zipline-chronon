@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import hashlib
+from pathlib import Path
 import re
 from typing import List, Tuple
 import ai.chronon.api.ttypes as chronon
@@ -7,6 +9,13 @@ import ai.chronon.api.ttypes as chronon
 
 def clean_table_name(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
+
+
+import os
+
+local_warehouse = Path(os.getenv("CHRONON_ROOT", os.getcwd())) / "local_warehouse/"
+# create local_warehouse if it doesn't exist
+local_warehouse.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass
@@ -17,19 +26,37 @@ class TableScan:
     query: chronon.Query
     is_mutations: bool = False
 
+    def output_path(self) -> str:
+        return Path(local_warehouse) / f"{self.view_name()}.parquet"
+
     def view_name(self) -> str:
-        return clean_table_name(self.table)
+        return clean_table_name(self.table) + "_" + self.where_id()
 
     def table_name(self, local_table_view) -> str:
         return self.view_name() if local_table_view else self.table
 
-    def raw_scan_query(self, local_table_view: bool = True, limit=100000) -> str:
+    def where_id(self) -> str:
+        return "_" + hashlib.md5(self.where_block().encode()).hexdigest()[:3]
+
+    def where_block(self) -> str:
+        wheres = []
+        partition_scan = f"{self.partition_col} = '{self.partition_date}'"
+        wheres.append(partition_scan)
+
+        if self.query.wheres:
+            wheres.extend(self.query.wheres)
+
+        return " AND\n    ".join([f"({where})" for where in wheres])
+
+    def raw_scan_query(self, local_table_view: bool = True, limit=10000) -> str:
         return f"""
-SELECT * FROM {self.table_name(local_table_view)} WHERE event_name = 'view_listing'
-LIMIT {limit}
+SELECT * FROM {self.table_name(local_table_view)} 
+WHERE 
+    {self.where_block()}
+LIMIT {limit} 
 """
 
-    def scan_query(self, local_table_view=True, limit=10000) -> str:
+    def scan_query(self, local_table_view=True, limit=1000) -> str:
         selects = []
         base_selects = self.query.selects.copy()
 
@@ -46,18 +73,13 @@ LIMIT {limit}
             selects.append(f"{v} as {k}")
         select_clauses = ",\n    ".join(selects)
 
-        where_clauses = (
-            " AND\n    ".join(self.query.wheres) if self.query.wheres else "1=1"
-        )
-
         return f"""
 SELECT
     {select_clauses}
 FROM
     {self.table_name(local_table_view)}
 WHERE
-    _DATE > '2025-01-09' AND
-    {where_clauses}
+    {self.where_block()}
 LIMIT
     {limit}
 """
@@ -66,14 +88,19 @@ LIMIT
 # TODO: use teams.py to get the default date column
 DEFAULT_DATE_COLUMN = "_date"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d"
+
 two_days_ago = (datetime.now() - timedelta(days=2)).strftime(DEFAULT_DATE_FORMAT)
+
+import os
+
+_sample_date = os.getenv("SAMPLE_DATE", two_days_ago)
 
 
 def get_date(query: chronon.Query) -> Tuple[str, str]:
     assert query and query.selects, "please specify source.query.selects"
 
     partition_col = query.selects.get("ds", DEFAULT_DATE_COLUMN)
-    partition_date = coalesce(query.endPartition, two_days_ago)
+    partition_date = coalesce(query.endPartition, _sample_date)
 
     return (partition_col, partition_date)
 
