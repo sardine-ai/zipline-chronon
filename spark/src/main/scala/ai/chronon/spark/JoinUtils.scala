@@ -98,7 +98,8 @@ object JoinUtils {
     }
     Some(result)
   }
-  
+
+  /** *
     * Compute partition range to be filled for given join conf
     */
   def getRangesToFill(leftSource: ai.chronon.api.Source,
@@ -453,14 +454,13 @@ object JoinUtils {
           keys.forall {
             _.contains(key)
           })
-        .map {
-          case (leftKey, values) =>
-            assert(
-              leftKeyCols.contains(leftKey),
-              s"specified skew filter for $leftKey is not used as a key in any join part. " +
-                s"Please specify key columns in skew filters: [${leftKeyCols.mkString(", ")}]"
-            )
-            generateSkewFilterSql(leftKey, values)
+        .map { case (leftKey, values) =>
+          assert(
+            leftKeyCols.contains(leftKey),
+            s"specified skew filter for $leftKey is not used as a key in any join part. " +
+              s"Please specify key columns in skew filters: [${leftKeyCols.mkString(", ")}]"
+          )
+          generateSkewFilterSql(leftKey, values)
         }
         .filter(_.nonEmpty)
         .mkString(joiner)
@@ -474,13 +474,12 @@ object JoinUtils {
                      joiner: String = " OR "): Option[String] = {
     skewKeys.flatMap { keys =>
       val result = keys
-        .flatMap {
-          case (leftKey, values) =>
-            Option(joinPart.keyMapping)
-              .map(_.toScala.getOrElse(leftKey, leftKey))
-              .orElse(Some(leftKey))
-              .filter(joinPart.groupBy.keyColumns.contains(_))
-              .map(generateSkewFilterSql(_, values))
+        .flatMap { case (leftKey, values) =>
+          Option(joinPart.keyMapping)
+            .map(_.toScala.getOrElse(leftKey, leftKey))
+            .orElse(Some(leftKey))
+            .filter(joinPart.groupBy.keyColumns.contains(_))
+            .map(generateSkewFilterSql(_, values))
         }
         .filter(_.nonEmpty)
         .mkString(joiner)
@@ -535,9 +534,8 @@ object JoinUtils {
   }
 
   def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Map[String, Seq[String]] = {
-    jmap.toScala.map {
-      case (key, list) =>
-        key -> list.asScala
+    jmap.toScala.map { case (key, list) =>
+      key -> list.asScala
     }
   }
 
