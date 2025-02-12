@@ -83,6 +83,16 @@ maven_repository = repository(
         # Hadoop
         "org.apache.hadoop:hadoop-client-api:3.3.4",
 
+        # AWS
+        "software.amazon.awssdk:dynamodb:2.30.13",
+        "software.amazon.awssdk:regions:2.30.13",
+        "software.amazon.awssdk:aws-core:2.30.13",
+        "software.amazon.awssdk:sdk-core:2.30.13",
+        "software.amazon.awssdk:utils:2.30.13",
+        "software.amazon.awssdk:auth:2.30.13",
+        "software.amazon.awssdk:identity-spi:2.30.13",
+        "com.amazonaws:DynamoDBLocal:2.4.0",
+
         # Google Cloud
         "com.google.cloud:google-cloud-bigquery:2.42.0",
         "com.google.cloud:google-cloud-bigtable:2.41.0",
@@ -123,6 +133,7 @@ maven_repository = repository(
         "io.circe:circe-core_2.12:0.14.9",
         "io.circe:circe-generic_2.12:0.14.9",
         "io.circe:circe-parser_2.12:0.14.9",
+        "com.chuusai:shapeless_2.12:2.3.12",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",

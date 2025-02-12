@@ -141,31 +141,29 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     // timestamp to use for all get responses when the underlying tables don't have a ts field
     val defaultTimestamp = Instant.now().toEpochMilli
 
-    val getItemResults = getItemRequestPairs.map {
-      case (req, getItemReq) =>
-        Future {
-          readRateLimiters.computeIfAbsent(req.dataset, _ => RateLimiter.create(defaultReadCapacityUnits)).acquire()
-          val item: Try[util.Map[String, AttributeValue]] =
-            handleDynamoDbOperation(metricsContext.withSuffix("multiget"), req.dataset) {
-              dynamoDbClient.getItem(getItemReq).item()
-            }
+    val getItemResults = getItemRequestPairs.map { case (req, getItemReq) =>
+      Future {
+        readRateLimiters.computeIfAbsent(req.dataset, _ => RateLimiter.create(defaultReadCapacityUnits)).acquire()
+        val item: Try[util.Map[String, AttributeValue]] =
+          handleDynamoDbOperation(metricsContext.withSuffix("multiget"), req.dataset) {
+            dynamoDbClient.getItem(getItemReq).item()
+          }
 
-          val response = item.map(i => List(i).asJava)
-          val resultValue: Try[Seq[TimedValue]] = extractTimedValues(response, defaultTimestamp)
-          GetResponse(req, resultValue)
-        }
+        val response = item.map(i => List(i).asJava)
+        val resultValue: Try[Seq[TimedValue]] = extractTimedValues(response, defaultTimestamp)
+        GetResponse(req, resultValue)
+      }
     }
 
-    val queryResults = queryRequestPairs.map {
-      case (req, queryRequest) =>
-        Future {
-          readRateLimiters.computeIfAbsent(req.dataset, _ => RateLimiter.create(defaultReadCapacityUnits)).acquire()
-          val responses = handleDynamoDbOperation(metricsContext.withSuffix("query"), req.dataset) {
-            dynamoDbClient.query(queryRequest).items()
-          }
-          val resultValue: Try[Seq[TimedValue]] = extractTimedValues(responses, defaultTimestamp)
-          GetResponse(req, resultValue)
+    val queryResults = queryRequestPairs.map { case (req, queryRequest) =>
+      Future {
+        readRateLimiters.computeIfAbsent(req.dataset, _ => RateLimiter.create(defaultReadCapacityUnits)).acquire()
+        val responses = handleDynamoDbOperation(metricsContext.withSuffix("query"), req.dataset) {
+          dynamoDbClient.query(queryRequest).items()
         }
+        val resultValue: Try[Seq[TimedValue]] = extractTimedValues(responses, defaultTimestamp)
+        GetResponse(req, resultValue)
+      }
     }
 
     Future.sequence(getItemResults ++ queryResults)
@@ -224,20 +222,18 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
       (req.dataset, putItemReq)
     }
 
-    val futureResponses = datasetToWriteRequests.map {
-      case (dataset, putItemRequest) =>
-        Future {
-          writeRateLimiters.computeIfAbsent(dataset, _ => RateLimiter.create(defaultWriteCapacityUnits)).acquire()
-          handleDynamoDbOperation(metricsContext.withSuffix("multiput"), dataset) {
-            dynamoDbClient.putItem(putItemRequest)
-          }.isSuccess
-        }
+    val futureResponses = datasetToWriteRequests.map { case (dataset, putItemRequest) =>
+      Future {
+        writeRateLimiters.computeIfAbsent(dataset, _ => RateLimiter.create(defaultWriteCapacityUnits)).acquire()
+        handleDynamoDbOperation(metricsContext.withSuffix("multiput"), dataset) {
+          dynamoDbClient.putItem(putItemRequest)
+        }.isSuccess
+      }
     }
     Future.sequence(futureResponses)
   }
 
-  /**
-    * Implementation of bulkPut is currently a TODO for the DynamoDB store. This involves transforming the underlying
+  /** Implementation of bulkPut is currently a TODO for the DynamoDB store. This involves transforming the underlying
     * Parquet data to Amazon's Ion format + swapping out old table for new (as bulkLoad only writes to new tables)
     */
   override def bulkPut(sourceOfflineTable: String, destinationOnlineDataSet: String, partition: String): Unit = ???
