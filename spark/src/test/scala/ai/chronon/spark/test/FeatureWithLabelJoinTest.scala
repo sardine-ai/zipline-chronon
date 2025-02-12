@@ -66,15 +66,15 @@ class FeatureWithLabelJoinTest extends AnyFlatSpec {
     val runner = new LabelJoin(joinConf, tableUtils, labelDS)
     val labelDf = runner.computeLabelJoin()
     logger.info(" == First Run Label version 2022-10-30 == ")
-    prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.partitionColumn))
+    prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.defaultPartitionColumn))
       .show()
     val featureDf = tableUtils.sparkSession.table(joinConf.metaData.outputTable)
     logger.info(" == Features == ")
     featureDf.show()
     val computed = tableUtils.sql(s"select * from ${joinConf.metaData.outputFinalView}")
     val expectedFinal = featureDf.join(
-      prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.partitionColumn)),
-      labelJoinConf.rowIdentifier(null, tableUtils.partitionColumn),
+      prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.defaultPartitionColumn)),
+      labelJoinConf.rowIdentifier(null, tableUtils.defaultPartitionColumn),
       "left_outer"
     )
     assertResult(computed, expectedFinal)
@@ -150,15 +150,15 @@ class FeatureWithLabelJoinTest extends AnyFlatSpec {
     val runner = new LabelJoin(joinConf, tableUtils, "2022-10-06")
     val labelDf = runner.computeLabelJoin()
     logger.info(" == Label DF == ")
-    prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.partitionColumn))
+    prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.defaultPartitionColumn))
       .show()
     val featureDf = tableUtils.sparkSession.table(joinConf.metaData.outputTable)
     logger.info(" == Features DF == ")
     featureDf.show()
     val computed = tableUtils.sql(s"select * from ${joinConf.metaData.outputFinalView}")
     val expectedFinal = featureDf.join(
-      prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.partitionColumn)),
-      labelJoinConf.rowIdentifier(null, tableUtils.partitionColumn),
+      prefixColumnName(labelDf, exceptions = labelJoinConf.rowIdentifier(null, tableUtils.defaultPartitionColumn)),
+      labelJoinConf.rowIdentifier(null, tableUtils.defaultPartitionColumn),
       "left_outer"
     )
     assertResult(computed, expectedFinal)

@@ -664,7 +664,7 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
         .drop("ts_lagged")
       logger.info("corrected lagged response")
       correctedLaggedResponse.show()
-      correctedLaggedResponse.save(mockApi.logTable, partitionColumns = Seq(tableUtils.partitionColumn, "name"))
+      correctedLaggedResponse.save(mockApi.logTable, partitionColumns = Seq(tableUtils.defaultPartitionColumn, "name"))
 
       // build flattened log table
       SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, today)
@@ -698,7 +698,7 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
         val all: Map[String, AnyRef] =
           res.request.keys ++
             res.values.get ++
-            Map(tableUtils.partitionColumn -> today) ++
+            Map(tableUtils.defaultPartitionColumn -> today) ++
             Map(Constants.TimeColumn -> lang.Long.valueOf(res.request.atMillis.get))
         val values: Array[Any] = columns.map(all.get(_).orNull)
         SparkConversions
@@ -708,7 +708,7 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
 
     logger.info(endDsExpected.schema.pretty)
 
-    val keyishColumns = keys.toList ++ List(tableUtils.partitionColumn, Constants.TimeColumn)
+    val keyishColumns = keys.toList ++ List(tableUtils.defaultPartitionColumn, Constants.TimeColumn)
     val responseRdd = tableUtils.sparkSession.sparkContext.parallelize(responseRows.toSeq)
     var responseDf = tableUtils.sparkSession.createDataFrame(responseRdd, endDsExpected.schema)
     if (endDs != today) {

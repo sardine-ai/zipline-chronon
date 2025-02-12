@@ -39,7 +39,7 @@ class ResultValidationAbilityTest extends AnyFlatSpec with BeforeAndAfter {
   val mockTableUtils: TableUtils = mock(classOf[TableUtils])
 
   before {
-    when(mockTableUtils.partitionColumn).thenReturn("ds")
+    when(mockTableUtils.defaultPartitionColumn).thenReturn("ds")
     when(mockTableUtils.partitionSpec).thenReturn(PartitionSpec("yyyy-MM-dd", WindowUtils.Day.millis))
   }
 

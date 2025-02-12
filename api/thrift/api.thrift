@@ -16,6 +16,7 @@ struct Query {
     6: optional list<string> setups = []
     7: optional string mutationTimeColumn
     8: optional string reversalColumn
+    9: optional string partitionColumn
 }
 
 /**
@@ -48,6 +49,9 @@ struct StagingQuery {
     * Spark SQL setup statements. Used typically to register UDFs.
     **/
     4: optional list<string> setups
+
+    // Only needed for `max_date` template
+    5: optional string partitionColumn
 }
 
 struct EventSource {

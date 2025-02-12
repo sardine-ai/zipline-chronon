@@ -77,7 +77,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   } else {
     val values = inputDf.schema
       .map(_.name)
-      .filterNot((keyColumns ++ Constants.ReservedColumns(tableUtils.partitionColumn)).contains)
+      .filterNot((keyColumns ++ Constants.ReservedColumns(tableUtils.defaultPartitionColumn)).contains)
     val valuesIndices = values.map(inputDf.schema.fieldIndex).toArray
     StructType(valuesIndices.map(inputDf.schema))
   }
@@ -110,7 +110,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     new RowAggregator(selectedSchema, aggregations.flatMap(_.unpack))
 
   def snapshotEntitiesBase: RDD[(Array[Any], Array[Any])] = {
-    val keys = (keyColumns :+ tableUtils.partitionColumn).toArray
+    val keys = (keyColumns :+ tableUtils.defaultPartitionColumn).toArray
     val keyBuilder = FastHashing.generateKeyBuilder(keys, inputDf.schema)
     val (preppedInputDf, irUpdateFunc) = if (aggregations.hasWindows) {
       val partitionTs = "ds_ts"
@@ -150,7 +150,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     if (aggregations == null || aggregations.isEmpty) {
       inputDf
     } else {
-      toDf(snapshotEntitiesBase, Seq(tableUtils.partitionColumn -> StringType))
+      toDf(snapshotEntitiesBase, Seq(tableUtils.defaultPartitionColumn -> StringType))
     }
 
   def snapshotEventsBase(partitionRange: PartitionRange,
@@ -177,7 +177,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   // At this time, we hardcode the resolution to Daily, but it is straight forward to support
   // hourly resolution.
   def snapshotEvents(partitionRange: PartitionRange): DataFrame =
-    toDf(snapshotEventsBase(partitionRange), Seq((tableUtils.partitionColumn, StringType)))
+    toDf(snapshotEventsBase(partitionRange), Seq((tableUtils.defaultPartitionColumn, StringType)))
 
   /** Support for entities with mutations.
     * Three way join between:
@@ -196,7 +196,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val queriesKeyHashFx = FastHashing.generateKeyBuilder(keyColumns.toArray, queriesWithTimeBasedPartition.schema)
     val timeBasedPartitionIndex = queriesWithTimeBasedPartition.schema.fieldIndex(timeBasedPartitionColumn)
     val timeIndex = queriesWithTimeBasedPartition.schema.fieldIndex(Constants.TimeColumn)
-    val partitionIndex = queriesWithTimeBasedPartition.schema.fieldIndex(tableUtils.partitionColumn)
+    val partitionIndex = queriesWithTimeBasedPartition.schema.fieldIndex(tableUtils.defaultPartitionColumn)
 
     // queries by key & ds_of_ts
     val queriesByKeys = queriesWithTimeBasedPartition.rdd
@@ -241,7 +241,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val mTsIndex = mutationDf.schema.fieldIndex(Constants.TimeColumn)
     val mutationsReversalIndex = mutationDf.schema.fieldIndex(Constants.ReversalColumn)
     val mutationsHashFx = FastHashing.generateKeyBuilder(keyColumns.toArray, mutationDf.schema)
-    val mutationPartitionIndex = mutationDf.schema.fieldIndex(tableUtils.partitionColumn)
+    val mutationPartitionIndex = mutationDf.schema.fieldIndex(tableUtils.defaultPartitionColumn)
 
     //mutations by ds, sorted
     val mutationsByKeys: RDD[((KeyWithHash, String), Array[api.Row])] = mutationDf.rdd
@@ -278,7 +278,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
           (keyHasher.data ++ queriesTimeTuple(idx).toArray, finalizedAggregations(idx))
         }
       }
-    toDf(outputRdd, Seq(Constants.TimeColumn -> LongType, tableUtils.partitionColumn -> StringType))
+    toDf(outputRdd, Seq(Constants.TimeColumn -> LongType, tableUtils.defaultPartitionColumn -> StringType))
   }
 
   // Use another dataframe with the same key columns and time columns to
@@ -302,7 +302,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val queryTsIndex = queriesDf.schema.fieldIndex(Constants.TimeColumn)
     val queryTsType = queriesDf.schema(queryTsIndex).dataType
     assert(queryTsType == LongType, s"ts column needs to be long type, but found $queryTsType")
-    val partitionIndex = queriesDf.schema.fieldIndex(tableUtils.partitionColumn)
+    val partitionIndex = queriesDf.schema.fieldIndex(tableUtils.defaultPartitionColumn)
 
     // group the data to collect all the timestamps by key and headStart
     // key, headStart -> timestamps in [headStart, nextHeadStart)
@@ -361,7 +361,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
           }
       }
 
-    toDf(outputRdd, Seq(Constants.TimeColumn -> LongType, tableUtils.partitionColumn -> StringType))
+    toDf(outputRdd, Seq(Constants.TimeColumn -> LongType, tableUtils.defaultPartitionColumn -> StringType))
   }
 
   // convert raw data into IRs, collected by hopSizes
@@ -585,13 +585,14 @@ object GroupBy {
       case Events =>
         if (Option(source.getEvents.isCumulative).getOrElse(false)) {
           lazy val latestAvailable: Option[String] =
-            tableUtils.lastAvailablePartition(source.table, source.subPartitionFilters)
+            tableUtils.lastAvailablePartition(source.tableInfo(tableUtils), source.subPartitionFilters)
           val latestValid: String = Option(source.query.endPartition).getOrElse(latestAvailable.orNull)
           SourceDataProfile(latestValid, latestValid, latestValid)
         } else {
           val minQuery = tableUtils.partitionSpec.before(queryStart)
           val windowStart: String = window.map(tableUtils.partitionSpec.minus(minQuery, _)).orNull
-          lazy val firstAvailable = tableUtils.firstAvailablePartition(source.table, source.subPartitionFilters)
+          lazy val firstAvailable =
+            tableUtils.firstAvailablePartition(source.tableInfo(tableUtils), source.subPartitionFilters)
           val sourceStart = Option(source.query.startPartition).getOrElse(firstAvailable.orNull)
           SourceDataProfile(windowStart, sourceStart, effectiveEnd)
         }
@@ -626,7 +627,7 @@ object GroupBy {
 
     val intersectedRange: PartitionRange = getIntersectedRange(source, queryRange, tableUtils, window)
 
-    var metaColumns: Map[String, String] = Map(tableUtils.partitionColumn -> null)
+    var metaColumns: Map[String, String] = Map(tableUtils.defaultPartitionColumn -> null)
     if (mutations) {
       metaColumns ++= Map(
         Constants.ReversalColumn -> source.query.reversalColumn,
@@ -640,7 +641,7 @@ object GroupBy {
         Some(Constants.TimeColumn -> source.query.timeColumn)
       } else {
         val dsBasedTimestamp = // 1 millisecond before ds + 1
-          s"(((UNIX_TIMESTAMP(${tableUtils.partitionColumn}, '${tableUtils.partitionSpec.format}') + 86400) * 1000) - 1)"
+          s"(((UNIX_TIMESTAMP(${tableUtils.defaultPartitionColumn}, '${tableUtils.partitionSpec.format}') + 86400) * 1000) - 1)"
 
         Some(Constants.TimeColumn -> Option(source.query.timeColumn).getOrElse(dsBasedTimestamp))
       }
@@ -700,7 +701,7 @@ object GroupBy {
     val tableProps = Option(groupByConf.metaData.tableProperties)
       .map(_.toScala)
       .orNull
-    val inputTables = groupByConf.getSources.toScala.map(_.table)
+    val inputTables = groupByConf.getSources.toScala.map(_.tableInfo(tableUtils))
     val isAnySourceCumulative =
       groupByConf.getSources.toScala.exists(s => s.isSetEvents && s.getEvents.isCumulative)
     val groupByUnfilledRangesOpt =

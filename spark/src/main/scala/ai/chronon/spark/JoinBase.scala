@@ -46,10 +46,9 @@ import scala.collection.Seq
 
 abstract class JoinBase(val joinConfCloned: api.Join,
                         endPartition: String,
-                        tableUtils: TableUtils,
                         skipFirstHole: Boolean,
                         showDf: Boolean = false,
-                        selectedJoinParts: Option[Seq[String]] = None) {
+                        selectedJoinParts: Option[Seq[String]] = None)(implicit tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   assert(Option(joinConfCloned.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
@@ -75,9 +74,9 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     // compute join keys, besides the groupBy keys -  like ds, ts etc.,
     val additionalKeys: Seq[String] = {
       if (joinConfCloned.left.dataModel == Entities) {
-        Seq(tableUtils.partitionColumn)
+        Seq(tableUtils.defaultPartitionColumn)
       } else if (joinPart.groupBy.inferredAccuracy == Accuracy.TEMPORAL) {
-        Seq(Constants.TimeColumn, tableUtils.partitionColumn)
+        Seq(Constants.TimeColumn, tableUtils.defaultPartitionColumn)
       } else { // left-events + snapshot => join-key = ds_of_left_ts
         Seq(Constants.TimePartitionColumn)
       }
@@ -86,7 +85,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     // apply prefix to value columns
     val nonValueColumns = joinPart.rightToLeft.keys.toArray ++ Array(Constants.TimeColumn,
-                                                                     tableUtils.partitionColumn,
+                                                                     tableUtils.defaultPartitionColumn,
                                                                      Constants.TimePartitionColumn)
     val valueColumns = rightDf.schema.names.filterNot(nonValueColumns.contains)
     val prefixedRightDf = rightDf.prefixColumnNames(joinPart.fullPrefix, valueColumns)
@@ -108,10 +107,10 @@ abstract class JoinBase(val joinConfCloned: api.Join,
       keyRenamedRightDf
         .withColumn(
           Constants.TimePartitionColumn,
-          date_format(date_add(to_date(col(tableUtils.partitionColumn), tableUtils.partitionSpec.format), 1),
+          date_format(date_add(to_date(col(tableUtils.defaultPartitionColumn), tableUtils.partitionSpec.format), 1),
                       tableUtils.partitionSpec.format)
         )
-        .drop(tableUtils.partitionColumn)
+        .drop(tableUtils.defaultPartitionColumn)
     } else {
       keyRenamedRightDf
     }
@@ -165,7 +164,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
         .unfilledRanges(
           partTable,
           rightRange,
-          Some(Seq(joinConfCloned.left.table)),
+          Some(Seq(joinConfCloned.left.tableInfo)),
           inputToOutputShift = shiftDays,
           // never skip hole during partTable's range determination logic because we don't want partTable
           // and joinTable to be out of sync. skipping behavior is already handled in the outer loop.
@@ -298,7 +297,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     lazy val shiftedPartitionRange = unfilledTimeRange.toPartitionRange.shift(-1)
 
     val renamedLeftDf = renamedLeftRawDf.select(renamedLeftRawDf.columns.map {
-      case c if c == tableUtils.partitionColumn =>
+      case c if c == tableUtils.defaultPartitionColumn =>
         date_format(renamedLeftRawDf.col(c), tableUtils.partitionFormat).as(c)
       case c => renamedLeftRawDf.col(c)
     }.toList: _*)
@@ -350,7 +349,10 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     (rangeToFill,
      tableUtils
-       .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConfCloned.left.table)), skipFirstHole = skipFirstHole)
+       .unfilledRanges(outputTable,
+                       rangeToFill,
+                       Some(Seq(joinConfCloned.left.tableInfo)),
+                       skipFirstHole = skipFirstHole)
        .getOrElse(Seq.empty))
   }
 
@@ -478,7 +480,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                                                 joinConfCloned.historicalBackfill)
     logger.info(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
-      .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConfCloned.left.table)), skipFirstHole = skipFirstHole)
+      .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConfCloned.left.tableInfo)), skipFirstHole = skipFirstHole)
       .getOrElse(Seq.empty)
 
     def finalResult: DataFrame = tableUtils.scanDf(null, outputTable, range = Some(rangeToFill))

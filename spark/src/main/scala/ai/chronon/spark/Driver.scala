@@ -406,7 +406,7 @@ object Driver {
 
       if (args.shouldPerformValidate()) {
         val df = tableUtils.loadTable(args.groupByConf.metaData.outputTable)
-        args.validateResult(df, args.groupByConf.keys(tableUtils.partitionColumn).toSeq, tableUtils)
+        args.validateResult(df, args.groupByConf.keys(tableUtils.defaultPartitionColumn).toSeq, tableUtils)
       }
     }
   }

@@ -97,7 +97,7 @@ object CompareBaseJob {
     }
 
     // Make sure the passed keys has one of the time elements in it
-    if (keys.intersect(Constants.ReservedColumns(tableUtils.partitionColumn)).length == 0) {
+    if (keys.intersect(Constants.ReservedColumns(tableUtils.defaultPartitionColumn)).length == 0) {
       errors += "Ensure that one of the key columns is a time column"
     }
 

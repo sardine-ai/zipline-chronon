@@ -266,7 +266,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
         val all: Map[String, AnyRef] =
           res.request.keys ++
             res.values.get ++
-            Map(tableUtils.partitionColumn -> today) ++
+            Map(tableUtils.defaultPartitionColumn -> today) ++
             Map(Constants.TimeColumn -> new lang.Long(res.request.atMillis.get))
         val values: Array[Any] = columns.map(all.get(_).orNull)
         SparkConversions
@@ -286,7 +286,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
                            ignoreCol: String): Unit = {
     // comparison
     val keys = joinConf.leftKeyCols
-    val keyishColumns = keys.toList ++ List(tableUtils.partitionColumn, Constants.TimeColumn)
+    val keyishColumns = keys.toList ++ List(tableUtils.defaultPartitionColumn, Constants.TimeColumn)
     val responseRdd = tableUtils.sparkSession.sparkContext.parallelize(responseRows.toSeq)
     var responseDf = tableUtils.sparkSession.createDataFrame(responseRdd, expectedDf.schema)
     if (endDs != today) {

@@ -303,7 +303,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     flattenerJob.buildLogTable()
     val flattenedDf = spark
       .table(joinConf.metaData.loggedTable)
-      .where(col(tableUtils.partitionColumn) === offlineDs)
+      .where(col(tableUtils.defaultPartitionColumn) === offlineDs)
     assertEquals(2, flattenedDf.count())
     assertTrue(
       LogFlattenerJob

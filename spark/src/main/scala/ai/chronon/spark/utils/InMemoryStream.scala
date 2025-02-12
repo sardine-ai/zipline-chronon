@@ -83,7 +83,7 @@ class InMemoryStream {
 
   def getContinuousStreamDF(spark: SparkSession, baseInput: Dataset[Row]): DataFrame = {
     // align schema
-    val noDs = baseInput.drop(TableUtils(spark).partitionColumn)
+    val noDs = baseInput.drop(TableUtils(spark).defaultPartitionColumn)
     val mutationColumns = Constants.MutationFields.map(_.name)
     val fields = noDs.schema.fieldNames
     val baseFields = fields.filterNot(mutationColumns.contains)

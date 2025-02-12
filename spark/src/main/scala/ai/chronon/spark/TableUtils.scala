@@ -66,7 +66,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   @transient private lazy val archiveTimestampFormatter = DateTimeFormatter
     .ofPattern(ARCHIVE_TIMESTAMP_FORMAT)
     .withZone(ZoneId.systemDefault())
-  val partitionColumn: String =
+  val defaultPartitionColumn: String =
     sparkSession.conf.get("spark.chronon.partition.column", "ds")
   private[spark] val partitionFormat: String =
     sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
@@ -132,10 +132,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.read.load(DataPointer.from(tableName, sparkSession))
   }
 
-  def isPartitioned(tableName: String): Boolean = {
+  def isPartitioned(table: String): Boolean = {
+    val tableInfo = TableInfo(table, None)(this)
+    isPartitioned(tableInfo)
+  }
+
+  def isPartitioned(tableInfo: TableInfo): Boolean = {
     // TODO: use proper way to detect if a table is partitioned or not
-    val schema = getSchemaFromTable(tableName)
-    schema.fieldNames.contains(partitionColumn)
+    val schema = getSchemaFromTable(tableInfo.table)
+    schema.fieldNames.contains(tableInfo.getPartitionColumn)
   }
 
   // Needs provider
@@ -180,17 +185,23 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def partitions(tableName: String, subPartitionsFilter: Map[String, String] = Map.empty): Seq[String] = {
+  def partitions(tableName: String): Seq[String] = {
+    val tableInfo = TableInfo(tableName, None)(this)
+    partitions(tableInfo)
+  }
 
-    tableReadFormat(tableName)
+  def partitions(tableInfo: TableInfo, subPartitionsFilter: Map[String, String] = Map.empty): Seq[String] = {
+
+    tableReadFormat(tableInfo.table)
       .map((format) => {
-        val partitions = format.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)(sparkSession)
+        val partitions =
+          format.primaryPartitions(tableInfo.table, tableInfo.getPartitionColumn, subPartitionsFilter)(sparkSession)
 
         if (partitions.isEmpty) {
-          logger.info(s"No partitions found for table: $tableName")
+          logger.info(s"No partitions found for table: ${tableInfo.table}")
         } else {
           logger.info(
-            s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
+            s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: ${tableInfo.table}")
         }
         partitions
       })
@@ -236,42 +247,55 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.read.load(DataPointer.from(tableName, sparkSession)).limit(1).schema
   }
 
+  def checkTablePermission(tableName: String): Boolean = {
+    val tableInfo = TableInfo(tableName, None)(this)
+    checkTablePermission(tableInfo)
+  }
+
   // method to check if a user has access to a table
   // Needs provider
-  def checkTablePermission(tableName: String,
+  def checkTablePermission(tableInfo: TableInfo,
                            fallbackPartition: String =
                              partitionSpec.before(partitionSpec.at(System.currentTimeMillis()))): Boolean = {
-    logger.info(s"Checking permission for table $tableName...")
+    logger.info(s"Checking permission for table ${tableInfo.table}...")
     try {
       // retrieve one row from the table
-      val partitionFilter = lastAvailablePartition(tableName).getOrElse(fallbackPartition)
+      val partitionFilter = lastAvailablePartition(tableInfo).getOrElse(fallbackPartition)
       sparkSession.read
-        .load(DataPointer.from(tableName, sparkSession))
-        .where(s"$partitionColumn='$partitionFilter'")
+        .load(DataPointer.from(tableInfo.table, sparkSession))
+        .where(s"${tableInfo.getPartitionColumn}='$partitionFilter'")
         .limit(1)
         .collect()
       true
     } catch {
       case e: SparkException =>
         if (e.getMessage.contains("ACCESS DENIED"))
-          logger.error(s"[Error] No access to table: $tableName ")
+          logger.error(s"[Error] No access to table: ${tableInfo.table}")
         else {
-          logger.error(s"[Error] Encountered exception when reading table: $tableName.")
+          logger.error(s"[Error] Encountered exception when reading table: ${tableInfo.table}.")
         }
         e.printStackTrace()
         false
       case e: Exception =>
-        logger.error(s"[Error] Encountered exception when reading table: $tableName.")
+        logger.error(s"[Error] Encountered exception when reading table: ${tableInfo.table}.")
         e.printStackTrace()
         true
     }
   }
 
-  def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].max(x, y))
+  def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String]): Option[String] =
+    lastAvailablePartition(TableInfo(tableName, None)(this), subPartitionFilters)
 
-  def firstAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].min(x, y))
+  def lastAvailablePartition(tableInfo: TableInfo,
+                             subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
+    partitions(tableInfo, subPartitionFilters).reduceOption((x, y) => Ordering[String].max(x, y))
+
+  def firstAvailablePartition(tableName: String, subPartitionFilters: Map[String, String]): Option[String] =
+    firstAvailablePartition(TableInfo(tableName, None)(this), subPartitionFilters)
+
+  def firstAvailablePartition(tableInfo: TableInfo,
+                              subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
+    partitions(tableInfo, subPartitionFilters).reduceOption((x, y) => Ordering[String].min(x, y))
 
   def createTable(df: DataFrame,
                   tableName: String,
@@ -319,7 +343,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def insertPartitions(df: DataFrame,
                        tableName: String,
                        tableProperties: Map[String, String] = null,
-                       partitionColumns: Seq[String] = Seq(partitionColumn),
+                       partitionColumns: Seq[String] = Seq(defaultPartitionColumn),
                        saveMode: SaveMode = SaveMode.Overwrite,
                        fileFormat: String = "PARQUET",
                        autoExpand: Boolean = false,
@@ -329,8 +353,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val dataPointer = DataPointer.from(tableName, sparkSession)
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
     val dfRearranged: DataFrame = df.select(colOrder.map {
-      case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
-        to_date(df.col(c), partitionFormat).as(partitionColumn)
+      case c if c == defaultPartitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
+        to_date(df.col(c), partitionFormat).as(defaultPartitionColumn)
       case c => df.col(c)
     }: _*)
 
@@ -473,11 +497,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     // get row count and table partition count statistics
 
     val (rowCount: Long, tablePartitionCount: Int) =
-      if (df.schema.fieldNames.contains(partitionColumn)) {
+      if (df.schema.fieldNames.contains(defaultPartitionColumn)) {
         if (stats.isDefined && stats.get.partitionRange.wellDefined) {
           stats.get.count -> stats.get.partitionRange.partitions.length
         } else {
-          val result = df.select(count(lit(1)), approx_count_distinct(col(partitionColumn))).head()
+          val result = df.select(count(lit(1)), approx_count_distinct(col(defaultPartitionColumn))).head()
           (result.getAs[Long](0), result.getAs[Long](1).toInt)
         }
       } else {
@@ -525,8 +549,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       logger.info(
         s"repartitioning data for table $tableName by $shuffleParallelism spark tasks into $tablePartitionCount table partitions and $dailyFileCount files per partition")
       val (repartitionCols: immutable.Seq[String], partitionSortCols: immutable.Seq[String]) =
-        if (df.schema.fieldNames.contains(partitionColumn)) {
-          (Seq(partitionColumn, saltCol), Seq(partitionColumn) ++ sortByCols)
+        if (df.schema.fieldNames.contains(defaultPartitionColumn)) {
+          (Seq(defaultPartitionColumn, saltCol), Seq(defaultPartitionColumn) ++ sortByCols)
         } else { (Seq(saltCol), sortByCols) }
       logger.info(s"Sorting within partitions with cols: $partitionSortCols")
 
@@ -552,14 +576,16 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def unfilledRanges(outputTable: String,
                      outputPartitionRange: PartitionRange,
-                     inputTables: Option[Seq[String]] = None,
+                     inputTables: Option[Seq[TableInfo]] = None,
                      inputTableToSubPartitionFiltersMap: Map[String, Map[String, String]] = Map.empty,
                      inputToOutputShift: Int = 0,
                      skipFirstHole: Boolean = true): Option[Seq[PartitionRange]] = {
 
     val validPartitionRange = if (outputPartitionRange.start == null) { // determine partition range automatically
-      val inputStart = inputTables.flatMap(_.map(table =>
-        firstAvailablePartition(table, inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty))).min)
+      val inputStart = inputTables.flatMap(
+        _.map(tableInfo =>
+          firstAvailablePartition(tableInfo,
+                                  inputTableToSubPartitionFiltersMap.getOrElse(tableInfo.table, Map.empty))).min)
       assert(
         inputStart.isDefined,
         s"""Either partition range needs to have a valid start or
@@ -571,7 +597,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
       outputPartitionRange
     }
-    val outputExisting = partitions(outputTable)
+    val outputExisting = partitions(TableInfo(outputTable)(this))
     // To avoid recomputing partitions removed by retention mechanisms we will not fill holes in the very beginning of the range
     // If a user fills a new partition in the newer end of the range, then we will never fill any partitions before that range.
     // We instead log a message saying why we won't fill the earliest hole.
@@ -593,9 +619,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val existingInputPartitions =
       for (
         inputTables <- inputTables.toSeq;
-        table <- inputTables;
-        subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty);
-        partitionStr <- partitions(table, subPartitionFilters)
+        tableInfo <- inputTables;
+        subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(tableInfo.table, Map.empty);
+        partitionStr <- partitions(tableInfo, subPartitionFilters)
       ) yield {
         partitionSpec.shift(partitionStr, inputToOutputShift)
       }
@@ -770,7 +796,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     df.coalesce(coalesceFactor * parallelism)
   }
 
-  def whereClauses(partitionRange: PartitionRange, partitionColumn: String = partitionColumn): Seq[String] = {
+  def whereClauses(partitionRange: PartitionRange, partitionColumn: String = defaultPartitionColumn): Seq[String] = {
     val startClause = Option(partitionRange.start).map(s"$partitionColumn >= '" + _ + "'")
     val endClause = Option(partitionRange.end).map(s"$partitionColumn <= '" + _ + "'")
     (startClause ++ endClause).toSeq
@@ -780,7 +806,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
              table: String,
              fallbackSelects: Option[Map[String, String]] = None,
              range: Option[PartitionRange] = None,
-             partitionColumn: String = partitionColumn): DataFrame = {
+             partitionColumn: String = defaultPartitionColumn): DataFrame = {
 
     val rangeWheres = range.map(whereClauses(_, partitionColumn)).getOrElse(Seq.empty)
     val queryWheres = Option(query).flatMap(q => Option(q.wheres)).map(_.toScala).getOrElse(Seq.empty)
@@ -791,8 +817,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     scanDfBase(selects, table, wheres, rangeWheres, fallbackSelects)
   }
 
-  def partitionRange(table: String): PartitionRange = {
-    val parts = partitions(table)
+  def partitionRange(tableInfo: TableInfo): PartitionRange = {
+    val parts = partitions(tableInfo)
     val minPartition = parts.reduceOption(Ordering[String].min).orNull
     val maxPartition = parts.reduceOption(Ordering[String].max).orNull
     PartitionRange(minPartition, maxPartition)(partitionSpec)
@@ -811,4 +837,9 @@ sealed case class IncompatibleSchemaException(inconsistencies: Seq[(String, Data
        |${inconsistenciesStr.mkString("\n")}
        |""".stripMargin
   }
+}
+
+case class TableInfo(table: String, partitionColumn: Option[String] = None)(implicit tableUtils: TableUtils) {
+  def getPartitionColumn: String =
+    partitionColumn.getOrElse(tableUtils.defaultPartitionColumn)
 }

@@ -73,8 +73,9 @@ class Join(joinConf: api.Join,
            showDf: Boolean = false,
            selectedJoinParts: Option[List[String]] = None)
 // we copy the joinConfCloned to prevent modification of shared joinConf's in unit tests
-    extends JoinBase(joinConf.deepCopy(), endPartition, tableUtils, skipFirstHole, showDf, selectedJoinParts) {
+    extends JoinBase(joinConf.deepCopy(), endPartition, skipFirstHole, showDf, selectedJoinParts)(tableUtils) {
 
+  implicit private val tu = tableUtils
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   private def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
     structType.foldLeft(df) { case (df, field) =>
@@ -515,7 +516,7 @@ class Join(joinConf: api.Join,
             var bootstrapDf =
               tableUtils.scanDf(part.query,
                                 part.table,
-                                Some(Map(tableUtils.partitionColumn -> null)),
+                                Some(Map(tableUtils.defaultPartitionColumn -> null)),
                                 range = Some(bootstrapRange))
 
             // attach semantic_hash for either log or regular table bootstrap
@@ -529,16 +530,16 @@ class Join(joinConf: api.Join,
             // include only necessary columns. in particular,
             // this excludes columns that are NOT part of Join's output (either from GB or external source)
             val includedColumns = bootstrapDf.columns
-              .filter(bootstrapInfo.fieldNames ++ part.keys(joinConfCloned, tableUtils.partitionColumn)
-                ++ Seq(Constants.BootstrapHash, tableUtils.partitionColumn))
+              .filter(bootstrapInfo.fieldNames ++ part.keys(joinConfCloned, tableUtils.defaultPartitionColumn)
+                ++ Seq(Constants.BootstrapHash, tableUtils.defaultPartitionColumn))
               .sorted
 
             bootstrapDf = bootstrapDf
               .select(includedColumns.map(col): _*)
               // TODO: allow customization of deduplication logic
-              .dropDuplicates(part.keys(joinConfCloned, tableUtils.partitionColumn).toArray)
+              .dropDuplicates(part.keys(joinConfCloned, tableUtils.defaultPartitionColumn).toArray)
 
-            coalescedJoin(partialDf, bootstrapDf, part.keys(joinConfCloned, tableUtils.partitionColumn))
+            coalescedJoin(partialDf, bootstrapDf, part.keys(joinConfCloned, tableUtils.defaultPartitionColumn))
               // as part of the left outer join process, we update and maintain matched_hashes for each record
               // that summarizes whether there is a join-match for each bootstrap source.
               // later on we use this information to decide whether we still need to re-run the backfill logic

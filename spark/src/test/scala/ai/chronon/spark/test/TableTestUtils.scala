@@ -7,7 +7,7 @@ case class TableTestUtils(override val sparkSession: SparkSession) extends Table
 
   def dropPartitions(tableName: String,
                      partitions: Seq[String],
-                     partitionColumn: String = partitionColumn,
+                     partitionColumn: String = defaultPartitionColumn,
                      subPartitionFilters: Map[String, String] = Map.empty): Unit = {
     if (partitions.nonEmpty && tableReachable(tableName)) {
       val partitionSpecs = partitions
@@ -32,7 +32,7 @@ case class TableTestUtils(override val sparkSession: SparkSession) extends Table
                          subPartitionFilters: Map[String, String] = Map.empty): Unit = {
     if (tableReachable(tableName)) {
       val toDrop = Stream.iterate(startDate)(partitionSpec.after).takeWhile(_ <= endDate)
-      dropPartitions(tableName, toDrop, partitionColumn, subPartitionFilters)
+      dropPartitions(tableName, toDrop, defaultPartitionColumn, subPartitionFilters)
     } else {
       logger.info(s"$tableName doesn't exist, please double check before drop partitions")
     }

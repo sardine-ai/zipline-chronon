@@ -166,7 +166,7 @@ class TableBootstrapTest extends AnyFlatSpec {
     tableUtils.createDatabase(namespace)
 
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
-    val endDs = spark.table(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
+    val endDs = spark.table(queryTable).select(max(tableUtils.defaultPartitionColumn)).head().getString(0)
 
     val joinPart = Builders.JoinPart(groupBy = BootstrapUtils.buildGroupBy(namespace, spark))
     val derivations = Seq(

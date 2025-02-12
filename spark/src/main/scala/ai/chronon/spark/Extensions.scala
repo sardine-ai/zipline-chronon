@@ -19,6 +19,7 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataPointer
+import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
@@ -89,7 +90,7 @@ object Extensions {
   object DfWithStats {
     def apply(dataFrame: DataFrame)(implicit partitionSpec: PartitionSpec): DfWithStats = {
       val tu = TableUtils(dataFrame.sparkSession)
-      val pCol = tu.partitionColumn
+      val pCol = tu.defaultPartitionColumn
       val pFormat = tu.partitionFormat
       val partitionCounts = dataFrame
         .groupBy(date_format(col(pCol), pFormat))
@@ -124,7 +125,7 @@ object Extensions {
     }
 
     def partitionRange: PartitionRange = {
-      val (start, end) = df.range[String](tableUtils.partitionColumn)
+      val (start, end) = df.range[String](tableUtils.defaultPartitionColumn)
       PartitionRange(start, end)
     }
 
@@ -148,7 +149,7 @@ object Extensions {
 
     def save(tableName: String,
              tableProperties: Map[String, String] = null,
-             partitionColumns: Seq[String] = Seq(tableUtils.partitionColumn),
+             partitionColumns: Seq[String] = Seq(tableUtils.defaultPartitionColumn),
              autoExpand: Boolean = false,
              stats: Option[DfStats] = None,
              sortByCols: Seq[String] = Seq.empty): Unit = {
@@ -260,14 +261,16 @@ object Extensions {
     def camelToSnake: DataFrame =
       df.columns.foldLeft(df)((renamed, col) => renamed.withColumnRenamed(col, camelToSnake(col)))
 
-    def withPartitionBasedTimestamp(colName: String, inputColumn: String = tableUtils.partitionColumn): DataFrame =
+    def withPartitionBasedTimestamp(colName: String,
+                                    inputColumn: String = tableUtils.defaultPartitionColumn): DataFrame =
       df.withColumn(colName, unix_timestamp(df.col(inputColumn), tableUtils.partitionSpec.format) * 1000)
 
     def withShiftedPartition(colName: String, days: Int = 1): DataFrame =
       df.withColumn(
         colName,
-        date_format(date_add(to_date(df.col(tableUtils.partitionColumn), tableUtils.partitionSpec.format), days),
-                    tableUtils.partitionSpec.format))
+        date_format(date_add(to_date(df.col(tableUtils.defaultPartitionColumn), tableUtils.partitionSpec.format), days),
+                    tableUtils.partitionSpec.format)
+      )
 
     def replaceWithReadableTime(cols: Seq[String], dropOriginal: Boolean): DataFrame = {
       cols.foldLeft(df) { (dfNew, col) =>
@@ -380,5 +383,9 @@ object Extensions {
           optionDfr.table(tableOrPath)
         }
     }
+  }
+  implicit class SourceSparkOps(source: api.Source) {
+    def tableInfo(implicit tableUtils: TableUtils): TableInfo =
+      TableInfo(source.rawTable, Option(source.partitionColumn))
   }
 }

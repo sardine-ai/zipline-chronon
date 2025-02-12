@@ -23,7 +23,7 @@ import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{TableInfo, TableUtils}
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -74,10 +74,9 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
   }
 
   private def buildComparisonTable(): Unit = {
+    val loggedTableInfo = TableInfo(joinConf.metaData.loggedTable, None)
     val unfilledRanges = tableUtils
-      .unfilledRanges(joinConf.metaData.comparisonTable,
-                      PartitionRange(null, endDate),
-                      Some(Seq(joinConf.metaData.loggedTable)))
+      .unfilledRanges(joinConf.metaData.comparisonTable, PartitionRange(null, endDate), Some(Seq(loggedTableInfo)))
       .getOrElse(Seq.empty)
     if (unfilledRanges.isEmpty) return
     val join = new chronon.spark.Join(buildComparisonJoin(), unfilledRanges.last.end, TableUtils(session))
@@ -101,10 +100,9 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
 
     buildComparisonTable()
     logger.info("Determining Range between consistency table and comparison table")
+    val comparisonTableInfo = TableInfo(joinConf.metaData.comparisonTable, None)
     val unfilledRanges = tableUtils
-      .unfilledRanges(joinConf.metaData.consistencyTable,
-                      PartitionRange(null, endDate),
-                      Some(Seq(joinConf.metaData.comparisonTable)))
+      .unfilledRanges(joinConf.metaData.consistencyTable, PartitionRange(null, endDate), Some(Seq(comparisonTableInfo)))
       .getOrElse(Seq.empty)
     if (unfilledRanges.isEmpty) return null
     val allMetrics = unfilledRanges.map { unfilled =>
@@ -131,7 +129,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
       logger.info(s"output schema ${outputDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
       outputDf.save(joinConf.metaData.consistencyTable, tableProperties = tblProperties, autoExpand = true)
       metricsKvRdd.toAvroDf
-        .withTimeBasedColumn(tableUtils.partitionColumn)
+        .withTimeBasedColumn(tableUtils.defaultPartitionColumn)
         .save(joinConf.metaData.consistencyUploadTable, tblProperties)
       metrics
     }

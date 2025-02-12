@@ -44,7 +44,8 @@ class StatsComputeTest extends AnyFlatSpec {
     )
     val columns = Seq("keyId", "value", "double_value", "string_value")
     val rdd = spark.sparkContext.parallelize(data)
-    val df = spark.createDataFrame(rdd).toDF(columns: _*).withColumn(tableUtils.partitionColumn, lit("2022-04-09"))
+    val df =
+      spark.createDataFrame(rdd).toDF(columns: _*).withColumn(tableUtils.defaultPartitionColumn, lit("2022-04-09"))
     val stats = new StatsCompute(df, Seq("keyId"), "test")
     val aggregator =
       StatsGenerator.buildAggregator(stats.metrics, StructType.from("test", toChrononSchema(stats.selectedDf.schema)))
@@ -65,7 +66,7 @@ class StatsComputeTest extends AnyFlatSpec {
     val df = spark
       .createDataFrame(rdd)
       .toDF(columns: _*)
-      .withColumn(tableUtils.partitionColumn, lit("2022-04-09"))
+      .withColumn(tableUtils.defaultPartitionColumn, lit("2022-04-09"))
       .drop(Constants.TimeColumn)
     val stats = new StatsCompute(df, Seq("keyId"), "snapshotTest")
     val aggregator =

@@ -170,8 +170,8 @@ object CompareMetrics {
     val metrics = buildMetrics(valueSchema, mapping)
     val timeColumn: String = if (keys.contains(Constants.TimeColumn)) {
       Constants.TimeColumn
-    } else if (keys.contains(tableUtils.partitionColumn)) {
-      tableUtils.partitionColumn
+    } else if (keys.contains(tableUtils.defaultPartitionColumn)) {
+      tableUtils.defaultPartitionColumn
     } else {
       throw new IllegalArgumentException("Keys doesn't contain the time column")
     }
@@ -195,7 +195,7 @@ object CompareMetrics {
     def sortedMap(vals: Seq[(String, Any)]) = SortedMap.empty[String, Any] ++ vals
     val resultRdd = secondPassDf.rdd
       .keyBy(row => {
-        val timeValue = if (timeColumn == tableUtils.partitionColumn) {
+        val timeValue = if (timeColumn == tableUtils.defaultPartitionColumn) {
           tableUtils.partitionSpec.epochMillis(row.getString(timeIndex))
         } else {
           row.getLong(timeIndex)

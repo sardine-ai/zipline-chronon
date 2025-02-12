@@ -8,7 +8,7 @@ import ai.chronon.online.PartitionRange.collapseToRange
 import ai.chronon.online.PartitionRange.collapsedPrint
 import ai.chronon.online.PartitionRange.rangesToString
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{TableInfo, TableUtils}
 import org.apache.spark.sql.DataFrame
 
 import scala.collection.mutable
@@ -31,6 +31,9 @@ class PartitionRunner[T](verb: String,
                          maxMissingInputPartitions: Int = 0)(implicit tu: TableUtils) {
 
   private implicit val partitionSpec: PartitionSpec = tu.partitionSpec
+
+  val inputTableInfo: TableInfo = TableInfo(inputTable)
+  val outputTableInfo: TableInfo = TableInfo(outputTable)
 
   // returns map of affected partition -> seq of source partitions
   // accounting for lag and input_lookback params
@@ -66,16 +69,16 @@ class PartitionRunner[T](verb: String,
   // returns: sequence of tuples of inputRanges and corresponding outputRanges
   private def computeRanges: Seq[(PartitionRange, PartitionRange)] = {
     // find partitions to fill
-    tu.partitions(inputTable)
-    val inputPartitions = tu.partitions(inputTable).filter(_ <= endDs)
-    val inputRange = tu.partitionRange(inputTable)
+    tu.partitions(inputTableInfo)
+    val inputPartitions = tu.partitions(inputTableInfo).filter(_ <= endDs)
+    val inputRange = tu.partitionRange(inputTableInfo)
     val inputHoles = inputRange.partitions.toSet -- inputPartitions.toSet
 
     // output partition -> # of missing inputPartitions
     val missingHistogram = affectedPartitions(inputHoles.toSeq)
     val outputPartitionsToIgnore = missingHistogram.filter(_._2.length > maxMissingInputPartitions).keys
 
-    val existingOutputPartitions = tu.partitions(outputTable)
+    val existingOutputPartitions = tu.partitions(outputTableInfo)
     val outputPartitionsToCompute = (inputPartitions.toSet -- existingOutputPartitions) -- outputPartitionsToIgnore
 
     // TODO: break at this point for multiple input case
@@ -83,10 +86,10 @@ class PartitionRunner[T](verb: String,
     val inputSteps = outputSteps.map(computeInputRange)
 
     println(s"""
-         |Table to $verb(input): $inputTable, ${tu.partitionRange(inputTable)}
-         |Holes/Missing Partitions in $inputTable: ${collapsedPrint(inputHoles)}
+         |Table to $verb(input): $inputTableInfo, ${tu.partitionRange(inputTableInfo)}
+         |Holes/Missing Partitions in $inputTableInfo: ${collapsedPrint(inputHoles)}
          |
-         |Output table: $outputTable, ${tu.partitionRange(outputTable)}
+         |Output table: $outputTable, ${tu.partitionRange(outputTableInfo)}
          |
          |Output partitions with # of missing input partitions: [${missingHistogram}]
          |Output partitions to ignore: ${collapsedPrint(outputPartitionsToIgnore)}
@@ -109,21 +112,21 @@ class PartitionRunner[T](verb: String,
     ranges.zipWithIndex.foreach { case ((inputRange, outputRange), i) =>
       println(s"""
            |Computing range ${i + 1}/$n
-           |input: $inputTable (${inputRange.start} -> ${inputRange.end})
+           |input: $inputTableInfo (${inputRange.start} -> ${inputRange.end})
            |output: $outputTable (${outputRange.start} -> ${outputRange.end})
            |""".stripMargin.yellow)
-      val inputFilter = inputRange.whereClauses(tu.partitionColumn).mkString(" AND ")
-      val inputDf = tu.loadTable(inputTable).filter(inputFilter)
+      val inputFilter = inputRange.whereClauses(tu.defaultPartitionColumn).mkString(" AND ")
+      val inputDf = tu.loadTable(inputTableInfo.table).filter(inputFilter)
       val (outputDf, sideVal) = computeFunc(inputDf)
       side = Option(sideVal)
-      if (outputDf.columns.contains(tu.partitionColumn)) {
+      if (outputDf.columns.contains(tu.defaultPartitionColumn)) {
         outputDf.save(outputTable)
       } else {
         outputDf.saveUnPartitioned(outputTable)
       }
       println(s"""
            |Finished computing range ${i + 1}/$n
-           |input: $inputTable (${inputRange.start} -> ${inputRange.end})
+           |input: $inputTableInfo (${inputRange.start} -> ${inputRange.end})
            |output: $outputTable (${outputRange.start} -> ${outputRange.end})
            |""".stripMargin.green)
       postFunc.foreach(_(sideVal))

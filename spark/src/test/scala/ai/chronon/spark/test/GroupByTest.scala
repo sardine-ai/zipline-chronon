@@ -83,7 +83,7 @@ class GroupByTest extends AnyFlatSpec {
                                           |GROUP BY user, ds
                                           |""".stripMargin)
 
-    val diff = Comparison.sideBySide(actualDf, expectedDf, List("user", tableUtils.partitionColumn))
+    val diff = Comparison.sideBySide(actualDf, expectedDf, List("user", tableUtils.defaultPartitionColumn))
     if (diff.count() > 0) {
       diff.show()
       println("diff result rows")
@@ -134,7 +134,7 @@ class GroupByTest extends AnyFlatSpec {
                                           |group by user, $datesViewName.ds
                                           |""".stripMargin)
 
-    val diff = Comparison.sideBySide(actualDf, expectedDf, List("user", tableUtils.partitionColumn))
+    val diff = Comparison.sideBySide(actualDf, expectedDf, List("user", tableUtils.defaultPartitionColumn))
     if (diff.count() > 0) {
       diff.show()
       println("diff result rows")
@@ -284,7 +284,7 @@ class GroupByTest extends AnyFlatSpec {
         s"SELECT * FROM ${backfill(name = "unit_test_item_views_steps", source = source, endPartition = endPartition, namespace = namespace, tableUtils = tableUtils, stepDays = testSteps)}"),
       tableUtils.sql(
         s"SELECT * FROM ${backfill(name = "unit_test_item_views_no_steps", source = source, endPartition = endPartition, namespace = namespace, tableUtils = tableUtils)}"),
-      List("item", tableUtils.partitionColumn)
+      List("item", tableUtils.defaultPartitionColumn)
     )
     if (diff.count() != 0) {
       diff.show(100)

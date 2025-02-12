@@ -80,7 +80,7 @@ object JoinUtils {
     }
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
-                               Some(Map(tableUtils.partitionColumn -> null) ++ timeProjection),
+                               Some(Map(tableUtils.defaultPartitionColumn -> null) ++ timeProjection),
                                range = Some(range))
     limit.foreach(l => df = df.limit(l))
     val skewFilter = joinConf.skewFilter()
@@ -114,7 +114,7 @@ object JoinUtils {
     }
 
     lazy val firstAvailablePartitionOpt =
-      tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters)
+      tableUtils.firstAvailablePartition(leftSource.tableInfo(tableUtils), leftSource.subPartitionFilters)
     lazy val defaultLeftStart = Option(leftSource.query.startPartition)
       .getOrElse {
         require(
@@ -237,7 +237,7 @@ object JoinUtils {
       ranges
         .map(range =>
           "WHEN " + range.betweenClauses(
-            tableUtils.partitionColumn) + s" THEN ${Constants.LabelPartitionColumn} = '$ds'")
+            tableUtils.defaultPartitionColumn) + s" THEN ${Constants.LabelPartitionColumn} = '$ds'")
         .toList
     }
 
@@ -278,8 +278,8 @@ object JoinUtils {
   def getLatestLabelMapping(tableName: String, tableUtils: TableUtils): Map[String, collection.Seq[PartitionRange]] = {
     val partitions = tableUtils.allPartitions(tableName)
     assert(
-      partitions.head.keys.equals(Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn)),
-      s""" Table must have label partition columns for latest label computation: `${tableUtils.partitionColumn}`
+      partitions.head.keys.equals(Set(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn)),
+      s""" Table must have label partition columns for latest label computation: `${tableUtils.defaultPartitionColumn}`
          | & `${Constants.LabelPartitionColumn}`
          |inputView: $tableName
          |""".stripMargin
@@ -287,7 +287,7 @@ object JoinUtils {
 
     val labelMap = collection.mutable.Map[String, String]()
     partitions.foreach(par => {
-      val ds_value = par(tableUtils.partitionColumn)
+      val ds_value = par(tableUtils.defaultPartitionColumn)
       val label_value: String = par(Constants.LabelPartitionColumn)
       if (!labelMap.contains(ds_value)) {
         labelMap.put(ds_value, label_value)

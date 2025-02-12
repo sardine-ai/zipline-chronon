@@ -35,7 +35,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
     .map(_.toScala.toMap)
     .orNull
 
-  private val partitionCols: Seq[String] = Seq(tableUtils.partitionColumn) ++
+  private val partitionCols: Seq[String] = Seq(tableUtils.defaultPartitionColumn) ++
     Option(stagingQueryConf.metaData.customJsonLookUp(key = "additional_partition_cols"))
       .getOrElse(new java.util.ArrayList[String]())
       .asInstanceOf[java.util.ArrayList[String]]
@@ -76,7 +76,12 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
           val progress = s"| [${index + 1}/${stepRanges.size}]"
           logger.info(s"Computing staging query for range: $range  $progress")
           val renderedQuery =
-            StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
+            StagingQuery.substitute(tableUtils,
+                                    stagingQueryConf.query,
+                                    range.start,
+                                    range.end,
+                                    endPartition,
+                                    Option(stagingQueryConf.partitionColumn))
           logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
           val df = tableUtils.sql(renderedQuery)
           df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
@@ -103,7 +108,12 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
 object StagingQuery {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def substitute(tu: TableUtils, query: String, start: String, end: String, latest: String): String = {
+  def substitute(tu: TableUtils,
+                 query: String,
+                 start: String,
+                 end: String,
+                 latest: String,
+                 partitionColumn: Option[String]): String = {
     val macros: Array[ParametricMacro] = Array(
       ParametricMacro("start_date", _ => start),
       ParametricMacro("end_date", _ => end),
@@ -112,7 +122,8 @@ object StagingQuery {
         "max_date",
         args => {
           lazy val table = args("table")
-          lazy val partitions = tu.partitions(table)
+          lazy val tableInfo = TableInfo(table, partitionColumn)(tu)
+          lazy val partitions = tu.partitions(tableInfo)
           if (table == null) {
             throw new IllegalArgumentException(s"No table in args:[$args] to macro max_date")
           } else if (partitions.isEmpty) {

@@ -67,8 +67,8 @@ object OnlineUtils {
     val inputStream = new InMemoryStream
     val mockApi = new MockApi(kvStore, namespace)
     var inputModified = inputStreamDf
-    if (dropDsOnWrite && inputStreamDf.schema.fieldNames.contains(tableUtils.partitionColumn)) {
-      inputModified = inputStreamDf.drop(tableUtils.partitionColumn)
+    if (dropDsOnWrite && inputStreamDf.schema.fieldNames.contains(tableUtils.defaultPartitionColumn)) {
+      inputModified = inputStreamDf.drop(tableUtils.defaultPartitionColumn)
     }
     // re-arrange so that mutation_ts and is_before come to the end - to match with streamSchema of GroupBy servingInfo
     val fields = inputModified.schema.fieldNames

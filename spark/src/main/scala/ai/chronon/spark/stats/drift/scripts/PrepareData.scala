@@ -435,7 +435,7 @@ case class PrepareData(namespace: String)(implicit tableUtils: TableUtils) {
     val df = spark.createDataFrame(rdd, fraudSchema)
     val dfWithTimeConvention = df
       .withColumn(Constants.TimeColumn, col("transaction_time"))
-      .withColumn(tableUtils.partitionColumn,
+      .withColumn(tableUtils.defaultPartitionColumn,
                   date_format(from_unixtime(col(Constants.TimeColumn) / 1000), tableUtils.partitionSpec.format))
 
     dfWithTimeConvention.save(outputTable)

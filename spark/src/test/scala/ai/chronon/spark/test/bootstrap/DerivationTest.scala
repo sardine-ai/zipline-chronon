@@ -378,7 +378,7 @@ class DerivationTest extends AnyFlatSpec {
 
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
-    val endDs = spark.table(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
+    val endDs = spark.table(queryTable).select(max(tableUtils.defaultPartitionColumn)).head().getString(0)
 
     val joinPart = Builders.JoinPart(groupBy = groupBy)
     val baseJoin = Builders.Join(
@@ -450,7 +450,7 @@ class DerivationTest extends AnyFlatSpec {
     assertEquals(1 + requests.length, logs.length)
     mockApi
       .loggedValuesToDf(logs, spark)
-      .save(mockApi.logTable, partitionColumns = Seq(tableUtils.partitionColumn, "name"))
+      .save(mockApi.logTable, partitionColumns = Seq(tableUtils.defaultPartitionColumn, "name"))
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, endDs)
     val flattenerJob = new LogFlattenerJob(spark, bootstrapJoin, endDs, mockApi.logTable, mockApi.schemaTable)
     flattenerJob.buildLogTable()

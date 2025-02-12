@@ -98,7 +98,8 @@ object BootstrapInfo {
           .map(field => StructField(part.rightToLeft(field._1), field._2))
 
         val keyAndPartitionFields =
-          gb.keySchema.fields ++ Seq(org.apache.spark.sql.types.StructField(tableUtils.partitionColumn, StringType))
+          gb.keySchema.fields ++ Seq(
+            org.apache.spark.sql.types.StructField(tableUtils.defaultPartitionColumn, StringType))
         // todo: this change is only valid for offline use case
         // we need to revisit logic for the logging part to make sure the derived columns are also logged
         // to make bootstrap continue to work
@@ -183,7 +184,7 @@ object BootstrapInfo {
       .foreach(part => {
         // practically there should only be one logBootstrapPart per Join, but nevertheless we will loop here
         val schema = tableUtils.getSchemaFromTable(part.table)
-        val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)
+        val missingKeys = part.keys(joinConf, tableUtils.defaultPartitionColumn).filterNot(schema.fieldNames.contains)
         collectException(
           assert(
             missingKeys.isEmpty,
@@ -205,9 +206,9 @@ object BootstrapInfo {
       .map(part => {
         val range = PartitionRange(part.startPartition, part.endPartition)
         val bootstrapDf =
-          tableUtils.scanDf(part.query, part.table, Some(Map(tableUtils.partitionColumn -> null)), Some(range))
+          tableUtils.scanDf(part.query, part.table, Some(Map(tableUtils.defaultPartitionColumn -> null)), Some(range))
         val schema = bootstrapDf.schema
-        val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)
+        val missingKeys = part.keys(joinConf, tableUtils.defaultPartitionColumn).filterNot(schema.fieldNames.contains)
         collectException(
           assert(
             missingKeys.isEmpty,
@@ -223,7 +224,7 @@ object BootstrapInfo {
         val valueFields = SparkConversions
           .toChrononSchema(schema)
           .filterNot { case (name, _) =>
-            part.keys(joinConf, tableUtils.partitionColumn).contains(name) || name == "ts"
+            part.keys(joinConf, tableUtils.defaultPartitionColumn).contains(name) || name == "ts"
           }
           .map(field => StructField(field._1, field._2))
 

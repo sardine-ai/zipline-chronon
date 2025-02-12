@@ -66,14 +66,15 @@ class LogFlattenerJob(session: SparkSession,
     .getOrElse(Map.empty[String, String])
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinLogFlatten, joinConf)
 
-  private def getUnfilledRanges(inputTable: String, outputTable: String): Seq[PartitionRange] = {
+  private def getUnfilledRanges(table: String, outputTable: String): Seq[PartitionRange] = {
+    val tableInfo = TableInfo(table, None) // Since this is the log table, we can assume default partitioning
     val partitionName: String = joinConf.metaData.nameToFilePath.replace("/", "%2F")
     val unfilledRangeTry = Try(
       tableUtils.unfilledRanges(
         outputTable,
         PartitionRange(null, endDate),
-        Some(Seq(inputTable)),
-        Map(inputTable -> Map("name" -> partitionName))
+        Some(Seq(tableInfo)),
+        Map(table -> Map("name" -> partitionName))
       )
     )
 
@@ -86,7 +87,7 @@ class LogFlattenerJob(session: SparkSession,
       case Success(None) =>
         logger.info(
           s"$outputTable seems to be caught up - to either " +
-            s"$inputTable(latest ${tableUtils.lastAvailablePartition(inputTable)}) or $endDate.")
+            s"$table(latest ${tableUtils.lastAvailablePartition(tableInfo)}) or $endDate.")
         Seq()
       case Success(Some(partitionRange)) =>
         partitionRange
@@ -171,14 +172,15 @@ class LogFlattenerJob(session: SparkSession,
   }
 
   private def fetchSchemas(hashes: Seq[String]): Map[String, String] = {
-    val schemaTableDs = tableUtils.lastAvailablePartition(schemaTable)
+    val schemaTableInfo = TableInfo(schemaTable, None)
+    val schemaTableDs = tableUtils.lastAvailablePartition(schemaTableInfo)
     if (schemaTableDs.isEmpty) {
       throw new Exception(s"$schemaTable has no partitions available!")
     }
 
     session
       .table(schemaTable)
-      .where(col(tableUtils.partitionColumn) === schemaTableDs.get)
+      .where(col(tableUtils.defaultPartitionColumn) === schemaTableDs.get)
       .where(col(Constants.SchemaHash).isin(hashes: _*))
       .select(
         col(Constants.SchemaHash),

@@ -90,7 +90,7 @@ class Summarizer(api: Api,
       sliceColumns.getOrElse(Seq.empty)).distinct
 
     val cardinalityColumns = summaryColumns
-      .filterNot((tu.partitionColumn +: timeColumn.toSeq +: Constants.TileColumn).contains)
+      .filterNot((tu.defaultPartitionColumn +: timeColumn.toSeq +: Constants.TileColumn).contains)
 
     assert(cardinalityColumns.nonEmpty, "No columns selected for cardinality estimation")
     assert(summaryColumns.nonEmpty, "No columns selected for summarization")
@@ -102,8 +102,8 @@ class Summarizer(api: Api,
 
   def keys(df: DataFrame): Seq[String] = {
     val partitionCol =
-      if (df.columns.contains(tu.partitionColumn))
-        Some(s"${tu.partitionColumn}")
+      if (df.columns.contains(tu.defaultPartitionColumn))
+        Some(s"${tu.defaultPartitionColumn}")
       else None
 
     val sliceCol = sliceColumns
@@ -141,11 +141,12 @@ class Summarizer(api: Api,
 
     if (timeCol != null) {
       addTileCol(timeCol)
-    } else if (derivedCols.contains(tu.partitionColumn)) {
-      val conversionEx = s"unix_timestamp(to_timestamp(${tu.partitionColumn}, '${tu.partitionSpec.format}')) * 1000"
+    } else if (derivedCols.contains(tu.defaultPartitionColumn)) {
+      val conversionEx =
+        s"unix_timestamp(to_timestamp(${tu.defaultPartitionColumn}, '${tu.partitionSpec.format}')) * 1000"
       // no rounding if no millisTime - just tile by partition column
       logger.info("Ignoring tileSize since no time column specified, tiling by the partition instead".blue)
-      derivedDf.withColumn(Constants.TileColumn, expr(conversionEx)).drop(tu.partitionColumn)
+      derivedDf.withColumn(Constants.TileColumn, expr(conversionEx)).drop(tu.defaultPartitionColumn)
     } else {
       // nothing to groupBy using a dummy
       derivedDf.withColumn(Constants.TileColumn, lit(0.0))
@@ -252,7 +253,7 @@ class Summarizer(api: Api,
 
   private def buildSummaryExpressions(inputDf: DataFrame, summaryInputDf: DataFrame): Seq[SummaryExpression] = {
     val cardinalityMap = getOrComputeCardinalityMap(inputDf)
-    val excludedFields = Set(Constants.TileColumn, tu.partitionColumn, Constants.TimeColumn)
+    val excludedFields = Set(Constants.TileColumn, tu.defaultPartitionColumn, Constants.TimeColumn)
     summaryInputDf.schema.fields.filterNot { f => excludedFields.contains(f.name) }.flatMap { f =>
       val count = cardinalityMap(f.name + "_cardinality")
       val cardinality = if (count <= cardinalityThreshold) Cardinality.LOW else Cardinality.HIGH
@@ -321,7 +322,7 @@ class SummaryPacker(confPath: String,
     }
 
     val func: sql.Row => Seq[TileRow] =
-      Expressions.summaryPopulatorFunc(summaryExpressions, df.schema, keyBuilder, tu.partitionColumn)
+      Expressions.summaryPopulatorFunc(summaryExpressions, df.schema, keyBuilder, tu.defaultPartitionColumn)
 
     val packedRdd: RDD[sql.Row] = df.rdd.flatMap(func).map { tileRow =>
       // pack into bytes
@@ -339,7 +340,7 @@ class SummaryPacker(confPath: String,
 
     val packedSchema: types.StructType = types.StructType(
       Seq(
-        types.StructField(tu.partitionColumn, types.StringType, nullable = false),
+        types.StructField(tu.defaultPartitionColumn, types.StringType, nullable = false),
         types.StructField("timestamp", types.LongType, nullable = false),
         types.StructField("keyBytes", types.BinaryType, nullable = false),
         types.StructField("valueBytes", types.BinaryType, nullable = false)

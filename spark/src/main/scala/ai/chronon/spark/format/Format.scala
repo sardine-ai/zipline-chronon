@@ -4,6 +4,7 @@ import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import ai.chronon.spark.format.CreationUtils.createTableSql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import scala.collection.Seq
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 trait Format {

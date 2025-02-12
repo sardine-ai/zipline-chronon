@@ -110,7 +110,7 @@ class LogBootstrapTest extends AnyFlatSpec {
     // Init artifacts to run online fetching and logging
     val kvStore = OnlineUtils.buildInMemoryKVStore(namespace)
     val mockApi = new MockApi(() => kvStore, namespace)
-    val endDs = spark.table(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
+    val endDs = spark.table(queryTable).select(max(tableUtils.defaultPartitionColumn)).head().getString(0)
     OnlineUtils.serve(tableUtils, kvStore, () => kvStore, namespace, endDs, groupBy)
     val fetcher = mockApi.buildFetcher(debug = true)
 
@@ -120,7 +120,7 @@ class LogBootstrapTest extends AnyFlatSpec {
 
     val requests = spark
       .table(queryTable)
-      .where(col(tableUtils.partitionColumn) === endDs)
+      .where(col(tableUtils.defaultPartitionColumn) === endDs)
       .where(col("user").isNotNull and col("request_id").isNotNull)
       .select("user", "request_id", "ts")
       .collect()
@@ -143,7 +143,7 @@ class LogBootstrapTest extends AnyFlatSpec {
     assertEquals(logs.length, 1 + requests.length)
     mockApi
       .loggedValuesToDf(logs, spark)
-      .save(mockApi.logTable, partitionColumns = Seq(tableUtils.partitionColumn, "name"))
+      .save(mockApi.logTable, partitionColumns = Seq(tableUtils.defaultPartitionColumn, "name"))
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, endDs)
     val flattenerJob = new LogFlattenerJob(spark, joinV1, endDs, mockApi.logTable, mockApi.schemaTable)
     flattenerJob.buildLogTable()

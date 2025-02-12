@@ -109,7 +109,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
         joinConf.metaData.outputFinalView,
         leftTable = joinConf.metaData.outputTable,
         rightTable = outputLabelTable,
-        joinKeys = labelJoinConf.rowIdentifier(joinConf.rowIds, tableUtils.partitionColumn),
+        joinKeys = labelJoinConf.rowIdentifier(joinConf.rowIds, tableUtils.defaultPartitionColumn),
         tableUtils = tableUtils,
         viewProperties = Map(Constants.LabelViewPropertyKeyLabelTable -> outputLabelTable,
                              Constants.LabelViewPropertyFeatureTable -> joinConf.metaData.outputTable)
@@ -139,7 +139,10 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
       logger.info(s"Computing label join for range: $range  Label DS: ${labelDS.getOrElse(today)} $progress")
       JoinUtils.leftDf(joinConf, range, tableUtils).map { leftDfInRange =>
         computeRange(leftDfInRange, range, sanitizedLabelDs)
-          .save(outputLabelTable, confTableProps, Seq(Constants.LabelPartitionColumn, tableUtils.partitionColumn), true)
+          .save(outputLabelTable,
+                confTableProps,
+                Seq(Constants.LabelPartitionColumn, tableUtils.defaultPartitionColumn),
+                true)
         val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
         metrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
         metrics.gauge(Metrics.Name.PartitionCount, range.partitions.length)
@@ -203,7 +206,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
       }
     }
 
-    val rowIdentifier = labelJoinConf.rowIdentifier(joinConf.rowIds, tableUtils.partitionColumn)
+    val rowIdentifier = labelJoinConf.rowIdentifier(joinConf.rowIds, tableUtils.defaultPartitionColumn)
     logger.info("Label Join filtering left df with only row identifier:" + rowIdentifier.mkString(", "))
     val leftFiltered = JoinUtils.filterColumns(leftDf, rowIdentifier)
 
@@ -253,7 +256,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
           s"Data model type ${joinConf.left.dataModel}:${joinPart.groupBy.dataModel} " +
             "not supported for label join. Valid type [Events : Entities] or [Events : Events]")
     }
-    df.withColumnRenamed(tableUtils.partitionColumn, Constants.LabelPartitionColumn)
+    df.withColumnRenamed(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn)
   }
 
   def joinWithLeft(leftDf: DataFrame, rightDf: DataFrame, joinPart: JoinPart): DataFrame = {
@@ -271,7 +274,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     }
 
     val nonValueColumns = joinPart.rightToLeft.keys.toArray ++ Array(Constants.TimeColumn,
-                                                                     tableUtils.partitionColumn,
+                                                                     tableUtils.defaultPartitionColumn,
                                                                      Constants.TimePartitionColumn,
                                                                      Constants.LabelPartitionColumn)
     val valueColumns = rightDf.schema.names.filterNot(nonValueColumns.contains)

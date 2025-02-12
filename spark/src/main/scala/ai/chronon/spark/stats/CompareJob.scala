@@ -64,12 +64,17 @@ class CompareJob(
     val leftDf = tableUtils.sql(s"""
         |SELECT *
         |FROM ${joinConf.metaData.outputTable}
-        |WHERE ${partitionRange.betweenClauses(partitionColumn = tableUtils.partitionColumn)}
+        |WHERE ${partitionRange.betweenClauses(partitionColumn = tableUtils.defaultPartitionColumn)}
         |""".stripMargin)
 
     // Run the staging query sql directly
     val rightDf = tableUtils.sql(
-      StagingQuery.substitute(tableUtils, stagingQueryConf.query, startDate, endDate, endDate)
+      StagingQuery.substitute(tableUtils,
+                              stagingQueryConf.query,
+                              startDate,
+                              endDate,
+                              endDate,
+                              Option(stagingQueryConf.partitionColumn))
     )
 
     val (compareDf: DataFrame, metricsTimedKvRdd: TimedKvRdd, metrics: DataMetrics) =
@@ -100,7 +105,12 @@ class CompareJob(
     val analyzer = new Analyzer(tableUtils, joinConf, startDate, endDate, skewDetection = false)
     val joinChrononSchema = analyzer.analyzeJoin(joinConf)._1
     val joinSchema = joinChrononSchema.map { case (k, v) => (k, SparkConversions.fromChrononType(v)) }
-    val finalStagingQuery = StagingQuery.substitute(tableUtils, stagingQueryConf.query, startDate, endDate, endDate)
+    val finalStagingQuery = StagingQuery.substitute(tableUtils,
+                                                    stagingQueryConf.query,
+                                                    startDate,
+                                                    endDate,
+                                                    endDate,
+                                                    Option(stagingQueryConf.partitionColumn))
     val stagingQuerySchema =
       tableUtils.sql(s"$finalStagingQuery LIMIT 1").schema.fields.map(sb => (sb.name, sb.dataType)).toMap
 
@@ -173,7 +183,7 @@ object CompareJob {
     if (joinConf.isSetRowIds) {
       joinConf.rowIds.toScala
     } else {
-      val keyCols = joinConf.leftKeyCols ++ Seq(tableUtils.partitionColumn)
+      val keyCols = joinConf.leftKeyCols ++ Seq(tableUtils.defaultPartitionColumn)
       if (joinConf.left.dataModel == Events) {
         keyCols ++ Seq(Constants.TimeColumn)
       } else {

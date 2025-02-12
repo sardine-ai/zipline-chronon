@@ -32,6 +32,7 @@ import ai.chronon.api.Window
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
+import ai.chronon.spark.Extensions.SourceSparkOps
 import org.apache.datasketches.common.ArrayOfStringsSerDe
 import org.apache.datasketches.frequencies.ErrorType
 import org.apache.datasketches.frequencies.ItemsSketch
@@ -223,7 +224,8 @@ class Analyzer(tableUtils: TableUtils,
       // handle group by backfill mode for derivations
       // todo: add the similar logic to join derivations
       val keyAndPartitionFields =
-        groupBy.keySchema.fields ++ Seq(org.apache.spark.sql.types.StructField(tableUtils.partitionColumn, StringType))
+        groupBy.keySchema.fields ++ Seq(
+          org.apache.spark.sql.types.StructField(tableUtils.defaultPartitionColumn, StringType))
       val sparkSchema = {
         StructType(SparkConversions.fromChrononSchema(groupBy.outputSchema).fields ++ keyAndPartitionFields)
       }
@@ -289,7 +291,7 @@ class Analyzer(tableUtils: TableUtils,
       val leftDf =
         tableUtils.scanDf(joinConf.left.query,
                           joinConf.left.table,
-                          fallbackSelects = Some(Map(tableUtils.partitionColumn -> null)),
+                          fallbackSelects = Some(Map(tableUtils.defaultPartitionColumn -> null)),
                           range = Some(range))
       (analysis, leftDf)
     }
@@ -302,7 +304,7 @@ class Analyzer(tableUtils: TableUtils,
       .toMap
     val aggregationsMetadata = ListBuffer[AggregationMetadata]()
     val keysWithError: ListBuffer[(String, String)] = ListBuffer.empty[(String, String)]
-    val gbTables = ListBuffer[String]()
+    val gbTables = ListBuffer[TableInfo]()
     val gbStartPartitions = mutable.Map[String, List[String]]()
     // Pair of (table name, group_by name, expected_start) which indicate that the table no not have data available for the required group_by
     val dataAvailabilityErrors: ListBuffer[(String, String, String)] = ListBuffer.empty[(String, String, String)]
@@ -310,8 +312,9 @@ class Analyzer(tableUtils: TableUtils,
     val rangeToFill =
       JoinUtils.getRangesToFill(joinConf.left, tableUtils, endDate, historicalBackfill = joinConf.historicalBackfill)
     logger.info(s"Join range to fill $rangeToFill")
+    val inputTableInfo = joinConf.left.tableInfo(tableUtils)
     val unfilledRanges = tableUtils
-      .unfilledRanges(joinConf.metaData.outputTable, rangeToFill, Some(Seq(joinConf.left.table)))
+      .unfilledRanges(joinConf.metaData.outputTable, rangeToFill, Some(Seq(inputTableInfo)))
       .getOrElse(Seq.empty)
 
     joinConf.joinParts.toScala.foreach { part =>
@@ -334,7 +337,7 @@ class Analyzer(tableUtils: TableUtils,
           |gb columns: ${gbKeySchema.keys.mkString(", ")}
           |""".stripMargin)
       keysWithError ++= runSchemaValidation(leftSchema, gbKeySchema, part.rightToLeft)
-      gbTables ++= part.groupBy.sources.toScala.map(_.table)
+      gbTables ++= part.groupBy.sources.toScala.map(s => s.tableInfo(tableUtils))
       dataAvailabilityErrors ++= runDataAvailabilityCheck(joinConf.left.dataModel, part.groupBy, unfilledRanges)
       // list any startPartition dates for conflict checks
       val gbStartPartition = part.groupBy.sources.toScala
@@ -344,7 +347,7 @@ class Analyzer(tableUtils: TableUtils,
         gbStartPartitions += (part.groupBy.metaData.name -> gbStartPartition)
     }
     val noAccessTables = if (validateTablePermission) {
-      runTablePermissionValidation((gbTables.toList ++ List(joinConf.left.table)).toSet)
+      runTablePermissionValidation((gbTables.toList ++ List(joinConf.left.tableInfo(tableUtils))).toSet)
     } else Set()
 
     val rightSchema: Map[String, DataType] =
@@ -440,14 +443,16 @@ class Analyzer(tableUtils: TableUtils,
 
   // validate the table permissions for given list of tables
   // return a list of tables that the user doesn't have access to
-  private def runTablePermissionValidation(sources: Set[String]): Set[String] = {
+  private def runTablePermissionValidation(sources: Set[TableInfo]): Set[String] = {
     logger.info(s"Validating ${sources.size} tables permissions ...")
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     //todo: handle offset-by-1 depending on temporal vs snapshot accuracy
     val partitionFilter = tableUtils.partitionSpec.minus(today, new Window(2, TimeUnit.DAYS))
-    sources.filter { sourceTable =>
-      !tableUtils.checkTablePermission(sourceTable, partitionFilter)
-    }
+    sources
+      .filter { sourceTableInfo =>
+        !tableUtils.checkTablePermission(sourceTableInfo, partitionFilter)
+      }
+      .map(_.table)
   }
 
   // validate that data is available for the group by
@@ -484,12 +489,12 @@ class Analyzer(tableUtils: TableUtils,
             List.empty
           } else {
             val tableToPartitions = groupBy.sources.toScala.map { source =>
-              val table = source.table
-              logger.info(s"Checking table $table for data availability ...")
-              val partitions = tableUtils.partitions(table)
+              val tableInfo = source.tableInfo(tableUtils)
+              logger.info(s"Checking table $tableInfo for data availability ...")
+              val partitions = tableUtils.partitions(tableInfo)
               val startOpt = if (partitions.isEmpty) None else Some(partitions.min)
               val endOpt = if (partitions.isEmpty) None else Some(partitions.max)
-              (table, partitions, startOpt, endOpt)
+              (tableInfo, partitions, startOpt, endOpt)
             }
             val allPartitions = tableToPartitions.flatMap(_._2)
             val minPartition = if (allPartitions.isEmpty) None else Some(allPartitions.min)

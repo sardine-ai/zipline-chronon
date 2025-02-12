@@ -240,7 +240,7 @@ class JoinUtilsTest extends AnyFlatSpec {
     tableUtils.createDatabase(namespace)
     TestUtils.createSampleFeatureTableDf(spark).write.saveAsTable(leftTableName)
     TestUtils.createSampleLabelTableDf(spark).write.saveAsTable(rightTableName)
-    val keys = Array("listing_id", tableUtils.partitionColumn)
+    val keys = Array("listing_id", tableUtils.defaultPartitionColumn)
 
     JoinUtils.createOrReplaceView(finalViewName,
                                   leftTableName,
@@ -279,8 +279,9 @@ class JoinUtilsTest extends AnyFlatSpec {
     TestUtils.createSampleFeatureTableDf(spark).write.saveAsTable(leftTableName)
     tableUtils.insertPartitions(TestUtils.createSampleLabelTableDf(spark),
                                 rightTableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
-    val keys = Array("listing_id", tableUtils.partitionColumn)
+                                partitionColumns =
+                                  Seq(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn))
+    val keys = Array("listing_id", tableUtils.defaultPartitionColumn)
 
     JoinUtils.createOrReplaceView(
       finalViewName,

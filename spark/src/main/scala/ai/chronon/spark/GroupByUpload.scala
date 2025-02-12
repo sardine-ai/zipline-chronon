@@ -65,7 +65,7 @@ class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable
   def snapshotEntities: KvRdd = {
     if (groupBy.aggregations == null || groupBy.aggregations.isEmpty) {
       // pre-agg to PairRdd
-      val keysAndPartition = (groupBy.keyColumns :+ tableUtils.partitionColumn).toArray
+      val keysAndPartition = (groupBy.keyColumns :+ tableUtils.defaultPartitionColumn).toArray
       val keyBuilder = FastHashing.generateKeyBuilder(keysAndPartition, groupBy.inputDf.schema)
       val values = groupBy.inputDf.schema.map(_.name).filterNot(keysAndPartition.contains)
       val valuesIndices = values.map(groupBy.inputDf.schema.fieldIndex).toArray

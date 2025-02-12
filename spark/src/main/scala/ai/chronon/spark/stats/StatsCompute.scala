@@ -42,8 +42,9 @@ class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends 
   implicit val tableUtils: TableUtils = TableUtils(inputDf.sparkSession)
 
   val timeColumns: Seq[String] =
-    if (inputDf.columns.contains(api.Constants.TimeColumn)) Seq(api.Constants.TimeColumn, tableUtils.partitionColumn)
-    else Seq(tableUtils.partitionColumn)
+    if (inputDf.columns.contains(api.Constants.TimeColumn))
+      Seq(api.Constants.TimeColumn, tableUtils.defaultPartitionColumn)
+    else Seq(tableUtils.defaultPartitionColumn)
   val metrics: Seq[StatsGenerator.MetricTransform] =
     StatsGenerator.buildMetrics(SparkConversions.toChrononSchema(noKeysDf.schema))
   lazy val selectedDf: DataFrame = noKeysDf
@@ -79,7 +80,7 @@ class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends 
     val addedPercentilesDf = percentileColumns.foldLeft(withNullRatesDF) { (tmpDf, column) =>
       tmpDf.withColumn(s"${column}_finalized", percentileFinalizerUdf(col(column)))
     }
-    addedPercentilesDf.withTimeBasedColumn(tableUtils.partitionColumn)
+    addedPercentilesDf.withTimeBasedColumn(tableUtils.defaultPartitionColumn)
   }
 
   /** Navigate the dataframe and compute statistics partitioned by date stamp
@@ -92,7 +93,7 @@ class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends 
     * Since the stats are mergeable coarser granularities can be obtained through fetcher merging.
     */
   def dailySummary(aggregator: RowAggregator, sample: Double = 1.0, timeBucketMinutes: Long = 60): TimedKvRdd = {
-    val partitionIdx = selectedDf.schema.fieldIndex(tableUtils.partitionColumn)
+    val partitionIdx = selectedDf.schema.fieldIndex(tableUtils.defaultPartitionColumn)
     val partitionSpec = tableUtils.partitionSpec
     val bucketMs = timeBucketMinutes * 1000 * 60
     val tsIdx =

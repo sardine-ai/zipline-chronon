@@ -272,7 +272,8 @@ class TableUtilsTest extends AnyFlatSpec {
     )
     tableUtils.insertPartitions(df1,
                                 tableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+                                partitionColumns =
+                                  Seq(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn))
     tableUtils.dropPartitions(tableName,
                               Seq("2022-10-01", "2022-10-02"),
                               subPartitionFilters = Map(Constants.LabelPartitionColumn -> "2022-11-02"))
@@ -318,10 +319,11 @@ class TableUtilsTest extends AnyFlatSpec {
     )
     tableUtils.insertPartitions(df1,
                                 tableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+                                partitionColumns =
+                                  Seq(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn))
     val par = tableUtils.allPartitions(tableName)
     assertTrue(par.size == 6)
-    assertEquals(par.head.keys, Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+    assertEquals(par.head.keys, Set(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn))
 
     // filter subset of partitions
     val filtered = tableUtils.allPartitions(tableName, Seq(Constants.LabelPartitionColumn))
@@ -358,7 +360,8 @@ class TableUtilsTest extends AnyFlatSpec {
     )
     tableUtils.insertPartitions(df1,
                                 tableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+                                partitionColumns =
+                                  Seq(tableUtils.defaultPartitionColumn, Constants.LabelPartitionColumn))
 
   }
 
