@@ -12,6 +12,7 @@ on:
       - 'hub/**'
       - 'orchestration/**'
       - 'service/**'
+      - 'cloud_aws/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_non_spark.yaml'
   pull_request:
@@ -25,6 +26,7 @@ on:
       - 'hub/**'
       - 'orchestration/**'
       - 'service/**'
+      - 'cloud_aws/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_non_spark.yaml'
 
@@ -107,3 +109,12 @@ jobs:
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //cloud_gcp:tests
+
+      - name: Run cloud aws tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --java_language_version=17 \
+            --java_runtime_version=17 \
+            //cloud_aws:tests
