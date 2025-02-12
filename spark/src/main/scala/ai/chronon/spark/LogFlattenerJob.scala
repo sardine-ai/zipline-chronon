@@ -172,8 +172,7 @@ class LogFlattenerJob(session: SparkSession,
   }
 
   private def fetchSchemas(hashes: Seq[String]): Map[String, String] = {
-    val schemaTableInfo = TableInfo(schemaTable, None)
-    val schemaTableDs = tableUtils.lastAvailablePartition(schemaTableInfo)
+    val schemaTableDs = tableUtils.lastAvailablePartition(schemaTable, Map.empty)
     if (schemaTableDs.isEmpty) {
       throw new Exception(s"$schemaTable has no partitions available!")
     }
