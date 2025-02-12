@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from typing import List
 from ai.chronon.eval.table_scan import local_warehouse
 

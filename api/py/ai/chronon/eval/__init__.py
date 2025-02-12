@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, List
 from ai.chronon.eval.query_parsing import get_tables_from_query
 from ai.chronon.eval.sample_tables import sample_tables, sample_with_query
@@ -8,7 +7,6 @@ from ai.chronon.eval.table_scan import (
     table_scans_in_group_by,
     table_scans_in_join,
     table_scans_in_source,
-    two_days_ago,
 )
 import ai.chronon.api.ttypes as chronon
 from pyspark.sql import DataFrame, SparkSession
