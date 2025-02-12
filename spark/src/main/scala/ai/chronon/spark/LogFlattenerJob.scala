@@ -87,7 +87,7 @@ class LogFlattenerJob(session: SparkSession,
       case Success(None) =>
         logger.info(
           s"$outputTable seems to be caught up - to either " +
-            s"$table(latest ${tableUtils.lastAvailablePartition(tableInfo)}) or $endDate.")
+            s"$table(latest ${tableUtils.lastAvailablePartitionFromTableInfo(tableInfo)}) or $endDate.")
         Seq()
       case Success(Some(partitionRange)) =>
         partitionRange

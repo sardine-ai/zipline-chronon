@@ -260,7 +260,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     logger.info(s"Checking permission for table ${tableInfo.table}...")
     try {
       // retrieve one row from the table
-      val partitionFilter = lastAvailablePartition(tableInfo).getOrElse(fallbackPartition)
+      val partitionFilter = lastAvailablePartitionFromTableInfo(tableInfo).getOrElse(fallbackPartition)
       sparkSession.read
         .load(DataPointer.from(tableInfo.table, sparkSession))
         .where(s"${tableInfo.getPartitionColumn}='$partitionFilter'")
@@ -284,10 +284,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String]): Option[String] =
-    lastAvailablePartition(TableInfo(tableName, None)(this), subPartitionFilters)
+    lastAvailablePartitionFromTableInfo(TableInfo(tableName, None)(this), subPartitionFilters)
 
-  def lastAvailablePartition(tableInfo: TableInfo,
-                             subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
+  def lastAvailablePartitionFromTableInfo(tableInfo: TableInfo,
+                                          subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
     partitions(tableInfo, subPartitionFilters).reduceOption((x, y) => Ordering[String].max(x, y))
 
   def firstAvailablePartition(tableName: String, subPartitionFilters: Map[String, String]): Option[String] =
