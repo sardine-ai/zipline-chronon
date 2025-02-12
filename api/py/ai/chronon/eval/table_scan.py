@@ -12,7 +12,8 @@ def clean_table_name(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
 
-local_warehouse = Path(os.getenv("CHRONON_ROOT", os.getcwd())) / "local_warehouse/"
+local_warehouse = Path(os.getenv("CHRONON_ROOT", os.getcwd())) / "local_warehouse"
+limit = int(os.getenv("SAMPLE_LIMIT", "100"))
 # create local_warehouse if it doesn't exist
 local_warehouse.mkdir(parents=True, exist_ok=True)
 
@@ -47,7 +48,7 @@ class TableScan:
 
         return " AND\n    ".join([f"({where})" for where in wheres])
 
-    def raw_scan_query(self, local_table_view: bool = True, limit=10000) -> str:
+    def raw_scan_query(self, local_table_view: bool = True) -> str:
         return f"""
 SELECT * FROM {self.table_name(local_table_view)}
 WHERE
@@ -55,7 +56,7 @@ WHERE
 LIMIT {limit}
 """
 
-    def scan_query(self, local_table_view=True, limit=1000) -> str:
+    def scan_query(self, local_table_view=True) -> str:
         selects = []
         base_selects = self.query.selects.copy()
 
