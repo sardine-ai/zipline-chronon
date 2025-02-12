@@ -1,11 +1,6 @@
-from pathlib import Path
 from typing import Any, List
 from ai.chronon.eval.query_parsing import get_tables_from_query
-from ai.chronon.eval.sample_tables import (
-    sample_tables,
-    sample_with_query,
-    local_warehouse,
-)
+from ai.chronon.eval.sample_tables import sample_tables, sample_with_query
 from ai.chronon.eval.table_scan import (
     TableScan,
     clean_table_name,
@@ -65,8 +60,9 @@ def _run_query(query: str) -> DataFrame:
 
 def _sample_table_scan(table_scan: TableScan) -> str:
     table = table_scan.table
+    output_path = table_scan.output_path()
     query = table_scan.raw_scan_query(local_table_view=False)
-    return sample_with_query(table, query)
+    return sample_with_query(table, query, output_path)
 
 
 def _run_table_scans(table_scans: List[TableScan]) -> List[DataFrame]:
@@ -74,7 +70,7 @@ def _run_table_scans(table_scans: List[TableScan]) -> List[DataFrame]:
     df_list = []
 
     for table_scan in table_scans:
-        output_path = Path(local_warehouse) / f"{table_scan.table}.parquet"
+        output_path = table_scan.output_path()
 
         status = " (exists)" if output_path.exists() else ""
         print(
