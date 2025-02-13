@@ -26,9 +26,14 @@ import ai.chronon.api.QueryUtils
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.TableUtils.{
+  TableAlreadyExists,
+  TableCreatedWithInitialData,
+  TableCreatedWithoutInitialData,
+  TableCreationStatus
+}
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.Format
-import ai.chronon.spark.format.FormatProvider
+import ai.chronon.spark.format.{DefaultFormatProvider, Format, FormatProvider}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.SparkException
 import org.apache.spark.sql.AnalysisException
@@ -74,7 +79,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val smallModelEnabled: Boolean =
     sparkSession.conf.get("spark.chronon.backfill.small_mode.enabled", "true").toBoolean
   val smallModeNumRowsCutoff: Int =
-    sparkSession.conf.get("spark.chronon.backfill.small_mode_cutoff", "5000").toInt
+    sparkSession.conf.get("spark.chronon.backfill.small_mode.cutoff", "5000").toInt
   val backfillValidationEnforced: Boolean =
     sparkSession.conf.get("spark.chronon.backfill.validation.enabled", "true").toBoolean
   // Threshold to control whether to use bloomfilter on join backfill. If the backfill row approximate count is under this threshold, we will use bloomfilter.
@@ -89,6 +94,20 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.table_write.cache.level", "NONE").toUpperCase()
   private val blockingCacheEviction: Boolean =
     sparkSession.conf.get("spark.chronon.table_write.cache.blocking", "false").toBoolean
+
+  val writePrefix: Option[String] = {
+
+    val barePrefix = sparkSession.conf.get("spark.chronon.table_write.prefix", "")
+
+    if (barePrefix.isEmpty || barePrefix.toUpperCase() == "NONE") {
+      None
+    } else if (barePrefix.endsWith("/")) {
+      Some(barePrefix)
+    } else {
+      Some(barePrefix + "/")
+    }
+
+  }
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
@@ -278,15 +297,18 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   partitionColumns: Seq[String] = Seq.empty,
                   tableProperties: Map[String, String] = null,
                   fileFormat: String,
-                  autoExpand: Boolean = false): Unit = {
+                  autoExpand: Boolean = false): TableCreationStatus = {
+
     val writeFormat = tableFormatProvider.writeFormat(tableName)
 
-    if (!tableReachable(tableName)) {
+    val creationStatus = if (!tableReachable(tableName)) {
 
       try {
 
-        val createTableOperation =
-          writeFormat.createTable(df, tableName, partitionColumns, tableProperties, fileFormat)
+        val createTableOperation = {
+          tableFormatProvider
+          writeFormat.generateTableBuilder(df, tableName, partitionColumns, tableProperties, fileFormat)
+        }
 
         createTableOperation(sql)
 
@@ -294,25 +316,29 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
         case _: TableAlreadyExistsException =>
           logger.info(s"Table $tableName already exists, skipping creation")
-
+          TableAlreadyExists
         case e: Exception =>
           logger.error(s"Failed to create table $tableName", e)
           throw e
 
       }
+    } else {
+      TableAlreadyExists
     }
 
-    // TODO: we need to also allow for bigquery tables to have their table properties (or tags) to be persisted too.
-    //  https://app.asana.com/0/1208949807589885/1209111629687568/f
-    if (writeFormat.name.toUpperCase != "BIGQUERY") {
-      if (tableProperties != null && tableProperties.nonEmpty) {
-        val alterTblPropsOperation = writeFormat.alterTableProperties(tableName, tableProperties)
-        alterTblPropsOperation(sql)
-      }
-      if (autoExpand) {
-        expandTable(tableName, df.schema)
-      }
+    tableFormatProvider match {
+      case DefaultFormatProvider(_) =>
+        if (tableProperties != null && tableProperties.nonEmpty) {
+          val alterTblPropsOperation = writeFormat.alterTableProperties(tableName, tableProperties)
+          alterTblPropsOperation(sql)
+        }
+        if (autoExpand) {
+          expandTable(tableName, df.schema)
+        }
+      case _ => Unit
     }
+
+    creationStatus
   }
 
   // Needs provider
@@ -325,16 +351,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                        autoExpand: Boolean = false,
                        stats: Option[DfStats] = None,
                        sortByCols: Seq[String] = Seq.empty): Unit = {
+
     // partitions to the last
-    val dataPointer = DataPointer.from(tableName, sparkSession)
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
-    val dfRearranged: DataFrame = df.select(colOrder.map {
-      case c if c == partitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
-        to_date(df.col(c), partitionFormat).as(partitionColumn)
-      case c => df.col(c)
+
+    val dfRearranged: DataFrame = df.select(colOrder.map { case c =>
+      df.col(c)
     }: _*)
 
-    createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat, autoExpand)
+    val creationStatus = createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat, autoExpand)
 
     val finalizedDf = if (autoExpand) {
       // reselect the columns so that a deprecated columns will be selected as NULL before write
@@ -353,7 +378,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       dfRearranged
     }
 
-    repartitionAndWrite(finalizedDf, tableName, saveMode, stats, sortByCols)
+    creationStatus match {
+      case TableCreatedWithoutInitialData | TableAlreadyExists =>
+        repartitionAndWrite(finalizedDf, tableName, saveMode, stats, partitionColumns, sortByCols)
+      case TableCreatedWithInitialData =>
+    }
   }
 
   // retains only the invocations from chronon code.
@@ -406,9 +435,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                           saveMode: SaveMode = SaveMode.Overwrite,
                           fileFormat: String = "PARQUET"): Unit = {
 
-    createTable(df, tableName, Seq.empty[String], tableProperties, fileFormat)
+    val creationStatus = createTable(df, tableName, Seq.empty[String], tableProperties, fileFormat)
 
-    repartitionAndWrite(df, tableName, saveMode, None)
+    creationStatus match {
+      case TableUtils.TableCreatedWithoutInitialData | TableUtils.TableAlreadyExists =>
+        repartitionAndWrite(df, tableName, saveMode, None, partitionColumns = Seq.empty)
+      case TableUtils.TableCreatedWithInitialData =>
+    }
 
   }
 
@@ -448,18 +481,27 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                   tableName: String,
                                   saveMode: SaveMode,
                                   stats: Option[DfStats],
+                                  partitionColumns: Seq[String],
                                   sortByCols: Seq[String] = Seq.empty): Unit = {
     wrapWithCache(s"repartition & write to $tableName", df) {
       logger.info("Repartitioning before writing...")
-      df.show(5)
+
       val dataPointer = DataPointer.from(tableName, sparkSession)
       val repartitioned =
         if (sparkSession.conf.get("spark.chronon.write.repartition", true.toString).toBoolean)
           repartitionInternal(df, tableName, stats, sortByCols)
         else df
-      repartitioned.write
-        .mode(saveMode)
-        .save(dataPointer)
+
+      if (partitionColumns.nonEmpty) {
+        repartitioned.write
+          .partitionBy(partitionColumns: _*)
+          .mode(saveMode)
+          .save(dataPointer)
+      } else {
+        repartitioned.write
+          .mode(saveMode)
+          .save(dataPointer)
+      }
 
       logger.info(s"Finished writing to $tableName")
     }.get
@@ -768,9 +810,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
     val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
 
-    // TODO: this is a temporary fix to handle the case where the partition column is a DATE type and not a string.
+    // TODO: this is a temporary fix to handle the case where the partition column is not a string.
     //  This is the case for partitioned BigQuery native tables.
-    (if (df.schema.fieldNames.contains(partitionColumn) && df.schema(partitionColumn).dataType == DateType) {
+    (if (df.schema.fieldNames.contains(partitionColumn)) {
        df.withColumn(partitionColumn, date_format(df.col(partitionColumn), partitionFormat))
      } else {
        df
@@ -808,6 +850,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
 object TableUtils {
   def apply(sparkSession: SparkSession) = new TableUtils(sparkSession)
+
+  sealed trait TableCreationStatus
+  case object TableCreatedWithInitialData extends TableCreationStatus
+  case object TableCreatedWithoutInitialData extends TableCreationStatus
+  case object TableAlreadyExists extends TableCreationStatus
 }
 
 sealed case class IncompatibleSchemaException(inconsistencies: Seq[(String, DataType, DataType)]) extends Exception {

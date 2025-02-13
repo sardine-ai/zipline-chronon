@@ -1,5 +1,7 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.TableUtils.TableCreationStatus
 import ai.chronon.spark.format.Format
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
 import com.google.cloud.spark.bigquery.SchemaConverters
@@ -26,13 +28,14 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): Seq[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
-  override def createTable(df: DataFrame,
-                           tableName: String,
-                           partitionColumns: Seq[String],
-                           tableProperties: Map[String, String],
-                           fileFormat: String): (String => Unit) => Unit = {
+  override def generateTableBuilder(df: DataFrame,
+                                    tableName: String,
+                                    partitionColumns: Seq[String],
+                                    tableProperties: Map[String, String],
+                                    fileFormat: String): (String => Unit) => TableCreationStatus = {
 
-    def inner(df: DataFrame, tableName: String, partitionColumns: Seq[String])(sqlEvaluator: String => Unit) = {
+    def inner(df: DataFrame, tableName: String, partitionColumns: Seq[String])(
+        sqlEvaluator: String => Unit): TableCreationStatus = {
 
       // See: https://cloud.google.com/bigquery/docs/partitioned-tables#limitations
       // "BigQuery does not support partitioning by multiple columns. Only one column can be used to partition a table."
@@ -57,8 +60,8 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
       val tableInfoBuilder = TableInfo.newBuilder(shadedTableId, tableDefinition.build)
 
       val tableInfo = tableInfoBuilder.build
-
       bqClient.create(tableInfo)
+      TableUtils.TableCreatedWithoutInitialData
     }
 
     inner(df, tableName, partitionColumns)

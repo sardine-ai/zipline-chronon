@@ -1,5 +1,6 @@
 package ai.chronon.spark.format
 
+import ai.chronon.spark.TableUtils.{TableCreatedWithoutInitialData, TableCreationStatus}
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import ai.chronon.spark.format.CreationUtils.createTableSql
 import org.apache.spark.sql.DataFrame
@@ -47,17 +48,17 @@ trait Format {
   //      )
   def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]]
 
-  def createTable(df: DataFrame,
-                  tableName: String,
-                  partitionColumns: Seq[String],
-                  tableProperties: Map[String, String],
-                  fileFormat: String): (String => Unit) => Unit = {
+  def generateTableBuilder(df: DataFrame,
+                           tableName: String,
+                           partitionColumns: Seq[String],
+                           tableProperties: Map[String, String],
+                           fileFormat: String): (String => Unit) => TableCreationStatus = {
 
     def inner(df: DataFrame,
               tableName: String,
               partitionColumns: Seq[String],
               tableProperties: Map[String, String],
-              fileFormat: String)(sqlEvaluator: String => Unit) = {
+              fileFormat: String)(sqlEvaluator: String => Unit): TableCreationStatus = {
       val creationSql =
         createTableSql(tableName,
                        df.schema,
@@ -67,7 +68,7 @@ trait Format {
                        createTableTypeString)
 
       sqlEvaluator(creationSql)
-
+      TableCreatedWithoutInitialData
     }
 
     inner(df, tableName, partitionColumns, tableProperties, fileFormat)
