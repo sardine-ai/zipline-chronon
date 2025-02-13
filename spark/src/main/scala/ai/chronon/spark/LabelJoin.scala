@@ -17,14 +17,10 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Constants
+import ai.chronon.api.{Builders, Constants, JoinPart, PartitionSpec, TimeUnit, Window}
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.JoinPart
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
 import ai.chronon.online.Metrics
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
@@ -199,10 +195,9 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                 s"${joinConf.metaData.name}/${labelJoinPart.groupBy.getMetaData.getName}")
             throw e
         }
-        tableUtils.scanDf(query = null,
+        tableUtils.scanDf(query = Builders.Query(partitionColumn = Constants.LabelPartitionColumn),
                           partTable,
-                          range = Some(labelOutputRange),
-                          partitionColumn = Constants.LabelPartitionColumn)
+                          range = Some(labelOutputRange))
       }
     }
 

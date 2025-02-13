@@ -350,10 +350,6 @@ object Extensions {
       }
     }
 
-    def partitionColumn: String = {
-      query.partitionColumn
-    }
-
     lazy val rootTable: String = {
       if (source.isSetEntities) {
         source.getEntities.getSnapshotTable

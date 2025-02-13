@@ -55,7 +55,7 @@ object TestRow {
 }
 
 // Run as follows: sbt "spark/testOnly -- -n jointest"
-class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
+class JoinTest extends AnyFlatSpec {
 
   val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
   private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
@@ -67,8 +67,6 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
 
   private val namespace = "test_namespace_jointest"
   tableUtils.createDatabase(namespace)
-
-  override def tagName: String = "jointest"
 
   it should "testing basic spark dynamic partition overwrite" in {
     import org.apache.spark.sql.SaveMode
@@ -176,7 +174,7 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
 
     val queryTable = s"$namespace.queries"
     DataFrameGen
-      .events(spark, queriesSchema, 3000, partitions = 180)
+      .events(spark, queriesSchema, 3000, partitions = 180, partitionColumn = Some("date"))
       .save(queryTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
@@ -188,7 +186,8 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
           setups = Seq(
             "create temporary function temp_replace_left as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'",
             "create temporary function temp_replace_right_c as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'"
-          )
+          ),
+          partitionColumn = "date"
         ),
         table = queryTable
       ),
@@ -228,14 +227,14 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
                            |     SELECT user_name,
                            |         user,
                            |         ts,
-                           |         ds
+                           |         date as ds
                            |     from $queryTable
                            |     where user_name IS NOT null
                            |         AND user IS NOT NULL
                            |         AND ts IS NOT NULL
-                           |         AND ds IS NOT NULL
-                           |         AND ds >= '$start'
-                           |         AND ds <= '$end'),
+                           |         AND date IS NOT NULL
+                           |         AND date >= '$start'
+                           |         AND date <= '$end'),
                            |   grouped_transactions AS (
                            |      SELECT user,
                            |             user_name,
@@ -381,6 +380,129 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
                                      |      FROM $weightTable
                                      |      WHERE ds >= '$yearAgo' and ds <= '$dayAndMonthBefore'
                                      |      GROUP BY country, ds),
+                                     |   grouped_heights AS (
+                                     |      SELECT country,
+                                     |             ds,
+                                     |             avg(height) as unit_test_country_heights_height_average
+                                     |      FROM $heightTable
+                                     |      WHERE ds >= '$monthAgo'
+                                     |      GROUP BY country, ds)
+                                     |   SELECT countries.country,
+                                     |        countries.ds,
+                                     |        grouped_weights.unit_test_country_weights_weight_average,
+                                     |        grouped_heights.unit_test_country_heights_height_average
+                                     | FROM countries left outer join grouped_weights
+                                     | ON countries.country = grouped_weights.country
+                                     | AND countries.ds = grouped_weights.ds
+                                     | left outer join grouped_heights
+                                     | ON countries.ds = grouped_heights.ds
+                                     | AND countries.country = grouped_heights.country
+    """.stripMargin)
+
+    println("showing join result")
+    computed.show()
+    println("showing query result")
+    expected.show()
+    println(
+      s"Left side count: ${spark.sql(s"SELECT country, ds from $countryTable where ds >= '$start' and ds <= '$end'").count()}")
+    println(s"Actual count: ${computed.count()}")
+    println(s"Expected count: ${expected.count()}")
+    val diff = Comparison.sideBySide(computed, expected, List("country", "ds"))
+    if (diff.count() > 0) {
+      println(s"Diff count: ${diff.count()}")
+      println("diff result rows")
+      diff.show()
+    }
+    assertEquals(diff.count(), 0)
+    /* the below testing case to cover the scenario when input table and output table
+     * have same partitions, in other words, the frontfill is done, the join job
+     * should not trigger a backfill and exit the program properly
+     * TODO: Revisit this in a logger world.
+    // use console to redirect println message to Java IO
+    val stream = new java.io.ByteArrayOutputStream()
+    Console.withOut(stream) {
+      // rerun the same join job
+      runner.computeJoin(Some(7))
+    }
+    val stdOutMsg = stream.toString()
+    println(s"std out message =\n $stdOutMsg")
+    // make sure that the program exits with target print statements
+    assertTrue(stdOutMsg.contains(s"There is no data to compute based on end partition of $end."))
+     */
+  }
+
+  it should "test partition column" in {
+    // untimed/unwindowed entities on right
+    // right side
+    val weightSchema = List(
+      Column("user", api.StringType, 1000),
+      Column("country", api.StringType, 100),
+      Column("weight", api.DoubleType, 500)
+    )
+    val weightTable = s"$namespace.weights"
+    val weightsDf = DataFrameGen.entities(spark, weightSchema, 1000, partitions = 400, partitionColumn = Some("date"))
+    weightsDf.show()
+    weightsDf.save(weightTable, partitionColumns = Seq("date"))
+
+    val weightSource = Builders.Source.entities(
+      query = Builders.Query(selects = Builders.Selects("weight"),
+                             startPartition = yearAgo,
+                             endPartition = dayAndMonthBefore,
+                             partitionColumn = "date"),
+      snapshotTable = weightTable
+    )
+
+    val weightGroupBy = Builders.GroupBy(
+      sources = Seq(weightSource),
+      keyColumns = Seq("country"),
+      aggregations = Seq(Builders.Aggregation(operation = Operation.AVERAGE, inputColumn = "weight")),
+      metaData = Builders.MetaData(name = "unit_test.country_weights", namespace = namespace)
+    )
+
+    val heightSchema = List(
+      Column("user", api.StringType, 1000),
+      Column("country", api.StringType, 100),
+      Column("height", api.LongType, 200)
+    )
+    val heightTable = s"$namespace.heights"
+    DataFrameGen.entities(spark, heightSchema, 1000, partitions = 400).save(heightTable)
+    val heightSource = Builders.Source.entities(
+      query = Builders.Query(selects = Builders.Selects("height"), startPartition = monthAgo),
+      snapshotTable = heightTable
+    )
+
+    val heightGroupBy = Builders.GroupBy(
+      sources = Seq(heightSource),
+      keyColumns = Seq("country"),
+      aggregations = Seq(Builders.Aggregation(operation = Operation.AVERAGE, inputColumn = "height")),
+      metaData = Builders.MetaData(name = "unit_test.country_heights", namespace = namespace)
+    )
+
+    // left side
+    val countrySchema = List(Column("country", api.StringType, 100))
+    val countryTable = s"$namespace.countries"
+    DataFrameGen.entities(spark, countrySchema, 1000, partitions = 400).save(countryTable)
+
+    val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
+    val end = tableUtils.partitionSpec.minus(today, new Window(15, TimeUnit.DAYS))
+    val joinConf = Builders.Join(
+      left = Builders.Source.entities(Builders.Query(startPartition = start), snapshotTable = countryTable),
+      joinParts = Seq(Builders.JoinPart(groupBy = weightGroupBy), Builders.JoinPart(groupBy = heightGroupBy)),
+      metaData = Builders.MetaData(name = "test.country_features", namespace = namespace, team = "chronon")
+    )
+
+    val runner = new Join(joinConf, end, tableUtils)
+    val computed = runner.computeJoin(Some(7))
+    val expected = tableUtils.sql(s"""
+                                     |WITH
+                                     |   countries AS (SELECT country, ds from $countryTable where ds >= '$start' and ds <= '$end'),
+                                     |   grouped_weights AS (
+                                     |      SELECT country,
+                                     |             date as ds,
+                                     |             avg(weight) as unit_test_country_weights_weight_average
+                                     |      FROM $weightTable
+                                     |      WHERE date >= '$yearAgo' and date <= '$dayAndMonthBefore'
+                                     |      GROUP BY country, date),
                                      |   grouped_heights AS (
                                      |      SELECT country,
                                      |             ds,

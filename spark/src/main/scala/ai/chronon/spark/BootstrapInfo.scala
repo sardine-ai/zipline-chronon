@@ -86,6 +86,7 @@ object BootstrapInfo {
            tableUtils: TableUtils,
            leftSchema: Option[StructType]): BootstrapInfo = {
 
+    implicit val tu = tableUtils
     implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     // Enrich each join part with the expected output schema
     logger.info(s"\nCreating BootstrapInfo for GroupBys for Join ${joinConf.metaData.name}")
@@ -206,7 +207,7 @@ object BootstrapInfo {
       .map(part => {
         val range = PartitionRange(part.startPartition, part.endPartition)
         val bootstrapDf =
-          tableUtils.scanDf(part.query, part.table, Some(Map(tableUtils.defaultPartitionColumn -> null)), Some(range))
+          tableUtils.scanDf(part.query, part.table, Some(Map(part.query.effectivePartitionColumn -> null)), Some(range))
         val schema = bootstrapDf.schema
         val missingKeys = part.keys(joinConf, tableUtils.defaultPartitionColumn).filterNot(schema.fieldNames.contains)
         collectException(

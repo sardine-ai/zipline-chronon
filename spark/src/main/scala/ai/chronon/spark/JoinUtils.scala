@@ -73,6 +73,7 @@ object JoinUtils {
              tableUtils: TableUtils,
              allowEmpty: Boolean = false,
              limit: Option[Int] = None): Option[DataFrame] = {
+    implicit val tu = tableUtils
     val timeProjection = if (joinConf.left.dataModel == Events) {
       Seq(Constants.TimeColumn -> Option(joinConf.left.query).map(_.timeColumn).orNull)
     } else {
@@ -80,7 +81,7 @@ object JoinUtils {
     }
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
-                               Some(Map(tableUtils.defaultPartitionColumn -> null) ++ timeProjection),
+                               Some(Map(joinConf.left.query.effectivePartitionColumn -> null) ++ timeProjection),
                                range = Some(range))
     limit.foreach(l => df = df.limit(l))
     val skewFilter = joinConf.skewFilter()

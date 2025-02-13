@@ -796,7 +796,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     df.coalesce(coalesceFactor * parallelism)
   }
 
-  def whereClauses(partitionRange: PartitionRange, partitionColumn: String = defaultPartitionColumn): Seq[String] = {
+  def whereClauses(partitionRange: PartitionRange, partitionColumn: String): Seq[String] = {
     val startClause = Option(partitionRange.start).map(s"$partitionColumn >= '" + _ + "'")
     val endClause = Option(partitionRange.end).map(s"$partitionColumn <= '" + _ + "'")
     (startClause ++ endClause).toSeq
@@ -805,9 +805,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def scanDf(query: Query,
              table: String,
              fallbackSelects: Option[Map[String, String]] = None,
-             range: Option[PartitionRange] = None,
-             partitionColumn: String = defaultPartitionColumn): DataFrame = {
+             range: Option[PartitionRange] = None): DataFrame = {
 
+    val partitionColumn = query.effectivePartitionColumn(this)
     val rangeWheres = range.map(whereClauses(_, partitionColumn)).getOrElse(Seq.empty)
     val queryWheres = Option(query).flatMap(q => Option(q.wheres)).map(_.toScala).getOrElse(Seq.empty)
     val wheres: Seq[String] = rangeWheres ++ queryWheres

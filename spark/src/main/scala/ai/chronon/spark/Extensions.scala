@@ -74,7 +74,7 @@ object Extensions {
 
     lazy val timeRange: TimeRange = df.calculateTimeRange
 
-    def prunePartitions(range: PartitionRange): Option[DfWithStats] = {
+    def prunePartitions(range: PartitionRange, partitionColumn: String): Option[DfWithStats] = {
       println(
         s"Pruning down to new range $range, original range: $partitionRange." +
           s"\nOriginal partition counts: $partitionCounts")
@@ -82,7 +82,7 @@ object Extensions {
       if (!intersected.wellDefined) return None
       val intersectedCounts = partitionCounts.filter(intersected.partitions contains _._1)
       if (intersectedCounts.isEmpty) return None
-      Some(DfWithStats(df.prunePartition(range), intersectedCounts))
+      Some(DfWithStats(df.prunePartition(range, partitionColumn), intersectedCounts))
     }
     def stats: DfStats = DfStats(count, partitionRange)
   }
@@ -118,8 +118,8 @@ object Extensions {
       TimeRange(start, end)
     }
 
-    def prunePartition(partitionRange: PartitionRange): DataFrame = {
-      val pruneFilter = tableUtils.whereClauses(partitionRange).mkString(" AND ")
+    def prunePartition(partitionRange: PartitionRange, partitionColumn: String): DataFrame = {
+      val pruneFilter = tableUtils.whereClauses(partitionRange, partitionColumn).mkString(" AND ")
       logger.info(s"Pruning using $pruneFilter")
       df.filter(pruneFilter)
     }
@@ -385,7 +385,17 @@ object Extensions {
     }
   }
   implicit class SourceSparkOps(source: api.Source) {
+
+    def partitionColumn(implicit tableUtils: TableUtils): String = {
+      Option(source.query.partitionColumn).getOrElse(tableUtils.defaultPartitionColumn)
+    }
+
     def tableInfo(implicit tableUtils: TableUtils): TableInfo =
       TableInfo(source.rawTable, Option(source.partitionColumn))
+  }
+
+  implicit class QuerySparkOps(query: api.Query) {
+    def effectivePartitionColumn(implicit tableUtils: TableUtils): String =
+      Option(query).flatMap(q => Option(q.partitionColumn)).getOrElse(tableUtils.defaultPartitionColumn)
   }
 }

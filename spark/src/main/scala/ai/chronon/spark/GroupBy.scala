@@ -51,6 +51,7 @@ import scala.collection.mutable
 class GroupBy(val aggregations: Seq[api.Aggregation],
               val keyColumns: Seq[String],
               val inputDf: DataFrame,
+              val partitionColumn: String = null,
               val mutationDfFn: () => DataFrame = null,
               skewFilter: Option[String] = None,
               finalize: Boolean = true)
@@ -60,6 +61,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   protected[spark] val tsIndex: Int = inputDf.schema.fieldNames.indexOf(Constants.TimeColumn)
   protected val selectedSchema: Array[(String, api.DataType)] = SparkConversions.toChrononSchema(inputDf.schema)
   implicit private val tableUtils: TableUtils = TableUtils(inputDf.sparkSession)
+
   val keySchema: StructType = StructType(keyColumns.map(inputDf.schema.apply).toArray)
   implicit val sparkSession: SparkSession = inputDf.sparkSession
   // distinct inputs to aggregations - post projection types that needs to match with
@@ -568,7 +570,7 @@ object GroupBy {
     new GroupBy(Option(groupByConf.getAggregations).map(_.toScala).orNull,
                 keyColumns,
                 nullFiltered,
-                mutationDfFn,
+                mutationDfFn = mutationDfFn,
                 finalize = finalize)
   }
 
@@ -576,19 +578,24 @@ object GroupBy {
                                   queryRange: PartitionRange,
                                   tableUtils: TableUtils,
                                   window: Option[api.Window]): PartitionRange = {
+
     val PartitionRange(queryStart, queryEnd) = queryRange
     val effectiveEnd = (Option(queryRange.end) ++ Option(source.query.endPartition))
       .reduceLeftOption(Ordering[String].min)
       .orNull
+
     val dataProfile: SourceDataProfile = source.dataModel match {
       case Entities => SourceDataProfile(queryStart, source.query.startPartition, effectiveEnd)
       case Events =>
         if (Option(source.getEvents.isCumulative).getOrElse(false)) {
+
           lazy val latestAvailable: Option[String] =
             tableUtils.lastAvailablePartitionFromTableInfo(source.tableInfo(tableUtils), source.subPartitionFilters)
           val latestValid: String = Option(source.query.endPartition).getOrElse(latestAvailable.orNull)
           SourceDataProfile(latestValid, latestValid, latestValid)
+
         } else {
+
           val minQuery = tableUtils.partitionSpec.before(queryStart)
           val windowStart: String = window.map(tableUtils.partitionSpec.minus(minQuery, _)).orNull
           lazy val firstAvailable =
@@ -596,7 +603,9 @@ object GroupBy {
           val sourceStart = Option(source.query.startPartition).getOrElse(firstAvailable.orNull)
           SourceDataProfile(windowStart, sourceStart, effectiveEnd)
         }
+
     }
+
     implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     val sourceRange = PartitionRange(dataProfile.earliestPresent, dataProfile.latestAllowed)
     val queryableDataRange =
@@ -627,13 +636,15 @@ object GroupBy {
 
     val intersectedRange: PartitionRange = getIntersectedRange(source, queryRange, tableUtils, window)
 
-    var metaColumns: Map[String, String] = Map(tableUtils.defaultPartitionColumn -> null)
+    var metaColumns: Map[String, String] = Map(tableUtils.defaultPartitionColumn -> source.query.partitionColumn)
     if (mutations) {
       metaColumns ++= Map(
         Constants.ReversalColumn -> source.query.reversalColumn,
         Constants.MutationTimeColumn -> source.query.mutationTimeColumn
       )
     }
+
+    val partitionColumn = source.query.effectivePartitionColumn(tableUtils)
     val timeMapping = if (source.dataModel == Entities) {
       Option(source.query.timeColumn).map(Constants.TimeColumn -> _)
     } else {
@@ -641,7 +652,7 @@ object GroupBy {
         Some(Constants.TimeColumn -> source.query.timeColumn)
       } else {
         val dsBasedTimestamp = // 1 millisecond before ds + 1
-          s"(((UNIX_TIMESTAMP(${tableUtils.defaultPartitionColumn}, '${tableUtils.partitionSpec.format}') + 86400) * 1000) - 1)"
+          s"(((UNIX_TIMESTAMP(${partitionColumn}, '${tableUtils.partitionSpec.format}') + 86400) * 1000) - 1)"
 
         Some(Constants.TimeColumn -> Option(source.query.timeColumn).getOrElse(dsBasedTimestamp))
       }
@@ -651,7 +662,7 @@ object GroupBy {
          |""".stripMargin)
     metaColumns ++= timeMapping
 
-    val partitionConditions = tableUtils.whereClauses(intersectedRange)
+    val partitionConditions = tableUtils.whereClauses(intersectedRange, partitionColumn)
 
     logger.info(s"""
          |Rendering source query:

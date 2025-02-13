@@ -32,7 +32,7 @@ import ai.chronon.api.Window
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
-import ai.chronon.spark.Extensions.SourceSparkOps
+import ai.chronon.spark.Extensions.{QuerySparkOps, SourceSparkOps}
 import org.apache.datasketches.common.ArrayOfStringsSerDe
 import org.apache.datasketches.frequencies.ErrorType
 import org.apache.datasketches.frequencies.ItemsSketch
@@ -91,6 +91,7 @@ class Analyzer(tableUtils: TableUtils,
                skewDetection: Boolean = false,
                silenceMode: Boolean = false) {
 
+  implicit val tu = tableUtils
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // include ts into heavy hitter analysis - useful to surface timestamps that have wrong units
   // include total approx row count - so it is easy to understand the percentage of skewed data
@@ -291,7 +292,7 @@ class Analyzer(tableUtils: TableUtils,
       val leftDf =
         tableUtils.scanDf(joinConf.left.query,
                           joinConf.left.table,
-                          fallbackSelects = Some(Map(tableUtils.defaultPartitionColumn -> null)),
+                          fallbackSelects = Some(Map(joinConf.left.query.effectivePartitionColumn -> null)),
                           range = Some(range))
       (analysis, leftDf)
     }

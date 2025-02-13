@@ -483,6 +483,8 @@ class Join(joinConf: api.Join,
       )
     }
 
+    val leftPartitionColumn = bootstrapInfo.joinConf.left.partitionColumn
+
     val startMillis = System.currentTimeMillis()
 
     // verify left table does not have reserved columns
@@ -497,7 +499,7 @@ class Join(joinConf: api.Join,
           .getOrElse(Seq())
 
         val initDf = leftDf
-          .prunePartition(unfilledRange)
+          .prunePartition(unfilledRange, leftPartitionColumn)
           // initialize an empty matched_hashes column for the purpose of later processing
           .withColumn(Constants.MatchedHashes, typedLit[Array[String]](null))
 
@@ -516,7 +518,7 @@ class Join(joinConf: api.Join,
             var bootstrapDf =
               tableUtils.scanDf(part.query,
                                 part.table,
-                                Some(Map(tableUtils.defaultPartitionColumn -> null)),
+                                Some(Map(part.query.effectivePartitionColumn -> null)),
                                 range = Some(bootstrapRange))
 
             // attach semantic_hash for either log or regular table bootstrap
