@@ -326,6 +326,7 @@ object Extensions {
             case "hive" | "delta" | "iceberg" =>
               optionDfw
                 .format(normalized)
+                .partitionBy(null: _*)
                 .insertInto(dataPointer.tableOrPath)
             case _ =>
               throw new UnsupportedOperationException(s"Unsupported write catalog: ${normalized}")
@@ -335,6 +336,7 @@ object Extensions {
           // None case is just table against default catalog
           optionDfw
             .format("hive")
+            .partitionBy(null: _*)
             .insertInto(dataPointer.tableOrPath))
     }
   }

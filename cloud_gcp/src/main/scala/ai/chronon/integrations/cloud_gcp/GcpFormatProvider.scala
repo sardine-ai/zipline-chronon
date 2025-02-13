@@ -1,18 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.format.Format
-import ai.chronon.spark.format.FormatProvider
+import ai.chronon.api.Extensions.StringOps
+import ai.chronon.spark.TableUtils
+import ai.chronon.spark.format.{Format, FormatProvider}
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.spark.bigquery.SparkBigQueryConfig
-import com.google.cloud.spark.bigquery.SparkBigQueryConfig.IntermediateFormat
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQuery
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQueryOptions
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.ExternalTableDefinition
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.FormatOptions
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.JobInfo
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.StandardTableDefinition
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.Table
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableDefinition
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableId
+import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
 import org.apache.spark.sql.SparkSession
 
 import scala.jdk.CollectionConverters._
@@ -38,24 +29,14 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
       }
       .getOrElse(tableName)
 
-  override def readFormat(tableName: String): Option[Format] = format(tableName)
+  override def readFormat(tableName: String): scala.Option[Format] = format(tableName)
 
   override def writeFormat(table: String): Format = {
-    val tableId = BigQueryUtil.parseTableId(table)
-    assert(scala.Option(tableId.getProject).isDefined, s"project required for ${table}")
-    assert(scala.Option(tableId.getDataset).isDefined, s"dataset required for ${table}")
+    val writePrefix = TableUtils(sparkSession).writePrefix
+    require(writePrefix.nonEmpty, "Please set conf 'spark.chronon.table_write.prefix' pointing to a data bucket.")
 
-    val sparkOptions: Map[String, String] = Map(
-      "temporaryGcsBucket" -> sparkSession.conf.get("spark.chronon.table.gcs.temporary_gcs_bucket"),
-      "writeMethod" -> "indirect",
-      SparkBigQueryConfig.INTERMEDIATE_FORMAT_OPTION -> IntermediateFormat.PARQUET.getDataSource,
-      SparkBigQueryConfig.ENABLE_LIST_INFERENCE -> true.toString,
-      "materializationProject" -> tableId.getProject,
-      "materializationDataset" -> tableId.getDataset,
-      "createDisposition" -> JobInfo.CreateDisposition.CREATE_NEVER.name
-    )
-
-    BigQueryFormat(tableId.getProject, bigQueryClient, sparkOptions)
+    val path = writePrefix.get + table.sanitize //split("/").map(_.sanitize).mkString("/")
+    GCS(path, "PARQUET")
   }
 
   private[cloud_gcp] def getFormat(table: Table): Format =
@@ -65,7 +46,8 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
         val formatOptions = definition.getFormatOptions
           .asInstanceOf[FormatOptions]
         val externalTable = table.getDefinition.asInstanceOf[ExternalTableDefinition]
-        val uri = Option(externalTable.getHivePartitioningOptions)
+        val uri = scala
+          .Option(externalTable.getHivePartitioningOptions)
           .map(_.getSourceUriPrefix)
           .getOrElse {
             val uris = externalTable.getSourceUris.asScala
@@ -81,10 +63,10 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
       case _ => throw new IllegalStateException(s"Cannot support table of type: ${table.getFriendlyName}")
     }
 
-  private def format(tableName: String): Option[Format] = {
+  private def format(tableName: String): scala.Option[Format] = {
 
     val btTableIdentifier: TableId = BigQueryUtil.parseTableId(tableName)
-    val table = Option(bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable))
+    val table = scala.Option(bigQueryClient.getTable(btTableIdentifier.getDataset, btTableIdentifier.getTable))
     table
       .map(getFormat)
 
