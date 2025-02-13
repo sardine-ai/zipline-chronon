@@ -768,15 +768,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
     val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
 
-    df.coalesce(coalesceFactor * parallelism)
-
     // TODO: this is a temporary fix to handle the case where the partition column is a DATE type and not a string.
     //  This is the case for partitioned BigQuery native tables.
-    if (df.schema.fieldNames.contains(partitionColumn) && df.schema(partitionColumn).dataType == DateType) {
-      df.withColumn(partitionColumn, date_format(df.col(partitionColumn), partitionFormat))
-    } else {
-      df
-    }
+    (if (df.schema.fieldNames.contains(partitionColumn) && df.schema(partitionColumn).dataType == DateType) {
+       df.withColumn(partitionColumn, date_format(df.col(partitionColumn), partitionFormat))
+     } else {
+       df
+     }).coalesce(coalesceFactor * parallelism)
   }
 
   def whereClauses(partitionRange: PartitionRange, partitionColumn: String = partitionColumn): Seq[String] = {
