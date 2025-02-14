@@ -515,7 +515,7 @@ class Join(joinConf: api.Join,
             var bootstrapDf =
               tableUtils.scanDf(part.query,
                                 part.table,
-                                Some(Map(tableUtils.partitionColumn -> null)),
+                                Some(Map(part.query.effectivePartitionColumn -> null)),
                                 range = Some(bootstrapRange))
 
             // attach semantic_hash for either log or regular table bootstrap

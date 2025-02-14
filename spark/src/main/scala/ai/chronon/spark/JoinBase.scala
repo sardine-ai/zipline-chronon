@@ -51,6 +51,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                         showDf: Boolean = false,
                         selectedJoinParts: Option[Seq[String]] = None) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+  implicit val tu = tableUtils
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   assert(Option(joinConfCloned.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinOffline, joinConfCloned)
@@ -169,7 +170,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
           inputToOutputShift = shiftDays,
           // never skip hole during partTable's range determination logic because we don't want partTable
           // and joinTable to be out of sync. skipping behavior is already handled in the outer loop.
-          skipFirstHole = false
+          skipFirstHole = false,
+          inputPartitionColumnName = joinConfCloned.left.query.effectivePartitionColumn
         )
         .getOrElse(Seq())
 
@@ -345,7 +347,13 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     (rangeToFill,
      tableUtils
-       .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConfCloned.left.table)), skipFirstHole = skipFirstHole)
+       .unfilledRanges(
+         outputTable,
+         rangeToFill,
+         Some(Seq(joinConfCloned.left.table)),
+         skipFirstHole = skipFirstHole,
+         inputPartitionColumnName = joinConfCloned.left.query.effectivePartitionColumn
+       )
        .getOrElse(Seq.empty))
   }
 
@@ -473,7 +481,13 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                                                 joinConfCloned.historicalBackfill)
     logger.info(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
-      .unfilledRanges(outputTable, rangeToFill, Some(Seq(joinConfCloned.left.table)), skipFirstHole = skipFirstHole)
+      .unfilledRanges(
+        outputTable,
+        rangeToFill,
+        Some(Seq(joinConfCloned.left.table)),
+        skipFirstHole = skipFirstHole,
+        inputPartitionColumnName = joinConfCloned.left.query.effectivePartitionColumn
+      )
       .getOrElse(Seq.empty)
 
     def finalResult: DataFrame = tableUtils.scanDf(null, outputTable, range = Some(rangeToFill))

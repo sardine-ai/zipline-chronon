@@ -19,6 +19,7 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataPointer
+import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
@@ -382,5 +383,16 @@ object Extensions {
           optionDfr.table(tableOrPath)
         }
     }
+  }
+  implicit class SourceSparkOps(source: api.Source) {
+
+    def partitionColumn(implicit tableUtils: TableUtils): String = {
+      Option(source.query.partitionColumn).getOrElse(tableUtils.partitionColumn)
+    }
+  }
+
+  implicit class QuerySparkOps(query: api.Query) {
+    def effectivePartitionColumn(implicit tableUtils: TableUtils): String =
+      Option(query).flatMap(q => Option(q.partitionColumn)).getOrElse(tableUtils.partitionColumn)
   }
 }
