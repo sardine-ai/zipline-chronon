@@ -86,6 +86,7 @@ object BootstrapInfo {
            tableUtils: TableUtils,
            leftSchema: Option[StructType]): BootstrapInfo = {
 
+    implicit val tu = tableUtils
     implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     // Enrich each join part with the expected output schema
     logger.info(s"\nCreating BootstrapInfo for GroupBys for Join ${joinConf.metaData.name}")
@@ -183,12 +184,11 @@ object BootstrapInfo {
       .foreach(part => {
         // practically there should only be one logBootstrapPart per Join, but nevertheless we will loop here
         val schema = tableUtils.getSchemaFromTable(part.table)
-        val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)
-        collectException(
-          assert(
-            missingKeys.isEmpty,
-            s"Log table ${part.table} does not contain some specified keys: ${missingKeys.prettyInline}"
-          ))
+        val missingKeys = part.keys(joinConf, part.query.effectivePartitionColumn).filterNot(schema.fieldNames.contains)
+        collectException(assert(
+          missingKeys.isEmpty,
+          s"Log table ${part.table} does not contain some specified keys: ${missingKeys.prettyInline}, table schema: ${schema.pretty}"
+        ))
       })
 
     // Retrieve schema_hash mapping info from Hive table properties
@@ -205,13 +205,15 @@ object BootstrapInfo {
       .map(part => {
         val range = PartitionRange(part.startPartition, part.endPartition)
         val bootstrapDf =
-          tableUtils.scanDf(part.query, part.table, Some(Map(tableUtils.partitionColumn -> null)), Some(range))
+          tableUtils
+            .scanDf(part.query, part.table, Some(Map(part.query.effectivePartitionColumn -> null)), range = Some(range))
         val schema = bootstrapDf.schema
+        // We expect partition column and not effectivePartitionColumn because of the scanDf rename
         val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)
         collectException(
           assert(
             missingKeys.isEmpty,
-            s"Table ${part.table} does not contain some specified keys: ${missingKeys.prettyInline}"
+            s"Table ${part.table} does not contain some specified keys: ${missingKeys.prettyInline}, schema: ${schema.pretty}"
           ))
 
         collectException(

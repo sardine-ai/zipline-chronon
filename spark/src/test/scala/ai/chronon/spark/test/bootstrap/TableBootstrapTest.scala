@@ -44,7 +44,8 @@ class TableBootstrapTest extends AnyFlatSpec {
                          namespace: String,
                          tableName: String,
                          columnName: String = "unit_test_user_transactions_amount_dollars_sum_30d",
-                         samplePercent: Double = 0.8): (BootstrapPart, DataFrame) = {
+                         samplePercent: Double = 0.8,
+                         partitionCol: String = "ds"): (BootstrapPart, DataFrame) = {
     val bootstrapTable = s"$namespace.$tableName"
     val preSampleBootstrapDf = spark
       .table(queryTable)
@@ -55,6 +56,7 @@ class TableBootstrapTest extends AnyFlatSpec {
           .as(columnName),
         col("ds")
       )
+      .withColumnRenamed("ds", partitionCol)
 
     val bootstrapDf = if (samplePercent < 1.0) {
       preSampleBootstrapDf.sample(samplePercent)
@@ -62,19 +64,21 @@ class TableBootstrapTest extends AnyFlatSpec {
       preSampleBootstrapDf
     }
 
-    bootstrapDf.save(bootstrapTable)
-    val partitionRange = bootstrapDf.partitionRange
+    bootstrapDf.save(bootstrapTable, partitionColumns = Seq(partitionCol))
+    val bootstrapDfDefaultPartition = bootstrapDf.withColumnRenamed(partitionCol, "ds")
+    val partitionRange = bootstrapDfDefaultPartition.partitionRange
 
     val bootstrapPart = Builders.BootstrapPart(
       query = Builders.Query(
         selects = Builders.Selects("request_id", columnName),
         startPartition = partitionRange.start,
-        endPartition = partitionRange.end
+        endPartition = partitionRange.end,
+        partitionColumn = partitionCol
       ),
       table = bootstrapTable
     )
 
-    (bootstrapPart, bootstrapDf)
+    (bootstrapPart, bootstrapDfDefaultPartition)
   }
 
   it should "bootstrap" in {
@@ -106,7 +110,10 @@ class TableBootstrapTest extends AnyFlatSpec {
     // Create two bootstrap parts to verify that bootstrap coalesce respects the ordering of the input bootstrap parts
     val (bootstrapTable1, bootstrapTable2) = ("user_transactions_bootstrap1", "user_transactions_bootstrap2")
     val (bootstrapPart1, bootstrapDf1) = buildBootstrapPart(queryTable, namespace, bootstrapTable1)
-    val (bootstrapPart2, bootstrapDf2) = buildBootstrapPart(queryTable, namespace, bootstrapTable2)
+    val (bootstrapPart2, bootstrapDf2) =
+      buildBootstrapPart(queryTable, namespace, bootstrapTable2, partitionCol = "date")
+
+    //val bootstrapDf2 = bootstrapDf2Partition.withColumnRenamed("date", "ds")
 
     // Create bootstrap join using base join as template
     val bootstrapJoin = baseJoin.deepCopy()

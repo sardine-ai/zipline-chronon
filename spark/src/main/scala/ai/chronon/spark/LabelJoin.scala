@@ -17,14 +17,10 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Constants
+import ai.chronon.api.{Builders, Constants, JoinPart, PartitionSpec, TimeUnit, Window}
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.JoinPart
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
 import ai.chronon.online.Metrics
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
@@ -196,10 +192,13 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                 s"${joinConf.metaData.name}/${labelJoinPart.groupBy.getMetaData.getName}")
             throw e
         }
-        tableUtils.scanDf(query = null,
-                          partTable,
-                          range = Some(labelOutputRange),
-                          partitionColumn = Constants.LabelPartitionColumn)
+        // We need to drop the partition column on the scanned DF because label join doesn't expect a second `ds`
+        // On the right side, which will result in a duplicated column error (scan df renames non-default partition cols)
+        tableUtils
+          .scanDf(query = Builders.Query(partitionColumn = Constants.LabelPartitionColumn),
+                  partTable,
+                  range = Some(labelOutputRange))
+          .drop(tableUtils.partitionColumn)
       }
     }
 
@@ -266,8 +265,8 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
     }
 
     // apply key-renaming to key columns
-    val keyRenamedRight = joinPart.rightToLeft.foldLeft(rightDf) { case (rightDf, (rightKey, leftKey)) =>
-      rightDf.withColumnRenamed(rightKey, leftKey)
+    val keyRenamedRight = joinPart.rightToLeft.foldLeft(rightDf) { case (updatedRight, (rightKey, leftKey)) =>
+      updatedRight.withColumnRenamed(rightKey, leftKey)
     }
 
     val nonValueColumns = joinPart.rightToLeft.keys.toArray ++ Array(Constants.TimeColumn,

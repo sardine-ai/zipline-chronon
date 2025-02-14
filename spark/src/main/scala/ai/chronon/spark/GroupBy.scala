@@ -626,7 +626,7 @@ object GroupBy {
 
     val intersectedRange: PartitionRange = getIntersectedRange(source, queryRange, tableUtils, window)
 
-    var metaColumns: Map[String, String] = Map(tableUtils.partitionColumn -> null)
+    var metaColumns: Map[String, String] = Map(tableUtils.partitionColumn -> source.query.partitionColumn)
     if (mutations) {
       metaColumns ++= Map(
         Constants.ReversalColumn -> source.query.reversalColumn,
