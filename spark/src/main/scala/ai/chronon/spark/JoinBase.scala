@@ -282,7 +282,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
       Map(user -> user_name, user_name -> user)
       the below logic will first rename the conflicted column with some random suffix and update the rename map
      */
-    lazy val renamedLeftRawDf = {
+    lazy val renamedLeftDf = {
       val columns = skewFilteredLeft.columns.flatMap { column =>
         if (joinPart.leftToRight.contains(column)) {
           Some(col(column).as(joinPart.leftToRight(column)))
@@ -297,11 +297,6 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     lazy val shiftedPartitionRange = unfilledTimeRange.toPartitionRange.shift(-1)
 
-    val renamedLeftDf = renamedLeftRawDf.select(renamedLeftRawDf.columns.map {
-      case c if c == tableUtils.partitionColumn =>
-        date_format(renamedLeftRawDf.col(c), tableUtils.partitionFormat).as(c)
-      case c => renamedLeftRawDf.col(c)
-    }.toList: _*)
     val rightDf = (joinConfCloned.left.dataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {
       case (Entities, Events, _)   => partitionRangeGroupBy.snapshotEvents(unfilledRange)
       case (Entities, Entities, _) => partitionRangeGroupBy.snapshotEntities
