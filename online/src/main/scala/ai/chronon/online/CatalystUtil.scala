@@ -33,6 +33,7 @@ import org.apache.spark.sql.execution.LocalTableScanExec
 import org.apache.spark.sql.execution.ProjectExec
 import org.apache.spark.sql.execution.RDDScanExec
 import org.apache.spark.sql.execution.WholeStageCodegenExec
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types
 import org.slf4j.LoggerFactory
 
@@ -54,6 +55,9 @@ object CatalystUtil {
     private val elemArr: mutable.Queue[T] = mutable.Queue.empty[T]
   }
 
+  // Max fields supported for codegen. If this is exceeded, we fail at creation time to avoid buggy codegen
+  val MaxFields = 1000
+
   lazy val session: SparkSession = {
     val spark = SparkSession
       .builder()
@@ -68,6 +72,7 @@ object CatalystUtil {
       // for derivations we only need to read one row at a time.
       // for interactive we set the limit to 16.
       .config("spark.sql.parquet.columnarReaderBatchSize", "16")
+      .config("spark.sql.codegen.maxFields", MaxFields)
       .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
     assert(spark.sessionState.conf.wholeStageEnabled)
@@ -135,7 +140,8 @@ class CatalystUtil(inputSchema: StructType,
   private val whereClauseOpt = Option(wheres)
     .filter(_.nonEmpty)
     .map { w =>
-      s"${w.mkString(" AND ")}"
+      // wrap each clause in parens
+      w.map(c => s"( $c )").mkString(" AND ")
     }
 
   @transient lazy val inputSparkSchema: types.StructType = SparkConversions.fromChrononSchema(inputSchema)
@@ -197,6 +203,12 @@ class CatalystUtil(inputSchema: StructType,
     // extract transform function from the df spark plan
     val func: InternalRow => ArrayBuffer[InternalRow] = filteredDf.queryExecution.executedPlan match {
       case whc: WholeStageCodegenExec => {
+        // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
+        require(
+          !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
+          s"Too many fields in input schema. We support a max of: ${CatalystUtil.MaxFields}. Schema: ${inputSparkSchema.simpleString}"
+        )
+
         val (ctx, cleanedSource) = whc.doCodeGen()
         val (clazz, _) = CodeGenerator.compile(cleanedSource)
         val references = ctx.references.toArray
