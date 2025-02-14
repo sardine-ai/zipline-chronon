@@ -352,6 +352,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     // partitions to the last
     val dataPointer = DataPointer.from(tableName, sparkSession)
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
+    println("=>>>>>> colOrder: " + colOrder.toList.mkString(","))
+    println("=>>>>>> partitionCols: " + partitionColumns.toList.mkString(","))
     val dfRearranged: DataFrame = df.select(colOrder.map {
       case c if c == defaultPartitionColumn && dataPointer.writeFormat.map(_.toUpperCase).exists("BIGQUERY".equals) =>
         to_date(df.col(c), partitionFormat).as(defaultPartitionColumn)
@@ -796,7 +798,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     df.coalesce(coalesceFactor * parallelism)
   }
 
-  def whereClauses(partitionRange: PartitionRange, partitionColumn: String): Seq[String] = {
+  def whereClauses(partitionRange: PartitionRange, partitionColumn: String = partitionColumn): Seq[String] = {
     val startClause = Option(partitionRange.start).map(s"$partitionColumn >= '" + _ + "'")
     val endClause = Option(partitionRange.end).map(s"$partitionColumn <= '" + _ + "'")
     (startClause ++ endClause).toSeq
@@ -814,7 +816,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     val selects = Option(query).flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
 
-    scanDfBase(selects, table, wheres, rangeWheres, fallbackSelects)
+    val scanDf = scanDfBase(selects, table, wheres, rangeWheres, fallbackSelects)
+
+    if (partitionColumn != defaultPartitionColumn) {
+      scanDf.withColumnRenamed(partitionColumn, defaultPartitionColumn)
+    } else {
+      scanDf
+    }
   }
 
   def partitionRange(tableInfo: TableInfo): PartitionRange = {
