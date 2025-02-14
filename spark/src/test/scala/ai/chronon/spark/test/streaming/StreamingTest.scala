@@ -14,19 +14,15 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.streaming
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Builders
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Operation
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
+import ai.chronon.api._
 import ai.chronon.online.MetadataStore
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.test.StreamingTest.buildInMemoryKvStore
+import ai.chronon.spark.test.{DataFrameGen, OnlineUtils}
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.{Join => _, _}
 import org.apache.spark.sql.SparkSession
@@ -55,7 +51,7 @@ class StreamingTest extends AnyFlatSpec {
   it should "struct in streaming" in {
     tableUtils.createDatabase(namespace)
     val topicName = "fake_topic"
-    val inMemoryKvStore = buildInMemoryKvStore()
+    val inMemoryKvStore = StreamingTest.buildInMemoryKvStore()
     val nameSuffix = "_struct_streaming_test"
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_$nameSuffix"
@@ -114,6 +110,6 @@ class StreamingTest extends AnyFlatSpec {
     inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
     joinConf.joinParts.asScala.foreach(jp =>
-      OnlineUtils.serve(tableUtils, inMemoryKvStore, buildInMemoryKvStore, namespace, today, jp.groupBy))
+      OnlineUtils.serve(tableUtils, inMemoryKvStore, StreamingTest.buildInMemoryKvStore, namespace, today, jp.groupBy))
   }
 }

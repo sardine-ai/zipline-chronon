@@ -14,17 +14,12 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.join
 
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Builders
-import ai.chronon.api.Constants
-import ai.chronon.api.Operation
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
+import ai.chronon.api._
 import ai.chronon.spark._
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.test.{TableTestUtils, TestUtils}
+import org.apache.spark.sql.{Row, SparkSession}
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory

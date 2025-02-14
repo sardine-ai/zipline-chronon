@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test.bootstrap
+package ai.chronon.spark.test.analyzer
 
 import ai.chronon.api.Builders.Derivation
 import ai.chronon.api.Extensions._
@@ -24,17 +24,14 @@ import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.MetadataStore
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
-import ai.chronon.spark.test.OnlineUtils
-import ai.chronon.spark.test.SchemaEvolutionUtils
+import ai.chronon.spark.test.{OnlineUtils, SchemaEvolutionUtils}
+import ai.chronon.spark.test.bootstrap.BootstrapUtils
 import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
