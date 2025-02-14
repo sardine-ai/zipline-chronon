@@ -14,33 +14,19 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.streaming
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
-import ai.chronon.api.Builders
-import ai.chronon.api.Operation
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
-import ai.chronon.spark.Comparison
+import ai.chronon.api.{Builders, Operation, TimeUnit, Window}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.Join
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.BooleanType
-import org.apache.spark.sql.types.DoubleType
-import org.apache.spark.sql.types.IntegerType
-import org.apache.spark.sql.types.LongType
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
+import ai.chronon.spark.test.DataFrameGen
+import ai.chronon.spark.{Comparison, Join, SparkSessionBuilder, TableUtils}
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 /** Tests for the temporal join of entities.
   * Left is an event source with definite ts.

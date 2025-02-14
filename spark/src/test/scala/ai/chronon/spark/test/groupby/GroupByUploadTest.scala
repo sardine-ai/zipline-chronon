@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.groupby
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.aggregator.windowing.TsUtils
@@ -23,16 +23,14 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
-import ai.chronon.spark.GroupByUpload
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{GroupByUpload, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.test.{DataFrameGen, OnlineUtils}
 import ai.chronon.spark.utils.MockApi
 import com.google.gson.Gson
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt

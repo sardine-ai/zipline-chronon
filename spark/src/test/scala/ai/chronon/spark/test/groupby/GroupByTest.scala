@@ -14,11 +14,9 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.groupby
 
-import ai.chronon.aggregator.test.CStream
-import ai.chronon.aggregator.test.Column
-import ai.chronon.aggregator.test.NaiveAggregator
+import ai.chronon.aggregator.test.{CStream, Column, NaiveAggregator}
 import ai.chronon.aggregator.windowing.FiveMinuteResolution
 import ai.chronon.api.Aggregation
 import ai.chronon.api.Builders
@@ -38,15 +36,11 @@ import ai.chronon.online.RowWrapper
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
+import ai.chronon.spark.test.{DataFrameGen, TestUtils}
 import com.google.gson.Gson
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Encoders
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types.{LongType => SparkLongType}
-import org.apache.spark.sql.types.{StringType => SparkStringType}
+import org.apache.spark.sql.{Encoders, Row, SparkSession}
+import org.apache.spark.sql.types.{StructField, StructType, LongType => SparkLongType, StringType => SparkStringType}
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
 

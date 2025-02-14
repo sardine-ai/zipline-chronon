@@ -14,14 +14,13 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.streaming
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.Join
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{Join, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.test.DataFrameGen
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.DecimalType

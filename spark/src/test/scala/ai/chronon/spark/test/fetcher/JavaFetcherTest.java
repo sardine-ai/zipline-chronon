@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test;
+package ai.chronon.spark.test.fetcher;
 
 import ai.chronon.online.JavaFetcher;
 import ai.chronon.online.JavaRequest;

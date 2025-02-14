@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.streaming
 
 import ai.chronon.online.TopicInfo
 import ai.chronon.spark.SparkSessionBuilder
