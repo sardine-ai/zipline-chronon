@@ -56,30 +56,23 @@ def _thrift_gen_library_impl(ctx):
 
 def replace_java_files_with_custom_thrift_package_prefix(ctx, input_directories):
     output_directories = []
-
-    # Get the script from the rule's files
-    script = ctx.file._python_script
-
+    script = ctx.executable._python_script
     for input_directory in input_directories:
         output_directory = ctx.actions.declare_directory(
-            input_directory.basename + "_modified",
+            input_directory.basename + "_modified"
         )
         output_directories.append(output_directory)
 
-        command = """
-            python3 "{script}" -v "{input_path}" "{output_path}"
-        """.format(
-            script = script.path,
-            input_path = input_directory.path,
-            output_path = output_directory.path,
-        )
-
-        ctx.actions.run_shell(
-            inputs = [input_directory, script],  # Include script in inputs
+        ctx.actions.run(
+            executable=script,
+            inputs = [input_directory],
             outputs = [output_directory],
-            command = command,
+            arguments = [
+                "-v",
+                input_directory.path,
+                output_directory.path
+            ],
             progress_message = "Replacing package names in input Java files for %s" % input_directory.short_path,
-            use_default_shell_env = True,
         )
 
     return output_directories
@@ -94,8 +87,9 @@ _thrift_gen_library = rule(
         ),
         "thrift_binary": attr.string(),
         "_python_script": attr.label(
-            default = "//scripts/codemod:thrift_package_replace.py",
-            allow_single_file = True,
+            default = "//scripts/codemod:thrift_package_replace",
+            executable = True,
+            cfg = "host",
         ),
     },
 )
