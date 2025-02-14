@@ -54,8 +54,7 @@ object TestRow {
     }
 }
 
-// Run as follows: sbt "spark/testOnly -- -n jointest"
-class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
+class JoinTest extends AnyFlatSpec {
 
   val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
   private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
@@ -67,8 +66,6 @@ class JoinTest extends AnyFlatSpec with TaggedFilterSuite {
 
   private val namespace = "test_namespace_jointest"
   tableUtils.createDatabase(namespace)
-
-  override def tagName: String = "jointest"
 
   it should "testing basic spark dynamic partition overwrite" in {
     import org.apache.spark.sql.SaveMode
