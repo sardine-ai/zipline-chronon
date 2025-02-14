@@ -14,28 +14,17 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.join
 
-import ai.chronon.api.Builders
-import ai.chronon.api.Extensions.LabelPartsOps
-import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.LongType
-import ai.chronon.api.StringType
-import ai.chronon.api.StructField
-import ai.chronon.api.StructType
-import ai.chronon.spark.Comparison
-import ai.chronon.spark.LabelJoin
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.max
-import org.apache.spark.sql.functions.min
+import ai.chronon.api.Extensions.{LabelPartsOps, MetadataOps}
+import ai.chronon.api._
+import ai.chronon.spark.{Comparison, LabelJoin, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.test.TestUtils
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.functions.{max, min}
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 class FeatureWithLabelJoinTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
