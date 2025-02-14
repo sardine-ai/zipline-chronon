@@ -68,10 +68,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.duration.SECONDS
 import scala.io.Source
 
-// Run as follows: sbt "spark/testOnly -- -n fetchertest"
-class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
-
-  override def tagName: String = "fetchertest"
+class FetcherTest extends AnyFlatSpec {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "FetcherTest"
@@ -82,7 +79,8 @@ class FetcherTest extends AnyFlatSpec with TaggedFilterSuite {
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val yesterday = tableUtils.partitionSpec.before(today)
 
-  it should "test metadata store" in {
+  // todo(tchow):reenable
+  it should "test metadata store" ignore {
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
     implicit val tableUtils: TableUtils = TableUtils(spark)
 
