@@ -46,12 +46,9 @@ import org.slf4j.LoggerFactory
   * Left is an event source with definite ts.
   * Right is an entity with snapshots and mutation values through the day.
   * Join is the events and the entity value at the exact timestamp of the ts.
-  *  To run: sbt "spark/testOnly -- -n mutationstest"
   */
-class MutationsTest extends AnyFlatSpec with TaggedFilterSuite {
+class MutationsTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-
-  override def tagName: String = "mutationstest"
 
   val spark: SparkSession =
     SparkSessionBuilder.build("MutationsTest",
