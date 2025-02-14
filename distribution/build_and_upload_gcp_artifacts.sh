@@ -1,5 +1,24 @@
 #!/bin/bash
 
+
+if [[ -n $(git diff HEAD) ]]; then
+    echo "Error: You have uncommitted changes. Please commit and push them to git so we can track them."
+    exit 1
+fi
+
+# Get current branch name
+local_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Fetch latest from remote
+git fetch origin $local_branch
+
+# Check if local is behind remote
+if [[ -n $(git diff HEAD..origin/$local_branch) ]]; then
+    echo "Error: Your branch is not in sync with remote"
+    echo "Please push your local changes and sync your local branch $local_branch with remote"
+    exit 1
+fi
+
 set -e
 
 SCRIPT_DIRECTORY=$(dirname -- "$(realpath -- "$0")")
@@ -85,11 +104,11 @@ function upload_to_gcp() {
               for element in "${customer_ids_to_upload[@]}"
               do
                 ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars
-                gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
-                gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
-                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
-                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
-                gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
+                gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"
               break;;
