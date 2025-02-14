@@ -32,6 +32,7 @@ import ai.chronon.api.Window
 import ai.chronon.online.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
+import ai.chronon.spark.Extensions.QuerySparkOps
 import org.apache.datasketches.common.ArrayOfStringsSerDe
 import org.apache.datasketches.frequencies.ErrorType
 import org.apache.datasketches.frequencies.ItemsSketch
@@ -90,6 +91,7 @@ class Analyzer(tableUtils: TableUtils,
                skewDetection: Boolean = false,
                silenceMode: Boolean = false) {
 
+  implicit val tu = tableUtils
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   // include ts into heavy hitter analysis - useful to surface timestamps that have wrong units
   // include total approx row count - so it is easy to understand the percentage of skewed data
@@ -311,7 +313,10 @@ class Analyzer(tableUtils: TableUtils,
       JoinUtils.getRangesToFill(joinConf.left, tableUtils, endDate, historicalBackfill = joinConf.historicalBackfill)
     logger.info(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
-      .unfilledRanges(joinConf.metaData.outputTable, rangeToFill, Some(Seq(joinConf.left.table)))
+      .unfilledRanges(joinConf.metaData.outputTable,
+                      rangeToFill,
+                      Some(Seq(joinConf.left.table)),
+                      inputPartitionColumnName = joinConf.left.query.effectivePartitionColumn)
       .getOrElse(Seq.empty)
 
     joinConf.joinParts.toScala.foreach { part =>
