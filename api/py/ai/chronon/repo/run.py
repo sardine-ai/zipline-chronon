@@ -20,7 +20,7 @@ run.py needs to only depend in python standard library to simplify execution req
 from google.cloud import storage
 import base64
 import click
-import google_crc32c
+import crcmod
 import json
 import logging
 import multiprocessing
@@ -707,7 +707,30 @@ class Runner:
                 )
                 pool.map(check_call, command_list)
         elif len(command_list) == 1:
-            check_call(command_list[0])
+            if self.dataproc:
+                output = check_output(command_list[0]).decode("utf-8").split("\n")
+                print(*output, sep="\n")
+
+                dataproc_submitter_id_str = "Dataproc submitter job id"
+
+                dataproc_submitter_logs = [s for s in output if dataproc_submitter_id_str in s]
+                if dataproc_submitter_logs:
+                    log = dataproc_submitter_logs[0]
+                    job_id = log[log.index(dataproc_submitter_id_str) + len(dataproc_submitter_id_str) + 1:]
+                    try:
+                        print("""
+                        <-----------------------------------------------------------------------------------
+                        ------------------------------------------------------------------------------------
+                                                          DATAPROC LOGS
+                        ------------------------------------------------------------------------------------
+                        ------------------------------------------------------------------------------------>
+                        """)
+                        check_call(f"gcloud dataproc jobs wait {job_id} --region={get_gcp_region_id()}")
+                    except Exception:
+                        # swallow since this is just for tailing logs
+                        pass
+            else:
+                check_call(command_list[0])
 
     def _gen_final_args(self, start_ds=None, end_ds=None, override_conf_path=None, **kwargs):
         base_args = MODE_ARGS[self.mode].format(
@@ -794,27 +817,27 @@ def set_defaults(ctx):
             ctx.params[key] = value
 
 
+def get_environ_arg(env_name) -> str:
+    value = os.environ.get(env_name)
+    if not value:
+        raise ValueError(f"Please set {env_name} environment variable")
+    return value
+
+
 def get_customer_id() -> str:
-    customer_id = os.environ.get('CUSTOMER_ID')
-    if not customer_id:
-        raise ValueError('Please set CUSTOMER_ID environment variable')
-    return customer_id
+    return get_environ_arg('CUSTOMER_ID')
 
 
 def get_gcp_project_id() -> str:
-    gcp_project_id = os.environ.get('GCP_PROJECT_ID')
-    if not gcp_project_id:
-        raise ValueError(
-            'Please set GCP_PROJECT_ID environment variable')
-    return gcp_project_id
+    return get_environ_arg('GCP_PROJECT_ID')
 
 
 def get_gcp_bigtable_instance_id() -> str:
-    gcp_bigtable_instance_id = os.environ.get('GCP_BIGTABLE_INSTANCE_ID')
-    if not gcp_bigtable_instance_id:
-        raise ValueError(
-            'Please set GCP_BIGTABLE_INSTANCE_ID environment variable')
-    return gcp_bigtable_instance_id
+    return get_environ_arg('GCP_BIGTABLE_INSTANCE_ID')
+
+
+def get_gcp_region_id() -> str:
+    return get_environ_arg('GCP_REGION')
 
 
 def generate_dataproc_submitter_args(user_args: str, job_type: DataprocJobType = DataprocJobType.SPARK,
@@ -947,15 +970,15 @@ def get_local_file_hash(file_path: str) -> str:
     Returns:
         Base64-encoded string of the file's CRC32C hash
     """
-    crc32c = google_crc32c.Checksum()
+    crc32c_hash = crcmod.predefined.Crc('crc-32c')
 
     with open(file_path, "rb") as f:
         # Read the file in chunks to handle large files efficiently
         for chunk in iter(lambda: f.read(4096), b""):
-            crc32c.update(chunk)
+            crc32c_hash.update(chunk)
 
     # Convert to base64 to match GCS format
-    return base64.b64encode(crc32c.digest()).decode('utf-8')
+    return base64.b64encode(crc32c_hash.digest()).decode('utf-8')
 
 
 def compare_gcs_and_local_file_hashes(bucket_name: str, blob_name: str, local_file_path: str) -> bool:
