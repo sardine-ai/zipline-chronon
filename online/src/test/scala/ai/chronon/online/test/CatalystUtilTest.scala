@@ -626,7 +626,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     "json_prediction" -> "{ \"score\": 0.5}"
   )
 
-  def testWhereClauseShouldFilterEventOut(): Unit = {
+  it should "test where clause filter events out" in {
     val selects = Map(
       "id" -> "key",
       "created" -> "created_ts",
@@ -638,7 +638,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
     assertTrue(res.isEmpty)
   }
 
-  def testJsonInSelectAndValidWhereClause(): Unit = {
+  it should "test json in select and valid where clause" in {
     val selects = Map(
       "id" -> "key",
       "created" -> "created_ts",
