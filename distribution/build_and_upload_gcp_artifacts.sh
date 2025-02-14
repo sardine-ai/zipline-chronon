@@ -74,6 +74,8 @@ ALL_CUSTOMER_IDS=("canary" "etsy")
 
 # Takes in array of customer ids
 function upload_to_gcp() {
+  # Disabling this so that we can set the custom metadata on these jars
+  gcloud config set storage/parallel_composite_upload_enabled False
   customer_ids_to_upload=("$@")
   echo "Are you sure you want to upload to these customer ids: ${customer_ids_to_upload[*]}"
   select yn in "Yes" "No"; do
@@ -83,17 +85,18 @@ function upload_to_gcp() {
               for element in "${customer_ids_to_upload[@]}"
               do
                 ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars
-                gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH";
-                gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH";
-                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH"
-                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH"
-                gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH"
+                gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
+                gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
+                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
+                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
+                gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date)"
               done
               echo "Succeeded"
               break;;
           No ) break;;
       esac
   done
+  gcloud config set storage/parallel_composite_upload_enabled True
 }
 
 # check if $1 (single customer id mode) has been set
