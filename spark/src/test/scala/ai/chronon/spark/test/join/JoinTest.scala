@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.join
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
@@ -30,14 +30,11 @@ import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
+import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types.{StringType => SparkStringType}
+import org.apache.spark.sql.types.{StructType, StringType => SparkStringType}
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -194,7 +191,6 @@ class JoinTest extends AnyFlatSpec {
         Seq(Builders.JoinPart(groupBy = groupBy, keyMapping = Map("user_name" -> "user", "user" -> "user_name"))),
       metaData = Builders.MetaData(name = "test.user_transaction_features", namespace = namespace, team = "chronon")
     )
-
     val runner1 = new Join(joinConf, tableUtils.partitionSpec.minus(today, new Window(40, TimeUnit.DAYS)), tableUtils)
     runner1.computeJoin()
     val dropStart = tableUtils.partitionSpec.minus(today, new Window(55, TimeUnit.DAYS))

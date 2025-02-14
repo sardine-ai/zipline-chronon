@@ -14,31 +14,26 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.fetcher
 
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Extensions.JoinOps
-import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.MetadataStore
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.{MetadataStore, SparkConversions}
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.test.{OnlineUtils, TestUtils}
 import ai.chronon.spark.utils.MockApi
 import ai.chronon.spark.{Join => _, _}
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.lit
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.junit.Assert.{assertEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.lang
 import java.util.TimeZone

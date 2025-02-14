@@ -44,3 +44,133 @@ jobs:
             --google_credentials=bazel-cache-key.json \
             --test_env=JAVA_OPTS="-Xmx8G -Xms2G" \
             //spark:tests
+
+  fetcher_tests:
+    runs-on: ubuntu-8_cores-32_gb
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run Fetcher tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx16G -Xms8G" \
+            //spark:fetcher_test
+
+  join_tests:
+    runs-on: ubuntu-8_cores-32_gb
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run Join tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx16G -Xms8G" \
+            //spark:join_test
+
+  groupby_tests:
+    runs-on: ubuntu-8_cores-32_gb
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run GroupBy tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx16G -Xms8G" \
+            //spark:groupby_test
+
+  analyzer_tests:
+    runs-on: ubuntu-8_cores-32_gb
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run Analyzer tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx16G -Xms8G" \
+            //spark:analyzer_test
+
+  streaming_tests:
+    runs-on: ubuntu-8_cores-32_gb
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run Streaming tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            --test_env=JAVA_OPTS="-Xmx16G -Xms8G" \
+            //spark:streaming_test

@@ -90,13 +90,67 @@ scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
     format = True,
-    visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 scala_test_suite(
     name = "tests",
-    srcs = glob(["src/test/**/*.scala"]),
+    tags = ["large"],
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/*.scala",
+                 "src/test/scala/ai/chronon/spark/test/udafs/*.scala",
+                 "src/test/scala/ai/chronon/spark/test/stats/drift/*.scala",
+                 "src/test/scala/ai/chronon/spark/test/bootstrap/*.scala"]),
+    data = glob(["spark/src/test/resources/**/*"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
+
+scala_test_suite(
+    name = "fetcher_test",
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/fetcher/*.scala"]),
+    resources = ["//spark/src/test/resources:test-resources"],
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
+
+scala_test_suite(
+    name = "groupby_test",
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/groupby/*.scala"]),
+    data = glob(["spark/src/test/resources/**/*"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
+
+scala_test_suite(
+    name = "join_test",
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/join/*.scala"]),
+    tags = ["large"],
+    data = glob(["spark/src/test/resources/**/*"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
+
+scala_test_suite(
+    name = "analyzer_test",
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/analyzer/*.scala"]),
+    data = glob(["spark/src/test/resources/**/*"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
+
+scala_test_suite(
+    name = "streaming_test",
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/streaming/*.scala"]),
     data = glob(["spark/src/test/resources/**/*"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,

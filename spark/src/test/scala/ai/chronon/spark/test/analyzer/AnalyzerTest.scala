@@ -14,25 +14,21 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark.test
+package ai.chronon.spark.test.analyzer
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api._
-import ai.chronon.spark.Analyzer
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.Join
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{Analyzer, Join, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.test.DataFrameGen
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.lit
+import org.apache.spark.sql.functions.{col, lit}
 import org.junit.Assert.assertTrue
 import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
