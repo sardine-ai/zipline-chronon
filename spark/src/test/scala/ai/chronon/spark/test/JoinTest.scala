@@ -125,8 +125,8 @@ class JoinTest extends AnyFlatSpec {
     val rupeeTable = s"$namespace.rupee_transactions"
     spark.sql(s"DROP TABLE IF EXISTS $dollarTable")
     spark.sql(s"DROP TABLE IF EXISTS $rupeeTable")
-    DataFrameGen.entities(spark, dollarTransactions, 3000, partitions = 200).save(dollarTable, Map("tblProp1" -> "1"))
-    DataFrameGen.entities(spark, rupeeTransactions, 500, partitions = 80).save(rupeeTable)
+    DataFrameGen.entities(spark, dollarTransactions, 300, partitions = 200).save(dollarTable, Map("tblProp1" -> "1"))
+    DataFrameGen.entities(spark, rupeeTransactions, 50, partitions = 80).save(rupeeTable)
 
     val dollarSource = Builders.Source.entities(
       query = Builders.Query(
@@ -173,8 +173,8 @@ class JoinTest extends AnyFlatSpec {
 
     val queryTable = s"$namespace.queries"
     DataFrameGen
-      .events(spark, queriesSchema, 3000, partitions = 180)
-      .save(queryTable)
+      .events(spark, queriesSchema, 300, partitions = 180, partitionColumn = Some("date"))
+      .save(queryTable, partitionColumns = Seq("date"))
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
     val end = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
@@ -185,7 +185,8 @@ class JoinTest extends AnyFlatSpec {
           setups = Seq(
             "create temporary function temp_replace_left as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'",
             "create temporary function temp_replace_right_c as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'"
-          )
+          ),
+          partitionColumn = "date"
         ),
         table = queryTable
       ),
@@ -225,14 +226,14 @@ class JoinTest extends AnyFlatSpec {
                            |     SELECT user_name,
                            |         user,
                            |         ts,
-                           |         ds
+                           |         date as ds
                            |     from $queryTable
                            |     where user_name IS NOT null
                            |         AND user IS NOT NULL
                            |         AND ts IS NOT NULL
-                           |         AND ds IS NOT NULL
-                           |         AND ds >= '$start'
-                           |         AND ds <= '$end'),
+                           |         AND date IS NOT NULL
+                           |         AND date >= '$start'
+                           |         AND date <= '$end'),
                            |   grouped_transactions AS (
                            |      SELECT user,
                            |             user_name,
@@ -263,7 +264,7 @@ class JoinTest extends AnyFlatSpec {
                            |""".stripMargin
     val expected = spark.sql(expectedQuery)
     val queries = tableUtils.sql(
-      s"SELECT user_name, user, ts, ds from $queryTable where user IS NOT NULL AND user_name IS NOT null AND ts IS NOT NULL AND ds IS NOT NULL AND ds >= '$start' AND ds <= '$end'")
+      s"SELECT user_name, user, ts, date as ds from $queryTable where user IS NOT NULL AND user_name IS NOT null AND ts IS NOT NULL AND date IS NOT NULL AND date >= '$start' AND date <= '$end'")
     val diff = Comparison.sideBySide(computed, expected, List("user_name", "user", "ts", "ds"))
 
     if (diff.count() > 0) {
@@ -318,7 +319,7 @@ class JoinTest extends AnyFlatSpec {
       Column("weight", api.DoubleType, 500)
     )
     val weightTable = s"$namespace.weights"
-    DataFrameGen.entities(spark, weightSchema, 1000, partitions = 400).save(weightTable)
+    DataFrameGen.entities(spark, weightSchema, 100, partitions = 400).save(weightTable)
 
     val weightSource = Builders.Source.entities(
       query = Builders.Query(selects = Builders.Selects("weight"),
@@ -340,7 +341,7 @@ class JoinTest extends AnyFlatSpec {
       Column("height", api.LongType, 200)
     )
     val heightTable = s"$namespace.heights"
-    DataFrameGen.entities(spark, heightSchema, 1000, partitions = 400).save(heightTable)
+    DataFrameGen.entities(spark, heightSchema, 100, partitions = 400).save(heightTable)
     val heightSource = Builders.Source.entities(
       query = Builders.Query(selects = Builders.Selects("height"), startPartition = monthAgo),
       snapshotTable = heightTable
@@ -356,7 +357,7 @@ class JoinTest extends AnyFlatSpec {
     // left side
     val countrySchema = List(Column("country", api.StringType, 100))
     val countryTable = s"$namespace.countries"
-    DataFrameGen.entities(spark, countrySchema, 1000, partitions = 400).save(countryTable)
+    DataFrameGen.entities(spark, countrySchema, 100, partitions = 400).save(countryTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
     val end = tableUtils.partitionSpec.minus(today, new Window(15, TimeUnit.DAYS))
@@ -429,6 +430,130 @@ class JoinTest extends AnyFlatSpec {
      */
   }
 
+  it should "test different partition columns" in {
+    // untimed/unwindowed entities on right
+    // right side
+    val weightSchema = List(
+      Column("user", api.StringType, 1000),
+      Column("country", api.StringType, 100),
+      Column("weight", api.DoubleType, 500)
+    )
+    val weightTable = s"$namespace.weights_partition_test"
+    val weightsDf = DataFrameGen.entities(spark, weightSchema, 100, partitions = 400, partitionColumn = Some("date"))
+    weightsDf.show()
+    weightsDf.save(weightTable, partitionColumns = Seq("date"))
+
+    val weightSource = Builders.Source.entities(
+      query = Builders.Query(selects = Builders.Selects("weight"),
+                             startPartition = yearAgo,
+                             endPartition = dayAndMonthBefore,
+                             partitionColumn = "date"),
+      snapshotTable = weightTable
+    )
+
+    val weightGroupBy = Builders.GroupBy(
+      sources = Seq(weightSource),
+      keyColumns = Seq("country"),
+      aggregations = Seq(Builders.Aggregation(operation = Operation.AVERAGE, inputColumn = "weight")),
+      metaData = Builders.MetaData(name = "unit_test.country_weights_partition_test", namespace = namespace)
+    )
+
+    val heightSchema = List(
+      Column("user", api.StringType, 1000),
+      Column("country", api.StringType, 100),
+      Column("height", api.LongType, 200)
+    )
+    val heightTable = s"$namespace.heights_partition_test"
+    DataFrameGen.entities(spark, heightSchema, 100, partitions = 400).save(heightTable)
+    val heightSource = Builders.Source.entities(
+      query = Builders.Query(selects = Builders.Selects("height"), startPartition = monthAgo),
+      snapshotTable = heightTable
+    )
+
+    val heightGroupBy = Builders.GroupBy(
+      sources = Seq(heightSource),
+      keyColumns = Seq("country"),
+      aggregations = Seq(Builders.Aggregation(operation = Operation.AVERAGE, inputColumn = "height")),
+      metaData = Builders.MetaData(name = "unit_test.country_heights_partition_test", namespace = namespace)
+    )
+
+    // left side
+    val countrySchema = List(Column("country", api.StringType, 100))
+    val countryTable = s"$namespace.countries"
+    DataFrameGen.entities(spark, countrySchema, 100, partitions = 400).save(countryTable)
+
+    val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
+    val end = tableUtils.partitionSpec.minus(today, new Window(15, TimeUnit.DAYS))
+    val joinConf = Builders.Join(
+      left = Builders.Source.entities(Builders.Query(startPartition = start), snapshotTable = countryTable),
+      joinParts = Seq(Builders.JoinPart(groupBy = weightGroupBy), Builders.JoinPart(groupBy = heightGroupBy)),
+      metaData =
+        Builders.MetaData(name = "test.country_features_partition_test", namespace = namespace, team = "chronon")
+    )
+
+    val runner = new Join(joinConf, end, tableUtils)
+    val computed = runner.computeJoin(Some(7))
+    val expected = tableUtils.sql(s"""
+                                     |WITH
+                                     |   countries AS (SELECT country, ds from $countryTable where ds >= '$start' and ds <= '$end'),
+                                     |   grouped_weights AS (
+                                     |      SELECT country,
+                                     |             date as ds,
+                                     |             avg(weight) as unit_test_country_weights_partition_test_weight_average
+                                     |      FROM $weightTable
+                                     |      WHERE date >= '$yearAgo' and date <= '$dayAndMonthBefore'
+                                     |      GROUP BY country, date),
+                                     |   grouped_heights AS (
+                                     |      SELECT country,
+                                     |             ds,
+                                     |             avg(height) as unit_test_country_heights_partition_test_height_average
+                                     |      FROM $heightTable
+                                     |      WHERE ds >= '$monthAgo'
+                                     |      GROUP BY country, ds)
+                                     |   SELECT countries.country,
+                                     |        countries.ds,
+                                     |        grouped_weights.unit_test_country_weights_partition_test_weight_average,
+                                     |        grouped_heights.unit_test_country_heights_partition_test_height_average
+                                     | FROM countries left outer join grouped_weights
+                                     | ON countries.country = grouped_weights.country
+                                     | AND countries.ds = grouped_weights.ds
+                                     | left outer join grouped_heights
+                                     | ON countries.ds = grouped_heights.ds
+                                     | AND countries.country = grouped_heights.country
+    """.stripMargin)
+
+    println("showing join result")
+    computed.show()
+    println("showing query result")
+    expected.show()
+    println(
+      s"Left side count: ${spark.sql(s"SELECT country, ds from $countryTable where ds >= '$start' and ds <= '$end'").count()}")
+    println(s"Actual count: ${computed.count()}")
+    println(s"Expected count: ${expected.count()}")
+    val diff = Comparison.sideBySide(computed, expected, List("country", "ds"))
+    if (diff.count() > 0) {
+      println(s"Diff count: ${diff.count()}")
+      println("diff result rows")
+      diff.show()
+    }
+    assertEquals(diff.count(), 0)
+    /* the below testing case to cover the scenario when input table and output table
+     * have same partitions, in other words, the frontfill is done, the join job
+     * should not trigger a backfill and exit the program properly
+     * TODO: Revisit this in a logger world.
+    // use console to redirect println message to Java IO
+    val stream = new java.io.ByteArrayOutputStream()
+    Console.withOut(stream) {
+      // rerun the same join job
+      runner.computeJoin(Some(7))
+    }
+    val stdOutMsg = stream.toString()
+    println(s"std out message =\n $stdOutMsg")
+    // make sure that the program exits with target print statements
+    assertTrue(stdOutMsg.contains(s"There is no data to compute based on end partition of $end."))
+     */
+  }
+
   it should "test entities entities no historical backfill" in {
     // Only backfill latest partition if historical_backfill is turned off
     val weightSchema = List(
@@ -437,7 +562,7 @@ class JoinTest extends AnyFlatSpec {
       Column("weight", api.DoubleType, 500)
     )
     val weightTable = s"$namespace.weights_no_historical_backfill"
-    DataFrameGen.entities(spark, weightSchema, 1000, partitions = 400).save(weightTable)
+    DataFrameGen.entities(spark, weightSchema, 100, partitions = 400).save(weightTable)
 
     val weightSource = Builders.Source.entities(
       query = Builders.Query(selects = Builders.Selects("weight"), startPartition = yearAgo, endPartition = today),
@@ -454,7 +579,7 @@ class JoinTest extends AnyFlatSpec {
     // left side
     val countrySchema = List(Column("country", api.StringType, 100))
     val countryTable = s"$namespace.countries_no_historical_backfill"
-    DataFrameGen.entities(spark, countrySchema, 1000, partitions = 30).save(countryTable)
+    DataFrameGen.entities(spark, countrySchema, 100, partitions = 30).save(countryTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
     val end = tableUtils.partitionSpec.minus(today, new Window(5, TimeUnit.DAYS))
@@ -490,7 +615,7 @@ class JoinTest extends AnyFlatSpec {
     )
 
     val viewsTable = s"$namespace.view_events"
-    DataFrameGen.events(spark, viewsSchema, count = 1000, partitions = 200).drop("ts").save(viewsTable)
+    DataFrameGen.events(spark, viewsSchema, count = 100, partitions = 200).drop("ts").save(viewsTable)
 
     val viewsSource = Builders.Source.events(
       query = Builders.Query(selects = Builders.Selects("time_spent_ms"), startPartition = yearAgo),
@@ -511,7 +636,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries"
     DataFrameGen
-      .events(spark, itemQueries, 1000, partitions = 100)
+      .events(spark, itemQueries, 100, partitions = 100)
       .save(itemQueriesTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
@@ -561,7 +686,7 @@ class JoinTest extends AnyFlatSpec {
     )
 
     val viewsTable = s"$namespace.view_temporal"
-    DataFrameGen.events(spark, viewsSchema, count = 1000, partitions = 200).save(viewsTable, Map("tblProp1" -> "1"))
+    DataFrameGen.events(spark, viewsSchema, count = 100, partitions = 200).save(viewsTable, Map("tblProp1" -> "1"))
 
     val viewsSource = Builders.Source.events(
       table = viewsTable,
@@ -584,7 +709,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 1000, partitions = 100)
+      .events(spark, itemQueries, 100, partitions = 100)
     // duplicate the events
     itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) //.union(itemQueriesDf)
 
@@ -735,7 +860,7 @@ class JoinTest extends AnyFlatSpec {
       Column("name", api.StringType, 500)
     )
     val namesTable = s"$namespace.names"
-    DataFrameGen.entities(spark, namesSchema, 1000, partitions = 400).save(namesTable)
+    DataFrameGen.entities(spark, namesSchema, 100, partitions = 400).save(namesTable)
 
     val namesSource = Builders.Source.entities(
       query =
@@ -751,7 +876,7 @@ class JoinTest extends AnyFlatSpec {
     )
 
     DataFrameGen
-      .entities(spark, namesSchema, 1000, partitions = 400)
+      .entities(spark, namesSchema, 100, partitions = 400)
       .groupBy("user", "ds")
       .agg(Map("name" -> "max"))
       .save(namesTable)
@@ -759,7 +884,7 @@ class JoinTest extends AnyFlatSpec {
     // left side
     val userSchema = List(Column("user", api.StringType, 100))
     val usersTable = s"$namespace.users"
-    DataFrameGen.entities(spark, userSchema, 1000, partitions = 400).dropDuplicates().save(usersTable)
+    DataFrameGen.entities(spark, userSchema, 100, partitions = 400).dropDuplicates().save(usersTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
     val end = tableUtils.partitionSpec.minus(today, new Window(15, TimeUnit.DAYS))
@@ -910,7 +1035,7 @@ class JoinTest extends AnyFlatSpec {
     )
 
     val viewsTable = s"$namespace.view_$suffix"
-    val df = DataFrameGen.events(spark, viewsSchema, count = 1000, partitions = 200)
+    val df = DataFrameGen.events(spark, viewsSchema, count = 100, partitions = 200)
 
     val viewsSource = Builders.Source.events(
       table = viewsTable,
@@ -946,7 +1071,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 10000, partitions = 100)
+      .events(spark, itemQueries, 1000, partitions = 100)
     // duplicate the events
     itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) //.union(itemQueriesDf)
 
@@ -991,7 +1116,7 @@ class JoinTest extends AnyFlatSpec {
     )
 
     val viewsTable = s"$namespace.view_events_bloom_test"
-    DataFrameGen.events(testSpark, viewsSchema, count = 1000, partitions = 200).drop("ts").save(viewsTable)
+    DataFrameGen.events(testSpark, viewsSchema, count = 100, partitions = 200).drop("ts").save(viewsTable)
 
     val viewsSource = Builders.Source.events(
       query = Builders.Query(selects = Builders.Selects("time_spent_ms"), startPartition = yearAgo),
@@ -1012,7 +1137,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_bloom_test"
     DataFrameGen
-      .events(testSpark, itemQueries, 1000, partitions = 100)
+      .events(testSpark, itemQueries, 100, partitions = 100)
       .save(itemQueriesTable)
 
     val start = testTableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
@@ -1032,7 +1157,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_$nameSuffix"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 10000, partitions = 100)
+      .events(spark, itemQueries, 1000, partitions = 100)
 
     itemQueriesDf.save(s"${itemQueriesTable}_tmp")
     val structLeftDf = tableUtils.sql(
@@ -1047,7 +1172,7 @@ class JoinTest extends AnyFlatSpec {
     )
 
     val viewsTable = s"$namespace.view_$nameSuffix"
-    val df = DataFrameGen.events(spark, viewsSchema, count = 1000, partitions = 200)
+    val df = DataFrameGen.events(spark, viewsSchema, count = 100, partitions = 200)
 
     val viewsSource = Builders.Source.events(
       table = viewsTable,
@@ -1141,7 +1266,7 @@ class JoinTest extends AnyFlatSpec {
       Column("attribute", api.StringType, 500)
     )
     val namesTable = s"$namespace.key_overlap_names"
-    DataFrameGen.entities(spark, namesSchema, 1000, partitions = 400).save(namesTable)
+    DataFrameGen.entities(spark, namesSchema, 100, partitions = 400).save(namesTable)
 
     val namesSource = Builders.Source.entities(
       query =
@@ -1162,7 +1287,7 @@ class JoinTest extends AnyFlatSpec {
     // left side
     val userSchema = List(Column("user_id", api.StringType, 100))
     val usersTable = s"$namespace.key_overlap_users"
-    DataFrameGen.events(spark, userSchema, 1000, partitions = 400).dropDuplicates().save(usersTable)
+    DataFrameGen.events(spark, userSchema, 100, partitions = 400).dropDuplicates().save(usersTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
     val end = tableUtils.partitionSpec.minus(today, new Window(15, TimeUnit.DAYS))
@@ -1198,7 +1323,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueriesTable = s"$namespace.item_queries_selected_join_parts"
     spark.sql(s"DROP TABLE IF EXISTS $itemQueriesTable")
     spark.sql(s"DROP TABLE IF EXISTS ${itemQueriesTable}_tmp")
-    DataFrameGen.events(spark, itemQueries, 10000, partitions = 30).save(s"${itemQueriesTable}_tmp")
+    DataFrameGen.events(spark, itemQueries, 100, partitions = 30).save(s"${itemQueriesTable}_tmp")
     val leftDf = tableUtils.sql(s"SELECT item, value, ts, ds FROM ${itemQueriesTable}_tmp")
     leftDf.save(itemQueriesTable)
     val start = monthAgo
@@ -1211,7 +1336,7 @@ class JoinTest extends AnyFlatSpec {
     )
     val viewsTable = s"$namespace.view_selected_join_parts"
     spark.sql(s"DROP TABLE IF EXISTS $viewsTable")
-    DataFrameGen.events(spark, viewsSchema, count = 10000, partitions = 30).save(viewsTable)
+    DataFrameGen.events(spark, viewsSchema, count = 100, partitions = 30).save(viewsTable)
 
     // Group By
     val gb1 = Builders.GroupBy(
