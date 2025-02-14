@@ -273,7 +273,7 @@ class Analyzer(tableUtils: TableUtils,
 
   def analyzeJoin(joinConf: api.Join,
                   skewDetection: Boolean = false,
-                  validateTablePermission: Boolean = true,
+                  validateTablePermission: Boolean = false,
                   validationAssert: Boolean = false): (Map[String, DataType], ListBuffer[AggregationMetadata]) = {
     val name = "joins/" + joinConf.metaData.name
     logger.info(s"""|Running join analysis for $name ...\n""".stripMargin)
