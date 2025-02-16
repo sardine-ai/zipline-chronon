@@ -1,0 +1,7 @@
+java_library(
+    name = "iceberg-gcp-bigquery",
+    srcs = glob(["src/main/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+    ],
+)
