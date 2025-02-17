@@ -8,10 +8,10 @@ spark_repository = repository(
     provided = True,
     artifacts = [
         # Spark artifacts - for scala 2.12
-        "org.apache.spark:spark-sql_2.12:3.5.1",
-        "org.apache.spark:spark-hive_2.12:3.5.1",
-        "org.apache.spark:spark-streaming_2.12:3.5.1",
-        "org.apache.spark:spark-avro_2.12:3.5.1",
+        "org.apache.spark:spark-sql_2.12:3.5.4",
+        "org.apache.spark:spark-hive_2.12:3.5.4",
+        "org.apache.spark:spark-streaming_2.12:3.5.4",
+        "org.apache.spark:spark-avro_2.12:3.5.4",
 
         # Hive dependencies
         "org.apache.hive:hive-metastore:2.3.9",
