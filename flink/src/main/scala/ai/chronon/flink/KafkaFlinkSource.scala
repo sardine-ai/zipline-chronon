@@ -29,7 +29,12 @@ class KafkaFlinkSource(kafkaBootstrap: Option[String],
   // confirm the topic exists
   TopicChecker.topicShouldExist(topicInfo.name, bootstrap, topicInfo.params)
 
-  implicit val parallelism: Int = TopicChecker.getPartitions(topicInfo.name, bootstrap, topicInfo.params)
+  // we use a small scale factor as topics are often over partitioned. We can make this configurable via topicInfo
+  val scaleFactor = 0.25
+
+  implicit val parallelism: Int = {
+    math.ceil(TopicChecker.getPartitions(topicInfo.name, bootstrap, topicInfo.params) * scaleFactor).toInt
+  }
 
   override def getDataStream(topic: String, groupByName: String)(env: StreamExecutionEnvironment,
                                                                  parallelism: Int): SingleOutputStreamOperator[Row] = {
