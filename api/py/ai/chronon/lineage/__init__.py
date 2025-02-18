@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Union
 import ai.chronon.api.ttypes as chronon
 
 
@@ -20,8 +20,10 @@ class StageInfo:
 
 @dataclass
 class ColumnTransform:
-    name: str
+    output_column: str
     transform_clause: Clause
+
+    # common clauses that apply to all transforms in a stage
     stage_info: StageInfo
 
 
@@ -48,59 +50,80 @@ class RowTransform:
         pass
 
 
-def get_lineage_from_query(obj: chronon.Query) -> RowTransform:
-    """
-    used in source & bootstraps
-    """
-    pass
+@dataclass
+class ConfType(Enum):
+    JOIN = "join"
+    GROUP_BY = "group_by"
+    STAGING_QUERY = "staging_query"
 
 
-def get_lineage_from_staging_query(obj: chronon.StagingQuery) -> RowTransform:
-    pass
+@dataclass
+class ConfNode:
+    conf_name: str
+    conf_json: str
+    python_file_path: str
+    conf_type: ConfType
+    conf_obj: Union[chronon.GroupBy, chronon.Join, chronon.StagingQuery]
 
 
-def get_lineage_from_derivations(derivations: List[chronon.Derivation]) -> RowTransform:
-    """
-    used in derivations and selects of the query
-    """
-    pass
+@dataclass
+class PhysicalNodeInfo:
+    name: str
+    row_transform: RowTransform
+    output_table: str
+    input_tables: List[str]
+
+    conf_node: ConfNode
+
+    @classmethod
+    def from_group_by(cls, group_by: chronon.GroupBy) -> List["PhysicalNodeInfo"]:
+        """
+        if online = true - generate streaming, upload nodes
+        if backfill_start_date is set - generate group_by backfill nodes
+        """
+        pass
+
+    @classmethod
+    def from_join(cls, join: chronon.Join) -> List["PhysicalNodeInfo"]:
+        """
+        for backfill we generate
+            left_table_node, join_part_nodes, join_node, derivation_node, label_join_node
+        """
+        pass
+
+    @classmethod
+    def from_staging_query(
+        cls, staging_query: chronon.StagingQuery
+    ) -> List["PhysicalNodeInfo"]:
+        pass
 
 
-def get_lineage_from_group_by(obj: chronon.GroupBy) -> RowTransform:
-    """
-    input_col --(select_expr)--> selected_col --(agg)--> agg_col --(derivation)--> output_col
+@dataclass
+class PhysicalNodeLineage:
+    name: str
+    global_row_transform: RowTransform
+    output_table: str
+    input_nodes_names: List[str]
 
-    one_pipeline:
-    select_transform = ColumnTransform(input_col, selected_col, select_expr, [])
-    agg_transform = ColumnTransform(selected_col, agg_col, agg_expr, [])
-    derivation_transform = ColumnTransform(agg_col, output_col, derivation_expr, [])
-
-    """
-    pass
+    row_transform: RowTransform
+    conf_node_names: List[str]
 
 
-#  intermediate physical node in join backfills
-def get_lineage_for_bootstrap(
-    left: chronon.Source, bootstraps: List[chronon.BootstrapPart]
-) -> RowTransform:
-    pass
+@dataclass
+class BranchIndex:
+    branch_name: str
+    conf_dict: Dict[str, ConfNode]
+    physical_lineage_dict: Dict[str, PhysicalNodeLineage]
 
+    def publish(self):
+        pass
 
-#  intermediate physical node in join backfills
-def get_lineage_for_join_part(
-    left: chronon.Source, join_part: chronon.JoinPart
-) -> RowTransform:
-    pass
-
-
-#  intermediate physical node in join backfills
-def get_lineage_for_join_without_derivations(join: chronon.Join) -> RowTransform:
-    pass
-
-
-def get_lineage_for_join(join: chronon.Join) -> RowTransform:
-    pass
-
-
-def get_lineage_for_label_parts(join: chronon.Join) -> RowTransform:
-    pass
+    @classmethod
+    def from_all_physical_nodes(
+        nodes: List[PhysicalNodeInfo],
+    ) -> "BranchIndex":
+        """
+        1. build dict output_table -> node_info
+        2. recurse up the dict to produce full row_transform and convert input_tables to input_nodes
+        """
+        pass
