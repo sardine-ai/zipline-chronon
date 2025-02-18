@@ -134,6 +134,10 @@ maven_repository = repository(
         "io.circe:circe-generic_2.12:0.14.9",
         "io.circe:circe-parser_2.12:0.14.9",
         "com.chuusai:shapeless_2.12:2.3.12",
+
+        # Redis
+        "redis.clients:jedis:5.1.0",
+        "org.apache.commons:commons-pool2:2.12.0",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",

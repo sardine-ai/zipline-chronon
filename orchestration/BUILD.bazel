@@ -10,6 +10,8 @@ scala_library(
         maven_scala_artifact("org.apache.logging.log4j:log4j-api-scala"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("redis.clients:jedis"),
+        maven_artifact("org.apache.commons:commons-pool2"),
     ],
 )
 
