@@ -14,7 +14,7 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { type SvelteComponent } from 'svelte';
-	import { type JobTreeNode } from '$lib/types/Job/Job';
+	import { type JobTreeNode } from '$lib/job/tree-builder/tree-builder';
 	import { onMount } from 'svelte';
 	import { Separator } from '$lib/components/ui/separator';
 	import JobOverviewChart from '$lib/components/JobOverviewChart.svelte';
@@ -29,11 +29,23 @@
 
 	const jobsData = readable<JobTreeNode[]>(data.jobTree);
 
+	function generateRootExpandedIds(data: JobTreeNode[]): Record<string, boolean> {
+		return Object.fromEntries(data.map((_, index) => [index.toString(), true]));
+	}
+
 	const table = createTable(jobsData, {
 		sub: addSubRows({
 			children: 'children'
 		}),
-		expand: addExpandedRows()
+		/*
+		Row IDs are formatted as follows:
+		Root level: "0", "1", "2", etc.
+		Children use > as separator: "0>0", "0>1", "1>0", "1>1", etc.
+		Grandchildren: "0>0>0", "0>0>1", "0>1>0", "0>1>1", etc.
+		*/
+		expand: addExpandedRows({
+			initialExpandedIds: generateRootExpandedIds(data.jobTree)
+		})
 	});
 
 	const columns = table.createColumns([
@@ -87,9 +99,22 @@
 	let startX = 0;
 	let scrollLeft = 0;
 
+	let jobStructureHead = $state<HTMLElement | undefined>(undefined);
+
+	function calculateScrollbarWidth(containerWidth: number, scrollWidth: number) {
+		if (!jobStructureHead) return 0;
+		const fixedColumnWidth = jobStructureHead.getBoundingClientRect().width;
+		const scrollableWidth = scrollWidth - fixedColumnWidth;
+		const visibleWidth = containerWidth - fixedColumnWidth;
+		return (visibleWidth / scrollableWidth) * 100;
+	}
+
 	function updateScrollbarWidth() {
 		if (scrollableDiv) {
-			scrollbarWidth = (scrollableDiv.clientWidth / scrollableDiv.scrollWidth) * 100;
+			scrollbarWidth = calculateScrollbarWidth(
+				scrollableDiv.clientWidth,
+				scrollableDiv.scrollWidth
+			);
 		}
 	}
 
@@ -111,10 +136,12 @@
 		const target = e.currentTarget as HTMLElement;
 		const { scrollLeft, scrollWidth, clientWidth } = target;
 
+		if (!jobStructureHead) return;
+
 		const maxScroll = scrollWidth - clientWidth;
 		const availableWidth = 100 - scrollbarWidth;
 		scrollPercentage = (scrollLeft / maxScroll) * availableWidth;
-		scrollbarWidth = (clientWidth / scrollWidth) * 100;
+		scrollbarWidth = calculateScrollbarWidth(clientWidth, scrollWidth);
 	}
 
 	function startDragging(e: MouseEvent) {
@@ -210,9 +237,11 @@
 						<TableHeader>
 							<TableRow class="border-none">
 								<TableHead
+									bind:element={jobStructureHead}
 									class={`min-w-[250px] ${tableHeadClass} ${stickyCellClass} text-neutral-900 text-regular px-0 pb-2`}
-									>Job structure</TableHead
 								>
+									Job structure
+								</TableHead>
 								{#each data.dates as date}
 									<TableHead
 										class={`min-w-[62px] ${tableHeadClass} text-xs text-neutral-700 px-2 border-b`}
@@ -228,10 +257,14 @@
 									<TableCell class={`${tableCellClass} ${stickyCellClass}`}>
 										<Render of={row.cells[0].render()} />
 									</TableCell>
-									{#each (row as unknown as DataBodyRow<JobTreeNode>).original.runs as run}
-										{@const daysInRange = getDaysInRange(run.start, run.end, data.dates)}
+									{#each (row as unknown as DataBodyRow<JobTreeNode>).original.jobTracker?.tasksByDate?.values() ?? [] as task}
+										{@const daysInRange = getDaysInRange(
+											task.dateRange?.startDate ?? '',
+											task.dateRange?.endDate ?? '',
+											data.dates
+										)}
 										<TableCell colspan={daysInRange} class={`${tableCellClass} bg-neutral-100`}>
-											<StatusCell status={run.status} endDate={run.end} />
+											<StatusCell status={task.status} endDate={task.dateRange?.endDate ?? ''} />
 										</TableCell>
 									{/each}
 								</TableRow>

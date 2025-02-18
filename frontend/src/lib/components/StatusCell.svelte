@@ -1,20 +1,17 @@
 <script lang="ts">
-	import {
-		statusActiveBorderColors,
-		statusBorderColors,
-		statusColors,
-		type JobStatus
-	} from '$lib/types/Job/Job';
+	import { statusText } from '$lib/job/status';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Button } from '$lib/components/ui/button';
 	import IconArrowDownOnSquare16Solid from '~icons/heroicons/arrow-down-on-square-16-solid';
 	import { format, PeriodType } from '@layerstack/utils';
+	import { Status } from '$lib/types/codegen';
+	import StatusBar from '$lib/components/StatusBar.svelte';
 
 	let {
 		status,
 		endDate
 	}: {
-		status: JobStatus;
+		status: Status | undefined;
 		endDate: string;
 	} = $props();
 
@@ -24,18 +21,14 @@
 <Popover.Root closeFocus={null} bind:open={isPopoverOpen}>
 	<Popover.Trigger class="w-full h-full">
 		<div class="flex items-center justify-center bg-neutral-50 pt-1 pb-3">
-			<div
-				class={`h-4 w-full rounded border ${statusColors[status]} hover:${statusActiveBorderColors[status]} ${
-					isPopoverOpen ? `${statusActiveBorderColors[status]}` : `${statusBorderColors[status]}`
-				} transition-all`}
-			></div>
+			<StatusBar {status} includeHover={true} isActive={isPopoverOpen} />
 		</div>
 	</Popover.Trigger>
 	<Popover.Content sideOffset={-16} variant="light">
 		<div>
 			<p>
-				<span class="mr-1 capitalize">{status}</span><span class="text-neutral-800"
-					>{format(endDate, PeriodType.Day, { variant: 'long' })}</span
+				<span class="mr-1 capitalize">{status ? statusText[status] : ''}</span><span
+					class="text-neutral-800">{format(endDate, PeriodType.Day, { variant: 'long' })}</span
 				>
 			</p>
 			<div class="mt-4">

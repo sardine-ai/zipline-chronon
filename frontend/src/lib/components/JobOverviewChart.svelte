@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { JobTreeNode } from '$lib/types/Job/Job';
-	import { statusColors, statusBorderColors } from '$lib/types/Job/Job';
+	import type { JobTreeNode } from '$lib/job/tree-builder/tree-builder';
+	import StatusBar from '$lib/components/StatusBar.svelte';
 
 	let {
 		job,
@@ -13,16 +13,19 @@
 	} = $props();
 </script>
 
-<div class="flex items-center px-2 bg-transparent w-full h-full">
+<div class="flex items-center bg-transparent w-full h-full">
 	{#if job}
 		<div class="flex items-center w-full">
-			{#each job.runs as run}
-				{@const daysInRange = getDaysInRange(run.start, run.end, dates)}
+			{#each job.jobTracker?.tasksByDate ?? [] as task}
+				{@const daysInRange = getDaysInRange(
+					task?.dateRange?.startDate ?? '',
+					task?.dateRange?.endDate ?? '',
+					dates
+				)}
 				{@const widthPercentage = (daysInRange / dates.length) * 100}
-				<div
-					class={`h-4 rounded-sm border ${statusColors[run.status]} ${statusBorderColors[run.status]}`}
-					style="width: {widthPercentage}%"
-				></div>
+				<div style="width: {widthPercentage}%">
+					<StatusBar status={task.status} />
+				</div>
 			{/each}
 		</div>
 	{:else}

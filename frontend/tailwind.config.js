@@ -15,6 +15,12 @@ const config = {
 			// Generic pattern that will match any job status
 			pattern: /^border-jobs-(.*)-active-border$/,
 			variants: ['hover']
+		},
+		{
+			pattern: /^border-jobs-(.*)-border$/
+		},
+		{
+			pattern: /^bg-jobs-(.*)-bg$/
 		}
 	],
 	theme: {
@@ -63,35 +69,45 @@ const config = {
 					foreground: 'hsl(var(--card-foreground) / <alpha-value>)'
 				},
 				jobs: {
-					waiting: {
-						bg: 'hsl(var(--job-waiting-bg) / <alpha-value>)',
-						border: 'hsl(var(--job-waiting-border) / <alpha-value>)',
-						'active-border': 'hsl(var(--job-waiting-active-border) / <alpha-value>)'
+					WAITING_FOR_UPSTREAM: {
+						bg: 'hsl(var(--job-WAITING_FOR_UPSTREAM-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-WAITING_FOR_UPSTREAM-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-WAITING_FOR_UPSTREAM-active-border) / <alpha-value>)'
 					},
-					running: {
-						bg: 'hsl(var(--job-running-bg) / <alpha-value>)',
-						border: 'hsl(var(--job-running-border) / <alpha-value>)',
-						'active-border': 'hsl(var(--job-running-active-border) / <alpha-value>)'
+					RUNNING: {
+						bg: 'hsl(var(--job-RUNNING-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-RUNNING-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-RUNNING-active-border) / <alpha-value>)'
 					},
-					failed: {
-						bg: 'hsl(var(--job-failed-bg) / <alpha-value>)',
-						border: 'hsl(var(--job-failed-border) / <alpha-value>)',
-						'active-border': 'hsl(var(--job-failed-active-border) / <alpha-value>)'
+					FAILED: {
+						bg: 'hsl(var(--job-FAILED-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-FAILED-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-FAILED-active-border) / <alpha-value>)'
 					},
-					completed: {
-						bg: 'hsl(var(--job-completed-bg) / <alpha-value>)',
-						border: 'hsl(var(--job-completed-border) / <alpha-value>)',
-						'active-border': 'hsl(var(--job-completed-active-border) / <alpha-value>)'
+					SUCCESS: {
+						bg: 'hsl(var(--job-SUCCESS-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-SUCCESS-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-SUCCESS-active-border) / <alpha-value>)'
 					},
-					queued: {
-						bg: 'hsl(var(--job-queued-bg) / <alpha-value>)',
-						border: 'hsl(var(--job-queued-border) / <alpha-value>)',
-						'active-border': 'hsl(var(--job-queued-active-border) / <alpha-value>)'
+					QUEUED: {
+						bg: 'hsl(var(--job-QUEUED-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-QUEUED-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-QUEUED-active-border) / <alpha-value>)'
 					},
-					invalid: {
-						bg: 'hsl(var(--job-invalid-bg) / <alpha-value>)',
-						border: 'hsl(var(--job-invalid-border) / <alpha-value>)',
-						'active-border': 'hsl(var(--job-invalid-active-border) / <alpha-value>)'
+					UPSTREAM_FAILED: {
+						bg: 'hsl(var(--job-UPSTREAM_FAILED-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-UPSTREAM_FAILED-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-UPSTREAM_FAILED-active-border) / <alpha-value>)'
+					},
+					UPSTREAM_MISSING: {
+						bg: 'hsl(var(--job-UPSTREAM_MISSING-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-UPSTREAM_MISSING-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-UPSTREAM_MISSING-active-border) / <alpha-value>)'
+					},
+					WAITING_FOR_RESOURCES: {
+						bg: 'hsl(var(--job-WAITING_FOR_RESOURCES-bg) / <alpha-value>)',
+						border: 'hsl(var(--job-WAITING_FOR_RESOURCES-border) / <alpha-value>)',
+						'active-border': 'hsl(var(--job-WAITING_FOR_RESOURCES-active-border) / <alpha-value>)'
 					}
 				},
 				// Additional LayerChart colors
@@ -186,6 +202,19 @@ const config = {
 					}
 				],
 				'xs-mono': [] // todo
+			},
+			animation: {
+				'dashoffset-0.5x': 'animated-dash 2s linear infinite',
+				'dashoffset-1x': 'animated-dash 1s linear infinite',
+				'dashoffset-2x': 'animated-dash 0.5s linear infinite',
+				'dashoffset-3x': 'animated-dash 0.25s linear infinite',
+				'dashoffset-4x': 'animated-dash 0.125s linear infinite',
+				'dashoffset-5x': 'animated-dash 0.0625s linear infinite'
+			},
+			keyframes: {
+				'animated-dash': {
+					'100%': { strokeDashoffset: 0 }
+				}
 			}
 		}
 	}

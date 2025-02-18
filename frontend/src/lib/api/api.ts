@@ -1,16 +1,22 @@
 import { error } from '@sveltejs/kit';
 import type {
-	Join,
-	GroupBy,
-	Model,
-	StagingQuery,
+	IJoin,
+	IGroupBy,
+	IModel,
+	IStagingQuery,
 	IJoinDriftRequestArgs,
 	ITileSummarySeries,
 	IJoinSummaryRequestArgs,
-	IJoinDriftResponse
+	IJoinDriftResponse,
+	ILogicalNode,
+	ILineageRequestArgs,
+	ILineageResponse,
+	IJobTrackerResponseArgs,
+	INodeKeyArgs
 } from '$lib/types/codegen';
-import { ConfType, DriftMetric } from '$lib/types/codegen';
+import { ConfType, DriftMetric, Status } from '$lib/types/codegen';
 import type { ConfListResponse } from '$lib/types/codegen/ConfListResponse';
+import { joinToLineage } from './utils';
 
 export type ApiOptions = {
 	base?: string;
@@ -41,23 +47,25 @@ export class Api {
 			confName: name,
 			confType: ConfType[type]
 		});
-		return this.#send<Join | GroupBy | Model>(`conf?${params.toString()}`);
+		return this.#send<ILogicalNode>(`conf?${params.toString()}`);
 	}
 
-	async getJoin(name: string): Promise<Join> {
-		return this.getConf(name, ConfType.JOIN) as Promise<Join>;
+	async getJoin(name: string) {
+		return this.getConf(name, ConfType.JOIN).then((d) => d.join) as Promise<IJoin>;
 	}
 
-	async getGroupBy(name: string): Promise<GroupBy> {
-		return this.getConf(name, ConfType.GROUP_BY) as Promise<GroupBy>;
+	async getGroupBy(name: string) {
+		return this.getConf(name, ConfType.GROUP_BY).then((d) => d.groupBy) as Promise<IGroupBy>;
 	}
 
-	async getModel(name: string): Promise<Model> {
-		return this.getConf(name, ConfType.MODEL) as Promise<Model>;
+	async getModel(name: string) {
+		return this.getConf(name, ConfType.MODEL).then((d) => d.model) as Promise<IModel>;
 	}
 
-	async getStagingQuery(name: string): Promise<StagingQuery> {
-		return this.getConf(name, ConfType.STAGING_QUERY) as Promise<StagingQuery>;
+	async getStagingQuery(name: string) {
+		return this.getConf(name, ConfType.STAGING_QUERY).then(
+			(d) => d.stagingQuery
+		) as Promise<IStagingQuery>;
 	}
 
 	async search(term: string) {
@@ -133,6 +141,90 @@ export class Api {
 		return this.#send<ITileSummarySeries>(
 			`join/${name}/column/${columnName}/summary?${params.toString()}`
 		);
+	}
+
+	async getJoinLineage({
+		name
+		// type,
+		// branch,
+		// direction
+	}: ILineageRequestArgs): Promise<ILineageResponse> {
+		// const params = new URLSearchParams(
+		// 	omitNil({
+		// 		type,
+		// 		branch,
+		// 		direction: direction ? Direction[direction] : undefined
+		// 	})
+		// );
+		// return this.#send<ILineageResponse>(`join/${name}/lineage?${params.toString()}`);
+
+		// TODO: Remove this once we have the API endpoint
+		return this.getJoin(name!).then((join) => {
+			return joinToLineage(join);
+		});
+	}
+
+	async getJobTrackerData(
+		node: INodeKeyArgs,
+		daysToGenerate: number = 60
+	): Promise<IJobTrackerResponseArgs> {
+		const startDate = new Date('2024-01-01');
+		const endDateLimit = new Date(startDate);
+		endDateLimit.setDate(startDate.getDate() + daysToGenerate - 1);
+		const tasks: IJobTrackerResponseArgs['tasks'] = [];
+
+		let currentDate = new Date(startDate);
+		while (currentDate <= endDateLimit) {
+			const taskDuration = 2 + Math.floor(Math.random() * 3);
+			const endDate = new Date(currentDate);
+			endDate.setDate(endDate.getDate() + taskDuration);
+
+			// If this task would go beyond our limit, adjust it to end at the limit
+			if (endDate > endDateLimit) {
+				endDate.setTime(endDateLimit.getTime());
+			}
+
+			const statusValues = Object.values(Status).filter((v): v is number => typeof v === 'number');
+
+			tasks.push({
+				status: statusValues[Math.floor(Math.random() * statusValues.length)],
+				submittedTs: currentDate.getTime(),
+				dateRange: {
+					startDate: currentDate.toISOString().split('T')[0],
+					endDate: endDate.toISOString().split('T')[0]
+				}
+			});
+
+			// Add overlapping task with 30% chance, but only if we're not at the end
+			if (Math.random() < 0.3 && endDate < endDateLimit) {
+				const overlapStart = new Date(currentDate);
+				overlapStart.setDate(overlapStart.getDate() + 1);
+				const overlapEnd = new Date(endDate);
+				overlapEnd.setDate(overlapEnd.getDate() + 1);
+
+				// Ensure overlap end date doesn't exceed limit
+				if (overlapEnd > endDateLimit) {
+					overlapEnd.setTime(endDateLimit.getTime());
+				}
+
+				tasks.push({
+					status: statusValues[Math.floor(Math.random() * statusValues.length)],
+					submittedTs: overlapStart.getTime(),
+					dateRange: {
+						startDate: overlapStart.toISOString().split('T')[0],
+						endDate: overlapEnd.toISOString().split('T')[0]
+					}
+				});
+			}
+
+			currentDate = new Date(endDate);
+			currentDate.setDate(currentDate.getDate() + 1);
+		}
+
+		return {
+			tasks,
+			mainNode: node
+		};
 	}
 
 	async #send<Data = unknown>(resource: string, options?: ApiRequestOptions) {

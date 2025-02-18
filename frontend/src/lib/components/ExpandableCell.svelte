@@ -21,24 +21,28 @@
 
 <div class="flex items-center justify-center h-full relative">
 	<CellDivider />
-	<div
-		class="flex items-center bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px]"
+	<button
+		class="flex items-center bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px] max-w-[400px]"
 		style:margin-left={`calc(${depth * 0.75}rem)`}
+		onclick={() => ($isExpanded = !$isExpanded)}
+		title={name}
 	>
 		{#if $canExpand}
-			<button class="mr-1 ml-1" onclick={() => ($isExpanded = !$isExpanded)}>
-				<IconChevronDown
-					class="size-4 transition-transform duration-200 text-neutral-900 {$isExpanded
-						? ''
-						: '-rotate-90'}"
-				/>
-			</button>
+			<IconChevronDown
+				class="mr-1 ml-1 size-4 transition-transform duration-200 text-neutral-900 {$isExpanded
+					? ''
+					: '-rotate-90'}"
+			/>
 		{/if}
 		{#if childrenCount > 0}
-			<Badge variant="secondary" class="border-none rounded-xl bg-neutral-200 text-neutral-700">
+			<Badge
+				variant="secondary"
+				class="border-none rounded-xl bg-neutral-200 text-neutral-700 flex-shrink-0"
+			>
 				{childrenCount}
 			</Badge>
 		{/if}
-		<span class="whitespace-nowrap pl-2 text-neutral-900">{name}</span>
-	</div>
+		<span class="whitespace-nowrap pl-2 text-neutral-900 overflow-hidden text-ellipsis">{name}</span
+		>
+	</button>
 </div>

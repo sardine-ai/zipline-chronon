@@ -7,6 +7,7 @@ import Head from './table-head.svelte';
 import Header from './table-header.svelte';
 import Row from './table-row.svelte';
 import { type VariantProps, tv } from 'tailwind-variants';
+import type { HTMLThAttributes } from 'svelte/elements';
 
 const tableVariants = tv({
 	base: 'w-full caption-bottom',
@@ -27,6 +28,10 @@ type Props = {
 	density?: Density;
 } & HTMLTableElement;
 
+type TableHeadProps = {
+	element?: HTMLElement;
+} & HTMLThAttributes;
+
 export {
 	Root,
 	Body,
@@ -46,5 +51,6 @@ export {
 	Header as TableHeader,
 	Row as TableRow,
 	tableVariants,
-	type Props
+	type Props,
+	type TableHeadProps
 };

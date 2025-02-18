@@ -1,15 +1,13 @@
 <script lang="ts">
 	import LogicalNodeTable from '$lib/components/LogicalNodeTable.svelte';
-	import type { IJoin } from '$src/lib/types/codegen';
+	import { sort } from '@layerstack/utils';
 
 	const { data } = $props();
 
-	// todo: remove this once we have data for all joins
-	const sortedItems = data.items.sort((a: IJoin, b: IJoin) => {
-		if (a.metaData?.name === 'risk.user_transactions.txn_join') return -1;
-		if (b.metaData?.name === 'risk.user_transactions.txn_join') return 1;
-		return 0;
-	});
+	// TODO: remove this once we have data for all joins
+	const sortedItems = sort(data.items, (d) =>
+		d.metaData?.name === 'risk.user_transactions.txn_join' ? -1 : 1
+	);
 </script>
 
 <LogicalNodeTable items={sortedItems} basePath={data.basePath} title={data.title} />

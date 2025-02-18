@@ -50,14 +50,14 @@
 			color: colorScale(column)
 		};
 	})}
-	padding={{ left: 24, bottom: 48 }}
+	padding={{ top: 4, left: 36, bottom: 48 }}
 	legend={{
 		placement: 'bottom-left',
 		classes: {
 			root: 'right-0 overflow-auto scrollbar-none',
-			swatch: 'h-2 w-2 rounded-full',
-			label: 'text-sm',
-			item: () => 'flex items-center gap-2'
+			swatch: 'h-2 w-2 mt-[4px] mr-1 rounded-full',
+			label: 'text-sm'
+			// item: () => 'flex items-center gap-2'
 		}
 	}}
 	renderContext="canvas"

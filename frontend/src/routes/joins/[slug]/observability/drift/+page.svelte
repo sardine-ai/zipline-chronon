@@ -51,7 +51,7 @@
 	const driftSeriesByGroupName = $derived(
 		sort(
 			rollups(
-				data.joinDrift.driftSeries,
+				data.joinDrift?.driftSeries ?? [],
 				(values) => sort(values, (d) => d.key.column, sortDirection),
 				(d) => d.key?.groupName ?? 'Unknown'
 			),
@@ -90,8 +90,7 @@
 
 		if (seriesPoint) {
 			try {
-				const joinName =
-					data.joinDrift.driftSeries[0].key?.nodeName?.replace('/', '.') ?? 'Unknown';
+				const joinName = data.join?.metaData?.name?.replace('/', '.') ?? 'Unknown';
 				const columnName = seriesPoint.series.key.toString();
 
 				// TODO: Add loading and error states
@@ -176,6 +175,10 @@
 						</div>
 					{/snippet}
 				</CollapsibleSection>
+			{:else}
+				<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
+					No drift data available
+				</div>
 			{/each}
 		</div>
 	{/snippet}
@@ -334,7 +337,7 @@
 						<div class="grid grid-cols-2 gap-3">
 							{#each [{ label: 'Baseline', value: baselineNullValue }, { label: 'Current', value: currentNullValue }] as c}
 								<!-- TODO: Remove mockNullValue once data is populated -->
-								{@const mockNullValue = Math.random() * 100}
+								<!-- {@const mockNullValue = Math.random() * 100} -->
 								<div class="grid gap-2">
 									<div class="h-[230px]">
 										<!--  TODO: colors copied from ECharts defaults -->
@@ -342,13 +345,13 @@
 											data={[
 												{
 													label: 'Null Value Percentage',
-													// value: c.value
-													value: mockNullValue
+													value: c.value
+													// value: mockNullValue
 												},
 												{
 													label: 'Non-null Value Percentage',
-													// value: 100 - c.value
-													value: 100 - mockNullValue
+													value: 100 - c.value
+													// value: 100 - mockNullValue
 												}
 											]}
 											key="label"

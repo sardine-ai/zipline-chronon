@@ -13,21 +13,21 @@
 	const pageName = $derived(page.url.pathname.split('/').at(-1));
 </script>
 
-<PageHeader title={data.joinDrift.driftSeries[0].key?.nodeName ?? 'Unknown'} />
+<PageHeader title={data.join?.metaData?.name ?? 'Unknown'} />
 
 <Tabs value={pageName} class="w-full">
 	<TabsList>
-		<TabsTrigger href="/joins/{page.params.slug}/observability">
-			<IconClipboardDocumentCheck16Solid class="mr-2 h-4 w-4" />
-			Observability</TabsTrigger
+		<TabsTrigger href="/joins/{page.params.slug}/overview">
+			<IconLineage class="mr-2 h-4 w-4" />
+			Overview</TabsTrigger
 		>
 		<TabsTrigger href="/joins/{page.params.slug}/job-tracking">
 			<IconQueueList16Solid class="mr-2 h-4 w-4" />
 			Job tracking</TabsTrigger
 		>
-		<TabsTrigger href="/joins/{page.params.slug}/lineage">
-			<IconLineage class="mr-2 h-4 w-4" />
-			Lineage</TabsTrigger
+		<TabsTrigger href="/joins/{page.params.slug}/observability">
+			<IconClipboardDocumentCheck16Solid class="mr-2 h-4 w-4" />
+			Observability</TabsTrigger
 		>
 	</TabsList>
 	<Separator fullWidthExtend={true} class="mt-[2px]" />

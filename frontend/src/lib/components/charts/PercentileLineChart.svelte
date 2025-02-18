@@ -42,7 +42,7 @@
 			color: c.color
 		};
 	})}
-	padding={{ left: 36, bottom: 20 }}
+	padding={{ top: 4, left: 36, bottom: 20 }}
 	brush={{ onbrushend }}
 	{...merge(
 		{},

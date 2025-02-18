@@ -101,25 +101,49 @@
 
 		--ring: 0 0% 83.1%;
 
-		--job-running-bg: 249 32% 56%;
-		--job-running-border: 249 54% 72%;
-		--job-running-active-border: 250 100% 86%;
-		--job-waiting-bg: 250 30% 24%;
-		--job-waiting-border: 250 30% 40%;
-		--job-waiting-active-border: 250 89% 70%;
-		--job-failed-bg: 10 24% 20%;
-		--job-failed-border: 10 30% 34%;
-		--job-failed-active-border: 10 46% 56%;
-		--job-completed-bg: 160 40% 17%;
-		--job-completed-border: 160 40% 28%;
-		--job-completed-active-border: 160 32% 47%;
-		--job-invalid-bg: 44 80% 14%;
-		--job-invalid-border: 44 68% 24%;
-		--job-invalid-active-border: 44 62% 40%;
-		--job-queued-bg: 0 0% 16%;
-		--job-queued-border: 0 0% 24%;
-		--job-queued-active-border: 0 0% 40%;
+		/* Base colors for reuse */
+		--color-failed: 10 24% 20%;
+		--color-failed-border: 10 30% 34%;
+		--color-failed-active: 10 46% 56%;
 
+		--color-running: 250 30% 24%;
+		--color-running-border: 250 30% 40%;
+		--color-running-active: 250 48% 62%;
+
+		/* Job status colors using base variables */
+		--job-RUNNING-bg: var(--color-running);
+		--job-RUNNING-border: var(--color-running-border);
+		--job-RUNNING-active-border: var(--color-running-active);
+
+		--job-WAITING_FOR_UPSTREAM-bg: 210 30% 20%;
+		--job-WAITING_FOR_UPSTREAM-border: 210 30% 34%;
+		--job-WAITING_FOR_UPSTREAM-active-border: 210 46% 56%;
+
+		--job-FAILED-bg: var(--color-failed);
+		--job-FAILED-border: var(--color-failed-border);
+		--job-FAILED-active-border: var(--color-failed-active);
+
+		--job-SUCCESS-bg: 160 40% 17%;
+		--job-SUCCESS-border: 160 40% 28%;
+		--job-SUCCESS-active-border: 160 32% 47%;
+
+		--job-UPSTREAM_FAILED-bg: var(--color-failed);
+		--job-UPSTREAM_FAILED-border: var(--color-failed-border);
+		--job-UPSTREAM_FAILED-active-border: var(--color-failed-active);
+
+		--job-QUEUED-bg: 0 0% 16%;
+		--job-QUEUED-border: 0 0% 24%;
+		--job-QUEUED-active-border: 0 0% 40%;
+
+		--job-UPSTREAM_MISSING-bg: 38 30% 20%;
+		--job-UPSTREAM_MISSING-border: 38 30% 34%;
+		--job-UPSTREAM_MISSING-active-border: 38 46% 56%;
+
+		--job-WAITING_FOR_RESOURCES-bg: var(--color-running);
+		--job-WAITING_FOR_RESOURCES-border: var(--color-running-border);
+		--job-WAITING_FOR_RESOURCES-active-border: var(--color-running-active);
+
+		/* Scrollbar colors */
 		--scrollcolor: hsla(0, 0%, 13%, 1);
 		--scrollbackground: transparent;
 		scrollbar-color: var(--scrollcolor) var(--scrollbackground);

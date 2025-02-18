@@ -70,7 +70,9 @@
 		{#if isLoadingDistributions}
 			<div class="mt-6">Loading distributions...</div>
 		{:else if distributions.length === 0}
-			<div class="mt-6">No distribution data available</div>
+			<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
+				No distribution data available
+			</div>
 		{:else}
 			{#each sortedDistributions as distribution}
 				<CollapsibleSection title={distribution.key?.column ?? 'Unknown'} size="small" open={true}>

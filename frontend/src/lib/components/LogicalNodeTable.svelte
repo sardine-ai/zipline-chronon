@@ -49,7 +49,7 @@
 						<a
 							href={`${basePath}/${encodeURIComponent(item.metaData?.name ?? '')}`}
 							class="hover:underline {item.metaData?.name !== 'risk.user_transactions.txn_join'
-								? 'pointer-events-none opacity-50'
+								? 'opacity-50'
 								: ''}"
 						>
 							{item.metaData?.name}
