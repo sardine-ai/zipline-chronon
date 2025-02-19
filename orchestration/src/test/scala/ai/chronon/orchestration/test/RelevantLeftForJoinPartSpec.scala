@@ -6,6 +6,8 @@ import ai.chronon.orchestration.utils.RelevantLeftForJoinPart
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.collection.Seq
+
 class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
 
   // Helper method to create a basic GroupBy setup

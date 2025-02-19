@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.collection.mutable
+import scala.collection.Seq
 
 class RepoIndexSpec extends AnyFlatSpec with Matchers with Logging {
 
@@ -45,7 +46,7 @@ class RepoIndexSpec extends AnyFlatSpec with Matchers with Logging {
       val nameHashPairs = configs
         .flatMap(proc.nodeContents)
         .map(nc => nc.localData.name -> nc.localData.fileHash)
-      mutable.Map(nameHashPairs: _*)
+      mutable.Map(nameHashPairs.toSeq: _*)
     }
 
     def updateIndex(confsWithExpectedVersions: Seq[(TestConf, String)],

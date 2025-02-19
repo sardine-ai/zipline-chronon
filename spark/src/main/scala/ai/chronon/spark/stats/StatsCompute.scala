@@ -32,6 +32,7 @@ import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.col
 
 import scala.util.Try
+import scala.collection.Seq
 
 class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends Serializable {
 
@@ -47,13 +48,16 @@ class StatsCompute(inputDf: DataFrame, keys: Seq[String], name: String) extends 
   val metrics: Seq[StatsGenerator.MetricTransform] =
     StatsGenerator.buildMetrics(SparkConversions.toChrononSchema(noKeysDf.schema))
   lazy val selectedDf: DataFrame = noKeysDf
-    .select(timeColumns.map(col) ++ metrics.map(m =>
-      m.expression match {
-        case StatsGenerator.InputTransform.IsNull => functions.col(m.name).isNull
-        case StatsGenerator.InputTransform.Raw    => functions.col(m.name)
-        case StatsGenerator.InputTransform.One    => functions.lit(true)
-      }): _*)
-    .toDF(timeColumns ++ metrics.map(m => s"${m.name}${m.suffix}"): _*)
+    .select(
+      timeColumns.map(col).toSeq ++ metrics
+        .map(m =>
+          m.expression match {
+            case StatsGenerator.InputTransform.IsNull => functions.col(m.name).isNull
+            case StatsGenerator.InputTransform.Raw    => functions.col(m.name)
+            case StatsGenerator.InputTransform.One    => functions.lit(true)
+          })
+        .toSeq: _*)
+    .toDF(timeColumns.toSeq ++ metrics.map(m => s"${m.name}${m.suffix}").toSeq: _*)
 
   /** Given a summary Dataframe that computed the stats. Add derived data (example: null rate, median, etc) */
   def addDerivedMetrics(df: DataFrame, aggregator: RowAggregator): DataFrame = {

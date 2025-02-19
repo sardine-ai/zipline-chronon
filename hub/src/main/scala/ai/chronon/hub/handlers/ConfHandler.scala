@@ -10,6 +10,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.collection.Seq
 
 class ConfHandler(store: MonitoringModelStore) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)

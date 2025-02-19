@@ -4,6 +4,7 @@ import ai.chronon.orchestration.RepoTypes._
 import ai.chronon.orchestration.utils.TablePrinter
 
 import scala.collection.mutable
+import scala.collection.Seq
 
 case class VersionUpdate(name: Name, previous: Option[Version], next: Option[Version], main: Option[Version]) {
 

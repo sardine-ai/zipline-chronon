@@ -1,5 +1,7 @@
 package ai.chronon.orchestration.utils
 
+import scala.collection.Seq
+
 object CollectionExtensions {
 
   implicit class JListExtension[T](list: java.util.List[T]) {

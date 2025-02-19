@@ -3,6 +3,7 @@ package ai.chronon.flink.test.window
 import ai.chronon.api.Builders
 import ai.chronon.flink.window.KeySelectorBuilder
 import org.scalatest.flatspec.AnyFlatSpec
+import java.util
 
 class KeySelectorTest extends AnyFlatSpec {
   it should "chronon flink job correctly keys by a groupbys entity keys" in {
@@ -13,13 +14,13 @@ class KeySelectorTest extends AnyFlatSpec {
     val groupByWithOneEntityKey = Builders.GroupBy(keyColumns = Seq("number"))
     val keyFunctionOne = KeySelectorBuilder.build(groupByWithOneEntityKey)
     assert(
-      keyFunctionOne.getKey(sampleSparkExprEvalOutput) == List(4242)
+      keyFunctionOne.getKey(sampleSparkExprEvalOutput) == util.Arrays.asList(4242)
     )
 
     val groupByWithTwoEntityKey = Builders.GroupBy(keyColumns = Seq("number", "user"))
     val keyFunctionTwo = KeySelectorBuilder.build(groupByWithTwoEntityKey)
     assert(
-      keyFunctionTwo.getKey(sampleSparkExprEvalOutput) == List(4242, "abc")
+      keyFunctionTwo.getKey(sampleSparkExprEvalOutput) == util.Arrays.asList(4242, "abc")
     )
   }
 

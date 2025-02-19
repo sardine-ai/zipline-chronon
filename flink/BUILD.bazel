@@ -1,7 +1,10 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
         "//aggregator:lib",
@@ -42,6 +45,7 @@ test_deps = _FLINK_TEST_DEPS + [
     maven_artifact("io.confluent:kafka-schema-registry-client"),
     maven_artifact("io.confluent:kafka-protobuf-provider"),
     maven_artifact("org.apache.kafka:kafka-clients"),
+    maven_artifact("com.google.protobuf:protobuf-java"),
     # Testing
     maven_scala_artifact("org.scalatest:scalatest-matchers-core"),
     maven_scala_artifact("org.scalatest:scalatest-core"),
@@ -61,7 +65,10 @@ test_deps = _FLINK_TEST_DEPS + [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )

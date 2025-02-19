@@ -2,6 +2,7 @@ package ai.chronon.online
 
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Join
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -21,8 +22,6 @@ import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.io.Source
-import scala.jdk.CollectionConverters.asScalaBufferConverter
-import scala.jdk.CollectionConverters.mapAsScalaMapConverter
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
 import scala.util.Failure
@@ -164,13 +163,13 @@ object FetcherMain {
     require(!args.confPath.isEmpty || !args.name.isEmpty, "--conf-path or --name should be specified!")
     val objectMapper = new ObjectMapper().registerModule(DefaultScalaModule)
     def readMap: String => Map[String, AnyRef] = { json =>
-      objectMapper.readValue(json, classOf[java.util.Map[String, AnyRef]]).asScala.toMap
+      objectMapper.readValue(json, classOf[java.util.Map[String, AnyRef]]).toScala
     }
     def readMapList: String => Seq[Map[String, AnyRef]] = { jsonList =>
       objectMapper
         .readValue(jsonList, classOf[java.util.List[java.util.Map[String, AnyRef]]])
-        .asScala
-        .map(_.asScala.toMap)
+        .toScala
+        .map(_.toScala)
         .toSeq
     }
     val keyMapList =

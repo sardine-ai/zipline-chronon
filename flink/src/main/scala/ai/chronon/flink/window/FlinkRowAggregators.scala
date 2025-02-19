@@ -5,6 +5,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataType
 import ai.chronon.api.GroupBy
 import ai.chronon.api.Row
+import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.flink.types.TimestampedIR
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.ArrayRow
@@ -18,10 +19,11 @@ import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import java.lang
+import java.{lang, util}
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import scala.collection.Seq
 
 /** Wrapper Flink aggregator around Chronon's RowAggregator. Relies on Flink to pass in
   * the correct set of events for the tile. As the aggregates produced by this function
@@ -124,7 +126,7 @@ class FlinkRowAggregationFunction(
 class FlinkRowAggProcessFunction(
     groupBy: GroupBy,
     inputSchema: Seq[(String, DataType)]
-) extends ProcessWindowFunction[TimestampedIR, TimestampedTile, Seq[Any], TimeWindow] {
+) extends ProcessWindowFunction[TimestampedIR, TimestampedTile, java.util.List[Any], TimeWindow] {
 
   @transient private[flink] var tileCodec: TileCodec = _
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -147,10 +149,11 @@ class FlinkRowAggProcessFunction(
   /** Process events emitted from the aggregate function.
     * Output format: (keys, encoded tile IR, timestamp of the event being processed)
     */
-  override def process(keys: Seq[Any],
-                       context: ProcessWindowFunction[TimestampedIR, TimestampedTile, Seq[Any], TimeWindow]#Context,
-                       elements: lang.Iterable[TimestampedIR],
-                       out: Collector[TimestampedTile]): Unit = {
+  override def process(
+      keys: java.util.List[Any],
+      context: ProcessWindowFunction[TimestampedIR, TimestampedTile, java.util.List[Any], TimeWindow]#Context,
+      elements: lang.Iterable[TimestampedIR],
+      out: Collector[TimestampedTile]): Unit = {
     val windowEnd = context.window.getEnd
     val irEntry = elements.iterator.next()
     val isComplete = context.currentWatermark >= windowEnd
@@ -179,4 +182,5 @@ class FlinkRowAggProcessFunction(
         rowProcessingErrorCounter.inc()
     }
   }
+
 }

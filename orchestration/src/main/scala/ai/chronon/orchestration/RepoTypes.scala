@@ -2,6 +2,8 @@ package ai.chronon.orchestration
 
 import ai.chronon.orchestration.utils.StringExtensions.StringOps
 
+import scala.collection.Seq
+
 /** Types relevant to the orchestration layer.
   * It is very easy to get raw strings mixed up in the indexing logic.
   * So we guard them using case classes. For that reason we have a lot of case classes here.

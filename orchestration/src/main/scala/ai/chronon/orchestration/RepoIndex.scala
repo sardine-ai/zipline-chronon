@@ -8,6 +8,7 @@ import ai.chronon.orchestration.utils.StringExtensions.StringOps
 import org.apache.logging.log4j.scala.Logging
 
 import scala.collection.mutable
+import scala.collection.Seq
 
 /** Indexer to store and assign versions to nodes in the repo based on their lineage.
   * This also manages versions and contents across multiple branches.
@@ -157,9 +158,12 @@ class RepoIndex[T >: Null](proc: ConfProcessor[T]) extends Logging {
 
   def addFiles(fileHashes: mutable.Map[Name, FileHash], updatedFiles: Map[String, String], branch: Branch): Unit = {
 
-    val nodes: Seq[T] = updatedFiles.iterator.flatMap { case (name, content) =>
-      proc.parse(name, FileContent(content))
-    }.distinct
+    val nodes: Seq[T] = updatedFiles.iterator
+      .flatMap { case (name, content) =>
+        proc.parse(name, FileContent(content))
+      }
+      .distinct
+      .toSeq
 
     addNodes(fileHashes, nodes, branch)
   }

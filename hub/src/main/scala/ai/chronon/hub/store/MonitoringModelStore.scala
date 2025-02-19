@@ -24,6 +24,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
+import scala.collection.Seq
 
 case class LoadedConfs(joins: Seq[api.Join] = Seq.empty,
                        groupBys: Seq[api.GroupBy] = Seq.empty,
@@ -56,7 +57,7 @@ class MonitoringModelStore(apiImpl: Api) {
 
         val groupBys = thriftJoin.joinParts.asScala.map { part =>
           GroupBy(part.groupBy.metaData.name, part.groupBy.valueColumns)
-        }
+        }.toSeq
 
         val outputColumns = thriftJoin.outputColumnsByGroup.getOrElse("derivations", Array.empty)
         val join = Join(thriftJoin.metaData.name,
@@ -77,7 +78,7 @@ class MonitoringModelStore(apiImpl: Api) {
     configRegistryCache("default").joins.map { thriftJoin =>
       val groupBys = thriftJoin.joinParts.asScala.map { part =>
         GroupBy(part.groupBy.metaData.name, part.groupBy.valueColumns)
-      }
+      }.toSeq
 
       val outputColumns = thriftJoin.outputColumnsByGroup.getOrElse("derivations", Array.empty)
       Join(thriftJoin.metaData.name,

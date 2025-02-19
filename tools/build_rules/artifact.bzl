@@ -1,6 +1,6 @@
 load("@rules_jvm_external//:defs.bzl", _rje_artifact = "artifact")
 load("//tools/build_rules:jar_library.bzl", "jar_library")
-load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION")
+load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 load("//tools/build_rules/dependencies:maven_repository.bzl", "MAVEN_REPOSITORY_NAME")
 load("//tools/build_rules/dependencies:spark_repository.bzl", "SPARK_REPOSITORY_NAME")
 
@@ -37,8 +37,11 @@ def _get_artifact(coord, repository_name):
 
 # For specifying dependencies pulled from Maven Repository in our build targets
 # Example: maven_artifact("com.google.guava:guava")
-def maven_artifact(coord):
+def maven_artifact(coord, version = None):
+    if version:
+        coord = coord + "_" + version
     return _get_artifact(coord, MAVEN_REPOSITORY_NAME)
+
 
 # For specifying scala related dependencies pulled from Maven Repository in our build targets
 # Example: maven_scala_artifact("org.rogach:scallop"),

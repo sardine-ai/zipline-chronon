@@ -1,8 +1,11 @@
 scala_library(
     name = "cloud_aws_lib",
     srcs = glob(["src/main/**/*.scala"]),
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
-    format = True,
     deps = [
         maven_artifact("software.amazon.awssdk:dynamodb"),
         maven_artifact("software.amazon.awssdk:regions"),
@@ -12,10 +15,10 @@ scala_library(
         maven_artifact("com.google.guava:guava"),
         maven_artifact("org.slf4j:slf4j-api"),
         maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-        "//spark:lib",
-        "//online:lib",
         "//api:lib",
         "//api:thrift_java",
+        "//online:lib",
+        "//spark:lib",
     ],
 )
 
@@ -37,11 +40,13 @@ test_deps = [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
-
 
 scala_test_suite(
     name = "tests",

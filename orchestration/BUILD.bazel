@@ -1,7 +1,10 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + [
         "//api:lib",
@@ -28,7 +31,10 @@ test_deps = [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + _SCALA_TEST_DEPS + test_deps,
 )

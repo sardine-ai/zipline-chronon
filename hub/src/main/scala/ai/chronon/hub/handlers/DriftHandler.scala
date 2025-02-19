@@ -16,6 +16,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.Success
+import scala.collection.Seq
 
 class DriftHandler(driftStore: DriftStore) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)

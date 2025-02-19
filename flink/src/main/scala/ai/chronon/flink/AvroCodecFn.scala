@@ -5,6 +5,7 @@ import ai.chronon.api.DataModel
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.Query
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TilingUtils
 import ai.chronon.api.{StructType => ChrononStructType}
 import ai.chronon.flink.types.AvroCodecOutput
@@ -18,7 +19,7 @@ import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.jdk.CollectionConverters._
+import scala.collection.Seq
 
 /** Base class for the Avro conversion Flink operator.
   *
@@ -47,7 +48,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   protected lazy val (keyColumns, valueColumns): (Array[String], Array[String]) = getKVColumns
   protected lazy val extraneousRecord: Any => Array[Any] = {
     case x: Map[_, _] if x.keys.forall(_.isInstanceOf[String]) =>
-      x.flatMap { case (key, value) => Array(key, value) }.toArray
+      x.toArray.flatMap { case (key, value) => Array(key, value) }
   }
 
   private lazy val getKVSerializers = (
@@ -69,7 +70,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   }
 
   private lazy val getKVColumns: (Array[String], Array[String]) = {
-    val keyColumns = groupByServingInfoParsed.groupBy.keyColumns.asScala.toArray
+    val keyColumns = groupByServingInfoParsed.groupBy.keyColumns.toScala.toArray
     val (additionalColumns, _) = groupByServingInfoParsed.groupBy.dataModel match {
       case DataModel.Events =>
         Seq.empty[String] -> timeColumn
@@ -157,7 +158,7 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
 
     // 'keys' is a map of (key name in schema -> key value), e.g. Map("card_number" -> "4242-4242-4242-4242")
     // We convert to AnyRef because Chronon expects an AnyRef (for scala <> java interoperability reasons).
-    val keys: Map[String, AnyRef] = keyColumns.zip(in.keys.map(_.asInstanceOf[AnyRef])).toMap
+    val keys: Map[String, AnyRef] = keyColumns.zip(in.keys.toScala.map(_.asInstanceOf[AnyRef])).toMap
     val entityKeyBytes = keyToBytes(in.keys.toArray)
 
     val tileStart = WindowUtils.windowStartMillis(tsMills, tilingWindowSizeMs)

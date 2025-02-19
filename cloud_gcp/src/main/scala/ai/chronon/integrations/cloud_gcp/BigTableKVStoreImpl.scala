@@ -43,6 +43,7 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Failure
 import scala.util.Success
+import scala.collection.Seq
 
 /** BigTable based KV store implementation. We store a few kinds of data in our KV store:
   * 1) Entity data - An example is thrift serialized Groupby / Join configs. If entities are updated / rewritten, we

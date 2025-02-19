@@ -1,5 +1,7 @@
 package ai.chronon.orchestration.utils
 
+import scala.collection.Seq
+
 object TablePrinter {
   def printTable[T](headers: Seq[String], data: Seq[Seq[T]]): Unit = {
     if (headers.isEmpty || data.isEmpty) {
@@ -19,12 +21,12 @@ object TablePrinter {
 
     // Print headers
     println("+" + colWidths.map(w => "-" * (w + 2)).mkString("+") + "+")
-    println("| " + String.format(formatStr, headers.map(_.asInstanceOf[AnyRef]): _*) + " |")
+    println("| " + String.format(formatStr, headers.map(_.asInstanceOf[AnyRef]).toSeq: _*) + " |")
     println("+" + colWidths.map(w => "-" * (w + 2)).mkString("+") + "+")
 
     // Print data
     stringData.foreach { row =>
-      println("| " + String.format(formatStr, row.map(_.asInstanceOf[AnyRef]): _*) + " |")
+      println("| " + String.format(formatStr, row.map(_.asInstanceOf[AnyRef]).toSeq: _*) + " |")
     }
     println("+" + colWidths.map(w => "-" * (w + 2)).mkString("+") + "+")
   }
