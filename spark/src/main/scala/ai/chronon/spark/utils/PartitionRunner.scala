@@ -68,7 +68,7 @@ class PartitionRunner[T](verb: String,
     // find partitions to fill
     tu.partitions(inputTable)
     val inputPartitions = tu.partitions(inputTable).filter(_ <= endDs)
-    val inputRange = tu.partitionRange(inputTable)
+    val inputRange = partitionRange(inputTable)
     val inputHoles = inputRange.partitions.toSet -- inputPartitions.toSet
 
     // output partition -> # of missing inputPartitions
@@ -83,10 +83,10 @@ class PartitionRunner[T](verb: String,
     val inputSteps = outputSteps.map(computeInputRange)
 
     println(s"""
-         |Table to $verb(input): $inputTable, ${tu.partitionRange(inputTable)}
+         |Table to $verb(input): $inputTable, ${partitionRange(inputTable)}
          |Holes/Missing Partitions in $inputTable: ${collapsedPrint(inputHoles)}
          |
-         |Output table: $outputTable, ${tu.partitionRange(outputTable)}
+         |Output table: $outputTable, ${partitionRange(outputTable)}
          |
          |Output partitions with # of missing input partitions: [${missingHistogram}]
          |Output partitions to ignore: ${collapsedPrint(outputPartitionsToIgnore)}
@@ -129,5 +129,12 @@ class PartitionRunner[T](verb: String,
       postFunc.foreach(_(sideVal))
     }
     side
+  }
+
+  def partitionRange(table: String): PartitionRange = {
+    val parts = tu.partitions(table)
+    val minPartition = parts.reduceOption(Ordering[String].min).orNull
+    val maxPartition = parts.reduceOption(Ordering[String].max).orNull
+    PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }
