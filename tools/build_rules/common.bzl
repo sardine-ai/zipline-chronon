@@ -1,4 +1,4 @@
-load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION")
+load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 load("@rules_jvm_external//:defs.bzl", "artifact")
 
 def jar(org, name, rev = None, classifier = None):

@@ -73,7 +73,8 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
             .getOrElse(Seq.empty[String]) :+
             agg.inputColumn)
         .distinct
-        .map(inputDf.schema.apply))
+        .map(inputDf.schema.apply)
+        .toSeq)
   } else {
     val values = inputDf.schema
       .map(_.name)
@@ -739,7 +740,7 @@ object GroupBy {
             outputDf.save(outputTable, tableProps)
           } else {
             val finalOutputColumns = groupByConf.derivationsScala.finalOutputColumn(outputDf.columns)
-            val result = outputDf.select(finalOutputColumns: _*)
+            val result = outputDf.select(finalOutputColumns.toSeq: _*)
             result.save(outputTable, tableProps)
           }
           logger.info(s"Wrote to table $outputTable, into partitions: $range")

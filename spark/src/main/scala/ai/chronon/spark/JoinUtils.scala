@@ -35,6 +35,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
+import scala.collection.Seq
 import scala.jdk.CollectionConverters._
 
 object JoinUtils {
@@ -150,7 +151,7 @@ object JoinUtils {
              s"Column '$column' has mismatched data types - left type: $leftDataType vs. right type $rightDataType")
     }
 
-    val joinedDf = leftDf.join(rightDf, keys, joinType)
+    val joinedDf = leftDf.join(rightDf, keys.toSeq, joinType)
     // find columns that exist both on left and right that are not keys and coalesce them
     val selects = keys.map(col) ++
       leftDf.columns.flatMap { colName =>
@@ -169,7 +170,7 @@ object JoinUtils {
           Some(rightDf(colName))
         }
       }
-    val finalDf = joinedDf.select(selects: _*)
+    val finalDf = joinedDf.select(selects.toSeq: _*)
     finalDf
   }
 

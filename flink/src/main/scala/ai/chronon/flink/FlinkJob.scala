@@ -6,6 +6,7 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.DataType
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.FlinkJob.watermarkStrategy
 import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.types.AvroCodecOutput
@@ -46,7 +47,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters.mapAsJavaMapConverter
+import scala.collection.Seq
 
 /** Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
   *
@@ -376,7 +377,7 @@ object FlinkJob {
 
     env.configure(config)
 
-    val jobDatastream = if (api.flagStore.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].asJava)) {
+    val jobDatastream = if (api.flagStore.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].toJava)) {
       flinkJob
         .runTiledGroupByJob(env)
     } else {

@@ -6,6 +6,7 @@ import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.GroupBy
 import ai.chronon.api.Query
 import ai.chronon.api.{StructType => ChrononStructType}
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.CatalystUtil
 import ai.chronon.online.SparkConversions
 import com.codahale.metrics.ExponentiallyDecayingReservoir
@@ -21,9 +22,6 @@ import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.jdk.CollectionConverters.asScalaBufferConverter
-import scala.jdk.CollectionConverters.mapAsScalaMapConverter
 
 /** A Flink function that uses Chronon's CatalystUtil to evaluate the Spark SQL expression in a GroupBy.
   * This function is instantiated for a given type T (specific case class object, Thrift / Proto object).
@@ -42,8 +40,8 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
   private val timeColumnAlias: String = Constants.TimeColumn
   private val timeColumn: String = Option(query.timeColumn).getOrElse(timeColumnAlias)
   private val transforms: Seq[(String, String)] =
-    (query.selects.asScala ++ Map(timeColumnAlias -> timeColumn)).toSeq
-  private val filters: Seq[String] = query.getWheres.asScala
+    (query.selects.toScala ++ Map(timeColumnAlias -> timeColumn)).toSeq
+  private val filters: Seq[String] = query.getWheres.toScala
 
   @transient private var catalystUtil: CatalystUtil = _
   @transient private var rowSerializer: ExpressionEncoder.Serializer[T] = _

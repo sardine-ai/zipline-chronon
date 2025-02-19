@@ -179,7 +179,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
 
       partitionSeq.map { partitionMap =>
-        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key))
+        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key)).toMap
       }
 
     }
@@ -264,7 +264,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
         val createTableOperation = {
           tableFormatProvider
-          writeFormat.generateTableBuilder(df, tableName, partitionColumns, tableProperties, fileFormat)
+          writeFormat.generateTableBuilder(df, tableName, partitionColumns.toSeq, tableProperties, fileFormat)
         }
 
         createTableOperation(sql)
@@ -292,7 +292,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         if (autoExpand) {
           expandTable(tableName, df.schema)
         }
-      case _ => Unit
+      case _ => ()
     }
 
     creationStatus
@@ -451,7 +451,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
       if (partitionColumns.nonEmpty) {
         repartitioned.write
-          .partitionBy(partitionColumns: _*)
+          .partitionBy(partitionColumns.toSeq: _*)
           .mode(saveMode)
           .save(dataPointer)
       } else {
@@ -803,6 +803,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
       scanDf
     }
+  }
+
+  def partitionRange(table: String): PartitionRange = {
+    val parts = partitions(table)
+    val minPartition = if (parts.isEmpty) null else parts.min
+    val maxPartition = if (parts.isEmpty) null else parts.max
+    PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }
 

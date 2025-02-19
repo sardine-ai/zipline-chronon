@@ -7,6 +7,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 trait Format {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 

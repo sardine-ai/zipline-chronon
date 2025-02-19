@@ -16,6 +16,7 @@ import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.api.{StructType => ApiStructType}
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.AvroCodec
@@ -37,9 +38,6 @@ import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.jdk.CollectionConverters.asScalaBufferConverter
-
-//
 // This file contains utility classes to spin up a TestFlink job to test end to end submission of Flink
 // jobs to Flink clusters (e.g. DataProc). We mock things out at the moment to go with an in-memory
 // datastream source as well as created a mocked GroupByServingInfo. The job does write out data to
@@ -134,7 +132,7 @@ object TestFlinkJob {
     // Set key avro schema for groupByServingInfo
     groupByServingInfo.setKeyAvroSchema(
       StructType(
-        groupBy.keyColumns.asScala.map { keyCol =>
+        groupBy.keyColumns.toScala.map { keyCol =>
           val keyColStructType = outputSchema.fields.find(field => field.name == keyCol)
           keyColStructType match {
             case Some(col) => col
@@ -147,7 +145,7 @@ object TestFlinkJob {
     )
 
     // Set value avro schema for groupByServingInfo
-    val aggInputColNames = groupBy.aggregations.asScala.map(_.inputColumn).toList
+    val aggInputColNames = groupBy.aggregations.toScala.map(_.inputColumn).toList
     groupByServingInfo.setSelectedAvroSchema(
       StructType(outputSchema.fields.filter(field => aggInputColNames.contains(field.name)))
         .toAvroSchema("Value")
