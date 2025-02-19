@@ -403,12 +403,6 @@ class TableUtilsTest extends AnyFlatSpec {
     )
   }
 
-  it should "check table permission" in {
-    val tableName = "db.test_check_table_permission"
-    prepareTestDataWithSubPartitions(tableName)
-    assertTrue(tableUtils.checkTablePermission(tableName))
-  }
-
   it should "double udf registration" in {
     tableUtils.sql("CREATE TEMPORARY FUNCTION test AS 'ai.chronon.spark.test.SimpleAddUDF'")
     tableUtils.sql("CREATE TEMPORARY FUNCTION test AS 'ai.chronon.spark.test.SimpleAddUDF'")

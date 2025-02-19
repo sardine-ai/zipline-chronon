@@ -60,6 +60,7 @@ maven_repository = repository(
         "com.typesafe:config:1.4.3",
         "io.micrometer:micrometer-registry-statsd:1.13.6",
         "net.sf.py4j:py4j:0.10.9.9",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.0",
 
         # grpc
         "io.grpc:grpc-core:1.62.2",  # required by bigtable

@@ -42,7 +42,10 @@ scala_library(
 jvm_binary(
     name = "cloud_gcp_submitter",
     main_class = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter",
-    runtime_deps = [":cloud_gcp_lib"],
+    runtime_deps = [
+        ":cloud_gcp_lib",
+        maven_scala_artifact("org.apache.iceberg:iceberg-spark-runtime-3.5")
+        ],
 )
 
 test_deps = [
