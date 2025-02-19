@@ -26,6 +26,7 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import java.util.ArrayList
 
 class DriftStore(kvStore: KVStore,
                  summaryDataset: String = Constants.TiledSummaryDataset,
@@ -59,9 +60,30 @@ class DriftStore(kvStore: KVStore,
   }
 
   private case class SummaryRequestContext(request: GetRequest, tileKey: TileKey, groupName: String)
+
   private case class SummaryResponseContext(summaries: Array[(TileSummary, Long)], tileKey: TileKey, groupName: String)
 
   case class TileSummaryInfo(key: TileSeriesKey, summaries: Array[(TileSummary, Long)]) {
+    def percentileToIndex(percentile: String): Int = {
+      // Convert "p5" to 5, "p95" to 95, etc.
+      val value = percentile.stripPrefix("p").toInt
+      // Convert percentile to index (20 total percentiles, from p0 to p100 in steps of 5)
+      value / 5
+    }
+
+    def filterPercentiles(summary: TileSummary,
+                          requestedPercentiles: Seq[String] = Seq("p5", "p50", "p95")): TileSummary = {
+      val filtered = new TileSummary(summary)
+      if (summary.getPercentiles != null) {
+        val filteredPercentiles = new java.util.ArrayList[java.lang.Double]()
+        // Convert percentile strings to indices
+        val indices = requestedPercentiles.map(percentileToIndex)
+        indices.foreach(i => filteredPercentiles.add(summary.getPercentiles.get(i)))
+        filtered.setPercentiles(filteredPercentiles)
+      }
+      filtered
+    }
+
     def toDriftSeries(driftMetric: DriftMetric, lookBack: Window, startMs: Long): TileDriftSeries = {
       val driftsArray = TileDriftCalculator.toTileDrifts(summaries, driftMetric, startMs, lookBack)
       val result = PivotUtils.pivot(driftsArray)
@@ -69,7 +91,11 @@ class DriftStore(kvStore: KVStore,
     }
 
     def toSeries: TileSummarySeries = {
-      val result = PivotUtils.pivot(summaries)
+      // Filter percentiles before pivoting
+      val filteredSummaries = summaries.map { case (summary, timestamp) =>
+        (filterPercentiles(summary), timestamp)
+      }
+      val result = PivotUtils.pivot(filteredSummaries)
       result.setKey(key)
     }
   }

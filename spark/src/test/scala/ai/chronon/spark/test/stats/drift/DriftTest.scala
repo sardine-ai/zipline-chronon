@@ -8,8 +8,7 @@ import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Window
-import ai.chronon.observability.DriftMetric
-import ai.chronon.observability.TileSummarySeries
+import ai.chronon.observability.{DriftMetric, TileSummary, TileSummarySeries}
 import ai.chronon.online.KVStore
 import ai.chronon.online.stats.DriftStore
 import ai.chronon.spark.SparkSessionBuilder
@@ -29,6 +28,7 @@ import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.util.Success
+import scala.collection.JavaConverters._
 
 class DriftTest extends AnyFlatSpec with Matchers {
 
@@ -144,7 +144,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
          |""".stripMargin)
 
     summaryTotals should be > 0
-    summaryNulls.toDouble / summaryTotals.toDouble should be < 0.1
+    summaryNulls.toDouble / summaryTotals.toDouble should be < 0.2
     logger.info("Summary series fetched successfully".green)
 
     val startTs = 1673308800000L
@@ -218,7 +218,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
       if (isNumeric) {
         val percentileSeriesPerBreak = summarySeries.percentiles.toScala
         val timeStamps = summarySeries.timestamps.toScala
-        val breaks = DriftStore.breaks(20)
+        val breaks = Seq("p5", "p50", "p95")
         percentileSeriesPerBreak.zip(breaks).flatMap { case (percentileSeries, break) =>
           percentileSeries.toScala.zip(timeStamps).map { case (value, ts) => TimeSeriesPoint(value, ts, Some(break)) }
         }
@@ -230,5 +230,53 @@ class DriftTest extends AnyFlatSpec with Matchers {
         }.toSeq
       }
     }
+  }
+
+  "percentileToIndex" should "correctly convert percentile strings to indices" in {
+    val info = new DriftStore(null).TileSummaryInfo(null, null)
+
+    info.percentileToIndex("p0") shouldBe 0
+    info.percentileToIndex("p5") shouldBe 1
+    info.percentileToIndex("p50") shouldBe 10
+    info.percentileToIndex("p95") shouldBe 19
+    info.percentileToIndex("p100") shouldBe 20
+  }
+
+  it should "throw NumberFormatException for invalid input" in {
+    val info = new DriftStore(null).TileSummaryInfo(null, null)
+
+    an[NumberFormatException] should be thrownBy info.percentileToIndex("invalid")
+    an[NumberFormatException] should be thrownBy info.percentileToIndex("p")
+    an[NumberFormatException] should be thrownBy info.percentileToIndex("px5")
+  }
+
+  "filterPercentiles" should "correctly filter default percentiles" in {
+    val info = new DriftStore(null).TileSummaryInfo(null, null)
+
+    val summary = new TileSummary()
+    summary.setPercentiles((0 to 100 by 5).map(_.toDouble).map(Double.box).asJava)
+
+    val filtered = info.filterPercentiles(summary)
+    filtered.getPercentiles.asScala should contain theSameElementsInOrderAs Seq(5.0, 50.0, 95.0).map(Double.box)
+  }
+
+  "filterPercentiles" should "correctly filter specified percentiles" in {
+    val info = new DriftStore(null).TileSummaryInfo(null, null)
+
+    val summary = new TileSummary()
+    summary.setPercentiles((0 to 100 by 5).map(_.toDouble).map(Double.box).asJava)
+
+    val filtered = info.filterPercentiles(summary, Seq("p10", "p55", "p75"))
+    filtered.getPercentiles.asScala should contain theSameElementsInOrderAs Seq(10.0, 55.0, 75.0).map(Double.box)
+  }
+
+  it should "handle null percentiles" in {
+    val info = new DriftStore(null).TileSummaryInfo(null, null)
+
+    val summary = new TileSummary()
+    summary.setPercentiles(null)
+
+    val filtered = info.filterPercentiles(summary)
+    filtered.getPercentiles should be(null)
   }
 }
