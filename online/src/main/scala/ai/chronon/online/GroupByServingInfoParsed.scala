@@ -27,6 +27,7 @@ import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
 import org.apache.avro.Schema
 
 import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.Seq
 
 // mixin class - with schema
 class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, partitionSpec: PartitionSpec)
@@ -123,7 +124,7 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
   // Needs consistency with mutationDf Schema for backfill group by. (Shared queries)
   // Additional columns used for mutations are stored
   def mutationChrononSchema: StructType = {
-    val fields: scala.collection.Seq[StructField] = inputChrononSchema ++ Constants.MutationFields
+    val fields: Seq[StructField] = inputChrononSchema ++ Constants.MutationFields
     StructType("MUTATION_SCHEMA", fields.toArray)
   }
 

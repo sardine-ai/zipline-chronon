@@ -12,7 +12,6 @@ import org.apache.spark.sql.types.StructType
 
 import java.lang
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.mapAsJavaMapConverter
 
 object Expressions {
 
@@ -115,7 +114,8 @@ object Expressions {
             row
               .getMap[String, Long](index)
               .mapValues(lang.Long.valueOf)
-              .asJava
+              .toMap
+              .toJava
           )
       case MetricName.percentiles =>
         (row: Row, summaries: TileSummary) =>

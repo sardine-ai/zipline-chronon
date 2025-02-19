@@ -1,6 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.Constants
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetResponse
 import ai.chronon.online.KVStore.ListRequest
@@ -33,9 +34,10 @@ import java.time.Instant
 import java.util
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
 import scala.util.Success
 import scala.util.Try
+
+import scala.collection.Seq
 
 object DynamoDBKVStoreConstants {
   // Read capacity units to configure DynamoDB table with
@@ -97,8 +99,8 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
 
     val request =
       CreateTableRequest.builder
-        .attributeDefinitions(keyAttributes.toList.asJava)
-        .keySchema(keySchema.toList.asJava)
+        .attributeDefinitions(keyAttributes.toList.toJava)
+        .keySchema(keySchema.toList.toJava)
         .provisionedThroughput(ProvisionedThroughput.builder.readCapacityUnits(rcu).writeCapacityUnits(wcu).build)
         .tableName(dataset)
         .build
@@ -130,7 +132,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     val (getLookups, queryLookups) = requests.partition(r => r.startTsMillis.isEmpty)
     val getItemRequestPairs = getLookups.map { req =>
       val keyAttributeMap = primaryKeyMap(req.keyBytes)
-      (req, GetItemRequest.builder.key(keyAttributeMap.asJava).tableName(req.dataset).build)
+      (req, GetItemRequest.builder.key(keyAttributeMap.toJava).tableName(req.dataset).build)
     }
 
     val queryRequestPairs = queryLookups.map { req =>
@@ -149,7 +151,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
             dynamoDbClient.getItem(getItemReq).item()
           }
 
-        val response = item.map(i => List(i).asJava)
+        val response = item.map(i => List(i).toJava)
         val resultValue: Try[Seq[TimedValue]] = extractTimedValues(response, defaultTimestamp)
         GetResponse(req, resultValue)
       }
@@ -183,7 +185,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
 
     val scanBuilder = ScanRequest.builder.tableName(request.dataset).limit(listLimit)
     val scanRequest = maybeExclusiveStartKeyAttribute match {
-      case Some(value) => scanBuilder.exclusiveStartKey(Map(partitionKeyColumn -> value).asJava).build
+      case Some(value) => scanBuilder.exclusiveStartKey(Map(partitionKeyColumn -> value).toJava).build
       case _           => scanBuilder.build
     }
 
@@ -195,7 +197,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
       val noPagesLeftResponse = ListResponse(request, resultElements, Map.empty)
       val listResponse = tryScanResponse match {
         case Success(scanResponse) if scanResponse.hasLastEvaluatedKey =>
-          val lastEvalKey = scanResponse.lastEvaluatedKey().asScala.get(partitionKeyColumn)
+          val lastEvalKey = scanResponse.lastEvaluatedKey().toScala.get(partitionKeyColumn)
           lastEvalKey match {
             case Some(av) => ListResponse(request, resultElements, Map(continuationKey -> av.b().asByteArray()))
             case _        => noPagesLeftResponse
@@ -218,7 +220,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
         req.tsMillis.map(ts => Map(sortKeyColumn -> AttributeValue.builder.n(ts.toString).build)).getOrElse(Map.empty)
 
       val putItemReq =
-        PutItemRequest.builder.tableName(req.dataset).item((attributeMap ++ tsMap).asJava).build()
+        PutItemRequest.builder.tableName(req.dataset).item((attributeMap ++ tsMap).toJava).build()
       (req.dataset, putItemReq)
     }
 
@@ -272,8 +274,8 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
   private def extractTimedValues(response: Try[util.List[util.Map[String, AttributeValue]]],
                                  defaultTimestamp: Long): Try[Seq[TimedValue]] = {
     response.map { ddbResponseList =>
-      ddbResponseList.asScala.map { ddbResponseMap =>
-        val responseMap = ddbResponseMap.asScala
+      ddbResponseList.toScala.map { ddbResponseMap =>
+        val responseMap = ddbResponseMap.toScala
         if (responseMap.isEmpty)
           throw new Exception("Empty response returned from DynamoDB")
 
@@ -290,8 +292,8 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
   private def extractListValues(tryScanResponse: Try[ScanResponse]): Try[Seq[ListValue]] = {
     tryScanResponse.map { response =>
       val ddbResponseList = response.items()
-      ddbResponseList.asScala.map { ddbResponseMap =>
-        val responseMap = ddbResponseMap.asScala
+      ddbResponseList.toScala.map { ddbResponseMap =>
+        val responseMap = ddbResponseMap.toScala
         if (responseMap.isEmpty)
           throw new Exception("Empty response returned from DynamoDB")
 
@@ -333,8 +335,8 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
     QueryRequest.builder
       .tableName(request.dataset)
       .keyConditionExpression(s"$partitionAlias = :partitionKeyValue AND $timeAlias BETWEEN :start AND :end")
-      .expressionAttributeNames(attrNameAliasMap.asJava)
-      .expressionAttributeValues(attrValuesMap.asJava)
+      .expressionAttributeNames(attrNameAliasMap.toJava)
+      .expressionAttributeValues(attrValuesMap.toJava)
       .build
   }
 }

@@ -72,6 +72,9 @@ object CatalystUtil {
       // for derivations we only need to read one row at a time.
       // for interactive we set the limit to 16.
       .config("spark.sql.parquet.columnarReaderBatchSize", "16")
+      // The default doesn't seem to be set properly in the scala 2.13 version of spark
+      // running into this issue https://github.com/dotnet/spark/issues/435
+      .config("spark.driver.bindAddress", "127.0.0.1")
       .config("spark.sql.codegen.maxFields", MaxFields)
       .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
@@ -79,7 +82,7 @@ object CatalystUtil {
     spark
   }
 
-  case class PoolKey(expressions: collection.Seq[(String, String)], inputSchema: StructType)
+  case class PoolKey(expressions: Seq[(String, String)], inputSchema: StructType)
   val poolMap: PoolMap[PoolKey, CatalystUtil] = new PoolMap[PoolKey, CatalystUtil](pi =>
     new CatalystUtil(pi.inputSchema, pi.expressions))
 }
@@ -117,7 +120,7 @@ class PoolMap[Key, Value](createFunc: Key => Value, maxSize: Int = 100, initialS
   }
 }
 
-class PooledCatalystUtil(expressions: collection.Seq[(String, String)], inputSchema: StructType) {
+class PooledCatalystUtil(expressions: Seq[(String, String)], inputSchema: StructType) {
   private val poolKey = PoolKey(expressions, inputSchema)
   private val cuPool = poolMap.getPool(PoolKey(expressions, inputSchema))
   def performSql(values: Map[String, Any]): Seq[Map[String, Any]] =

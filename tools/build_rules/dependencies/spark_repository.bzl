@@ -13,6 +13,12 @@ spark_repository = repository(
         "org.apache.spark:spark-streaming_2.12:3.5.1",
         "org.apache.spark:spark-avro_2.12:3.5.1",
 
+        # Spark artifacts - for scala 2.13
+        "org.apache.spark:spark-sql_2.13:3.5.1",
+        "org.apache.spark:spark-hive_2.13:3.5.1",
+        "org.apache.spark:spark-streaming_2.13:3.5.1",
+        "org.apache.spark:spark-avro_2.13:3.5.1",
+
         # Hive dependencies
         "org.apache.hive:hive-metastore:2.3.9",
         "org.apache.curator:apache-curator:5.5.0",
@@ -35,5 +41,7 @@ spark_repository = repository(
         # the rockdb library and rely on those part of the dist / env
         # Else we hit an error - NoSuchMethodError: 'void org.rocksdb.WriteBatch.remove
         "org.rocksdb:rocksdbjni",
+        "org.scala-lang:scala-library",
+        "org.scala-lang:scala-reflect",
     ],
 )

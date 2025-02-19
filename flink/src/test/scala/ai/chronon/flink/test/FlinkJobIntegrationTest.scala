@@ -1,6 +1,7 @@
 package ai.chronon.flink.test
 
 import ai.chronon.api.TilingUtils
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.FlinkJob
 import ai.chronon.flink.SparkExpressionEvalFn
 import ai.chronon.flink.types.TimestampedIR
@@ -18,7 +19,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.mockito.MockitoSugar.mock
 
-import scala.jdk.CollectionConverters.asScalaBufferConverter
+import scala.collection.Seq
 
 class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
@@ -37,15 +38,15 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
     val tileBytes = in.valueBytes
     // Deserialize the TileKey object and pull out the entity key bytes
     val tileKey = TilingUtils.deserializeTileKey(in.keyBytes)
-    val keyBytes = tileKey.keyBytes.asScala.toArray.map(_.asInstanceOf[Byte])
+    val keyBytes = tileKey.keyBytes.toScala.toArray.map(_.asInstanceOf[Byte])
     val record = groupByServingInfoParsed.keyCodec.decode(keyBytes)
 
     // Get all keys we expect to be in the GenericRecord
     val decodedKeys: List[String] =
-      groupByServingInfoParsed.groupBy.keyColumns.asScala.map(record.get(_).toString).toList
+      groupByServingInfoParsed.groupBy.keyColumns.toScala.map(record.get(_).toString).toList
 
     val tsMills = in.tsMillis
-    new TimestampedTile(decodedKeys, tileBytes, tsMills)
+    new TimestampedTile(decodedKeys.map(_.asInstanceOf[Any]).toJava, tileBytes, tsMills)
   }
 
   // Decode a TimestampedTile into a TimestampedIR
@@ -91,7 +92,7 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
     env.execute("FlinkJobIntegrationTest")
 
     // capture the datastream of the 'created' timestamps of all the written out events
-    val writeEventCreatedDS = CollectSink.values.asScala
+    val writeEventCreatedDS = CollectSink.values.toScala
 
     writeEventCreatedDS.size shouldBe elements.size
     // check that the timestamps of the written out events match the input events
@@ -107,9 +108,9 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
     // Create some test events with multiple different ids so we can check if tiling/pre-aggregation works correctly
     // for each of them.
-    val id1Elements = Seq(E2ETestEvent(id = "id1", int_val = 1, double_val = 1.5, created = 1L),
-                          E2ETestEvent(id = "id1", int_val = 1, double_val = 2.5, created = 2L))
-    val id2Elements = Seq(E2ETestEvent(id = "id2", int_val = 1, double_val = 10.0, created = 3L))
+    val id1Elements = Array(E2ETestEvent(id = "id1", int_val = 1, double_val = 1.5, created = 1L),
+                            E2ETestEvent(id = "id1", int_val = 1, double_val = 2.5, created = 2L))
+    val id2Elements = Array(E2ETestEvent(id = "id2", int_val = 1, double_val = 10.0, created = 3L))
     val elements: Seq[E2ETestEvent] = id1Elements ++ id2Elements
     val source = new WatermarkedE2EEventSource(elements)
 
@@ -129,11 +130,12 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
     env.execute("TiledFlinkJobIntegrationTest")
 
     // capture the datastream of the 'created' timestamps of all the written out events
-    val writeEventCreatedDS = CollectSink.values.asScala
+    val writeEventCreatedDS = CollectSink.values.toScala
 
     // BASIC ASSERTIONS
     // All elements were processed
     writeEventCreatedDS.size shouldBe elements.size
+
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
     writeEventCreatedDS.map(_.tsMillis).toSet shouldBe elements.map(_.created).toSet
@@ -154,7 +156,7 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
         (timestampedTile.keys, timestampedIR.ir.toList, writeEvent.tsMillis)
       })
       .groupBy(_._1) // Group by the keys
-      .map((keys) => (keys._1, keys._2.maxBy(_._3)._2)) // pick just the events with largest timestamp
+      .map((keys) => (keys._1.toScala, keys._2.maxBy(_._3)._2)) // pick just the events with largest timestamp
 
     // Looking back at our test events, we expect the following Intermediate Results to be generated:
     val expectedFinalIRsPerKey = Map(

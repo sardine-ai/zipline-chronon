@@ -23,7 +23,7 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
     val ts = new TileSummary()
     ts.setPercentiles(List(1.0, 2.0, 3.0).map(Double.box).asJava)
     ts.setCount(100L)
-    ts.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).asJava)
+    ts.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).toMap.asJava)
 
     val timestamp = 1234L
     val result = pivot(Array((ts, timestamp)))
@@ -40,8 +40,8 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
       "A" -> List(10L).asJava,
       "B" -> List(20L).asJava
     ).asJava
-    result.getHistogram.asScala.mapValues(_.asScala.toList) shouldEqual
-      expectedHistogram.asScala.mapValues(_.asScala.toList)
+    result.getHistogram.asScala.mapValues(_.asScala.toList).toMap shouldEqual
+      expectedHistogram.asScala.mapValues(_.asScala.toList).toMap
 
     // Check timestamps
     result.getTimestamps.asScala shouldEqual List(timestamp)
@@ -77,10 +77,10 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
 
   it should "handle histogram merging for multiple entries" in {
     val ts1 = new TileSummary()
-    ts1.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).asJava)
+    ts1.setHistogram(Map("A" -> 10L, "B" -> 20L).mapValues(Long.box).toMap.asJava)
 
     val ts2 = new TileSummary()
-    ts2.setHistogram(Map("B" -> 30L, "C" -> 40L).mapValues(Long.box).asJava)
+    ts2.setHistogram(Map("B" -> 30L, "C" -> 40L).mapValues(Long.box).toMap.asJava)
 
     val result = pivot(
       Array(
@@ -94,8 +94,8 @@ class PivotUtilsTest extends AnyFlatSpec with Matchers {
       "C" -> List(Constants.magicNullLong, 40L).asJava
     ).asJava
 
-    result.getHistogram.asScala.mapValues(_.asScala.toList) shouldEqual
-      expectedHistogram.asScala.mapValues(_.asScala.toList)
+    result.getHistogram.asScala.mapValues(_.asScala.toList).toMap shouldEqual
+      expectedHistogram.asScala.mapValues(_.asScala.toList).toMap
   }
 
   it should "handle null values in input" in {

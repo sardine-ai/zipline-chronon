@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
+import scala.collection.Seq
 
 object DDBTestUtils {
 
