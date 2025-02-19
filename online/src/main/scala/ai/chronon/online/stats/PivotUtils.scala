@@ -45,7 +45,7 @@ object PivotUtils {
       while (seriesIndex < seriesLength) {
         val list = lists(seriesIndex)
         val value: T = if (list == null) {
-          null.asInstanceOf[T]
+          Constants.magicNullDouble.asInstanceOf[T]
         } else {
           val v = list.get(pctIndex)
           if (v == null || (v.isInstanceOf[Double] && v.asInstanceOf[Double].isNaN)) {
