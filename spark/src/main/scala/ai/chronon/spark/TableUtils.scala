@@ -18,11 +18,8 @@ package ai.chronon.spark
 
 import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.Query
-import ai.chronon.api.QueryUtils
+import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
@@ -35,30 +32,19 @@ import ai.chronon.spark.TableUtils.{
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import ai.chronon.spark.format.{DefaultFormatProvider, Format, FormatProvider}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
-import org.apache.spark.SparkException
-import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
-import org.apache.spark.sql.catalyst.plans.logical.Filter
-import org.apache.spark.sql.catalyst.plans.logical.Project
+import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.storage.StorageLevel
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.PrintWriter
-import java.io.StringWriter
-import java.time.Instant
-import java.time.ZoneId
+import java.io.{PrintWriter, StringWriter}
+import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
-import scala.collection.Seq
-import scala.collection.immutable
-import scala.collection.mutable
-import scala.util.Failure
-import scala.util.Try
+import scala.collection.{Seq, immutable, mutable}
+import scala.util.{Failure, Try}
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
@@ -255,37 +241,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def getSchemaFromTable(tableName: String): StructType = {
     sparkSession.read.load(DataPointer.from(tableName, sparkSession)).limit(1).schema
-  }
-
-  // method to check if a user has access to a table
-  // Needs provider
-  def checkTablePermission(tableName: String,
-                           fallbackPartition: String =
-                             partitionSpec.before(partitionSpec.at(System.currentTimeMillis()))): Boolean = {
-    logger.info(s"Checking permission for table $tableName...")
-    try {
-      // retrieve one row from the table
-      val partitionFilter = lastAvailablePartition(tableName).getOrElse(fallbackPartition)
-      sparkSession.read
-        .load(DataPointer.from(tableName, sparkSession))
-        .where(s"$partitionColumn='$partitionFilter'")
-        .limit(1)
-        .collect()
-      true
-    } catch {
-      case e: SparkException =>
-        if (e.getMessage.contains("ACCESS DENIED"))
-          logger.error(s"[Error] No access to table: $tableName ")
-        else {
-          logger.error(s"[Error] Encountered exception when reading table: $tableName.")
-        }
-        e.printStackTrace()
-        false
-      case e: Exception =>
-        logger.error(s"[Error] Encountered exception when reading table: $tableName.")
-        e.printStackTrace()
-        true
-    }
   }
 
   def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
@@ -848,13 +803,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
       scanDf
     }
-  }
-
-  def partitionRange(table: String): PartitionRange = {
-    val parts = partitions(table)
-    val minPartition = parts.reduceOption(Ordering[String].min).orNull
-    val maxPartition = parts.reduceOption(Ordering[String].max).orNull
-    PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }
 

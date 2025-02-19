@@ -17,42 +17,23 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Accuracy
-import ai.chronon.api.AggregationPart
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.Constants
-import ai.chronon.api.DataModel.DataModel
-import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.DataModel.Events
-import ai.chronon.api.DataType
+import ai.chronon.api.DataModel.{DataModel, Entities, Events}
+import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
-import ai.chronon.online.PartitionRange
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.{PartitionRange, SparkConversions}
 import ai.chronon.spark.Driver.parseConf
 import ai.chronon.spark.Extensions.QuerySparkOps
 import org.apache.datasketches.common.ArrayOfStringsSerDe
-import org.apache.datasketches.frequencies.ErrorType
-import org.apache.datasketches.frequencies.ItemsSketch
+import org.apache.datasketches.frequencies.{ErrorType, ItemsSketch}
 import org.apache.datasketches.memory.Memory
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.from_unixtime
-import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.functions.sum
-import org.apache.spark.sql.functions.when
-import org.apache.spark.sql.types
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructType
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, Row, types}
+import org.apache.spark.sql.types.{StringType, StructType}
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.Seq
-import scala.collection.immutable
-import scala.collection.mutable
+import scala.collection.{Seq, immutable, mutable}
 import scala.collection.mutable.ListBuffer
 
 //@SerialVersionUID(3457890987L)
@@ -275,7 +256,6 @@ class Analyzer(tableUtils: TableUtils,
 
   def analyzeJoin(joinConf: api.Join,
                   skewDetection: Boolean = false,
-                  validateTablePermission: Boolean = false,
                   validationAssert: Boolean = false): (Map[String, DataType], ListBuffer[AggregationMetadata]) = {
     val name = "joins/" + joinConf.metaData.name
     logger.info(s"""|Running join analysis for $name ...\n""".stripMargin)
@@ -348,9 +328,6 @@ class Analyzer(tableUtils: TableUtils,
       if (gbStartPartition.nonEmpty)
         gbStartPartitions += (part.groupBy.metaData.name -> gbStartPartition)
     }
-    val noAccessTables = if (validateTablePermission) {
-      runTablePermissionValidation((gbTables.toList ++ List(joinConf.left.table)).toSet)
-    } else Set()
 
     val rightSchema: Map[String, DataType] =
       aggregationsMetadata.map(aggregation => (aggregation.name, aggregation.columnType)).toMap
@@ -385,19 +362,13 @@ class Analyzer(tableUtils: TableUtils,
       logger.info(keyErrorSet.map { case (key, errorMsg) => s"$key => $errorMsg" }.mkString("\n    ").yellow)
     }
 
-    if (noAccessTables.nonEmpty) {
-      logger.info(
-        s"-- Table permission check completed. Found permission errors in ${noAccessTables.size} tables --".red)
-      logger.info(noAccessTables.mkString("\n    ").yellow)
-    }
-
     if (dataAvailabilityErrors.nonEmpty) {
       logger.info(s"-- Data availability check completed. Found issue in ${dataAvailabilityErrors.size} tables --".red)
       dataAvailabilityErrors.foreach(error =>
         logger.info(s"    Group_By ${error._2} : Source Tables ${error._1} : Expected start ${error._3}".yellow))
     }
 
-    if (keysWithError.isEmpty && noAccessTables.isEmpty && dataAvailabilityErrors.isEmpty) {
+    if (keysWithError.isEmpty && dataAvailabilityErrors.isEmpty) {
       logger.info("-- Backfill validation completed. No errors found. --".green)
     }
 
@@ -406,12 +377,12 @@ class Analyzer(tableUtils: TableUtils,
         // For joins with bootstrap_parts, do not assert on data availability errors, as bootstrap can cover them
         // Only print out the errors as a warning
         assert(
-          keysWithError.isEmpty && noAccessTables.isEmpty,
+          keysWithError.isEmpty,
           "ERROR: Join validation failed. Please check error message for details."
         )
       } else {
         assert(
-          keysWithError.isEmpty && noAccessTables.isEmpty && dataAvailabilityErrors.isEmpty,
+          keysWithError.isEmpty && dataAvailabilityErrors.isEmpty,
           "ERROR: Join validation failed. Please check error message for details."
         )
       }
@@ -440,18 +411,6 @@ class Analyzer(tableUtils: TableUtils,
             s"[ERROR]: Join key, '$leftKey', has mismatched data types - left type: ${left(
               leftKey)} vs. right type ${right(rightKey)}")
       case _ => None
-    }
-  }
-
-  // validate the table permissions for given list of tables
-  // return a list of tables that the user doesn't have access to
-  private def runTablePermissionValidation(sources: Set[String]): Set[String] = {
-    logger.info(s"Validating ${sources.size} tables permissions ...")
-    val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
-    //todo: handle offset-by-1 depending on temporal vs snapshot accuracy
-    val partitionFilter = tableUtils.partitionSpec.minus(today, new Window(2, TimeUnit.DAYS))
-    sources.filter { sourceTable =>
-      !tableUtils.checkTablePermission(sourceTable, partitionFilter)
     }
   }
 
