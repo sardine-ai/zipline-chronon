@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Type
 
 from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery, Team
+from ai.chronon.cli.compile.compile_status import CompileStatus
 from ai.chronon.cli.compile.serializer import file2thrift
 from ai.chronon.cli.compile.conf_validator import ConfValidator
 import ai.chronon.cli.compile.parse_teams as teams
@@ -56,6 +57,7 @@ class CompileContext:
             existing_gbs=self.existing_confs[GroupBy],
             existing_joins=self.existing_confs[Join],
         )
+        self.compile_status = CompileStatus()
 
     def input_dir(self, cls: type) -> str:
         """

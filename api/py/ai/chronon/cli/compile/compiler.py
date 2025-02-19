@@ -36,13 +36,13 @@ class Compiler:
 
         for config_info in config_infos:
 
-            compile_results[config_info.config_type] = self._parse_and_write_folder(
+            compile_results[config_info.config_type] = self._compile_class_configs(
                 config_info
             )
 
         return compile_results
 
-    def _parse_and_write_folder(self, config_info: ConfigInfo) -> CompileResult:
+    def _compile_class_configs(self, config_info: ConfigInfo) -> CompileResult:
 
         compile_result = CompileResult(
             config_info=config_info, obj_dict={}, error_dict={}
