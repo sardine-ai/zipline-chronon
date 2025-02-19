@@ -24,8 +24,8 @@ WORKDIR /app
 COPY ./api/py/test/sample /chronon_sample
 
 # COPY cli jars
-COPY ./spark/target/scala-2.12/spark-assembly-0.1.0-SNAPSHOT.jar /app/cli/spark.jar
-COPY ./cloud_aws/target/scala-2.12/cloud_aws-assembly-0.1.0-SNAPSHOT.jar /app/cli/cloud_aws.jar
+COPY ./docker-init/build-artifacts/spark_assembly_deploy.jar /app/cli/spark.jar
+COPY ./docker-init/build-artifacts/cloud_aws_lib_deploy.jar /app/cli/cloud_aws.jar
 COPY ./api/py/ai/chronon/repo/run.py /app/cli/
 ENV CHRONON_DRIVER_JAR="/app/cli/spark.jar"
 
@@ -38,7 +38,7 @@ COPY --from=spark-source /opt/bitnami/spark/bin /opt/spark/bin
 ENV CLASSPATH=/opt/spark/jars/*
 
 # Copy frontend + play zipped dist and set up app directory structure
-COPY ./hub/target/scala-2.12/hub-0.1.0-SNAPSHOT.jar /app
+COPY ./docker-init/build-artifacts/hub_assembly_deploy.jar /app
 COPY ./docker-init/hub/config.json /app
 
 EXPOSE 9000

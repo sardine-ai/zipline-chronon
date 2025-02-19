@@ -33,8 +33,8 @@ python3 -m pip install -U tox build
 * Install [asdf](https://asdf-vm.com/guide/getting-started.html#_2-download-asdf)
 * ```asdf plugin add asdf-plugin-manager```
 * ```asdf install asdf-plugin-manager latest```
-* ```asdf-plugin-manager add-all``` (see `.plugin-versions` for required plugins)
-* ```asdf-plugin-manager update-all```
+* ```asdf exec asdf-plugin-manager add-all``` (see `.plugin-versions` for required plugins)
+* ```asdf exec asdf-plugin-manager update-all```
 * ```asdf install``` (see `.tool-versions` for required runtimes and versions)
 
 
@@ -73,6 +73,7 @@ export PATH="/usr/local/bin:${PATH}"
    - Use `.bazelproject` as project view file
 - We should see a bazel icon in the top right corner to the left of search bar
    - Used for incremental sync after build config changes
+   - The first build might take some time, ~15 minutes or so
 - We can directly build and test all our targets from IntelliJ
 
 ### Remote Caching

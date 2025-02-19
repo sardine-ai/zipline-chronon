@@ -43,7 +43,7 @@ start_time=$(date +%s)
 # throws java.lang.ClassFormatError accessible: module java.base does not "opens java.lang" to unnamed module @36328710
 export JAVA_OPTS="--add-opens java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED"
 exec java \
-  -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005  hub-0.1.0-SNAPSHOT.jar \
+  -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005  hub_assembly_deploy.jar \
   run ai.chronon.hub.HubVerticle \
   -Dserver.port=9000 \
   -Dai.chronon.metrics.host=$STATSD_HOST \
