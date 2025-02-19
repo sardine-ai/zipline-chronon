@@ -24,9 +24,9 @@
 	x="date"
 	y="value"
 	series={[
-		{ label: 'p95', color: '#4B92FF', index: 19 },
-		{ label: 'p50', color: '#7DFFB3', index: 10 },
-		{ label: 'p5', color: '#FDDD61', index: 1 }
+		{ label: 'p95', color: '#4B92FF', index: 2 },
+		{ label: 'p50', color: '#7DFFB3', index: 1 },
+		{ label: 'p5', color: '#FDDD61', index: 0 }
 	].map((c) => {
 		const timestamps = data.timestamps ?? [];
 		const values = data.percentiles?.[c.index] ?? [];
