@@ -179,7 +179,7 @@ class LogFlattenerJob(session: SparkSession,
     session
       .table(schemaTable)
       .where(col(tableUtils.partitionColumn) === schemaTableDs.get)
-      .where(col(Constants.SchemaHash).isin(hashes: _*))
+      .where(col(Constants.SchemaHash).isin(hashes.toSeq: _*))
       .select(
         col(Constants.SchemaHash),
         col("schema_value_last").as("schema_value")
@@ -218,7 +218,7 @@ class LogFlattenerJob(session: SparkSession,
       val schemaStringsMap = fetchSchemas(schemaHashes)
 
       // we do not have exact joinConf at time of logging, and since it is not used during flattening, we pass in null
-      val schemaMap = schemaStringsMap.mapValues(LoggingSchema.parseLoggingSchema).map(identity)
+      val schemaMap = schemaStringsMap.mapValues(LoggingSchema.parseLoggingSchema).map(identity).toMap
       val flattenedDf = flattenKeyValueBytes(rawDf, schemaMap)
 
       val schemaTblProps = buildTableProperties(schemaStringsMap)
@@ -259,5 +259,6 @@ object LogFlattenerJob {
       .map { case (key, value) =>
         (key.substring(Constants.SchemaHash.length + 1), value)
       }
+      .toMap
   }
 }

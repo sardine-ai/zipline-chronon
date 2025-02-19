@@ -28,6 +28,7 @@ import ai.chronon.api.StructType
 import org.apache.avro.generic.GenericData
 
 import scala.collection.JavaConverters._
+import scala.collection.Seq
 
 object TileCodec {
   def buildRowAggregator(groupBy: GroupBy, inputSchema: Seq[(String, DataType)]): RowAggregator = {

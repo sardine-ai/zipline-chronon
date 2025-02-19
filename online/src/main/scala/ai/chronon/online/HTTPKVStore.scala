@@ -6,6 +6,7 @@ import sttp.model.StatusCode
 
 import java.util.Base64
 import scala.concurrent.Future
+import scala.collection.Seq
 
 // Hacky test kv store that we use to send objects to the in-memory KV store that lives in a different JVM (e.g spark -> hub)
 class HTTPKVStore(host: String = "localhost", port: Int = 9000) extends KVStore with Serializable {

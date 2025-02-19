@@ -1,5 +1,7 @@
 package ai.chronon.flink.types
 
+import ai.chronon.api.ScalaJavaConversions.IteratorOps
+
 import java.util
 import java.util.Objects
 
@@ -23,7 +25,7 @@ class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long]) {
     s"TimestampedIR(ir=${ir.mkString(", ")}, latestTsMillis=$latestTsMillis)"
 
   override def hashCode(): Int =
-    Objects.hash(ir.deep, latestTsMillis)
+    Objects.hash(util.Arrays.deepToString(ir.asInstanceOf[Array[AnyRef]]), latestTsMillis)
 
   override def equals(other: Any): Boolean =
     other match {
@@ -45,15 +47,17 @@ class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long]) {
   * Changed keys type to Seq[Any] instead of List[Any] otherwise we are running into accessing head of null list
   * runtime error for tests which is very weird and was hard to debug the root cause.
   */
-class TimestampedTile(var keys: Seq[Any], var tileBytes: Array[Byte], var latestTsMillis: Long) {
-  def this() = this(List(), Array(), 0L)
+class TimestampedTile(var keys: util.List[Any], var tileBytes: Array[Byte], var latestTsMillis: Long) {
+  def this() = this(new util.ArrayList[Any](), Array(), 0L)
 
   override def toString: String =
-    s"TimestampedTile(keys=${keys.mkString(", ")}, tileBytes=${java.util.Base64.getEncoder
+    s"TimestampedTile(keys=${keys.iterator().toScala.mkString(", ")}, tileBytes=${java.util.Base64.getEncoder
       .encodeToString(tileBytes)}, latestTsMillis=$latestTsMillis)"
 
   override def hashCode(): Int =
-    Objects.hash(keys.toArray.deep, tileBytes, latestTsMillis.asInstanceOf[java.lang.Long])
+    Objects.hash(util.Arrays.deepToString(keys.toArray.asInstanceOf[Array[AnyRef]]),
+                 tileBytes,
+                 latestTsMillis.asInstanceOf[java.lang.Long])
 
   override def equals(other: Any): Boolean =
     other match {

@@ -84,7 +84,7 @@ object Fetcher {
   }
 }
 
-private[online] case class FetcherResponseWithTs(responses: scala.collection.Seq[Response], endTs: Long)
+private[online] case class FetcherResponseWithTs(responses: Seq[Response], endTs: Long)
 
 // BaseFetcher + Logging + External service calls
 class Fetcher(val kvStore: KVStore,
@@ -200,14 +200,13 @@ class Fetcher(val kvStore: KVStore,
     },
     { join: String => Metrics.Context(environment = "join.codec.fetch", join = join) })
 
-  private[online] def withTs(responses: Future[scala.collection.Seq[Response]]): Future[FetcherResponseWithTs] = {
+  private[online] def withTs(responses: Future[Seq[Response]]): Future[FetcherResponseWithTs] = {
     responses.map { response =>
       FetcherResponseWithTs(response, System.currentTimeMillis())
     }
   }
 
-  override def fetchJoin(requests: scala.collection.Seq[Request],
-                         joinConf: Option[api.Join] = None): Future[scala.collection.Seq[Response]] = {
+  override def fetchJoin(requests: Seq[Request], joinConf: Option[api.Join] = None): Future[Seq[Response]] = {
     val ts = System.currentTimeMillis()
     val internalResponsesF = super.fetchJoin(requests, joinConf)
     val externalResponsesF = fetchExternal(requests)
@@ -384,7 +383,7 @@ class Fetcher(val kvStore: KVStore,
   }
 
   // Pulling external features in a batched fashion across services in-parallel
-  def fetchExternal(joinRequests: scala.collection.Seq[Request]): Future[scala.collection.Seq[Response]] = {
+  def fetchExternal(joinRequests: Seq[Request]): Future[Seq[Response]] = {
     val startTime = System.currentTimeMillis()
     val resultMap = new mutable.LinkedHashMap[Request, Try[mutable.HashMap[String, Any]]]
     var invalidCount = 0

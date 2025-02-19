@@ -8,7 +8,7 @@ import ai.chronon.api.GroupBy
 import ai.chronon.api.GroupByServingInfo
 import ai.chronon.api.Operation
 import ai.chronon.api.PartitionSpec
-import ai.chronon.api.ScalaJavaConversions.JListOps
+import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.flink.AsyncKVStoreWriter
@@ -35,7 +35,7 @@ import java.util.Collections
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters.asScalaBufferConverter
+import scala.collection.Seq
 
 case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: Long)
 
@@ -100,7 +100,7 @@ object FlinkTestUtils {
     // Set key avro schema for groupByServingInfo
     groupByServingInfo.setKeyAvroSchema(
       StructType(
-        groupBy.keyColumns.asScala.map { keyCol =>
+        groupBy.keyColumns.toScala.map { keyCol =>
           val keyColStructType = outputSchema.fields.find(field => field.name == keyCol)
           keyColStructType match {
             case Some(col) => col
@@ -113,7 +113,7 @@ object FlinkTestUtils {
     )
 
     // Set value avro schema for groupByServingInfo
-    val aggInputColNames = groupBy.aggregations.asScala.map(_.inputColumn).toList
+    val aggInputColNames = groupBy.aggregations.toScala.map(_.inputColumn).toList
     groupByServingInfo.setSelectedAvroSchema(
       StructType(outputSchema.fields.filter(field => aggInputColNames.contains(field.name)))
         .toAvroSchema("Value")

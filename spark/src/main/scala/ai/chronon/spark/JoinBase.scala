@@ -315,7 +315,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     }
     val rightDfWithDerivations = if (joinPart.groupBy.hasDerivations) {
       val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(rightDf.columns)
-      val result = rightDf.select(finalOutputColumns: _*)
+      val result = rightDf.select(finalOutputColumns.toSeq: _*)
       result
     } else {
       rightDf

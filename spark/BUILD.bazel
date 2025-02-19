@@ -1,7 +1,10 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
     visibility = ["//visibility:public"],
     deps = [
         "//aggregator:lib",
@@ -42,6 +45,7 @@ scala_library(
         maven_artifact("net.sf.py4j:py4j"),
         maven_artifact("org.apache.avro:avro"),
         maven_artifact("org.apache.thrift:libthrift"),
+        spark_artifact("org.apache.hadoop:hadoop-common"),
     ],
 )
 
@@ -89,20 +93,26 @@ test_deps = [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = True,
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
+    visibility = ["//visibility:public"],
     deps = test_deps,
 )
 
 scala_test_suite(
     name = "tests",
-    tags = ["large"],
-    srcs = glob(["src/test/scala/ai/chronon/spark/test/*.scala",
-                 "src/test/scala/ai/chronon/spark/test/udafs/*.scala",
-                 "src/test/scala/ai/chronon/spark/test/stats/drift/*.scala",
-                 "src/test/scala/ai/chronon/spark/test/bootstrap/*.scala"]),
+    srcs = glob([
+        "src/test/scala/ai/chronon/spark/test/*.scala",
+        "src/test/scala/ai/chronon/spark/test/udafs/*.scala",
+        "src/test/scala/ai/chronon/spark/test/stats/drift/*.scala",
+        "src/test/scala/ai/chronon/spark/test/bootstrap/*.scala",
+    ]),
     data = glob(["spark/src/test/resources/**/*"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    tags = ["large"],
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )
@@ -110,9 +120,9 @@ scala_test_suite(
 scala_test_suite(
     name = "fetcher_test",
     srcs = glob(["src/test/scala/ai/chronon/spark/test/fetcher/*.scala"]),
-    resources = ["//spark/src/test/resources:test-resources"],
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    resources = ["//spark/src/test/resources:test-resources"],
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )
@@ -130,10 +140,10 @@ scala_test_suite(
 scala_test_suite(
     name = "join_test",
     srcs = glob(["src/test/scala/ai/chronon/spark/test/join/*.scala"]),
-    tags = ["large"],
     data = glob(["spark/src/test/resources/**/*"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    tags = ["large"],
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )

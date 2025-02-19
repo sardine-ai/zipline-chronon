@@ -12,7 +12,7 @@ import java.util.{ArrayList => JArrayList}
 import java.util.{HashMap => JHashMap}
 import java.util.{List => JList}
 import java.util.{Map => JMap}
-import scala.jdk.CollectionConverters._
+import ai.chronon.api.ScalaJavaConversions._
 
 // class to convert array of structs with numeric data, to single struct with arrays of numeric data
 // currently supports TileSummary => TileSummarySeries
@@ -69,7 +69,7 @@ object PivotUtils {
     val result = new JHashMap[String, JList[T]]()
 
     val allKeys = maps.iterator
-      .flatMap(m => if (m == null) Iterator.empty else m.keySet().iterator().asScala)
+      .flatMap(m => if (m == null) Iterator.empty else m.keySet().iterator().toScala)
       .toSet
 
     // entire set of keys

@@ -28,6 +28,8 @@ import scala.util.Success
 import scala.util.Try
 import java.util.ArrayList
 
+import scala.collection.Seq
+
 class DriftStore(kvStore: KVStore,
                  summaryDataset: String = Constants.TiledSummaryDataset,
                  metadataDataset: String = Constants.MetadataDataset)
@@ -56,7 +58,7 @@ class DriftStore(kvStore: KVStore,
           key.setSizeMillis(tileSizeMillis)
           key
         }
-    }
+    }.toMap
   }
 
   private case class SummaryRequestContext(request: GetRequest, tileKey: TileKey, groupName: String)

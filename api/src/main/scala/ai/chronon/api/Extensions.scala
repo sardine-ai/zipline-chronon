@@ -917,7 +917,7 @@ object Extensions {
 
     def outputColumnsByGroup: Map[String, Array[String]] = {
       val preDeriveCols = (joinPartColumns ++ externalPartColumns)
-      val preDerivedWithoutRenamed = preDeriveCols.mapValues(_.filterNot(renamedColumns.contains))
+      val preDerivedWithoutRenamed = preDeriveCols.mapValues(_.filterNot(renamedColumns.contains)).toMap
       val derivedColumns: Array[String] = Option(join.derivations) match {
         case Some(derivations) => derivations.toScala.map { _.getName }.filter(_ == "*").toArray
         case None              => Array.empty
