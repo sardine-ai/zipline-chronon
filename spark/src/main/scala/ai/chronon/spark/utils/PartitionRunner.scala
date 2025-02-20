@@ -100,7 +100,7 @@ class PartitionRunner[T](verb: String,
     inputSteps.zip(outputSteps)
   }
 
-  //TODO: hand this over to the control plane once we build it to run in parallel
+  // TODO: hand this over to the control plane once we build it to run in parallel
   //       and to merge racing jobs
   def runInSequence: Option[T] = {
     val ranges = computeRanges
@@ -133,8 +133,8 @@ class PartitionRunner[T](verb: String,
 
   def partitionRange(table: String): PartitionRange = {
     val parts = tu.partitions(table)
-    val minPartition = parts.reduceOption(Ordering[String].min).orNull
-    val maxPartition = parts.reduceOption(Ordering[String].max).orNull
+    val minPartition = if (parts.isEmpty) null else parts.min
+    val maxPartition = if (parts.isEmpty) null else parts.max
     PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }
