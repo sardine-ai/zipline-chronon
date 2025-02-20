@@ -16,7 +16,7 @@ import type {
 } from '$lib/types/codegen';
 import { ConfType, DriftMetric, Status } from '$lib/types/codegen';
 import type { ConfListResponse } from '$lib/types/codegen/ConfListResponse';
-import { joinToLineage } from './utils';
+import { confToLineage } from './utils';
 
 export type ApiOptions = {
 	base?: string;
@@ -160,7 +160,38 @@ export class Api {
 
 		// TODO: Remove this once we have the API endpoint
 		return this.getJoin(name!).then((join) => {
-			return joinToLineage(join);
+			return confToLineage(join);
+		});
+	}
+
+	async getGroupByLineage({
+		name
+		// type,
+		// branch,
+		// direction
+	}: ILineageRequestArgs): Promise<ILineageResponse> {
+		// TODO: Remove this once we have the API endpoint
+		return this.getGroupBy(name!).then((groupBy) => {
+			return confToLineage(groupBy);
+		});
+	}
+
+	async getModelLineage({
+		name
+		// type,
+		// branch,
+		// direction
+	}: ILineageRequestArgs): Promise<ILineageResponse> {
+		// TODO: Remove this once we have the API endpoint
+		return this.getModel(name!).then((model) => {
+			return confToLineage(model);
+		});
+	}
+
+	async getStagingQueryLineage({ name }: ILineageRequestArgs): Promise<ILineageResponse> {
+		// TODO: Remove this once we have the API endpoint
+		return this.getStagingQuery(name!).then((stagingQuery) => {
+			return confToLineage(stagingQuery);
 		});
 	}
 

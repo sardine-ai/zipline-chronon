@@ -4,9 +4,9 @@
 
 	const { data } = $props();
 
-	// TODO: remove this once we have data for all joins
-	const sortedItems = sort(data.items, (d) =>
-		d.metaData?.name === 'risk.user_transactions.txn_join' ? -1 : 1
+	// TODO: remove this once we have observability data for all joins
+	const sortedItems = $derived(
+		sort(data.items, (d) => (d.metaData?.name === 'risk.user_transactions.txn_join' ? -1 : 1))
 	);
 </script>
 

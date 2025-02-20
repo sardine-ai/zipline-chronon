@@ -19,7 +19,9 @@
 		type ISource,
 		type IMetaData,
 		type IJoinSource,
-		Operation
+		Operation,
+		ModelType,
+		DataKind
 	} from '$src/lib/types/codegen';
 	import { keys } from '@layerstack/utils';
 	import Self from './ConfProperties.svelte';
@@ -75,19 +77,23 @@
 <div class="grid gap-4 text-sm overflow-auto">
 	{#if conf?.metaData}
 		<div>
-			<div class="font-semibold py-2">{metaDataLabel}</div>
+			{#if metaDataLabel}
+				<div class="font-semibold py-2">{metaDataLabel}</div>
+			{/if}
 			<div class="border border-neutral-400 rounded-md">
 				<Table density="compact">
 					<TableBody>
 						{#each METADATA_PROPERTIES as prop}
-							<TableRow class="border-neutral-400">
-								<TableCell width="200px">
-									<span class="text-muted-foreground">{prop}</span>
-								</TableCell>
-								<TableCell>
-									{conf.metaData[prop]}
-								</TableCell>
-							</TableRow>
+							{#if prop in conf.metaData}
+								<TableRow class="border-neutral-400">
+									<TableCell width="200px">
+										<span class="text-muted-foreground">{prop}</span>
+									</TableCell>
+									<TableCell>
+										{conf.metaData[prop]}
+									</TableCell>
+								</TableRow>
+							{/if}
 						{/each}
 					</TableBody>
 				</Table>
@@ -95,28 +101,87 @@
 		</div>
 	{/if}
 
-	{#if conf?.left && includeUpstream}
+	{#if 'modelType' in conf}
 		<div>
-			<div class="font-semibold py-2">
-				Left ({conf.left.entities ? 'entity' : conf.left.events ? 'event' : 'join'})
-			</div>
+			<div class="font-semibold py-2">Model</div>
 			<div class="border border-neutral-400 rounded-md">
 				<Table density="compact">
 					<TableBody>
 						<TableRow class="border-neutral-400">
+							<TableCell width="200px">
+								<span class="text-muted-foreground">modelType</span>
+							</TableCell>
 							<TableCell>
-								<Self
-									conf={(conf.left.entities ??
-										conf.left.events ??
-										conf.left.joinSource) as typeof conf}
-									{includeUpstream}
-								/>
+								{ModelType[conf.modelType ?? 0]}
+							</TableCell>
+						</TableRow>
+
+						<TableRow class="border-neutral-400">
+							<TableCell width="200px">
+								<span class="text-muted-foreground">modelParams</span>
+							</TableCell>
+							<TableCell>
+								{#each Object.entries(conf.modelParams ?? {}) as [key, value]}
+									<div>
+										<span class="text-muted-foreground">{key}:</span>
+										{value}
+									</div>
+								{/each}
+							</TableCell>
+						</TableRow>
+
+						<TableRow class="border-neutral-400">
+							<TableCell width="200px">
+								<span class="text-muted-foreground">outputSchema</span>
+							</TableCell>
+							<TableCell>
+								<div>
+									<span class="text-muted-foreground">name:</span>
+									{conf.outputSchema?.name}
+								</div>
+								<div>
+									<span class="text-muted-foreground">kind:</span>
+									{DataKind[conf.outputSchema?.kind ?? 0]}
+								</div>
+								<div>
+									<span class="text-muted-foreground">params:</span>
+									{conf.outputSchema?.params?.map((p) => `${p.name}: ${p.dataType}`).join(', ')}
+								</div>
 							</TableCell>
 						</TableRow>
 					</TableBody>
 				</Table>
 			</div>
 		</div>
+	{/if}
+
+	{#if (conf?.left || conf?.source) && includeUpstream}
+		{@const source = conf.left ?? conf.source}
+		{#if source}
+			<div>
+				<div class="font-semibold py-2">
+					{conf.left ? 'Left' : 'Source'} ({source.entities
+						? 'entity'
+						: source.events
+							? 'event'
+							: 'join'})
+				</div>
+				<div class="border border-neutral-400 rounded-md">
+					<Table density="compact">
+						<TableBody>
+							<TableRow class="border-neutral-400">
+								<TableCell>
+									<Self
+										conf={(source.entities ?? source.events ?? source.joinSource) as typeof conf}
+										{includeUpstream}
+									/>
+								</TableCell>
+							</TableRow>
+						</TableBody>
+					</Table>
+				</div>
+			</div>
+		{/if}
 	{/if}
 
 	{#if conf?.rowIds}

@@ -14,8 +14,6 @@
 	import { formatDate } from '$lib/util/format';
 	import { DRIFT_METRIC_SCALES } from '$lib/util/drift-metric';
 	import ChartControls from '$lib/components/ChartControls.svelte';
-	import type { JoinData } from '$routes/joins/[slug]/services/joins.service';
-	import ModelTable from '$routes/joins/[slug]/observability/ModelTable.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
 	import FeaturesLineChart from '$lib/components/charts/FeaturesLineChart.svelte';
@@ -35,7 +33,7 @@
 
 	const api = new Api();
 
-	const { data }: { data: JoinData } = $props();
+	const { data } = $props();
 
 	const sortContext = 'drift';
 	const sortKey = getSortParamKey(sortContext);
@@ -44,6 +42,7 @@
 		showDefaults: false
 	});
 	const sortDirection = $derived(params[sortKey]);
+	// TODO: Determine why sortDirection is not updating if client-side routed to page (page refresh or HMR fixes it though)
 
 	const baselineOffset: Duration = { days: 7 };
 
@@ -90,7 +89,7 @@
 
 		if (seriesPoint) {
 			try {
-				const joinName = data.join?.metaData?.name?.replace('/', '.') ?? 'Unknown';
+				const joinName = data.conf?.metaData?.name?.replace('/', '.') ?? 'Unknown';
 				const columnName = seriesPoint.series.key.toString();
 
 				// TODO: Add loading and error states
@@ -119,10 +118,6 @@
 		}
 	}
 </script>
-
-{#if data.model}
-	<ModelTable model={data.model} />
-{/if}
 
 <div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
 	<ChartControls

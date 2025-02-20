@@ -1,10 +1,10 @@
 import { Api } from '$lib/api/api';
 
 export const load = async ({ parent, fetch }) => {
-	const { join, joinDrift, dateRange } = await parent();
+	const { conf, joinDrift, dateRange } = await parent();
 	const api = new Api({ fetch });
 
-	const joinName = join?.metaData?.name?.replace('/', '.') ?? 'Unknown';
+	const confName = conf?.metaData?.name?.replace('/', '.') ?? 'Unknown';
 	const columnNames = joinDrift?.driftSeries.map((ds) => ds.key?.column ?? 'Unknown') ?? [];
 
 	// Fetch percentile data for each column
@@ -12,7 +12,7 @@ export const load = async ({ parent, fetch }) => {
 	const distributionsPromise = Promise.allSettled(
 		columnNames.map((columnName) =>
 			api.getColumnSummary({
-				name: joinName,
+				name: confName,
 				columnName: columnName,
 				startTs: dateRange.startTimestamp,
 				endTs: dateRange.endTimestamp

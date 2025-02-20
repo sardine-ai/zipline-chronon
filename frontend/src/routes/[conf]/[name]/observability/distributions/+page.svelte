@@ -7,9 +7,8 @@
 	import { getSortParamsConfig, getSortParamKey } from '$lib/util/sort';
 	import type { ITileSummarySeries } from '$src/lib/types/codegen';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
-	import ObservabilityNavTabs from '$routes/joins/[slug]/observability/ObservabilityNavTabs.svelte';
+	import ObservabilityNavTabs from '$routes/[conf]/[name]/observability/ObservabilityNavTabs.svelte';
 	import { Separator } from '$src/lib/components/ui/separator';
-	import ModelTable from '../ModelTable.svelte';
 	import PercentileLineChart from '$src/lib/components/charts/PercentileLineChart.svelte';
 
 	const { data } = $props();
@@ -42,10 +41,6 @@
 		xDomain = null;
 	}
 </script>
-
-{#if data.model}
-	<ModelTable model={data.model} />
-{/if}
 
 <div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
 	<ChartControls

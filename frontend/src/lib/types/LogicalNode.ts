@@ -13,27 +13,32 @@ export const logicalNodeConfig = {
 	[LogicalType.GROUP_BY]: {
 		label: 'GroupBys',
 		icon: getEntity(EntityTypes.GROUPBYS).icon,
-		color: '50 80% 50%'
+		color: '50 80% 50%',
+		url: '/groupbys'
 	},
 	[LogicalType.JOIN]: {
 		label: 'Joins',
 		icon: getEntity(EntityTypes.JOINS).icon,
-		color: '100 80% 50%'
+		color: '100 80% 50%',
+		url: '/joins'
 	},
 	[LogicalType.STAGING_QUERY]: {
 		label: 'Staging Queries',
 		icon: getEntity(EntityTypes.STAGINGQUERIES).icon,
-		color: '150 80% 50%'
+		color: '150 80% 50%',
+		url: '/stagingqueries'
 	},
 	[LogicalType.MODEL]: {
 		label: 'Models',
 		icon: getEntity(EntityTypes.MODELS).icon,
-		color: '200 80% 50%'
+		color: '200 80% 50%',
+		url: '/models'
 	},
 	[LogicalType.TABULAR_DATA]: {
 		label: 'Tabular Data',
 		icon: IconTableCells,
-		color: '220 80% 50%'
+		color: '220 80% 50%',
+		url: null // Not available
 	}
 };
 

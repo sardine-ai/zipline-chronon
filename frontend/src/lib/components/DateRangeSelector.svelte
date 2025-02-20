@@ -19,6 +19,10 @@
 	import { cn } from '$lib/utils';
 	import { RangeCalendar } from '$lib/components/ui/range-calendar/index';
 	import { getDateRangeParamsConfig } from '$lib/util/date-ranges';
+	import IconInformationCircle from '~icons/heroicons/information-circle';
+	import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+
+	const { fallbackDateRange }: { fallbackDateRange?: DateRange } = $props();
 
 	const params = queryParameters(getDateRangeParamsConfig(), {
 		pushHistory: false,
@@ -87,66 +91,99 @@
 	}
 </script>
 
-<div class="flex items-center">
-	<Popover bind:open={dateRangePopoverOpen}>
-		<PopoverTrigger asChild let:builder>
-			<Button
-				variant="outline"
-				size="sm"
-				class={cn('rounded-r-none', dateRangePopoverOpen && 'border border-primary-800')}
-				builders={[builder]}
-			>
-				<span>{selectDateRange?.label || 'Select range'}</span>
-				<span class="border-input border-l mx-2 h-full"></span>
-				<span>
-					{#if !calendarDateRangePopoverOpen && calendarDateRange && calendarDateRange.start}
-						{#if calendarDateRange.end}
-							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
-								calendarDateRange.end.toDate(getLocalTimeZone())
-							)}
-						{:else}
-							{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))}
+<Tooltip>
+	<TooltipTrigger>
+		<div class="flex items-center">
+			<Popover bind:open={dateRangePopoverOpen}>
+				<PopoverTrigger asChild let:builder>
+					<Button
+						variant="outline"
+						size="sm"
+						class={cn(
+							'rounded-r-none',
+							dateRangePopoverOpen && 'border border-primary-800',
+							'_border-warning-foreground'
+						)}
+						builders={[builder]}
+					>
+						<span>{selectDateRange?.label || 'Select range'}</span>
+						<span class="border-input border-l mx-2 h-full _border-warning-foreground"></span>
+						<span>
+							{#if calendarDateRangePopoverOpen || (calendarDateRange?.start == null && fallbackDateRange?.start == null)}
+								Pick a date
+							{:else if fallbackDateRange?.start}
+								{#if fallbackDateRange.end}
+									{df.format(fallbackDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
+										fallbackDateRange.end.toDate(getLocalTimeZone())
+									)}
+								{:else}
+									{df.format(fallbackDateRange.start.toDate(getLocalTimeZone()))}
+								{/if}
+							{:else if calendarDateRange?.start}
+								{#if calendarDateRange.end}
+									{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
+										calendarDateRange.end.toDate(getLocalTimeZone())
+									)}
+								{:else}
+									{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))}
+								{/if}
+							{/if}
+						</span>
+						{#if fallbackDateRange}
+							<IconInformationCircle class="ml-3 text-warning-foreground" />
 						{/if}
-					{:else}
-						Pick a date
-					{/if}
-				</span>
-			</Button>
-		</PopoverTrigger>
-		<PopoverContent class="w-[200px] p-0" align="start">
-			{#each getNonCustomDateRanges() as range}
-				<Button
-					variant="ghost"
-					class="w-full justify-start"
-					onclick={() => handleDateRangeSelect(range.value)}
-				>
-					{range.label}
-				</Button>
-			{/each}
-		</PopoverContent>
-	</Popover>
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent class="w-[200px] p-0" align="start">
+					{#each getNonCustomDateRanges() as range}
+						<Button
+							variant="ghost"
+							class="w-full justify-start"
+							onclick={() => handleDateRangeSelect(range.value)}
+						>
+							{range.label}
+						</Button>
+					{/each}
+				</PopoverContent>
+			</Popover>
 
-	<Popover bind:open={calendarDateRangePopoverOpen} openFocus>
-		<PopoverTrigger asChild let:builder>
-			<Button
-				variant="outline"
-				size="sm"
-				class={cn(
-					'rounded-l-none border-l-transparent',
-					calendarDateRangePopoverOpen && 'border border-primary-800 bg-primary hover:bg-primary'
-				)}
-				builders={[builder]}
-			>
-				<IconCalendarDateRange />
-			</Button>
-		</PopoverTrigger>
-		<PopoverContent class="w-auto p-0" align="start">
-			<RangeCalendar
-				bind:value={calendarDateRange}
-				numberOfMonths={1}
-				onValueChange={handleCalendarChange}
-				weekdayFormat="narrow"
-			/>
-		</PopoverContent>
-	</Popover>
-</div>
+			<Popover bind:open={calendarDateRangePopoverOpen} openFocus>
+				<PopoverTrigger asChild let:builder>
+					<Button
+						variant="outline"
+						size="sm"
+						class={cn(
+							'rounded-l-none border-l-transparent _border-warning-foreground',
+							calendarDateRangePopoverOpen &&
+								'border border-primary-800 bg-primary hover:bg-primary'
+						)}
+						builders={[builder]}
+					>
+						<IconCalendarDateRange />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent class="w-auto p-0" align="start">
+					<RangeCalendar
+						bind:value={calendarDateRange}
+						numberOfMonths={1}
+						onValueChange={handleCalendarChange}
+						weekdayFormat="narrow"
+					/>
+				</PopoverContent>
+			</Popover>
+		</div>
+	</TooltipTrigger>
+
+	{#if fallbackDateRange}
+		<TooltipContent side="bottom">
+			{#if calendarDateRange?.start && calendarDateRange?.end}
+				No data for
+				<span class="font-bold"
+					>{df.format(calendarDateRange.start.toDate(getLocalTimeZone()))} - {df.format(
+						calendarDateRange.end.toDate(getLocalTimeZone())
+					)}</span
+				>. Showing fallback data
+			{/if}
+		</TooltipContent>
+	{/if}
+</Tooltip>

@@ -2,36 +2,83 @@ import { InternMap } from 'd3';
 import {
 	LogicalType,
 	type IJoin,
+	type IJoinPart,
 	type ILineageResponse,
 	type ILogicalNode,
 	type INodeKey,
 	type ISource,
 	type NodeGraph
 } from '../types/codegen';
+import { getLogicalNodeType, type CombinedLogicalNode } from '../types/LogicalNode';
 
 /** Convert Join to LineageResponse by walking joinParts */
-export function joinToLineage(join: IJoin, excludeLeft = false): ILineageResponse {
+export function confToLineage(conf: CombinedLogicalNode, excludeLeft = false): ILineageResponse {
 	// Use `InternMap` insteaad of `Map` to support object keys (instances will be different once serialized/fetched from API) - https://d3js.org/d3-array/intern
 	// @ts-expect-error: Bad typing
 	const connections: NodeGraph['connections'] = new InternMap([], JSON.stringify);
 	// @ts-expect-error: Bad typing
 	const infoMap: NodeGraph['infoMap'] = new InternMap([], JSON.stringify);
 
-	const joinNodeKey: INodeKey = {
-		name: join.metaData?.name,
-		logicalType: LogicalType.JOIN
-	};
-	infoMap.set(joinNodeKey, {
-		conf: join as ILogicalNode
-	});
-	const joinParents: INodeKey[] = [];
-	connections.set(joinNodeKey, { parents: joinParents });
+	const logicalType = getLogicalNodeType(conf);
 
-	if (join.left && !excludeLeft) {
-		processSource(join.left, infoMap, connections, joinParents);
+	const confNodeKey: INodeKey = {
+		name:
+			'metaData' in conf && conf.metaData
+				? conf.metaData.name
+				: 'table' in conf
+					? conf.table
+					: 'Unknown',
+		logicalType
+	};
+	infoMap.set(confNodeKey, {
+		conf: conf as ILogicalNode
+	});
+	const confParents: INodeKey[] = [];
+	connections.set(confNodeKey, { parents: confParents });
+
+	/*
+	 * Join
+	 */
+	if ('left' in conf && conf.left && !excludeLeft) {
+		processSource(conf.left, infoMap, connections, confParents);
 	}
 
-	for (const jp of join.joinParts ?? []) {
+	if ('joinParts' in conf && conf.joinParts) {
+		processJoinParts(conf.joinParts, infoMap, connections, confParents);
+	}
+
+	/*
+	 * GroupBy
+	 */
+	if ('sources' in conf && conf.sources) {
+		for (const source of conf.sources ?? []) {
+			processSource(source, infoMap, connections, confParents);
+		}
+	}
+
+	/*
+	 * Model
+	 */
+	if ('source' in conf && conf.source) {
+		processSource(conf.source, infoMap, connections, confParents);
+	}
+
+	return {
+		nodeGraph: {
+			connections,
+			infoMap
+		},
+		mainNode: confNodeKey
+	};
+}
+
+function processJoinParts(
+	joinParts: IJoinPart[],
+	infoMap: NonNullable<NodeGraph['infoMap']>,
+	connections: NonNullable<NodeGraph['connections']>,
+	parents: INodeKey[]
+) {
+	for (const jp of joinParts ?? []) {
 		if (jp.groupBy) {
 			const groupByNodeKey: INodeKey = {
 				name: jp.groupBy.metaData?.name,
@@ -40,7 +87,7 @@ export function joinToLineage(join: IJoin, excludeLeft = false): ILineageRespons
 			infoMap.set(groupByNodeKey, {
 				conf: jp.groupBy as ILogicalNode
 			});
-			joinParents.push(groupByNodeKey);
+			parents.push(groupByNodeKey);
 
 			const groupByParents: INodeKey[] = [];
 			connections.set(groupByNodeKey, { parents: groupByParents });
@@ -50,14 +97,6 @@ export function joinToLineage(join: IJoin, excludeLeft = false): ILineageRespons
 			}
 		}
 	}
-
-	return {
-		nodeGraph: {
-			connections,
-			infoMap
-		},
-		mainNode: joinNodeKey
-	};
 }
 
 function processSource(
@@ -99,7 +138,7 @@ function processSource(
 		parents.push(joinNodeKey);
 
 		// Transfer connections and infoMap from joinSource join to root join graph
-		const joinSourceLineage = joinToLineage(source.joinSource.join as IJoin);
+		const joinSourceLineage = confToLineage(source.joinSource.join as IJoin);
 
 		for (const [key, nodeConnections] of joinSourceLineage.nodeGraph?.connections ?? []) {
 			connections.set(key === joinSourceLineage.mainNode ? joinNodeKey : key, nodeConnections);

@@ -25,15 +25,15 @@
 	<NavigationBar navItems={[...entityConfig]} {user} />
 	<!-- Main content -->
 	<main
-		class="flex-1 flex flex-col overflow-hidden bg-neutral-100 relative rounded-tl-xl"
+		class="flex-1 flex flex-col overflow-y-auto bg-neutral-100 relative rounded-tl-xl"
 		data-testid="app-main"
 	>
 		<div class="absolute top-0 bottom-0 w-px bg-border"></div>
 		<div
 			class="absolute top-0 left-0 w-full h-4 border-l border-t border-border rounded-tl-xl z-20"
 		></div>
-		<div class="flex-1 overflow-y-auto">
-			<div class="px-8 py-5">
+		<div class="px-8 flex-1 flex flex-col">
+			<div class="flex-1 flex flex-col py-5">
 				<BreadcrumbNav {breadcrumbs} class="mb-[38px]" />
 				{@render children()}
 			</div>

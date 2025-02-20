@@ -33,13 +33,16 @@
 	import ConfProperties from './ConfProperties.svelte';
 	import CollapsibleSection from '$src/lib/components/CollapsibleSection.svelte';
 	import { Separator } from '$lib/components/ui/separator';
+	import { Button } from '$src/lib/components/ui/button';
+
+	import IconArrowRight from '~icons/heroicons/arrow-right';
 
 	type DagreData = ComponentProps<Dagre>['data'];
 	type CustomNode = Node & { id: string; key: INodeKey; value: INodeInfo };
 
 	const { data } = $props();
 
-	const { connections, infoMap } = data.lineage.nodeGraph ?? {};
+	const { connections, infoMap } = $derived(data.lineage.nodeGraph ?? {});
 
 	const nodes: DagreData['nodes'] = $derived(
 		Array.from(infoMap?.entries() ?? []).map(([key, value]) => ({
@@ -57,7 +60,7 @@
 			}) ?? []
 		);
 	}
-	const edges = getEdges(data.lineage.mainNode!);
+	const edges = $derived(getEdges(data.lineage.mainNode!));
 
 	const chartData = $derived({ nodes, edges });
 
@@ -111,14 +114,14 @@
 
 <CollapsibleSection title="Details" bind:open={isDetailsOpen} class="mt-5 mb-6">
 	{#snippet collapsibleContent()}
-		<ConfProperties conf={data.join} />
+		<ConfProperties conf={data.conf} metaDataLabel="" />
 	{/snippet}
 </CollapsibleSection>
 
 <Separator fullWidthExtend={true} wide={true} />
 
-<div class="flex gap-2 py-4">
-	<div class="h-[600px] flex-1 border rounded">
+<div class="flex-1 flex py-4">
+	<div class="flex-1 border rounded">
 		<Chart
 			data={chartData}
 			transform={{
@@ -240,7 +243,7 @@
 										fadeEdge(edge as unknown as { source: CustomNode; target: CustomNode }) &&
 											'opacity-20'
 									)}
-									tweened
+									tweened={{ duration: 150 }}
 									curve={curveBumpX}
 									markerStart="circle"
 									markerEnd="circle"
@@ -257,7 +260,7 @@
 										fadeEdge(edge as unknown as { source: CustomNode; target: CustomNode }) &&
 											'opacity-0'
 									)}
-									tweened
+									tweened={{ duration: 150 }}
 									curve={curveBumpX}
 								/>
 							{/each}
@@ -315,7 +318,7 @@
 								classes={{ label: cn(tooltipProps.item.classes?.label, 'self-start') }}
 								valueAlign="left"
 							>
-								{#each Object.entries(data.value.conf.query.selects) as [key, _]}
+								{#each Object.entries(data.value.conf.query?.selects ?? {}) as [key, _]}
 									<div>{key}</div>
 								{/each}
 							</Tooltip.Item>
@@ -340,21 +343,36 @@
 					{@const config = getLogicalNodeConfig(selectedNode)}
 					{@const Icon = config?.icon}
 
-					<div class="h-full px-2 grid grid-cols-[auto_1fr] gap-3 items-center pb-4">
-						<div
-							style:--color={config.color}
-							class="bg-[hsl(var(--color)/5%)] border border-[hsl(var(--color))] text-[hsl(var(--color))] w-8 h-8 rounded flex items-center justify-center"
-						>
-							<Icon />
-						</div>
-						<div class="align-middle truncate">
-							<div class="text-xs text-surface-content/50">
-								{namespace}
+					<div class="grid grid-cols-[1fr_auto] gap-3">
+						<div class="h-full px-2 grid grid-cols-[auto_1fr] gap-3 items-center pb-4">
+							<div
+								style:--color={config.color}
+								class="bg-[hsl(var(--color)/5%)] border border-[hsl(var(--color))] text-[hsl(var(--color))] w-8 h-8 rounded flex items-center justify-center"
+							>
+								<Icon />
 							</div>
-							<div class="text-sm text-surface-content truncate">
-								{nameParts.join('.')}
+							<div class="align-middle truncate">
+								<div class="text-xs text-surface-content/50">
+									{namespace}
+								</div>
+								<div class="text-sm text-surface-content truncate">
+									{nameParts.join('.')}
+								</div>
 							</div>
 						</div>
+
+						{#if config.url && selectedNode.id !== data.lineage.mainNode?.name}
+							<div class="mr-10">
+								<Button
+									variant="outline"
+									href="{config.url}/{selectedNode.id}"
+									on:click={() => (selectedNode = null)}
+								>
+									Open
+									<IconArrowRight class="ml-2" />
+								</Button>
+							</div>
+						{/if}
 					</div>
 
 					<TabsList class="justify-start">

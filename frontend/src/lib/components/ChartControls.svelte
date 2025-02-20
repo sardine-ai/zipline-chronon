@@ -3,9 +3,8 @@
 	import DriftMetricToggle from '$lib/components/DriftMetricToggle.svelte';
 	import DateRangeSelector from '$lib/components/DateRangeSelector.svelte';
 	import ActionButtons from '$lib/components/ActionButtons.svelte';
-	import * as Alert from '$lib/components/ui/alert/index.js';
-	import { formatDate } from '$lib/util/format';
 	import type { SortContext } from '$lib/util/sort';
+	import { fromAbsolute, getLocalTimeZone } from '@internationalized/date';
 
 	let {
 		isZoomed = false,
@@ -29,30 +28,24 @@
 </script>
 
 <div class="space-y-4">
-	{#if isUsingFallbackDates}
-		<div class="w-fit">
-			<Alert.Root variant="warning">
-				<Alert.Description>
-					No data for that date range. Showing data between {formatDate(dateRange.startTimestamp)} and
-					{formatDate(dateRange.endTimestamp)}</Alert.Description
-				>
-			</Alert.Root>
-		</div>
-	{/if}
-
 	<div class="flex items-center space-x-6">
 		{#if isZoomed}
 			<ResetZoomButton onClick={onResetZoom} />
 		{/if}
-		<DateRangeSelector />
+		<DateRangeSelector
+			fallbackDateRange={isUsingFallbackDates
+				? {
+						start: fromAbsolute(dateRange.startTimestamp, getLocalTimeZone()),
+						end: fromAbsolute(dateRange.endTimestamp, getLocalTimeZone())
+					}
+				: undefined}
+		/>
 		{#if context === 'drift'}
 			<DriftMetricToggle />
 		{/if}
-	</div>
 
-	{#if showActionButtons}
-		<div>
+		{#if showActionButtons}
 			<ActionButtons {showCluster} {showSort} {context} />
-		</div>
-	{/if}
+		{/if}
+	</div>
 </div>
