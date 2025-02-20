@@ -1,0 +1,11 @@
+scala_library(
+    name = "dag_execution_workflow",
+    srcs = ["DAGExecutionWorkflow.scala"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api:thrift_java",
+        maven_artifact("io.temporal:temporal-sdk"),
+        maven_artifact("io.temporal:temporal-serviceclient"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    ],
+)

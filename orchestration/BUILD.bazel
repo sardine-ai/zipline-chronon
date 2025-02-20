@@ -13,6 +13,9 @@ scala_library(
         scala_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("io.temporal:temporal-sdk"),
+        maven_artifact("io.temporal:temporal-serviceclient"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
     ],
 )
 

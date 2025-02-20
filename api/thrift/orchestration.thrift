@@ -270,7 +270,10 @@ union Dependency {
     2: optional TableDependency tableDependency
 }
 
-
+struct PhysicalNodeGraph {
+    1: optional list<PhysicalNodeInstance> leafNodes
+    2: optional map<PhysicalNodeKey, PhysicalNodeInstance> infoMap
+}
 
 
 
