@@ -35,11 +35,12 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
     .map(_.toScala.toMap)
     .orNull
 
-  private val partitionCols: Seq[String] = Seq(tableUtils.partitionColumn) ++
-    Option(stagingQueryConf.metaData.customJsonLookUp(key = "additional_partition_cols"))
-      .getOrElse(new java.util.ArrayList[String]())
-      .asInstanceOf[java.util.ArrayList[String]]
-      .toScala
+  private val partitionCols: Seq[String] =
+    Seq(Option(stagingQueryConf.getPartitionColumn).getOrElse(tableUtils.partitionColumn)) ++
+      Option(stagingQueryConf.metaData.customJsonLookUp(key = "additional_partition_cols"))
+        .getOrElse(new java.util.ArrayList[String]())
+        .asInstanceOf[java.util.ArrayList[String]]
+        .toScala
 
   def computeStagingQuery(stepDays: Option[Int] = None,
                           enableAutoExpand: Option[Boolean] = Some(true),
