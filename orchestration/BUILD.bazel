@@ -45,3 +45,26 @@ scala_test_suite(
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )
+
+java_library(
+    name = "money_transfer_lib",
+    srcs = glob(["src/main/**/*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        maven_artifact("io.temporal:temporal-sdk"),
+        maven_artifact("io.temporal:temporal-serviceclient"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    ],
+)
+
+jvm_binary(
+    name = "transfer_app",
+    main_class = "ai.chronon.orchestration.temporal.TransferApp",
+    runtime_deps = [":money_transfer_lib"],
+)
+
+jvm_binary(
+    name = "transfer_worker",
+    main_class = "ai.chronon.orchestration.temporal.MoneyTransferWorker",
+    runtime_deps = [":money_transfer_lib"],
+)

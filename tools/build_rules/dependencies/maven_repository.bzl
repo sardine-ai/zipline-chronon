@@ -159,6 +159,9 @@ maven_repository = repository(
         "io.circe:circe-parser_2.13:0.14.9",
         "com.chuusai:shapeless_2.12:2.3.12",
         "com.chuusai:shapeless_2.13:2.3.12",
+
+        # Temporal
+        "io.temporal:temporal-sdk:1.24.1"
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",
