@@ -26,7 +26,7 @@
 	import { cn } from '$src/lib/utils';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { tooltipProps } from '$src/lib/components/charts/common.js';
-	import Inspect from 'svelte-inspect-value';
+	import { Inspect } from 'svelte-inspect-value';
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$src/lib/components/ui/tabs';
 	import { isMacOS } from '$src/lib/util/browser.js';
 	import { Badge } from '$src/lib/components/ui/badge/index.js';
@@ -368,15 +368,25 @@
 				</TabsContent>
 
 				<TabsContent value="details" class="overflow-auto px-7">
-					<Inspect
-						name={selectedNode.key.name}
-						value={selectedNode.value}
-						showPreview={false}
-						showLength={false}
-						showTypes={false}
-						showTools={false}
-						expandAll
-					/>
+					<div class="border py-2 px-4 rounded-md">
+						<Inspect
+							name={selectedNode.key.name}
+							value={selectedNode.value}
+							showLength={false}
+							showTypes={false}
+							showPreview={false}
+							showTools={false}
+							expandLevel={7}
+							borderless
+							theme=""
+							--base00="hsl(var(--background))"
+							--base01="hsl(var(--muted) / 20%)"
+							--base02="hsl(var(--primary-500))"
+							--base03="hsl(var(--border))"
+							--base05="hsl(var(--foreground))"
+							--base08="hsl(var(--primary-700))"
+						/>
+					</div>
 				</TabsContent>
 			</DialogContent>
 		</Tabs>
