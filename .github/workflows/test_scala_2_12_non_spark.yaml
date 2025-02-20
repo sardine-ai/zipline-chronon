@@ -1,4 +1,4 @@
-name: Test non-spark Scala modules
+name: Test non-spark Scala modules on 2.12
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
       - 'service/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
-      - '.github/workflows/test_scala_non_spark.yaml'
+      - '.github/workflows/test_scala_2_12_non_spark.yaml'
   pull_request:
     branches:
       - main
@@ -28,7 +28,7 @@ on:
       - 'service/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
-      - '.github/workflows/test_scala_non_spark.yaml'
+      - '.github/workflows/test_scala_2_12_non_spark.yaml'
 
 
 concurrency:

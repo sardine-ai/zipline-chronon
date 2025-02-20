@@ -1,4 +1,4 @@
-name: Test Spark module
+name: Test Spark module on scala 2.12
 
 on:
   push:
@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - 'spark/**'
-      - '.github/workflows/test_scala_spark.yaml'
+      - '.github/workflows/test_scala_2_12_spark.yaml'
   pull_request:
     branches:
       - main
     paths:
       - 'spark/**'
-      - '.github/workflows/test_scala_spark.yaml'
+      - '.github/workflows/test_scala_2_12_spark.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
