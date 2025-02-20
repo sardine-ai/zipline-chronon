@@ -95,12 +95,18 @@ In case you run into this error the fix is to manually download and install amaz
 ### Build Uber Jars for deployment
 ```shell
 # Command
+# By default we build using scala 2.12
 bazel build //{module}:{target}_deploy.jar
+# For scala 2.13
+bazel build --config scala_2.13 //{module}:{target}_deploy.jar
 
 # Cloud Gcp Jar
 # Creates uber jar in {Workspace}/bazel-bin/cloud_gcp folder with name cloud_gcp_lib_deploy.jar
 bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
 bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
+# For scala 2.13
+bazel build --config scala_2.13 //cloud_gcp:cloud_gcp_lib_deploy.jar
+bazel build --config scala_2.13 //cloud_gcp:cloud_gcp_submitter_deploy.jar
 
 # Flink Jars
 bazel build //flink:flink_assembly_deploy.jar
@@ -112,6 +118,9 @@ bazel build //service:service_assembly_deploy.jar
 # Hub Jar
 bazel build //hub:hub_assembly_deploy.jar
 ```
+> Note: "_deploy.jar" is bazel specific suffix that's needed for building uber jar with all
+> transitive dependencies, otherwise `bazel build //{module}:{target}` will only include 
+> dependencies specified in the target definition
 
 ### All tests for a specific module
 Also it's lot easier to just run from IntelliJ
