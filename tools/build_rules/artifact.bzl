@@ -3,8 +3,11 @@ load("//tools/build_rules:jar_library.bzl", "jar_library")
 load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 load("//tools/build_rules/dependencies:maven_repository.bzl", "MAVEN_REPOSITORY_NAME")
 load("//tools/build_rules/dependencies:spark_repository.bzl", "SPARK_REPOSITORY_NAME")
+load("//tools/build_rules/dependencies:scala_2_12_repository.bzl", "SCALA_2_12_REPOSITORY_NAME")
+load("//tools/build_rules/dependencies:scala_2_13_repository.bzl", "SCALA_2_13_REPOSITORY_NAME")
 
-def _safe_name(coord):
+# Converts to bazel friendly target name specification with underscores
+def get_safe_name(coord):
     return coord.replace(":", "_").replace(".", "_").replace("-", "_")
 
 def _get_artifact(coord, repository_name):
@@ -24,7 +27,7 @@ def _get_artifact(coord, repository_name):
     if repository_name:
         return _rje_artifact(coord, repository_name = repository_name)
 
-    safe_name = _safe_name(coord)
+    safe_name = get_safe_name(coord)
 
     if not native.existing_rule(safe_name):
         jar_library(
@@ -35,22 +38,23 @@ def _get_artifact(coord, repository_name):
         )
     return safe_name
 
+def get_scala_repository_name():
+    if SCALA_MAJOR_VERSION == "2.12":
+        return SCALA_2_12_REPOSITORY_NAME
+    else:
+        return SCALA_2_13_REPOSITORY_NAME
+
 # For specifying dependencies pulled from Maven Repository in our build targets
 # Example: maven_artifact("com.google.guava:guava")
-def maven_artifact(coord, version = None):
-    if version:
-        coord = coord + "_" + version
+def maven_artifact(coord):
     return _get_artifact(coord, MAVEN_REPOSITORY_NAME)
 
+def scala_artifact(coord):
+    return _get_artifact(coord, get_scala_repository_name())
 
-# For specifying scala related dependencies pulled from Maven Repository in our build targets
-# Example: maven_scala_artifact("org.rogach:scallop"),
-def maven_scala_artifact(coord):
-    """
-    Same as "maven_artifact" but appends the current Scala version to the Maven coordinate.
-    """
+def scala_artifact_with_suffix(coord):
     full_coord = coord + "_" + SCALA_MAJOR_VERSION
-    return _get_artifact(full_coord, MAVEN_REPOSITORY_NAME)
+    return _get_artifact(full_coord, get_scala_repository_name())
 
 # For specifying dependencies pulled from Spark Repository in our build targets
 # Example: maven_artifact("com.google.guava:guava")

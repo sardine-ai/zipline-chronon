@@ -14,7 +14,7 @@ java_library(
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact("org.slf4j:slf4j-api"),
-        maven_scala_artifact("org.json4s:json4s-core"),
+        scala_artifact_with_suffix("org.json4s:json4s-core"),
     ],
 )
 
