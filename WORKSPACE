@@ -111,5 +111,10 @@ rules_proto_toolchains()
 
 # To load all dependencies used across our modules
 load("//tools/build_rules/dependencies:load_dependencies.bzl", "load_all_dependencies")
-
 load_all_dependencies()
+
+load("@maven//:defs.bzl", pinned_maven_repo_install = "pinned_maven_install")
+pinned_maven_repo_install()
+
+load("@spark//:defs.bzl", pinned_spark_repo_install = "pinned_maven_install")
+pinned_spark_repo_install()
