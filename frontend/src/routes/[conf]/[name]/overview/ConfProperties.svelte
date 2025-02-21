@@ -25,6 +25,7 @@
 	} from '$src/lib/types/codegen';
 	import { keys } from '@layerstack/utils';
 	import Self from './ConfProperties.svelte';
+	import TrueFalseBadge from '$src/lib/components/TrueFalseBadge.svelte';
 
 	const {
 		conf,
@@ -90,7 +91,11 @@
 										<span class="text-muted-foreground">{prop}</span>
 									</TableCell>
 									<TableCell>
-										{conf.metaData[prop]}
+										{#if prop === 'online' || prop === 'production'}
+											<TrueFalseBadge isTrue={conf.metaData[prop] ?? false} />
+										{:else}
+											{conf.metaData[prop]}
+										{/if}
 									</TableCell>
 								</TableRow>
 							{/if}

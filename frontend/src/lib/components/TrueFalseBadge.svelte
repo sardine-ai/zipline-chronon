@@ -11,5 +11,5 @@
 {#if isTrue}
 	<Badge variant="success">True</Badge>
 {:else}
-	False
+	<Badge variant="outline">False</Badge>
 {/if}
