@@ -16,6 +16,7 @@
 
 package ai.chronon.api
 
+import ai.chronon.api.Constants._
 import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
 import ai.chronon.api.QueryUtils.buildSelects
@@ -38,6 +39,10 @@ import scala.util.Success
 import scala.util.Try
 
 object Extensions {
+
+  private def _keyNameForKvStore(metaData: MetaData, keywordType: String): String = {
+    s"$keywordType/" + metaData.name
+  }
 
   implicit class TimeUnitOps(timeUnit: TimeUnit) {
     def str: String =
@@ -144,6 +149,7 @@ object Extensions {
         .map(_.toScala.toMap)
         .orNull
 
+    @deprecated("Use `name` instead.")
     def nameToFilePath: String = metaData.name.replaceFirst("\\.", "/")
 
     // helper function to extract values from customJson
@@ -438,6 +444,11 @@ object Extensions {
   }
 
   implicit class GroupByOps(groupBy: GroupBy) extends GroupBy(groupBy) {
+
+    def keyNameForKvStore: String = {
+      _keyNameForKvStore(groupBy.metaData, GroupByKeyword)
+    }
+
     def maxWindow: Option[Window] = {
       val allWindowsOpt = Option(groupBy.aggregations)
         .flatMap(_.toScala.toSeq.allWindowsOpt)
@@ -822,6 +833,10 @@ object Extensions {
   }
 
   implicit class JoinOps(val join: Join) extends Serializable {
+    def keyNameForKvStore: String = {
+      _keyNameForKvStore(join.metaData, JoinKeyword)
+    }
+
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     // all keys as they should appear in left that are being used on right
     def leftKeyCols: Array[String] = {
@@ -1211,6 +1226,18 @@ object Extensions {
           result.setEvents(inner)
       }
       result
+    }
+  }
+
+  implicit class StagingQueryOps(stagingQuery: StagingQuery) {
+    def keyNameForKvStore: String = {
+      _keyNameForKvStore(stagingQuery.metaData, StagingQueryKeyword)
+    }
+  }
+
+  implicit class ModelOps(model: Model) {
+    def keyNameForKvStore: String = {
+      _keyNameForKvStore(model.metaData, ModelKeyword)
     }
   }
 }

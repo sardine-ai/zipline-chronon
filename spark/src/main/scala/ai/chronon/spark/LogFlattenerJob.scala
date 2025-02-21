@@ -67,7 +67,14 @@ class LogFlattenerJob(session: SparkSession,
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinLogFlatten, joinConf)
 
   private def getUnfilledRanges(inputTable: String, outputTable: String): Seq[PartitionRange] = {
-    val partitionName: String = joinConf.metaData.nameToFilePath.replace("/", "%2F")
+    val joinName: String = joinConf.metaData.name
+
+    // partition name is url encoded when we it's returned from SHOW PARTITIONS in Hive.
+    // Example: `test/payments_join` will come back as `test%2Fpayments_join` when we do SHOW PARTITIONS in Hive.
+    // We need to encode the join name to match so that our partition filter will work. Ideally, we stop using / in
+    // our join names. `metaData.name` shouldn't have /'s since compile.py uses `.` as a separator. But when we create
+    // test Join confs you're able to set MetaData name to whatever string you want including /'s unfortunately.
+    val partitionName = joinName.replace("/", "%2F")
     val unfilledRangeTry = Try(
       tableUtils.unfilledRanges(
         outputTable,
@@ -80,7 +87,7 @@ class LogFlattenerJob(session: SparkSession,
     val ranges = unfilledRangeTry match {
       case Failure(_: AssertionError) =>
         logger.info(s"""
-             |The join name ${joinConf.metaData.nameToFilePath} does not have available logged data yet.
+             |The join name ${joinConf.metaData.name} does not have available logged data yet.
              |Please double check your logging status""".stripMargin)
         Seq()
       case Success(None) =>
@@ -208,7 +215,7 @@ class LogFlattenerJob(session: SparkSession,
     }
     val unfilledRanges = getUnfilledRanges(logTable, joinConf.metaData.loggedTable)
     if (unfilledRanges.isEmpty) return
-    val joinName = joinConf.metaData.nameToFilePath
+    val joinName = joinConf.metaData.name
 
     val start = System.currentTimeMillis()
     val columnBeforeCount = columnCount()

@@ -80,4 +80,9 @@ object Constants {
   // A negative integer within the safe range for both long and double in JavaScript, Java, Scala, Python
   val magicNullLong: java.lang.Long = -1234567890L
   val magicNullDouble: java.lang.Double = -1234567890.0
+
+  val JoinKeyword = "joins"
+  val GroupByKeyword = "group_bys"
+  val StagingQueryKeyword = "staging_queries"
+  val ModelKeyword = "models"
 }
