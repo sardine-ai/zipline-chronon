@@ -71,7 +71,7 @@ RUN pip3 install -r requirements.txt
 ENV PATH="/opt/spark/sbin:/opt/spark/bin:${PATH}"
 ENV SPARK_HOME="/opt/spark"
 
-COPY quickstart/conf/spark-defaults.conf "$SPARK_HOME/conf"
+COPY scripts/cloud_gcp/spark-defaults.conf "$SPARK_HOME/conf"
 
 RUN chmod u+x /opt/spark/sbin/* && \
     chmod u+x /opt/spark/bin/*

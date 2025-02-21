@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
 # Generates java files from the input thrift files
 # Thrift gen command only supports single input file so we are creating actions separately for each thrift file
 def generate_java_files_using_thrift(ctx):
@@ -77,7 +79,7 @@ def replace_java_files_with_custom_thrift_package_prefix(ctx, input_directories)
 
     return output_directories
 
-_thrift_gen_library = rule(
+_thrift_java_library = rule(
     implementation = _thrift_gen_library_impl,
     attrs = {
         "srcs": attr.label_list(
@@ -96,8 +98,8 @@ _thrift_gen_library = rule(
 
 # Currently only supports java files generation
 # TODO: To make it more generic for handling other languages
-def thrift_gen_library(name, srcs, **kwargs):
-    _thrift_gen_library(
+def thrift_java_library(name, srcs, **kwargs):
+    _thrift_java_library(
         name = name,
         srcs = srcs,
         thrift_binary = select({
@@ -105,4 +107,92 @@ def thrift_gen_library(name, srcs, **kwargs):
             "//conditions:default": "/usr/local/bin/thrift",
         }),
         **kwargs
+    )
+
+
+
+def _thrift_python_library_impl(ctx):
+    thrift_binary = ctx.attr.thrift_binary
+    all_outputs = []
+    commands = []
+
+    for src in ctx.files.srcs:
+        rule_name = ctx.label.name
+        # Get base name without .thrift extension
+        base_name = src.basename.replace(".thrift", "")
+
+        # Convert namespace to directory structure
+        namespace_dir = ctx.attr.namespace.replace(".", "/")
+
+        # Declare output directory matching the namespace structure
+        output_dir = "{}/{}".format(namespace_dir, base_name)
+        constants_py = ctx.actions.declare_file("{}/constants.py".format(output_dir))
+        ttypes_py = ctx.actions.declare_file("{}/ttypes.py".format(output_dir))
+        module_init = ctx.actions.declare_file("{}/__init__.py".format(output_dir))
+
+        file_outputs = [constants_py, ttypes_py, module_init]
+        all_outputs.extend(file_outputs)
+
+        ctx.actions.run(
+            outputs = [output_directory],
+            inputs = [src_file],
+            executable = thrift_binary,
+            arguments = [
+                "--gen",
+                "java:generated_annotations=undated",
+                "-out",
+                output_directory.path,
+                src_file.path,
+            ],
+            progress_message = "Generating Java code from %s file" % src_file.path,
+        )
+
+        # Command to generate files in the correct namespace
+        command = """{thrift_binary} --gen py -out $(dirname {output_dir}) {src}""".format(
+            thrift_binary = thrift_binary,
+            namespace = ctx.attr.namespace,
+            output_dir = ttypes_py.dirname,
+            src = src.path,
+            main_py = main_py.path,
+            constants_py = constants_py.path,
+            ttypes_py = ttypes_py.path,
+            module_init = module_init.path,
+        )
+
+        # Generate files
+        ctx.actions.run_shell(
+            outputs = all_outputs,
+            inputs = ctx.files.srcs,
+            command = command,
+            progress_message = "Generating Python code from Thrift files: %s" % src.path,
+        )
+
+    return [DefaultInfo(files = depset(all_outputs))]
+
+_thrift_python_library_gen = rule(
+    implementation = _thrift_python_library_impl,
+    attrs = {
+        "srcs": attr.label_list(allow_files = [".thrift"]),
+        "thrift_binary": attr.string(),
+        "namespace": attr.string(),
+    },
+)
+
+def thrift_python_library(name, srcs, namespace, visibility = None):
+    """Generates Python code from Thrift files with correct namespace structure."""
+    _thrift_python_library_gen(
+        name = name + "_gen",
+        srcs = srcs,
+        namespace = namespace,
+        thrift_binary = select({
+            "@platforms//os:macos": "/opt/homebrew/bin/thrift",
+            "//conditions:default": "/usr/local/bin/thrift",
+        }),
+    )
+
+    py_library(
+        name = name,
+        srcs = [":" + name + "_gen"],
+        imports = ["."],
+        visibility = visibility,
     )
