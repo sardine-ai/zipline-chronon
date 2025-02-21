@@ -103,7 +103,7 @@ object ObservabilityDemo {
     // fetch drift series
     time("Fetching drift series") {
       val driftSeriesFuture = driftStore.getDriftSeries(
-        join.metaData.nameToFilePath,
+        join.metaData.name,
         DriftMetric.JENSEN_SHANNON,
         lookBack = new Window(7, chronon.api.TimeUnit.DAYS),
         startMs,
@@ -129,7 +129,7 @@ object ObservabilityDemo {
 
     time("Fetching summary series") {
       val summarySeriesFuture = driftStore.getSummarySeries(
-        join.metaData.nameToFilePath,
+        join.metaData.name,
         startMs,
         endMs
       )
