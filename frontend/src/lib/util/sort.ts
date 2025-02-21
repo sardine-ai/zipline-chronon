@@ -1,4 +1,5 @@
 import type { EncodeAndDecodeOptions } from 'sveltekit-search-params/sveltekit-search-params';
+import { getSearchParamValues } from './search-params';
 
 export const SORT_DIRECTIONS = ['asc', 'desc'] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
@@ -24,6 +25,6 @@ export function getSortDirection(
 	searchParams: URLSearchParams,
 	context: SortContext
 ): SortDirection {
-	const param = searchParams.get(getSortParamKey(context));
-	return param === 'desc' ? 'desc' : 'asc';
+	const paramValues = getSearchParamValues(searchParams, getSortParamsConfig(context));
+	return paramValues[getSortParamKey(context)];
 }

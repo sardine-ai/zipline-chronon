@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { queryParameters } from 'sveltekit-search-params';
 	import type { DomainType } from 'layerchart/utils/scales';
 	import { sort } from '@layerstack/utils';
 
+	import { page } from '$app/state';
+
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import { getSortParamsConfig, getSortParamKey } from '$lib/util/sort';
+	import { getSortDirection } from '$lib/util/sort';
 	import type { ITileSummarySeries } from '$src/lib/types/codegen';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
 	import ObservabilityNavTabs from '$routes/[conf]/[name]/observability/ObservabilityNavTabs.svelte';
@@ -26,13 +27,8 @@
 		console.error('Error loading distributions:', err);
 	}
 
-	const sortContext = 'distributions';
-	const sortKey = getSortParamKey(sortContext);
-	const params = queryParameters(getSortParamsConfig(sortContext), {
-		pushHistory: false,
-		showDefaults: false
-	});
-	const sortedDistributions = $derived(sort(distributions, (d) => d.key?.column, params[sortKey]));
+	const sortDirection = $derived(getSortDirection(page.url.searchParams, 'distributions'));
+	const sortedDistributions = $derived(sort(distributions, (d) => d.key?.column, sortDirection));
 
 	let xDomain = $state<DomainType | undefined>(null);
 	let isZoomed = $derived(xDomain != null);
@@ -69,7 +65,7 @@
 				No distribution data available
 			</div>
 		{:else}
-			{#each sortedDistributions as distribution}
+			{#each sortedDistributions as distribution (distribution.key?.column)}
 				<CollapsibleSection title={distribution.key?.column ?? 'Unknown'} size="small" open={true}>
 					{#snippet collapsibleContent()}
 						<div class="h-[230px]">

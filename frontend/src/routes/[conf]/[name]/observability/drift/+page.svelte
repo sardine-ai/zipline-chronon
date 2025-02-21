@@ -4,8 +4,9 @@
 	import type { DomainType } from 'layerchart/utils/scales';
 	import { entries, sort } from '@layerstack/utils';
 	import { rollups } from 'd3';
-	import { queryParameters } from 'sveltekit-search-params';
 	import { sub, type Duration } from 'date-fns';
+
+	import { page } from '$app/state';
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import type { ITileSummarySeries } from '$src/lib/types/codegen';
@@ -26,7 +27,7 @@
 	} from '$lib/components/charts/common';
 	import { cn } from '$src/lib/utils';
 	import { isMacOS } from '$src/lib/util/browser';
-	import { getSortParamKey, getSortParamsConfig } from '$src/lib/util/sort';
+	import { getSortDirection } from '$src/lib/util/sort';
 	import { NULL_VALUE } from '$src/lib/constants/common';
 
 	type FeaturesLineChartProps = ComponentProps<typeof FeaturesLineChart>;
@@ -35,14 +36,7 @@
 
 	const { data } = $props();
 
-	const sortContext = 'drift';
-	const sortKey = getSortParamKey(sortContext);
-	const params = queryParameters(getSortParamsConfig(sortContext), {
-		pushHistory: false,
-		showDefaults: false
-	});
-	const sortDirection = $derived(params[sortKey]);
-	// TODO: Determine why sortDirection is not updating if client-side routed to page (page refresh or HMR fixes it though)
+	const sortDirection = $derived(getSortDirection(page.url.searchParams, 'drift'));
 
 	const baselineOffset: Duration = { days: 7 };
 
