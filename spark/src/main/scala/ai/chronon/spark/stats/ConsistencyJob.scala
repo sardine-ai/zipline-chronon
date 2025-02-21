@@ -125,7 +125,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
                                loggedDfNoExternalCols,
                                keys = joinKeys,
                                tableUtils,
-                               name = joinConf.metaData.nameToFilePath)
+                               name = joinConf.metaData.name)
       logger.info("Saving output.")
       val outputDf = metricsKvRdd.toFlatDf.withTimeBasedColumn("ds")
       logger.info(s"output schema ${outputDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")

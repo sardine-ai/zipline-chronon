@@ -250,13 +250,13 @@ class FetcherTest extends AnyFlatSpec {
         )
       ),
       accuracy = Accuracy.TEMPORAL,
-      metaData = Builders.MetaData(name = "unit_test/fetcher_mutations_gb", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "unit_test.fetcher_mutations_gb", namespace = namespace, team = "chronon")
     )
 
     val joinConf = Builders.Join(
       left = leftSource,
       joinParts = Seq(Builders.JoinPart(groupBy = groupBy)),
-      metaData = Builders.MetaData(name = "unit_test/fetcher_mutations_join", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "unit_test.fetcher_mutations_join", namespace = namespace, team = "chronon")
     )
     joinConf
   }
@@ -289,7 +289,7 @@ class FetcherTest extends AnyFlatSpec {
         Builders.Aggregation(operation = Operation.FIRST, inputColumn = tsColString),
         Builders.Aggregation(operation = Operation.LAST, inputColumn = tsColString)
       ),
-      metaData = Builders.MetaData(name = "unit_test/user_payments", namespace = namespace)
+      metaData = Builders.MetaData(name = "unit_test.user_payments", namespace = namespace)
     )
 
     // snapshot events
@@ -327,7 +327,7 @@ class FetcherTest extends AnyFlatSpec {
                              inputColumn = "user",
                              windows = Seq(new Window(2, TimeUnit.DAYS), new Window(30, TimeUnit.DAYS)))
       ),
-      metaData = Builders.MetaData(name = "unit_test/vendor_ratings", namespace = namespace),
+      metaData = Builders.MetaData(name = "unit_test.vendor_ratings", namespace = namespace),
       accuracy = Accuracy.SNAPSHOT
     )
 
@@ -342,7 +342,7 @@ class FetcherTest extends AnyFlatSpec {
     val userBalanceGroupBy = Builders.GroupBy(
       sources = Seq(Builders.Source.entities(query = Builders.Query(), snapshotTable = balanceTable)),
       keyColumns = Seq("user"),
-      metaData = Builders.MetaData(name = "unit_test/user_balance", namespace = namespace)
+      metaData = Builders.MetaData(name = "unit_test.user_balance", namespace = namespace)
     )
 
     // snapshot-entities
@@ -363,7 +363,7 @@ class FetcherTest extends AnyFlatSpec {
         Builders.Aggregation(operation = Operation.SUM,
                              inputColumn = "credit",
                              windows = Seq(new Window(2, TimeUnit.DAYS), new Window(30, TimeUnit.DAYS)))),
-      metaData = Builders.MetaData(name = "unit_test/vendor_credit", namespace = namespace)
+      metaData = Builders.MetaData(name = "unit_test.vendor_credit", namespace = namespace)
     )
     val creditDerivationGroupBy = Builders.GroupBy(
       sources = Seq(Builders.Source.entities(query = Builders.Query(), snapshotTable = creditTable)),
@@ -430,7 +430,7 @@ class FetcherTest extends AnyFlatSpec {
         Builders.JoinPart(groupBy = creditGroupBy, prefix = "a"),
         Builders.JoinPart(groupBy = creditDerivationGroupBy, prefix = "c")
       ),
-      metaData = Builders.MetaData(name = "test/payments_join",
+      metaData = Builders.MetaData(name = "test.payments_join",
                                    namespace = namespace,
                                    team = "chronon",
                                    consistencySamplePercent = 30),
@@ -624,7 +624,7 @@ class FetcherTest extends AnyFlatSpec {
             keys(idx) -> row.get(keyIndices(idx)).asInstanceOf[AnyRef]
           }.toMap
           val ts = row.get(tsIndex).asInstanceOf[Long]
-          Request(joinConf.metaData.nameToFilePath, keyMap, Some(ts - lagMs))
+          Request(joinConf.metaData.name, keyMap, Some(ts - lagMs))
         }
         .collect()
 
@@ -655,7 +655,7 @@ class FetcherTest extends AnyFlatSpec {
       OnlineUtils.serveConsistency(tableUtils, inMemoryKvStore, today, joinConf)
       val fetcher = mockApi.buildFetcher()
       val consistencyFetch =
-        fetcher.fetchConsistencyMetricsTimeseries(StatsRequest(joinConf.metaData.nameToFilePath, None, None))
+        fetcher.fetchConsistencyMetricsTimeseries(StatsRequest(joinConf.metaData.name, None, None))
       val response = Await.result(consistencyFetch, Duration.Inf)
       val gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create()
       logger.info(s"""
@@ -752,7 +752,7 @@ class FetcherTest extends AnyFlatSpec {
     inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 
-    val request = Request(joinConf.metaData.nameToFilePath, Map.empty)
+    val request = Request(joinConf.metaData.name, Map.empty)
     val (responses, _) = FetcherTestUtil.joinResponses(spark, Array(request), mockApi)
     val responseMap = responses.head.values.get
 

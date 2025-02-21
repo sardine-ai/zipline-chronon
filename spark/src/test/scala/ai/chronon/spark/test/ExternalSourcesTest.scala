@@ -87,7 +87,7 @@ class ExternalSourcesTest extends AnyFlatSpec {
           contextualSource
         )
       ),
-      metaData = Builders.MetaData(name = "test/payments_join", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "test.payments_join", namespace = namespace, team = "chronon")
     )
 
     // put this join into kv store

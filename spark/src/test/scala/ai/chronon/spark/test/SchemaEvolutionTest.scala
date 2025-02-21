@@ -126,7 +126,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
         )
       ),
       accuracy = Accuracy.SNAPSHOT,
-      metaData = Builders.MetaData(name = s"unit_test/${name}", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = s"unit_test.${name}", namespace = namespace, team = "chronon")
     )
     val df = spark.createDataFrame(
       rows.toJava,
@@ -171,7 +171,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
       keyColumns = Seq("listing"),
       aggregations = null,
       accuracy = Accuracy.SNAPSHOT,
-      metaData = Builders.MetaData(name = s"unit_test/${name}", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = s"unit_test.${name}", namespace = namespace, team = "chronon")
     )
     val df = spark.createDataFrame(
       rows.toJava,
@@ -189,7 +189,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     val joinConf = Builders.Join(
       left = viewsGroupBy.groupByConf.sources.get(0),
       joinParts = Seq(Builders.JoinPart(groupBy = viewsGroupBy.groupByConf)),
-      metaData = Builders.MetaData(name = "unit_test/test_join", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "unit_test.test_join", namespace = namespace, team = "chronon")
     )
 
     JoinTestSuite(
@@ -214,7 +214,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
         Builders.JoinPart(groupBy = viewsGroupBy.groupByConf),
         Builders.JoinPart(groupBy = attributesGroupBy.groupByConf)
       ),
-      metaData = Builders.MetaData(name = "unit_test/test_join", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "unit_test.test_join", namespace = namespace, team = "chronon")
     )
     JoinTestSuite(
       joinConf,
@@ -232,7 +232,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
   }
 
   private def fetchJoin(fetcher: Fetcher, joinTestSuite: JoinTestSuite): Fetcher.Response = {
-    val request = Request(joinTestSuite.joinConf.metaData.nameToFilePath, joinTestSuite.fetchExpectations._1)
+    val request = Request(joinTestSuite.joinConf.metaData.name, joinTestSuite.fetchExpectations._1)
     val future = fetcher.fetchJoin(Seq(request))
     val responses = Await.result(future, Duration(10000, SECONDS)).toSeq
     assertEquals(1, responses.length)

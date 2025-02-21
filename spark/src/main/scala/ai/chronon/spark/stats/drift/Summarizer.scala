@@ -371,8 +371,7 @@ object Summarizer {
                           endDs = ds,
                           inputTable = inputTable,
                           outputTable = summaryTable,
-                          computeFunc =
-                            new Summarizer(api, metadata.nameToFilePath, tileSize = tileSize).computeSummaryDf)
+                          computeFunc = new Summarizer(api, metadata.name, tileSize = tileSize).computeSummaryDf)
     val exprs = partitionFiller.runInSequence
 
     val packedPartitionFiller =

@@ -3,6 +3,7 @@ package ai.chronon.online
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Join
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.Constants._
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -39,7 +40,12 @@ object FetcherMain {
     val keyJson: ScallopOption[String] = opt[String](required = false, descr = "json of the keys to fetch")
     val name: ScallopOption[String] = opt[String](required = false, descr = "name of the join/group-by to fetch")
     val confType: ScallopOption[String] =
-      opt[String](required = false, descr = "Type of the conf to run. ex: join, group-by, etc")
+      choice(
+        Seq(JoinKeyword, GroupByKeyword),
+        required = false,
+        descr = "the type of conf to fetch",
+        default = Some(JoinKeyword)
+      )
 
     val keyJsonFile: ScallopOption[String] = opt[String](
       required = false,
@@ -185,7 +191,7 @@ object FetcherMain {
     if (keyMapList.length > 1) {
       logger.info(s"Plan to send ${keyMapList.length} fetches with ${args.interval()} seconds interval")
     }
-    val fetcher = args.api.buildFetcher(true, "FetcherCLI")
+    val fetcher = args.api.buildFetcher(debug = true, "FetcherCLI")
     def iterate(): Unit = {
       keyMapList.foreach(keyMap => {
         logger.info(s"--- [START FETCHING for ${keyMap}] ---")
@@ -199,7 +205,7 @@ object FetcherMain {
           args.confPath.toOption.map(confPath => parseConf[Join](confPath))
         val startNs = System.nanoTime
         val requests = Seq(Fetcher.Request(featureName, keyMap, args.atMillis.toOption))
-        val resultFuture = if (args.confType() == "join") {
+        val resultFuture = if (args.confType() == JoinKeyword) {
           fetcher.fetchJoin(requests, joinConfOption)
         } else {
           fetcher.fetchGroupBys(requests)

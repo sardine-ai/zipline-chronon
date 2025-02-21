@@ -159,7 +159,7 @@ class DriftStore(kvStore: KVStore,
       responseContexts.map { responseContext =>
         val tileSeriesKey = new TileSeriesKey()
         tileSeriesKey.setSlice(responseContext.tileKey.getSlice)
-        tileSeriesKey.setNodeName(joinConf.getMetaData.nameToFilePath)
+        tileSeriesKey.setNodeName(joinConf.getMetaData.name)
         tileSeriesKey.setGroupName(responseContext.groupName)
         tileSeriesKey.setColumn(responseContext.tileKey.getColumn)
 
