@@ -1,47 +1,5 @@
 #!/bin/bash
 
-function print_usage() {
-    echo "Usage: $0 [OPTIONS]"
-    echo "Options:"
-    echo "  --all       Build and upload all artifacts (GCP and AWS)"
-    echo "  --gcp       Build and upload only GCP artifacts"
-    echo "  --aws       Build and upload only AWS artifacts"
-    echo "  -h, --help  Show this help message"
-}
-
-# No arguments provided
-if [ $# -eq 0 ]; then
-    print_usage
-    exit 1
-fi
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --all)
-            BUILD_GCP=true
-            BUILD_AWS=true
-            shift
-            ;;
-        --gcp)
-            BUILD_GCP=true
-            shift
-            ;;
-        --aws)
-            BUILD_AWS=true
-            shift
-            ;;
-        -h|--help)
-            print_usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            print_usage
-            exit 1
-            ;;
-    esac
-done
-
 
 if [[ -n $(git diff HEAD) ]]; then
     echo "Error: You have uncommitted changes. Please commit and push them to git so we can track them."
@@ -100,11 +58,25 @@ fi
 
 echo "Building jars"
 
+bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
 bazel build //flink:flink_assembly_deploy.jar
 bazel build //service:service_assembly_deploy.jar
 
+CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
+CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_submitter_deploy.jar"
 FLINK_JAR="$CHRONON_ROOT_DIR/bazel-bin/flink/flink_assembly_deploy.jar"
 SERVICE_JAR="$CHRONON_ROOT_DIR/bazel-bin/service/service_assembly_deploy.jar"
+
+if [ ! -f "$CLOUD_GCP_JAR" ]; then
+    echo "$CLOUD_GCP_JAR not found"
+    exit 1
+fi
+
+if [ ! -f "$CLOUD_GCP_SUBMITTER_JAR" ]; then
+    echo "$CLOUD_GCP_SUBMITTER_JAR not found"
+    exit 1
+fi
 
 if [ ! -f "$SERVICE_JAR" ]; then
     echo "$SERVICE_JAR not found"
@@ -116,49 +88,8 @@ if [ ! -f "$FLINK_JAR" ]; then
     exit 1
 fi
 
-
-
-if [ "$BUILD_AWS" = true ]; then
-    bazel build //cloud_aws:cloud_aws_lib_deploy.jar
-    bazel build //cloud_aws:cloud_aws_submitter_deploy.jar
-
-    CLOUD_AWS_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_aws/cloud_aws_lib_deploy.jar"
-    CLOUD_AWS_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_aws/cloud_aws_submitter_deploy.jar"
-
-    if [ ! -f "$CLOUD_AWS_JAR" ]; then
-        echo "$CLOUD_AWS_JAR not found"
-        exit 1
-    fi
-
-    if [ ! -f "$CLOUD_AWS_SUBMITTER_JAR" ]; then
-        echo "$CLOUD_AWS_SUBMITTER_JAR not found"
-        exit 1
-    fi
-fi
-if [ "$BUILD_GCP" = true ]; then
-    bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
-    bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
-
-    CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
-    CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_submitter_deploy.jar"
-
-    if [ ! -f "$CLOUD_GCP_JAR" ]; then
-        echo "$CLOUD_GCP_JAR not found"
-        exit 1
-    fi
-
-    if [ ! -f "$CLOUD_GCP_SUBMITTER_JAR" ]; then
-        echo "$CLOUD_GCP_SUBMITTER_JAR not found"
-        exit 1
-    fi
-
-fi
-
-
-
-
 # all customer ids
-GCP_CUSTOMER_IDS=("canary" "our clients")
+ALL_CUSTOMER_IDS=("canary" "our clients")
 
 # Takes in array of customer ids
 function upload_to_gcp() {
@@ -187,47 +118,11 @@ function upload_to_gcp() {
   gcloud config set storage/parallel_composite_upload_enabled True
 }
 
-AWS_CUSTOMER_IDS=("canary")
-
-# Takes in array of customer ids
-function upload_to_aws() {
-  customer_ids_to_upload=("$@")
-  echo "Are you sure you want to upload to these customer ids: ${customer_ids_to_upload[*]}"
-  select yn in "Yes" "No"; do
-      case $yn in
-          Yes )
-              set -euxo pipefail
-              for element in "${customer_ids_to_upload[@]}"
-              do
-                ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/jars
-                aws s3 cp "$CLOUD_AWS_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$CLOUD_AWS_SUBMITTER_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-              done
-              echo "Succeeded"
-              break;;
-          No ) break;;
-      esac
-  done
-}
-
 # check if $1 (single customer id mode) has been set
 if [ -z "$1" ]; then
-  if [ "$BUILD_AWS" = true ]; then
-    upload_to_aws "${AWS_CUSTOMER_IDS[@]}"
-  fi
-  if [ "$BUILD_GCP" = true ]; then
-    upload_to_gcp "${GCP_CUSTOMER_IDS[@]}"
-  fi
+  upload_to_gcp "${ALL_CUSTOMER_IDS[@]}"
 else
-  if [ "$BUILD_AWS" = true ]; then
-    upload_to_aws "$1"
-  fi
-  if [ "$BUILD_GCP" = true ]; then
-    upload_to_gcp "$1"
-  fi
+  upload_to_gcp "$1"
 fi
 
 # Cleanup wheel stuff
