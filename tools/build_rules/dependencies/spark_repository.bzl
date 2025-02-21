@@ -6,6 +6,7 @@ SPARK_REPOSITORY_NAME = "spark"
 spark_repository = repository(
     name = SPARK_REPOSITORY_NAME,
     provided = True,
+    maven_install_json = "//:spark_install.json",
     artifacts = [
         # Spark artifacts - for scala 2.12
         "org.apache.spark:spark-sql_2.12:3.5.1",
