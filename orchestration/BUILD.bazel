@@ -10,7 +10,7 @@ scala_library(
         "//api:lib",
         "//api:thrift_java",
         "//online:lib",
-        maven_scala_artifact("org.apache.logging.log4j:log4j-api-scala"),
+        scala_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact("org.apache.logging.log4j:log4j-api"),
     ],
@@ -23,7 +23,7 @@ test_deps = [
     "//online:lib",
     "//service_commons:lib",
     # Libraries
-    maven_scala_artifact("org.apache.logging.log4j:log4j-api-scala"),
+    scala_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
     maven_artifact("org.apache.logging.log4j:log4j-core"),
     maven_artifact("org.apache.logging.log4j:log4j-api"),
 ]

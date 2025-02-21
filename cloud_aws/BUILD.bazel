@@ -14,7 +14,7 @@ scala_library(
         maven_artifact("software.amazon.awssdk:utils"),
         maven_artifact("com.google.guava:guava"),
         maven_artifact("org.slf4j:slf4j-api"),
-        maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
+        scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
         "//api:lib",
         "//api:thrift_java",
         "//online:lib",
@@ -32,9 +32,9 @@ test_deps = [
     maven_artifact("software.amazon.awssdk:utils"),
     maven_artifact("software.amazon.awssdk:auth"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
-    maven_scala_artifact("org.typelevel:cats-core"),
+    scala_artifact_with_suffix("org.typelevel:cats-core"),
     maven_artifact("com.amazonaws:DynamoDBLocal"),
-    maven_scala_artifact("com.chuusai:shapeless"),
+    scala_artifact_with_suffix("com.chuusai:shapeless"),
 ] + _CIRCE_DEPS + _SCALA_TEST_DEPS
 
 scala_library(

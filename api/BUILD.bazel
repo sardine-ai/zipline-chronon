@@ -27,7 +27,7 @@ scala_library(
     format = select({
         "//tools/config:scala_2_13": False,  # Disable for 2.13
         "//conditions:default": True,  # Enable for other versions
- }),
+    }),
     visibility = ["//visibility:public"],
     deps = [
         ":thrift_java",
@@ -38,8 +38,8 @@ scala_library(
         maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("org.apache.commons:commons-lang3"),
         maven_artifact("com.google.code.gson:gson"),
-        maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-        maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
+        scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
+        scala_artifact_with_suffix("org.scala-lang.modules:scala-parser-combinators"),
     ],
 )
 
@@ -53,19 +53,19 @@ test_deps = [
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
     # Testing
-    maven_scala_artifact("org.scala-lang.modules:scala-parser-combinators"),
-    maven_scala_artifact("org.scala-lang.modules:scala-collection-compat"),
-    maven_scala_artifact("org.scalatest:scalatest-matchers-core"),
-    maven_scala_artifact("org.scalatest:scalatest-core"),
-    maven_scala_artifact("org.scalatest:scalatest"),
-    maven_scala_artifact("org.scalatest:scalatest-flatspec"),
-    maven_scala_artifact("org.scalatest:scalatest-funsuite"),
-    maven_scala_artifact("org.scalatest:scalatest-shouldmatchers"),
-    maven_scala_artifact("org.scalactic:scalactic"),
-    maven_scala_artifact("org.scalatestplus:mockito-3-4"),
-    maven_scala_artifact("org.mockito:mockito-scala"),
+    scala_artifact_with_suffix("org.scala-lang.modules:scala-parser-combinators"),
+    scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
+    scala_artifact_with_suffix("org.scalatest:scalatest-matchers-core"),
+    scala_artifact_with_suffix("org.scalatest:scalatest-core"),
+    scala_artifact_with_suffix("org.scalatest:scalatest"),
+    scala_artifact_with_suffix("org.scalatest:scalatest-flatspec"),
+    scala_artifact_with_suffix("org.scalatest:scalatest-funsuite"),
+    scala_artifact_with_suffix("org.scalatest:scalatest-shouldmatchers"),
+    scala_artifact_with_suffix("org.scalactic:scalactic"),
+    scala_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
+    scala_artifact_with_suffix("org.mockito:mockito-scala"),
     maven_artifact("org.mockito:mockito-core"),
-    maven_artifact("org.scalatest:scalatest-compatible"),
+    scala_artifact("org.scalatest:scalatest-compatible"),
     maven_artifact("junit:junit"),
     maven_artifact("com.novocode:junit-interface"),
 ]
@@ -76,7 +76,7 @@ scala_library(
     format = select({
         "//tools/config:scala_2_13": False,  # Disable for 2.13
         "//conditions:default": True,  # Enable for other versions
- }),
+    }),
     visibility = ["//visibility:public"],
     deps = test_deps,
 )
