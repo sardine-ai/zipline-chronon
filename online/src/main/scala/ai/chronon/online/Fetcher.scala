@@ -106,7 +106,8 @@ class Fetcher(val kvStore: KVStore,
                         executionContextOverride) {
 
   private def reportCallerNameFetcherVersion(): Unit = {
-    val message = s"CallerName: ${Option(callerName).getOrElse("N/A")}, FetcherVersion: ${BuildInfo.version}"
+    val message =
+      s"CallerName: ${Option(callerName).getOrElse("N/A")}, FetcherVersion: ${BuildInfo.version}"
     val ctx = Metrics.Context(Environment.Fetcher)
     val event = Event
       .builder()
@@ -117,88 +118,12 @@ class Fetcher(val kvStore: KVStore,
     ctx.recordEvent("caller_name_fetcher_version", event)
   }
 
+  lazy val joinCodecCache: TTLCache[String, Try[JoinCodec]] = buildJoinCodecCache(
+    Some(logControlEvent)
+  )
+
   // run during initialization
   reportCallerNameFetcherVersion()
-
-  def buildJoinCodec(joinConf: Join): JoinCodec = {
-    val keyFields = new mutable.LinkedHashSet[StructField]
-    val valueFields = new mutable.ListBuffer[StructField]
-    // collect keyFields and valueFields from joinParts/GroupBys
-    joinConf.joinPartOps.foreach { joinPart =>
-      val servingInfoTry = getGroupByServingInfo(joinPart.groupBy.metaData.getName)
-      servingInfoTry
-        .map { servingInfo =>
-          val keySchema = servingInfo.keyCodec.chrononSchema.asInstanceOf[StructType]
-          joinPart.leftToRight
-            .mapValues(right => keySchema.fields.find(_.name == right).get.fieldType)
-            .foreach { case (name, dType) =>
-              val keyField = StructField(name, dType)
-              keyFields.add(keyField)
-            }
-          val groupBySchemaBeforeDerivation: StructType = if (servingInfo.groupBy.aggregations == null) {
-            servingInfo.selectedChrononSchema
-          } else {
-            servingInfo.outputChrononSchema
-          }
-          val baseValueSchema: StructType = if (!servingInfo.groupBy.hasDerivations) {
-            groupBySchemaBeforeDerivation
-          } else {
-            val fields =
-              buildDerivedFields(servingInfo.groupBy.derivationsScala, keySchema, groupBySchemaBeforeDerivation)
-            StructType(s"groupby_derived_${servingInfo.groupBy.metaData.cleanName}", fields.toArray)
-          }
-          baseValueSchema.fields.foreach { sf =>
-            valueFields.append(joinPart.constructJoinPartSchema(sf))
-          }
-        }
-    }
-
-    // gather key schema and value schema from external sources.
-    Option(joinConf.join.onlineExternalParts).foreach { externals =>
-      externals
-        .iterator()
-        .asScala
-        .foreach { part =>
-          val source = part.source
-
-          def buildFields(schema: TDataType, prefix: String = ""): Seq[StructField] =
-            DataType
-              .fromTDataType(schema)
-              .asInstanceOf[StructType]
-              .fields
-              .map(f => StructField(prefix + f.name, f.fieldType))
-
-          buildFields(source.getKeySchema).foreach(f =>
-            keyFields.add(f.copy(name = part.rightToLeft.getOrElse(f.name, f.name))))
-          buildFields(source.getValueSchema, part.fullName + "_").foreach(f => valueFields.append(f))
-        }
-    }
-
-    val joinName = joinConf.metaData.name
-    val keySchema = StructType(s"${joinName.sanitize}_key", keyFields.toArray)
-    val keyCodec = AvroCodec.of(AvroConversions.fromChrononSchema(keySchema).toString)
-    val baseValueSchema = StructType(s"${joinName.sanitize}_value", valueFields.toArray)
-    val baseValueCodec = AvroCodec.of(AvroConversions.fromChrononSchema(baseValueSchema).toString)
-    val joinCodec = JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec)
-    logControlEvent(joinCodec)
-    joinCodec
-  }
-
-  // key and value schemas
-  lazy val getJoinCodecs = new TTLCache[String, Try[JoinCodec]](
-    { joinName: String =>
-      getJoinConf(joinName)
-        .map(_.join)
-        .map(buildJoinCodec)
-        .recoverWith { case th: Throwable =>
-          Failure(
-            new RuntimeException(
-              s"Couldn't fetch joinName = ${joinName} or build join codec due to ${th.traceString}",
-              th
-            ))
-        }
-    },
-    { join: String => Metrics.Context(environment = "join.codec.fetch", join = join) })
 
   private[online] def withTs(responses: Future[Seq[Response]]): Future[FetcherResponseWithTs] = {
     responses.map { response =>
@@ -234,7 +159,7 @@ class Fetcher(val kvStore: KVStore,
           val derivationStartTs = System.currentTimeMillis()
           val joinName = internalResponse.request.name
           val ctx = Metrics.Context(Environment.JoinFetching, join = joinName)
-          val joinCodecTry = getJoinCodecs(internalResponse.request.name)
+          val joinCodecTry = joinCodecCache(internalResponse.request.name)
           joinCodecTry match {
             case Success(joinCodec) =>
               ctx.distribution("derivation_codec.latency.millis", System.currentTimeMillis() - derivationStartTs)
@@ -252,15 +177,18 @@ class Fetcher(val kvStore: KVStore,
                       .mapValues(_.asInstanceOf[AnyRef])
                       .toMap
                   }
-                  val renameOnlyDerivedMap: Map[String, AnyRef] = renameOnlyDerivedMapTry match {
-                    case Success(renameOnlyDerivedMap) =>
-                      renameOnlyDerivedMap
-                    case Failure(exception) =>
-                      ctx.incrementException(exception)
-                      Map("derivation_rename_exception" -> exception.traceString.asInstanceOf[AnyRef])
-                  }
+                  val renameOnlyDerivedMap: Map[String, AnyRef] =
+                    renameOnlyDerivedMapTry match {
+                      case Success(renameOnlyDerivedMap) =>
+                        renameOnlyDerivedMap
+                      case Failure(exception) =>
+                        ctx.incrementException(exception)
+                        Map("derivation_rename_exception" -> exception.traceString
+                          .asInstanceOf[AnyRef])
+                    }
                   val derivedExceptionMap: Map[String, AnyRef] =
-                    Map("derivation_fetch_exception" -> exception.traceString.asInstanceOf[AnyRef])
+                    Map("derivation_fetch_exception" -> exception.traceString
+                      .asInstanceOf[AnyRef])
                   renameOnlyDerivedMap ++ derivedExceptionMap
               }
               // Preserve exceptions from baseMap
@@ -303,7 +231,8 @@ class Fetcher(val kvStore: KVStore,
           elem
         }
       }
-      val avroRecord = AvroConversions.fromChrononRow(data, schema, codec.schema).asInstanceOf[GenericRecord]
+      val avroRecord =
+        AvroConversions.fromChrononRow(data, schema, codec.schema).asInstanceOf[GenericRecord]
       codec.encodeBinary(avroRecord)
     }
 
@@ -320,7 +249,7 @@ class Fetcher(val kvStore: KVStore,
     val loggingStartTs = System.currentTimeMillis()
     val joinContext = resp.request.context
     val loggingTs = resp.request.atMillis.getOrElse(ts)
-    val joinCodecTry = getJoinCodecs(resp.request.name)
+    val joinCodecTry = joinCodecCache(resp.request.name)
 
     val loggingTry: Try[Unit] = joinCodecTry.map(codec => {
       val metaData = codec.conf.join.metaData
@@ -343,7 +272,8 @@ class Fetcher(val kvStore: KVStore,
         if (debug) {
           logger.info(s"Logging ${resp.request.keys} : ${hash % 100000}: $samplePercent")
           val gson = new Gson()
-          val valuesFormatted = values.map { case (k, v) => s"$k -> ${gson.toJson(v)}" }.mkString(", ")
+          val valuesFormatted =
+            values.map { case (k, v) => s"$k -> ${gson.toJson(v)}" }.mkString(", ")
           logger.info(s"""Sampled join fetch
                |Key Map: ${resp.request.keys}
                |Value Map: [${valuesFormatted}]
@@ -375,7 +305,8 @@ class Fetcher(val kvStore: KVStore,
     })
     loggingTry.failed.map { exception =>
       // to handle GroupByServingInfo staleness that results in encoding failure
-      getJoinCodecs.refresh(resp.request.name)
+      joinCodecCache.refresh(resp.request.name)
+
       joinContext.foreach(
         _.incrementException(new Exception(s"Logging failed due to: ${exception.traceString}", exception)))
     }
@@ -435,15 +366,18 @@ class Fetcher(val kvStore: KVStore,
                       join = validRequests.iterator.map(_.name.sanitize).toSeq.distinct.mkString(","))
     context.distribution("response.external_pre_processing.latency", System.currentTimeMillis() - startTime)
     context.count("response.external_invalid_joins.count", invalidCount)
-    val responseFutures = externalSourceRegistry.fetchRequests(validExternalRequestToJoinRequestMap.keys.toSeq, context)
+    val responseFutures =
+      externalSourceRegistry.fetchRequests(validExternalRequestToJoinRequestMap.keys.toSeq, context)
 
     // step-3 walk the response, find all the joins to update and the result map
     responseFutures.map { responses =>
       responses.foreach { response =>
         val responseTry: Try[Map[String, Any]] = response.values
-        val joinsToUpdate: Seq[ExternalToJoinRequest] = validExternalRequestToJoinRequestMap(response.request)
+        val joinsToUpdate: Seq[ExternalToJoinRequest] =
+          validExternalRequestToJoinRequestMap(response.request)
         joinsToUpdate.foreach { externalToJoin =>
-          val resultValueMap: mutable.HashMap[String, Any] = resultMap(externalToJoin.joinRequest).get
+          val resultValueMap: mutable.HashMap[String, Any] =
+            resultMap(externalToJoin.joinRequest).get
           val prefix = externalToJoin.part.fullName + "_"
           responseTry match {
             case Failure(exception) =>
@@ -451,7 +385,9 @@ class Fetcher(val kvStore: KVStore,
               externalToJoin.context.incrementException(exception)
             case Success(responseMap) =>
               externalToJoin.context.count("response.value_count", responseMap.size)
-              responseMap.foreach { case (name, value) => resultValueMap.update(prefix + name, value) }
+              responseMap.foreach { case (name, value) =>
+                resultValueMap.update(prefix + name, value)
+              }
           }
         }
       }
@@ -459,7 +395,8 @@ class Fetcher(val kvStore: KVStore,
       externalToJoinRequests
         .filter(_.externalRequest.isRight)
         .foreach(externalToJoin => {
-          val resultValueMap: mutable.HashMap[String, Any] = resultMap(externalToJoin.joinRequest).get
+          val resultValueMap: mutable.HashMap[String, Any] =
+            resultMap(externalToJoin.joinRequest).get
           val KeyMissingException = externalToJoin.externalRequest.right.get
           resultValueMap.update(externalToJoin.part.fullName + "_" + "exception", KeyMissingException)
           externalToJoin.context.incrementException(KeyMissingException)
@@ -475,7 +412,10 @@ class Fetcher(val kvStore: KVStore,
     }
   }
 
-  private def logControlEvent(enc: JoinCodec): Unit = {
+  private def logControlEvent(encTry: Try[JoinCodec]): Unit = {
+    if (encTry.isFailure) return
+
+    val enc = encTry.get
     val ts = System.currentTimeMillis()
     val controlEvent = LoggableResponse(
       enc.loggingSchemaHash.getBytes(UTF8),
@@ -498,7 +438,8 @@ class Fetcher(val kvStore: KVStore,
 
   private def fetchMetricsTimeseriesFromDataset(joinRequest: StatsRequest,
                                                 dataset: String): Future[Seq[StatsResponse]] = {
-    val keyCodec = getStatsSchemaFromKVStore(dataset, s"${joinRequest.name}${Constants.TimedKvRDDKeySchemaKey}")
+    val keyCodec =
+      getStatsSchemaFromKVStore(dataset, s"${joinRequest.name}${Constants.TimedKvRDDKeySchemaKey}")
     val valueCodec = getStatsSchemaFromKVStore(dataset, s"${joinRequest.name}${Constants.TimedKvRDDValueSchemaKey}")
     val upperBound: Long = joinRequest.endTs.getOrElse(System.currentTimeMillis())
     val responseFuture: Future[Seq[StatsResponse]] = kvStore
@@ -513,8 +454,8 @@ class Fetcher(val kvStore: KVStore,
     responseFuture
   }
 
-  /** Given a sequence of stats responses for different time intervals, re arrange it into a map containing the time
-    * series for each statistic.
+  /** Given a sequence of stats responses for different time intervals, re arrange it into a map
+    * containing the time series for each statistic.
     */
   private def convertStatsResponseToSeriesResponse(
       joinRequest: StatsRequest,
@@ -539,11 +480,10 @@ class Fetcher(val kvStore: KVStore,
     }
   }
 
-  /** Given a sequence of stats responses for different time intervals, re arrange it into a map containing the drift
-    * for
-    * the approx percentile metrics.
-    * TODO: Extend to larger periods of time by merging the Sketches from a larger slice.
-    * TODO: Allow for non sequential time intervals. i.e. this week against the same week last year.
+  /** Given a sequence of stats responses for different time intervals, re arrange it into a map
+    * containing the drift for the approx percentile metrics. TODO: Extend to larger periods of time
+    * by merging the Sketches from a larger slice. TODO: Allow for non sequential time intervals.
+    * i.e. this week against the same week last year.
     */
   private def convertStatsResponseToDriftResponse(
       joinRequest: StatsRequest,
@@ -574,9 +514,9 @@ class Fetcher(val kvStore: KVStore,
       SeriesStatsResponse(joinRequest, Try(driftMap))
     }
 
-  /** Main helper for fetching statistics over time available.
-    * It takes a function that will get the stats for the specific dataset (OOC, LOG, Backfill stats) and then operates
-    * on it to either return a time series of the features or drift between the approx percentile features.
+  /** Main helper for fetching statistics over time available. It takes a function that will get the
+    * stats for the specific dataset (OOC, LOG, Backfill stats) and then operates on it to either
+    * return a time series of the features or drift between the approx percentile features.
     */
   private def fetchDriftOrStatsTimeseries(
       joinRequest: StatsRequest,
