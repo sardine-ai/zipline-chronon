@@ -18,6 +18,6 @@ def load_all_dependencies():
             duplicate_version_warning = "error",
             fail_if_repin_required = True,
             resolve_timeout = 5000,
-            maven_install_json = None,
+            maven_install_json = repository.maven_install_json,
             excluded_artifacts = repository.excluded_artifacts,
         )
