@@ -4,6 +4,8 @@ import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
+import ai.chronon.api.Constants._
+import ai.chronon.api.Extensions._
 import com.google.gson.Gson
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -16,11 +18,6 @@ import scala.reflect.ClassTag
 import scala.util.Try
 
 class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], maybeConfType: Option[String] = None) {
-
-  val JoinKeyword = "joins"
-  val GroupByKeyword = "group_bys"
-  val StagingQueryKeyword = "staging_queries"
-  val ModelKeyword = "models"
 
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private def loadJsonToConf[T <: TBase[_, _]: Manifest: ClassTag](file: String): Option[T] = {
@@ -78,25 +75,29 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
     nonEmptyFileList.foldLeft(Map.empty[String, Map[String, List[String]]]) { (acc, file) =>
       // For each end point we apply the extractFn to the file path to extract the key value pair
       val filePath = file.getPath
-      val optConf =
+      val (optConf, confKeyName) =
         try {
           filePath match {
             case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
-              loadJsonToConf[api.Join](filePath)
+              val conf = loadJsonToConf[api.Join](filePath)
+              (conf, conf.map(_.keyNameForKvStore))
             case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
-              loadJsonToConf[api.GroupBy](filePath)
+              val conf = loadJsonToConf[api.GroupBy](filePath)
+              (conf, conf.map(a => a.keyNameForKvStore))
             case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
-              loadJsonToConf[api.StagingQuery](filePath)
+              val conf = loadJsonToConf[api.StagingQuery](filePath)
+              (conf, conf.map(_.keyNameForKvStore))
             case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
-              loadJsonToConf[api.Model](filePath)
+              val conf = loadJsonToConf[api.Model](filePath)
+              (conf, conf.map(_.keyNameForKvStore))
           }
         } catch {
           case e: Throwable =>
             logger.error(s"Failed to parse compiled team from file path: $filePath, \nerror=${e.getMessage}")
-            None
+            (None, None)
         }
 
-      if (optConf.isDefined) {
+      if (optConf.isDefined && confKeyName.isDefined) {
         val kvPairToEndPoint: List[(String, (String, String))] = metadataEndPointNames
           .map { endPointName =>
             val conf = optConf.get
@@ -105,22 +106,22 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
               case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.Join](endPointName)
-                  .extractFn(filePath, conf.asInstanceOf[api.Join])
+                  .extractFn(confKeyName.get, conf.asInstanceOf[api.Join])
 
               case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.GroupBy](endPointName)
-                  .extractFn(filePath, conf.asInstanceOf[api.GroupBy])
+                  .extractFn(confKeyName.get, conf.asInstanceOf[api.GroupBy])
 
               case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.StagingQuery](endPointName)
-                  .extractFn(filePath, conf.asInstanceOf[api.StagingQuery])
+                  .extractFn(confKeyName.get, conf.asInstanceOf[api.StagingQuery])
 
               case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
                 MetadataEndPoint
                   .getEndPoint[api.Model](endPointName)
-                  .extractFn(filePath, conf.asInstanceOf[api.Model])
+                  .extractFn(confKeyName.get, conf.asInstanceOf[api.Model])
             }
 
             (endPointName, kVPair)

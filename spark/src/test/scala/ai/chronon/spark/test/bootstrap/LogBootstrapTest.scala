@@ -126,7 +126,7 @@ class LogBootstrapTest extends AnyFlatSpec {
       .collect()
       .map { row =>
         val (user, requestId, ts) = (row.getLong(0), row.getString(1), row.getLong(2))
-        Request(joinV1.metaData.nameToFilePath,
+        Request(joinV1.metaData.name,
                 Map(
                   "user" -> user,
                   "request_id" -> requestId,

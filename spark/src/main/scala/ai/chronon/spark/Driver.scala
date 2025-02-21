@@ -25,6 +25,7 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import ai.chronon.online.Api
+import ai.chronon.online.ConfPathOrName
 import ai.chronon.online.FetcherMain
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
@@ -90,7 +91,7 @@ object Driver {
       opt[String](required = false, descr = "GCP BigTable instance id")
 
     val confType: ScallopOption[String] =
-      opt[String](required = false, descr = "Type of the conf to run. ex: join, group-by, etc")
+      opt[String](required = false, descr = "Type of the conf to run. ex: joins, group_bys, models, staging_queries")
   }
 
   trait OfflineSubcommand extends SharedSubCommandArgs {
@@ -789,7 +790,7 @@ object Driver {
       val confFile = findFile(args.confPath())
       val groupByConf = confFile
         .map(ThriftJsonCodec.fromJsonFile[api.GroupBy](_, check = false))
-        .getOrElse(args.metaDataStore.getConf[api.GroupBy](args.confPath()).get)
+        .getOrElse(args.metaDataStore.getConf[api.GroupBy](ConfPathOrName(confPath = Some(args.confPath()))).get)
 
       val onlineJar = findFile(args.onlineJar())
       if (args.debug())

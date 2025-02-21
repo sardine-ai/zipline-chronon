@@ -431,7 +431,7 @@ class DerivationTest extends AnyFlatSpec {
       .collect()
       .map { row =>
         val (user, requestId, ts) = (row.getLong(0), row.getString(1), row.getLong(2))
-        Request(bootstrapJoin.metaData.nameToFilePath,
+        Request(bootstrapJoin.metaData.name,
                 Map(
                   "user" -> user,
                   "request_id" -> requestId

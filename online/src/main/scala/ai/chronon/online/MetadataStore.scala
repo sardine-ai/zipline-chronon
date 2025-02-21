@@ -18,12 +18,12 @@ package ai.chronon.online
 
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
-import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._
 import ai.chronon.api.thrift.TBase
+import ai.chronon.api.Constants._
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import org.slf4j.Logger
@@ -40,6 +40,22 @@ import scala.util.Try
 
 // [timestamp -> {metric name -> metric value}]
 case class DataMetrics(series: Seq[(Long, SortedMap[String, Any])])
+
+case class ConfPathOrName(confPath: Option[String] = None, confName: Option[String] = None) {
+
+  if (confPath.isEmpty && confName.isEmpty) {
+    throw new IllegalArgumentException("confPath and confName cannot be both empty")
+  }
+
+  def computeConfKey(confKeyword: String): String = {
+    if (confName.isDefined) {
+      s"$confKeyword/" + confName.get
+
+    } else {
+      s"$confKeyword/" + confPath.get.split("/").takeRight(1).head
+    }
+  }
+}
 
 class MetadataStore(kvStore: KVStore,
                     val dataset: String = MetadataDataset,
@@ -62,9 +78,18 @@ class MetadataStore(kvStore: KVStore,
   implicit val executionContext: ExecutionContext =
     Option(executionContextOverride).getOrElse(FlexibleExecutionContext.buildExecutionContext)
 
-  def getConf[T <: TBase[_, _]: Manifest](confPathOrName: String): Try[T] = {
+  def getConf[T <: TBase[_, _]: Manifest](confPathOrName: ConfPathOrName): Try[T] = {
     val clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
-    val confKey = confPathOrName.confPathToKey
+
+    val confTypeKeyword = clazz match {
+      case j if j == classOf[Join]           => JoinKeyword
+      case g if g == classOf[GroupBy]        => GroupByKeyword
+      case sq if sq == classOf[StagingQuery] => StagingQueryKeyword
+      case m if m == classOf[Model]          => ModelKeyword
+      case _                                 => throw new IllegalArgumentException(s"Unsupported conf type: $clazz")
+    }
+
+    val confKey = confPathOrName.computeConfKey(confTypeKeyword)
     kvStore
       .getString(confKey, dataset, timeoutMillis)
       .map(conf => ThriftJsonCodec.fromJsonStr[T](conf, false, clazz))
@@ -122,7 +147,7 @@ class MetadataStore(kvStore: KVStore,
   lazy val getJoinConf: TTLCache[String, Try[JoinOps]] = new TTLCache[String, Try[JoinOps]](
     { name =>
       val startTimeMs = System.currentTimeMillis()
-      val result = getConf[Join](s"joins/$name")
+      val result = getConf[Join](ConfPathOrName(confName = Some(name)))
         .recover { case e: java.util.NoSuchElementException =>
           logger.error(
             s"Failed to fetch conf for join $name at joins/$name, please check metadata upload to make sure the join metadata for $name has been uploaded")
@@ -143,9 +168,10 @@ class MetadataStore(kvStore: KVStore,
     { join => Metrics.Context(environment = "join.meta.fetch", join = join) })
 
   def putJoinConf(join: Join): Unit = {
-    logger.info(s"uploading join conf to dataset: $dataset by key: joins/${join.metaData.nameToFilePath}")
+    val joinConfKeyForKvStore = join.keyNameForKvStore
+    logger.info(s"uploading join conf to dataset: $dataset by key:${joinConfKeyForKvStore}")
     kvStore.put(
-      PutRequest(s"joins/${join.metaData.nameToFilePath}".getBytes(Constants.UTF8),
+      PutRequest(joinConfKeyForKvStore.getBytes(Constants.UTF8),
                  ThriftJsonCodec.toJsonStr(join).getBytes(Constants.UTF8),
                  dataset))
   }
@@ -177,6 +203,9 @@ class MetadataStore(kvStore: KVStore,
             case e: java.util.NoSuchElementException =>
               logger.error(
                 s"Failed to fetch metadata for $batchDataset, is it possible Group By Upload for $name has not succeeded?")
+              throw e
+            case e: Throwable =>
+              logger.error(s"Failed to fetch metadata for $batchDataset", e)
               throw e
           }
         logger.info(s"Fetched ${Constants.GroupByServingInfoKey} from : $batchDataset")

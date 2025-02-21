@@ -248,7 +248,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
             keys(idx) -> row.get(keyIndices(idx)).asInstanceOf[AnyRef]
           }.toMap
           val ts = row.get(tsIndex).asInstanceOf[Long]
-          Request(joinConf.metaData.nameToFilePath, keyMap, Some(ts - lagMs))
+          Request(joinConf.metaData.name, keyMap, Some(ts - lagMs))
         }
         .collect()
 

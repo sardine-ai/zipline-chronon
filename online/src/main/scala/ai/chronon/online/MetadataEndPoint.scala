@@ -51,7 +51,7 @@ object MetadataEndPoint {
   // value: entity config in json format
   private def confByKeyEndPoint[Conf <: TBase[_, _]: Manifest: ClassTag] =
     new MetadataEndPoint[Conf](
-      extractFn = (path, conf) => (path.confPathToKey, ThriftJsonCodec.toJsonStr(conf)),
+      extractFn = (metadataName, conf) => (metadataName, ThriftJsonCodec.toJsonStr(conf)),
       name = ConfByKeyEndPointName
     )
 
