@@ -102,3 +102,5 @@ releases
 
 # Bazel mod files (currently unused)
 MODULE.bazel*
+
+/authoring/vscode/node_modules
