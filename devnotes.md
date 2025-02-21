@@ -88,6 +88,24 @@ This file is git-ignored.
 build --google_credentials=/Users/{username}/.config/gcloud/application_default_credentials.json
 ```
 
+### Pinning maven artifacts
+We currently pin the versions for all our maven artifacts including all their transitive dependencies so
+we don't have to resolve them during build time which can take up a very long time at times.
+
+We currently have 2 different repositories
+1. spark - contains all spark dependencies (pinned to spark_install.json file)
+2. maven - contains all other maven dependencies (pinned to maven_install.json file)
+
+Whenever we change any of the dependency artifacts in the above repositories we would need to re-pin and
+update the json files using the below commands which need to be checked in
+
+```shell
+# For maven repo
+REPIN=1 bazel run @maven//:pin
+# For spark repo
+REPIN=1 bazel run @spark//:pin
+```
+
 ### Java not found error on Mac
 
 In case you run into this error the fix is to manually download and install amazon corretto-17 from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html)

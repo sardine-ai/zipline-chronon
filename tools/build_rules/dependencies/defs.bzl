@@ -11,7 +11,7 @@ def _parse_versioned_artifact(artifact, version, exclusions):
 def versioned_artifacts(version, artifacts, exclusions = None):
     return map(lambda artifact: _parse_versioned_artifact(artifact, version, exclusions), artifacts)
 
-def repository(name, pinned = True, artifacts = [], overrides = {}, provided = False, vars = {}, excluded_artifacts = []):
+def repository(name, pinned = True, artifacts = [], overrides = {}, provided = False, vars = {}, excluded_artifacts = [], maven_install_json = None):
     final_artifacts = []
     flat_artifacts = flatten(artifacts)
     for artifact in parse.parse_artifact_spec_list(flat_artifacts):
@@ -28,6 +28,7 @@ def repository(name, pinned = True, artifacts = [], overrides = {}, provided = F
         provided = provided,
         vars = vars,
         excluded_artifacts = excluded_artifacts,
+        maven_install_json = maven_install_json,
     )
 
 def get_jars_for_repository(repo_name, jars):

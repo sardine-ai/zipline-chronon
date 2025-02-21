@@ -7,6 +7,7 @@ MAVEN_REPOSITORY_NAME = "maven"
 maven_repository = repository(
     name = MAVEN_REPOSITORY_NAME,
     pinned = False,
+    maven_install_json = "//:maven_install.json",
     artifacts = [
         "org.scala-lang:scala-library:" + SCALA_VERSION,
         "org.scala-lang:scala-reflect:" + SCALA_VERSION,
