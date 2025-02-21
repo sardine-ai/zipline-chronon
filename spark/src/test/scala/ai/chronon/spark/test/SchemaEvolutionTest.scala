@@ -261,7 +261,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
   }
 
   private def clearTTLCache(fetcher: Fetcher): Unit = {
-    fetcher.getJoinCodecs.cMap.clear()
+    fetcher.joinCodecCache.cMap.clear()
     fetcher.getJoinConf.cMap.clear()
     fetcher.getGroupByServingInfo.cMap.clear()
   }

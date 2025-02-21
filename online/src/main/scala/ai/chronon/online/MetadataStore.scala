@@ -17,19 +17,18 @@
 package ai.chronon.online
 
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Extensions.JoinOps
-import ai.chronon.api.Extensions.StringOps
-import ai.chronon.api.Extensions.WindowOps
-import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.api._
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.Constants._
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
+import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
+import scala.collection.{Seq, mutable}
 import scala.collection.immutable.SortedMap
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
@@ -62,7 +61,8 @@ class MetadataStore(kvStore: KVStore,
                     timeoutMillis: Long,
                     executionContextOverride: ExecutionContext = null) {
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  private var partitionSpec = PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
+  private var partitionSpec =
+    PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
   private val CONF_BATCH_SIZE = 50
 
   // Note this should match with the format used in the warehouse
@@ -162,10 +162,13 @@ class MetadataStore(kvStore: KVStore,
         context.withSuffix("join").increment(Metrics.Name.Exception)
         throw result.failed.get
       }
-      context.withSuffix("join").distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+      context
+        .withSuffix("join")
+        .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
       result
     },
-    { join => Metrics.Context(environment = "join.meta.fetch", join = join) })
+    { join => Metrics.Context(environment = "join.meta.fetch", join = join) }
+  )
 
   def putJoinConf(join: Join): Unit = {
     val joinConfKeyForKvStore = join.keyNameForKvStore
@@ -174,6 +177,93 @@ class MetadataStore(kvStore: KVStore,
       PutRequest(joinConfKeyForKvStore.getBytes(Constants.UTF8),
                  ThriftJsonCodec.toJsonStr(join).getBytes(Constants.UTF8),
                  dataset))
+  }
+
+  // key and value schemas
+  def buildJoinCodecCache(onCreateFunc: Option[Try[JoinCodec] => Unit]): TTLCache[String, Try[JoinCodec]] = {
+
+    val codecBuilder = { joinName: String =>
+      getJoinConf(joinName)
+        .map(_.join)
+        .map(buildJoinCodec)
+        .recoverWith { case th: Throwable =>
+          Failure(
+            new RuntimeException(
+              s"Couldn't fetch joinName = ${joinName} or build join codec due to ${th.traceString}",
+              th
+            ))
+        }
+    }
+
+    new TTLCache[String, Try[JoinCodec]](
+      codecBuilder,
+      { join: String => Metrics.Context(environment = "join.codec.fetch", join = join) },
+      onCreateFunc = onCreateFunc
+    )
+  }
+
+  def buildJoinCodec(joinConf: Join): JoinCodec = {
+    val keyFields = new mutable.LinkedHashSet[StructField]
+    val valueFields = new mutable.ListBuffer[StructField]
+    // collect keyFields and valueFields from joinParts/GroupBys
+    joinConf.joinPartOps.foreach { joinPart =>
+      val servingInfoTry = getGroupByServingInfo(joinPart.groupBy.metaData.getName)
+      servingInfoTry
+        .map { servingInfo =>
+          val keySchema = servingInfo.keyCodec.chrononSchema.asInstanceOf[StructType]
+          joinPart.leftToRight
+            .mapValues(right => keySchema.fields.find(_.name == right).get.fieldType)
+            .foreach { case (name, dType) =>
+              val keyField = StructField(name, dType)
+              keyFields.add(keyField)
+            }
+          val groupBySchemaBeforeDerivation: StructType =
+            if (servingInfo.groupBy.aggregations == null) {
+              servingInfo.selectedChrononSchema
+            } else {
+              servingInfo.outputChrononSchema
+            }
+          val baseValueSchema: StructType = if (!servingInfo.groupBy.hasDerivations) {
+            groupBySchemaBeforeDerivation
+          } else {
+            val fields =
+              buildDerivedFields(servingInfo.groupBy.derivationsScala, keySchema, groupBySchemaBeforeDerivation)
+            StructType(s"groupby_derived_${servingInfo.groupBy.metaData.cleanName}", fields.toArray)
+          }
+          baseValueSchema.fields.foreach { sf =>
+            valueFields.append(joinPart.constructJoinPartSchema(sf))
+          }
+        }
+    }
+
+    // gather key schema and value schema from external sources.
+    Option(joinConf.join.onlineExternalParts).foreach { externals =>
+      externals
+        .iterator()
+        .toScala
+        .foreach { part =>
+          val source = part.source
+
+          def buildFields(schema: TDataType, prefix: String = ""): Seq[StructField] =
+            DataType
+              .fromTDataType(schema)
+              .asInstanceOf[StructType]
+              .fields
+              .map(f => StructField(prefix + f.name, f.fieldType))
+
+          buildFields(source.getKeySchema).foreach(f =>
+            keyFields.add(f.copy(name = part.rightToLeft.getOrElse(f.name, f.name))))
+          buildFields(source.getValueSchema, part.fullName + "_").foreach(f => valueFields.append(f))
+        }
+    }
+
+    val joinName = joinConf.metaData.nameToFilePath
+    val keySchema = StructType(s"${joinName.sanitize}_key", keyFields.toArray)
+    val keyCodec = AvroCodec.of(AvroConversions.fromChrononSchema(keySchema).toString)
+    val baseValueSchema = StructType(s"${joinName.sanitize}_value", valueFields.toArray)
+    val baseValueCodec = AvroCodec.of(AvroConversions.fromChrononSchema(baseValueSchema).toString)
+    val joinCodec = JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec)
+    joinCodec
   }
 
   def getSchemaFromKVStore(dataset: String, key: String): AvroCodec = {
@@ -187,10 +277,11 @@ class MetadataStore(kvStore: KVStore,
       .get
   }
 
-  lazy val getStatsSchemaFromKVStore: TTLCache[(String, String), AvroCodec] = new TTLCache[(String, String), AvroCodec](
-    { case (dataset, key) => getSchemaFromKVStore(dataset, key) },
-    { _ => Metrics.Context(environment = "stats.serving_info.fetch") }
-  )
+  lazy val getStatsSchemaFromKVStore: TTLCache[(String, String), AvroCodec] =
+    new TTLCache[(String, String), AvroCodec](
+      { case (dataset, key) => getSchemaFromKVStore(dataset, key) },
+      { _ => Metrics.Context(environment = "stats.serving_info.fetch") }
+    )
 
   // pull and cache groupByServingInfo from the groupBy uploads
   lazy val getGroupByServingInfo: TTLCache[String, Try[GroupByServingInfoParsed]] =
@@ -224,7 +315,8 @@ class MetadataStore(kvStore: KVStore,
           Success(new GroupByServingInfoParsed(groupByServingInfo, partitionSpec))
         }
       },
-      { gb => Metrics.Context(environment = "group_by.serving_info.fetch", groupBy = gb) })
+      { gb => Metrics.Context(environment = "group_by.serving_info.fetch", groupBy = gb) }
+    )
 
   def put(
       kVPairs: Map[String, Seq[String]],

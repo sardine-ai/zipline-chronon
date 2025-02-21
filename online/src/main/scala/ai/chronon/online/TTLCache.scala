@@ -34,8 +34,15 @@ class TTLCache[I, O](f: I => O,
                      contextBuilder: I => Metrics.Context,
                      ttlMillis: Long = 2 * 60 * 60 * 1000, // 2 hours
                      nowFunc: () => Long = { () => System.currentTimeMillis() },
-                     refreshIntervalMillis: Long = 8 * 1000 // 8 seconds
-) {
+                     refreshIntervalMillis: Long = 8 * 1000, // 8 seconds
+                     onCreateFunc: Option[O => Unit] = None) {
+
+  private def wrappedCreator(i: I): O = {
+    val result = f(i)
+    onCreateFunc.foreach(func => func(result))
+    result
+  }
+
   case class Entry(value: O, updatedAtMillis: Long, var markedForUpdate: AtomicBoolean = new AtomicBoolean(false))
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private val updateWhenNull =
@@ -43,7 +50,7 @@ class TTLCache[I, O](f: I => O,
       override def apply(t: I, u: Entry): Entry = {
         val now = nowFunc()
         if (u == null) {
-          Entry(f(t), now)
+          Entry(wrappedCreator(t), now)
         } else {
           u
         }
@@ -70,7 +77,7 @@ class TTLCache[I, O](f: I => O,
         TTLCache.executor.execute(new Runnable {
           override def run(): Unit = {
             try {
-              cMap.put(i, Entry(f(i), nowFunc()))
+              cMap.put(i, Entry(wrappedCreator(i), nowFunc()))
               contextBuilder(i).increment("cache.update")
             } catch {
               case ex: Exception =>
