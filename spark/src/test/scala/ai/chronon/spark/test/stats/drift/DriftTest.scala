@@ -101,7 +101,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
 
     // fetch drift series
     val driftSeriesFuture = driftStore.getDriftSeries(
-      join.metaData.nameToFilePath,
+      join.metaData.name,
       DriftMetric.JENSEN_SHANNON,
       lookBack = new Window(7, chronon.api.TimeUnit.DAYS),
       startMs,
@@ -125,7 +125,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     nulls.toDouble / totals.toDouble should be < 0.6
 
     val summarySeriesFuture = driftStore.getSummarySeries(
-      join.metaData.nameToFilePath,
+      join.metaData.name,
       startMs,
       endMs
     )
@@ -153,13 +153,11 @@ class DriftTest extends AnyFlatSpec with Matchers {
     val name = "dim_user_account_type"
     val window = new Window(10, ai.chronon.api.TimeUnit.HOURS)
 
-    val joinPath = joinName.replaceFirst("\\.", "/")
-
     implicit val execContext = scala.concurrent.ExecutionContext.global
     val metric = ValuesMetric
-    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name))
+    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinName, startTs, endTs, Some(name))
     val maybeBaselineSummarySeries =
-      driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
+      driftStore.getSummarySeries(joinName, startTs - window.millis, endTs - window.millis, Some(name))
     val result = (maybeCurrentSummarySeries, maybeBaselineSummarySeries) match {
       case (Success(currentSummarySeriesFuture), Success(baselineSummarySeriesFuture)) =>
         Future.sequence(Seq(currentSummarySeriesFuture, baselineSummarySeriesFuture)).map { merged =>

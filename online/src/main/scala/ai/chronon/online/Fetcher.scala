@@ -174,7 +174,7 @@ class Fetcher(val kvStore: KVStore,
         }
     }
 
-    val joinName = joinConf.metaData.nameToFilePath
+    val joinName = joinConf.metaData.name
     val keySchema = StructType(s"${joinName.sanitize}_key", keyFields.toArray)
     val keyCodec = AvroCodec.of(AvroConversions.fromChrononSchema(keySchema).toString)
     val baseValueSchema = StructType(s"${joinName.sanitize}_value", valueFields.toArray)
