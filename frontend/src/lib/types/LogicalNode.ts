@@ -1,4 +1,10 @@
-import { LogicalType, type ILogicalNode, type INodeInfo, type INodeKey } from './codegen';
+import {
+	LogicalType,
+	type ILogicalNode,
+	type INodeInfo,
+	type INodeKey,
+	type ISource
+} from './codegen';
 import { EntityTypes, getEntity } from './Entity/Entity';
 
 import IconTableCells from '~icons/heroicons/table-cells-16-solid';
@@ -88,28 +94,30 @@ export function isStreaming(node: CombinedLogicalNode): boolean {
 	} else if ('table' in node || 'snapshotTable' in node) {
 		// Source without topic
 		return false;
+	} else if ('left' in node && node.left) {
+		// Join
+		return isSourceStreaming(node.left);
 	} else if ('sources' in node) {
 		// Check if any upstream sources are streaming
-		return (
-			node.sources?.some((source) => {
-				if ('entities' in source && source.entities) {
-					return isStreaming(source.entities);
-				} else if ('events' in source && source.events) {
-					return isStreaming(source.events);
-				} else if ('joinSource' in source && source.joinSource) {
-					return isStreaming(source.joinSource as CombinedLogicalNode);
-				}
-			}) ?? false
-		);
+		return node.sources?.some((source) => isSourceStreaming(source)) ?? false;
 	} else if ('join' in node) {
 		// Check if any upstream joins are streaming
-		// @ts-expect-error - TODO: fix types
-		return node.join.joinParts?.some((joinPart) => isStreaming(joinPart.groupBy)) ?? true;
+		return isStreaming(node.join!);
 	} else if ('joinParts' in node) {
 		// Check if any upstream joinParts are streaming
-		// @ts-expect-error - TODO: fix types
-		return node.joinParts?.some((joinPart) => isStreaming(joinPart.groupBy)) ?? true;
+		return node.joinParts?.some((joinPart) => isStreaming(joinPart.groupBy!)) ?? true;
 	} else {
 		return false;
 	}
+}
+
+function isSourceStreaming(source: ISource) {
+	if ('entities' in source && source.entities) {
+		return isStreaming(source.entities);
+	} else if ('events' in source && source.events) {
+		return isStreaming(source.events);
+	} else if ('joinSource' in source && source.joinSource) {
+		return isStreaming(source.joinSource.join!);
+	}
+	return false;
 }
