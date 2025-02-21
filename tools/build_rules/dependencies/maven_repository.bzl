@@ -14,7 +14,7 @@ maven_repository = repository(
         "org.junit.platform:junit-platform-launcher:1.10.5",
         "org.junit.platform:junit-platform-reporting:1.10.5",
         "com.novocode:junit-interface:0.11",
-        "org.mockito:mockito-core:5.12.0",
+#         "org.mockito:mockito-core:5.12.0",
 
         # Add other dependencies
         "org.slf4j:slf4j-api:2.0.12",
