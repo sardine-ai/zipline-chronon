@@ -7,41 +7,15 @@ load("//:scala_config.bzl", "scala_version")
 scala_version(name = "scala_config")
 load("@scala_config//:version.bzl", "SCALA_VERSION")
 
-# ==== py support ====
+# Contains useful bazel utility functions and rules
 http_archive(
-    name = "rules_python",
-    sha256 = "ca77768989a7f311186a29747e3e95c936a41dffac779aff6b443db22290d913",
-    strip_prefix = "rules_python-0.36.0",
-    url = "https://github.com/bazelbuild/rules_python/releases/download/0.36.0/rules_python-0.36.0.tar.gz",
+    name = "bazel_skylib",
+    sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+    ],
 )
-
-load("@rules_python//python:repositories.bzl", "py_repositories")
-
-py_repositories()
-
-load("@rules_python//python:repositories.bzl", "python_register_toolchains")
-
-python_register_toolchains(
-    name = "python_3_8",
-    # Available versions are listed in @rules_python//python:versions.bzl.
-    # We recommend using the same version your team is already standardized on.
-    python_version = "3.8",
-)
-
-load("@rules_python//python:pip.bzl", "pip_parse")
-load("@python_3_8//:defs.bzl", "interpreter")
-
-pip_parse(
-    name = "pypi",
-    python_interpreter_target = interpreter,
-    requirements_lock = "//:requirements_lock.txt",
-)
-
-load("@pypi//:requirements.bzl", "install_deps")
-
-install_deps()
-
-# ==== end py support ====
 
 # For Java support
 http_archive(

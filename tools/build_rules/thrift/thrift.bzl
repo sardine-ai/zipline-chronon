@@ -112,9 +112,8 @@ def thrift_java_library(name, srcs, **kwargs):
 
 
 def _thrift_python_library_impl(ctx):
-    thrift_binary = ctx.attr.thrift_binary
+
     all_outputs = []
-    commands = []
 
     for src in ctx.files.srcs:
         rule_name = ctx.label.name
@@ -125,51 +124,30 @@ def _thrift_python_library_impl(ctx):
         namespace_dir = ctx.attr.namespace.replace(".", "/")
 
         # Declare output directory matching the namespace structure
-        output_dir = "{}/{}".format(namespace_dir, base_name)
+        output_dir = "{}/{}/{}".format(rule_name, namespace_dir, base_name)
         constants_py = ctx.actions.declare_file("{}/constants.py".format(output_dir))
         ttypes_py = ctx.actions.declare_file("{}/ttypes.py".format(output_dir))
-        module_init = ctx.actions.declare_file("{}/__init__.py".format(output_dir))
 
-        file_outputs = [constants_py, ttypes_py, module_init]
+        file_outputs = [constants_py, ttypes_py]
         all_outputs.extend(file_outputs)
 
         ctx.actions.run(
-            outputs = [output_directory],
-            inputs = [src_file],
-            executable = thrift_binary,
+            outputs = [output_dir],
+            inputs = [src],
+            executable = ctx.attr.thrift_binary,
             arguments = [
                 "--gen",
-                "java:generated_annotations=undated",
+                "py",
                 "-out",
-                output_directory.path,
-                src_file.path,
+                output_dir.path,
+                src.path,
             ],
-            progress_message = "Generating Java code from %s file" % src_file.path,
-        )
-
-        # Command to generate files in the correct namespace
-        command = """{thrift_binary} --gen py -out $(dirname {output_dir}) {src}""".format(
-            thrift_binary = thrift_binary,
-            namespace = ctx.attr.namespace,
-            output_dir = ttypes_py.dirname,
-            src = src.path,
-            main_py = main_py.path,
-            constants_py = constants_py.path,
-            ttypes_py = ttypes_py.path,
-            module_init = module_init.path,
-        )
-
-        # Generate files
-        ctx.actions.run_shell(
-            outputs = all_outputs,
-            inputs = ctx.files.srcs,
-            command = command,
-            progress_message = "Generating Python code from Thrift files: %s" % src.path,
+            progress_message = "Generating Python code from %s file" % src.path,
         )
 
     return [DefaultInfo(files = depset(all_outputs))]
 
-_thrift_python_library_gen = rule(
+_thrift_python_library = rule(
     implementation = _thrift_python_library_impl,
     attrs = {
         "srcs": attr.label_list(allow_files = [".thrift"]),
@@ -180,7 +158,7 @@ _thrift_python_library_gen = rule(
 
 def thrift_python_library(name, srcs, namespace, visibility = None):
     """Generates Python code from Thrift files with correct namespace structure."""
-    _thrift_python_library_gen(
+    _thrift_python_library(
         name = name + "_gen",
         srcs = srcs,
         namespace = namespace,
