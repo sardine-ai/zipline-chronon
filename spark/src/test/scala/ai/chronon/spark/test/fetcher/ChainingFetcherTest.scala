@@ -22,7 +22,7 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.{MetadataStore, SparkConversions}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.{OnlineUtils, TestUtils}

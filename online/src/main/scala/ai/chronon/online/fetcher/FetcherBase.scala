@@ -14,42 +14,27 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.fetcher
 
 import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.windowing
-import ai.chronon.aggregator.windowing.FinalBatchIr
-import ai.chronon.aggregator.windowing.ResolutionUtils
-import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
-import ai.chronon.aggregator.windowing.TiledIr
+import ai.chronon.aggregator.windowing.{FinalBatchIr, ResolutionUtils, SawtoothOnlineAggregator, TiledIr}
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.Extensions.JoinOps
-import ai.chronon.api.Extensions.ThrowableOps
+import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.ColumnSpec
-import ai.chronon.online.Fetcher.PrefixedRequest
-import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.Fetcher.Response
-import ai.chronon.online.FetcherCache.BatchResponses
-import ai.chronon.online.FetcherCache.CachedBatchResponse
-import ai.chronon.online.FetcherCache.KvStoreBatchResponse
-import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.KVStore.GetResponse
-import ai.chronon.online.KVStore.TimedValue
+import ai.chronon.online.fetcher.Fetcher.{ColumnSpec, PrefixedRequest, Request, Response}
+import ai.chronon.online.fetcher.FetcherCache.{BatchResponses, CachedBatchResponse, KvStoreBatchResponse}
+import ai.chronon.online.KVStore.{GetRequest, GetResponse, TimedValue}
 import ai.chronon.online.Metrics.Name
-import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
-import ai.chronon.online.OnlineDerivationUtil.buildRenameOnlyDerivationFunction
+import ai.chronon.online.OnlineDerivationUtil.{applyDeriveFunc, buildRenameOnlyDerivationFunction}
+import ai.chronon.online._
 import com.google.gson.Gson
 
 import java.util
 import scala.collection.JavaConverters._
 import scala.collection.Seq
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 // Does internal facing fetching
 //   1. takes join request or groupBy requests
@@ -318,9 +303,9 @@ class FetcherBase(kvStore: KVStore,
   // 2. encodes keys as keyAvroSchema
   // 3. Based on accuracy, fetches streaming + batch data and aggregates further.
   // 4. Finally converted to outputSchema
-  def fetchGroupBys(requests: Seq[Request]): Future[Seq[Response]] = {
+  def fetchGroupBys(requests: Seq[Fetcher.Request]): Future[Seq[Response]] = {
     // split a groupBy level request into its kvStore level requests
-    val groupByRequestToKvRequest: Seq[(Request, Try[GroupByRequestMeta])] = requests.iterator
+    val groupByRequestToKvRequest: Seq[(Fetcher.Request, Try[GroupByRequestMeta])] = requests.iterator
       .filter(r => r.keys == null || r.keys.values == null || r.keys.values.exists(_ != null))
       .map { request =>
         val groupByRequestMetaTry: Try[GroupByRequestMeta] = getGroupByServingInfo(request.name)

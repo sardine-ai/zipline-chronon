@@ -1,24 +1,16 @@
-package ai.chronon.online
+package ai.chronon.online.fetcher
 
 import ai.chronon.aggregator.windowing.FinalBatchIr
+import FetcherBase.GroupByRequestMeta
 import ai.chronon.api.GroupBy
-import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.FetcherBase.GroupByRequestMeta
-import ai.chronon.online.FetcherCache.BatchIrCache
-import ai.chronon.online.FetcherCache.BatchResponses
-import ai.chronon.online.FetcherCache.CachedBatchResponse
-import ai.chronon.online.FetcherCache.CachedFinalIrBatchResponse
-import ai.chronon.online.FetcherCache.CachedMapBatchResponse
-import ai.chronon.online.FetcherCache.KvStoreBatchResponse
-import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.KVStore.TimedValue
+import ai.chronon.online.fetcher.FetcherCache._
+import ai.chronon.online.KVStore.{GetRequest, TimedValue}
+import ai.chronon.online.{GroupByServingInfoParsed, LRUCache, Metrics}
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.Seq
-import scala.util.Success
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /*
  * FetcherCache is an extension to FetcherBase that provides caching functionality. It caches KV store
@@ -118,8 +110,8 @@ trait FetcherCache {
 
   /** Given a list of GetRequests, return a map of GetRequests to cached FinalBatchIrs.
     */
-  def getCachedRequests(
-      groupByRequestToKvRequest: Seq[(Request, Try[GroupByRequestMeta])]): Map[GetRequest, CachedBatchResponse] = {
+  def getCachedRequests(groupByRequestToKvRequest: Seq[(Fetcher.Request, Try[GroupByRequestMeta])])
+      : Map[GetRequest, CachedBatchResponse] = {
     if (!isCacheSizeConfigured) return Map.empty
 
     groupByRequestToKvRequest

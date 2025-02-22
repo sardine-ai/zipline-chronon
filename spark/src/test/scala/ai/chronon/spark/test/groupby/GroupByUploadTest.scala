@@ -21,7 +21,7 @@ import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher
+import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.{GroupByUpload, SparkSessionBuilder, TableUtils}
 import ai.chronon.spark.test.{DataFrameGen, OnlineUtils}

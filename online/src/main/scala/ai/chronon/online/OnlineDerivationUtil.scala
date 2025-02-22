@@ -7,7 +7,7 @@ import ai.chronon.api.LongType
 import ai.chronon.api.StringType
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
-import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.fetcher.Fetcher
 
 import scala.collection.Seq
 
@@ -64,7 +64,7 @@ object OnlineDerivationUtil {
 
   def applyDeriveFunc(
       deriveFunc: DerivationFunc,
-      request: Request,
+      request: Fetcher.Request,
       baseMap: Map[String, AnyRef]
   ): Map[String, AnyRef] = {
     val requestTs = request.atMillis.getOrElse(System.currentTimeMillis())
