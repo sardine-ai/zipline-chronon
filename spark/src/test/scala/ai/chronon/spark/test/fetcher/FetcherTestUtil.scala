@@ -1,7 +1,7 @@
 package ai.chronon.spark.test.fetcher
 
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.Fetcher.{Request, Response}
+import ai.chronon.online.fetcher.Fetcher.{Request, Response}
 import ai.chronon.online._
 import ai.chronon.spark.utils.MockApi
 import ai.chronon.spark.{Join => _, _}

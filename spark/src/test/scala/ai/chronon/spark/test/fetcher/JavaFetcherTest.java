@@ -19,7 +19,7 @@ package ai.chronon.spark.test.fetcher;
 import ai.chronon.online.JavaFetcher;
 import ai.chronon.online.JavaRequest;
 import ai.chronon.online.JavaResponse;
-import ai.chronon.online.Fetcher;
+import ai.chronon.online.fetcher.Fetcher;
 import ai.chronon.spark.TableUtils;
 import ai.chronon.spark.SparkSessionBuilder;
 import ai.chronon.spark.utils.InMemoryKvStore;

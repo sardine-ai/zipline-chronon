@@ -77,7 +77,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
   // registering classes tells kryo to not send schema on the wire
   // helps shuffles and spilling to disk
   override def registerClasses(kryo: Kryo): Unit = {
-    //kryo.setWarnUnregisteredClasses(true)
+    // kryo.setWarnUnregisteredClasses(true)
     val names = Seq(
       "java.time.LocalDateTime",
       "java.time.LocalDate",
@@ -108,7 +108,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "ai.chronon.aggregator.windowing.BatchIr",
       "ai.chronon.aggregator.base.ApproxHistogramIr",
       "ai.chronon.online.RowWrapper",
-      "ai.chronon.online.Fetcher$Request",
+      "ai.chronon.online.fetcher.Fetcher$Request",
       "ai.chronon.aggregator.windowing.FinalBatchIr",
       "ai.chronon.online.LoggableResponse",
       "ai.chronon.online.LoggableResponseBase64",
