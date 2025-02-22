@@ -17,39 +17,23 @@
 package ai.chronon.spark.streaming
 
 import ai.chronon.api
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.Request
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online._
-import ai.chronon.spark.GenericRowHandler
-import ai.chronon.spark.TableUtils
+import ai.chronon.online.fetcher.Fetcher
+import ai.chronon.spark.{GenericRowHandler, TableUtils}
 import com.google.gson.Gson
-import org.apache.spark.api.java.function.MapPartitionsFunction
-import org.apache.spark.api.java.function.VoidFunction2
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.Encoder
-import org.apache.spark.sql.Encoders
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.streaming.DataStreamWriter
-import org.apache.spark.sql.streaming.Trigger
-import org.apache.spark.sql.types.BooleanType
-import org.apache.spark.sql.types.LongType
-import org.apache.spark.sql.types.StructField
-import org.apache.spark.sql.types.StructType
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.apache.spark.api.java.function.{MapPartitionsFunction, VoidFunction2}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}
+import org.apache.spark.sql.streaming.{DataStreamWriter, Trigger}
+import org.apache.spark.sql.types.{BooleanType, LongType, StructField, StructType}
+import org.slf4j.{Logger, LoggerFactory}
 
-import java.lang
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
+import java.time.{Instant, ZoneId, ZoneOffset}
 import java.time.format.DateTimeFormatter
-import java.util
+import java.{lang, util}
 import java.util.Base64
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
@@ -329,7 +313,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
 
     val tableUtils = TableUtils(session)
     // the decoded schema is in lower case
-    val reqColumns = tableUtils.getColumnsFromQuery(leftStreamingQuery).map(_.toLowerCase).toSet.toSeq
+    val reqColumns = tableUtils.getColumnsFromQuery(leftStreamingQuery).map(_.toLowerCase).distinct
 
     val leftSchema = StructType(
       decoded.df.schema
@@ -371,7 +355,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
             val eventTs = row.get(leftTimeIndex).asInstanceOf[Long]
             context.distribution(Metrics.Name.LagMillis, System.currentTimeMillis() - eventTs)
             val ts = if (useEventTimeForQuery) Some(eventTs) else None
-            Request(joinRequestName, keyMap, atMillis = ts.map(_ + queryShiftMs))
+            Fetcher.Request(joinRequestName, keyMap, atMillis = ts.map(_ + queryShiftMs))
           }
 
           val microBatchTimestamp =
@@ -397,7 +381,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
           val responses = Await.result(responsesFuture, 5.second)
 
           if (debug && shouldSample) {
-            logger.info(s"responses/request size: ${responses.size}/${requests.size}\n  responses: ${responses}")
+            logger.info(s"responses/request size: ${responses.size}/${requests.length}\n  responses: ${responses}")
             responses.foreach(response =>
               logger.info(
                 s"request: ${response.request.keys}, ts: ${response.request.atMillis}, values: ${response.values}"))

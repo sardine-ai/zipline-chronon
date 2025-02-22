@@ -20,8 +20,10 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.Request
-import ai.chronon.online._
+import ai.chronon.online
+import ai.chronon.online.fetcher.Fetcher
+import ai.chronon.online.fetcher.Fetcher.Request
+import ai.chronon.online.{fetcher, _}
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.LogFlattenerJob
 import ai.chronon.spark.LoggingSchema
@@ -231,7 +233,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     )
   }
 
-  private def fetchJoin(fetcher: Fetcher, joinTestSuite: JoinTestSuite): Fetcher.Response = {
+  private def fetchJoin(fetcher: Fetcher, joinTestSuite: JoinTestSuite): online.fetcher.Fetcher.Response = {
     val request = Request(joinTestSuite.joinConf.metaData.name, joinTestSuite.fetchExpectations._1)
     val future = fetcher.fetchJoin(Seq(request))
     val responses = Await.result(future, Duration(10000, SECONDS)).toSeq

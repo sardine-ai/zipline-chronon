@@ -16,6 +16,7 @@
 
 package ai.chronon.online;
 
+import ai.chronon.online.fetcher.Fetcher;
 import scala.collection.Seq;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
