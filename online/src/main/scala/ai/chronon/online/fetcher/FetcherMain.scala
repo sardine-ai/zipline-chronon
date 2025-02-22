@@ -1,22 +1,18 @@
-package ai.chronon.online
+package ai.chronon.online.fetcher
 
-import ai.chronon.api.Extensions.StringOps
-import ai.chronon.api.Join
-import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Constants._
-import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.api.Extensions.StringOps
+import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.{Join, ThriftJsonCodec}
 import ai.chronon.api.thrift.TBase
+import ai.chronon.online.Api
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.{Level, LogManager}
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
-import org.rogach.scallop.ScallopConf
-import org.rogach.scallop.ScallopOption
-import org.rogach.scallop.Subcommand
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.File
 import scala.collection.mutable
@@ -25,9 +21,7 @@ import scala.concurrent.duration.DurationInt
 import scala.io.Source
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object FetcherMain {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

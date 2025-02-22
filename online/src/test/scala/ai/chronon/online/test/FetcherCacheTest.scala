@@ -3,11 +3,11 @@ package ai.chronon.online
 import ai.chronon.aggregator.windowing.FinalBatchIr
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.GroupBy
-import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.FetcherBase._
-import ai.chronon.online.FetcherCache.BatchIrCache
-import ai.chronon.online.FetcherCache.BatchResponses
-import ai.chronon.online.FetcherCache.CachedMapBatchResponse
+import ai.chronon.online.fetcher.Fetcher.Request
+import ai.chronon.online.fetcher.FetcherBase._
+import ai.chronon.online.fetcher.FetcherCache.BatchIrCache
+import ai.chronon.online.fetcher.FetcherCache.BatchResponses
+import ai.chronon.online.fetcher.FetcherCache.CachedMapBatchResponse
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.Metrics.Context
 import org.junit.Assert.assertArrayEquals
@@ -34,7 +34,7 @@ trait MockitoHelper extends MockitoSugar {
 }
 
 class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
-  class TestableFetcherCache(cache: Option[BatchIrCache]) extends FetcherCache {
+  class TestableFetcherCache(cache: Option[BatchIrCache]) extends fetcher.FetcherCache {
     override val maybeBatchIrCache: Option[BatchIrCache] = cache
   }
   val batchIrCacheMaximumSize = 50

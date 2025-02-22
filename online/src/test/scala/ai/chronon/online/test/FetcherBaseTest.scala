@@ -21,12 +21,12 @@ import ai.chronon.api.Builders
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.GroupBy
 import ai.chronon.api.MetaData
-import ai.chronon.online.Fetcher.ColumnSpec
-import ai.chronon.online.Fetcher.Request
-import ai.chronon.online.Fetcher.Response
-import ai.chronon.online.FetcherCache.BatchResponses
+import ai.chronon.online.fetcher.Fetcher.ColumnSpec
+import ai.chronon.online.fetcher.Fetcher.Request
+import ai.chronon.online.fetcher.Fetcher.Response
+import ai.chronon.online.fetcher.FetcherCache.BatchResponses
 import ai.chronon.online.KVStore.TimedValue
-import ai.chronon.online._
+import ai.chronon.online.{fetcher, _}
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -56,7 +56,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   val HostKey = "host"
   val GuestId: AnyRef = 123.asInstanceOf[AnyRef]
   val HostId = "456"
-  var fetcherBase: FetcherBase = _
+  var fetcherBase: fetcher.FetcherBase = _
   var kvStore: KVStore = _
 
   before {
@@ -65,7 +65,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     // Future compositions in the Fetcher so provision it in
     // the mock to prevent hanging.
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    fetcherBase = spy[FetcherBase](new FetcherBase(kvStore))
+    fetcherBase = spy[fetcher.FetcherBase](new fetcher.FetcherBase(kvStore))
   }
 
   it should "fetch columns single query" in {
@@ -73,7 +73,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
 
-    doAnswer(new Answer[Future[Seq[Fetcher.Response]]] {
+    doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
       def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
         val requests = invocation.getArgument(0).asInstanceOf[Seq[Request]]
         val request = requests.head
@@ -103,7 +103,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val hostKeyMap = Map(HostKey -> HostId)
     val hostQuery = ColumnSpec(GroupBy, Column, Some(HostKey), Some(hostKeyMap))
 
-    doAnswer(new Answer[Future[Seq[Fetcher.Response]]] {
+    doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
       def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
         val requests = invocation.getArgument(0).asInstanceOf[Seq[Request]]
         val responses = requests.map(r => Response(r, Success(Map(r.name -> "100"))))
@@ -134,7 +134,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
 
-    doAnswer(new Answer[Future[Seq[Fetcher.Response]]] {
+    doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
       def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
         Future.successful(Seq())
       }
@@ -214,7 +214,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    val fetcherBaseWithFlagStore = spy[FetcherBase](new FetcherBase(kvStore, flagStore = flagStore))
+    val fetcherBaseWithFlagStore = spy[fetcher.FetcherBase](new fetcher.FetcherBase(kvStore, flagStore = flagStore))
     when(fetcherBaseWithFlagStore.isCacheSizeConfigured).thenReturn(true)
 
     def buildGroupByWithCustomJson(name: String): GroupBy = Builders.GroupBy(metaData = Builders.MetaData(name = name))
@@ -227,7 +227,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   }
 
   it should "fetch in the happy case" in {
-    val baseFetcher = new FetcherBase(mock[KVStore])
+    val baseFetcher = new fetcher.FetcherBase(mock[KVStore])
     val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
     val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
       request -> Success(
@@ -241,7 +241,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   }
 
   it should "Not fetch with null keys" in {
-    val baseFetcher = new FetcherBase(mock[KVStore])
+    val baseFetcher = new fetcher.FetcherBase(mock[KVStore])
     val request = Request(name = "name", keys = Map("email" -> null), atMillis = None, context = None)
     val request2 = Request(name = "name2", keys = Map("email" -> null), atMillis = None, context = None)
 
@@ -257,7 +257,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   }
 
   it should "parse with missing keys" in {
-    val baseFetcher = new FetcherBase(mock[KVStore])
+    val baseFetcher = new fetcher.FetcherBase(mock[KVStore])
     val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
     val request2 = Request(name = "name2", keys = Map("email" -> "email"), atMillis = None, context = None)
 
