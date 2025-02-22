@@ -17,6 +17,7 @@
 package ai.chronon.online;
 
 import ai.chronon.api.ScalaJavaConversions;
+import ai.chronon.online.fetcher.Fetcher;
 
 import java.util.Map;
 

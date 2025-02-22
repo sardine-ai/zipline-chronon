@@ -16,8 +16,8 @@
 
 package ai.chronon.online;
 
-import ai.chronon.online.Fetcher.Request;
-import ai.chronon.online.Fetcher.Response;
+import ai.chronon.online.fetcher.Fetcher;
+import ai.chronon.online.fetcher.FetcherResponseWithTs;
 import scala.collection.Iterator;
 import scala.collection.Seq;
 import scala.Option;
@@ -120,9 +120,9 @@ public class JavaFetcher {
   }
 
 
-  public static List<JavaResponse> toJavaResponses(Seq<Response> responseSeq) {
+  public static List<JavaResponse> toJavaResponses(Seq<Fetcher.Response> responseSeq) {
     List<JavaResponse> result = new ArrayList<>(responseSeq.size());
-    Iterator<Response> it = responseSeq.iterator();
+    Iterator<Fetcher.Response> it = responseSeq.iterator();
     while (it.hasNext()) {
       result.add(new JavaResponse(it.next()));
     }
@@ -139,36 +139,13 @@ public class JavaFetcher {
     });
   }
 
-  public static List<JavaStatsResponse> toJavaStatsResponses(Seq<Fetcher.StatsResponse> responseSeq) {
-    List<JavaStatsResponse> result = new ArrayList<>(responseSeq.size());
-    Iterator<Fetcher.StatsResponse> it = responseSeq.iterator();
-    while(it.hasNext()) {
-      result.add(toJavaStatsResponse(it.next()));
-    }
-    return result;
-  }
-
-  public static JavaStatsResponse toJavaStatsResponse(Fetcher.StatsResponse response) {
-    return new JavaStatsResponse(response);
-  }
-  public static JavaSeriesStatsResponse toJavaSeriesStatsResponse(Fetcher.SeriesStatsResponse response) {
-    return new JavaSeriesStatsResponse(response);
-  }
-
-  private CompletableFuture<List<JavaStatsResponse>> convertStatsResponses(Future<Seq<Fetcher.StatsResponse>> responses) {
-    return FutureConverters
-            .toJava(responses)
-            .toCompletableFuture()
-            .thenApply(JavaFetcher::toJavaStatsResponses);
-  }
-
-  private Seq<Request> convertJavaRequestList(List<JavaRequest> requests, boolean isGroupBy, long startTs) {
-    ArrayBuffer<Request> scalaRequests = new ArrayBuffer<>();
+  private Seq<Fetcher.Request> convertJavaRequestList(List<JavaRequest> requests, boolean isGroupBy, long startTs) {
+    ArrayBuffer<Fetcher.Request> scalaRequests = new ArrayBuffer<>();
     for (JavaRequest request : requests) {
-      Request convertedRequest = request.toScalaRequest();
+      Fetcher.Request convertedRequest = request.toScalaRequest();
       scalaRequests.$plus$eq(convertedRequest);
     }
-    Seq<Request> scalaRequestsSeq = scalaRequests.toSeq();
+    Seq<Fetcher.Request> scalaRequestsSeq = scalaRequests.toSeq();
     instrument(requests.stream().map(jReq -> jReq.name).collect(Collectors.toList()), isGroupBy, "java.request_conversion.latency.millis", startTs);
     return scalaRequestsSeq;
   }
@@ -176,7 +153,7 @@ public class JavaFetcher {
   public CompletableFuture<List<JavaResponse>> fetchGroupBys(List<JavaRequest> requests) {
     long startTs = System.currentTimeMillis();
     // Convert java requests to scala requests
-    Seq<Request> scalaRequests = convertJavaRequestList(requests, true, startTs);
+    Seq<Fetcher.Request> scalaRequests = convertJavaRequestList(requests, true, startTs);
     // Get responses from the fetcher
     Future<FetcherResponseWithTs> scalaResponses = this.fetcher.withTs(this.fetcher.fetchGroupBys(scalaRequests));
     // Convert responses to CompletableFuture
@@ -186,7 +163,7 @@ public class JavaFetcher {
   public CompletableFuture<List<JavaResponse>> fetchJoin(List<JavaRequest> requests) {
     long startTs = System.currentTimeMillis();
     // Convert java requests to scala requests
-    Seq<Request> scalaRequests = convertJavaRequestList(requests, false, startTs);
+    Seq<Fetcher.Request> scalaRequests = convertJavaRequestList(requests, false, startTs);
     // Get responses from the fetcher
     Future<FetcherResponseWithTs> scalaResponses = this.fetcher.withTs(this.fetcher.fetchJoin(scalaRequests, Option.empty()));
     // Convert responses to CompletableFuture
@@ -212,11 +189,5 @@ public class JavaFetcher {
 
   private Metrics.Context getGroupByContext(String groupByName) {
     return new Metrics.Context("group_by.fetch", null, groupByName, null, false, null, null, null, null);
-  }
-
-  public CompletableFuture<JavaSeriesStatsResponse> fetchConsistencyMetricsTimeseries(JavaStatsRequest request) {
-    Future<Fetcher.SeriesStatsResponse> response = this.fetcher.fetchConsistencyMetricsTimeseries(request.toScalaRequest());
-    // Convert responses to CompletableFuture
-    return FutureConverters.toJava(response).toCompletableFuture().thenApply(JavaFetcher::toJavaSeriesStatsResponse);
   }
 }

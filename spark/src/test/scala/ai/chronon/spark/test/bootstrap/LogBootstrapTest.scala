@@ -19,7 +19,7 @@ package ai.chronon.spark.test.bootstrap
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.Request
+import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.MetadataStore
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._

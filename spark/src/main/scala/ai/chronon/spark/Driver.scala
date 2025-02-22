@@ -26,11 +26,11 @@ import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import ai.chronon.online.Api
 import ai.chronon.online.ConfPathOrName
-import ai.chronon.online.FetcherMain
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
 import ai.chronon.online.MetadataStore
 import ai.chronon.online.TopicChecker
+import ai.chronon.online.fetcher.FetcherMain
 import ai.chronon.spark.stats.CompareBaseJob
 import ai.chronon.spark.stats.CompareJob
 import ai.chronon.spark.stats.ConsistencyJob

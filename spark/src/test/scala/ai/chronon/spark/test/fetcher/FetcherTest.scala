@@ -23,7 +23,7 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.Fetcher.{Request, StatsRequest}
+import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online._
 import ai.chronon.spark.Extensions._
@@ -653,16 +653,6 @@ class FetcherTest extends AnyFlatSpec {
       val metrics = consistencyJob.buildConsistencyMetrics()
       logger.info(s"ooc metrics: $metrics".stripMargin)
       OnlineUtils.serveConsistency(tableUtils, inMemoryKvStore, today, joinConf)
-      val fetcher = mockApi.buildFetcher()
-      val consistencyFetch =
-        fetcher.fetchConsistencyMetricsTimeseries(StatsRequest(joinConf.metaData.name, None, None))
-      val response = Await.result(consistencyFetch, Duration.Inf)
-      val gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create()
-      logger.info(s"""
-          |
-          | Fetched Consistency Metrics
-          | ${gson.toJson(response.values.get)}
-          |""".stripMargin)
     }
     // benchmark
     FetcherTestUtil.joinResponses(spark, requests, mockApi, runCount = 10, useJavaFetcher = true)

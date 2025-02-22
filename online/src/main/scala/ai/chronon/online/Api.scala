@@ -19,6 +19,7 @@ package ai.chronon.online
 import ai.chronon.api.Constants
 import ai.chronon.api.StructType
 import ai.chronon.online.KVStore._
+import ai.chronon.online.fetcher.Fetcher
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -259,15 +260,17 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
   final def buildFetcher(debug: Boolean = false,
                          callerName: String = null,
                          disableErrorThrows: Boolean = false): Fetcher =
-    new Fetcher(genKvStore,
-                Constants.MetadataDataset,
-                logFunc = responseConsumer,
-                debug = debug,
-                externalSourceRegistry = externalRegistry,
-                timeoutMillis = timeoutMillis,
-                callerName = callerName,
-                flagStore = flagStore,
-                disableErrorThrows = disableErrorThrows)
+    new Fetcher(
+      genKvStore,
+      Constants.MetadataDataset,
+      logFunc = responseConsumer,
+      debug = debug,
+      externalSourceRegistry = externalRegistry,
+      timeoutMillis = timeoutMillis,
+      callerName = callerName,
+      flagStore = flagStore,
+      disableErrorThrows = disableErrorThrows
+    )
 
   final def buildJavaFetcher(callerName: String = null, disableErrorThrows: Boolean = false): JavaFetcher = {
     new JavaFetcher(genKvStore,
