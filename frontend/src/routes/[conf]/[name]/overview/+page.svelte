@@ -6,8 +6,11 @@
 		Dagre,
 		Group,
 		Html,
+		Line,
+		Rect,
 		Spline,
 		Svg,
+		Text,
 		Tooltip,
 		ancestors,
 		descendants
@@ -156,7 +159,7 @@
 <Separator fullWidthExtend={true} wide={true} />
 
 <div class="flex-1 flex py-4">
-	<div class="flex-1 border rounded">
+	<div class="flex-1 border rounded grid grid-stack">
 		<Chart
 			data={chartData}
 			transform={{
@@ -166,6 +169,8 @@
 			}}
 			padding={{ top: 60, bottom: 20, left: 20, right: 20 }}
 			let:tooltip
+			let:width
+			let:height
 		>
 			<TransformControls />
 
@@ -308,6 +313,62 @@
 				</Dagre>
 			</div>
 
+			<!-- Put legend in separate SVG layer to not be affected by transform (pan/zoom) -->
+			<Svg ignoreTransform>
+				{@const legendWidth = 200}
+				{@const legendHeight = 90}
+				{@const legendPadding = 20}
+				{@const legendLabelWidth = 72}
+				{@const legendItems = [
+					{
+						label: 'Batch',
+						class:
+							'stroke-purple-500 stroke-[2] [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x'
+					},
+					{
+						label: 'Streaming',
+						class:
+							'stroke-blue-500 stroke-[2] [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
+					}
+				]}
+
+				<Group x={width - legendWidth} y={height - legendHeight}>
+					<Rect
+						x={0}
+						y={0}
+						width={legendWidth}
+						height={legendHeight}
+						class="fill-neutral-100 stroke-border"
+						rx={8}
+					/>
+					<Text
+						value="Legend"
+						x={legendPadding}
+						y={24}
+						width={legendWidth}
+						textAnchor="start"
+						class="text-sm fill-surface-content font-bold"
+					/>
+					<Group y={24}>
+						{#each legendItems as item, i (item.label)}
+							<Text
+								value={item.label}
+								x={legendPadding}
+								y={24 + i * 24}
+								class="text-xs fill-surface-content/50"
+							/>
+							<Line
+								x1={legendPadding + legendLabelWidth}
+								y1={20 + i * 24}
+								x2={legendWidth - legendPadding}
+								y2={20 + i * 24}
+								class={item.class}
+							/>
+						{/each}
+					</Group>
+				</Group>
+			</Svg>
+
 			{#if !hideTooltip}
 				<Tooltip.Root {...tooltipProps.root} contained="window" xOffset={0} yOffset={30} let:data>
 					<Tooltip.List {...tooltipProps.list}>
@@ -338,7 +399,6 @@
 						{/if}
 
 						<!-- EntitySource -->
-
 						{#each ['table', 'snapshotTable', 'mutationTable', 'mutationTopic'] as prop}
 							{#if data.value.conf[prop] !== undefined}
 								<Tooltip.Item
