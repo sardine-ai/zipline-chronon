@@ -67,7 +67,7 @@
 		"clsx": "^2.1.1",
 		"d3": "^7.9.0",
 		"dotenv": "^16.4.7",
-		"layerchart": "^0.99.2",
+		"layerchart": "^0.99.4",
 		"lodash": "^4.17.21",
 		"svelte-inspect-value": "0.2.0",
 		"tailwind-merge": "^2.6.0",
