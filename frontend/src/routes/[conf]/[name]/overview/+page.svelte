@@ -441,6 +441,7 @@
 							showPreview={false}
 							showTools={false}
 							expandLevel={7}
+							parseJson
 							borderless
 							noanimate
 							theme=""
