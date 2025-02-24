@@ -314,7 +314,7 @@
 			</div>
 
 			<!-- Put legend in separate SVG layer to not be affected by transform (pan/zoom) -->
-			<Svg ignoreTransform>
+			<Svg ignoreTransform pointerEvents={false}>
 				{@const legendWidth = 200}
 				{@const legendHeight = 90}
 				{@const legendPadding = 20}
