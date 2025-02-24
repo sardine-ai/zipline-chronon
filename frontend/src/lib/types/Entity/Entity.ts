@@ -3,10 +3,10 @@ import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
 import IconCubeTransparent from '~icons/heroicons/cube-transparent-16-solid';
 import IconRectangleStack from '~icons/heroicons/rectangle-stack-16-solid';
 import {
-	type IJoin,
-	type IGroupBy,
-	type IModel,
-	type IStagingQuery,
+	type IJoinArgs,
+	type IGroupByArgs,
+	type IModelArgs,
+	type IStagingQueryArgs,
 	ConfType
 } from '$lib/types/codegen';
 
@@ -53,7 +53,9 @@ export const entityConfig = [
 export type Entity = (typeof entityConfig)[number];
 
 // This is a workaround, see https://app.asana.com/0/1208277377735902/1209205208293672/f
-export type EntityWithType = (IJoin | IGroupBy | IModel | IStagingQuery) & { entityType: EntityId };
+export type EntityWithType = (IJoinArgs | IGroupByArgs | IModelArgs | IStagingQueryArgs) & {
+	entityType: EntityId;
+};
 
 // Helper function to get entity config by ID
 export function getEntity(id: EntityId): Entity {

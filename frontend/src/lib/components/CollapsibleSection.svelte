@@ -45,7 +45,7 @@
 	<div class="flex mb-3">
 		<CollapsibleTrigger class="flex items-center space-x-4">
 			<IconChevronDown
-				class="size-4 transition-transform duration-200 {open ? '' : 'rotate-180'}"
+				class="size-4 transition-transform duration-200 {open ? '' : '-rotate-90'}"
 			/>
 			<h2 class="{sizeClasses.title} !ml-2 select-text">{title}</h2>
 		</CollapsibleTrigger>

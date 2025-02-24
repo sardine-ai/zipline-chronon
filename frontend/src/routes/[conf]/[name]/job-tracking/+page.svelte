@@ -55,8 +55,10 @@
 			cell: ({ row }, { pluginStates }) => {
 				const { isExpanded, canExpand, isAllSubRowsExpanded } =
 					pluginStates.expand.getRowState(row);
-				const jobId = (row as DataBodyRow<JobTreeNode>).original.row;
-				const childrenCount = (row as DataBodyRow<JobTreeNode>).original.children?.length || 0;
+				const original = (row as DataBodyRow<JobTreeNode>).original;
+				const jobId = original.row;
+				const node = original.node;
+				const conf = original.conf;
 
 				return createRender(ExpandableCell as unknown as typeof SvelteComponent, {
 					depth: row.depth,
@@ -64,7 +66,8 @@
 					canExpand,
 					isAllSubRowsExpanded,
 					name: jobId,
-					childrenCount
+					node,
+					conf
 				});
 			}
 		})

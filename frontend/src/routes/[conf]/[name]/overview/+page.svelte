@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type ComponentProps } from 'svelte';
+	import { onMount, type ComponentProps } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import {
 		Chart,
@@ -14,9 +14,17 @@
 	} from 'layerchart';
 	import { curveBumpX, index } from 'd3';
 	import { type Node } from '@dagrejs/dagre';
+	import { page } from '$app/state';
+	import { pushState } from '$app/navigation';
+	import { browser } from '$app/environment';
 
 	import TransformControls from '$lib/components/charts/TransformControls.svelte';
-	import { LogicalType, type IJoin, type INodeInfo, type INodeKey } from '$src/lib/types/codegen';
+	import {
+		LogicalType,
+		type IJoinArgs,
+		type INodeInfoArgs,
+		type INodeKeyArgs
+	} from '$src/lib/types/codegen';
 	import {
 		getLogicalNodeConfig,
 		getLogicalNodeType,
@@ -38,7 +46,7 @@
 	import IconArrowRight from '~icons/heroicons/arrow-right';
 
 	type DagreData = ComponentProps<Dagre>['data'];
-	type CustomNode = Node & { id: string; key: INodeKey; value: INodeInfo };
+	type CustomNode = Node & { id: string; key: INodeKeyArgs; value: INodeInfoArgs };
 
 	const { data } = $props();
 
@@ -51,7 +59,7 @@
 		})) ?? []
 	);
 
-	function getEdges(node: INodeKey): DagreData['edges'] {
+	function getEdges(node: INodeKeyArgs): DagreData['edges'] {
 		const parents = connections?.get(node)?.parents;
 
 		return (
@@ -69,6 +77,33 @@
 	let graph = $state<ComponentProps<Dagre>['graph'] | undefined>(undefined);
 	let hideTooltip = $state(false);
 	let isDetailsOpen = $state(true);
+
+	onMount(() => {
+		setTimeout(() => {
+			if (browser && page.url.searchParams.get('node')) {
+				const nodeId = page.url.searchParams.get('node');
+				const node = nodes.find((n) => n.id === nodeId);
+				if (node) {
+					// Restructure the node to match the expected format
+					const restructuredNode = {
+						...node,
+						label: node.id,
+						key: (node.label as { key: INodeKeyArgs }).key,
+						value: (node.label as { value: INodeInfoArgs }).value
+					};
+					selectedNode = restructuredNode as CustomNode;
+				}
+			}
+		});
+	});
+
+	$effect(() => {
+		if (page.state.selectedNode) {
+			selectedNode = page.state.selectedNode;
+		} else {
+			selectedNode = null;
+		}
+	});
 
 	/** Determine if node should be faded based on if node is upstream or downstream from hoveredNode */
 	function fadeNode(node: CustomNode) {
@@ -199,9 +234,13 @@
 									y={node.y - node.height / 2}
 									style="width:{node.width}px; height:{node.height}px"
 									onclick={() => {
-										selectedNode = node;
+										const url = new URL(window.location.href);
+										url.searchParams.set('node', node.id);
+										pushState(url.pathname + url.search, {
+											selectedNode: node
+										});
 									}}
-									onpointermove={(e) => {
+									onpointermove={(e: PointerEvent) => {
 										hoveredNode = node;
 										tooltip.show(e, node);
 									}}
@@ -334,7 +373,14 @@
 	</div>
 </div>
 
-<Dialog open={selectedNode != null} onOpenChange={() => (selectedNode = null)}>
+<Dialog
+	open={selectedNode != null}
+	onOpenChange={() => {
+		if (selectedNode) {
+			history.back();
+		}
+	}}
+>
 	{#if selectedNode}
 		<Tabs value="overview" class="w-full">
 			<DialogContent class="max-w-[85vw] h-[95vh] flex flex-col p-0">
@@ -382,7 +428,7 @@
 				</DialogHeader>
 
 				<TabsContent value="overview" class="overflow-auto px-7">
-					<ConfProperties conf={selectedNode.value.conf as IJoin} includeUpstream />
+					<ConfProperties conf={selectedNode.value.conf as IJoinArgs} includeUpstream />
 				</TabsContent>
 
 				<TabsContent value="details" class="overflow-auto px-7">
@@ -396,11 +442,12 @@
 							showTools={false}
 							expandLevel={7}
 							borderless
+							noanimate
 							theme=""
 							--base00="hsl(var(--background))"
 							--base01="hsl(var(--muted) / 20%)"
 							--base02="hsl(var(--primary-500))"
-							--base03="hsl(var(--border))"
+							--base03="hsl(var(--neutral-600))"
 							--base05="hsl(var(--foreground))"
 							--base08="hsl(var(--primary-700))"
 						/>

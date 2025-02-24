@@ -5,30 +5,34 @@
 	import { entries, sort } from '@layerstack/utils';
 	import { rollups } from 'd3';
 	import { sub, type Duration } from 'date-fns';
-
-	import { page } from '$app/state';
-
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import type { ITileSummarySeries } from '$src/lib/types/codegen';
+	import type { ITileSummarySeriesArgs } from '$src/lib/types/codegen';
 	import { Api } from '$lib/api/api';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { formatDate } from '$lib/util/format';
 	import { DRIFT_METRIC_SCALES } from '$lib/util/drift-metric';
 	import ChartControls from '$lib/components/ChartControls.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import ObservabilityNavTabs from '../ObservabilityNavTabs.svelte';
+	import ObservabilityNavTabs from '$routes/[conf]/[name]/observability/ObservabilityNavTabs.svelte';
 	import FeaturesLineChart from '$lib/components/charts/FeaturesLineChart.svelte';
 	import PercentileLineChart from '$lib/components/charts/PercentileLineChart.svelte';
 	import {
 		type DateValue,
 		barChartProps,
 		pieChartProps,
-		tooltipProps
+		tooltipProps,
+		xAxisProps,
+		yAxisProps,
+		textClass
 	} from '$lib/components/charts/common';
 	import { cn } from '$src/lib/utils';
 	import { isMacOS } from '$src/lib/util/browser';
 	import { getSortDirection } from '$src/lib/util/sort';
 	import { NULL_VALUE } from '$src/lib/constants/common';
+	import { page } from '$app/state';
+	import { pushState } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { getColumns, transformSeries } from '$lib/util/series';
 
 	type FeaturesLineChartProps = ComponentProps<typeof FeaturesLineChart>;
 
@@ -45,7 +49,7 @@
 		sort(
 			rollups(
 				data.joinDrift?.driftSeries ?? [],
-				(values) => sort(values, (d) => d.key.column, sortDirection),
+				(values) => sort(values, (d) => d.key.column, 'asc'),
 				(d) => d.key?.groupName ?? 'Unknown'
 			),
 			(d) => d[0],
@@ -75,8 +79,8 @@
 		untrack(() => Object.fromEntries(driftSeriesByGroupName.map((d) => [d[0], true])))
 	);
 
-	let columnSummaryData: ITileSummarySeries | null = $state(null);
-	let columnSummaryBaselineData: ITileSummarySeries | null = $state(null);
+	let columnSummaryData: ITileSummarySeriesArgs | null = $state(null);
+	let columnSummaryBaselineData: ITileSummarySeriesArgs | null = $state(null);
 
 	async function selectSeriesPoint(seriesPoint: typeof selectedSeriesPoint) {
 		selectedSeriesPoint = seriesPoint;
@@ -111,6 +115,40 @@
 			}
 		}
 	}
+
+	onMount(() => {
+		setTimeout(() => {
+			if (page.url.searchParams.get('node') && page.url.searchParams.get('timestamp')) {
+				const nodeId = page.url.searchParams.get('node');
+				const timestamp = Number(page.url.searchParams.get('timestamp'));
+
+				const series = driftSeriesByGroupName
+					.flatMap(([_, groupValues]) => groupValues)
+					.find((v) => v?.key?.column === nodeId);
+
+				if (series && data.joinDrift) {
+					const columns = getColumns(driftSeriesByGroupName.flatMap(([_, values]) => values));
+					const transformedSeries = transformSeries(series, columns);
+					const point = transformedSeries.data.find((d) => Number(d.date) === timestamp);
+
+					if (point) {
+						selectSeriesPoint({
+							series: transformedSeries,
+							data: point
+						} as typeof selectedSeriesPoint);
+					}
+				}
+			}
+		});
+	});
+
+	$effect(() => {
+		if (page.state.selectedSeriesPoint) {
+			selectSeriesPoint(page.state.selectedSeriesPoint);
+		} else {
+			selectSeriesPoint(null);
+		}
+	});
 </script>
 
 <div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
@@ -151,14 +189,26 @@
 							<FeaturesLineChart
 								data={values}
 								yDomain={driftMetricDomain}
-								onpointclick={(e, { series, data }) => {
-									selectSeriesPoint({ series: series, data: data as unknown as DateValue });
+								onpointclick={(
+									_e: MouseEvent,
+									{ series, data }: { series: SeriesItem; data: unknown }
+								) => {
+									const url = new URL(window.location.href);
+									url.searchParams.set('node', series.key.toString());
+									url.searchParams.set(
+										'timestamp',
+										new Date((data as DateValue).date).getTime().toString()
+									);
+									pushState(url.toString(), {
+										selectedSeriesPoint: { series, data: data as DateValue }
+									});
 								}}
-								onitemclick={({ series, data }) => {
-									selectSeriesPoint({ series: series, data });
+								onitemclick={({ series, data }: { series: SeriesItem; data: DateValue }) => {
+									selectSeriesPoint({ series, data });
 								}}
 								{xDomain}
-								onbrushend={(e) => (xDomain = e.xDomain)}
+								onbrushend={(detail: { xDomain?: DomainType }) =>
+									detail.xDomain && (xDomain = detail.xDomain)}
 								tooltip={{ locked: lockedTooltip }}
 							/>
 						</div>
@@ -173,7 +223,14 @@
 	{/snippet}
 </CollapsibleSection>
 
-<Dialog open={selectedSeriesPoint != null} onOpenChange={() => (selectedSeriesPoint = null)}>
+<Dialog
+	open={selectedSeriesPoint != null}
+	onOpenChange={() => {
+		if (selectedSeriesPoint) {
+			history.back();
+		}
+	}}
+>
 	<DialogContent class="max-w-[85vw] h-[95vh] flex flex-col p-0">
 		<DialogHeader class="pt-8 px-7 pb-0">
 			<span
@@ -225,14 +282,26 @@
 									data={values}
 									yDomain={driftMetricDomain}
 									markPoint={selectedSeriesPoint?.data}
-									onpointclick={(e, { series, data }) => {
-										selectSeriesPoint({ series: series, data: data as unknown as DateValue });
+									onpointclick={(
+										_e: MouseEvent,
+										{ series, data }: { series: SeriesItem; data: unknown }
+									) => {
+										const url = new URL(window.location.href);
+										url.searchParams.set('node', series.key.toString());
+										url.searchParams.set(
+											'timestamp',
+											new Date((data as DateValue).date).getTime().toString()
+										);
+										pushState(url.toString(), {
+											selectedSeriesPoint: { series, data: data as DateValue }
+										});
 									}}
-									onitemclick={({ series, data }) => {
-										selectSeriesPoint({ series: series, data });
+									onitemclick={({ series, data }: { series: SeriesItem; data: DateValue }) => {
+										selectSeriesPoint({ series, data });
 									}}
 									{xDomain}
-									onbrushend={(e) => (xDomain = e.xDomain)}
+									onbrushend={(detail: { xDomain?: DomainType }) =>
+										detail.xDomain && (xDomain = detail.xDomain)}
 									tooltip={{ locked: lockedTooltip }}
 								/>
 							</div>
@@ -248,7 +317,8 @@
 							<PercentileLineChart
 								data={columnSummaryData!}
 								{xDomain}
-								onbrushend={(e) => (xDomain = e.xDomain)}
+								onbrushend={(detail: { xDomain?: DomainType }) =>
+									detail.xDomain && (xDomain = detail.xDomain)}
 								tooltip={{ locked: lockedTooltip }}
 							/>
 						</div>
@@ -302,7 +372,8 @@
 								bandPadding={0.1}
 								{...barChartProps}
 								props={{
-									yAxis: { tweened: { duration: 200 } },
+									yAxis: { ...yAxisProps },
+									xAxis: { ...xAxisProps },
 									tooltip: { ...tooltipProps, hideTotal: true }
 								}}
 							/>
@@ -349,7 +420,7 @@
 											{...pieChartProps}
 										/>
 									</div>
-									<div class="text-center text-xs text-surface-content">
+									<div class={cn('text-center', textClass)}>
 										{c.label}
 									</div>
 								</div>

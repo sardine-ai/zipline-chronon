@@ -1,48 +1,95 @@
 <script lang="ts">
 	import IconChevronDown from '~icons/heroicons/chevron-down-16-solid';
+	import IconEllipsisVertical from '~icons/heroicons/ellipsis-vertical-20-solid';
 	import type { Writable } from 'svelte/store';
 	import CellDivider from '$lib/components/CellDivider.svelte';
-	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import {
+		DropdownMenu,
+		DropdownMenuContent,
+		DropdownMenuItem,
+		DropdownMenuTrigger
+	} from '$lib/components/ui/dropdown-menu';
+	import { Button } from '$lib/components/ui/button';
+	import IconArrowRight from '~icons/heroicons/arrow-right';
+	import { getLogicalNodeConfig, type NodeConfiguration } from '$lib/types/LogicalNode';
+	import type { INodeKeyArgs } from '$lib/types/codegen';
+	import { page } from '$app/state';
 
 	let {
 		isExpanded,
 		canExpand,
 		depth,
 		name,
-		childrenCount
+		node,
+		conf
 	}: {
 		isExpanded: Writable<boolean>;
 		canExpand: Writable<boolean>;
 		depth: number;
 		name: string;
-		childrenCount: number;
+		node: INodeKeyArgs | undefined;
+		conf: NodeConfiguration;
 	} = $props();
+
+	const config = getLogicalNodeConfig({
+		key: { name: node?.name, logicalType: node?.logicalType },
+		value: { conf: conf }
+	});
+
+	const Icon = config?.icon;
+
+	function isNodePage() {
+		return page.url.pathname === `${config.url}/${name}/job-tracking`;
+	}
 </script>
 
 <div class="flex items-center justify-center h-full relative">
 	<CellDivider />
 	<button
-		class="flex items-center bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px] max-w-[400px]"
+		class="flex items-center justify-between bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px] max-w-[440px] max-h-[32px]"
 		style:margin-left={`calc(${depth * 0.75}rem)`}
 		onclick={() => ($isExpanded = !$isExpanded)}
 		title={name}
 	>
-		{#if $canExpand}
-			<IconChevronDown
-				class="mr-1 ml-1 size-4 transition-transform duration-200 text-neutral-900 {$isExpanded
-					? ''
-					: '-rotate-90'}"
-			/>
+		<div class="flex items-center min-w-0 flex-1">
+			<div class="w-4">
+				{#if $canExpand}
+					<IconChevronDown
+						class="size-4 transition-transform duration-200 text-neutral-900 flex-shrink-0 {$isExpanded
+							? ''
+							: '-rotate-90'}"
+					/>
+				{/if}
+			</div>
+			{#if Icon}
+				<div
+					style:--color={config.color}
+					class="bg-[hsl(var(--color)/5%)] text-[hsl(var(--color))] w-4 h-4 rounded flex items-center justify-center ml-2 flex-shrink-0"
+				>
+					<Icon />
+				</div>
+			{/if}
+			<span class="truncate pl-2 text-neutral-900">
+				{name}
+			</span>
+		</div>
+		{#if config && !isNodePage()}
+			<DropdownMenu>
+				<DropdownMenuTrigger class="flex items-center ml-2">
+					<Button
+						variant="outline"
+						size="icon-small"
+						onclick={(e: MouseEvent) => e.stopPropagation()}
+					>
+						<IconEllipsisVertical class="text-neutral-900" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="start" class="min-w-0 w-fit">
+					<DropdownMenuItem href="{config.url}/{name}">
+						Open<IconArrowRight class="ml-2" />
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 		{/if}
-		{#if childrenCount > 0}
-			<Badge
-				variant="secondary"
-				class="border-none rounded-xl bg-neutral-200 text-neutral-700 flex-shrink-0"
-			>
-				{childrenCount}
-			</Badge>
-		{/if}
-		<span class="whitespace-nowrap pl-2 text-neutral-900 overflow-hidden text-ellipsis">{name}</span
-		>
 	</button>
 </div>

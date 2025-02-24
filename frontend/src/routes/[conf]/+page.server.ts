@@ -1,9 +1,8 @@
 import { Api } from '$lib/api/api';
-import { ConfType } from '$lib/types/codegen';
-import type { IConfListResponse } from '$lib/types/codegen/ConfListResponse';
+import { ConfType, type IConfListResponseArgs } from '$lib/types/codegen';
 import { entityConfig } from '$lib/types/Entity/Entity';
 
-const ConfResponseMap: Record<ConfType, keyof IConfListResponse> = {
+const ConfResponseMap: Record<ConfType, keyof IConfListResponseArgs> = {
 	[ConfType.MODEL]: 'models',
 	[ConfType.STAGING_QUERY]: 'stagingQueries',
 	[ConfType.GROUP_BY]: 'groupBys',

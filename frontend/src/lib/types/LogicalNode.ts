@@ -1,19 +1,37 @@
 import {
 	LogicalType,
-	type ILogicalNode,
-	type INodeInfo,
-	type INodeKey,
-	type ISource
-} from './codegen';
-import { EntityTypes, getEntity } from './Entity/Entity';
+	type IGroupByArgs,
+	type IJoinArgs,
+	type IJoinSourceArgs,
+	type ILogicalNodeArgs,
+	type IModelArgs,
+	type INodeInfoArgs,
+	type INodeKeyArgs,
+	type ISourceArgs,
+	type IStagingQueryArgs,
+	type ITabularDataArgs
+} from '$lib/types/codegen';
+import { EntityTypes, getEntity } from '$lib/types/Entity/Entity';
 
 import IconTableCells from '~icons/heroicons/table-cells-16-solid';
 import IconSignal from '~icons/heroicons/signal-16-solid';
 
 /** All unioned field properties combined into a single type */
 export type CombinedLogicalNode = Required<{
-	[K in keyof ILogicalNode]: NonNullable<ILogicalNode[K]>;
-}>[keyof ILogicalNode];
+	[K in keyof ILogicalNodeArgs]: NonNullable<ILogicalNodeArgs[K]>;
+}>[keyof ILogicalNodeArgs];
+
+export type NodeConfiguration = NonNullable<
+	IStagingQueryArgs &
+		IJoinArgs &
+		IGroupByArgs &
+		IModelArgs &
+		ITabularDataArgs &
+		IJoinSourceArgs &
+		ISourceArgs['entities'] &
+		ISourceArgs['events'] &
+		ISourceArgs['joinSource']
+>;
 
 export const logicalNodeConfig = {
 	[LogicalType.GROUP_BY]: {
@@ -70,7 +88,7 @@ export function getLogicalNodeSourceType(node: CombinedLogicalNode) {
 	return 'snapshotTable' in node ? 'entity' : 'table' in node ? 'event' : null;
 }
 
-export function getLogicalNodeConfig(node: { key: INodeKey; value: INodeInfo }) {
+export function getLogicalNodeConfig(node: { key: INodeKeyArgs; value: INodeInfoArgs }) {
 	const nodeType = getLogicalNodeType(node.value.conf as CombinedLogicalNode); // TODO: Is not `ILogicalNode` with nested `join` | `groupBy` | etc properties
 	if (nodeType === LogicalType.TABULAR_DATA) {
 		return {
@@ -111,7 +129,7 @@ export function isStreaming(node: CombinedLogicalNode): boolean {
 	}
 }
 
-function isSourceStreaming(source: ISource) {
+function isSourceStreaming(source: ISourceArgs) {
 	if ('entities' in source && source.entities) {
 		return isStreaming(source.entities);
 	} else if ('events' in source && source.events) {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { IJoin, IGroupBy, IModel, IStagingQuery } from '$lib/types/codegen';
+	import type { IJoinArgs, IGroupByArgs, IModelArgs, IStagingQueryArgs } from '$lib/types/codegen';
 	import {
 		Table,
 		TableBody,
@@ -16,8 +16,11 @@
 		title,
 		items,
 		basePath
-	}: { title: string; items: (IJoin | IGroupBy | IModel | IStagingQuery)[]; basePath: string } =
-		$props();
+	}: {
+		title: string;
+		items: (IJoinArgs | IGroupByArgs | IModelArgs | IStagingQueryArgs)[];
+		basePath: string;
+	} = $props();
 </script>
 
 <PageHeader {title} />

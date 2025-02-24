@@ -6,7 +6,7 @@
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
 	import { getSortDirection } from '$lib/util/sort';
-	import type { ITileSummarySeries } from '$src/lib/types/codegen';
+	import type { ITileSummarySeriesArgs } from '$src/lib/types/codegen';
 	import ChartControls from '$src/lib/components/ChartControls.svelte';
 	import ObservabilityNavTabs from '$routes/[conf]/[name]/observability/ObservabilityNavTabs.svelte';
 	import { Separator } from '$src/lib/components/ui/separator';
@@ -17,7 +17,7 @@
 	let isFeatureMonitoringOpen = $state(true);
 
 	let isLoadingDistributions = $state(true);
-	let distributions: ITileSummarySeries[] = $state([]);
+	let distributions: ITileSummarySeriesArgs[] = $state([]);
 	try {
 		data.distributionsPromise.then((d) => {
 			distributions = d;
@@ -72,7 +72,8 @@
 							<PercentileLineChart
 								data={distribution}
 								{xDomain}
-								onbrushend={(e) => (xDomain = e.xDomain)}
+								onbrushend={(detail: { xDomain?: DomainType }) =>
+									detail.xDomain && (xDomain = detail.xDomain)}
 								renderContext="canvas"
 							/>
 						</div>
