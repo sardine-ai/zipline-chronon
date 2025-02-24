@@ -1,7 +1,7 @@
 import { Api } from '$src/lib/api/api';
 import { parseDateRangeParams } from '$lib/util/date-ranges';
 import { getDriftMetricFromParams } from '$src/lib/util/drift-metric';
-import { type IJoinDriftResponse } from '$lib/types/codegen';
+import { type IJoinDriftResponseArgs } from '$lib/types/codegen';
 
 const FALLBACK_START_TS = 1672531200000; // 2023-01-01
 const FALLBACK_END_TS = 1677628800000; // 2023-03-01
@@ -19,7 +19,7 @@ export async function load({ url, params }) {
 
 	const api = new Api({ fetch });
 
-	let joinDrift: IJoinDriftResponse | undefined = undefined;
+	let joinDrift: IJoinDriftResponseArgs | undefined = undefined;
 	try {
 		// Try with requested date range first
 		joinDrift = await api.getJoinDrift({

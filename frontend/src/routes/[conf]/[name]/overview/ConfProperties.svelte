@@ -10,15 +10,9 @@
 	} from '$src/lib/components/ui/table/index.js';
 	import {
 		TimeUnit,
-		type IAggregation,
-		type IGroupBy,
-		type IJoin,
-		type IModel,
-		type IStagingQuery,
-		type ITabularData,
-		type ISource,
-		type IMetaData,
-		type IJoinSource,
+		type IAggregationArgs,
+		type ISourceArgs,
+		type IMetaDataArgs,
 		Operation,
 		ModelType,
 		DataKind
@@ -26,21 +20,14 @@
 	import { keys } from '@layerstack/utils';
 	import Self from './ConfProperties.svelte';
 	import TrueFalseBadge from '$src/lib/components/TrueFalseBadge.svelte';
+	import type { NodeConfiguration } from '$src/lib/types/LogicalNode';
 
 	const {
 		conf,
 		metaDataLabel = 'MetaData',
 		includeUpstream = false
 	}: {
-		conf: IJoin &
-			IGroupBy &
-			IModel &
-			IStagingQuery &
-			ITabularData &
-			IJoinSource &
-			ISource['entities'] &
-			ISource['events'] &
-			ISource['joinSource'];
+		conf: NodeConfiguration;
 		metaDataLabel?: string;
 		includeUpstream?: boolean;
 	} = $props();
@@ -52,17 +39,17 @@
 		'offlineSchedule',
 		'online',
 		'production'
-	] satisfies (keyof IMetaData)[];
+	] satisfies (keyof IMetaDataArgs)[];
 
 	const AGGREGATION_PROPERTIES = [
 		'inputColumn',
 		'operation',
 		'argMap',
 		'windows'
-	] satisfies (keyof IAggregation)[];
+	] satisfies (keyof IAggregationArgs)[];
 
 	type SourceProperties = keyof NonNullable<
-		ISource['entities'] & ISource['events'] & ISource['joinSource']
+		ISourceArgs['entities'] & ISourceArgs['events'] & ISourceArgs['joinSource']
 	>;
 	const SOURCE_PROPERTIES = [
 		'table',

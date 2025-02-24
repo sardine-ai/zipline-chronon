@@ -1,13 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { buildJobTrackerTree, organizeTasksByDate } from '$lib/job/tree-builder/tree-builder';
-import { Status, type IJobTrackerResponseArgs, type ILineageResponse } from '$lib/types/codegen';
+import {
+	Status,
+	type IJobTrackerResponseArgs,
+	type ILineageResponseArgs
+} from '$lib/types/codegen';
 
 describe('jobTracker.service', () => {
 	describe('buildJobTrackerTree', () => {
 		it('should handle empty lineage', () => {
-			const emptyLineage: ILineageResponse = {
+			const emptyLineage: ILineageResponseArgs = {
 				nodeGraph: {
-					connections: new Map()
+					connections: new Map(),
+					infoMap: new Map()
 				}
 			};
 			const result = buildJobTrackerTree(emptyLineage, new Map());
@@ -16,9 +21,10 @@ describe('jobTracker.service', () => {
 		});
 
 		it('should handle overlapping task dates correctly', () => {
-			const lineage: ILineageResponse = {
+			const lineage: ILineageResponseArgs = {
 				nodeGraph: {
-					connections: new Map([[{ name: 'job1' }, { parents: [] }]])
+					connections: new Map([[{ name: 'job1' }, { parents: [] }]]),
+					infoMap: new Map()
 				}
 			};
 
@@ -67,7 +73,7 @@ describe('jobTracker.service', () => {
 		});
 
 		it('should build hierarchical tree structure', () => {
-			const lineage: ILineageResponse = {
+			const lineage: ILineageResponseArgs = {
 				nodeGraph: {
 					connections: new Map([
 						[
@@ -82,7 +88,8 @@ describe('jobTracker.service', () => {
 								parents: []
 							}
 						]
-					])
+					]),
+					infoMap: new Map()
 				}
 			};
 
@@ -127,7 +134,7 @@ describe('jobTracker.service', () => {
 
 		it('should throw error when lineage is undefined', () => {
 			expect(() =>
-				buildJobTrackerTree(undefined as unknown as ILineageResponse, new Map())
+				buildJobTrackerTree(undefined as unknown as ILineageResponseArgs, new Map())
 			).toThrow('Lineage data is required for job tracking');
 		});
 	});

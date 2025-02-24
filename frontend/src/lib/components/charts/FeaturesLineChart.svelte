@@ -1,21 +1,18 @@
 <script lang="ts">
 	import type { ComponentProps } from 'svelte';
 	import { accessor, Circle, findRelatedData, Line, LineChart, Tooltip } from 'layerchart';
-	import { scaleOrdinal, zip } from 'd3';
-	import { Int64 } from '@creditkarma/thrift-server-core';
-
-	import { colors, lineChartProps, tooltipProps, type DateValue } from './common';
-	import type { ITileDriftSeries } from '$src/lib/types/codegen';
+	import { lineChartProps, tooltipProps, type DateValue } from './common';
+	import type { ITileDriftSeriesArgs } from '$src/lib/types/codegen';
 	import { formatDate, formatValue } from '$lib/util/format';
-	import { Badge } from '../ui/badge';
+	import { Badge } from '$lib/components/ui/badge';
 	import { isMacOS } from '$src/lib/util/browser';
-	import { NULL_VALUE } from '$src/lib/constants/common';
+	import { transformSeries, getColumns } from '$lib/util/series';
 
 	type LineChartProps = ComponentProps<typeof LineChart>;
 	type BrushProps = Exclude<LineChartProps['brush'], undefined | boolean>;
 
 	type Props = {
-		data: ITileDriftSeries[];
+		data: ITileDriftSeriesArgs[];
 		markPoint?: DateValue;
 		onitemclick?: (item: {
 			series: NonNullable<LineChartProps['series']>[number];
@@ -27,29 +24,13 @@
 
 	let { data, markPoint, onitemclick, onbrushend, ...restProps }: Props = $props();
 
-	const columns = $derived([...new Set(data.map((d) => d.key?.column ?? 'Unknown'))]);
-	const colorScale = $derived(scaleOrdinal<string>().domain(columns).range(colors));
+	const columns = $derived(getColumns(data));
 </script>
 
 <LineChart
 	x="date"
 	y="value"
-	series={data.map((d) => {
-		const timestamps = d.timestamps ?? [];
-		const column = d.key?.column ?? 'Unknown';
-		// `percentileDriftSeries` = numeric column, `histogramDriftSeries` = categorical column
-		const values = d.percentileDriftSeries ?? d.histogramDriftSeries ?? [];
-		return {
-			key: column,
-			data: zip<Int64 | number>(timestamps, values).map(([ts, value]) => {
-				return {
-					date: new Date(ts as number),
-					value: value === NULL_VALUE ? null : value
-				};
-			}),
-			color: colorScale(column)
-		};
-	})}
+	series={data.map((d) => transformSeries(d, columns))}
 	padding={{ top: 4, left: 36, bottom: 48 }}
 	legend={{
 		placement: 'bottom-left',

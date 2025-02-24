@@ -1,21 +1,23 @@
 import { error } from '@sveltejs/kit';
-import type {
-	IJoin,
-	IGroupBy,
-	IModel,
-	IStagingQuery,
-	IJoinDriftRequestArgs,
-	ITileSummarySeries,
-	IJoinSummaryRequestArgs,
-	IJoinDriftResponse,
-	ILogicalNode,
-	ILineageRequestArgs,
-	ILineageResponse,
-	IJobTrackerResponseArgs,
-	INodeKeyArgs
+import {
+	type IConfListResponseArgs,
+	type IJoinArgs,
+	type IGroupByArgs,
+	type IModelArgs,
+	type IStagingQueryArgs,
+	type IJoinDriftRequestArgs,
+	type ITileSummarySeriesArgs,
+	type IJoinSummaryRequestArgs,
+	type IJoinDriftResponseArgs,
+	type ILogicalNodeArgs,
+	type ILineageRequestArgs,
+	type ILineageResponseArgs,
+	type IJobTrackerResponseArgs,
+	type INodeKeyArgs,
+	ConfType,
+	DriftMetric,
+	Status
 } from '$lib/types/codegen';
-import { ConfType, DriftMetric, Status } from '$lib/types/codegen';
-import type { ConfListResponse } from '$lib/types/codegen/ConfListResponse';
 import { confToLineage } from './utils';
 
 export type ApiOptions = {
@@ -47,54 +49,54 @@ export class Api {
 			confName: name,
 			confType: ConfType[type]
 		});
-		return this.#send<ILogicalNode>(`conf?${params.toString()}`);
+		return this.#send<ILogicalNodeArgs>(`conf?${params.toString()}`);
 	}
 
 	async getJoin(name: string) {
-		return this.getConf(name, ConfType.JOIN).then((d) => d.join) as Promise<IJoin>;
+		return this.getConf(name, ConfType.JOIN).then((d) => d.join) as Promise<IJoinArgs>;
 	}
 
 	async getGroupBy(name: string) {
-		return this.getConf(name, ConfType.GROUP_BY).then((d) => d.groupBy) as Promise<IGroupBy>;
+		return this.getConf(name, ConfType.GROUP_BY).then((d) => d.groupBy) as Promise<IGroupByArgs>;
 	}
 
 	async getModel(name: string) {
-		return this.getConf(name, ConfType.MODEL).then((d) => d.model) as Promise<IModel>;
+		return this.getConf(name, ConfType.MODEL).then((d) => d.model) as Promise<IModelArgs>;
 	}
 
 	async getStagingQuery(name: string) {
 		return this.getConf(name, ConfType.STAGING_QUERY).then(
 			(d) => d.stagingQuery
-		) as Promise<IStagingQuery>;
+		) as Promise<IStagingQueryArgs>;
 	}
 
 	async search(term: string) {
 		const params = new URLSearchParams({
 			confName: term
 		});
-		return this.#send<ConfListResponse>(`search?${params.toString()}`);
+		return this.#send<IConfListResponseArgs>(`search?${params.toString()}`);
 	}
 
-	async getConfList(type: ConfType): Promise<ConfListResponse> {
+	async getConfList(type: ConfType): Promise<IConfListResponseArgs> {
 		const params = new URLSearchParams({
 			confType: ConfType[type]
 		});
-		return this.#send<ConfListResponse>(`conf/list?${params.toString()}`);
+		return this.#send<IConfListResponseArgs>(`conf/list?${params.toString()}`);
 	}
 
-	async getJoinList(): Promise<ConfListResponse> {
+	async getJoinList(): Promise<IConfListResponseArgs> {
 		return this.getConfList(ConfType.JOIN);
 	}
 
-	async getGroupByList(): Promise<ConfListResponse> {
+	async getGroupByList(): Promise<IConfListResponseArgs> {
 		return this.getConfList(ConfType.GROUP_BY);
 	}
 
-	async getModelList(): Promise<ConfListResponse> {
+	async getModelList(): Promise<IConfListResponseArgs> {
 		return this.getConfList(ConfType.MODEL);
 	}
 
-	async getStagingQueryList(): Promise<ConfListResponse> {
+	async getStagingQueryList(): Promise<IConfListResponseArgs> {
 		return this.getConfList(ConfType.STAGING_QUERY);
 	}
 
@@ -111,7 +113,7 @@ export class Api {
 			offset,
 			algorithm: DriftMetric[algorithm]
 		});
-		return this.#send<IJoinDriftResponse>(`join/${name}/drift?${params.toString()}`);
+		return this.#send<IJoinDriftResponseArgs>(`join/${name}/drift?${params.toString()}`);
 	}
 
 	async getColumnDrift({
@@ -128,7 +130,7 @@ export class Api {
 			offset,
 			algorithm: DriftMetric[algorithm]
 		});
-		return this.#send<IJoinDriftResponse>(
+		return this.#send<IJoinDriftResponseArgs>(
 			`join/${name}/column/${columnName}/drift?${params.toString()}`
 		);
 	}
@@ -138,7 +140,7 @@ export class Api {
 			startTs: startTs.toString(),
 			endTs: endTs.toString()
 		});
-		return this.#send<ITileSummarySeries>(
+		return this.#send<ITileSummarySeriesArgs>(
 			`join/${name}/column/${columnName}/summary?${params.toString()}`
 		);
 	}
@@ -148,7 +150,7 @@ export class Api {
 		// type,
 		// branch,
 		// direction
-	}: ILineageRequestArgs): Promise<ILineageResponse> {
+	}: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// const params = new URLSearchParams(
 		// 	omitNil({
 		// 		type,
@@ -156,7 +158,7 @@ export class Api {
 		// 		direction: direction ? Direction[direction] : undefined
 		// 	})
 		// );
-		// return this.#send<ILineageResponse>(`join/${name}/lineage?${params.toString()}`);
+		// return this.#send<ILineageResponseArgs>(`join/${name}/lineage?${params.toString()}`);
 
 		// TODO: Remove this once we have the API endpoint
 		return this.getJoin(name!).then((join) => {
@@ -169,7 +171,7 @@ export class Api {
 		// type,
 		// branch,
 		// direction
-	}: ILineageRequestArgs): Promise<ILineageResponse> {
+	}: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// TODO: Remove this once we have the API endpoint
 		return this.getGroupBy(name!).then((groupBy) => {
 			return confToLineage(groupBy);
@@ -181,14 +183,14 @@ export class Api {
 		// type,
 		// branch,
 		// direction
-	}: ILineageRequestArgs): Promise<ILineageResponse> {
+	}: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// TODO: Remove this once we have the API endpoint
 		return this.getModel(name!).then((model) => {
 			return confToLineage(model);
 		});
 	}
 
-	async getStagingQueryLineage({ name }: ILineageRequestArgs): Promise<ILineageResponse> {
+	async getStagingQueryLineage({ name }: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// TODO: Remove this once we have the API endpoint
 		return this.getStagingQuery(name!).then((stagingQuery) => {
 			return confToLineage(stagingQuery);

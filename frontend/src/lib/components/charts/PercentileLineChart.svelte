@@ -4,7 +4,7 @@
 	import merge from 'lodash/merge';
 
 	import { lineChartProps } from './common';
-	import type { ITileSummarySeries } from '$src/lib/types/codegen';
+	import type { ITileSummarySeriesArgs } from '$src/lib/types/codegen';
 	import { zip } from 'd3';
 	import { Int64 } from '@creditkarma/thrift-server-core';
 	import { NULL_VALUE } from '$src/lib/constants/common';
@@ -13,7 +13,7 @@
 	type BrushProps = Exclude<LineChartProps['brush'], undefined | boolean>;
 
 	type Props = {
-		data: ITileSummarySeries;
+		data: ITileSummarySeriesArgs;
 		onbrushend?: BrushProps['onbrushend'];
 	} & Omit<LineChartProps, 'data'>;
 
@@ -33,7 +33,10 @@
 
 		return {
 			key: c.label,
-			data: zip<Int64 | number>(timestamps, values).map(([ts, value]) => {
+			data: zip<Int64 | number>(
+				timestamps.map((ts) => Number(ts)),
+				values
+			).map(([ts, value]) => {
 				return {
 					date: new Date(ts as number),
 					value: value === NULL_VALUE ? null : value

@@ -1,4 +1,11 @@
-import type { IJobTrackerResponseArgs, ILineageResponse, ITaskInfoArgs } from '$lib/types/codegen';
+import type {
+	IJobTrackerResponseArgs,
+	ILineageResponseArgs,
+	ITaskInfoArgs,
+	INodeKeyArgs,
+	INodeInfoArgs
+} from '$lib/types/codegen';
+import type { NodeConfiguration } from '$src/lib/types/LogicalNode';
 
 /**
  * Represents a node in the job tracker's hierarchical tree structure.
@@ -6,6 +13,8 @@ import type { IJobTrackerResponseArgs, ILineageResponse, ITaskInfoArgs } from '$
  */
 export interface JobTreeNode {
 	row: string;
+	node?: INodeKeyArgs;
+	conf?: NodeConfiguration;
 	jobTracker?: IJobTrackerResponseArgs & {
 		tasksByDate?: ITaskInfoArgs[];
 	};
@@ -15,7 +24,7 @@ export interface JobTreeNode {
 /**
  * Finds a node by name in the lineage connections
  */
-const findNodeInConnections = (name: string, lineage: ILineageResponse) => {
+const findNodeInConnections = (name: string, lineage: ILineageResponseArgs) => {
 	if (!lineage.nodeGraph?.connections) return null;
 	for (const [node] of lineage.nodeGraph.connections) {
 		if (node.name === name) {
@@ -61,7 +70,7 @@ const getAllDates = (responses: IJobTrackerResponseArgs[]): string[] => {
 /**
  * Finds leaf nodes in the lineage (nodes that don't appear as parents)
  */
-const findLeafNodes = (lineage: ILineageResponse): string[] => {
+const findLeafNodes = (lineage: ILineageResponseArgs): string[] => {
 	const allNodes = new Set(
 		Array.from(lineage.nodeGraph?.connections?.keys() ?? [])
 			.map((node) => node.name)
@@ -145,11 +154,13 @@ export const organizeTasksByDate = (tasks: ITaskInfoArgs[] = []): ITaskInfoArgs[
  */
 const buildJobTreeNode = (
 	jobName: string,
-	lineage: ILineageResponse,
-	jobTrackerDataMap: Map<string, IJobTrackerResponseArgs>
+	lineage: ILineageResponseArgs,
+	jobTrackerDataMap: Map<string, IJobTrackerResponseArgs>,
+	infoMap: Map<INodeKeyArgs, INodeInfoArgs>
 ): JobTreeNode => {
 	const node = findNodeInConnections(jobName, lineage);
 	const jobTrackerData = jobTrackerDataMap.get(jobName);
+	const nodeInfo = Array.from(infoMap.entries()).find(([key]) => key.name === jobName);
 
 	// Organize tasks by date before adding to the tree
 	const tasksByDate = organizeTasksByDate(jobTrackerData?.tasks);
@@ -157,13 +168,15 @@ const buildJobTreeNode = (
 	if (!node) {
 		return {
 			row: jobName,
+			conf: nodeInfo?.[1].conf,
 			jobTracker: jobTrackerData
 				? {
 						...jobTrackerData,
 						tasksByDate
 					}
 				: undefined,
-			children: []
+			children: [],
+			node: undefined
 		};
 	}
 
@@ -174,6 +187,7 @@ const buildJobTreeNode = (
 
 	return {
 		row: jobName,
+		conf: nodeInfo?.[1].conf,
 		jobTracker: jobTrackerData
 			? {
 					...jobTrackerData,
@@ -181,8 +195,9 @@ const buildJobTreeNode = (
 				}
 			: undefined,
 		children: parentNodes.map((parent) =>
-			buildJobTreeNode(parent.name ?? '', lineage, jobTrackerDataMap)
-		)
+			buildJobTreeNode(parent.name ?? '', lineage, jobTrackerDataMap, infoMap)
+		),
+		node: { ...node }
 	};
 };
 
@@ -190,16 +205,20 @@ const buildJobTreeNode = (
  * Transforms lineage and job tracker data into a tree structure for display
  */
 export function buildJobTrackerTree(
-	lineage: ILineageResponse,
+	lineage: ILineageResponseArgs,
 	jobTrackerDataMap: Map<string, IJobTrackerResponseArgs>
 ) {
 	if (!lineage) {
 		throw new Error('Lineage data is required for job tracking');
 	}
 
+	if (!lineage.nodeGraph?.infoMap) {
+		throw new Error('Node info map is required for job tracking');
+	}
+
 	const leafNodes = findLeafNodes(lineage);
 	const jobTree = leafNodes.map((leafNode) =>
-		buildJobTreeNode(leafNode, lineage, jobTrackerDataMap)
+		buildJobTreeNode(leafNode, lineage, jobTrackerDataMap, lineage.nodeGraph!.infoMap!)
 	);
 	const dates = getAllDates(Array.from(jobTrackerDataMap.values()));
 

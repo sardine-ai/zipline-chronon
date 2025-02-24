@@ -1,18 +1,21 @@
 import { InternMap } from 'd3';
 import {
 	LogicalType,
-	type IJoin,
-	type IJoinPart,
-	type ILineageResponse,
-	type ILogicalNode,
-	type INodeKey,
-	type ISource,
-	type NodeGraph
-} from '../types/codegen';
-import { getLogicalNodeType, type CombinedLogicalNode } from '../types/LogicalNode';
+	type IJoinArgs,
+	type IJoinPartArgs,
+	type ILineageResponseArgs,
+	type ILogicalNodeArgs,
+	type INodeKeyArgs,
+	type ISourceArgs,
+	type INodeGraphArgs
+} from '$lib/types/codegen';
+import { getLogicalNodeType, type CombinedLogicalNode } from '$lib/types/LogicalNode';
 
 /** Convert Join to LineageResponse by walking joinParts */
-export function confToLineage(conf: CombinedLogicalNode, excludeLeft = false): ILineageResponse {
+export function confToLineage(
+	conf: CombinedLogicalNode,
+	excludeLeft = false
+): ILineageResponseArgs {
 	// Use `InternMap` insteaad of `Map` to support object keys (instances will be different once serialized/fetched from API) - https://d3js.org/d3-array/intern
 	// @ts-expect-error: Bad typing
 	const connections: NodeGraph['connections'] = new InternMap([], JSON.stringify);
@@ -21,7 +24,7 @@ export function confToLineage(conf: CombinedLogicalNode, excludeLeft = false): I
 
 	const logicalType = getLogicalNodeType(conf);
 
-	const confNodeKey: INodeKey = {
+	const confNodeKey: INodeKeyArgs = {
 		name:
 			'metaData' in conf && conf.metaData
 				? conf.metaData.name
@@ -31,9 +34,9 @@ export function confToLineage(conf: CombinedLogicalNode, excludeLeft = false): I
 		logicalType
 	};
 	infoMap.set(confNodeKey, {
-		conf: conf as ILogicalNode
+		conf: conf as ILogicalNodeArgs
 	});
-	const confParents: INodeKey[] = [];
+	const confParents: INodeKeyArgs[] = [];
 	connections.set(confNodeKey, { parents: confParents });
 
 	/*
@@ -73,23 +76,23 @@ export function confToLineage(conf: CombinedLogicalNode, excludeLeft = false): I
 }
 
 function processJoinParts(
-	joinParts: IJoinPart[],
-	infoMap: NonNullable<NodeGraph['infoMap']>,
-	connections: NonNullable<NodeGraph['connections']>,
-	parents: INodeKey[]
+	joinParts: IJoinPartArgs[],
+	infoMap: NonNullable<INodeGraphArgs['infoMap']>,
+	connections: NonNullable<INodeGraphArgs['connections']>,
+	parents: INodeKeyArgs[]
 ) {
 	for (const jp of joinParts ?? []) {
 		if (jp.groupBy) {
-			const groupByNodeKey: INodeKey = {
+			const groupByNodeKey: INodeKeyArgs = {
 				name: jp.groupBy.metaData?.name,
 				logicalType: LogicalType.GROUP_BY
 			};
 			infoMap.set(groupByNodeKey, {
-				conf: jp.groupBy as ILogicalNode
+				conf: jp.groupBy as ILogicalNodeArgs
 			});
 			parents.push(groupByNodeKey);
 
-			const groupByParents: INodeKey[] = [];
+			const groupByParents: INodeKeyArgs[] = [];
 			connections.set(groupByNodeKey, { parents: groupByParents });
 
 			for (const source of jp.groupBy?.sources ?? []) {
@@ -100,45 +103,45 @@ function processJoinParts(
 }
 
 function processSource(
-	source: ISource,
-	infoMap: NonNullable<NodeGraph['infoMap']>,
-	connections: NonNullable<NodeGraph['connections']>,
-	parents: INodeKey[]
+	source: ISourceArgs,
+	infoMap: NonNullable<INodeGraphArgs['infoMap']>,
+	connections: NonNullable<INodeGraphArgs['connections']>,
+	parents: INodeKeyArgs[]
 ) {
 	if (source.entities) {
-		const entityNodeKey: INodeKey = {
+		const entityNodeKey: INodeKeyArgs = {
 			name: source.entities.snapshotTable,
 			logicalType: LogicalType.TABULAR_DATA // TODO: Are all sources tabular data?
 		};
 		infoMap.set(entityNodeKey, {
-			conf: source.entities as ILogicalNode
+			conf: source.entities as ILogicalNodeArgs
 		});
 		parents.push(entityNodeKey);
 	}
 
 	if (source.events) {
-		const eventNodeKey: INodeKey = {
+		const eventNodeKey: INodeKeyArgs = {
 			name: source.events.table,
 			logicalType: LogicalType.TABULAR_DATA // TODO: Are all sources tabular data?
 		};
 		infoMap.set(eventNodeKey, {
-			conf: source.events as ILogicalNode
+			conf: source.events as ILogicalNodeArgs
 		});
 		parents.push(eventNodeKey);
 	}
 
 	if (source.joinSource) {
-		const joinNodeKey: INodeKey = {
+		const joinNodeKey: INodeKeyArgs = {
 			name: source.joinSource.join?.metaData?.name,
 			logicalType: LogicalType.TABULAR_DATA // TODO: Are all sources tabular data?
 		};
 		infoMap.set(joinNodeKey, {
-			conf: source.joinSource as ILogicalNode
+			conf: source.joinSource as ILogicalNodeArgs
 		});
 		parents.push(joinNodeKey);
 
 		// Transfer connections and infoMap from joinSource join to root join graph
-		const joinSourceLineage = confToLineage(source.joinSource.join as IJoin);
+		const joinSourceLineage = confToLineage(source.joinSource.join as IJoinArgs);
 
 		for (const [key, nodeConnections] of joinSourceLineage.nodeGraph?.connections ?? []) {
 			connections.set(key === joinSourceLineage.mainNode ? joinNodeKey : key, nodeConnections);

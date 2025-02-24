@@ -22,19 +22,22 @@ export const colors = [
 	'#BF50D3',
 	'#CB5587'
 ];
+export const textClass = 'text-xs text-neutral-700';
+export const svgTextClass = 'text-xs fill-neutral-700';
 
 export const xAxisProps = {
 	placement: 'bottom' as const,
 	classes: {
-		tickLabel: 'fill-neutral-700 text-xs'
+		tickLabel: svgTextClass
 	}
 };
 
 export const yAxisProps = {
 	placement: 'left' as const,
 	classes: {
-		tickLabel: 'fill-neutral-700 text-xs'
-	}
+		tickLabel: svgTextClass
+	},
+	tweened: { duration: 200 }
 };
 
 export const tooltipProps = {
@@ -67,7 +70,9 @@ export const highlightProps = {
 
 export const barChartProps = {
 	props: {
-		tooltip: tooltipProps
+		tooltip: tooltipProps,
+		xAxis: xAxisProps,
+		yAxis: yAxisProps
 	}
 } satisfies NonNullable<ComponentProps<typeof BarChart>>;
 

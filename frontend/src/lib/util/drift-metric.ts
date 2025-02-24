@@ -1,6 +1,6 @@
 import type { EncodeAndDecodeOptions } from 'sveltekit-search-params/sveltekit-search-params';
 import { getSearchParamValues } from '$lib/util/search-params';
-import { DriftMetric } from '../types/codegen';
+import { DriftMetric } from '$lib/types/codegen';
 
 export const DEFAULT_DRIFT_METRIC: DriftMetric = DriftMetric.PSI;
 
