@@ -36,10 +36,9 @@ jobs:
           distribution: corretto
           java-version: 17
 
-      - name: Setup SBT
-        uses: sbt/setup-sbt@v1
-        with:
-          sbt-runner-version: 1.8.2
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Install Thrift
         env:
@@ -56,10 +55,28 @@ jobs:
           sudo rm -rf thrift-${{env.THRIFT_VERSION}} thrift-${{env.THRIFT_VERSION}}.tar.gz
 
 
-      - name: Build SBT Project
-        id: sbt-assembly
+      - name: Build Bazel Project
+        id: bazel-build
         run: |
-          sbt clean && sbt assembly
+          bazel clean
+          bazel build //spark:spark_assembly_deploy.jar \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json 
+          bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json 
+          bazel build //cloud_aws:cloud_aws_lib_deploy.jar \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json 
+          bazel build //service:service_assembly_deploy.jar \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json
+          mkdir -p build_output
+          cp bazel-bin/spark/spark_assembly_deploy.jar build_output/
+          cp bazel-bin/cloud_aws/cloud_aws_lib_deploy.jar build_output/
+          cp bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar build_output/
+          cp bazel-bin/service/service_assembly_deploy.jar build_output/
+
 
       - name: Build AWS Quickstart Image
         id: build-aws-app
@@ -81,7 +98,7 @@ jobs:
           JAVA_OPTS: "-Xms1g -Xmx1g"
           CLOUD_AWS_JAR: /app/cli/cloud_aws.jar
         run:
-          docker build "." -f "./Dockerfile" -t "aws-quickstart-image:latest"
+          docker build . -f "./Dockerfile" -t "aws-quickstart-image:latest"
 
       - name: Build GCP Quickstart Image
         id: build-gcp-app
@@ -103,7 +120,7 @@ jobs:
           JAVA_OPTS: "-Xms1g -Xmx1g"
           CLOUD_GCP_JAR: /app/cli/cloud_gcp.jar
         run:
-          docker build "." -f "./Dockerfile" -t "gcp-quickstart-image:latest"
+          docker build . -f "./Dockerfile" -t "gcp-quickstart-image:latest"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
