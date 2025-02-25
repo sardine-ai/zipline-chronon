@@ -155,13 +155,12 @@ object ObservabilityDemo {
     val name = "dim_user_account_type"
     val window = new Window(10, ai.chronon.api.TimeUnit.HOURS)
 
-    val joinPath = joinName.replaceFirst("\\.", "/")
     logger.info("Looking up current summary series")
-    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinPath, startTs, endTs, Some(name)).get
+    val maybeCurrentSummarySeries = driftStore.getSummarySeries(joinName, startTs, endTs, Some(name)).get
     val currentSummarySeries = Await.result(maybeCurrentSummarySeries, Duration.create(10, TimeUnit.SECONDS))
     logger.info("Now looking up baseline summary series")
     val maybeBaselineSummarySeries =
-      driftStore.getSummarySeries(joinPath, startTs - window.millis, endTs - window.millis, Some(name))
+      driftStore.getSummarySeries(joinName, startTs - window.millis, endTs - window.millis, Some(name))
     val baselineSummarySeries = Await.result(maybeBaselineSummarySeries.get, Duration.create(10, TimeUnit.SECONDS))
 
     logger.info(s"Current summary series: $currentSummarySeries")
