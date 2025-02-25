@@ -1,6 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.Constants
+import ai.chronon.api.Constants.{ContinuationKey, ListLimit}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetResponse
@@ -36,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Future
 import scala.util.Success
 import scala.util.Try
-
 import scala.collection.Seq
 
 object DynamoDBKVStoreConstants {
@@ -48,12 +48,6 @@ object DynamoDBKVStoreConstants {
 
   // Optional field that indicates if this table is meant to be time sorted in Dynamo or not
   val isTimedSorted = "is-time-sorted"
-
-  // Limit of max number of entries to return in a list call
-  val listLimit = "limit"
-
-  // continuation key to help with list pagination
-  val continuationKey = "continuation-key"
 
   // Name of the partition key column to use
   val partitionKeyColumn = "keyBytes"
@@ -172,13 +166,13 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
   }
 
   override def list(request: ListRequest): Future[ListResponse] = {
-    val listLimit = request.props.get(DynamoDBKVStoreConstants.listLimit) match {
+    val listLimit = request.props.get(ListLimit) match {
       case Some(value: Int)    => value
       case Some(value: String) => value.toInt
       case _                   => 100
     }
 
-    val maybeExclusiveStartKey = request.props.get(continuationKey)
+    val maybeExclusiveStartKey = request.props.get(ContinuationKey)
     val maybeExclusiveStartKeyAttribute = maybeExclusiveStartKey.map { k =>
       AttributeValue.builder.b(SdkBytes.fromByteArray(k.asInstanceOf[Array[Byte]])).build
     }
@@ -199,7 +193,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbClient) extends KVStore {
         case Success(scanResponse) if scanResponse.hasLastEvaluatedKey =>
           val lastEvalKey = scanResponse.lastEvaluatedKey().toScala.get(partitionKeyColumn)
           lastEvalKey match {
-            case Some(av) => ListResponse(request, resultElements, Map(continuationKey -> av.b().asByteArray()))
+            case Some(av) => ListResponse(request, resultElements, Map(ContinuationKey -> av.b().asByteArray()))
             case _        => noPagesLeftResponse
           }
         case _ => noPagesLeftResponse

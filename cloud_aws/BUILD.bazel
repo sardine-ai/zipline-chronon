@@ -24,6 +24,7 @@ scala_library(
 
 test_deps = [
     ":cloud_aws_lib",
+    "//api:lib",
     "//online:lib",
     maven_artifact("software.amazon.awssdk:dynamodb"),
     maven_artifact("software.amazon.awssdk:regions"),

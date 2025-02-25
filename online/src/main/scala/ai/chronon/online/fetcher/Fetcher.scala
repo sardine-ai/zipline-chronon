@@ -23,7 +23,7 @@ import ai.chronon.api.Extensions.{ExternalPartOps, JoinOps, StringOps, Throwable
 import ai.chronon.api._
 import ai.chronon.online.Metrics.Environment
 import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
-import ai.chronon.online.fetcher.Fetcher.{Request, Response, ResponseWithContext}
+import ai.chronon.online.fetcher.Fetcher.{JoinSchemaResponse, Request, Response, ResponseWithContext}
 import ai.chronon.online.{serde, _}
 import com.google.gson.Gson
 import com.timgroup.statsd.Event
@@ -71,6 +71,14 @@ object Fetcher {
     context.distribution(Metrics.Name.FetchExceptions, exceptions)
     context.distribution(Metrics.Name.FetchCount, responseMap.size)
   }
+
+  /** Response for a join schema request
+    * @param joinName - Name of the join
+    * @param keySchema - Avro schema string for the key
+    * @param valueSchema - Avro schema string for the value
+    * @param schemaHash - Hash of the join schema payload (used to track updates to key / value schema fields or types)
+    */
+  case class JoinSchemaResponse(joinName: String, keySchema: String, valueSchema: String, schemaHash: String)
 }
 
 private[online] case class FetcherResponseWithTs(responses: Seq[Fetcher.Response], endTs: Long)
@@ -414,6 +422,29 @@ class Fetcher(val kvStore: KVStore,
         Response(req, resultMap(req).map(_.mapValues(_.asInstanceOf[AnyRef]).toMap))
       }
     }
+  }
+
+  def fetchJoinSchema(joinName: String): Try[JoinSchemaResponse] = {
+    val startTime = System.currentTimeMillis()
+    val ctx = Metrics.Context(Environment.JoinSchemaFetching, join = joinName)
+
+    val joinCodecTry = joinCodecCache(joinName)
+
+    val joinSchemaResponse = joinCodecTry
+      .map { joinCodec =>
+        JoinSchemaResponse(joinName,
+                           joinCodec.keyCodec.schemaStr,
+                           joinCodec.valueCodec.schemaStr,
+                           joinCodec.loggingSchemaHash)
+      }
+      .recover { case exception: Throwable =>
+        logger.error(s"Failed to fetch join schema for $joinName", exception)
+        ctx.incrementException(exception)
+        throw exception
+      }
+
+    joinSchemaResponse.foreach(_ => ctx.distribution("response.latency.millis", System.currentTimeMillis() - startTime))
+    joinSchemaResponse
   }
 
   private def logControlEvent(encTry: Try[JoinCodec]): Unit = {
