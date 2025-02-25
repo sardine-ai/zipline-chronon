@@ -25,6 +25,7 @@ import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.GroupBy
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructType
+import ai.chronon.online.serde.AvroCodec
 import org.apache.avro.generic.GenericData
 
 import scala.collection.JavaConverters._

@@ -183,7 +183,7 @@ object AvroConversions {
   }
 
   def encodeBytes(schema: StructType, extraneousRecord: Any => Array[Any] = null): Any => Array[Byte] = {
-    val codec: AvroCodec = new AvroCodec(fromChrononSchema(schema).toString(true));
+    val codec: serde.AvroCodec = new serde.AvroCodec(fromChrononSchema(schema).toString(true));
     { data: Any =>
       val record =
         fromChrononRow(data, codec.chrononSchema, codec.schema, extraneousRecord).asInstanceOf[GenericData.Record]
@@ -193,7 +193,7 @@ object AvroConversions {
   }
 
   def encodeJson(schema: StructType, extraneousRecord: Any => Array[Any] = null): Any => String = {
-    val codec: AvroCodec = new AvroCodec(fromChrononSchema(schema).toString(true));
+    val codec: serde.AvroCodec = new serde.AvroCodec(fromChrononSchema(schema).toString(true));
     { data: Any =>
       val record =
         fromChrononRow(data, codec.chrononSchema, codec.schema, extraneousRecord).asInstanceOf[GenericData.Record]

@@ -48,7 +48,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
       logger.info(s"    ${pad(f.name)} : ${f.dataType.typeName}".yellow)
     }
 
-    df.show(10, truncate = false)
+    df.show(10)
   }
 
   "end_to_end" should "fetch prepare anomalous data, summarize, upload and fetch without failures" in {
@@ -57,7 +57,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     val prepareData = PrepareData(namespace)
     val join = prepareData.generateAnomalousFraudJoin
     val df = prepareData.generateFraudSampleData(600000, "2023-01-01", "2023-02-30", join.metaData.loggedTable)
-    df.show(10, truncate = false)
+    df.show(10)
 
     // mock api impl for online fetching and uploading
     val kvStoreFunc: () => KVStore = () => {
@@ -80,7 +80,7 @@ class DriftTest extends AnyFlatSpec with Matchers {
     kvStore.create(Constants.TiledSummaryDataset)
 
     // upload join conf
-    api.buildFetcher().putJoinConf(join)
+    api.buildFetcher().metadataStore.putJoinConf(join)
 
     // upload summaries
     val uploader = new SummaryUploader(tableUtils.loadTable(packedTable), api)

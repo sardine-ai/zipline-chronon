@@ -17,7 +17,7 @@
 package ai.chronon.spark.test
 
 import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.online.DataMetrics
+import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd

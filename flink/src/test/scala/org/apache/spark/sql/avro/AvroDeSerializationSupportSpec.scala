@@ -2,7 +2,8 @@ package org.apache.spark.sql.avro
 
 import ai.chronon.api.{StructType => ChrononStructType}
 import ai.chronon.flink.test.UserAvroSchema
-import ai.chronon.online.{AvroCodec, AvroConversions, CatalystUtil}
+import ai.chronon.online.serde.AvroCodec
+import ai.chronon.online.{AvroConversions, CatalystUtil}
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericData
 import org.apache.flink.api.common.serialization.DeserializationSchema

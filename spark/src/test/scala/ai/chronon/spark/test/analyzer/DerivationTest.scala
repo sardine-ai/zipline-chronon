@@ -21,7 +21,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.MetadataStore
+import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
 import ai.chronon.spark.test.{OnlineUtils, SchemaEvolutionUtils}
@@ -421,7 +421,7 @@ class DerivationTest extends AnyFlatSpec {
     OnlineUtils.serve(tableUtils, kvStore, () => kvStore, namespace, endDs, groupBy)
     val fetcher = mockApi.buildFetcher(debug = true)
 
-    val metadataStore = new MetadataStore(kvStore, timeoutMillis = 10000)
+    val metadataStore = fetcher.metadataStore
     kvStore.create(Constants.MetadataDataset)
     metadataStore.putJoinConf(bootstrapJoin)
 
