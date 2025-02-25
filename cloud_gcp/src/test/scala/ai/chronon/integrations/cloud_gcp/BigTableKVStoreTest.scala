@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.api.Constants.{ContinuationKey, GroupByKeyword, JoinKeyword, ListEntityType, ListLimit}
 import ai.chronon.api.TilingUtils
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.GetResponse
@@ -176,27 +177,74 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
     // let's try and read these
     val limit = 10
-    val listReq1 = ListRequest(dataset, Map(listLimit -> limit))
+    val listReq1 = ListRequest(dataset, Map(ListLimit -> limit))
 
     val listResult1 = Await.result(kvStore.list(listReq1), 1.second)
     listResult1.values.isSuccess shouldBe true
-    listResult1.resultProps.contains(BigTableKVStore.continuationKey) shouldBe true
+    listResult1.resultProps.contains(ContinuationKey) shouldBe true
     val listValues1 = listResult1.values.get
     listValues1.size shouldBe limit
 
     // another call, bigger limit
     val limit2 = 1000
-    val continuationKey = listResult1.resultProps(BigTableKVStore.continuationKey)
-    val listReq2 = ListRequest(dataset, Map(listLimit -> limit2, BigTableKVStore.continuationKey -> continuationKey))
+    val continuationKey = listResult1.resultProps(ContinuationKey)
+    val listReq2 = ListRequest(dataset, Map(ListLimit -> limit2, ContinuationKey -> continuationKey))
     val listResult2 = Await.result(kvStore.list(listReq2), 1.second)
     listResult2.values.isSuccess shouldBe true
-    listResult2.resultProps.contains(BigTableKVStore.continuationKey) shouldBe false
+    listResult2.resultProps.contains(ContinuationKey) shouldBe false
     val listValues2 = listResult2.values.get
     listValues2.size shouldBe (putReqs.size - limit)
 
     // lets collect all the keys and confirm we got everything
     val allKeys = (listValues1 ++ listValues2).map(v => new String(v.keyBytes, StandardCharsets.UTF_8))
     allKeys.toSet shouldBe putReqs
+      .map(r => new String(buildRowKey(r.keyBytes, r.dataset), StandardCharsets.UTF_8))
+      .toSet
+  }
+
+  it should "list entity types with pagination" in {
+    val dataset = "metadata"
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
+    kvStore.create(dataset)
+
+    val putGrpByReqs = (0 until 50).map { i =>
+      val key = s"$GroupByKeyword/gbkey-$i"
+      val value = s"""{"name": "name-$i", "age": $i}"""
+      PutRequest(key.getBytes, value.getBytes, dataset, None)
+    }
+
+    val putJoinReqs = (0 until 50).map { i =>
+      val key = s"$JoinKeyword/joinkey-$i"
+      val value = s"""{"name": "name-$i", "age": $i}"""
+      PutRequest(key.getBytes, value.getBytes, dataset, None)
+    }
+
+    val putResults = Await.result(kvStore.multiPut(putGrpByReqs ++ putJoinReqs), 1.second)
+    putResults.foreach(r => r shouldBe true)
+
+    // let's try and read just the joins
+    val limit = 10
+    val listReq1 = ListRequest(dataset, Map(ListLimit -> limit, ListEntityType -> JoinKeyword))
+
+    val listResult1 = Await.result(kvStore.list(listReq1), 1.second)
+    listResult1.values.isSuccess shouldBe true
+    listResult1.resultProps.contains(ContinuationKey) shouldBe true
+    val listValues1 = listResult1.values.get
+    listValues1.size shouldBe limit
+
+    // another call, bigger limit
+    val limit2 = 1000
+    val continuationKey = listResult1.resultProps(ContinuationKey)
+    val listReq2 = ListRequest(dataset, Map(ListLimit -> limit2, ContinuationKey -> continuationKey))
+    val listResult2 = Await.result(kvStore.list(listReq2), 1.second)
+    listResult2.values.isSuccess shouldBe true
+    listResult2.resultProps.contains(ContinuationKey) shouldBe false
+    val listValues2 = listResult2.values.get
+    listValues2.size shouldBe (putJoinReqs.size - limit)
+
+    // lets collect all the keys and confirm we got everything
+    val allKeys = (listValues1 ++ listValues2).map(v => new String(v.keyBytes, StandardCharsets.UTF_8))
+    allKeys.toSet shouldBe putJoinReqs
       .map(r => new String(buildRowKey(r.keyBytes, r.dataset), StandardCharsets.UTF_8))
       .toSet
   }

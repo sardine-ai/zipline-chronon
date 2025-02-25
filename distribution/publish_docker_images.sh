@@ -30,9 +30,11 @@ cd $CHRONON_ROOT_DIR
 echo "Building jars"
 
 bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+bazel build //cloud_aws:cloud_aws_lib_deploy.jar
 bazel build //service:service_assembly_deploy.jar
 
 CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
+CLOUD_AWS_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_aws/cloud_aws_lib_deploy.jar"
 SERVICE_JAR="$CHRONON_ROOT_DIR/bazel-bin/service/service_assembly_deploy.jar"
 
 if [ ! -f "$CLOUD_GCP_JAR" ]; then
@@ -42,6 +44,11 @@ fi
 
 if [ ! -f "$SERVICE_JAR" ]; then
     echo "$SERVICE_JAR not found"
+    exit 1
+fi
+
+if [ ! -f "$CLOUD_AWS_JAR" ]; then
+    echo "$CLOUD_AWS_JAR not found"
     exit 1
 fi
 

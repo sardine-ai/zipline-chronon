@@ -16,6 +16,7 @@
 
 package ai.chronon.online;
 
+import ai.chronon.api.ScalaJavaConversions;
 import ai.chronon.online.fetcher.Fetcher;
 import ai.chronon.online.fetcher.FetcherResponseWithTs;
 import scala.collection.Iterator;
@@ -25,6 +26,7 @@ import scala.collection.mutable.ArrayBuffer;
 import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 import scala.concurrent.ExecutionContext;
+import scala.util.Try;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -168,6 +170,18 @@ public class JavaFetcher {
     Future<FetcherResponseWithTs> scalaResponses = this.fetcher.withTs(this.fetcher.fetchJoin(scalaRequests, Option.empty()));
     // Convert responses to CompletableFuture
     return convertResponsesWithTs(scalaResponses, false, startTs);
+  }
+
+  public CompletableFuture<List<String>> listJoins(boolean isOnline) {
+    // Get responses from the fetcher
+    Future<Seq<String>> scalaResponses = this.fetcher.metadataStore().listJoins(isOnline);
+    // convert to Java friendly types
+    return FutureConverters.toJava(scalaResponses).toCompletableFuture().thenApply(ScalaJavaConversions::toJava);
+  }
+
+  public JTry<JavaJoinSchemaResponse> fetchJoinSchema(String joinName) {
+    Try<Fetcher.JoinSchemaResponse> scalaResponse = this.fetcher.fetchJoinSchema(joinName);
+    return JTry.fromScala(scalaResponse).map(JavaJoinSchemaResponse::new);
   }
 
   private void instrument(List<String> requestNames, boolean isGroupBy, String metricName, Long startTs) {
