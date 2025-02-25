@@ -1,5 +1,6 @@
 package ai.chronon.integrations.aws
 
+import ai.chronon.api.Constants.{ContinuationKey, ListLimit}
 import ai.chronon.online.KVStore._
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer
@@ -124,16 +125,16 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
     putResults.foreach(r => r shouldBe true)
 
     // call list - first call is only for 10 elements
-    val listReq1 = ListRequest(dataset, Map(listLimit -> 10))
+    val listReq1 = ListRequest(dataset, Map(ListLimit -> 10))
     val listResults1 = Await.result(kvStore.list(listReq1), 1.minute)
-    listResults1.resultProps.contains(continuationKey) shouldBe true
+    listResults1.resultProps.contains(ContinuationKey) shouldBe true
     validateExpectedListResponse(listResults1.values, 10)
 
     // call list - with continuation key
     val listReq2 =
-      ListRequest(dataset, Map(listLimit -> 100, continuationKey -> listResults1.resultProps(continuationKey)))
+      ListRequest(dataset, Map(ListLimit -> 100, ContinuationKey -> listResults1.resultProps(ContinuationKey)))
     val listResults2 = Await.result(kvStore.list(listReq2), 1.minute)
-    listResults2.resultProps.contains(continuationKey) shouldBe false
+    listResults2.resultProps.contains(ContinuationKey) shouldBe false
     validateExpectedListResponse(listResults2.values, 100)
   }
 

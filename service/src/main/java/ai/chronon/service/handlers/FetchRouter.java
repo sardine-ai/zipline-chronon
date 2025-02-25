@@ -27,10 +27,9 @@ public class FetchRouter {
         }
     }
 
-    public static Router createFetchRoutes(Vertx vertx, Api api) {
+    public static Router createFetchRoutes(Vertx vertx, JavaFetcher fetcher) {
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        JavaFetcher fetcher = api.buildJavaFetcher("feature-service", false);
 
         router.post("/groupby/:name").handler(new FetchHandler(fetcher, new GroupByFetcherFunction()));
         router.post("/join/:name").handler(new FetchHandler(fetcher, new JoinFetcherFunction()));

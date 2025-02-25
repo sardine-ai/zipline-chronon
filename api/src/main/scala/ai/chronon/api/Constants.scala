@@ -85,4 +85,14 @@ object Constants {
   val GroupByKeyword = "group_bys"
   val StagingQueryKeyword = "staging_queries"
   val ModelKeyword = "models"
+
+  // KV store related constants
+  // continuation key to help with list pagination
+  val ContinuationKey: String = "continuation-key"
+
+  // Limit of max number of entries to return in a list call
+  val ListLimit: String = "limit"
+
+  // List entity type
+  val ListEntityType: String = "entity_type"
 }
