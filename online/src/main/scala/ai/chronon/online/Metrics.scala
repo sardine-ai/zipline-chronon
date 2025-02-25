@@ -28,6 +28,7 @@ object Metrics {
     type Environment = String
     val MetaDataFetching = "metadata.fetch"
     val JoinFetching = "join.fetch"
+    val JoinSchemaFetching = "join.schema.fetch"
     val GroupByFetching = "group_by.fetch"
     val GroupByUpload = "group_by.upload"
     val GroupByStreaming = "group_by.streaming"

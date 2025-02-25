@@ -70,6 +70,7 @@ test_deps = [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
+    resources = glob(["src/test/resources/**/*"]),
     format = select({
         "//tools/config:scala_2_13": False,  # Disable for 2.13
         "//conditions:default": True,  # Enable for other versions
@@ -81,6 +82,7 @@ scala_library(
 scala_test_suite(
     name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
+    resources = glob(["src/test/resources/**/*"]),
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
