@@ -3,10 +3,10 @@ FROM openjdk:17-jdk-slim
 
 # Set this manually before building the image, requires a local build of the jar
 
-ENV CHRONON_JAR_PATH=spark/target/scala-2.12/spark-assembly-0.1.0-SNAPSHOT.jar
-ENV CLOUD_AWS_JAR_PATH=cloud_aws/target/scala-2.12/cloud_aws-assembly-0.1.0-SNAPSHOT.jar
-ENV CLOUD_GCP_JAR_PATH=cloud_gcp/target/scala-2.12/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar
-ENV FETCHER_SVC_JAR_PATH=service/target/scala-2.12/service-0.1.0-SNAPSHOT.jar
+ENV CHRONON_JAR_PATH=build_output/spark_assembly_deploy.jar
+ENV CLOUD_AWS_JAR_PATH=build_output/cloud_aws_lib_deploy.jar
+ENV CLOUD_GCP_JAR_PATH=build_output/cloud_gcp_lib_deploy.jar
+ENV FETCHER_SVC_JAR_PATH=build_output/service_assembly_deploy.jar
 
 # Update package lists and install necessary tools
 RUN apt-get update && apt-get install -y \
