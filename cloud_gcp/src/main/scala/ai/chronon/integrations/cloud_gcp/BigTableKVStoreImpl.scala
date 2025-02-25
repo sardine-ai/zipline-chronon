@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.api.Constants.{ContinuationKey, ListEntityType, ListLimit}
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Extensions.WindowOps
@@ -211,13 +212,14 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   override def list(request: ListRequest): Future[ListResponse] = {
     logger.info(s"Performing list for ${request.dataset}")
 
-    val listLimit = request.props.get(BigTableKVStore.listLimit) match {
+    val listLimit = request.props.get(ListLimit) match {
       case Some(value: Int)    => value
       case Some(value: String) => value.toInt
       case _                   => defaultListLimit
     }
 
-    val maybeStartKey = request.props.get(continuationKey)
+    val maybeListEntityType = request.props.get(ListEntityType)
+    val maybeStartKey = request.props.get(ContinuationKey)
 
     val query = Query
       .create(mapDatasetToTable(request.dataset))
@@ -227,9 +229,15 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       .filter(Filters.FILTERS.limit().cellsPerRow(1))
       .limit(listLimit)
 
-    // if we got a start row key, lets wire it up
-    maybeStartKey.foreach { startKey =>
-      query.range(ByteStringRange.unbounded().startOpen(ByteString.copyFrom(startKey.asInstanceOf[Array[Byte]])))
+    (maybeStartKey, maybeListEntityType) match {
+      case (Some(startKey), _) =>
+        // we have a start key, we use that to pick up from where we left off
+        query.range(ByteStringRange.unbounded().startOpen(ByteString.copyFrom(startKey.asInstanceOf[Array[Byte]])))
+      case (None, Some(listEntityType)) =>
+        val startRowKey = buildRowKey(s"$listEntityType/".getBytes(Charset.forName("UTF-8")), request.dataset)
+        query.range(ByteStringRange.unbounded().startOpen(ByteString.copyFrom(startRowKey)))
+      case _ =>
+        logger.info("No start key or list entity type provided. Starting from the beginning")
     }
 
     val startTs = System.currentTimeMillis()
@@ -253,7 +261,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
           if (listValues.size < listLimit) {
             Map.empty // last page, we're done
           } else
-            Map(continuationKey -> listValues.last.keyBytes)
+            Map(ContinuationKey -> listValues.last.keyBytes)
 
         ListResponse(request, Success(listValues), propsMap)
 
@@ -409,12 +417,6 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 }
 
 object BigTableKVStore {
-
-  // continuation key to help with list pagination
-  val continuationKey: String = "continuationKey"
-
-  // Limit of max number of entries to return in a list call
-  val listLimit: String = "limit"
 
   // Default list limit
   val defaultListLimit: Int = 100

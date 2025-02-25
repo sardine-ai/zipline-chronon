@@ -29,6 +29,7 @@ test_deps = _VERTX_TEST_DEPS + [
     maven_artifact("org.junit.platform:junit-platform-reporting"),
     maven_artifact("net.bytebuddy:byte-buddy"),
     maven_artifact("net.bytebuddy:byte-buddy-agent"),
+    maven_artifact("org.apache.avro:avro"),
 ]
 
 java_library(

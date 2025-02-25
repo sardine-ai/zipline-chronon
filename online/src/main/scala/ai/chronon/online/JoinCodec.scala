@@ -34,8 +34,8 @@ import com.google.gson.Gson
 case class JoinCodec(conf: JoinOps,
                      keySchema: StructType,
                      baseValueSchema: StructType,
-                     keyCodec: serde.AvroCodec,
-                     baseValueCodec: serde.AvroCodec)
+                     keyCodec: AvroCodec,
+                     baseValueCodec: AvroCodec)
     extends Serializable {
 
   @transient lazy val valueSchema: StructType = {
@@ -89,7 +89,7 @@ case class JoinCodec(conf: JoinOps,
 
 object JoinCodec {
 
-  def buildLoggingSchema(joinName: String, keyCodec: serde.AvroCodec, valueCodec: serde.AvroCodec): String = {
+  def buildLoggingSchema(joinName: String, keyCodec: AvroCodec, valueCodec: AvroCodec): String = {
     val schemaMap = Map(
       "join_name" -> joinName,
       "key_schema" -> keyCodec.schemaStr,

@@ -21,13 +21,14 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.api._
 import ai.chronon.api.thrift.TBase
-import ai.chronon.online.KVStore.PutRequest
+import ai.chronon.online.KVStore.{ListRequest, ListResponse, PutRequest}
 import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import ai.chronon.online._
 import ai.chronon.online.serde.AvroCodec
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.nio.charset.StandardCharsets
 import scala.collection.immutable.SortedMap
 import scala.collection.{Seq, mutable}
 import scala.concurrent.{ExecutionContext, Future}
@@ -171,6 +172,57 @@ class MetadataStore(fetchContext: FetchContext) {
       PutRequest(joinConfKeyForKvStore.getBytes(Constants.UTF8),
                  ThriftJsonCodec.toJsonStr(join).getBytes(Constants.UTF8),
                  fetchContext.metadataDataset))
+  }
+
+  def listJoins(isOnline: Boolean = true): Future[Seq[String]] = {
+
+    val context = Metrics.Context(Metrics.Environment.MetaDataFetching)
+    val startTimeMs = System.currentTimeMillis()
+
+    def parseJoins(response: ListResponse): Seq[String] = {
+      val result = response.values
+        .map { seqListValues =>
+          seqListValues
+            .map(kv => new String(kv.valueBytes, StandardCharsets.UTF_8))
+            .map(v => ThriftJsonCodec.fromJsonStr[Join](v, check = false, classOf[Join]))
+            .filter(_.join.metaData.online == isOnline)
+            .map(_.metaData.name)
+
+        }
+        .recover { case e: Exception =>
+          logger.error("Failed to list & parse joins from list response", e)
+          context.withSuffix("join_list").increment(Metrics.Name.Exception)
+          throw e
+        }
+
+      result.get
+    }
+
+    def doRetrieveAllListConfs(acc: mutable.ArrayBuffer[String],
+                               paginationKey: Option[Any] = None): Future[Seq[String]] = {
+      val propsMap = {
+        paginationKey match {
+          case Some(key) => Map(ListEntityType -> JoinKeyword, ContinuationKey -> key)
+          case None      => Map(ListEntityType -> JoinKeyword)
+        }
+      }
+
+      val listRequest = ListRequest(fetchContext.metadataDataset, propsMap)
+      fetchContext.kvStore.list(listRequest).flatMap { response =>
+        val joinSeq: Seq[String] = parseJoins(response)
+        val newAcc = acc ++ joinSeq
+        if (response.resultProps.contains(ContinuationKey)) {
+          doRetrieveAllListConfs(newAcc, response.resultProps.get(ContinuationKey))
+        } else {
+          context
+            .withSuffix("join_list")
+            .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+          Future.successful(newAcc)
+        }
+      }
+    }
+
+    doRetrieveAllListConfs(new mutable.ArrayBuffer[String]())
   }
 
   // key and value schemas
