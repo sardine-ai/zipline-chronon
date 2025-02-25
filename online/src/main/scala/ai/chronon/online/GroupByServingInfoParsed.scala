@@ -21,9 +21,12 @@ import ai.chronon.api.Constants.ReversalField
 import ai.chronon.api.Constants.TimeField
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.DerivationFunc
 import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
+import ai.chronon.online.serde.AvroCodec
+
 import org.apache.avro.Schema
 
 import scala.collection.JavaConverters.asScalaBufferConverter
@@ -43,7 +46,7 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
 
   lazy val aggregator: SawtoothOnlineAggregator = {
     new SawtoothOnlineAggregator(batchEndTsMillis,
-                                 groupByServingInfo.groupBy.aggregations.asScala.toSeq,
+                                 groupByServingInfo.groupBy.aggregations.toScala,
                                  valueChrononSchema.fields.map(sf => (sf.name, sf.fieldType)))
   }
 
@@ -77,11 +80,11 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
     AvroConversions.fromChrononSchema(valueChrononSchema).toString()
   }
 
-  def valueAvroCodec: AvroCodec = AvroCodec.of(valueAvroSchema)
-  def selectedCodec: AvroCodec = AvroCodec.of(selectedAvroSchema)
+  def valueAvroCodec: serde.AvroCodec = serde.AvroCodec.of(valueAvroSchema)
+  def selectedCodec: serde.AvroCodec = serde.AvroCodec.of(selectedAvroSchema)
   lazy val irAvroSchema: String = AvroConversions.fromChrononSchema(irChrononSchema).toString()
-  def irCodec: AvroCodec = AvroCodec.of(irAvroSchema)
-  def outputCodec: AvroCodec = AvroCodec.of(outputAvroSchema)
+  def irCodec: serde.AvroCodec = serde.AvroCodec.of(irAvroSchema)
+  def outputCodec: serde.AvroCodec = serde.AvroCodec.of(outputAvroSchema)
 
   // Start tiling specific variables
 
@@ -90,9 +93,12 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
 
   // End tiling specific variables
 
-  def outputChrononSchema: StructType = {
-    StructType.from(s"${groupBy.metaData.cleanName}_OUTPUT", aggregator.windowedAggregator.outputSchema)
-  }
+  def outputChrononSchema: StructType =
+    if (groupByServingInfo.groupBy.aggregations == null) {
+      selectedChrononSchema
+    } else {
+      StructType.from(s"${groupBy.metaData.cleanName}_OUTPUT", aggregator.windowedAggregator.outputSchema)
+    }
 
   lazy val outputAvroSchema: String = { AvroConversions.fromChrononSchema(outputChrononSchema).toString() }
 
@@ -118,7 +124,7 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
     AvroConversions.toChrononSchema(parser.parse(mutationValueAvroSchema)).asInstanceOf[StructType]
   }
 
-  def mutationValueAvroCodec: AvroCodec = AvroCodec.of(mutationValueAvroSchema)
+  def mutationValueAvroCodec: serde.AvroCodec = serde.AvroCodec.of(mutationValueAvroSchema)
 
   // Schema for data consumed by the streaming job.
   // Needs consistency with mutationDf Schema for backfill group by. (Shared queries)

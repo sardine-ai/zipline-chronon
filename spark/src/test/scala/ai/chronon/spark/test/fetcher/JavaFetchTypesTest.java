@@ -19,7 +19,7 @@ package ai.chronon.spark.test.fetcher;
 import ai.chronon.online.JavaFetcher;
 import ai.chronon.online.JavaRequest;
 import ai.chronon.online.JavaResponse;
-import ai.chronon.online.fetcher.Fetcher;
+import ai.chronon.online.fetcher.FetchTypes;
 import ai.chronon.spark.TableUtils;
 import ai.chronon.spark.SparkSessionBuilder;
 import ai.chronon.spark.utils.InMemoryKvStore;
@@ -39,7 +39,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static scala.compat.java8.JFunction.func;
 
-public class JavaFetcherTest {
+public class JavaFetchTypesTest {
     String namespace = "java_fetcher_test";
     SparkSession session = SparkSessionBuilder.build(namespace, true, true, scala.Option.apply(null), scala.Option.apply(null), true);
     TableUtils tu = new TableUtils(session);
@@ -70,7 +70,7 @@ public class JavaFetcherTest {
 
         // can end up with a null result response if the GroupBy is not found
         List<JavaResponse> nullResultResponses = new ArrayList<>();
-        Fetcher.Response nullScalaResponse = new Fetcher.Response(
+        FetchTypes.Response nullScalaResponse = new FetchTypes.Response(
                 requests.get(0).toScalaRequest(),
                 new scala.util.Success<>(null));
         nullResultResponses.add(new JavaResponse(nullScalaResponse));

@@ -8,8 +8,8 @@ import ai.chronon.api.Row
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.flink.types.TimestampedIR
 import ai.chronon.flink.types.TimestampedTile
-import ai.chronon.online.ArrayRow
 import ai.chronon.online.TileCodec
+import ai.chronon.online.serde.ArrayRow
 import org.apache.flink.api.common.functions.AggregateFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter

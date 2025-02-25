@@ -79,26 +79,33 @@ trait KVStore {
 
   // helper method to blocking read a string - used for fetching metadata & not in hotpath.
   def getString(key: String, dataset: String, timeoutMillis: Long): Try[String] = {
-    val response = getResponse(key, dataset, timeoutMillis)
-    if (response.values.isFailure) {
-      Failure(new RuntimeException(s"Request for key ${key} in dataset ${dataset} failed", response.values.failed.get))
-    } else {
-      response.values.get.length match {
-        case 0 => {
-          Failure(new RuntimeException(s"Empty response from KVStore for key=${key} in dataset=${dataset}."))
-        }
-        case _ => Success(new String(response.latest.get.bytes, Constants.UTF8))
+
+    getResponse(key, dataset, timeoutMillis).values
+      .recoverWith { case ex =>
+        // wrap with more info
+        Failure(new RuntimeException(s"Request for key $key in dataset $dataset failed", ex))
       }
-    }
+      .flatMap { values =>
+        if (values.isEmpty)
+          Failure(new RuntimeException(s"Empty response from KVStore for key=$key in dataset=$dataset."))
+        else
+          Success(new String(values.maxBy(_.millis).bytes, Constants.UTF8))
+      }
   }
 
   def getStringArray(key: String, dataset: String, timeoutMillis: Long): Try[Seq[String]] = {
     val response = getResponse(key, dataset, timeoutMillis)
-    if (response.values.isFailure) {
-      Failure(new RuntimeException(s"Request for key ${key} in dataset ${dataset} failed", response.values.failed.get))
-    } else {
-      Success(StringArrayConverter.bytesToStrings(response.latest.get.bytes))
-    }
+
+    response.values
+      .map { values =>
+        val latestBytes = values.maxBy(_.millis).bytes
+        StringArrayConverter.bytesToStrings(latestBytes)
+      }
+      .recoverWith { case ex =>
+        // Wrap with more info
+        Failure(new RuntimeException(s"Request for key $key in dataset $dataset failed", ex))
+      }
+
   }
 
   private def getResponse(key: String, dataset: String, timeoutMillis: Long): GetResponse = {

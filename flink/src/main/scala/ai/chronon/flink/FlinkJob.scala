@@ -19,9 +19,9 @@ import ai.chronon.flink.window.KeySelectorBuilder
 import ai.chronon.online.Api
 import ai.chronon.online.FlagStoreConstants
 import ai.chronon.online.GroupByServingInfoParsed
-import ai.chronon.online.MetadataStore
 import ai.chronon.online.SparkConversions
 import ai.chronon.online.TopicInfo
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.configuration.CheckpointingOptions
@@ -243,7 +243,7 @@ object FlinkJob {
   // we set an explicit max parallelism to ensure if we do make parallelism setting updates, there's still room
   // to restore the job from prior state. Number chosen does have perf ramifications if too high (can impact rocksdb perf)
   // so we've chosen one that should allow us to scale to jobs in the 10K-50K events / s range.
-  val MaxParallelism = 1260 // highly composite number
+  val MaxParallelism: Int = 1260 // highly composite number
 
   // We choose to checkpoint frequently to ensure the incremental checkpoints are small in size
   // as well as ensuring the catch-up backlog is fairly small in case of failures
@@ -254,11 +254,11 @@ object FlinkJob {
   val CheckpointTimeout: FiniteDuration = 5.minutes
 
   // We use incremental checkpoints and we cap how many we keep around
-  val MaxRetainedCheckpoints = 10
+  val MaxRetainedCheckpoints: Int = 10
 
   // how many consecutive checkpoint failures can we tolerate - default is 0, we choose a more lenient value
   // to allow us a few tries before we give up
-  val TolerableCheckpointFailures = 5
+  val TolerableCheckpointFailures: Int = 5
 
   // Keep windows open for a bit longer before closing to ensure we don't lose data due to late arrivals (needed in case of
   // tiling implementation)
@@ -306,7 +306,7 @@ object FlinkJob {
     val kafkaBootstrap = jobArgs.kafkaBootstrap.toOption
 
     val api = buildApi(onlineClassName, props)
-    val metadataStore = new MetadataStore(api.genKvStore, MetadataDataset, timeoutMillis = 10000)
+    val metadataStore = new MetadataStore(FetchContext(api.genKvStore, MetadataDataset))
 
     val flinkJob =
       if (useMockedSource) {

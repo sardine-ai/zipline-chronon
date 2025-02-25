@@ -17,8 +17,8 @@
 package ai.chronon.online.test
 
 import ai.chronon.api._
-import ai.chronon.online.ArrayRow
 import ai.chronon.online.TileCodec
+import ai.chronon.online.serde.ArrayRow
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger

@@ -20,8 +20,8 @@ import ai.chronon.api.HashUtils
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
-import ai.chronon.online.AvroCodec
 import ai.chronon.online.JoinCodec
+import ai.chronon.online.serde.AvroCodec
 import com.google.gson.Gson
 
 /*

@@ -45,6 +45,7 @@ class TTLCache[I, O](f: I => O,
 
   case class Entry(value: O, updatedAtMillis: Long, var markedForUpdate: AtomicBoolean = new AtomicBoolean(false))
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+
   private val updateWhenNull =
     new function.BiFunction[I, Entry, Entry] {
       override def apply(t: I, u: Entry): Entry = {
