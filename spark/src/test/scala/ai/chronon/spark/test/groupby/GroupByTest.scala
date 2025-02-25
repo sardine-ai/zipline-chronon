@@ -489,7 +489,7 @@ class GroupByTest extends AnyFlatSpec {
     val namespace = "test_approx_histograms"
     val aggs = Seq(
       Builders.Aggregation(
-        operation = Operation.APPROX_HISTOGRAM_K,
+        operation = Operation.APPROX_FREQUENT_K,
         inputColumn = "item",
         windows = Seq(
           new Window(15, TimeUnit.DAYS),
@@ -498,7 +498,7 @@ class GroupByTest extends AnyFlatSpec {
         argMap = Map("k" -> "4")
       ),
       Builders.Aggregation(
-        operation = Operation.APPROX_HISTOGRAM_K,
+        operation = Operation.APPROX_FREQUENT_K,
         inputColumn = "ts",
         windows = Seq(
           new Window(15, TimeUnit.DAYS),
@@ -507,7 +507,7 @@ class GroupByTest extends AnyFlatSpec {
         argMap = Map("k" -> "4")
       ),
       Builders.Aggregation(
-        operation = Operation.APPROX_HISTOGRAM_K,
+        operation = Operation.APPROX_FREQUENT_K,
         inputColumn = "price",
         windows = Seq(
           new Window(15, TimeUnit.DAYS),
@@ -525,7 +525,7 @@ class GroupByTest extends AnyFlatSpec {
 
     val histogramValues = spark
       .sql("""
-          |select explode(map_values(item_approx_histogram_k_15d)) as item_values
+          |select explode(map_values(item_approx_frequent_k_15d)) as item_values
           |from test_approx_histograms.unit_test_group_by_approx_histograms
           |""".stripMargin)
       .map(row => row.getAs[Long]("item_values"))(Encoders.scalaLong)
@@ -562,7 +562,7 @@ class GroupByTest extends AnyFlatSpec {
     val chainingGroupBy = TestUtils.getTestGBWithJoinSource(joinSource, query, namespace, "user_viewed_price_gb")
     val newGroupBy = GroupBy.from(chainingGroupBy, PartitionRange(today, today), tableUtils, computeDependency = true)
 
-    //verify parent join output table is computed and
+    // verify parent join output table is computed and
     assertTrue(spark.catalog.tableExists(s"$namespace.parent_join_table"))
     val expectedSQL =
       s"""
