@@ -54,6 +54,11 @@ struct StagingQuery {
     * Only needed for `max_date` template
     **/
     5: optional string partitionColumn
+
+    /**
+    * By default, spark is the compute engine. You can specify an override (eg. bigquery, etc.)
+    **/
+    6: optional EngineType engineType
 }
 
 struct EventSource {
@@ -218,6 +223,12 @@ struct AggregationPart {
 enum Accuracy {
     TEMPORAL = 0,
     SNAPSHOT = 1
+}
+
+enum EngineType {
+    SPARK = 0,
+    BIGQUERY = 1
+
 }
 
 struct MetaData {

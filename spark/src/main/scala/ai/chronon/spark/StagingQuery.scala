@@ -18,12 +18,11 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ParametricMacro
+import ai.chronon.api.{EngineType, ParametricMacro}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 
@@ -46,57 +45,64 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
                           enableAutoExpand: Option[Boolean] = Some(true),
                           overrideStartPartition: Option[String] = None,
                           skipFirstHole: Boolean = true): Unit = {
-    Option(stagingQueryConf.setups).foreach(_.toScala.foreach(tableUtils.sql))
+    if (stagingQueryConf.getEngineType != EngineType.SPARK) {
+      throw new UnsupportedOperationException(
+        s"Engine type ${stagingQueryConf.getEngineType} is not supported for Staging Query")
+    }
     // the input table is not partitioned, usually for data testing or for kaggle demos
     if (stagingQueryConf.startPartition == null) {
-      tableUtils.sql(stagingQueryConf.query).save(outputTable)
-      return
-    }
-    val overrideStart = overrideStartPartition.getOrElse(stagingQueryConf.startPartition)
-    val unfilledRanges =
-      tableUtils.unfilledRanges(outputTable,
-                                PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
-                                skipFirstHole = skipFirstHole)
+      tableUtils.sql(stagingQueryConf.query).saveUnPartitioned(outputTable)
+    } else {
+      val overrideStart = overrideStartPartition.getOrElse(stagingQueryConf.startPartition)
+      val unfilledRanges =
+        tableUtils.unfilledRanges(outputTable,
+                                  PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
+                                  skipFirstHole = skipFirstHole)
 
-    if (unfilledRanges.isEmpty) {
-      logger.info(s"""No unfilled range for $outputTable given
-           |start partition of ${stagingQueryConf.startPartition}
-           |override start partition of $overrideStart
-           |end partition of $endPartition
-           |""".stripMargin)
-      return
-    }
-    val stagingQueryUnfilledRanges = unfilledRanges.get
-    logger.info(s"Staging Query unfilled ranges: $stagingQueryUnfilledRanges")
-    val exceptions = mutable.Buffer.empty[String]
-    stagingQueryUnfilledRanges.foreach { stagingQueryUnfilledRange =>
-      try {
-        val stepRanges = stepDays.map(stagingQueryUnfilledRange.steps).getOrElse(Seq(stagingQueryUnfilledRange))
-        logger.info(s"Staging query ranges to compute: ${stepRanges.map { _.toString }.pretty}")
-        stepRanges.zipWithIndex.foreach { case (range, index) =>
-          val progress = s"| [${index + 1}/${stepRanges.size}]"
-          logger.info(s"Computing staging query for range: $range  $progress")
-          val renderedQuery =
-            StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
-          logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
-          val df = tableUtils.sql(renderedQuery)
-          df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
-          logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
-        }
-        logger.info(s"Finished writing Staging Query data to $outputTable")
-      } catch {
-        case err: Throwable =>
-          exceptions.append(s"Error handling range $stagingQueryUnfilledRange : ${err.getMessage}\n${err.traceString}")
+      if (unfilledRanges.isEmpty) {
+        logger.info(s"""No unfilled range for $outputTable given
+             |start partition of ${stagingQueryConf.startPartition}
+             |override start partition of $overrideStart
+             |end partition of $endPartition
+             |""".stripMargin)
+        return
       }
-    }
-    if (exceptions.nonEmpty) {
-      val length = exceptions.length
-      val fullMessage = exceptions.zipWithIndex
-        .map { case (message, index) =>
-          s"[${index + 1}/${length} exceptions]\n${message}"
+      val stagingQueryUnfilledRanges = unfilledRanges.get
+      logger.info(s"Staging Query unfilled ranges: $stagingQueryUnfilledRanges")
+      Option(stagingQueryConf.setups).foreach(_.toScala.foreach(tableUtils.sql))
+      val exceptions = mutable.Buffer.empty[String]
+      stagingQueryUnfilledRanges.foreach { stagingQueryUnfilledRange =>
+        try {
+          val stepRanges = stepDays.map(stagingQueryUnfilledRange.steps).getOrElse(Seq(stagingQueryUnfilledRange))
+          logger.info(s"Staging query ranges to compute: ${stepRanges.map {
+            _.toString
+          }.pretty}")
+          stepRanges.zipWithIndex.foreach { case (range, index) =>
+            val progress = s"| [${index + 1}/${stepRanges.size}]"
+            logger.info(s"Computing staging query for range: $range  $progress")
+            val renderedQuery =
+              StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
+            logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
+            val df = tableUtils.sql(renderedQuery)
+            df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
+            logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
+          }
+          logger.info(s"Finished writing Staging Query data to $outputTable")
+        } catch {
+          case err: Throwable =>
+            exceptions.append(
+              s"Error handling range $stagingQueryUnfilledRange : ${err.getMessage}\n${err.traceString}")
         }
-        .mkString("\n")
-      throw new Exception(fullMessage)
+      }
+      if (exceptions.nonEmpty) {
+        val length = exceptions.length
+        val fullMessage = exceptions.zipWithIndex
+          .map { case (message, index) =>
+            s"[${index + 1}/${length} exceptions]\n${message}"
+          }
+          .mkString("\n")
+        throw new Exception(fullMessage)
+      }
     }
   }
 }
