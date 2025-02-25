@@ -45,7 +45,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
                           enableAutoExpand: Option[Boolean] = Some(true),
                           overrideStartPartition: Option[String] = None,
                           skipFirstHole: Boolean = true): Unit = {
-    if (stagingQueryConf.getEngineType != EngineType.SPARK) {
+    if (Option(stagingQueryConf.getEngineType).getOrElse(EngineType.SPARK) != EngineType.SPARK) {
       throw new UnsupportedOperationException(
         s"Engine type ${stagingQueryConf.getEngineType} is not supported for Staging Query")
     }

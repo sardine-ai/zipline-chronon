@@ -20,11 +20,11 @@ query = """
 SELECT
     ts,
     ds,
-    purchase_id,
+    return_id,
     user_id,
     product_id,
-    purchase_price
-FROM data.purchases
+    refund_amt
+FROM checkouts_external
 WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
 
@@ -32,7 +32,10 @@ staging_query = StagingQuery(
     query=query,
     startPartition="2023-10-31",
     metaData=MetaData(
-        name='purchases_staging_query',
+        name='checkouts_staging_query',
         outputNamespace="data"
-    )
+    ),
+    setups=[
+        "CREATE OR REPLACE TEMPORARY VIEW checkouts_external USING parquet OPTIONS (path 'gs://zl-warehouse/data/checkouts_ds_not_in_parquet/')",
+    ],
 )
