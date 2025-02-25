@@ -1,0 +1,6 @@
+scala_library(
+    name = "lib",
+    srcs = glob(["*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = [],
+)

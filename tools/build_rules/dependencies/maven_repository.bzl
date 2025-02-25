@@ -35,7 +35,6 @@ maven_repository = repository(
         "commons-io:commons-io:2.9.0",
         "commons-lang:commons-lang:2.6",
         "io.netty:netty-all:4.1.111.Final",
-        "io.grpc:grpc-netty-shaded:1.62.2",
         "ch.qos.reload4j:reload4j:1.2.25",
         "ch.qos.logback:logback-classic:1.5.6",
         "com.typesafe:config:1.4.3",
@@ -45,8 +44,12 @@ maven_repository = repository(
         "org.apache.commons:commons-math3:3.6.1",
 
         # grpc
-        "io.grpc:grpc-core:1.62.2",  # required by bigtable
-        "io.grpc:grpc-api:1.62.2",
+        "io.grpc:grpc-api:1.69.0",
+        "io.grpc:grpc-core:1.69.0",
+        "io.grpc:grpc-netty-shaded:1.69.0",
+        "io.grpc:grpc-protobuf:1.69.0",
+        "io.grpc:grpc-stub:1.69.0",
+        "io.grpc:grpc-inprocess:1.69.0",
 
         # Kafka
         "org.apache.kafka:kafka-clients:3.8.1",
@@ -109,6 +112,10 @@ maven_repository = repository(
         "io.vertx:vertx-junit5:4.5.10",
         "io.vertx:vertx-unit:4.5.10",
         "io.vertx:vertx-unit:4.5.10",
+
+        # Temporal
+        "io.temporal:temporal-sdk:1.24.1",
+        "io.temporal:temporal-testing:1.24.1",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",

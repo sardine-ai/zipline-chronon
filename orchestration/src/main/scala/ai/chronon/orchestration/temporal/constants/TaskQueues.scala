@@ -1,3 +1,5 @@
 package ai.chronon.orchestration.temporal.constants
 
-case class TaskQueues ()
+sealed trait TaskQueue extends Serializable
+
+case object DAGExecutionWorkflowTaskQueue extends TaskQueue

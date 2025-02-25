@@ -265,14 +265,19 @@ struct TableDependency {
     21: optional bool forceCompute
 }
 
-union Dependency {
+// Temporal can't decode this if it is an union - hence using struct
+struct Dependency {
     1: optional KvDependency kvDependency
     2: optional TableDependency tableDependency
 }
 
+//struct PhysicalNodeGraph {
+//    1: optional list<PhysicalNodeInstance> leafNodes
+//    2: optional map<PhysicalNodeKey, PhysicalNodeInstance> infoMap
+//}
+
 struct PhysicalNodeGraph {
-    1: optional list<PhysicalNodeInstance> leafNodes
-    2: optional map<PhysicalNodeKey, PhysicalNodeInstance> infoMap
+    1: optional string name
 }
 
 

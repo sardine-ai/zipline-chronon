@@ -1,0 +1,27 @@
+test_deps = _SCALA_TEST_DEPS + [
+    "//api:thrift_java",
+    "//orchestration/src/main/scala/ai/chronon/orchestration/temporal:lib",
+    maven_artifact("io.temporal:temporal-sdk"),
+    maven_artifact("io.temporal:temporal-testing"),
+    maven_artifact("io.temporal:temporal-serviceclient"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact("io.grpc:grpc-core"),
+    maven_artifact("io.grpc:grpc-netty-shaded"),
+    maven_artifact("io.grpc:grpc-protobuf"),
+    maven_artifact("io.grpc:grpc-stub"),
+    maven_artifact("io.grpc:grpc-inprocess"),
+]
+
+scala_library(
+    name = "test_lib",
+    srcs = glob(["*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = test_deps,
+)
+
+scala_test_suite(
+    name = "tests",
+    srcs = glob(["*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
