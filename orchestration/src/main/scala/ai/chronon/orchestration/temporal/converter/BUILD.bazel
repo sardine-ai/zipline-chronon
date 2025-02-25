@@ -1,0 +1,15 @@
+scala_library(
+    name = "lib",
+    srcs = glob(["*.scala"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api:lib",
+        "//api:thrift_java",
+        "//orchestration/src/main/scala/ai/chronon/orchestration/temporal/runner:lib",
+        maven_artifact("io.temporal:temporal-sdk"),
+        maven_artifact("io.temporal:temporal-serviceclient"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("com.google.protobuf:protobuf-java"),
+        maven_artifact("com.google.code.findbugs:jsr305"),
+    ],
+)

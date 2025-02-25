@@ -2,7 +2,8 @@ package ai.chronon.orchestration.test.temporal.workflow
 
 import ai.chronon.orchestration.PhysicalNodeGraph
 import ai.chronon.orchestration.temporal.constants.DAGExecutionWorkflowTaskQueue
-import ai.chronon.orchestration.temporal.workflow.{DAGExecutionWorkflow, DAGExecutionWorkflowImpl, ThriftDataConverter}
+import ai.chronon.orchestration.temporal.converter.ThriftDataConverter
+import ai.chronon.orchestration.temporal.workflow.{DAGExecutionWorkflow, DAGExecutionWorkflowImpl}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterEach

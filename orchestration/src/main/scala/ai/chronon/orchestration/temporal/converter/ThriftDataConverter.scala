@@ -1,11 +1,10 @@
-package ai.chronon.orchestration.temporal.workflow
+package ai.chronon.orchestration.temporal.converter
 
-import io.temporal.api.common.v1.Payload
-import io.temporal.api.common.v1.Payloads
 import ai.chronon.api.SerdeUtils
 import ai.chronon.api.thrift.TBase
-import io.temporal.common.converter.ByteArrayPayloadConverter
-import io.temporal.common.converter.{DataConverter, DataConverterException}
+import io.temporal.api.common.v1.{Payload, Payloads}
+import io.temporal.common.converter.{ByteArrayPayloadConverter, DataConverter, DataConverterException}
+
 import java.lang.reflect.Type
 import java.util._
 
@@ -68,9 +67,9 @@ class ThriftDataConverter extends DataConverter {
                                content: Optional[Payloads],
                                parameterType: Class[T],
                                genericParameterType: Type): T = {
-    if (!content.isPresent) return null.asInstanceOf[T]
+    if (!content.isPresent) return Defaults.defaultValue(parameterType)
     val count = content.get.getPayloadsCount
-    if (index >= count) return null.asInstanceOf[T]
+    if (index >= count) return Defaults.defaultValue(parameterType)
     fromPayload(content.get.getPayloads(index), parameterType, genericParameterType)
   }
 }
