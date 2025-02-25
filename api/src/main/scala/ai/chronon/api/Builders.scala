@@ -308,13 +308,15 @@ object Builders {
         metaData: MetaData = null,
         startPartition: String = null,
         setups: Seq[String] = null,
-        partitionColumn: String = null
+        partitionColumn: String = null,
+        engineType: EngineType = EngineType.SPARK
     ): StagingQuery = {
       val stagingQuery = new StagingQuery()
       stagingQuery.setQuery(query)
       stagingQuery.setMetaData(metaData)
       stagingQuery.setStartPartition(startPartition)
       stagingQuery.setPartitionColumn(partitionColumn)
+      stagingQuery.setEngineType(engineType)
       if (setups != null) stagingQuery.setSetups(setups.toJava)
       stagingQuery
     }
