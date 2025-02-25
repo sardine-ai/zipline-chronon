@@ -610,7 +610,7 @@ object Driver {
       case _          => impl(serializableProps)
     }
 
-    val fetchContext: FetchContext = FetchContext(api.genKvStore, MetadataDataset)
+    lazy val fetchContext: FetchContext = FetchContext(api.genKvStore, MetadataDataset)
     def metaDataStore =
       new MetadataStore(fetchContext)
 
