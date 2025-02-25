@@ -59,7 +59,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     .withZone(ZoneId.systemDefault())
   val partitionColumn: String =
     sparkSession.conf.get("spark.chronon.partition.column", "ds")
-  private[spark] val partitionFormat: String =
+  val partitionFormat: String =
     sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
   val partitionSpec: PartitionSpec = PartitionSpec(partitionFormat, WindowUtils.Day.millis)
   val smallModelEnabled: Boolean =
