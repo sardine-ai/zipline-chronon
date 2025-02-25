@@ -21,7 +21,7 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.online.fetcher.Fetcher.Response
-import ai.chronon.online.{fetcher, _}
+import ai.chronon.online._
 import ai.chronon.online.serde.AvroSerde
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils

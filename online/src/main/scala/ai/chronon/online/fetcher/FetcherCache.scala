@@ -1,11 +1,10 @@
 package ai.chronon.online.fetcher
 
 import ai.chronon.aggregator.windowing.FinalBatchIr
-import FetcherBase.GroupByRequestMeta
 import ai.chronon.api.GroupBy
-import ai.chronon.online.fetcher.FetcherCache._
 import ai.chronon.online.KVStore.{GetRequest, TimedValue}
-import ai.chronon.online.{GroupByServingInfoParsed, LRUCache, Metrics}
+import ai.chronon.online.fetcher.FetcherCache._
+import ai.chronon.online.{GroupByServingInfoParsed, Metrics}
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -34,6 +33,7 @@ trait FetcherCache {
 
   // Caching needs to be configured globally
   def isCacheSizeConfigured: Boolean = maybeBatchIrCache.isDefined
+
   // Caching needs to be enabled for the specific groupBy
   def isCachingEnabled(groupBy: GroupBy): Boolean = false
 
@@ -110,37 +110,41 @@ trait FetcherCache {
 
   /** Given a list of GetRequests, return a map of GetRequests to cached FinalBatchIrs.
     */
-  def getCachedRequests(groupByRequestToKvRequest: Seq[(Fetcher.Request, Try[GroupByRequestMeta])])
-      : Map[GetRequest, CachedBatchResponse] = {
-    if (!isCacheSizeConfigured) return Map.empty
+  def getCachedRequests(
+      groupByRequestToKvRequest: Seq[(Fetcher.Request, Try[LambdaKvRequest])]): Map[GetRequest, CachedBatchResponse] = {
+
+    def empty = Map.empty[GetRequest, CachedBatchResponse]
+
+    if (!isCacheSizeConfigured) return empty
 
     groupByRequestToKvRequest
       .map {
-        case (request, Success(GroupByRequestMeta(servingInfo, batchRequest, _, _, _))) =>
-          if (!isCachingEnabled(servingInfo.groupBy)) { Map.empty }
-          else {
-            val batchRequestCacheKey =
-              BatchIrCache.Key(batchRequest.dataset, request.keys, servingInfo.batchEndTsMillis)
 
-            // Metrics so we can get per-groupby cache metrics
-            val metricsContext =
-              request.context.getOrElse(Metrics.Context(Metrics.Environment.JoinFetching, servingInfo.groupBy))
+        case (request, Success(LambdaKvRequest(servingInfo, batchRequest, _, _, _)))
+            if isCachingEnabled(servingInfo.groupBy) =>
+          val batchRequestCacheKey =
+            BatchIrCache.Key(batchRequest.dataset, request.keys, servingInfo.batchEndTsMillis)
 
-            maybeBatchIrCache.get.cache.getIfPresent(batchRequestCacheKey) match {
-              case null =>
-                metricsContext.increment(s"${batchIrCacheName}_gb_misses")
-                val emptyMap: Map[GetRequest, CachedBatchResponse] = Map.empty
-                emptyMap
-              case cachedIr: CachedBatchResponse =>
-                metricsContext.increment(s"${batchIrCacheName}_gb_hits")
-                Map(batchRequest -> cachedIr)
-            }
+          // Metrics so we can get per-group-by cache metrics
+          val metricsContext =
+            request.context.getOrElse(Metrics.Context(Metrics.Environment.JoinFetching, servingInfo.groupBy))
+
+          maybeBatchIrCache.get.cache.getIfPresent(batchRequestCacheKey) match {
+
+            case null =>
+              metricsContext.increment(s"${batchIrCacheName}_gb_misses")
+              empty
+
+            case cachedIr: CachedBatchResponse =>
+              metricsContext.increment(s"${batchIrCacheName}_gb_hits")
+              Map(batchRequest -> cachedIr)
+
           }
-        case _ =>
-          val emptyMap: Map[GetRequest, CachedBatchResponse] = Map.empty
-          emptyMap
+
+        case _ => empty
+
       }
-      .foldLeft(Map.empty[GetRequest, CachedBatchResponse])(_ ++ _)
+      .foldLeft(empty)(_ ++ _)
   }
 }
 

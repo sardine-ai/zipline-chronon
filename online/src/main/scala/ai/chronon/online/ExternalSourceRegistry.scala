@@ -17,8 +17,7 @@
 package ai.chronon.online
 
 import ai.chronon.api.Constants
-import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.fetcher.Fetcher.Response
+import ai.chronon.online.fetcher.Fetcher.{Request, Response}
 
 import scala.collection.Seq
 import scala.collection.mutable

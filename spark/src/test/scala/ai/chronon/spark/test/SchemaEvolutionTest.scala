@@ -21,9 +21,9 @@ import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online
-import ai.chronon.online.fetcher.Fetcher
+import ai.chronon.online.fetcher.{FetchContext, Fetcher}
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.{fetcher, _}
+import ai.chronon.online._
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.LogFlattenerJob
 import ai.chronon.spark.LoggingSchema
@@ -264,8 +264,8 @@ class SchemaEvolutionTest extends AnyFlatSpec {
 
   private def clearTTLCache(fetcher: Fetcher): Unit = {
     fetcher.joinCodecCache.cMap.clear()
-    fetcher.getJoinConf.cMap.clear()
-    fetcher.getGroupByServingInfo.cMap.clear()
+    fetcher.metadataStore.getJoinConf.cMap.clear()
+    fetcher.metadataStore.getGroupByServingInfo.cMap.clear()
   }
 
   private def extractDataEventAndControlEvent(
@@ -325,7 +325,8 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     val inMemoryKvStore = OnlineUtils.buildInMemoryKVStore(namespace)
     val mockApi = new MockApi(() => inMemoryKvStore, namespace)
     inMemoryKvStore.create(MetadataDataset)
-    val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
+    val fetchContext = FetchContext(inMemoryKvStore)
+    val metadataStore = new online.fetcher.MetadataStore(fetchContext)
 
     /* STAGE 1: Create join v1 and upload the conf to MetadataStore */
     metadataStore.putJoinConf(joinSuiteV1.joinConf)

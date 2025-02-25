@@ -4,12 +4,12 @@ import ai.chronon.aggregator.windowing.FinalBatchIr
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.GroupBy
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.fetcher.FetcherBase._
 import ai.chronon.online.fetcher.FetcherCache.BatchIrCache
 import ai.chronon.online.fetcher.FetcherCache.BatchResponses
 import ai.chronon.online.fetcher.FetcherCache.CachedMapBatchResponse
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.Metrics.Context
+import ai.chronon.online.fetcher.LambdaKvRequest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -121,8 +121,8 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val request = Request("req_name", keys, Some(eventTs), Some(mock[Context]))
     val getRequest = KVStore.GetRequest("key".getBytes, dataset, Some(eventTs))
     val requestMeta =
-      GroupByRequestMeta(mockGroupByServingInfoParsed, getRequest, Some(getRequest), Some(eventTs), mockContext)
-    val groupByRequestToKvRequest: Seq[(Request, Try[GroupByRequestMeta])] = Seq((request, Success(requestMeta)))
+      LambdaKvRequest(mockGroupByServingInfoParsed, getRequest, Some(getRequest), Some(eventTs), mockContext)
+    val groupByRequestToKvRequest: Seq[(Request, Try[LambdaKvRequest])] = Seq((request, Success(requestMeta)))
 
     // getCachedRequests should return an empty list when the cache is empty
     val cachedRequestBeforePopulating = fetcherCache.getCachedRequests(groupByRequestToKvRequest)
@@ -156,8 +156,8 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val request = Request("req_name", keys, Some(eventTs))
     val getRequest = KVStore.GetRequest("key".getBytes, dataset, Some(eventTs))
     val requestMeta =
-      GroupByRequestMeta(mockGroupByServingInfoParsed, getRequest, Some(getRequest), Some(eventTs), mockContext)
-    val groupByRequestToKvRequest: Seq[(Request, Try[GroupByRequestMeta])] = Seq((request, Success(requestMeta)))
+      LambdaKvRequest(mockGroupByServingInfoParsed, getRequest, Some(getRequest), Some(eventTs), mockContext)
+    val groupByRequestToKvRequest: Seq[(Request, Try[LambdaKvRequest])] = Seq((request, Success(requestMeta)))
 
     val cachedRequests = fetcherCache.getCachedRequests(groupByRequestToKvRequest)
     assert(cachedRequests.isEmpty)
@@ -263,7 +263,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     // Set up mocks and dummy data
     val servingInfo = mock[GroupByServingInfoParsed]
     val groupByOps = mock[GroupByOps]
-    mock[AvroCodec]
+    mock[serde.AvroCodec]
     when(servingInfo.groupByOps).thenReturn(groupByOps)
     when(groupByOps.batchDataset).thenReturn("test_dataset")
     when(servingInfo.groupByOps.batchDataset).thenReturn("test_dataset")
@@ -308,7 +308,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val batchBytes = Array[Byte](1, 2, 3)
     val keys = Map("key" -> "value")
     val mapResponse = mock[Map[String, AnyRef]]
-    val outputCodec = mock[AvroCodec]
+    val outputCodec = mock[serde.AvroCodec]
     val kvStoreBatchResponses = BatchResponses(Success(Seq(TimedValue(batchBytes, 1000L))))
     when(servingInfo.outputCodec).thenReturn(outputCodec)
     when(outputCodec.decodeMap(any())).thenReturn(mapResponse)

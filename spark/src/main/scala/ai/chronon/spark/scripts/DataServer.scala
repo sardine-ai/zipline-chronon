@@ -1,5 +1,6 @@
 package ai.chronon.spark.scripts
 
+import ai.chronon.api.SerdeUtils
 import ai.chronon.api.thrift.TBase
 import ai.chronon.observability.TileDriftSeries
 import ai.chronon.observability.TileSeriesKey
@@ -36,7 +37,7 @@ class DataServer(driftSeries: Seq[TileDriftSeries], summarySeries: Seq[TileSumma
     private def convertToBytesMap[T <: TBase[_, _]: Manifest: ClassTag](
         series: T,
         keyF: T => TileSeriesKey): Map[String, String] = {
-      val serializerInstance = DriftStore.binarySerializer.get()
+      val serializerInstance = SerdeUtils.compactSerializer.get()
       val encoder = Base64.getEncoder
       val keyBytes = serializerInstance.serialize(keyF(series))
       val valueBytes = serializerInstance.serialize(series)
@@ -57,7 +58,7 @@ class DataServer(driftSeries: Seq[TileDriftSeries], summarySeries: Seq[TileSumma
               (HttpResponseStatus.OK, """{"status": "healthy"}""")
 
             case "/api/drift-series" =>
-              //val dtos = driftSeries.map(d => convertToBytesMap(d, (tds: TileDriftSeries) => tds.getKey))
+              // val dtos = driftSeries.map(d => convertToBytesMap(d, (tds: TileDriftSeries) => tds.getKey))
               (HttpResponseStatus.OK, mapper.writeValueAsString(driftSeries))
 
             case "/api/summary-series" =>

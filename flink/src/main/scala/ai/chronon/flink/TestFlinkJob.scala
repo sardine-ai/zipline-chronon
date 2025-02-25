@@ -19,10 +19,10 @@ import ai.chronon.api.{StructType => ApiStructType}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
-import ai.chronon.online.AvroCodec
 import ai.chronon.online.AvroConversions
 import ai.chronon.online.Extensions.StructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
+import ai.chronon.online.serde.AvroCodec
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.api.common.serialization.SerializationSchema
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup

@@ -3,13 +3,13 @@ package ai.chronon.spark.stats.drift
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.SerdeUtils.compactSerializer
 import ai.chronon.api._
 import ai.chronon.observability.Cardinality
 import ai.chronon.observability.TileKey
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.PutRequest
-import ai.chronon.online.stats.DriftStore.binarySerializer
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.stats.drift.Expressions.CardinalityExpression
 import ai.chronon.spark.stats.drift.Expressions.SummaryExpression
@@ -325,7 +325,7 @@ class SummaryPacker(confPath: String,
 
     val packedRdd: RDD[sql.Row] = df.rdd.flatMap(func).map { tileRow =>
       // pack into bytes
-      val serializer = binarySerializer.get()
+      val serializer = compactSerializer.get()
 
       val partition = tileRow.partition
       val timestamp = tileRow.tileTs
@@ -367,11 +367,13 @@ object Summarizer {
 
     val summaryTable = metadata.summaryTable
     val partitionFiller =
-      new PartitionRunner(verb = "summarize",
-                          endDs = ds,
-                          inputTable = inputTable,
-                          outputTable = summaryTable,
-                          computeFunc = new Summarizer(api, metadata.name, tileSize = tileSize).computeSummaryDf)
+      new PartitionRunner(
+        verb = "summarize",
+        endDs = ds,
+        inputTable = inputTable,
+        outputTable = summaryTable,
+        computeFunc = new Summarizer(api, metadata.name, tileSize = tileSize).computeSummaryDf
+      )
     val exprs = partitionFiller.runInSequence
 
     val packedPartitionFiller =

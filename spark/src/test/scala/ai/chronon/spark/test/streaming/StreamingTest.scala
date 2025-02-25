@@ -20,7 +20,7 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api._
-import ai.chronon.online.MetadataStore
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.{DataFrameGen, OnlineUtils}
 import ai.chronon.spark.utils.InMemoryKvStore
@@ -106,7 +106,7 @@ class StreamingTest extends AnyFlatSpec {
       metaData =
         Builders.MetaData(name = s"test.item_temporal_features$nameSuffix", namespace = namespace, team = "item_team")
     )
-    val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
+    val metadataStore = new MetadataStore(FetchContext(inMemoryKvStore))
     inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
     joinConf.joinParts.asScala.foreach(jp =>

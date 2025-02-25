@@ -23,7 +23,8 @@ import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.{MetadataStore, SparkConversions}
+import ai.chronon.online.SparkConversions
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.{OnlineUtils, TestUtils}
 import ai.chronon.spark.utils.MockApi
@@ -237,7 +238,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
     val keys = joinConf.leftKeyCols
     val keyIndices = keys.map(endDsQueries.schema.fieldIndex)
     val tsIndex = endDsQueries.schema.fieldIndex(Constants.TimeColumn)
-    val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
+    val metadataStore = new MetadataStore(FetchContext(inMemoryKvStore))
     inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 
@@ -254,7 +255,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
 
     val requests = buildRequests()
 
-    //fetch
+    // fetch
     val columns = endDsExpected.schema.fields.map(_.name)
     val responseRows: Seq[Row] =
       FetcherTestUtil.joinResponses(spark, requests, mockApi)._1.map { res =>
@@ -262,7 +263,7 @@ class ChainingFetcherTest extends AnyFlatSpec {
           res.request.keys ++
             res.values.get ++
             Map(tableUtils.partitionColumn -> today) ++
-            Map(Constants.TimeColumn -> new lang.Long(res.request.atMillis.get))
+            Map(Constants.TimeColumn -> java.lang.Long.valueOf(res.request.atMillis.get))
         val values: Array[Any] = columns.map(all.get(_).orNull)
         SparkConversions
           .toSparkRow(values, StructType.from("record", SparkConversions.toChrononSchema(endDsExpected.schema)))

@@ -21,7 +21,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
-import ai.chronon.online._
+import ai.chronon.online.{fetcher, _}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
@@ -87,7 +87,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
     logger.info(compareDf.schema.pretty)
   }
 
-  def buildConsistencyMetrics(): DataMetrics = {
+  def buildConsistencyMetrics(): fetcher.DataMetrics = {
     // migrate legacy configs without consistencySamplePercent param
     if (!joinConf.metaData.isSetConsistencySamplePercent) {
       logger.info("consistencySamplePercent is unset and will default to 100")
@@ -96,7 +96,7 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
 
     if (joinConf.metaData.consistencySamplePercent == 0) {
       logger.info(s"Exit ConsistencyJob because consistencySamplePercent = 0 for join conf ${joinConf.metaData.name}")
-      return DataMetrics(Seq())
+      return fetcher.DataMetrics(Seq())
     }
 
     buildComparisonTable()
@@ -135,6 +135,6 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
         .save(joinConf.metaData.consistencyUploadTable, tblProperties)
       metrics
     }
-    DataMetrics(allMetrics.flatMap(_.series))
+    fetcher.DataMetrics(allMetrics.flatMap(_.series))
   }
 }

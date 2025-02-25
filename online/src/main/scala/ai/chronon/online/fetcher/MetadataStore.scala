@@ -14,28 +14,25 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.fetcher
 
-import ai.chronon.api.Constants.MetadataDataset
+import ai.chronon.api.Constants._
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.api._
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.Constants._
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import ai.chronon.online._
+import ai.chronon.online.serde.AvroCodec
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.{Seq, mutable}
 import scala.collection.immutable.SortedMap
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.collection.{Seq, mutable}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 // [timestamp -> {metric name -> metric value}]
 case class DataMetrics(series: Seq[(Long, SortedMap[String, Any])])
@@ -56,10 +53,8 @@ case class ConfPathOrName(confPath: Option[String] = None, confName: Option[Stri
   }
 }
 
-class MetadataStore(kvStore: KVStore,
-                    val dataset: String = MetadataDataset,
-                    timeoutMillis: Long,
-                    executionContextOverride: ExecutionContext = null) {
+class MetadataStore(fetchContext: FetchContext) {
+
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private var partitionSpec =
     PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
@@ -75,8 +70,7 @@ class MetadataStore(kvStore: KVStore,
     partitionSpec = PartitionSpec(format = format, spanMillis = partitionSpec.spanMillis)
   }
 
-  implicit val executionContext: ExecutionContext =
-    Option(executionContextOverride).getOrElse(FlexibleExecutionContext.buildExecutionContext)
+  implicit val executionContext: ExecutionContext = fetchContext.getOrCreateExecutionContext
 
   def getConf[T <: TBase[_, _]: Manifest](confPathOrName: ConfPathOrName): Try[T] = {
     val clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
@@ -90,8 +84,8 @@ class MetadataStore(kvStore: KVStore,
     }
 
     val confKey = confPathOrName.computeConfKey(confTypeKeyword)
-    kvStore
-      .getString(confKey, dataset, timeoutMillis)
+    fetchContext.kvStore
+      .getString(confKey, fetchContext.metadataDataset, fetchContext.timeoutMillis)
       .map(conf => ThriftJsonCodec.fromJsonStr[T](conf, false, clazz))
       .recoverWith { case th: Throwable =>
         Failure(
@@ -102,11 +96,11 @@ class MetadataStore(kvStore: KVStore,
       }
   }
 
-  def getEntityListByTeam[T <: TBase[_, _]: Manifest](team: String): Try[Seq[String]] = {
+  private def getEntityListByTeam[T <: TBase[_, _]: Manifest](team: String): Try[Seq[String]] = {
     val clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
     val dataset = NameByTeamEndPointName
-    kvStore
-      .getStringArray(team, dataset, timeoutMillis)
+    fetchContext.kvStore
+      .getStringArray(team, dataset, fetchContext.timeoutMillis)
       .recoverWith { case th: Throwable =>
         Failure(
           new RuntimeException(
@@ -172,11 +166,11 @@ class MetadataStore(kvStore: KVStore,
 
   def putJoinConf(join: Join): Unit = {
     val joinConfKeyForKvStore = join.keyNameForKvStore
-    logger.info(s"uploading join conf to dataset: $dataset by key:${joinConfKeyForKvStore}")
-    kvStore.put(
+    logger.info(s"uploading join conf to dataset: ${fetchContext.metadataDataset} by key:${joinConfKeyForKvStore}")
+    fetchContext.kvStore.put(
       PutRequest(joinConfKeyForKvStore.getBytes(Constants.UTF8),
                  ThriftJsonCodec.toJsonStr(join).getBytes(Constants.UTF8),
-                 dataset))
+                 fetchContext.metadataDataset))
   }
 
   // key and value schemas
@@ -261,14 +255,14 @@ class MetadataStore(kvStore: KVStore,
     val keySchema = StructType(s"${joinName.sanitize}_key", keyFields.toArray)
     val keyCodec = AvroCodec.of(AvroConversions.fromChrononSchema(keySchema).toString)
     val baseValueSchema = StructType(s"${joinName.sanitize}_value", valueFields.toArray)
-    val baseValueCodec = AvroCodec.of(AvroConversions.fromChrononSchema(baseValueSchema).toString)
+    val baseValueCodec = serde.AvroCodec.of(AvroConversions.fromChrononSchema(baseValueSchema).toString)
     val joinCodec = JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec)
     joinCodec
   }
 
-  def getSchemaFromKVStore(dataset: String, key: String): AvroCodec = {
-    kvStore
-      .getString(key, dataset, timeoutMillis)
+  def getSchemaFromKVStore(dataset: String, key: String): serde.AvroCodec = {
+    fetchContext.kvStore
+      .getString(key, dataset, fetchContext.timeoutMillis)
       .recover { case e: java.util.NoSuchElementException =>
         logger.error(s"Failed to retrieve $key for $dataset. Is it possible that hasn't been uploaded?")
         throw e
@@ -277,8 +271,8 @@ class MetadataStore(kvStore: KVStore,
       .get
   }
 
-  lazy val getStatsSchemaFromKVStore: TTLCache[(String, String), AvroCodec] =
-    new TTLCache[(String, String), AvroCodec](
+  lazy val getStatsSchemaFromKVStore: TTLCache[(String, String), serde.AvroCodec] =
+    new TTLCache[(String, String), serde.AvroCodec](
       { case (dataset, key) => getSchemaFromKVStore(dataset, key) },
       { _ => Metrics.Context(environment = "stats.serving_info.fetch") }
     )
@@ -290,15 +284,17 @@ class MetadataStore(kvStore: KVStore,
         val startTimeMs = System.currentTimeMillis()
         val batchDataset = s"${name.sanitize.toUpperCase()}_BATCH"
         val metaData =
-          kvStore.getString(Constants.GroupByServingInfoKey, batchDataset, timeoutMillis).recover {
-            case e: java.util.NoSuchElementException =>
-              logger.error(
-                s"Failed to fetch metadata for $batchDataset, is it possible Group By Upload for $name has not succeeded?")
-              throw e
-            case e: Throwable =>
-              logger.error(s"Failed to fetch metadata for $batchDataset", e)
-              throw e
-          }
+          fetchContext.kvStore
+            .getString(Constants.GroupByServingInfoKey, batchDataset, fetchContext.timeoutMillis)
+            .recover {
+              case e: java.util.NoSuchElementException =>
+                logger.error(
+                  s"Failed to fetch metadata for $batchDataset, is it possible Group By Upload for $name has not succeeded?")
+                throw e
+              case e: Throwable =>
+                logger.error(s"Failed to fetch metadata for $batchDataset", e)
+                throw e
+            }
         logger.info(s"Fetched ${Constants.GroupByServingInfoKey} from : $batchDataset")
         if (metaData.isFailure) {
           Failure(
@@ -344,7 +340,7 @@ class MetadataStore(kvStore: KVStore,
     }.toSeq
     val putsBatches = puts.grouped(batchSize).toSeq
     logger.info(s"Putting ${puts.size} configs to KV Store, dataset=$datasetName")
-    val futures = putsBatches.map(batch => kvStore.multiPut(batch))
+    val futures = putsBatches.map(batch => fetchContext.kvStore.multiPut(batch))
     Future.sequence(futures).map(_.flatten)
   }
 
@@ -353,7 +349,7 @@ class MetadataStore(kvStore: KVStore,
       logger.info(s"Creating dataset: $dataset")
       // TODO: this is actually just an async task. it doesn't block and thus we don't actually
       //  know if it successfully created the dataset
-      kvStore.create(dataset)
+      fetchContext.kvStore.create(dataset)
 
       logger.info(s"Successfully created dataset: $dataset")
     } catch {

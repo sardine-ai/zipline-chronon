@@ -1,39 +1,28 @@
 package ai.chronon.online.stats
 
 import ai.chronon.api
-import ai.chronon.api.Extensions.JoinOps
-import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.{JoinOps, MetadataOps, WindowOps}
 import ai.chronon.api._
-import ai.chronon.api.thrift.TDeserializer
 import ai.chronon.api.thrift.TSerializer
-import ai.chronon.api.thrift.protocol.TBinaryProtocol
-import ai.chronon.api.thrift.protocol.TProtocolFactory
-import ai.chronon.observability.DriftMetric
-import ai.chronon.observability.TileDriftSeries
-import ai.chronon.observability.TileKey
-import ai.chronon.observability.TileSeriesKey
-import ai.chronon.observability.TileSummary
-import ai.chronon.observability.TileSummarySeries
+import ai.chronon.observability._
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online.MetadataStore
-import ai.chronon.online.stats.DriftStore.binaryDeserializer
-import ai.chronon.online.stats.DriftStore.binarySerializer
-
-import java.io.Serializable
-import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
-import java.util.ArrayList
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
+import org.slf4j.LoggerFactory
 
 import scala.collection.Seq
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 class DriftStore(kvStore: KVStore,
                  summaryDataset: String = Constants.TiledSummaryDataset,
-                 metadataDataset: String = Constants.MetadataDataset)
-    extends MetadataStore(kvStore = kvStore, dataset = metadataDataset, timeoutMillis = 1000L) {
+                 metadataDataset: String = Constants.MetadataDataset) {
+
+  private val fetchContext = FetchContext(kvStore, metadataDataset, timeoutMillis = 1000L)
+  private val metadataStore = new MetadataStore(fetchContext)
+  implicit private val executionContext: ExecutionContext = fetchContext.getOrCreateExecutionContext
+
+  @transient private lazy val logger = LoggerFactory.getLogger(this.getClass)
 
   def tileKeysForJoin(join: api.Join,
                       slice: Option[String] = None,
@@ -108,7 +97,7 @@ class DriftStore(kvStore: KVStore,
                    endMs: Option[Long],
                    columnPrefix: Option[String]): Future[Seq[TileSummaryInfo]] = {
 
-    val serializer: TSerializer = binarySerializer.get()
+    val serializer: TSerializer = SerdeUtils.compactSerializer.get()
     val tileKeyMap = tileKeysForJoin(joinConf, None, columnPrefix)
     val requestContextMap: Map[GetRequest, SummaryRequestContext] = tileKeyMap.flatMap { case (group, keys) =>
       // Only create requests for keys that match our column prefix
@@ -124,7 +113,7 @@ class DriftStore(kvStore: KVStore,
     val responseFuture = kvStore.multiGet(requestContextMap.keys.toSeq)
 
     responseFuture.map { responses =>
-      val deserializer = binaryDeserializer.get()
+      val deserializer = SerdeUtils.compactDeserializer.get()
       // deserialize the responses and surround with context
       val responseContextTries: Seq[Try[SummaryResponseContext]] = responses.map { response =>
         val valuesTry = response.values
@@ -152,7 +141,9 @@ class DriftStore(kvStore: KVStore,
         _ match {
           case Success(responseContext) => Some(responseContext)
           // TODO instrument failures
-          case Failure(exception) => exception.printStackTrace(); None
+          case Failure(exception) =>
+            logger.error("Failed to fetch summary response", exception)
+            None
         }
       }
 
@@ -205,7 +196,7 @@ class DriftStore(kvStore: KVStore,
                      startMs: Long,
                      endMs: Long,
                      columnPrefix: Option[String] = None): Try[Future[Seq[TileDriftSeries]]] = {
-    getJoinConf(join).map { joinConf =>
+    metadataStore.getJoinConf(join).map { joinConf =>
       // TODO-explore: we might be over fetching if lookBack is much larger than end - start
       getSummariesForRange(joinConf.join, Range(startMs, endMs), lookBack.millis, columnPrefix).map {
         tileSummaryInfos =>
@@ -220,7 +211,7 @@ class DriftStore(kvStore: KVStore,
                        startMs: Long,
                        endMs: Long,
                        columnPrefix: Option[String] = None): Try[Future[Seq[TileSummarySeries]]] = {
-    getJoinConf(join).map { joinConf =>
+    metadataStore.getJoinConf(join).map { joinConf =>
       getSummaries(joinConf.join, Some(startMs), Some(endMs), columnPrefix).map { tileSummaryInfos =>
         tileSummaryInfos.map { tileSummaryInfo =>
           tileSummaryInfo.toSeries
@@ -231,19 +222,5 @@ class DriftStore(kvStore: KVStore,
 }
 
 object DriftStore {
-  class SerializableSerializer(factory: TProtocolFactory) extends TSerializer(factory) with Serializable
-
-  // crazy bug in compact protocol - do not change to compact
-
-  @transient
-  lazy val binarySerializer: ThreadLocal[TSerializer] = new ThreadLocal[TSerializer] {
-    override def initialValue(): TSerializer = new TSerializer(new TBinaryProtocol.Factory())
-  }
-
-  @transient
-  lazy val binaryDeserializer: ThreadLocal[TDeserializer] = new ThreadLocal[TDeserializer] {
-    override def initialValue(): TDeserializer = new TDeserializer(new TBinaryProtocol.Factory())
-  }
-
   def breaks(count: Int): Seq[String] = (0 to count).map(_ * (100 / count)).map("p" + _.toString)
 }
