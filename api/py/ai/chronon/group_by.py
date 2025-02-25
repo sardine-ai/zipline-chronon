@@ -59,34 +59,92 @@ class Accuracy(ttypes.Accuracy):
 
 
 class Operation:
+
     MIN = ttypes.Operation.MIN
+    """Minimum value in the column"""
+
     MAX = ttypes.Operation.MAX
+    """Maximum value in the column"""
+
     FIRST = ttypes.Operation.FIRST
+    """First non-null value of input column by time column"""
+
     LAST = ttypes.Operation.LAST
+    """Last non-null value of input column by time column"""
+
     APPROX_UNIQUE_COUNT = ttypes.Operation.APPROX_UNIQUE_COUNT
-    # refer to the chart here to tune your sketch size with lgK
-    # default is 8
-    # https://github.com/apache/incubator-datasketches-java/blob/master/src/main/java/org/apache/datasketches/cpc/CpcSketch.java#L180
+    """Approximate count of unique values using CPC (Compressed Probability Counting) sketch"""
+
     APPROX_UNIQUE_COUNT_LGK = collector(ttypes.Operation.APPROX_UNIQUE_COUNT)
+    """Configurable approximate unique count with lgK parameter for sketch size tuning.
+    Default lgK is 8. See CpcSketch.java for accuracy vs size tradeoffs:
+    https://github.com/apache/incubator-datasketches-java/blob/master/src/main/java/org/apache/datasketches/cpc/CpcSketch.java#L180
+    """
+
     UNIQUE_COUNT = ttypes.Operation.UNIQUE_COUNT
+    """
+    Exact count of unique values of the input column.
+    Will store the set of items and can be expensive if the cardinality of the column is high.
+    """
+
     COUNT = ttypes.Operation.COUNT
+    """Total count of non-null values of the input column"""
+
     SUM = ttypes.Operation.SUM
+    """Sum of values in the input column"""
+
     AVERAGE = ttypes.Operation.AVERAGE
+    """Arithmetic mean of values in the input column"""
+
     VARIANCE = ttypes.Operation.VARIANCE
+    """Statistical variance of values in the input column"""
+
     SKEW = ttypes.Operation.SKEW
+    """Skewness (third standardized moment) of the distribution of values in input column"""
+
     KURTOSIS = ttypes.Operation.KURTOSIS
+    """Kurtosis (fourth standardized moment) of the distribution of values in input column"""
+
     HISTOGRAM = ttypes.Operation.HISTOGRAM
-    # k truncates the map to top_k most frequent items, 0 turns off truncation
-    HISTOGRAM_K = collector(ttypes.Operation.HISTOGRAM)
-    # k truncates the map to top_k most frequent items, k is required and results are bounded
-    APPROX_HISTOGRAM_K = collector(ttypes.Operation.APPROX_HISTOGRAM_K)
+    """Full frequency distribution of values"""
+
+    FREQUENT_K = collector(ttypes.Operation.HISTOGRAM)
+    """
+    !! Could be expensive if the cardinality of the column is high !!
+    Computes columns values that are frequent in the input column exactly.
+    Produces a map of items as keys and counts as values.
+    """
+
+    APPROX_FREQUENT_K = collector(ttypes.Operation.APPROX_FREQUENT_K)
+    """
+    Computes columns values that are frequent in the input column approximately.
+    Produces a map of items as keys and counts as values approximately.
+    """
+
+    APPROX_HEAVY_HITTERS_K = collector(ttypes.Operation.APPROX_HEAVY_HITTERS_K)
+    """
+    Computes column values that are skewed in the input column.
+    Produces a map of items as keys and counts as values approximately.
+    Different from APPROX_FREQUENT_K in that it only retains if a value is abnormally
+    more frequent.
+    """
+
     FIRST_K = collector(ttypes.Operation.FIRST_K)
+    """Returns first k input column values by time column"""
+
     LAST_K = collector(ttypes.Operation.LAST_K)
+    """Returns last k input column values by time column"""
+
     TOP_K = collector(ttypes.Operation.TOP_K)
+    """Returns k largest values of the input column. Input needs to be sortable."""
+
     BOTTOM_K = collector(ttypes.Operation.BOTTOM_K)
+    """Returns k smallest values of the input column"""
+
     APPROX_PERCENTILE = generic_collector(
-        ttypes.Operation.APPROX_PERCENTILE, ["percentiles"], k=128
+        ttypes.Operation.APPROX_PERCENTILE, ["percentiles"], k=20
     )
+    """Approximate percentile calculation with configurable accuracy parameter k=20"""
 
 
 def Aggregations(**agg_dict):

@@ -321,7 +321,7 @@ class FetcherTest extends AnyFlatSpec {
         Builders.Aggregation(operation = Operation.HISTOGRAM,
                              inputColumn = "txn_types",
                              windows = Seq(new Window(3, TimeUnit.DAYS))),
-        Builders.Aggregation(operation = Operation.APPROX_HISTOGRAM_K,
+        Builders.Aggregation(operation = Operation.APPROX_FREQUENT_K,
                              inputColumn = "txn_types",
                              windows = Seq(new Window(3, TimeUnit.DAYS))),
         Builders.Aggregation(operation = Operation.LAST_K,
@@ -546,7 +546,7 @@ class FetcherTest extends AnyFlatSpec {
           windows = Seq(new Window(2, TimeUnit.DAYS))
         ),
         Builders.Aggregation(
-          operation = Operation.APPROX_HISTOGRAM_K,
+          operation = Operation.APPROX_FREQUENT_K,
           inputColumn = "rating",
           windows = Seq(new Window(1, TimeUnit.DAYS))
         )

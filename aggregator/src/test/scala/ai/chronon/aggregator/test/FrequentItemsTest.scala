@@ -9,6 +9,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 import ai.chronon.api.ScalaJavaConversions._
+import org.apache.datasketches.frequencies.ErrorType
+import org.scalatest.matchers.should.Matchers._
+
+import scala.util.Random
 
 class FrequentItemsTest extends AnyFlatSpec {
   it should "non power of two and truncate" in {
@@ -75,12 +79,12 @@ class FrequentItemsTest extends AnyFlatSpec {
   it should "sketch sizes" in {
     val expectedSketchSizes =
       Map(
-        -1 -> 2,
         0 -> 2,
-        1 -> 2,
-        31 -> 32,
-        32 -> 32,
-        33 -> 64
+        1 -> 4,
+        33 -> 128,
+        32 -> 128,
+        -1 -> 2,
+        31 -> 128
       )
 
     val actualSketchSizes =
@@ -158,4 +162,50 @@ class FrequentItemsTest extends AnyFlatSpec {
   }
 
   def toHashMap[T](map: Map[T, Long]): java.util.HashMap[T, Long] = new java.util.HashMap[T, Long](map.toJava)
+
+  private val heavyHitterElems = 101 to 104
+
+  private def createSkewedData(): Array[Long] = {
+    // 10k elements - each repeating 100 times
+    val longTail = (1 to 100).flatMap(_ => 1 to 100)
+
+    // 4 elements - each repeating 1000 times
+    val heavyHitters = (1 to 1000).flatMap(_ => heavyHitterElems)
+
+    // all of them together and shuffled
+    Random
+      .shuffle(longTail ++ heavyHitters)
+      .iterator
+      .map(_.toLong)
+      .drop(1000) // delete a few random items to produce noise
+      .toArray
+  }
+
+  "MostFrequentK" should "always produce nearly k elements when cardinality is > k" in {
+    val k = 10
+    val topFrequentItems = new FrequentItems[java.lang.Long](k)
+    val frequentItemsIr = topFrequentItems.prepare(0)
+
+    createSkewedData().foreach(i => topFrequentItems.update(frequentItemsIr, i))
+
+    val topHistogram = topFrequentItems.finalize(frequentItemsIr)
+
+    math.abs(topHistogram.size() - k) <= 2 shouldBe true
+    heavyHitterElems.foreach(elem => topHistogram.containsKey(elem.toString))
+  }
+
+  "HeavyHittersK" should "always produce only heavy hitter elements regardless of cardinality" in {
+    val k = 10
+
+    // heavy hitter items tests
+    val heavyHitterItems = new FrequentItems[java.lang.Long](k, errorType = ErrorType.NO_FALSE_POSITIVES)
+    val heavyIr = heavyHitterItems.prepare(0)
+
+    createSkewedData().foreach(i => heavyHitterItems.update(heavyIr, i))
+    val heavyHitterResult = heavyHitterItems.finalize(heavyIr)
+
+    heavyHitterResult.size() shouldBe heavyHitterElems.size
+    heavyHitterElems.foreach(elem => heavyHitterResult.containsKey(elem.toString))
+
+  }
 }

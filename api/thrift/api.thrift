@@ -174,7 +174,9 @@ enum Operation {
     BOTTOM_K = 16
 
     HISTOGRAM = 17, // use this only if you know the set of inputs is bounded
-    APPROX_HISTOGRAM_K = 18
+
+    APPROX_FREQUENT_K = 18, // returns map(string -> int) of top k most frequent elems
+    APPROX_HEAVY_HITTERS_K = 19  // returns skewed elements of the column upto size k
 }
 
 
