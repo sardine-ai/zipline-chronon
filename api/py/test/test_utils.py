@@ -322,3 +322,35 @@ def test_join_part_table_names(repo, materialized_join, table_name):
     assert (
         utils.join_part_output_table_name(join, join.joinParts[0], True) == table_name
     )
+
+
+def test_compose():
+    computed = utils.compose(
+        "user_id_approx_distinct_count_by_query",
+        "map_entries",
+        "array_sort (x, y) -> IF(y.value > x.value, -1, IF(y.value < x.value, 1, 0))",
+        "transform entry -> entry.key",
+    )
+
+    expected = """
+transform(
+    array_sort(
+        map_entries(
+            user_id_approx_distinct_count_by_query
+        ),
+        (x, y) -> IF(y.value > x.value, -1, IF(y.value < x.value, 1, 0))
+    ),
+    entry -> entry.key
+)
+""".strip()
+    assert computed == expected, f"Expected: \n{expected}\nbut got: \n{computed}"
+
+
+def test_clean_expression():
+    expr = """
+transform(
+    funct2(  arg)
+)
+"""
+
+    assert utils.clean_expression(expr) == "transform( funct2( arg) )"

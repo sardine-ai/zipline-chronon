@@ -574,3 +574,60 @@ def module_path(file_path: str) -> str:
     without_extension = adjusted_path[:-3]
     mod_path = without_extension.replace("/", ".")
     return mod_path
+
+
+def compose(arg, *methods):
+    """
+    Allows composing deeply nested method calls - typically used in selects & derivations
+    The first arg is what is threaded into methods, methods can have more than one arg.
+
+    Example:
+
+    .. code-block:: python
+        compose(
+            "user_id_approx_distinct_count_by_query",
+            "map_entries",
+            "array_sort (x, y) -> IF(y.value > x.value, -1, IF(y.value < x.value, 1, 0))",
+            "transform entry -> entry.key"
+        )
+
+    would produce (without the new lines or indents):
+
+    .. code-block:: text
+
+        transform(
+            array_sort(
+                map_entries(
+                    user_id_approx_distinct_count_by_query
+                ),
+                (x, y) -> IF(y.value > x.value, -1, IF(y.value < x.value, 1, 0))
+            ),
+            entry -> entry.key
+        )
+    """
+
+    indent = "    " * (len(methods))
+
+    result = [indent + arg]
+
+    for method in methods:
+
+        method_parts = method.split(" ", 1)
+        method = method_parts[0]
+
+        if len(method_parts) > 1:
+            remaining_args = method_parts[1]
+            last = result.pop()
+            result = result + [last + ",", indent + remaining_args]
+
+        indent = indent[:-4]
+        result = [f"{indent}{method}("] + result + [f"{indent})"]
+
+    return "\n".join(result)
+
+
+def clean_expression(expr):
+    """
+    Cleans up an expression by removing leading and trailing whitespace and newlines.
+    """
+    return re.sub(r"\s+", " ", expr).strip()
