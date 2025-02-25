@@ -26,6 +26,7 @@ import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.fetcher.Fetcher.Response
 import ai.chronon.online.fetcher.FetcherCache.BatchResponses
 import ai.chronon.online.KVStore.TimedValue
+import ai.chronon.online.fetcher.{FetchContext, GroupByFetcher, MetadataStore}
 import ai.chronon.online.{fetcher, _}
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,8 +57,11 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   val HostKey = "host"
   val GuestId: AnyRef = 123.asInstanceOf[AnyRef]
   val HostId = "456"
-  var fetcherBase: fetcher.FetcherBase = _
+  var joinPartFetcher: fetcher.JoinPartFetcher = _
+  var groupByFetcher: fetcher.GroupByFetcher = _
   var kvStore: KVStore = _
+  var fetchContext: FetchContext = _
+  var metadataStore: MetadataStore = _
 
   before {
     kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
@@ -65,14 +69,16 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     // Future compositions in the Fetcher so provision it in
     // the mock to prevent hanging.
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    fetcherBase = spy[fetcher.FetcherBase](new fetcher.FetcherBase(kvStore))
+    fetchContext = FetchContext(kvStore)
+    metadataStore = spy[fetcher.MetadataStore](new MetadataStore(fetchContext))
+    joinPartFetcher = spy[fetcher.JoinPartFetcher](new fetcher.JoinPartFetcher(fetchContext, metadataStore))
+    groupByFetcher = spy[fetcher.GroupByFetcher](new GroupByFetcher(fetchContext, metadataStore))
   }
 
   it should "fetch columns single query" in {
     // Fetch a single query
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
-
     doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
       def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
         val requests = invocation.getArgument(0).asInstanceOf[Seq[Request]]
@@ -80,16 +86,16 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
         val response = Response(request, Success(Map(request.name -> "100")))
         Future.successful(Seq(response))
       }
-    }).when(fetcherBase).fetchGroupBys(any())
+    }).when(groupByFetcher).fetchGroupBys(any())
 
     // Map should contain query with valid response
-    val queryResults = Await.result(fetcherBase.fetchColumns(Seq(query)), 1.second)
+    val queryResults = Await.result(groupByFetcher.fetchColumns(Seq(query)), 1.second)
     queryResults.contains(query) shouldBe true
     queryResults.get(query).map(_.values) shouldBe Some(Success(Map(s"$GroupBy.$Column" -> "100")))
 
     // GroupBy request sent to KV store for the query
     val requestsCaptor = ArgumentCaptor.forClass(classOf[Seq[_]])
-    verify(fetcherBase, times(1)).fetchGroupBys(requestsCaptor.capture().asInstanceOf[Seq[Request]])
+    verify(groupByFetcher, times(1)).fetchGroupBys(requestsCaptor.capture().asInstanceOf[Seq[Request]])
     val actualRequest = requestsCaptor.getValue.asInstanceOf[Seq[Request]].headOption
     actualRequest shouldNot be(None)
     actualRequest.get.name shouldBe s"${query.groupByName}.${query.columnName}"
@@ -109,10 +115,10 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
         val responses = requests.map(r => Response(r, Success(Map(r.name -> "100"))))
         Future.successful(responses)
       }
-    }).when(fetcherBase).fetchGroupBys(any())
+    }).when(groupByFetcher).fetchGroupBys(any())
 
     // Map should contain query with valid response
-    val queryResults = Await.result(fetcherBase.fetchColumns(Seq(guestQuery, hostQuery)), 1.second)
+    val queryResults = Await.result(groupByFetcher.fetchColumns(Seq(guestQuery, hostQuery)), 1.second)
     queryResults.contains(guestQuery) shouldBe true
     queryResults.get(guestQuery).map(_.values) shouldBe Some(Success(Map(s"${GuestKey}_$GroupBy.$Column" -> "100")))
     queryResults.contains(hostQuery) shouldBe true
@@ -120,7 +126,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     // GroupBy request sent to KV store for the query
     val requestsCaptor = ArgumentCaptor.forClass(classOf[Seq[_]])
-    verify(fetcherBase, times(1)).fetchGroupBys(requestsCaptor.capture().asInstanceOf[Seq[Request]])
+    verify(groupByFetcher, times(1)).fetchGroupBys(requestsCaptor.capture().asInstanceOf[Seq[Request]])
     val actualRequests = requestsCaptor.getValue.asInstanceOf[Seq[Request]]
     actualRequests.length shouldBe 2
     actualRequests.head.name shouldBe s"${guestQuery.groupByName}.${guestQuery.columnName}"
@@ -138,10 +144,10 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
       def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
         Future.successful(Seq())
       }
-    }).when(fetcherBase).fetchGroupBys(any())
+    }).when(groupByFetcher).fetchGroupBys(any())
 
     // Map should contain query with Failure response
-    val queryResults = Await.result(fetcherBase.fetchColumns(Seq(query)), 1.second)
+    val queryResults = Await.result(groupByFetcher.fetchColumns(Seq(query)), 1.second)
     queryResults.contains(query) shouldBe true
     queryResults.get(query).map(_.values) match {
       case Some(Failure(_: IllegalStateException)) => succeed
@@ -150,7 +156,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     // GroupBy request sent to KV store for the query
     val requestsCaptor = ArgumentCaptor.forClass(classOf[Seq[_]])
-    verify(fetcherBase, times(1)).fetchGroupBys(requestsCaptor.capture().asInstanceOf[Seq[Request]])
+    verify(groupByFetcher, times(1)).fetchGroupBys(requestsCaptor.capture().asInstanceOf[Seq[Request]])
     val actualRequest = requestsCaptor.getValue.asInstanceOf[Seq[Request]].headOption
     actualRequest shouldNot be(None)
     actualRequest.get.name shouldBe query.groupByName + "." + query.columnName
@@ -161,23 +167,23 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   it should "get serving info should call update serving info if batch response is from kv store" in {
     val oldServingInfo = mock[GroupByServingInfoParsed]
     val updatedServingInfo = mock[GroupByServingInfoParsed]
-    doReturn(updatedServingInfo).when(fetcherBase).updateServingInfo(any(), any())
+    doReturn(updatedServingInfo).when(joinPartFetcher).getServingInfo(any(), any())
 
     val batchTimedValuesSuccess = Success(Seq(TimedValue(Array(1.toByte), 2000L)))
     val kvStoreBatchResponses = BatchResponses(batchTimedValuesSuccess)
 
-    val result = fetcherBase.getServingInfo(oldServingInfo, kvStoreBatchResponses)
+    val result = joinPartFetcher.getServingInfo(oldServingInfo, kvStoreBatchResponses)
 
     // updateServingInfo is called
     result shouldEqual updatedServingInfo
-    verify(fetcherBase).updateServingInfo(any(), any())
+    verify(joinPartFetcher).getServingInfo(any(), any())
   }
 
   // If a batch response is cached, the serving info should be refreshed. This is needed to prevent
   // the serving info from becoming stale if all the requests are cached.
   it should "get serving info should refresh serving info if batch response is cached" in {
     val ttlCache = mock[TTLCache[String, Try[GroupByServingInfoParsed]]]
-    doReturn(ttlCache).when(fetcherBase).getGroupByServingInfo
+    doReturn(ttlCache).when(metadataStore).getGroupByServingInfo
 
     val oldServingInfo = mock[GroupByServingInfoParsed]
     doReturn(Success(oldServingInfo)).when(ttlCache).refresh(any[String])
@@ -189,23 +195,23 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     doReturn(groupByOpsMock).when(oldServingInfo).groupByOps
 
     val cachedBatchResponses = BatchResponses(mock[FinalBatchIr])
-    val result = fetcherBase.getServingInfo(oldServingInfo, cachedBatchResponses)
+    val result = groupByFetcher.getServingInfo(oldServingInfo, cachedBatchResponses)
 
     // FetcherBase.updateServingInfo is not called, but getGroupByServingInfo.refresh() is.
     result shouldEqual oldServingInfo
     verify(ttlCache).refresh(any())
-    verify(fetcherBase, never()).updateServingInfo(any(), any())
+    verify(ttlCache, never()).apply(any())
   }
 
-  it should "is caching enabled correctly determine if cache is enabled" in {
+  it should "determine if caching is enabled correctly" in {
     val flagStore: FlagStore = (flagName: String, attributes: java.util.Map[String, String]) => {
       flagName match {
         case "enable_fetcher_batch_ir_cache" =>
-          attributes.get("groupby_streaming_dataset") match {
+          attributes.get("group_by_streaming_dataset") match {
             case "test_groupby_2" => false
             case "test_groupby_3" => true
             case other @ _ =>
-              fail(s"Unexpected groupby_streaming_dataset: $other")
+              fail(s"Unexpected group_by_streaming_dataset: $other")
               false
           }
         case _ => false
@@ -214,20 +220,21 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
     when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-    val fetcherBaseWithFlagStore = spy[fetcher.FetcherBase](new fetcher.FetcherBase(kvStore, flagStore = flagStore))
+
+    val fetchContext = FetchContext(kvStore, flagStore = flagStore)
+
+    val fetcherBaseWithFlagStore =
+      spy[fetcher.JoinPartFetcher](new fetcher.JoinPartFetcher(fetchContext, new MetadataStore(fetchContext)))
     when(fetcherBaseWithFlagStore.isCacheSizeConfigured).thenReturn(true)
 
-    def buildGroupByWithCustomJson(name: String): GroupBy = Builders.GroupBy(metaData = Builders.MetaData(name = name))
-
     // no name set
-    assertFalse(fetcherBaseWithFlagStore.isCachingEnabled(Builders.GroupBy()))
-
-    assertFalse(fetcherBaseWithFlagStore.isCachingEnabled(buildGroupByWithCustomJson("test_groupby_2")))
-    assertTrue(fetcherBaseWithFlagStore.isCachingEnabled(buildGroupByWithCustomJson("test_groupby_3")))
+    assertFalse(fetchContext.isCachingEnabled("test_groupby_2"))
+    assertTrue(fetchContext.isCachingEnabled("test_groupby_3"))
   }
 
   it should "fetch in the happy case" in {
-    val baseFetcher = new fetcher.FetcherBase(mock[KVStore])
+    val fetchContext = mock[FetchContext]
+    val baseFetcher = new fetcher.JoinPartFetcher(fetchContext, mock[MetadataStore])
     val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
     val response: Map[Request, Try[Map[String, AnyRef]]] = Map(
       request -> Success(
@@ -241,7 +248,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   }
 
   it should "Not fetch with null keys" in {
-    val baseFetcher = new fetcher.FetcherBase(mock[KVStore])
+    val baseFetcher = new fetcher.JoinPartFetcher(mock[FetchContext], mock[MetadataStore])
     val request = Request(name = "name", keys = Map("email" -> null), atMillis = None, context = None)
     val request2 = Request(name = "name2", keys = Map("email" -> null), atMillis = None, context = None)
 
@@ -257,7 +264,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
   }
 
   it should "parse with missing keys" in {
-    val baseFetcher = new fetcher.FetcherBase(mock[KVStore])
+    val baseFetcher = new fetcher.JoinPartFetcher(mock[FetchContext], mock[MetadataStore])
     val request = Request(name = "name", keys = Map("email" -> "email"), atMillis = None, context = None)
     val request2 = Request(name = "name2", keys = Map("email" -> "email"), atMillis = None, context = None)
 

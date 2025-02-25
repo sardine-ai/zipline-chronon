@@ -27,13 +27,15 @@ import ai.chronon.online.OnlineDerivationUtil.DerivationFunc
 import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
 import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import ai.chronon.online.OnlineDerivationUtil.buildRenameOnlyDerivationFunction
+import ai.chronon.online.serde.AvroCodec
+
 import com.google.gson.Gson
 
 case class JoinCodec(conf: JoinOps,
                      keySchema: StructType,
                      baseValueSchema: StructType,
-                     keyCodec: AvroCodec,
-                     baseValueCodec: AvroCodec)
+                     keyCodec: serde.AvroCodec,
+                     baseValueCodec: serde.AvroCodec)
     extends Serializable {
 
   @transient lazy val valueSchema: StructType = {
@@ -87,7 +89,7 @@ case class JoinCodec(conf: JoinOps,
 
 object JoinCodec {
 
-  def buildLoggingSchema(joinName: String, keyCodec: AvroCodec, valueCodec: AvroCodec): String = {
+  def buildLoggingSchema(joinName: String, keyCodec: serde.AvroCodec, valueCodec: serde.AvroCodec): String = {
     val schemaMap = Map(
       "join_name" -> joinName,
       "key_schema" -> keyCodec.schemaStr,

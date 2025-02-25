@@ -105,7 +105,7 @@ object ObservabilityDemoDataLoader {
     kvStore.create(Constants.TiledSummaryDataset)
 
     // upload join conf
-    hubApi.buildFetcher().putJoinConf(join)
+    hubApi.buildFetcher().metadataStore.putJoinConf(join)
 
     time("Uploading summaries") {
       val uploader = new SummaryUploader(tableUtils.loadTable(packedTable), hubApi)

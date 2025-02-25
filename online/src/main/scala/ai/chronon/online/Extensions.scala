@@ -48,6 +48,6 @@ object Extensions {
 
     def toAvroSchema(name: String = null): Schema = AvroConversions.fromChrononSchema(toChrononSchema(name))
 
-    def toAvroCodec(name: String = null): AvroCodec = new AvroCodec(toAvroSchema(name).toString())
+    def toAvroCodec(name: String = null): serde.AvroCodec = new serde.AvroCodec(toAvroSchema(name).toString())
   }
 }

@@ -25,12 +25,10 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.api.thrift.TBase
 import ai.chronon.online.Api
-import ai.chronon.online.ConfPathOrName
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
-import ai.chronon.online.MetadataStore
 import ai.chronon.online.TopicChecker
-import ai.chronon.online.fetcher.FetcherMain
+import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
 import ai.chronon.spark.stats.CompareBaseJob
 import ai.chronon.spark.stats.CompareJob
 import ai.chronon.spark.stats.ConsistencyJob
@@ -463,13 +461,15 @@ object Driver {
 
     def run(args: Args): Unit = {
       val tableUtils = args.buildTableUtils()
-      new Analyzer(tableUtils,
-                   args.confPath(),
-                   args.startDate.getOrElse(tableUtils.partitionSpec.shiftBackFromNow(3)),
-                   args.endDate(),
-                   args.skewKeyCount(),
-                   args.sample(),
-                   args.skewDetection()).run
+      new Analyzer(
+        tableUtils,
+        args.confPath(),
+        args.startDate.getOrElse(tableUtils.partitionSpec.shiftBackFromNow(3)),
+        args.endDate(),
+        args.skewKeyCount(),
+        args.sample(),
+        args.skewDetection()
+      ).run
     }
   }
 
@@ -610,8 +610,9 @@ object Driver {
       case _          => impl(serializableProps)
     }
 
+    val fetchContext: FetchContext = FetchContext(api.genKvStore, MetadataDataset)
     def metaDataStore =
-      new MetadataStore(api.genKvStore, MetadataDataset, timeoutMillis = 10000)
+      new MetadataStore(fetchContext)
 
     def impl(props: Map[String, String]): Api = {
       val urls = Array(new File(onlineJar()).toURI.toURL)
@@ -838,7 +839,7 @@ object Driver {
       val confPath: ScallopOption[String] =
         opt[String](required = true, descr = "Name of the conf to summarize - joins/team/file.variable")
 
-      //TODO: we should pull conf from conf path and figure out table name from the conf instead
+      // TODO: we should pull conf from conf path and figure out table name from the conf instead
       val parquetPath: ScallopOption[String] =
         opt[String](required = true, descr = "Location of the parquet containing the data to summarize")
 

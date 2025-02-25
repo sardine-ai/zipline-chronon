@@ -17,8 +17,7 @@
 package ai.chronon.spark.stats
 
 import ai.chronon.api._
-import ai.chronon.online.SparkConversions
-import ai.chronon.online._
+import ai.chronon.online.{SparkConversions, fetcher, _}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd
@@ -115,7 +114,7 @@ object CompareBaseJob {
       mapping: Map[String, String] = Map.empty,
       migrationCheck: Boolean = false,
       name: String = "undefined"
-  ): (DataFrame, TimedKvRdd, DataMetrics) = {
+  ): (DataFrame, TimedKvRdd, fetcher.DataMetrics) = {
     // 1. Check for schema consistency issues
     val leftFields: Map[String, DataType] = leftDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap
     val rightFields: Map[String, DataType] = rightDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap

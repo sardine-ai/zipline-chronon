@@ -25,7 +25,8 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online._
+import ai.chronon.online.fetcher.FetchContext
+import ai.chronon.online.{fetcher, _}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.test.{DataFrameGen, OnlineUtils, SchemaEvolutionUtils}
@@ -76,7 +77,7 @@ class FetcherTest extends AnyFlatSpec {
     val acceptedEndPoints = List(MetadataEndPoint.ConfByKeyEndPointName, MetadataEndPoint.NameByTeamEndPointName)
     val inMemoryKvStore = OnlineUtils.buildInMemoryKVStore("FetcherTest")
     val singleFileDataSet = MetadataDataset + "_single_file_test"
-    val singleFileMetadataStore = new MetadataStore(inMemoryKvStore, singleFileDataSet, timeoutMillis = 10000)
+    val singleFileMetadataStore = new fetcher.MetadataStore(FetchContext(inMemoryKvStore, singleFileDataSet))
     inMemoryKvStore.create(singleFileDataSet)
     // set the working directory to /chronon instead of $MODULE_DIR in configuration if Intellij fails testing
     val singleFileDirWalker = new MetadataDirWalker(confResource.getPath, acceptedEndPoints)
@@ -97,7 +98,8 @@ class FetcherTest extends AnyFlatSpec {
     assert(teamMetadataRes.equals("joins/team/example_join.v1"))
 
     val directoryDataSetDataSet = MetadataDataset + "_directory_test"
-    val directoryMetadataStore = new MetadataStore(inMemoryKvStore, directoryDataSetDataSet, timeoutMillis = 10000)
+    val directoryMetadataStore =
+      new fetcher.MetadataStore(FetchContext(inMemoryKvStore, directoryDataSetDataSet))
     inMemoryKvStore.create(directoryDataSetDataSet)
     val directoryDataDirWalker =
       new MetadataDirWalker(confResource.getPath.replace(s"/$joinPath", ""), acceptedEndPoints)
@@ -613,7 +615,7 @@ class FetcherTest extends AnyFlatSpec {
     val keys = joinConf.leftKeyCols
     val keyIndices = keys.map(endDsQueries.schema.fieldIndex)
     val tsIndex = endDsQueries.schema.fieldIndex(Constants.TimeColumn)
-    val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
+    val metadataStore = new fetcher.MetadataStore(FetchContext(inMemoryKvStore))
     inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 
@@ -738,7 +740,7 @@ class FetcherTest extends AnyFlatSpec {
     val inMemoryKvStore = kvStoreFunc()
     val mockApi = new MockApi(kvStoreFunc, namespace)
 
-    val metadataStore = new MetadataStore(inMemoryKvStore, timeoutMillis = 10000)
+    val metadataStore = new fetcher.MetadataStore(FetchContext(inMemoryKvStore))
     inMemoryKvStore.create(MetadataDataset)
     metadataStore.putJoinConf(joinConf)
 

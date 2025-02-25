@@ -84,7 +84,7 @@ object OnlineUtils {
       val inMemoryKvStore: KVStore = kvStore()
 
       val fetcher = mockApi.buildFetcher(false)
-      val groupByServingInfo = fetcher.getGroupByServingInfo(groupByConf.getMetaData.getName).get
+      val groupByServingInfo = fetcher.metadataStore.getGroupByServingInfo(groupByConf.getMetaData.getName).get
 
       val keyZSchema: api.StructType = groupByServingInfo.keyChrononSchema
       val keyToBytes = AvroConversions.encodeBytes(keyZSchema, GenericRowHandler.func)
@@ -169,7 +169,10 @@ object OnlineUtils {
       inMemoryKvStore.create(groupByConf.streamingDataset)
       if (streamingSource.isSetJoinSource) {
         inMemoryKvStore.create(Constants.MetadataDataset)
-        new MockApi(kvStoreGen, namespace).buildFetcher().putJoinConf(streamingSource.getJoinSource.getJoin)
+        new MockApi(kvStoreGen, namespace)
+          .buildFetcher()
+          .metadataStore
+          .putJoinConf(streamingSource.getJoinSource.getJoin)
         OnlineUtils.putStreamingNew(groupByConf, endDs, namespace, kvStoreGen, debug)(tableUtils.sparkSession)
       } else {
         OnlineUtils.putStreaming(tableUtils.sparkSession,

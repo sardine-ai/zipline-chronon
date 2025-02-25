@@ -95,15 +95,15 @@ class ExternalSourcesTest extends AnyFlatSpec {
     val mockApi = new MockApi(kvStoreFunc, "external_test")
     val fetcher = mockApi.buildFetcher(true)
     fetcher.kvStore.create(MetadataDataset)
-    fetcher.putJoinConf(join)
+    fetcher.metadataStore.putJoinConf(join)
 
     val requests = (10 until 21).map(x =>
       Request(join.metaData.name,
               Map(
-                "number" -> new Integer(x),
+                "number" -> Integer.valueOf(x),
                 "str" -> "a",
-                "context_1" -> new Integer(2 + x),
-                "context_2" -> new Integer(3 + x)
+                "context_1" -> Integer.valueOf(2 + x),
+                "context_2" -> Integer.valueOf(3 + x)
               )))
     val responsesF = fetcher.fetchJoin(requests)
     val responses = Await.result(responsesF, Duration(10, SECONDS))
