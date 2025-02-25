@@ -4,7 +4,7 @@ export const load = async ({ parent, fetch }) => {
 	const { conf, joinDrift, dateRange } = await parent();
 	const api = new Api({ fetch });
 
-	const confName = conf?.metaData?.name?.replace('/', '.') ?? 'Unknown';
+	const confName = conf?.metaData?.name ?? 'Unknown';
 	const columnNames = joinDrift?.driftSeries.map((ds) => ds.key?.column ?? 'Unknown') ?? [];
 
 	// Fetch percentile data for each column

@@ -87,7 +87,7 @@
 
 		if (seriesPoint) {
 			try {
-				const joinName = data.conf?.metaData?.name?.replace('/', '.') ?? 'Unknown';
+				const joinName = data.conf?.metaData?.name ?? 'Unknown';
 				const columnName = seriesPoint.series.key.toString();
 
 				// TODO: Add loading and error states

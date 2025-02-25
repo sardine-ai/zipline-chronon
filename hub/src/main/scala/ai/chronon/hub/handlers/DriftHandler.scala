@@ -35,11 +35,10 @@ class DriftHandler(driftStore: DriftStore) {
     }
 
     val window = new Window(offsetDuration.toMinutes.toInt, TimeUnit.MINUTES)
-    val joinPath = req.getName.replaceFirst("\\.", "/")
-    logger.debug(s"Querying drift store with window: $window, joinPath: $joinPath")
+    logger.debug(s"Querying drift store with window: $window, name: $req.getName")
 
     driftStore.getDriftSeries(
-      joinPath,
+      req.getName,
       req.getAlgorithm,
       window,
       req.getStartTs,
@@ -82,11 +81,10 @@ class DriftHandler(driftStore: DriftStore) {
   def getColumnSummary(req: JoinSummaryRequest): TileSummarySeries = {
     logger.debug(s"Processing summary request for join: ${req.getName}, column: ${req.getColumnName}")
 
-    val joinPath = req.getName.replaceFirst("\\.", "/")
-    logger.debug(s"Querying summary store with joinPath: $joinPath")
+    logger.debug(s"Querying summary store with name: $req.getName")
 
     driftStore.getSummarySeries(
-      joinPath,
+      req.getName,
       req.getStartTs,
       req.getEndTs,
       Some(req.getColumnName)
