@@ -1,6 +1,8 @@
 package ai.chronon.spark.format
 
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, date_format}
 import org.apache.spark.sql.types.StructType
 
 case object Iceberg extends Format {
@@ -29,12 +31,12 @@ case object Iceberg extends Format {
       .load(s"$tableName.partitions")
 
     val index = partitionsDf.schema.fieldIndex("partition")
-
+    val partitionFmt = TableUtils(sparkSession).partitionFormat
     if (partitionsDf.schema(index).dataType.asInstanceOf[StructType].fieldNames.contains("hr")) {
       // Hour filter is currently buggy in iceberg. https://github.com/apache/iceberg/issues/4718
       // so we collect and then filter.
       partitionsDf
-        .select("partition.ds", "partition.hr")
+        .select(date_format(col("partition.ds"), partitionFmt), col("partition.hr"))
         .collect()
         .filter(_.get(1) == null)
         .map(_.getString(0))
@@ -43,7 +45,7 @@ case object Iceberg extends Format {
     } else {
 
       partitionsDf
-        .select("partition.ds")
+        .select(date_format(col("partition.ds"), partitionFmt))
         .collect()
         .map(_.getString(0))
         .toSeq

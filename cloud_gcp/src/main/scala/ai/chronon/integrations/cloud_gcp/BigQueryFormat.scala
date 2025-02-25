@@ -106,7 +106,7 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     // TODO: remove temporary hack. this is done because the existing raw data is in the date format yyyy-MM-dd
     //  but partition values in bigquery's INFORMATION_SCHEMA.PARTITIONS are in yyyyMMdd format.
     //  moving forward, for bigquery gcp we should default to storing raw data in yyyyMMdd format.
-    val partitionFormat = sparkSession.conf.get("spark.chronon.partition.format", "yyyyMMdd")
+    val partitionFormat = TableUtils(sparkSession).partitionFormat
 
     val partitionInfoDf = sparkSession.read
       .format("bigquery")
