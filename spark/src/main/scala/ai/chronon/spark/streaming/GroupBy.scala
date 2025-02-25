@@ -89,7 +89,7 @@ class GroupBy(inputStream: DataFrame,
   def buildDataStream(local: Boolean = false): DataStreamWriter[KVStore.PutRequest] = {
     val streamingTable = groupByConf.metaData.cleanName + "_stream"
     val fetcher = onlineImpl.buildFetcher(local)
-    val groupByServingInfo = fetcher.getGroupByServingInfo(groupByConf.getMetaData.getName).get
+    val groupByServingInfo = fetcher.metadataStore.getGroupByServingInfo(groupByConf.getMetaData.getName).get
 
     val streamDecoder = onlineImpl.streamDecoder(groupByServingInfo)
     assert(groupByConf.streamingSource.isDefined,

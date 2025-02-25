@@ -14,18 +14,15 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.serde
 
-import ai.chronon.api.DataType
-import ai.chronon.api.Row
+import ai.chronon.api.{DataType, Row}
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.online.AvroConversions
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
 import org.apache.avro.file.SeekableByteArrayInput
-import org.apache.avro.generic.GenericData
-import org.apache.avro.generic.GenericDatumReader
-import org.apache.avro.generic.GenericDatumWriter
-import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.{GenericData, GenericDatumReader, GenericDatumWriter, GenericRecord}
 import org.apache.avro.io._
 
 import java.io.ByteArrayOutputStream
@@ -105,12 +102,18 @@ class AvroCodec(val schemaStr: String) extends Serializable {
   def decodeRow(bytes: Array[Byte], millis: Long, mutation: Boolean = false): ArrayRow =
     new ArrayRow(decodeRow(bytes), millis, mutation)
 
-  def decodeMap(bytes: Array[Byte]): Map[String, AnyRef] = {
+  def decodeArray(bytes: Array[Byte]): Array[Any] = {
     if (bytes == null) return null
-    val output = AvroConversions
+
+    AvroConversions
       .toChrononRow(decode(bytes), chrononSchema)
       .asInstanceOf[Array[Any]]
-    fieldNames.iterator.zip(output.iterator.map(_.asInstanceOf[AnyRef])).toMap
+  }
+
+  def decodeMap(bytes: Array[Byte]): Map[String, AnyRef] = {
+    if (bytes == null) return null
+
+    fieldNames.iterator.zip(decodeArray(bytes).iterator.map(_.asInstanceOf[AnyRef])).toMap
   }
 }
 

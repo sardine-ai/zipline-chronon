@@ -21,18 +21,19 @@ import ai.chronon.api
 import ai.chronon.api.Constants.UTF8
 import ai.chronon.api.Extensions.{ExternalPartOps, JoinOps, StringOps, ThrowableOps}
 import ai.chronon.api._
-import ai.chronon.online.fetcher.Fetcher.{Request, Response}
 import ai.chronon.online.Metrics.Environment
 import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
-import ai.chronon.online._
-import ai.chronon.online.fetcher.Fetcher.ResponseWithContext
+import ai.chronon.online.fetcher.Fetcher.{Request, Response, ResponseWithContext}
+import ai.chronon.online.{serde, _}
 import com.google.gson.Gson
 import com.timgroup.statsd.Event
 import com.timgroup.statsd.Event.AlertType
 import org.apache.avro.generic.GenericRecord
 import org.json4s.BuildInfo
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.function.Consumer
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.collection.{Seq, mutable}
@@ -72,7 +73,7 @@ object Fetcher {
   }
 }
 
-private[online] case class FetcherResponseWithTs(responses: Seq[Response], endTs: Long)
+private[online] case class FetcherResponseWithTs(responses: Seq[Fetcher.Response], endTs: Long)
 
 // BaseFetcher + Logging + External service calls
 class Fetcher(val kvStore: KVStore,
@@ -84,14 +85,16 @@ class Fetcher(val kvStore: KVStore,
               callerName: String = null,
               flagStore: FlagStore = null,
               disableErrorThrows: Boolean = false,
-              executionContextOverride: ExecutionContext = null)
-    extends FetcherBase(kvStore,
-                        metaDataSet,
-                        timeoutMillis,
-                        debug,
-                        flagStore,
-                        disableErrorThrows,
-                        executionContextOverride) {
+              executionContextOverride: ExecutionContext = null) {
+
+  @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+
+  private val fetchContext: FetchContext =
+    FetchContext(kvStore, metaDataSet, timeoutMillis, debug, flagStore, disableErrorThrows, executionContextOverride)
+
+  implicit private val executionContext: ExecutionContext = fetchContext.getOrCreateExecutionContext
+  val metadataStore: MetadataStore = new MetadataStore(fetchContext)
+  private val joinPartFetcher = new JoinPartFetcher(fetchContext, metadataStore)
 
   private def reportCallerNameFetcherVersion(): Unit = {
     val message =
@@ -106,7 +109,7 @@ class Fetcher(val kvStore: KVStore,
     ctx.recordEvent("caller_name_fetcher_version", event)
   }
 
-  lazy val joinCodecCache: TTLCache[String, Try[JoinCodec]] = buildJoinCodecCache(
+  lazy val joinCodecCache: TTLCache[String, Try[JoinCodec]] = metadataStore.buildJoinCodecCache(
     Some(logControlEvent)
   )
 
@@ -119,9 +122,13 @@ class Fetcher(val kvStore: KVStore,
     }
   }
 
-  override def fetchJoin(requests: Seq[Request], joinConf: Option[api.Join] = None): Future[Seq[Response]] = {
+  def fetchGroupBys(requests: Seq[Request]): Future[Seq[Response]] = {
+    joinPartFetcher.fetchGroupBys(requests)
+  }
+
+  def fetchJoin(requests: Seq[Request], joinConf: Option[api.Join] = None): Future[Seq[Response]] = {
     val ts = System.currentTimeMillis()
-    val internalResponsesF = super.fetchJoin(requests, joinConf)
+    val internalResponsesF = joinPartFetcher.fetchJoins(requests, joinConf)
     val externalResponsesF = fetchExternal(requests)
     val combinedResponsesF =
       internalResponsesF.zip(externalResponsesF).map { case (internalResponses, externalResponses) =>
@@ -135,7 +142,7 @@ class Fetcher(val kvStore: KVStore,
             cleanInternalRequest == externalResponse.request,
             s"""
                  |Logic error. Responses are not aligned to requests
-                 |mismatching requests:  ${cleanInternalRequest}, ${externalResponse.request}
+                 |mismatching requests:  $cleanInternalRequest, ${externalResponse.request}
                  |  requests:            ${requests.map(_.name)}
                  |  internalResponses:   ${internalResponses.map(_.request.name)}
                  |  externalResponses:   ${externalResponses.map(_.request.name)}""".stripMargin
@@ -201,12 +208,12 @@ class Fetcher(val kvStore: KVStore,
   }
 
   private def encode(schema: StructType,
-                     codec: AvroCodec,
+                     codec: serde.AvroCodec,
                      dataMap: Map[String, AnyRef],
                      cast: Boolean = false,
                      tries: Int = 3): Array[Byte] = {
     def encodeOnce(schema: StructType,
-                   codec: AvroCodec,
+                   codec: serde.AvroCodec,
                    dataMap: Map[String, AnyRef],
                    cast: Boolean = false): Array[Byte] = {
       val data = schema.fields.map { case StructField(name, typ) =>
@@ -224,9 +231,14 @@ class Fetcher(val kvStore: KVStore,
       codec.encodeBinary(avroRecord)
     }
 
+    @tailrec
     def tryOnce(lastTry: Try[Array[Byte]], tries: Int): Try[Array[Byte]] = {
-      if (tries == 0 || (lastTry != null && lastTry.isSuccess)) return lastTry
+
+      if (tries == 0 || (lastTry != null && lastTry.isSuccess))
+        return lastTry
+
       val binary = encodeOnce(schema, codec, dataMap, cast)
+
       tryOnce(Try(codec.decodeRow(binary)).map(_ => binary), tries - 1)
     }
 
@@ -264,7 +276,7 @@ class Fetcher(val kvStore: KVStore,
             values.map { case (k, v) => s"$k -> ${gson.toJson(v)}" }.mkString(", ")
           logger.info(s"""Sampled join fetch
                |Key Map: ${resp.request.keys}
-               |Value Map: [${valuesFormatted}]
+               |Value Map: [$valuesFormatted]
                |""".stripMargin)
         }
 
@@ -302,7 +314,7 @@ class Fetcher(val kvStore: KVStore,
   }
 
   // Pulling external features in a batched fashion across services in-parallel
-  def fetchExternal(joinRequests: Seq[Request]): Future[Seq[Response]] = {
+  private def fetchExternal(joinRequests: Seq[Request]): Future[Seq[Response]] = {
     val startTime = System.currentTimeMillis()
     val resultMap = new mutable.LinkedHashMap[Request, Try[mutable.HashMap[String, Any]]]
     var invalidCount = 0
@@ -311,7 +323,7 @@ class Fetcher(val kvStore: KVStore,
     // step-1 handle invalid requests and collect valid ones
     joinRequests.foreach { request =>
       val joinName = request.name
-      val joinConfTry: Try[JoinOps] = getJoinConf(request.name)
+      val joinConfTry: Try[JoinOps] = metadataStore.getJoinConf(request.name)
       if (joinConfTry.isFailure) {
         resultMap.update(
           request,
@@ -333,7 +345,11 @@ class Fetcher(val kvStore: KVStore,
     val externalToJoinRequests: Seq[ExternalToJoinRequest] = validRequests
       .flatMap { joinRequest =>
         val parts =
-          getJoinConf(joinRequest.name).get.join.onlineExternalParts // cheap since it is cached, valid since step-1
+          metadataStore
+            .getJoinConf(joinRequest.name)
+            .get
+            .join
+            .onlineExternalParts // cheap since it is cached, valid since step-1
         parts.iterator().asScala.map { part =>
           val externalRequest = Try(part.applyMapping(joinRequest.keys)) match {
             case Success(mappedKeys)                     => Left(Request(part.source.metadata.name, mappedKeys))

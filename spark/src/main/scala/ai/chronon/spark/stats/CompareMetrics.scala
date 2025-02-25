@@ -22,8 +22,8 @@ import ai.chronon.api.Extensions.AggregationPartOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.online.DataMetrics
 import ai.chronon.online.SparkConversions
+import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd

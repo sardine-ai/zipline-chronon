@@ -1,6 +1,5 @@
 package ai.chronon.online.test
-
-import ai.chronon.online.LRUCache
+import ai.chronon.online.fetcher.LRUCache
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import org.scalatest.flatspec.AnyFlatSpec
 

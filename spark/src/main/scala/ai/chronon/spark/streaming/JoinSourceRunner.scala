@@ -188,7 +188,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
     val leftSourceSchema: StructType = outputSchema(leftStreamSchema, enrichQuery(left.query)) // apply same thing
 
     // joinSchema = leftSourceSchema ++ joinCodec.valueSchema
-    val joinCodec: JoinCodec = apiImpl.buildFetcher(debug).buildJoinCodec(joinSource.getJoin)
+    val joinCodec: JoinCodec = apiImpl.buildFetcher(debug).metadataStore.buildJoinCodec(joinSource.getJoin)
     val joinValueSchema: StructType = SparkConversions.fromChrononSchema(joinCodec.valueSchema)
     val joinSchema: StructType = StructType(leftSourceSchema ++ joinValueSchema)
     val joinSourceSchema: StructType = outputSchema(joinSchema, enrichQuery(joinSource.query))
@@ -214,7 +214,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
   }
 
   private def servingInfoProxy: GroupByServingInfoParsed =
-    apiImpl.buildFetcher(debug).getGroupByServingInfo(groupByConf.getMetaData.getName).get
+    apiImpl.buildFetcher(debug).metadataStore.getGroupByServingInfo(groupByConf.getMetaData.getName).get
 
   private def decode(dataStream: DataStream): DataStream = {
     val streamDecoder = apiImpl.streamDecoder(servingInfoProxy)
