@@ -21,6 +21,7 @@ import ai.chronon.api.Extensions.AggregationPartOps
 import ai.chronon.api.Extensions.OperationOps
 import ai.chronon.api._
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.apache.datasketches.frequencies.ErrorType
 
 import java.util
 import scala.collection.JavaConverters.asScalaIteratorConverter
@@ -133,25 +134,28 @@ case class ColumnIndices(input: Int, output: Int)
 
 object ColumnAggregator {
 
+  private def toJLong(l: Long): java.lang.Long = java.lang.Long.valueOf(l)
+  private def toJDouble(d: Double): java.lang.Double = java.lang.Double.valueOf(d)
+
   def castToLong(value: AnyRef): AnyRef =
     value match {
-      case i: java.lang.Integer => new java.lang.Long(i.longValue())
-      case i: java.lang.Short   => new java.lang.Long(i.longValue())
-      case i: java.lang.Byte    => new java.lang.Long(i.longValue())
-      case i: java.lang.Double  => new java.lang.Long(i.longValue())
-      case i: java.lang.Float   => new java.lang.Long(i.longValue())
-      case i: java.lang.String  => new java.lang.Long(java.lang.Long.parseLong(i))
+      case i: java.lang.Integer => toJLong(i.longValue())
+      case i: java.lang.Short   => toJLong(i.longValue())
+      case i: java.lang.Byte    => toJLong(i.longValue())
+      case i: java.lang.Double  => toJLong(i.longValue())
+      case i: java.lang.Float   => toJLong(i.longValue())
+      case i: java.lang.String  => toJLong(java.lang.Long.parseLong(i))
       case _                    => value
     }
 
   def castToDouble(value: AnyRef): AnyRef =
     value match {
-      case i: java.lang.Integer => new java.lang.Double(i.doubleValue())
-      case i: java.lang.Short   => new java.lang.Double(i.doubleValue())
-      case i: java.lang.Byte    => new java.lang.Double(i.doubleValue())
-      case i: java.lang.Float   => new java.lang.Double(i.doubleValue())
-      case i: java.lang.Long    => new java.lang.Double(i.doubleValue())
-      case i: java.lang.String  => new java.lang.Double(java.lang.Double.parseDouble(i))
+      case i: java.lang.Integer => toJDouble(i.doubleValue())
+      case i: java.lang.Short   => toJDouble(i.doubleValue())
+      case i: java.lang.Byte    => toJDouble(i.doubleValue())
+      case i: java.lang.Float   => toJDouble(i.doubleValue())
+      case i: java.lang.Long    => toJDouble(i.doubleValue())
+      case i: java.lang.String  => toJDouble(java.lang.Double.parseDouble(i))
       case _                    => value
     }
 
@@ -260,15 +264,28 @@ object ColumnAggregator {
     aggregationPart.operation match {
       case Operation.COUNT     => simple(new Count)
       case Operation.HISTOGRAM => simple(new Histogram(aggregationPart.getInt("k", Some(0))))
-      case Operation.APPROX_HISTOGRAM_K =>
+      case Operation.APPROX_FREQUENT_K =>
         val k = aggregationPart.getInt("k", Some(8))
         inputType match {
-          case IntType    => simple(new ApproxHistogram[java.lang.Long](k), toJavaLong[Int])
-          case LongType   => simple(new ApproxHistogram[java.lang.Long](k))
-          case ShortType  => simple(new ApproxHistogram[java.lang.Long](k), toJavaLong[Short])
-          case DoubleType => simple(new ApproxHistogram[java.lang.Double](k))
-          case FloatType  => simple(new ApproxHistogram[java.lang.Double](k), toJavaDouble[Float])
-          case StringType => simple(new ApproxHistogram[String](k))
+          case IntType    => simple(new FrequentItems[java.lang.Long](k), toJavaLong[Int])
+          case LongType   => simple(new FrequentItems[java.lang.Long](k))
+          case ShortType  => simple(new FrequentItems[java.lang.Long](k), toJavaLong[Short])
+          case DoubleType => simple(new FrequentItems[java.lang.Double](k))
+          case FloatType  => simple(new FrequentItems[java.lang.Double](k), toJavaDouble[Float])
+          case StringType => simple(new FrequentItems[String](k))
+          case _          => mismatchException
+        }
+      case Operation.APPROX_HEAVY_HITTERS_K =>
+        val k = aggregationPart.getInt("k", Some(8))
+        inputType match {
+          case IntType  => simple(new FrequentItems[java.lang.Long](k, ErrorType.NO_FALSE_POSITIVES), toJavaLong[Int])
+          case LongType => simple(new FrequentItems[java.lang.Long](k, ErrorType.NO_FALSE_POSITIVES))
+          case ShortType =>
+            simple(new FrequentItems[java.lang.Long](k, ErrorType.NO_FALSE_POSITIVES), toJavaLong[Short])
+          case DoubleType => simple(new FrequentItems[java.lang.Double](k, ErrorType.NO_FALSE_POSITIVES))
+          case FloatType =>
+            simple(new FrequentItems[java.lang.Double](k, ErrorType.NO_FALSE_POSITIVES), toJavaDouble[Float])
+          case StringType => simple(new FrequentItems[String](k, ErrorType.NO_FALSE_POSITIVES))
           case _          => mismatchException
         }
       case Operation.SUM =>
