@@ -1,4 +1,4 @@
-package ai.chronon.orchestration.temporal.workflows
+package ai.chronon.orchestration.temporal.workflow
 
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import io.temporal.workflow.WorkflowInterface

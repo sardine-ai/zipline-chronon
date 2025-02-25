@@ -1,7 +1,7 @@
-package ai.chronon.orchestration.temporal.workflows
+package ai.chronon.orchestration.temporal.workflow
 
 import ai.chronon.orchestration.PhysicalNodeInstance
-import ai.chronon.orchestration.temporal.runners.NodeRunner
+import ai.chronon.orchestration.temporal.runner.NodeRunner
 import io.temporal.workflow.WorkflowInterface
 import io.temporal.workflow.WorkflowMethod
 

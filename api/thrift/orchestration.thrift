@@ -12,7 +12,7 @@ enum TabularDataType {
 }
 
 /**
-* Represents a group of structureddata assets that the same data flows through
+* Represents a group of structured data assets that the same data flows through
 * just a normalized version of Events + Entity sources.
 **/
 struct TabularData {
@@ -203,7 +203,7 @@ struct Table {
 }
 
 struct KvEntry {
-    // cluser/table/key uniquely identifies the kv entry
+    // cluster/table/key uniquely identifies the kv entry
     1: optional string cluster
     2: optional string table
     3: optional string keyAsBase64
@@ -271,16 +271,10 @@ struct Dependency {
     2: optional TableDependency tableDependency
 }
 
-//struct PhysicalNodeGraph {
-//    1: optional list<PhysicalNodeInstance> leafNodes
-//    2: optional map<PhysicalNodeKey, PhysicalNodeInstance> infoMap
-//}
-
 struct PhysicalNodeGraph {
-    1: optional string name
+    1: optional list<PhysicalNodeInstance> leafNodes
+    2: optional map<PhysicalNodeKey, PhysicalNodeInstance> infoMap
 }
-
-
 
 /**
 * -- Phase 0 plan -- (same as chronon oss)

@@ -10,6 +10,7 @@ test_deps = _SCALA_TEST_DEPS + [
     maven_artifact("io.grpc:grpc-protobuf"),
     maven_artifact("io.grpc:grpc-stub"),
     maven_artifact("io.grpc:grpc-inprocess"),
+    maven_artifact("com.google.guava:guava"),
 ]
 
 scala_library(

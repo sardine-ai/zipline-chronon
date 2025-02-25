@@ -3,7 +3,7 @@ scala_library(
     visibility = ["//visibility:public"],
     exports = [
         "//orchestration/src/main/scala/ai/chronon/orchestration/temporal/constants:lib",
-        "//orchestration/src/main/scala/ai/chronon/orchestration/temporal/runners:lib",
-        "//orchestration/src/main/scala/ai/chronon/orchestration/temporal/workflows:lib",
+        "//orchestration/src/main/scala/ai/chronon/orchestration/temporal/runner:lib",
+        "//orchestration/src/main/scala/ai/chronon/orchestration/temporal/workflow:lib",
     ],
 )

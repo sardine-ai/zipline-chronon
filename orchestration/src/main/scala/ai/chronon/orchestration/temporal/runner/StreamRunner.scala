@@ -1,4 +1,4 @@
-package ai.chronon.orchestration.temporal.runners
+package ai.chronon.orchestration.temporal.runner
 
 import ai.chronon.orchestration.PhysicalNodeInstance
 
