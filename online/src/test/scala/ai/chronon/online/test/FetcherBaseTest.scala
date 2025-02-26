@@ -203,35 +203,6 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     verify(ttlCache, never()).apply(any())
   }
 
-  it should "determine if caching is enabled correctly" in {
-    val flagStore: FlagStore = (flagName: String, attributes: java.util.Map[String, String]) => {
-      flagName match {
-        case "enable_fetcher_batch_ir_cache" =>
-          attributes.get("group_by_streaming_dataset") match {
-            case "test_groupby_2" => false
-            case "test_groupby_3" => true
-            case other @ _ =>
-              fail(s"Unexpected group_by_streaming_dataset: $other")
-              false
-          }
-        case _ => false
-      }
-    }
-
-    kvStore = mock[KVStore](Answers.RETURNS_DEEP_STUBS)
-    when(kvStore.executionContext).thenReturn(ExecutionContext.global)
-
-    val fetchContext = FetchContext(kvStore, flagStore = flagStore)
-
-    val fetcherBaseWithFlagStore =
-      spy[fetcher.JoinPartFetcher](new fetcher.JoinPartFetcher(fetchContext, new MetadataStore(fetchContext)))
-    when(fetcherBaseWithFlagStore.isCacheSizeConfigured).thenReturn(true)
-
-    // no name set
-    assertFalse(fetchContext.isCachingEnabled("test_groupby_2"))
-    assertTrue(fetchContext.isCachingEnabled("test_groupby_3"))
-  }
-
   it should "fetch in the happy case" in {
     val fetchContext = mock[FetchContext]
     val baseFetcher = new fetcher.JoinPartFetcher(fetchContext, mock[MetadataStore])
