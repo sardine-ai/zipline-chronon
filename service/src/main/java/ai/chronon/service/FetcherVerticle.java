@@ -26,15 +26,26 @@ public class FetcherVerticle extends AbstractVerticle {
     @Override
     public void start(Promise<Void> startPromise) throws Exception {
         ConfigStore cfgStore = new ConfigStore(vertx);
-        startHttpServer(cfgStore.getServerPort(), cfgStore.encodeConfig(), ApiProvider.buildApi(cfgStore), startPromise);
+
+        Api api = ApiProvider.buildApi(cfgStore);
+
+        // Execute the blocking Bigtable initialization in a separate worker thread
+        vertx.executeBlocking(() -> api.buildJavaFetcher("feature-service", false))
+        .onSuccess(fetcher -> {
+            try {
+                // This code runs back on the event loop when the blocking operation completes
+                startHttpServer(cfgStore.getServerPort(), cfgStore.encodeConfig(), fetcher, startPromise);
+            } catch (Exception e) {
+                startPromise.fail(e);
+            }
+        })
+        .onFailure(startPromise::fail);
     }
 
-    protected void startHttpServer(int port, String configJsonString, Api api, Promise<Void> startPromise) throws Exception {
+    protected void startHttpServer(int port, String configJsonString, JavaFetcher fetcher, Promise<Void> startPromise) throws Exception {
         Router router = Router.router(vertx);
 
         // Define routes
-
-        JavaFetcher fetcher = api.buildJavaFetcher("feature-service", false);
 
         // Set up sub-routes for the various feature retrieval apis
         router.route("/v1/fetch/*").subRouter(FetchRouter.createFetchRoutes(vertx, fetcher));
