@@ -83,6 +83,23 @@ def Query(
     )
 
 
-def select(*args, **kwargs):
+def selects(*args, **kwargs):
+    """
+    Create a dictionary required for the selects parameter of Query.
+
+    .. code-block:: python
+        selects(
+            "event_id",
+            user_id="user_id",
+        )
+
+    creates the following dictionary:
+
+    .. code-block:: python
+        {
+            "event_id": "event_id",
+            "user_id": "user_id"
+        }
+    """
     args = {x: x for x in args}
     return {**args, **kwargs}

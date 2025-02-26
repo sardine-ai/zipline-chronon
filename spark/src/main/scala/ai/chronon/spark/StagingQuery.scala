@@ -18,8 +18,8 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Extensions._
-import ai.chronon.api.{EngineType, ParametricMacro}
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.{EngineType, ParametricMacro}
 import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import org.slf4j.{Logger, LoggerFactory}
@@ -98,7 +98,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
         val length = exceptions.length
         val fullMessage = exceptions.zipWithIndex
           .map { case (message, index) =>
-            s"[${index + 1}/${length} exceptions]\n${message}"
+            s"[${index + 1}/$length exceptions]\n$message"
           }
           .mkString("\n")
         throw new Exception(fullMessage)
@@ -108,29 +108,28 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
 }
 
 object StagingQuery {
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def substitute(tu: TableUtils, query: String, start: String, end: String, latest: String): String = {
-    val macros: Array[ParametricMacro] = Array(
-      ParametricMacro("start_date", _ => start),
-      ParametricMacro("end_date", _ => end),
-      ParametricMacro("latest_date", _ => latest),
-      ParametricMacro(
-        "max_date",
-        args => {
-          lazy val table = args("table")
-          lazy val partitions = tu.partitions(table)
-          if (table == null) {
-            throw new IllegalArgumentException(s"No table in args:[$args] to macro max_date")
-          } else if (partitions.isEmpty) {
-            throw new IllegalStateException(s"No partitions exist for table $table to calculate max_date")
-          }
-          partitions.max
+
+    val maxDateMacro = ParametricMacro(
+      "max_date",
+      args => {
+        lazy val table = args("table")
+        lazy val partitions = tu.partitions(table)
+        if (table == null) {
+          throw new IllegalArgumentException(s"No table in args:[$args] to macro max_date")
+        } else if (partitions.isEmpty) {
+          throw new IllegalStateException(s"No partitions exist for table $table to calculate max_date")
         }
-      )
+        partitions.max
+      }
     )
 
-    macros.foldLeft(query) { case (q, m) => m.replace(q) }
+    val queryWithBasicMacrosReplaced = ParametricMacro.applyBasicDateMacros(start, end, latest, tu.partitionSpec)(query)
+
+    maxDateMacro.replace(queryWithBasicMacrosReplaced)
   }
 
   def main(args: Array[String]): Unit = {

@@ -1,7 +1,6 @@
-
 from ai.chronon.model import Model, ModelType
 from ai.chronon.api.ttypes import DataKind, EventSource, Source, TDataType
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 
 
 """
@@ -10,11 +9,14 @@ and timestamps for which features will be computed.
 """
 source = Source(
     events=EventSource(
-        table="data.checkouts", 
+        table="data.checkouts",
         query=Query(
-            selects=select("user_id"),
+            selects=selects("user_id"),
             time_column="ts",
-            )
-    ))
+        ),
+    )
+)
 
-v1 = Model(source=source, outputSchema=TDataType(DataKind.DOUBLE), modelType=ModelType.XGBoost)
+v1 = Model(
+    source=source, outputSchema=TDataType(DataKind.DOUBLE), modelType=ModelType.XGBoost
+)

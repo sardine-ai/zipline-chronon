@@ -242,8 +242,8 @@ def Aggregation(
     return agg
 
 
-def Window(length: int, timeUnit: common.TimeUnit) -> common.Window:
-    return common.Window(length, timeUnit)
+def Window(length: int, time_unit: common.TimeUnit) -> common.Window:
+    return common.Window(length, time_unit)
 
 
 def Derivation(name: str, expression: str) -> ttypes.Derivation:

@@ -1,5 +1,5 @@
 from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 from ai.chronon.group_by import GroupBy, Aggregation, Operation
 
 """
@@ -13,7 +13,7 @@ def create_transaction_source(key_field):
             table="data.txn_events",  # Points to the historical purchase events table
             topic=None,
             query=Query(
-                selects=select(key_field, "transaction_amount", "transaction_type"),
+                selects=selects(key_field, "transaction_amount", "transaction_type"),
                 time_column="transaction_time",
             ),
         )

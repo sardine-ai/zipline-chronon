@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
@@ -29,7 +29,7 @@ source = Source(
         table="data.returns",  # This points to the log table with historical return events
         topic="events.returns/fields=ts,return_id,user_id,product_id,refund_amt/host=kafka/port=9092",
         query=Query(
-            selects=select("user_id", "refund_amt"),  # Select the fields we care about
+            selects=selects("user_id", "refund_amt"),  # Select the fields we care about
             time_column="ts",
         ),  # The event time
     )

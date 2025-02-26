@@ -17,7 +17,7 @@ Sample group by
 #     limitations under the License.
 
 from sources import test_sources
-from ai.chronon.group_by import GroupBy, Aggregation, Operation
+from ai.chronon.types import GroupBy, Aggregation, Operation
 
 
 v1 = GroupBy(

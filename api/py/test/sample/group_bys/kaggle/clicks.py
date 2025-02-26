@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 from ai.chronon.group_by import (
     GroupBy,
     Aggregation,
@@ -46,7 +46,7 @@ source = Source(
             base_table
         ),  # Here we use the staging query output table because it has the necessary fields, but for a true streaming source we would likely use a log table
         topic="some_topic",  # You would set your streaming source topic here
-        query=Query(selects=select("ad_id", "clicked"), time_column="ts"),
+        query=Query(selects=selects("ad_id", "clicked"), time_column="ts"),
     )
 )
 

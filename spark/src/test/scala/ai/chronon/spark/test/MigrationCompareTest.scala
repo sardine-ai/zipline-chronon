@@ -82,10 +82,9 @@ class MigrationCompareTest extends AnyFlatSpec {
     val join = new Join(joinConf = joinConf, endPartition = today, tableUtils)
     join.computeJoin()
 
-    //--------------------------------Staging Query-----------------------------
+    // --------------------------------Staging Query-----------------------------
     val stagingQueryConf = Builders.StagingQuery(
-      query =
-        s"select * from ${joinConf.metaData.outputTable} WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
+      query = s"select * from ${joinConf.metaData.outputTable} WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.item_snapshot_features_sq_3",
                                    namespace = namespace,
