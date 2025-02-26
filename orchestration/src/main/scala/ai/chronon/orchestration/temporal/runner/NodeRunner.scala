@@ -7,7 +7,7 @@ import ai.chronon.orchestration.PhysicalNodeInstance
   */
 class NodeRunner(node: PhysicalNodeInstance) {
 
-  /** Main run method for the runner triggers the right backfill or frontfill or other methods
+  /** Main method for the runner triggers the right backfill or frontfill or other methods
     * depending on the physical node type
     */
   def run(): Unit = ???

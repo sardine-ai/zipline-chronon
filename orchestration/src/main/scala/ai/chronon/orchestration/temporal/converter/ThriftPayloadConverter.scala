@@ -8,14 +8,17 @@ import io.temporal.common.converter.{ByteArrayPayloadConverter, DataConverterExc
 import java.util.Optional
 import java.lang.reflect.Type
 
+/** Custom converter for serializing and deserializing thrift objects passed as Inputs/Outputs to temporal
+  */
 class ThriftPayloadConverter extends PayloadConverter {
 
   private val byteArrayPayloadConverter = new ByteArrayPayloadConverter
 
-  // The encoding type determines which default conversion behavior to override.
-  // It's important to use the same encoding type as ByteArrayPayloadConverter and override it
-  // otherwise that's first in the order of available payload converters, and we run into serialization errors
-  // https://github.com/temporalio/sdk-java/blob/master/temporal-sdk/src/main/java/io/temporal/common/converter/DefaultDataConverter.java#L38
+  /** The encoding type determines which default conversion behavior to override.
+    * It's important to use the same encoding type as ByteArrayPayloadConverter and override it
+    * otherwise that's first in the order of available payload converters, and we run into serialization errors
+    * https://github.com/temporalio/sdk-java/blob/master/temporal-sdk/src/main/java/io/temporal/common/converter/DefaultDataConverter.java#L38
+    */
   override def getEncodingType = "binary/plain"
 
   @throws[DataConverterException]

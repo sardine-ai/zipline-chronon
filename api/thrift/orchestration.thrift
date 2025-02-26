@@ -265,8 +265,7 @@ struct TableDependency {
     21: optional bool forceCompute
 }
 
-// Temporal can't decode this if it is an union - hence using struct
-struct Dependency {
+union Dependency {
     1: optional KvDependency kvDependency
     2: optional TableDependency tableDependency
 }
