@@ -135,7 +135,7 @@
 	</Button>
 	<Separator class="my-[22px]" />
 	<span class="mb-[10px] px-2 text-xs-medium text-muted-icon-neutral">Datasets</span>
-	<ul class="space-y-[1px] flex-grow">
+	<ul class="space-y-[1px] grow">
 		{#each navItems.filter((item) => item.path != null) as item}
 			<li>
 				<Button

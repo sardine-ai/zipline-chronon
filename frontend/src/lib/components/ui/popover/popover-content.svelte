@@ -22,7 +22,7 @@
 	{sideOffset}
 	{...$$restProps}
 	class={cn(
-		'z-50 w-72 rounded-md border p-4 shadow-md outline-none',
+		'z-50 w-72 rounded-md border p-4 shadow-md outline-hidden',
 		variant === 'default' && 'bg-popover text-popover-foreground',
 		variant === 'light' && 'bg-neutral-100 border-neutral-400',
 		className

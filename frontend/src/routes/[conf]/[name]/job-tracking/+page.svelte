@@ -186,7 +186,7 @@
 <div class="flex flex-col">
 	<CollapsibleSection title="Current job" bind:open={isMetadataOpen} class="mt-5 mb-6">
 		{#snippet headerContentRight()}
-			<Button variant="outline" size="md" class="!text-small text-muted-foreground">
+			<Button variant="outline" size="md" class="text-small! text-muted-foreground">
 				<IconArrowDownOnSquare16Solid class="mr-2 h-4 w-4" />
 				Download Logs
 			</Button>

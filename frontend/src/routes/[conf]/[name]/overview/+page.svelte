@@ -294,8 +294,8 @@
 									y="y"
 									class={cn(
 										isStreaming(edge.source.value.conf as EntityData)
-											? 'stroke-blue-500 stroke-[2] [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
-											: 'stroke-purple-500 stroke-[2] [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x',
+											? 'stroke-blue-500 stroke-2 [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
+											: 'stroke-purple-500 stroke-2 [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x',
 										fadeEdge(edge as unknown as { source: CustomNode; target: CustomNode }) &&
 											'opacity-0'
 									)}
@@ -318,12 +318,12 @@
 					{
 						label: 'Batch',
 						class:
-							'stroke-purple-500 stroke-[2] [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x'
+							'stroke-purple-500 stroke-2 [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x'
 					},
 					{
 						label: 'Streaming',
 						class:
-							'stroke-blue-500 stroke-[2] [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
+							'stroke-blue-500 stroke-2 [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
 					}
 				]}
 

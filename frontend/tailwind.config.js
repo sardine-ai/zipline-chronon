@@ -12,20 +12,53 @@ const config = {
 	],
 	safelist: [
 		'dark',
-		{
-			pattern: /^grid-cols-\d+$/ // Preserves all grid-cols-{n} classes
-		},
-		{
-			// Generic pattern that will match any job status
-			pattern: /^border-jobs-(.*)-active-border$/,
-			variants: ['hover']
-		},
-		{
-			pattern: /^border-jobs-(.*)-border$/
-		},
-		{
-			pattern: /^bg-jobs-(.*)-bg$/
-		}
+		'grid-cols-1',
+		'grid-cols-2',
+		'grid-cols-3',
+		'grid-cols-4',
+		'grid-cols-5',
+		'grid-cols-6',
+		'grid-cols-7',
+		'grid-cols-8',
+		'grid-cols-9',
+		'grid-cols-10',
+		'grid-cols-11',
+		'grid-cols-12',
+		// Job status border active classes
+		'border-jobs-WAITING_FOR_UPSTREAM-active-border',
+		'hover:border-jobs-WAITING_FOR_UPSTREAM-active-border',
+		'border-jobs-RUNNING-active-border',
+		'hover:border-jobs-RUNNING-active-border',
+		'border-jobs-FAILED-active-border',
+		'hover:border-jobs-FAILED-active-border',
+		'border-jobs-SUCCESS-active-border',
+		'hover:border-jobs-SUCCESS-active-border',
+		'border-jobs-QUEUED-active-border',
+		'hover:border-jobs-QUEUED-active-border',
+		'border-jobs-UPSTREAM_FAILED-active-border',
+		'hover:border-jobs-UPSTREAM_FAILED-active-border',
+		'border-jobs-UPSTREAM_MISSING-active-border',
+		'hover:border-jobs-UPSTREAM_MISSING-active-border',
+		'border-jobs-WAITING_FOR_RESOURCES-active-border',
+		'hover:border-jobs-WAITING_FOR_RESOURCES-active-border',
+		// Job status border classes
+		'border-jobs-WAITING_FOR_UPSTREAM-border',
+		'border-jobs-RUNNING-border',
+		'border-jobs-FAILED-border',
+		'border-jobs-SUCCESS-border',
+		'border-jobs-QUEUED-border',
+		'border-jobs-UPSTREAM_FAILED-border',
+		'border-jobs-UPSTREAM_MISSING-border',
+		'border-jobs-WAITING_FOR_RESOURCES-border',
+		// Job status background classes
+		'bg-jobs-WAITING_FOR_UPSTREAM-bg',
+		'bg-jobs-RUNNING-bg',
+		'bg-jobs-FAILED-bg',
+		'bg-jobs-SUCCESS-bg',
+		'bg-jobs-QUEUED-bg',
+		'bg-jobs-UPSTREAM_FAILED-bg',
+		'bg-jobs-UPSTREAM_MISSING-bg',
+		'bg-jobs-WAITING_FOR_RESOURCES-bg'
 	],
 	theme: {
 		container: {

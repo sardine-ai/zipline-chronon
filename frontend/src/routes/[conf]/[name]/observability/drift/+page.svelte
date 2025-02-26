@@ -257,7 +257,7 @@
 			/>
 		</DialogHeader>
 
-		<div class="flex-grow px-7 overflow-y-auto">
+		<div class="grow px-7 overflow-y-auto">
 			{#if selectedSeriesPoint}
 				{@const [groupName, values] =
 					driftSeriesByGroupName.find(([_, values]) =>

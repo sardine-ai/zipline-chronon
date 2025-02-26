@@ -1,6 +1,42 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@config "../tailwind.config.js";
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-200, currentColor);
+	}
+}
+
+@utility content-auto {
+	content-visibility: auto;
+}
+
+@utility grid-stack {
+	& > * {
+		grid-area: 1 / 1;
+	}
+}
+
+@utility scrollbar-none {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
 
 @layer base {
 	:root {
@@ -175,55 +211,37 @@
 	}
 }
 
-@font-face {
-	font-family: 'Geist';
-	src: url('/fonts/Geist-v1.4.01/webfonts/Geist[wght].woff2') format('woff2-variations');
-	font-weight: 100 900;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Geist Mono';
-	src: url('/fonts/GeistMono-1.4.01/webfonts/GeistMono[wght].woff2') format('woff2-variations');
-	font-weight: 100 900;
-	font-style: normal;
-	font-display: swap;
-	unicode-range: U+0030-0039; /* Digits 0-9 */
-}
-
-@font-face {
-	font-family: 'Inter';
-	src: url('/fonts/Inter/Inter-VariableFont_opsz,wght.ttf') format('truetype-variations');
-	font-weight: 100 900;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Inter';
-	src: url('/fonts/Inter/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype-variations');
-	font-weight: 100 900;
-	font-style: italic;
-	font-display: swap;
-}
-
 @layer utilities {
-	.content-auto {
-		content-visibility: auto;
+	@font-face {
+		font-family: 'Geist';
+		src: url('/fonts/Geist-v1.4.01/webfonts/Geist[wght].woff2') format('woff2-variations');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
 	}
 
-	.grid-stack {
-		& > * {
-			grid-area: 1 / 1;
-		}
+	@font-face {
+		font-family: 'Geist Mono';
+		src: url('/fonts/GeistMono-1.4.01/webfonts/GeistMono[wght].woff2') format('woff2-variations');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
+		unicode-range: U+0030-0039; /* Digits 0-9 */
 	}
 
-	.scrollbar-none {
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-		&::-webkit-scrollbar {
-			display: none;
-		}
+	@font-face {
+		font-family: 'Inter';
+		src: url('/fonts/Inter/Inter-VariableFont_opsz,wght.ttf') format('truetype-variations');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
+	}
+
+	@font-face {
+		font-family: 'Inter';
+		src: url('/fonts/Inter/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype-variations');
+		font-weight: 100 900;
+		font-style: italic;
+		font-display: swap;
 	}
 }

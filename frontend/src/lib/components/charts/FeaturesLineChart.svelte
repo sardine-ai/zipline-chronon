@@ -85,7 +85,7 @@
 					{@const value = seriesTooltipData ? valueAccessor(seriesTooltipData) : null}
 
 					<button
-						class="col-span-full grid grid-cols-[1fr,auto] gap-6 hover:bg-neutral-400 py-2 px-3 rounded"
+						class="col-span-full grid grid-cols-[1fr_auto] gap-6 hover:bg-neutral-400 py-2 px-3 rounded"
 						onclick={() => onitemclick?.({ series: s, data: seriesTooltipData, value })}
 						onmouseenter={() => setHighlightSeriesKey(s.key)}
 						onmouseleave={() => setHighlightSeriesKey(null)}
