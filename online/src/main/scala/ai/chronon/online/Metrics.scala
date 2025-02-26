@@ -19,9 +19,13 @@ package ai.chronon.online
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import com.timgroup.statsd.Event
-import com.timgroup.statsd.NonBlockingStatsDClient
-import com.timgroup.statsd.NonBlockingStatsDClientBuilder
+import com.timgroup.statsd.{
+  Event,
+  NoOpStatsDClient,
+  NonBlockingStatsDClient,
+  NonBlockingStatsDClientBuilder,
+  StatsDClient
+}
 
 object Metrics {
   object Environment extends Enumeration {
@@ -131,14 +135,21 @@ object Metrics {
     // In the unix socket case port is configured to be 0
     val statsHost: String = System.getProperty("ai.chronon.metrics.host", "localhost")
     val statsPort: Int = System.getProperty("ai.chronon.metrics.port", "8125").toInt
+    // Can disable stats collection for local / dev environments
+    val statsEnabled: Boolean = System.getProperty("ai.chronon.metrics.enabled", "true").toBoolean
     val tagCache: TTLCache[Context, String] = new TTLCache[Context, String](
       { ctx => ctx.toTags.reverse.mkString(",") },
       { ctx => ctx },
       ttlMillis = 5 * 24 * 60 * 60 * 1000 // 5 days
     )
 
-    private val statsClient: NonBlockingStatsDClient =
-      new NonBlockingStatsDClientBuilder().prefix("ai.zipline").hostname(statsHost).port(statsPort).build()
+    private val statsClient: StatsDClient = {
+      if (statsEnabled) {
+        new NonBlockingStatsDClientBuilder().prefix("ai.zipline").hostname(statsHost).port(statsPort).build()
+      } else {
+        new NoOpStatsDClient()
+      }
+    }
 
   }
 
@@ -178,7 +189,7 @@ object Metrics {
         .append(s)
         .toString
 
-    @transient private lazy val stats: NonBlockingStatsDClient = Metrics.Context.statsClient
+    @transient private lazy val stats: StatsDClient = Metrics.Context.statsClient
 
     def increment(metric: String): Unit = stats.increment(prefix(metric), tags)
 

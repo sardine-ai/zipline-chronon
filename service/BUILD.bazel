@@ -1,11 +1,11 @@
 java_library(
     name = "lib",
     srcs = glob(["src/main/**/*.java"]),
+    resources = glob(["src/main/resources/**/*"]),
     visibility = ["//visibility:public"],
     deps = _SCALA_DEPS + _VERTX_DEPS + [
         "//online:lib",
         "//service_commons:lib",
-        maven_artifact("ch.qos.logback:logback-classic"),
         maven_artifact("com.typesafe:config"),
         maven_artifact("io.netty:netty-all"),
         maven_artifact("io.micrometer:micrometer-registry-statsd"),
@@ -51,4 +51,5 @@ jvm_binary(
     name = "service_assembly",
     main_class = "ai.chronon.service.ChrononServiceLauncher",
     runtime_deps = [":lib"],
+    resources = glob(["src/main/resources/**/*"]),
 )
