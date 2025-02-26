@@ -160,6 +160,7 @@ object Driver {
     protected def buildSparkSession(): SparkSession = {
       implicit val formats: Formats = DefaultFormats
       val yamlLoader = new Yaml()
+      println(s"David Han: ${System.getProperty("user.dir")}")
       val additionalConfs = additionalConfPath.toOption
         .map(Source.fromFile)
         .map((src) =>

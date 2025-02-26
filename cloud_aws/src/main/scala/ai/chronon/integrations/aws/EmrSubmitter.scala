@@ -7,12 +7,14 @@ import ai.chronon.spark.JobType
 import ai.chronon.spark.SparkJob
 import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.Application
+import software.amazon.awssdk.services.emr.model.BootstrapActionConfig
 import software.amazon.awssdk.services.emr.model.CancelStepsRequest
 import software.amazon.awssdk.services.emr.model.Configuration
 import software.amazon.awssdk.services.emr.model.DescribeStepRequest
 import software.amazon.awssdk.services.emr.model.HadoopJarStepConfig
 import software.amazon.awssdk.services.emr.model.JobFlowInstancesConfig
 import software.amazon.awssdk.services.emr.model.RunJobFlowRequest
+import software.amazon.awssdk.services.emr.model.ScriptBootstrapActionConfig
 import software.amazon.awssdk.services.emr.model.StepConfig
 
 import scala.jdk.CollectionConverters.mapAsJavaMapConverter
@@ -23,6 +25,7 @@ class EmrSubmitter(emrClient: EmrClient) extends JobSubmitter{
 
     val stepConfig = StepConfig.builder()
       .name("Zipline Job")
+      .actionOnFailure("CANCEL_AND_WAIT")
       .hadoopJarStep(
         jobType match {
           case SparkJob =>
@@ -38,6 +41,12 @@ class EmrSubmitter(emrClient: EmrClient) extends JobSubmitter{
 
     val runJobFlowRequest = RunJobFlowRequest.builder()
       .name(s"job-${java.util.UUID.randomUUID.toString}")
+      .bootstrapActions(BootstrapActionConfig.builder()
+        .name("Install application files")
+        .scriptBootstrapAction(ScriptBootstrapActionConfig.builder()
+          .path("s3://zipline-artifacts-canary/copy_files.sh")
+          .build())
+        .build())
       .configurations(Configuration.builder
         .classification("spark-hive-site")
         .properties(Map("hive.metastore.client.factory.class" -> "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory").asJava)
@@ -76,6 +85,8 @@ class EmrSubmitter(emrClient: EmrClient) extends JobSubmitter{
           .masterInstanceType("m5.xlarge")
           .slaveInstanceType("m5.xlarge")
           .ec2SubnetId("subnet-085b2af531b50db44")
+          .emrManagedMasterSecurityGroup("sg-04fb79b5932a41298")
+          .emrManagedSlaveSecurityGroup("sg-04fb79b5932a41298")
           .instanceCount(3)
           .keepJobFlowAliveWhenNoSteps(true)
       .build())
@@ -121,7 +132,7 @@ object EmrSubmitter {
       List.empty,
       "spark-submit",
       "--class", "ai.chronon.spark.Driver",
-      "--conf", "spark.files=s3://zipline-warehouse-canary/training_set.v1,s3://zipline-artifacts-canary/additional-confs.yaml",
+      "--conf", "spark.files=s3://zipline-warehouse-canary/training_set.v1",
       "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
       "join",
       "--conf-path", "training_set.v1",
