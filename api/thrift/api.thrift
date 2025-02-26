@@ -34,9 +34,11 @@ struct StagingQuery {
     /**
     * Arbitrary spark query that should be written with `{{ start_date }}`, `{{ end_date }}` and `{{ latest_date }}` templates
     *      - `{{ start_date }}` will be set to this user provided start date, future incremental runs will set it to the latest existing partition + 1 day.
-    *      - `{{ end_date }}` is the end partition of the computing range.
-    *      - `{{ latest_date }}` is the end partition independent of the computing range (meant for cumulative sources).
+    *      - `{{ start_date(offset=-10, lower_bound='2023-01-01', upper_bound='2024-01-01') }}` will shift the date back one day and bound it with lower and upper bounds.
+    *      - `{{ end_date }}` is the end partition of the computing range. offsetting and bounding the end_date also works as described above.
+    *      - `{{ latest_date }}` is the end partition independent of the computing range (meant for cumulative sources). offsetting and bounding the end_date also works as described above.
     *      - `{{ max_date(table=namespace.my_table) }}` is the max partition available for a given table.
+    *
     **/
     2: optional string query
 

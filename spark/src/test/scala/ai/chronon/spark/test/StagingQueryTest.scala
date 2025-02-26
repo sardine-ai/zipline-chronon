@@ -56,7 +56,7 @@ class StagingQueryTest extends AnyFlatSpec {
 
     val function = "temp_replace_a"
     val stagingQueryConf = Builders.StagingQuery(
-      query = s"select * from $viewName WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
+      query = s"select * from $viewName WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
       startPartition = ninetyDaysAgo,
       setups = Seq(s"create temporary function $function as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'"),
       metaData = Builders.MetaData(name = "test.user_session_features",
@@ -127,7 +127,7 @@ class StagingQueryTest extends AnyFlatSpec {
     val fiveDaysAgo = tableUtils.partitionSpec.minus(today, new Window(5, TimeUnit.DAYS))
     val stagingQueryConf = Builders.StagingQuery(
       query =
-        s"select user, session_length, ds, ts from $viewName WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
+        s"select user, session_length, ds, ts from $viewName WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
       startPartition = ninetyDaysAgo,
       setups = Seq("create temporary function temp_replace_b as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'"),
       metaData = Builders.MetaData(name = "test.user_auto_expand",
@@ -149,7 +149,7 @@ class StagingQueryTest extends AnyFlatSpec {
     // Add new feature to the query
     val stagingQueryConfUpdated = Builders.StagingQuery(
       query =
-        s"select user, session_length, new_feature, ds, ts from $viewName WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",
+        s"select user, session_length, new_feature, ds, ts from $viewName WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
       startPartition = fiveDaysAgo,
       metaData = Builders.MetaData(name = "test.user_auto_expand",
                                    namespace = namespace,
@@ -200,9 +200,9 @@ class StagingQueryTest extends AnyFlatSpec {
       query = s"""
             |SELECT
             |  *
-            |  , '{{ latest_date }}' AS latest_ds
+            |  , {{ latest_date }} AS latest_ds
             |FROM $viewName
-            |WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'""".stripMargin,
+            |WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}""".stripMargin,
       startPartition = ninetyDaysAgo,
       metaData = Builders.MetaData(name = "test.staging_latest_date",
                                    namespace = namespace,
@@ -252,9 +252,9 @@ class StagingQueryTest extends AnyFlatSpec {
       query = s"""
                  |SELECT
                  |  *
-                 |  , '{{ max_date(table=$viewName) }}' AS latest_ds
+                 |  , {{ max_date(table=$viewName) }} AS latest_ds
                  |FROM $viewName
-                 |WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'""".stripMargin,
+                 |WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}""".stripMargin,
       startPartition = ninetyDaysAgo,
       metaData =
         Builders.MetaData(name = "test.staging_max_date", namespace = namespace, tableProperties = Map("key" -> "val"))

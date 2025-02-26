@@ -92,7 +92,7 @@ def test_select():
     """
     Test select builder
     """
-    assert query.select("subject", event="event_expr") == {
+    assert query.selects("subject", event="event_expr") == {
         "subject": "subject",
         "event": "event_expr",
     }
