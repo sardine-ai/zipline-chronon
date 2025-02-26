@@ -4,6 +4,7 @@ import ai.chronon.api
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps, WindowOps}
 import ai.chronon.api._
 import ai.chronon.api.thrift.TSerializer
+import ai.chronon.api.Constants
 import ai.chronon.observability._
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.GetRequest
@@ -81,10 +82,10 @@ class DriftStore(kvStore: KVStore,
       result.setKey(key)
     }
 
-    def toSeries: TileSummarySeries = {
+    def toSeries(requestedPercentiles: Seq[String] = Constants.DefaultPercentiles): TileSummarySeries = {
       // Filter percentiles before pivoting
       val filteredSummaries = summaries.map { case (summary, timestamp) =>
-        (filterPercentiles(summary), timestamp)
+        (filterPercentiles(summary, requestedPercentiles), timestamp)
       }
       val result = PivotUtils.pivot(filteredSummaries)
       result.setKey(key)
@@ -210,11 +211,12 @@ class DriftStore(kvStore: KVStore,
   def getSummarySeries(join: String,
                        startMs: Long,
                        endMs: Long,
-                       columnPrefix: Option[String] = None): Try[Future[Seq[TileSummarySeries]]] = {
+                       columnPrefix: Option[String] = None,
+                       percentiles: Seq[String] = Constants.DefaultPercentiles): Try[Future[Seq[TileSummarySeries]]] = {
     metadataStore.getJoinConf(join).map { joinConf =>
       getSummaries(joinConf.join, Some(startMs), Some(endMs), columnPrefix).map { tileSummaryInfos =>
         tileSummaryInfos.map { tileSummaryInfo =>
-          tileSummaryInfo.toSeries
+          tileSummaryInfo.toSeries(percentiles)
         }
       }
     }

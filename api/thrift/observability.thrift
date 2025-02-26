@@ -158,5 +158,6 @@ struct JoinSummaryRequest {
     1: required string name
     2: required i64 startTs
     3: required i64 endTs
+    5: optional string percentiles  // Format: "p5,p50,p95"
     8: required string columnName
 }
