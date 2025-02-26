@@ -1,5 +1,6 @@
 <script lang="ts">
-	import CollapsibleSection from '$src/lib/components/CollapsibleSection.svelte';
+	import { ExpansionPanel } from 'svelte-ux';
+
 	import {
 		Table,
 		TableBody,
@@ -18,16 +19,16 @@
 		DataKind
 	} from '$src/lib/types/codegen';
 	import { keys } from '@layerstack/utils';
-	import Self from './ConfProperties.svelte';
+	import Self from './EntityProperties.svelte';
 	import TrueFalseBadge from '$src/lib/components/TrueFalseBadge.svelte';
-	import type { NodeConfiguration } from '$src/lib/types/LogicalNode';
+	import { getEntityConfig, type EntityData } from '$src/lib/types/Entity/Entity';
 
 	const {
-		conf,
+		entity,
 		metaDataLabel = 'MetaData',
 		includeUpstream = false
 	}: {
-		conf: NodeConfiguration;
+		entity: EntityData;
 		metaDataLabel?: string;
 		includeUpstream?: boolean;
 	} = $props();
@@ -57,13 +58,10 @@
 		'mutationTable',
 		'mutationTopic'
 	] satisfies Array<SourceProperties>;
-
-	let isJoinPartsOpen = $state(false);
-	let isSourcesOpen = $state(false);
 </script>
 
 <div class="grid gap-4 text-sm overflow-auto">
-	{#if conf?.metaData}
+	{#if entity?.metaData}
 		<div>
 			{#if metaDataLabel}
 				<div class="font-semibold py-2">{metaDataLabel}</div>
@@ -72,16 +70,16 @@
 				<Table density="compact">
 					<TableBody>
 						{#each METADATA_PROPERTIES as prop}
-							{#if prop in conf.metaData}
+							{#if prop in entity.metaData}
 								<TableRow class="border-neutral-400">
 									<TableCell width="200px">
 										<span class="text-muted-foreground">{prop}</span>
 									</TableCell>
 									<TableCell>
 										{#if prop === 'online' || prop === 'production'}
-											<TrueFalseBadge isTrue={conf.metaData[prop] ?? false} />
+											<TrueFalseBadge isTrue={entity.metaData[prop] ?? false} />
 										{:else}
-											{conf.metaData[prop]}
+											{entity.metaData[prop]}
 										{/if}
 									</TableCell>
 								</TableRow>
@@ -93,7 +91,7 @@
 		</div>
 	{/if}
 
-	{#if 'modelType' in conf}
+	{#if 'modelType' in entity}
 		<div>
 			<div class="font-semibold py-2">Model</div>
 			<div class="border border-neutral-400 rounded-md">
@@ -104,7 +102,7 @@
 								<span class="text-muted-foreground">modelType</span>
 							</TableCell>
 							<TableCell>
-								{ModelType[conf.modelType ?? 0]}
+								{ModelType[entity.modelType ?? 0]}
 							</TableCell>
 						</TableRow>
 
@@ -113,7 +111,7 @@
 								<span class="text-muted-foreground">modelParams</span>
 							</TableCell>
 							<TableCell>
-								{#each Object.entries(conf.modelParams ?? {}) as [key, value]}
+								{#each Object.entries(entity.modelParams ?? {}) as [key, value]}
 									<div>
 										<span class="text-muted-foreground">{key}:</span>
 										{value}
@@ -129,15 +127,15 @@
 							<TableCell>
 								<div>
 									<span class="text-muted-foreground">name:</span>
-									{conf.outputSchema?.name}
+									{entity.outputSchema?.name}
 								</div>
 								<div>
 									<span class="text-muted-foreground">kind:</span>
-									{DataKind[conf.outputSchema?.kind ?? 0]}
+									{DataKind[entity.outputSchema?.kind ?? 0]}
 								</div>
 								<div>
 									<span class="text-muted-foreground">params:</span>
-									{conf.outputSchema?.params?.map((p) => `${p.name}: ${p.dataType}`).join(', ')}
+									{entity.outputSchema?.params?.map((p) => `${p.name}: ${p.dataType}`).join(', ')}
 								</div>
 							</TableCell>
 						</TableRow>
@@ -147,42 +145,56 @@
 		</div>
 	{/if}
 
-	{#if (conf?.left || conf?.source) && includeUpstream}
-		{@const source = conf.left ?? conf.source}
+	{#if (entity?.left || entity?.source) && includeUpstream}
+		{@const source = entity.left ?? entity.source}
 		{#if source}
+			{@const entity = (source.entities ?? source.events ?? source.joinSource?.join) as EntityData}
+			{@const config = getEntityConfig(entity)}
+			{@const Icon = config.icon}
+			{@const label =
+				entity?.table ?? entity?.snapshotTable ?? entity?.metaData?.name ?? 'Unknown source'}
 			<div>
 				<div class="font-semibold py-2">
-					{conf.left ? 'Left' : 'Source'} ({source.entities
+					{entity.left ? 'Left' : 'Source'} ({source.entities
 						? 'entity'
 						: source.events
 							? 'event'
 							: 'join'})
 				</div>
-				<div class="border border-neutral-400 rounded-md">
-					<Table density="compact">
-						<TableBody>
-							<TableRow class="border-neutral-400">
-								<TableCell>
-									<Self
-										conf={(source.entities ?? source.events ?? source.joinSource) as typeof conf}
-										{includeUpstream}
-									/>
-								</TableCell>
-							</TableRow>
-						</TableBody>
-					</Table>
+
+				<div class="border rounded-md">
+					{#if entity}
+						<ExpansionPanel popout={false} classes={{ root: 'bg-transparent' }}>
+							<div slot="trigger" class="flex-1 p-3 flex items-center gap-3">
+								{#if Icon}
+									<div
+										style:--color={config.color}
+										class="text-[hsl(var(--color))] w-4 h-4 flex items-center justify-center"
+									>
+										<Icon />
+									</div>
+								{/if}
+								<span>
+									{label}
+								</span>
+							</div>
+							<div class="border rounded-md px-4 py-2 bg-neutral-500/10">
+								<Self entity={entity as typeof entity} {includeUpstream} />
+							</div>
+						</ExpansionPanel>
+					{/if}
 				</div>
 			</div>
 		{/if}
 	{/if}
 
-	{#if conf?.rowIds}
+	{#if entity?.rowIds}
 		<div>
 			<div class="font-semibold py-2">Row IDs</div>
 			<div class="border border-neutral-400 rounded-md">
 				<Table density="compact">
 					<TableBody>
-						{#each conf?.rowIds as rowId}
+						{#each entity?.rowIds as rowId}
 							<TableRow class="border-neutral-400">
 								<TableCell>
 									{rowId}
@@ -195,13 +207,13 @@
 		</div>
 	{/if}
 
-	{#if conf?.keyColumns}
+	{#if entity?.keyColumns}
 		<div>
 			<div class="font-semibold py-2">Key Columns</div>
 			<div class="border border-neutral-400 rounded-md">
 				<Table density="compact">
 					<TableBody>
-						{#each conf?.keyColumns as keyColumn}
+						{#each entity?.keyColumns as keyColumn}
 							<TableRow class="border-neutral-400">
 								<TableCell>
 									{keyColumn}
@@ -214,7 +226,7 @@
 		</div>
 	{/if}
 
-	{#if conf?.aggregations}
+	{#if entity?.aggregations}
 		<div>
 			<div class="font-semibold py-2">Aggregations</div>
 			<div class="border border-neutral-400 rounded-md">
@@ -228,7 +240,7 @@
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{#each conf.aggregations as agg}
+						{#each entity.aggregations as agg}
 							<TableRow class="border-neutral-400">
 								{#each AGGREGATION_PROPERTIES as prop}
 									<TableCell>
@@ -261,11 +273,11 @@
 	<!-- Sources -->
 
 	<!-- Source with chained join -->
-	{#if conf?.join}
-		<Self conf={conf.join} metaDataLabel="Join" {includeUpstream} />
+	{#if entity?.join}
+		<Self entity={entity.join} metaDataLabel="Join" {includeUpstream} />
 	{/if}
 
-	{#if keys(conf).some((key) => {
+	{#if keys(entity).some((key) => {
 		// @ts-expect-error: find way to do this without TS complaining
 		return SOURCE_PROPERTIES.includes(key);
 	})}
@@ -275,13 +287,13 @@
 				<Table density="compact">
 					<TableBody>
 						{#each SOURCE_PROPERTIES as prop}
-							{#if prop in conf}
+							{#if prop in entity}
 								<TableRow class="border-neutral-400">
 									<TableCell width="200px">
 										<span class="text-muted-foreground">{prop}</span>
 									</TableCell>
 									<TableCell>
-										{conf[prop]}
+										{entity[prop]}
 									</TableCell>
 								</TableRow>
 							{/if}
@@ -292,30 +304,30 @@
 		</div>
 	{/if}
 
-	{#if conf?.query}
+	{#if entity?.query}
 		<div>
 			<div class="font-semibold py-2">Query</div>
 			<div class="border border-neutral-400 rounded-md">
 				<Table density="compact">
 					<TableBody>
 						{#each ['selects', 'wheres', 'startPartition', 'endPartition', 'timeColumn', 'setup', 'mutationTimeColumn', 'reversalColumn'] as prop}
-							{#if prop in conf.query}
+							{#if prop in entity.query}
 								<TableRow class="border-neutral-400">
 									<TableCell width="200px" class="text-muted-foreground">
 										{prop}
 									</TableCell>
 									<TableCell>
 										{#if prop === 'selects'}
-											{#each Object.entries(conf.query.selects ?? {}) as [key, value]}
+											{#each Object.entries(entity.query.selects ?? {}) as [key, value]}
 												<div>
 													<span class="text-muted-foreground">{key}:</span>
 													{value}
 												</div>
 											{/each}
-										{:else if typeof conf.query === 'object'}
-											{conf.query[prop]}
+										{:else if typeof entity.query === 'object'}
+											{entity.query[prop]}
 										{:else}
-											{conf.query}
+											{entity.query}
 										{/if}
 									</TableCell>
 								</TableRow>
@@ -328,49 +340,74 @@
 	{/if}
 
 	{#if includeUpstream}
-		{#if conf?.joinParts}
-			<CollapsibleSection title="Join Parts" bind:open={isJoinPartsOpen}>
-				{#snippet collapsibleContent()}
-					<div class="ml-4 grid gap-3">
-						{#each conf?.joinParts ?? [] as joinPart}
-							{#if joinPart.groupBy}
-								<div class="border rounded-md px-4 py-2 bg-neutral-500/10">
-									<Self conf={joinPart.groupBy} {includeUpstream} />
+		{#if entity?.joinParts}
+			<div>
+				<div class="font-semibold py-2">Join Parts</div>
+				<div class="border rounded-md">
+					{#each entity?.joinParts ?? [] as joinPart}
+						{#if joinPart.groupBy}
+							{@const entity = joinPart.groupBy}
+							{@const config = getEntityConfig(entity as EntityData)}
+							{@const Icon = config.icon}
+							<ExpansionPanel popout={false} classes={{ root: 'bg-transparent' }}>
+								<div slot="trigger" class="flex-1 p-3 flex items-center gap-3">
+									{#if Icon}
+										<div
+											style:--color={config.color}
+											class="text-[hsl(var(--color))] w-4 h-4 flex items-center justify-center"
+										>
+											<Icon />
+										</div>
+									{/if}
+									<span>
+										{entity.metaData?.name ?? 'Unknown groupBy'}
+									</span>
 								</div>
-							{/if}
-						{/each}
-					</div>
-				{/snippet}
-			</CollapsibleSection>
+								<div class="border rounded-md px-4 py-2 bg-neutral-500/10">
+									<Self entity={joinPart.groupBy} {includeUpstream} />
+								</div>
+							</ExpansionPanel>
+						{/if}
+					{/each}
+				</div>
+			</div>
 		{/if}
 
-		{#if conf?.sources}
-			<CollapsibleSection title="Sources" bind:open={isSourcesOpen}>
-				{#snippet collapsibleContent()}
-					<div class="ml-4 grid gap-3">
-						{#each conf?.sources ?? [] as source}
-							<!-- TODO: Fix "Type `IQuery` is not assignable to type `string`" and remove `as any` -->
-							{#if source?.entities}
-								<div class="border rounded-md px-4 py-2 bg-neutral-500/10">
-									<Self conf={source.entities as typeof conf} {includeUpstream} />
+		{#if entity?.sources}
+			<div>
+				<div class="font-semibold py-2">Sources</div>
+				<div class="border rounded-md">
+					{#each entity?.sources ?? [] as source}
+						{@const entity = (source.entities ??
+							source.events ??
+							source.joinSource?.join) as EntityData}
+						{@const config = getEntityConfig(entity)}
+						{@const Icon = config.icon}
+						{@const label =
+							entity?.table ?? entity?.snapshotTable ?? entity?.metaData?.name ?? 'Unknown source'}
+						{#if entity}
+							<ExpansionPanel popout={false} classes={{ root: 'bg-transparent' }}>
+								<div slot="trigger" class="flex-1 p-3 flex items-center gap-3">
+									{#if Icon}
+										<div
+											style:--color={config.color}
+											class="text-[hsl(var(--color))] w-4 h-4 flex items-center justify-center"
+										>
+											<Icon />
+										</div>
+									{/if}
+									<span>
+										{label}
+									</span>
 								</div>
-							{/if}
-
-							{#if source?.events}
 								<div class="border rounded-md px-4 py-2 bg-neutral-500/10">
-									<Self conf={source.events as typeof conf} {includeUpstream} />
+									<Self entity={entity as typeof entity} {includeUpstream} />
 								</div>
-							{/if}
-
-							{#if source?.joinSource}
-								<div class="border rounded-md px-4 py-2 bg-neutral-500/10">
-									<Self conf={source.joinSource as typeof conf} {includeUpstream} />
-								</div>
-							{/if}
-						{/each}
-					</div>
-				{/snippet}
-			</CollapsibleSection>
+							</ExpansionPanel>
+						{/if}
+					{/each}
+				</div>
+			</div>
 		{/if}
 	{/if}
 </div>

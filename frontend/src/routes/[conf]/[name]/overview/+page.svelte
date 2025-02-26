@@ -28,12 +28,7 @@
 		type INodeInfoArgs,
 		type INodeKeyArgs
 	} from '$src/lib/types/codegen';
-	import {
-		getLogicalNodeConfig,
-		getLogicalNodeType,
-		isStreaming,
-		type CombinedLogicalNode
-	} from '$src/lib/types/LogicalNode.js';
+	import { isStreaming } from '$src/lib/types/LogicalNode.js';
 	import { cn } from '$src/lib/utils';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { tooltipProps } from '$src/lib/components/charts/common.js';
@@ -41,12 +36,13 @@
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$src/lib/components/ui/tabs';
 	import { isMacOS } from '$src/lib/util/browser.js';
 	import { Badge } from '$src/lib/components/ui/badge/index.js';
-	import ConfProperties from './ConfProperties.svelte';
+	import EntityProperties from './EntityProperties.svelte';
 	import CollapsibleSection from '$src/lib/components/CollapsibleSection.svelte';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Button } from '$src/lib/components/ui/button';
 
 	import IconArrowRight from '~icons/heroicons/arrow-right';
+	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity/Entity';
 
 	type DagreData = ComponentProps<Dagre>['data'];
 	type CustomNode = Node & { id: string; key: INodeKeyArgs; value: INodeInfoArgs };
@@ -79,7 +75,6 @@
 	let hoveredNode = $state<CustomNode | null>(null);
 	let graph = $state<ComponentProps<Dagre>['graph'] | undefined>(undefined);
 	let hideTooltip = $state(false);
-	let isDetailsOpen = $state(true);
 
 	onMount(() => {
 		setTimeout(() => {
@@ -150,9 +145,9 @@
 	}
 </script>
 
-<CollapsibleSection title="Details" bind:open={isDetailsOpen} class="mt-5 mb-6">
+<CollapsibleSection title="Details" open class="mt-5 mb-6">
 	{#snippet collapsibleContent()}
-		<ConfProperties conf={data.conf} metaDataLabel="" />
+		<EntityProperties entity={data.conf} metaDataLabel="" />
 	{/snippet}
 </CollapsibleSection>
 
@@ -192,8 +187,8 @@
 						const source = nodesById.get(e.v) as CustomNode;
 						const target = nodesById.get(e.w) as CustomNode;
 
-						const sourceType = getLogicalNodeType(source.value.conf as CombinedLogicalNode);
-						const targetType = getLogicalNodeType(target.value.conf as CombinedLogicalNode);
+						const sourceType = getEntityConfig(source.value.conf as EntityData).logicalType;
+						const targetType = getEntityConfig(target.value.conf as EntityData).logicalType;
 
 						const sourcePoint = {
 							x: source.x + source.width / 2,
@@ -227,7 +222,7 @@
 							{#each nodes as _node (_node.label)}
 								{@const node = _node as CustomNode}
 								{@const [namespace, ...nameParts] = node.label?.split('.') ?? []}
-								{@const config = getLogicalNodeConfig(node)}
+								{@const config = getEntityConfig(node.value.conf as EntityData)}
 								{@const Icon = config?.icon}
 								<Group
 									class={cn(
@@ -298,7 +293,7 @@
 									x="x"
 									y="y"
 									class={cn(
-										isStreaming(edge.source.value.conf as CombinedLogicalNode)
+										isStreaming(edge.source.value.conf as EntityData)
 											? 'stroke-blue-500 stroke-[2] [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
 											: 'stroke-purple-500 stroke-[2] [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x',
 										fadeEdge(edge as unknown as { source: CustomNode; target: CustomNode }) &&
@@ -446,7 +441,7 @@
 			<DialogContent class="max-w-[85vw] h-[95vh] flex flex-col p-0">
 				<DialogHeader class="pt-4 px-7 border-b">
 					{@const [namespace, ...nameParts] = selectedNode.label?.split('.') ?? []}
-					{@const config = getLogicalNodeConfig(selectedNode)}
+					{@const config = getEntityConfig(selectedNode.value.conf as EntityData)}
 					{@const Icon = config?.icon}
 
 					<div class="grid grid-cols-[1fr_auto] gap-3">
@@ -467,11 +462,11 @@
 							</div>
 						</div>
 
-						{#if config.url && selectedNode.id !== data.lineage.mainNode?.name}
+						{#if config.path && selectedNode.id !== data.lineage.mainNode?.name}
 							<div class="mr-10">
 								<Button
 									variant="outline"
-									href="{config.url}/{selectedNode.id}"
+									href="{config.path}/{selectedNode.id}"
 									on:click={() => (selectedNode = null)}
 								>
 									Open
@@ -488,7 +483,7 @@
 				</DialogHeader>
 
 				<TabsContent value="overview" class="overflow-auto px-7">
-					<ConfProperties conf={selectedNode.value.conf as IJoinArgs} includeUpstream />
+					<EntityProperties entity={selectedNode.value.conf as IJoinArgs} includeUpstream />
 				</TabsContent>
 
 				<TabsContent value="details" class="overflow-auto px-7">

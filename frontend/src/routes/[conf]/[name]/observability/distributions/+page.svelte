@@ -14,8 +14,6 @@
 
 	const { data } = $props();
 
-	let isFeatureMonitoringOpen = $state(true);
-
 	let isLoadingDistributions = $state(true);
 	let distributions: ITileSummarySeriesArgs[] = $state([]);
 	try {
@@ -54,7 +52,7 @@
 </div>
 
 <Separator fullWidthExtend={true} wide={true} />
-<CollapsibleSection title="Feature Monitoring" bind:open={isFeatureMonitoringOpen}>
+<CollapsibleSection title="Feature Monitoring" open>
 	{#snippet collapsibleContent()}
 		<ObservabilityNavTabs />
 

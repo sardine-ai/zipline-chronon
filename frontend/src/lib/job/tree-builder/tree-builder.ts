@@ -5,8 +5,7 @@ import type {
 	INodeKeyArgs,
 	INodeInfoArgs
 } from '$lib/types/codegen';
-import type { NodeConfiguration } from '$src/lib/types/LogicalNode';
-
+import type { EntityData } from '$lib/types/Entity/Entity';
 /**
  * Represents a node in the job tracker's hierarchical tree structure.
  * Used to display jobs and their dependencies in a collapsible tree view.
@@ -14,7 +13,7 @@ import type { NodeConfiguration } from '$src/lib/types/LogicalNode';
 export interface JobTreeNode {
 	row: string;
 	node?: INodeKeyArgs;
-	conf?: NodeConfiguration;
+	conf?: EntityData;
 	jobTracker?: IJobTrackerResponseArgs & {
 		tasksByDate?: ITaskInfoArgs[];
 	};

@@ -5,7 +5,11 @@ import { createColorScale } from './src/lib/util/colors';
 const config = {
 	plugins: [typography],
 	darkMode: ['class'],
-	content: ['./src/**/*.{html,js,svelte,ts}', './node_modules/layerchart/**/*.{svelte,js}'],
+	content: [
+		'./src/**/*.{html,js,svelte,ts}',
+		'./node_modules/layerchart/**/*.{svelte,js}',
+		'./node_modules/svelte-ux/**/*.{svelte,js}'
+	],
 	safelist: [
 		'dark',
 		{

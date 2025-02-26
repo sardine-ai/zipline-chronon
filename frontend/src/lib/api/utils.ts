@@ -9,20 +9,17 @@ import {
 	type ISourceArgs,
 	type INodeGraphArgs
 } from '$lib/types/codegen';
-import { getLogicalNodeType, type CombinedLogicalNode } from '$lib/types/LogicalNode';
+import { getEntityConfig, type EntityData } from '../types/Entity/Entity';
 
 /** Convert Join to LineageResponse by walking joinParts */
-export function confToLineage(
-	conf: CombinedLogicalNode,
-	excludeLeft = false
-): ILineageResponseArgs {
+export function confToLineage(conf: EntityData, excludeLeft = false): ILineageResponseArgs {
 	// Use `InternMap` insteaad of `Map` to support object keys (instances will be different once serialized/fetched from API) - https://d3js.org/d3-array/intern
 	// @ts-expect-error: Bad typing
 	const connections: NodeGraph['connections'] = new InternMap([], JSON.stringify);
 	// @ts-expect-error: Bad typing
 	const infoMap: NodeGraph['infoMap'] = new InternMap([], JSON.stringify);
 
-	const logicalType = getLogicalNodeType(conf);
+	const logicalType = getEntityConfig(conf).logicalType;
 
 	const confNodeKey: INodeKeyArgs = {
 		name:
@@ -111,7 +108,7 @@ function processSource(
 	if (source.entities) {
 		const entityNodeKey: INodeKeyArgs = {
 			name: source.entities.snapshotTable,
-			logicalType: LogicalType.TABULAR_DATA // TODO: Are all sources tabular data?
+			logicalType: LogicalType.TABULAR_DATA
 		};
 		infoMap.set(entityNodeKey, {
 			conf: source.entities as ILogicalNodeArgs
@@ -122,7 +119,7 @@ function processSource(
 	if (source.events) {
 		const eventNodeKey: INodeKeyArgs = {
 			name: source.events.table,
-			logicalType: LogicalType.TABULAR_DATA // TODO: Are all sources tabular data?
+			logicalType: LogicalType.TABULAR_DATA
 		};
 		infoMap.set(eventNodeKey, {
 			conf: source.events as ILogicalNodeArgs
@@ -133,7 +130,7 @@ function processSource(
 	if (source.joinSource) {
 		const joinNodeKey: INodeKeyArgs = {
 			name: source.joinSource.join?.metaData?.name,
-			logicalType: LogicalType.TABULAR_DATA // TODO: Are all sources tabular data?
+			logicalType: LogicalType.TABULAR_DATA
 		};
 		infoMap.set(joinNodeKey, {
 			conf: source.joinSource as ILogicalNodeArgs
