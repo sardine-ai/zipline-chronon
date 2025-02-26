@@ -122,8 +122,8 @@ class JoinTest extends AnyFlatSpec {
     val rupeeTable = s"$namespace.rupee_transactions"
     spark.sql(s"DROP TABLE IF EXISTS $dollarTable")
     spark.sql(s"DROP TABLE IF EXISTS $rupeeTable")
-    DataFrameGen.entities(spark, dollarTransactions, 300, partitions = 200).save(dollarTable, Map("tblProp1" -> "1"))
-    DataFrameGen.entities(spark, rupeeTransactions, 50, partitions = 80).save(rupeeTable)
+    DataFrameGen.entities(spark, dollarTransactions, 3000, partitions = 200).save(dollarTable, Map("tblProp1" -> "1"))
+    DataFrameGen.entities(spark, rupeeTransactions, 5000, partitions = 80).save(rupeeTable)
 
     val dollarSource = Builders.Source.entities(
       query = Builders.Query(
@@ -136,7 +136,7 @@ class JoinTest extends AnyFlatSpec {
       snapshotTable = dollarTable
     )
 
-    //println("Rupee Source start partition $month")
+    // println("Rupee Source start partition $month")
     val rupeeSource =
       Builders.Source.entities(
         query = Builders.Query(
@@ -170,7 +170,7 @@ class JoinTest extends AnyFlatSpec {
 
     val queryTable = s"$namespace.queries"
     DataFrameGen
-      .events(spark, queriesSchema, 300, partitions = 180, partitionColumn = Some("date"))
+      .events(spark, queriesSchema, 300, partitions = 90, partitionColumn = Some("date"))
       .save(queryTable, partitionColumns = Seq("date"))
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
@@ -707,7 +707,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueriesDf = DataFrameGen
       .events(spark, itemQueries, 100, partitions = 100)
     // duplicate the events
-    itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) //.union(itemQueriesDf)
+    itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
     (new Analyzer(tableUtils, joinConf, monthAgo, today)).run()
@@ -1069,7 +1069,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueriesDf = DataFrameGen
       .events(spark, itemQueries, 1000, partitions = 100)
     // duplicate the events
-    itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) //.union(itemQueriesDf)
+    itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
     val suffix = if (nameSuffix.isEmpty) "" else s"_$nameSuffix"
