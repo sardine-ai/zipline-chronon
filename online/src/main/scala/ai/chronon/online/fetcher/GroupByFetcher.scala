@@ -27,16 +27,16 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
   @transient private implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   override def isCachingEnabled(groupBy: GroupBy): Boolean = {
-    if (!isCacheSizeConfigured || groupBy.getMetaData == null || groupBy.getMetaData.getName == null) return false
+    if (fetchContext.debug) {
+      configuredBatchIrCacheSize match {
+        case Some(cacheSize) =>
+          logger.info(s"Online IR caching is enabled with cache size = $cacheSize")
+        case None =>
+          logger.info("Online IR caching is disabled")
+      }
+    }
 
-    val gbName = groupBy.getMetaData.getName
-
-    val isCachingFlagEnabled = fetchContext.isCachingEnabled(gbName)
-
-    if (fetchContext.debug)
-      logger.info(s"Online IR caching is ${if (isCachingFlagEnabled) "enabled" else "disabled"} for $gbName")
-
-    isCachingFlagEnabled
+    isCacheSizeConfigured
   }
 
   /** Convert a groupBy request into a batch kv request and optionally a streaming kv request

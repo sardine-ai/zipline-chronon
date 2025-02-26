@@ -19,11 +19,6 @@ case class FetchContext(kvStore: KVStore,
       .exists(_.asInstanceOf[Boolean])
   }
 
-  def isCachingEnabled(groupByName: String): Boolean = {
-    Option(flagStore)
-      .exists(_.isSet("enable_fetcher_batch_ir_cache", Map("group_by_streaming_dataset" -> groupByName).toJava))
-  }
-
   def shouldStreamingDecodeThrow(groupByName: String): Boolean = {
     Option(flagStore)
       .exists(
