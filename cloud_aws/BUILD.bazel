@@ -12,6 +12,7 @@ scala_library(
         maven_artifact("software.amazon.awssdk:aws-core"),
         maven_artifact("software.amazon.awssdk:sdk-core"),
         maven_artifact("software.amazon.awssdk:utils"),
+        maven_artifact("software.amazon.awssdk:emr"),
         maven_artifact("com.google.guava:guava"),
         maven_artifact("org.slf4j:slf4j-api"),
         scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
@@ -32,10 +33,14 @@ test_deps = [
     maven_artifact("software.amazon.awssdk:sdk-core"),
     maven_artifact("software.amazon.awssdk:utils"),
     maven_artifact("software.amazon.awssdk:auth"),
+    maven_artifact("software.amazon.awssdk:emr"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
     scala_artifact_with_suffix("org.typelevel:cats-core"),
     maven_artifact("com.amazonaws:DynamoDBLocal"),
     scala_artifact_with_suffix("com.chuusai:shapeless"),
+    #    scala_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
+    #    scala_artifact_with_suffix("org.mockito:mockito-scala"),
+    #    maven_artifact("org.mockito:mockito-core"),
 ] + _CIRCE_DEPS + _SCALA_TEST_DEPS
 
 scala_library(
