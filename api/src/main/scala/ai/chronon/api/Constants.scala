@@ -95,4 +95,6 @@ object Constants {
 
   // List entity type
   val ListEntityType: String = "entity_type"
+
+  val DefaultPercentiles: Seq[String] = Seq("p5", "p50", "p95")
 }
