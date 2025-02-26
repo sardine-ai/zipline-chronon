@@ -4,4 +4,5 @@ import ai.chronon.orchestration.PhysicalNodeInstance
 
 class BatchRunner(node: PhysicalNodeInstance) extends NodeRunner(node) {
 
+  def frontfill(): Unit = ???
 }

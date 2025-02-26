@@ -16,6 +16,8 @@ scala_library(
         maven_artifact("io.temporal:temporal-sdk"),
         maven_artifact("io.temporal:temporal-serviceclient"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("com.google.protobuf:protobuf-java"),
+        maven_artifact("com.google.code.findbugs:jsr305"),
     ],
 )
 
@@ -29,7 +31,18 @@ test_deps = [
     scala_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
     maven_artifact("org.apache.logging.log4j:log4j-core"),
     maven_artifact("org.apache.logging.log4j:log4j-api"),
+    maven_artifact("io.temporal:temporal-sdk"),
     maven_artifact("io.temporal:temporal-testing"),
+    maven_artifact("io.temporal:temporal-serviceclient"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact("io.grpc:grpc-core"),
+    maven_artifact("io.grpc:grpc-netty-shaded"),
+    maven_artifact("io.grpc:grpc-protobuf"),
+    maven_artifact("io.grpc:grpc-stub"),
+    maven_artifact("io.grpc:grpc-inprocess"),
+    maven_artifact("com.google.guava:guava"),
+    maven_artifact("com.google.protobuf:protobuf-java"),
 ]
 
 scala_library(
