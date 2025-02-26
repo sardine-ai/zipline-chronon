@@ -11,6 +11,7 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ActionButtons from '$lib/components/ActionButtons.svelte';
+	import TrueFalseBadge from '$lib/components/TrueFalseBadge.svelte';
 
 	const {
 		title,
@@ -34,7 +35,10 @@
 <Table>
 	<TableHeader>
 		<TableRow>
-			<TableHead>{title}</TableHead>
+			<TableHead>Name</TableHead>
+			<TableHead>Team</TableHead>
+			<TableHead>Online</TableHead>
+			<TableHead>Production</TableHead>
 		</TableRow>
 	</TableHeader>
 	<TableBody>
@@ -57,6 +61,13 @@
 						>
 							{item.metaData?.name}
 						</a>
+					</TableCell>
+					<TableCell>{item.metaData?.team ?? ''}</TableCell>
+					<TableCell>
+						<TrueFalseBadge isTrue={item.metaData?.online ?? false} />
+					</TableCell>
+					<TableCell>
+						<TrueFalseBadge isTrue={item.metaData?.production ?? false} />
 					</TableCell>
 				</TableRow>
 			{/each}
