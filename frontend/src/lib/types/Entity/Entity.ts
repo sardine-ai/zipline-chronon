@@ -1,65 +1,131 @@
-import IconCube from '~icons/heroicons/cube-16-solid';
-import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
-import IconCubeTransparent from '~icons/heroicons/cube-transparent-16-solid';
-import IconRectangleStack from '~icons/heroicons/rectangle-stack-16-solid';
+import type { ValueOf } from '@layerstack/utils';
 import {
 	type IJoinArgs,
 	type IGroupByArgs,
 	type IModelArgs,
 	type IStagingQueryArgs,
-	ConfType
+	ConfType,
+	LogicalType,
+	type ISourceArgs,
+	type IJoinSourceArgs,
+	type ITabularDataArgs
 } from '$lib/types/codegen';
 
-export const EntityTypes = {
-	MODELS: 'models',
-	JOINS: 'joins',
-	GROUPBYS: 'groupbys',
-	STAGINGQUERIES: 'stagingqueries'
+import IconCube from '~icons/heroicons/cube-16-solid';
+import IconSquare3Stack3d from '~icons/heroicons/square-3-stack-3d-16-solid';
+import IconCubeTransparent from '~icons/heroicons/cube-transparent-16-solid';
+import IconRectangleStack from '~icons/heroicons/rectangle-stack-16-solid';
+import IconTableCells from '~icons/heroicons/table-cells-16-solid';
+import IconSignal from '~icons/heroicons/signal-16-solid';
+
+export const EntityType = {
+	// Conf
+	MODEL: 'MODEL',
+	JOIN: 'JOIN',
+	GROUP_BY: 'GROUP_BY',
+	STAGING_QUERY: 'STAGING_QUERY',
+
+	// Tablular Data
+	ENTITY_SOURCE: 'ENTITY_SOURCE',
+	EVENT_SOURCE: 'EVENT_SOURCE',
+	JOIN_SOURCE: 'JOIN_SOURCE'
 } as const;
 
-export type EntityId = (typeof EntityTypes)[keyof typeof EntityTypes];
-
-export const entityConfig = [
-	{
+export const entityConfig = {
+	[EntityType.MODEL]: {
 		label: 'Models',
+		confType: ConfType.MODEL,
+		logicalType: LogicalType.MODEL,
 		path: '/models',
 		icon: IconCube,
-		id: EntityTypes.MODELS,
-		type: ConfType.MODEL
+		color: '200 80% 50%'
 	},
-	{
+	[EntityType.JOIN]: {
 		label: 'Joins',
+		confType: ConfType.JOIN,
+		logicalType: LogicalType.JOIN,
 		path: '/joins',
 		icon: IconSquare3Stack3d,
-		id: EntityTypes.JOINS,
-		type: ConfType.JOIN
+		color: '100 80% 50%'
 	},
-	{
+	[EntityType.GROUP_BY]: {
 		label: 'GroupBys',
+		confType: ConfType.GROUP_BY,
+		logicalType: LogicalType.GROUP_BY,
 		path: '/groupbys',
 		icon: IconRectangleStack,
-		id: EntityTypes.GROUPBYS,
-		type: ConfType.GROUP_BY
+		color: '50 80% 50%'
 	},
-	{
+	[EntityType.STAGING_QUERY]: {
 		label: 'Staging Queries',
+		confType: ConfType.STAGING_QUERY,
+		logicalType: LogicalType.STAGING_QUERY,
 		path: '/stagingqueries',
 		icon: IconCubeTransparent,
-		id: EntityTypes.STAGINGQUERIES,
-		type: ConfType.STAGING_QUERY
+		color: '150 80% 50%'
+	},
+	[EntityType.ENTITY_SOURCE]: {
+		label: 'Entity Sources',
+		confType: null,
+		logicalType: LogicalType.TABULAR_DATA,
+		path: null,
+		icon: IconTableCells,
+		color: '220 80% 50%'
+	},
+	[EntityType.EVENT_SOURCE]: {
+		label: 'Event Sources',
+		confType: null,
+		logicalType: LogicalType.TABULAR_DATA,
+		path: null,
+		icon: IconSignal,
+		color: '220 80% 50%'
+	},
+	[EntityType.JOIN_SOURCE]: {
+		label: 'Join Sources',
+		confType: null,
+		logicalType: LogicalType.TABULAR_DATA,
+		path: null,
+		icon: IconSquare3Stack3d,
+		color: '100 80% 50%'
 	}
-] as const;
+} as const;
 
-export type Entity = (typeof entityConfig)[number];
+export type EntityConfig = ValueOf<typeof entityConfig>;
 
-// This is a workaround, see https://app.asana.com/0/1208277377735902/1209205208293672/f
-export type EntityWithType = (IJoinArgs | IGroupByArgs | IModelArgs | IStagingQueryArgs) & {
-	entityType: EntityId;
-};
+export type EntityData = NonNullable<
+	IModelArgs &
+		IJoinArgs &
+		IGroupByArgs &
+		IStagingQueryArgs &
+		ITabularDataArgs & // TODO: Remove this
+		IJoinSourceArgs & // TODO: Remove this
+		ISourceArgs['entities'] &
+		ISourceArgs['events'] &
+		ISourceArgs['joinSource']
+>;
 
-// Helper function to get entity config by ID
-export function getEntity(id: EntityId): Entity {
-	const entity = entityConfig.find((entity) => entity.id === id);
-	if (!entity) throw new Error(`Entity with id "${id}" not found`);
-	return entity;
+export function getEntityType(entity: EntityData) {
+	if ('joinParts' in entity) {
+		return EntityType.JOIN;
+	} else if ('sources' in entity) {
+		return EntityType.GROUP_BY;
+	} else if ('query' in entity && typeof entity.query === 'string') {
+		return EntityType.STAGING_QUERY;
+	} else if ('modelType' in entity) {
+		return EntityType.MODEL;
+	} else if ('snapshotTable' in entity) {
+		return EntityType.ENTITY_SOURCE;
+	} else if ('table' in entity) {
+		return EntityType.EVENT_SOURCE;
+	} else if ('join' in entity) {
+		return EntityType.JOIN_SOURCE;
+	} else {
+		console.error('Unknown entity type', entity);
+		throw new Error('Unknown entity type');
+	}
+}
+
+export function getEntityConfig(entity: EntityData) {
+	const entityType = getEntityType(entity);
+	return entityConfig[entityType];
 }

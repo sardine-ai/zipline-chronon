@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack, type ComponentProps } from 'svelte';
+	import { type ComponentProps } from 'svelte';
 	import { BarChart, PieChart } from 'layerchart';
 	import type { DomainType } from 'layerchart/utils/scales';
 	import { entries, sort } from '@layerstack/utils';
@@ -62,8 +62,6 @@
 		return [scale.min, scale.max];
 	});
 
-	let isFeatureMonitoringOpen = $state(true);
-
 	type SeriesItem = NonNullable<FeaturesLineChartProps['series']>[number];
 	let selectedSeriesPoint = $state<{ series: SeriesItem; data: DateValue } | null>(null);
 
@@ -74,10 +72,6 @@
 	function resetZoom() {
 		xDomain = null;
 	}
-
-	let groupSectionStates: { [key: string]: boolean } = $state(
-		untrack(() => Object.fromEntries(driftSeriesByGroupName.map((d) => [d[0], true])))
-	);
 
 	let columnSummaryData: ITileSummarySeriesArgs | null = $state(null);
 	let columnSummaryBaselineData: ITileSummarySeriesArgs | null = $state(null);
@@ -168,17 +162,13 @@
 </div>
 
 <Separator fullWidthExtend={true} wide={true} />
-<CollapsibleSection title="Feature Monitoring" bind:open={isFeatureMonitoringOpen}>
+<CollapsibleSection title="Feature Monitoring" open>
 	{#snippet collapsibleContent()}
 		<ObservabilityNavTabs />
 
 		<div>
 			{#each driftSeriesByGroupName as [groupName, values], i (groupName)}
-				<CollapsibleSection
-					title={groupName}
-					size="small"
-					bind:open={groupSectionStates[groupName]}
-				>
+				<CollapsibleSection title={groupName} size="small" open>
 					{#snippet collapsibleContent()}
 						<div
 							class={cn(

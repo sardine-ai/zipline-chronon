@@ -1,7 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { Api } from '$lib/api/api';
 import { ConfType } from '$src/lib/types/codegen';
-import { getEntity, type EntityId } from '$src/lib/types/Entity/Entity';
+import { entityConfig } from '$src/lib/types/Entity/Entity';
+import { error } from '@sveltejs/kit';
 
 function getConfApi(api: Api, confType: ConfType, confName: string) {
 	switch (confType) {
@@ -31,13 +32,19 @@ function getConfApi(api: Api, confType: ConfType, confName: string) {
 export const load: PageServerLoad = async ({ params, fetch }) => {
 	const api = new Api({ fetch });
 
-	const confType = getEntity(params.conf as EntityId).type;
-	const confApi = getConfApi(api, confType, params.name);
+	const confType = Object.values(entityConfig).find(
+		(c) => c.path?.slice(1) === params.conf
+	)?.confType;
 
-	const [conf, lineage] = await Promise.all([confApi?.conf, confApi?.lineage]);
+	if (confType) {
+		const confApi = getConfApi(api, confType, params.name);
+		const [conf, lineage] = await Promise.all([confApi?.conf, confApi?.lineage]);
 
-	return {
-		conf,
-		lineage
-	};
+		return {
+			conf,
+			lineage
+		};
+	} else {
+		error(404, 'Not found');
+	}
 };

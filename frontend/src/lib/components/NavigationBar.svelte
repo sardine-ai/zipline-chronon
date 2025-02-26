@@ -23,10 +23,10 @@
 	import { isMacOS } from '$lib/util/browser';
 	import { Badge } from '$lib/components/ui/badge';
 	import {
-		getEntity,
-		type Entity,
-		EntityTypes,
-		type EntityWithType
+		EntityType,
+		getEntityConfig,
+		type EntityConfig,
+		type EntityData
 	} from '$lib/types/Entity/Entity';
 
 	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
@@ -42,14 +42,14 @@
 	import IconQuestionMarkCircle16Solid from '~icons/heroicons/question-mark-circle-16-solid';
 
 	type Props = {
-		navItems: Entity[];
+		navItems: EntityConfig[];
 		user: { name: string; avatar: string };
 	};
 
 	const { navItems, user }: Props = $props();
 
 	let open = $state(false);
-	let searchResults: EntityWithType[] = $state([]);
+	let searchResults: EntityData[] = $state([]);
 	let isMac: boolean | undefined = $state(undefined);
 
 	const api = new Api();
@@ -58,13 +58,12 @@
 		if (input.length > 0) {
 			const response = await api.search(input);
 			searchResults = [
-				...(response.joins?.map((item) => ({ ...item, entityType: EntityTypes.JOINS })) || []),
-				...(response.groupBys?.map((item) => ({ ...item, entityType: EntityTypes.GROUPBYS })) ||
-					[]),
-				...(response.models?.map((item) => ({ ...item, entityType: EntityTypes.MODELS })) || []),
+				...(response.joins?.map((item) => ({ ...item, entityType: EntityType.JOIN })) || []),
+				...(response.groupBys?.map((item) => ({ ...item, entityType: EntityType.GROUP_BY })) || []),
+				...(response.models?.map((item) => ({ ...item, entityType: EntityType.MODEL })) || []),
 				...(response.stagingQueries?.map((item) => ({
 					...item,
-					entityType: EntityTypes.STAGINGQUERIES
+					entityType: EntityType.STAGING_QUERY
 				})) || [])
 			];
 		} else {
@@ -137,7 +136,7 @@
 	<Separator class="my-[22px]" />
 	<span class="mb-[10px] px-2 text-xs-medium text-muted-icon-neutral">Datasets</span>
 	<ul class="space-y-[1px] flex-grow">
-		{#each navItems as item}
+		{#each navItems.filter((item) => item.path != null) as item}
 			<li>
 				<Button
 					variant={isActiveRoute(item.path) ? 'default' : 'ghost'}
@@ -249,15 +248,14 @@
 		{:else}
 			<CommandGroup heading={`Search for "${input}"`}>
 				{#each searchResults as entity}
+					{@const config = getEntityConfig(entity)}
 					<!-- todo: enable this once we have data for all joins -->
 					<CommandItem
 						disabled={entity.metaData?.name !== 'risk.user_transactions.txn_join'}
 						onSelect={() =>
-							handleSelect(
-								`${getEntity(entity.entityType).path}/${encodeURIComponent(entity.metaData?.name || '')}`
-							)}
+							handleSelect(`${config.path}/${encodeURIComponent(entity.metaData?.name || '')}`)}
 					>
-						{@const IconEntity = getEntity(entity.entityType).icon}
+						{@const IconEntity = config.icon}
 						<IconEntity />
 						{entity.metaData?.name}
 					</CommandItem>

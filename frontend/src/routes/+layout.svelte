@@ -22,7 +22,7 @@
 	<NavigationSlider />
 
 	<!-- Left navigation -->
-	<NavigationBar navItems={[...entityConfig]} {user} />
+	<NavigationBar navItems={Object.values(entityConfig).filter((c) => c.confType != null)} {user} />
 	<!-- Main content -->
 	<main
 		class="flex-1 flex flex-col overflow-y-auto bg-neutral-100 relative rounded-tl-xl"

@@ -12,7 +12,8 @@
 		headerContentLeft,
 		headerContentRight,
 		title,
-		open = $bindable(true),
+		open = $bindable(false),
+		onOpenChange,
 		size = 'default',
 		class: className = ''
 	}: {
@@ -20,7 +21,8 @@
 		headerContentLeft?: Snippet;
 		headerContentRight?: Snippet;
 		title: string;
-		open: boolean;
+		open?: boolean;
+		onOpenChange?: (open: boolean) => void;
 		size?: 'small' | 'default' | 'large';
 		class?: string;
 	} = $props();
@@ -41,7 +43,7 @@
 	}[size];
 </script>
 
-<Collapsible bind:open class="{sizeClasses.wrapper} {className}">
+<Collapsible bind:open {onOpenChange} class="{sizeClasses.wrapper} {className}">
 	<div class="flex mb-3">
 		<CollapsibleTrigger class="flex items-center space-x-4">
 			<IconChevronDown

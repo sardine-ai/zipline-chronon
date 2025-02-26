@@ -11,11 +11,11 @@ const ConfResponseMap: Record<ConfType, keyof IConfListResponseArgs> = {
 
 export async function load({ fetch, url, params }) {
 	const path = url.pathname;
-	const entityMatch = entityConfig.find((entity) =>
-		params.conf.startsWith(entity.path.substring(1))
+	const entityMatch = Object.values(entityConfig).find((c) =>
+		params.conf.startsWith(c.path?.substring(1) ?? '')
 	);
 
-	if (!entityMatch) {
+	if (!entityMatch || entityMatch.confType === null) {
 		return {
 			items: [],
 			basePath: path,
@@ -25,10 +25,10 @@ export async function load({ fetch, url, params }) {
 
 	try {
 		const api = new Api({ fetch });
-		const response = await api.getConfList(entityMatch.type);
+		const response = await api.getConfList(entityMatch.confType);
 		if (!response) throw new Error(`Failed to fetch ${entityMatch.label.toLowerCase()}`);
 
-		const responseKey = ConfResponseMap[entityMatch.type];
+		const responseKey = ConfResponseMap[entityMatch.confType];
 		const items = response[responseKey] ?? [];
 
 		return {
