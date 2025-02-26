@@ -1,5 +1,5 @@
 <script lang="ts">
-	import LogicalNodeTable from '$lib/components/LogicalNodeTable.svelte';
+	import EntityTable from '$lib/components/EntityTable.svelte';
 	import { sort } from '@layerstack/utils';
 
 	const { data } = $props();
@@ -10,4 +10,4 @@
 	);
 </script>
 
-<LogicalNodeTable items={sortedItems} basePath={data.basePath} title={data.title} />
+<EntityTable items={sortedItems} basePath={data.basePath} title={data.title} />
