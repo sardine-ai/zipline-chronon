@@ -12,6 +12,7 @@ scala_library(
         "//api:thrift_java",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
+        ":shaded_snakeyaml",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact_with_suffix("com.fasterxml.jackson.module:jackson-module-scala"),
@@ -30,7 +31,6 @@ scala_library(
         maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("com.google.code.gson:gson"),
         maven_artifact("jakarta.servlet:jakarta.servlet-api"),
-        maven_artifact("org.yaml:snakeyaml"),
         maven_artifact("org.apache.datasketches:datasketches-memory"),
         maven_artifact("org.apache.datasketches:datasketches-java"),
         maven_artifact_with_suffix("org.rogach:scallop"),
@@ -181,4 +181,12 @@ jvm_binary(
     deploy_env = ["//tools/build_rules/spark:spark"],
     main_class = "ai.chronon.spark.Driver",
     runtime_deps = [":lib"],
+)
+
+create_shaded_library(
+    name = "shaded_snakeyaml",
+    input_artifact = "org.yaml:snakeyaml",
+    inline_rules = [
+        "rule org.yaml.snakeyaml.** org.yaml.shaded_snakeyaml.@1",
+    ],
 )
