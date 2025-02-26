@@ -120,8 +120,14 @@ object EmrSubmitter {
       ),
       List.empty,
       "spark-submit",
-      "--class", "ai.chronon.integrations.aws.EmrSubmitter",
-      "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar"
+      "--class", "ai.chronon.spark.Driver",
+      "--conf", "spark.files=s3://zipline-warehouse-canary/training_set.v1,s3://zipline-artifacts-canary/additional-confs.yaml",
+      "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
+      "join",
+      "--conf-path", "training_set.v1",
+      "--end-date", "2025-02-25",
+      "--conf-type", "joins",
+      "--additional-conf-path","additional-confs.yaml"
 //      "--driver-memory", "10G"
     )
 
