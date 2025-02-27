@@ -34,4 +34,3 @@ object JobSubmitterConstants {
   val FlinkSavepointUriArgKeyword = "--savepoint-uri"
 
 }
-

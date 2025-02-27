@@ -208,13 +208,12 @@ object DataprocSubmitter {
     }
 
     // List of args that are not application args
-    val internalArgs = Set(
-                           JarUriArgKeyword,
+    val internalArgs = Set(JarUriArgKeyword,
                            JobTypeArgKeyword,
                            MainClassKeyword,
                            FlinkMainJarUriArgKeyword,
                            FlinkSavepointUriArgKeyword,
-                  GCSFilesArgKeyword)
+                           GCSFilesArgKeyword)
     val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
 
     val required_vars = List.apply(
