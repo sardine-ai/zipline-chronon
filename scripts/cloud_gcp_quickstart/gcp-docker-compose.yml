@@ -26,7 +26,7 @@ services:
   load-serving-data:
     build:
       context: ../..
-      dockerfile: Dockerfile
+      dockerfile: ../../Dockerfile
     depends_on:
       - bigtable-init
     environment:
@@ -51,7 +51,7 @@ services:
   app:
     build:
       context: ../..
-      dockerfile: Dockerfile
+      dockerfile: ../../Dockerfile
     depends_on:
       - load-serving-data
       - statsd
