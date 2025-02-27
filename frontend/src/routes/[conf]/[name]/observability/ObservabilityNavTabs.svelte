@@ -11,9 +11,9 @@
 			<IconChartLine class="mr-2 size-4" />
 			Drift
 		</TabsTrigger>
-		<TabsTrigger href="./distributions" class="flex items-center">
+		<TabsTrigger href="./summary" class="flex items-center">
 			<IconTableCells class="mr-2" />
-			Distributions
+			Summary
 		</TabsTrigger>
 	</TabsList>
 	<Separator fullWidthExtend={true} />

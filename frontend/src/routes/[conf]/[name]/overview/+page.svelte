@@ -42,7 +42,7 @@
 	import { Button } from '$src/lib/components/ui/button';
 
 	import IconArrowRight from '~icons/heroicons/arrow-right';
-	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity/Entity';
+	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity';
 
 	type DagreData = ComponentProps<Dagre>['data'];
 	type CustomNode = Node & { id: string; key: INodeKeyArgs; value: INodeInfoArgs };

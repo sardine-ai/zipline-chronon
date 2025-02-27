@@ -8,29 +8,20 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import ActionButtons from '$lib/components/ActionButtons.svelte';
+	import { type EntityConfig } from '$lib/types/Entity';
+
 	import TrueFalseBadge from '$lib/components/TrueFalseBadge.svelte';
 
 	const {
-		title,
+		entityConfig,
 		items,
 		basePath
 	}: {
-		title: string;
+		entityConfig: EntityConfig;
 		items: (IJoinArgs | IGroupByArgs | IModelArgs | IStagingQueryArgs)[];
 		basePath: string;
 	} = $props();
 </script>
-
-<PageHeader {title} />
-
-<div class="w-full">
-	<ActionButtons class="mb-4" />
-</div>
-
-<Separator fullWidthExtend={true} />
 
 <Table>
 	<TableHeader>
@@ -45,7 +36,7 @@
 		{#if items.length === 0}
 			<TableRow>
 				<TableCell>
-					No {title.toLowerCase()} found.
+					No {entityConfig.label.toLowerCase()} found.
 				</TableCell>
 			</TableRow>
 		{:else}
@@ -74,5 +65,3 @@
 		{/if}
 	</TableBody>
 </Table>
-
-<Separator fullWidthExtend={true} />

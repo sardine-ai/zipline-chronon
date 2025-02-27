@@ -9,7 +9,7 @@ import {
 	type ISourceArgs,
 	type INodeGraphArgs
 } from '$lib/types/codegen';
-import { getEntityConfig, type EntityData } from '../types/Entity/Entity';
+import { getEntityConfig, type EntityData } from '../types/Entity';
 
 /** Convert Join to LineageResponse by walking joinParts */
 export function confToLineage(conf: EntityData, excludeLeft = false): ILineageResponseArgs {

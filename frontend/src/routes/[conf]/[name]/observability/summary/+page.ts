@@ -9,7 +9,7 @@ export const load = async ({ parent, fetch }) => {
 
 	// Fetch percentile data for each column
 	// TODO: Ignoring errored columns but maybe we should show them in an error state instead
-	const distributionsPromise = Promise.allSettled(
+	const columnSummariesPromise = Promise.allSettled(
 		columnNames.map((columnName) =>
 			api.getColumnSummary({
 				name: confName,
@@ -26,6 +26,6 @@ export const load = async ({ parent, fetch }) => {
 	});
 
 	return {
-		distributionsPromise
+		columnSummariesPromise
 	};
 };

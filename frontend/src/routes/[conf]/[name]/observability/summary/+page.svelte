@@ -14,19 +14,21 @@
 
 	const { data } = $props();
 
-	let isLoadingDistributions = $state(true);
-	let distributions: ITileSummarySeriesArgs[] = $state([]);
+	let isLoading = $state(true);
+	let columnSummaries: ITileSummarySeriesArgs[] = $state([]);
 	try {
-		data.distributionsPromise.then((d) => {
-			distributions = d;
-			isLoadingDistributions = false;
+		data.columnSummariesPromise.then((d) => {
+			columnSummaries = d;
+			isLoading = false;
 		});
 	} catch (err) {
-		console.error('Error loading distributions:', err);
+		console.error('Error loading column summaries:', err);
 	}
 
-	const sortDirection = $derived(getSortDirection(page.url.searchParams, 'distributions'));
-	const sortedDistributions = $derived(sort(distributions, (d) => d.key?.column, sortDirection));
+	const sortDirection = $derived(getSortDirection(page.url.searchParams, 'summary'));
+	const sortedColumnSummaries = $derived(
+		sort(columnSummaries, (d) => d.key?.column, sortDirection)
+	);
 
 	let xDomain = $state<DomainType | undefined>(null);
 	let isZoomed = $derived(xDomain != null);
@@ -45,9 +47,8 @@
 			startTimestamp: data.dateRange.startTimestamp,
 			endTimestamp: data.dateRange.endTimestamp
 		}}
-		showActionButtons={true}
-		showSort={true}
-		context="distributions"
+		showSort
+		context="summary"
 	/>
 </div>
 
@@ -56,19 +57,19 @@
 	{#snippet collapsibleContent()}
 		<ObservabilityNavTabs />
 
-		{#if isLoadingDistributions}
-			<div class="mt-6">Loading distributions...</div>
-		{:else if distributions.length === 0}
+		{#if isLoading}
+			<div class="mt-6">Loading column summaries...</div>
+		{:else if sortedColumnSummaries.length === 0}
 			<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
-				No distribution data available
+				No column summary data available
 			</div>
 		{:else}
-			{#each sortedDistributions as distribution (distribution.key?.column)}
-				<CollapsibleSection title={distribution.key?.column ?? 'Unknown'} size="small" open={true}>
+			{#each sortedColumnSummaries as columnSummary (columnSummary.key?.column)}
+				<CollapsibleSection title={columnSummary.key?.column ?? 'Unknown'} size="small" open={true}>
 					{#snippet collapsibleContent()}
 						<div class="h-[230px]">
 							<PercentileLineChart
-								data={distribution}
+								data={columnSummary}
 								{xDomain}
 								onbrushend={(detail: { xDomain?: DomainType }) =>
 									detail.xDomain && (xDomain = detail.xDomain)}

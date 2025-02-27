@@ -2,7 +2,7 @@
 	import ResetZoomButton from '$lib/components/ResetZoomButton.svelte';
 	import DriftMetricToggle from '$lib/components/DriftMetricToggle.svelte';
 	import DateRangeSelector from '$lib/components/DateRangeSelector.svelte';
-	import ActionButtons from '$lib/components/ActionButtons.svelte';
+	import SortButton from '$lib/components/SortButton.svelte';
 	import type { SortContext } from '$lib/util/sort';
 	import { fromAbsolute, getLocalTimeZone } from '@internationalized/date';
 
@@ -11,8 +11,6 @@
 		onResetZoom,
 		isUsingFallbackDates = false,
 		dateRange = { startTimestamp: 0, endTimestamp: 0 },
-		showActionButtons = false,
-		showCluster = false,
 		showSort = false,
 		context
 	}: {
@@ -20,8 +18,6 @@
 		onResetZoom: () => void;
 		isUsingFallbackDates?: boolean;
 		dateRange?: { startTimestamp: number; endTimestamp: number };
-		showActionButtons?: boolean;
-		showCluster?: boolean;
 		showSort?: boolean;
 		context?: SortContext;
 	} = $props();
@@ -44,8 +40,8 @@
 			<DriftMetricToggle />
 		{/if}
 
-		{#if showActionButtons}
-			<ActionButtons {showCluster} {showSort} {context} />
+		{#if showSort}
+			<SortButton {context} />
 		{/if}
 	</div>
 </div>

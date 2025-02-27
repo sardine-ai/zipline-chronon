@@ -27,7 +27,7 @@
 		getEntityConfig,
 		type EntityConfig,
 		type EntityData
-	} from '$lib/types/Entity/Entity';
+	} from '$lib/types/Entity';
 
 	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
 	import IconAdjustmentsHorizontal from '~icons/heroicons/adjustments-horizontal-16-solid';

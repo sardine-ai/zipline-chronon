@@ -38,7 +38,8 @@ export const entityConfig = {
 		logicalType: LogicalType.MODEL,
 		path: '/models',
 		icon: IconCube,
-		color: '200 80% 50%'
+		color: '200 80% 50%',
+		learnHref: 'https://chronon.ai/' // TODO: Identify better page, if available
 	},
 	[EntityType.JOIN]: {
 		label: 'Joins',
@@ -46,7 +47,8 @@ export const entityConfig = {
 		logicalType: LogicalType.JOIN,
 		path: '/joins',
 		icon: IconSquare3Stack3d,
-		color: '100 80% 50%'
+		color: '100 80% 50%',
+		learnHref: 'https://chronon.ai/authoring_features/Join.html'
 	},
 	[EntityType.GROUP_BY]: {
 		label: 'GroupBys',
@@ -54,7 +56,8 @@ export const entityConfig = {
 		logicalType: LogicalType.GROUP_BY,
 		path: '/groupbys',
 		icon: IconRectangleStack,
-		color: '50 80% 50%'
+		color: '50 80% 50%',
+		learnHref: 'https://chronon.ai/authoring_features/GroupBy.html'
 	},
 	[EntityType.STAGING_QUERY]: {
 		label: 'Staging Queries',
@@ -62,7 +65,8 @@ export const entityConfig = {
 		logicalType: LogicalType.STAGING_QUERY,
 		path: '/stagingqueries',
 		icon: IconCubeTransparent,
-		color: '150 80% 50%'
+		color: '150 80% 50%',
+		learnHref: 'https://chronon.ai/authoring_features/StagingQuery.html'
 	},
 	[EntityType.ENTITY_SOURCE]: {
 		label: 'Entity Sources',
@@ -70,7 +74,8 @@ export const entityConfig = {
 		logicalType: LogicalType.TABULAR_DATA,
 		path: null,
 		icon: IconTableCells,
-		color: '220 80% 50%'
+		color: '220 80% 50%',
+		learnHref: 'https://chronon.ai/authoring_features/Source.html'
 	},
 	[EntityType.EVENT_SOURCE]: {
 		label: 'Event Sources',
@@ -78,7 +83,8 @@ export const entityConfig = {
 		logicalType: LogicalType.TABULAR_DATA,
 		path: null,
 		icon: IconSignal,
-		color: '220 80% 50%'
+		color: '220 80% 50%',
+		learnHref: 'https://chronon.ai/authoring_features/Source.html'
 	},
 	[EntityType.JOIN_SOURCE]: {
 		label: 'Join Sources',
@@ -86,7 +92,8 @@ export const entityConfig = {
 		logicalType: LogicalType.TABULAR_DATA,
 		path: null,
 		icon: IconSquare3Stack3d,
-		color: '100 80% 50%'
+		color: '100 80% 50%',
+		learnHref: 'https://chronon.ai/authoring_features/ChainingFeatures.html'
 	}
 } as const;
 
@@ -128,4 +135,9 @@ export function getEntityType(entity: EntityData) {
 export function getEntityConfig(entity: EntityData) {
 	const entityType = getEntityType(entity);
 	return entityConfig[entityType];
+}
+
+export function getEntityConfigFromPath(path: string) {
+	const config = Object.values(entityConfig).find((c) => c.path != null && path.startsWith(c.path));
+	return config;
 }

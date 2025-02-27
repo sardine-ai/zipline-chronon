@@ -2,20 +2,15 @@
 	import { queryParameters } from 'sveltekit-search-params';
 
 	import { Button } from '$lib/components/ui/button';
-	import { cn } from '$lib/utils';
 
 	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
 
 	import { getSortParamKey, type SortContext, getSortParamsConfig } from '$lib/util/sort';
 
 	let {
-		class: className,
-		showSort = false,
-		context = 'drift'
+		context = 'drift',
+		...restProps
 	}: {
-		showCluster?: boolean;
-		class?: string;
-		showSort?: boolean;
 		context?: SortContext;
 	} = $props();
 
@@ -29,11 +24,7 @@
 	}
 </script>
 
-<div class={cn('inline-flex flex-wrap gap-3', className)}>
-	{#if showSort}
-		<Button variant="secondary" size="sm" icon="leading" on:click={toggleSort}>
-			<IconArrowsUpDown />
-			Sort {params[sortKey] === 'asc' ? 'A-Z' : 'Z-A'}
-		</Button>
-	{/if}
-</div>
+<Button variant="secondary" size="sm" icon="leading" on:click={toggleSort} {...restProps}>
+	<IconArrowsUpDown />
+	Sort {params[sortKey] === 'asc' ? 'A-Z' : 'Z-A'}
+</Button>
