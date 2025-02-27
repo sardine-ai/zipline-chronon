@@ -41,7 +41,7 @@ shared_deps = [
 ]
 
 scala_library(
-    name = "cloud_gcp_lib",
+    name = "base_cloud_gcp_lib",
     srcs = glob(["src/main/**/*.scala"]),
     format = select({
         "//tools/config:scala_2_13": False,  # Disable for 2.13
@@ -49,6 +49,15 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = shared_deps,
+)
+
+jvm_binary(
+    name = "cloud_gcp_lib",
+    deploy_env = ["//tools/build_rules/cloud_gcp:cloud_gcp"],
+    main_class = "None",
+    runtime_deps = [
+        ":base_cloud_gcp_lib"
+    ],
 )
 
 test_deps = [
@@ -82,7 +91,7 @@ scala_test_suite(
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = shared_deps + test_deps + [":cloud_gcp_lib"],
+    deps = shared_deps + test_deps + [":base_cloud_gcp_lib"],
 )
 
 create_shaded_library(
