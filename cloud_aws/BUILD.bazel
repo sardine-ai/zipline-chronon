@@ -1,3 +1,24 @@
+shared_libs = [
+    maven_artifact("software.amazon.awssdk:dynamodb"),
+    maven_artifact("software.amazon.awssdk:regions"),
+    maven_artifact("software.amazon.awssdk:aws-core"),
+    maven_artifact("software.amazon.awssdk:sdk-core"),
+    maven_artifact("software.amazon.awssdk:utils"),
+    maven_artifact("com.google.guava:guava"),
+    maven_artifact("org.slf4j:slf4j-api"),
+    maven_artifact("org.apache.hudi:hudi-aws-bundle"),
+    maven_artifact("junit:junit"),
+    maven_artifact("com.novocode:junit-interface"),
+    maven_artifact("com.fasterxml.jackson.module:jackson-module-afterburner"),
+    scala_artifact_with_suffix("org.apache.hudi:hudi-spark3.5-bundle"),
+    scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
+    "//api:lib",
+    "//api:thrift_java",
+    "//online:lib",
+    "//spark:lib",
+    "//tools/build_rules/spark:spark-exec",
+]
+
 scala_library(
     name = "cloud_aws_lib",
     srcs = glob(["src/main/**/*.scala"]),
@@ -6,48 +27,18 @@ scala_library(
         "//conditions:default": True,  # Enable for other versions
     }),
     visibility = ["//visibility:public"],
-    deps = [
-        maven_artifact("software.amazon.awssdk:dynamodb"),
-        maven_artifact("software.amazon.awssdk:regions"),
-        maven_artifact("software.amazon.awssdk:aws-core"),
-        maven_artifact("software.amazon.awssdk:sdk-core"),
-        maven_artifact("software.amazon.awssdk:utils"),
-        maven_artifact("com.google.guava:guava"),
-        maven_artifact("org.slf4j:slf4j-api"),
-        scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
-        "//api:lib",
-        "//api:thrift_java",
-        "//online:lib",
-        "//spark:lib",
-    ],
+    deps = shared_libs,
 )
 
 test_deps = [
-    ":cloud_aws_lib",
-    "//api:lib",
-    "//online:lib",
-    maven_artifact("software.amazon.awssdk:dynamodb"),
-    maven_artifact("software.amazon.awssdk:regions"),
-    maven_artifact("software.amazon.awssdk:aws-core"),
-    maven_artifact("software.amazon.awssdk:sdk-core"),
-    maven_artifact("software.amazon.awssdk:utils"),
+    maven_artifact("com.amazonaws:DynamoDBLocal"),
+    maven_artifact("org.mockito:mockito-core"),
     maven_artifact("software.amazon.awssdk:auth"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
-    scala_artifact_with_suffix("org.typelevel:cats-core"),
-    maven_artifact("com.amazonaws:DynamoDBLocal"),
     scala_artifact_with_suffix("com.chuusai:shapeless"),
+    scala_artifact_with_suffix("org.typelevel:cats-core"),
+    scala_artifact_with_suffix("org.mockito:mockito-scala"),
 ] + _CIRCE_DEPS + _SCALA_TEST_DEPS
-
-scala_library(
-    name = "test_lib",
-    srcs = glob(["src/test/**/*.scala"]),
-    format = select({
-        "//tools/config:scala_2_13": False,  # Disable for 2.13
-        "//conditions:default": True,  # Enable for other versions
-    }),
-    visibility = ["//visibility:public"],
-    deps = test_deps,
-)
 
 scala_test_suite(
     name = "tests",
@@ -55,5 +46,5 @@ scala_test_suite(
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test_lib"],
+    deps = shared_libs + test_deps + [":cloud_aws_lib"],
 )
