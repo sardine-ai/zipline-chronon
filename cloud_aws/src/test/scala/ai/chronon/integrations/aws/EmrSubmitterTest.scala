@@ -13,7 +13,7 @@ import software.amazon.awssdk.services.emr.model.RunJobFlowRequest
 import software.amazon.awssdk.services.emr.model.RunJobFlowResponse
 
 class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
-  "EmrSubmitterClient" should "return job id when a job is submitted" in {
+  "EmrSubmitterClient" should "return job id when a job is submitted and assert EMR request args" in {
     val jobId = "mock-job-id"
 
     val mockEmrClient = mock[EmrClient]

@@ -20,8 +20,7 @@ import software.amazon.awssdk.services.emr.model.JobFlowInstancesConfig
 import software.amazon.awssdk.services.emr.model.RunJobFlowRequest
 import software.amazon.awssdk.services.emr.model.ScriptBootstrapActionConfig
 import software.amazon.awssdk.services.emr.model.StepConfig
-
-import scala.jdk.CollectionConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters._
 
 class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitter {
 
@@ -45,7 +44,7 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
     "canary" -> "sg-04fb79b5932a41298"
   )
 
-  private val CopyS3FilesToMntScript = "s3://zipline-artifacts-canary/copy_s3_files.sh"
+  private val CopyS3FilesToMntScript = "copy_s3_files.sh"
 
   override def submit(jobType: JobType,
                       jobProperties: Map[String, String],
@@ -126,13 +125,14 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
 
     // Add bootstrap actions if any
     if (files.nonEmpty) {
+      val artifactsBucket = s"s3://zipline-artifacts-${customerId}/"
       val bootstrapActionConfig = BootstrapActionConfig
         .builder()
         .name("EMR Submitter: Copy S3 Files")
         .scriptBootstrapAction(
           ScriptBootstrapActionConfig
             .builder()
-            .path(CopyS3FilesToMntScript)
+            .path(artifactsBucket + CopyS3FilesToMntScript)
             .args(files: _*)
             .build())
         .build()
