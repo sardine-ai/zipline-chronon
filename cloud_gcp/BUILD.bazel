@@ -33,7 +33,6 @@ shared_deps = [
     maven_artifact("com.google.protobuf:protobuf-java"),
     maven_artifact("io.grpc:grpc-netty-shaded"),
     maven_artifact("org.slf4j:slf4j-api"),
-    maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
     maven_artifact("org.threeten:threetenbp"),
     maven_artifact("org.apache.kafka:kafka-clients"),
     maven_artifact("com.google.cloud.spark:spark-3.5-bigquery"),
