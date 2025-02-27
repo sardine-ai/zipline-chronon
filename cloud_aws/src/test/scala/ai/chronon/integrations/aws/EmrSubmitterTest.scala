@@ -19,7 +19,7 @@ class EmrSubmitterTest extends AnyFlatSpec with BeforeAndAfterAll {
 //
 //  }
 //
-  it should "Used to iterate locally. Do not enable this in CI/CD!" in {
+  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
     val emrSubmitter = new EmrSubmitter("canary",
                                         EmrClient
                                           .builder()
@@ -28,7 +28,7 @@ class EmrSubmitterTest extends AnyFlatSpec with BeforeAndAfterAll {
       SparkJob,
       Map(
         MainClass -> "ai.chronon.spark.Driver",
-        JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
+        JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar"
       ),
       List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
       "group-by-backfill",

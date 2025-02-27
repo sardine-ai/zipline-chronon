@@ -52,7 +52,6 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
                       files: List[String],
                       args: String*): String = {
 
-
     val runJobFlowRequestBuilder = RunJobFlowRequest
       .builder()
       .name(s"job-${java.util.UUID.randomUUID.toString}")
@@ -85,7 +84,9 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
           .slaveInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
           // Hack: We hardcode the subnet ID for each customer of Zipline. The subnet gets created from Terraform
           // so we'll need to be careful that the subnet doesn't get accidentally destroyed.
-          .ec2SubnetId(CustomerToSubnetIdMap.getOrElse(customerId, throw new RuntimeException(s"No subnet id found for $customerId")))
+          .ec2SubnetId(
+            CustomerToSubnetIdMap.getOrElse(customerId,
+                                            throw new RuntimeException(s"No subnet id found for $customerId")))
           .emrManagedMasterSecurityGroup(customerSecurityGroupId)
           .emrManagedSlaveSecurityGroup(customerSecurityGroupId)
           .instanceCount(jobProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount).toInt)
@@ -97,7 +98,11 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
       .releaseLabel(EmrReleaseLabel)
 
     // Add single step (spark job) to run:
-    val sparkSubmitArgs = Seq("spark-submit", "--class", jobProperties(MainClass), jobProperties(JarURI)) ++ args // For EMR, we explicitly spark-submit the job
+    val sparkSubmitArgs =
+      Seq("spark-submit",
+          "--class",
+          jobProperties(MainClass),
+          jobProperties(JarURI)) ++ args // For EMR, we explicitly spark-submit the job
     val stepConfig = StepConfig
       .builder()
       .name("Zipline Job")
@@ -133,8 +138,6 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
         .build()
       runJobFlowRequestBuilder.bootstrapActions(bootstrapActionConfig)
     }
-
-
 
     val jobFlowResponse = emrClient.runJobFlow(
       runJobFlowRequestBuilder.build()
