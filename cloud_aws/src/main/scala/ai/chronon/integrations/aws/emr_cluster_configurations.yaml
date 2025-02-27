@@ -1,0 +1,4 @@
+auto_termination_policy: 172800 # 2 days in seconds
+master_instance_type: "m5.xlarge"
+slave_instance_type: "m5.xlarge"
+instance_count: 2

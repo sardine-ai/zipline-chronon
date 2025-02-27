@@ -23,4 +23,15 @@ object JobSubmitterConstants {
   val FlinkMainJarURI = "flinkMainJarUri"
   val SavepointUri = "savepointUri"
   val FlinkStateUri = "flinkStateUri"
+  val ClusterInstanceCount = "clusterInstanceCount"
+  val ClusterInstanceType = "clusterInstanceType"
+  val ClusterIdleTimeout = "clusterIdleTimeout"
+
+  val JarUriArgKeyword = "--jar-uri"
+  val JobTypeArgKeyword = "--job-type"
+  val MainClassKeyword = "--main-class"
+  val FlinkMainJarUriArgKeyword = "--flink-main-jar-uri"
+  val FlinkSavepointUriArgKeyword = "--savepoint-uri"
+
 }
+

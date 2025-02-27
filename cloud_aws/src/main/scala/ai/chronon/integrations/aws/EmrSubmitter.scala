@@ -1,12 +1,16 @@
 package ai.chronon.integrations.aws
 
+import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterIdleTimeout
+import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterInstanceCount
+import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterInstanceType
 import ai.chronon.spark.JobSubmitter
-import ai.chronon.spark.JobSubmitterConstants.JarURI
-import ai.chronon.spark.JobSubmitterConstants.MainClass
+import ai.chronon.spark.JobSubmitterConstants._
 import ai.chronon.spark.JobType
 import ai.chronon.spark.SparkJob
+import ai.chronon.spark.{SparkJob => TypeSparkJob}
 import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.Application
+import software.amazon.awssdk.services.emr.model.AutoTerminationPolicy
 import software.amazon.awssdk.services.emr.model.BootstrapActionConfig
 import software.amazon.awssdk.services.emr.model.CancelStepsRequest
 import software.amazon.awssdk.services.emr.model.Configuration
@@ -19,9 +23,48 @@ import software.amazon.awssdk.services.emr.model.StepConfig
 
 import scala.jdk.CollectionConverters.mapAsJavaMapConverter
 
-class EmrSubmitter(emrClient: EmrClient) extends JobSubmitter{
+class EmrSubmitter(customerId:String, emrClient: EmrClient) extends JobSubmitter{
+
+  private val ClusterApplications = List(
+    "Flink",
+    "Zeppelin",
+    "JupyterEnterpriseGateway",
+    "Hive",
+    "Hadoop",
+    "Livy",
+    "Spark"
+  )
+
+  private val EmrReleaseLabel = "emr-7.2.0"
+
+  // Customer specific infra configurations
+  private val CustomerToSubnetIdMap = Map(
+    "canary" -> "subnet-085b2af531b50db44",
+  )
+  private val CustomerToSecurityGroupIdMap = Map(
+    "canary" -> "sg-04fb79b5932a41298"
+  )
+
+  private def buildApplicationConfigurations(): Configuration = {
+    Configuration.builder
+      .classification("spark-hive-site")
+      .properties(Map("hive.metastore.client.factory.class" -> "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory").asJava)
+      .build()
+  }
+
+  private def buildApplications(): Application = {
+    Application.builder()
+      .name("Flink")
+      .build()
+  }
 
   override def submit(jobType: JobType, jobProperties: Map[String, String], files: List[String], args: String*): String = {
+
+    // For EMR, we explicitly spark-submit the job
+    val sparkSubmitArgs = Seq(
+      "spark-submit",
+      "--class", jobProperties(MainClass),
+      jobProperties(JarURI)) ++ args
 
     val stepConfig = StepConfig.builder()
       .name("Zipline Job")
@@ -30,69 +73,52 @@ class EmrSubmitter(emrClient: EmrClient) extends JobSubmitter{
         jobType match {
           case SparkJob =>
             HadoopJarStepConfig.builder()
-//              .mainClass(jobProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
-//              )
-              .jar("command-runner.jar") // https://docs.aws.amazon.com/en_us/emr/latest/ReleaseGuide/emr-spark-submit-step.html
-              .args(args: _*)
+              // Using command-runner.jar from AWS:
+              // https://docs.aws.amazon.com/en_us/emr/latest/ReleaseGuide/emr-spark-submit-step.html
+              .jar("command-runner.jar")
+              .args(sparkSubmitArgs: _*)
               .build()
+          // TODO: add flink
           case _ => throw new IllegalArgumentException("Unsupported job type")
         }
       ).build()
 
+    val customerSubnetId = CustomerToSubnetIdMap.getOrElse(customerId, throw new RuntimeException(s"No subnet id found for $customerId"))
+    val customerSecurityGroupId = CustomerToSecurityGroupIdMap.getOrElse(customerId, throw new RuntimeException(s"No security group id found for $customerId"))
+
     val runJobFlowRequest = RunJobFlowRequest.builder()
       .name(s"job-${java.util.UUID.randomUUID.toString}")
+      .autoTerminationPolicy(AutoTerminationPolicy.builder()
+        .idleTimeout(jobProperties.getOrElse(ClusterIdleTimeout, s"$DefaultClusterIdleTimeout").toLong)
+        .build())
       .bootstrapActions(BootstrapActionConfig.builder()
-        .name("Install application files")
+        .name("EMR Submitter: Bootstrap Action")
         .scriptBootstrapAction(ScriptBootstrapActionConfig.builder()
-          .path("s3://zipline-artifacts-canary/copy_files.sh")
+//          .path("s3://zipline-artifacts-canary/copy_files.sh")
+.path("s3://zipline-artifacts-canary/copy_files_purchases.sh")
           .build())
         .build())
-      .configurations(Configuration.builder
-        .classification("spark-hive-site")
-        .properties(Map("hive.metastore.client.factory.class" -> "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory").asJava)
-        .build())
-      .applications(
-//        Flink 1.18.1, Zeppelin 0.10.1, JupyterEnterpriseGateway 2.6.0, Hive 3.1.3, Hadoop 3.3.6, Livy 0.8.0, Spark 3.5.1
-        Application.builder()
-          .name("Flink")
-          .build(),
-//        Application.builder()
-//          .name("Zeppelin")
-//          .version("0.10.1")
-//          .build(),
-//        Application.builder()
-//          .name("JupyterEnterpriseGateway")
-//          .version("2.6.0")
-//          .build(),
-        Application.builder()
-          .name("Hive")
-          .build(),
-        Application.builder()
-          .name("Hadoop")
-          .build(),
-//        Application.builder()
-//          .name("Livy")
-//          .version("0.8.0")
-//          .build(),
-        Application.builder()
-          .name("Spark")
-          .build()
-      )
+      .configurations(buildApplicationConfigurations())
+      .applications(ClusterApplications.map(app => Application.builder().name(app).build()): _*)
       .steps(stepConfig)
-      .logUri("s3://zipline-warehouse-canary/emr/")
+      .logUri(s"s3://zipline-warehouse-${customerId}/emr/") // TODO make this generalizable
       .instances(
         JobFlowInstancesConfig.builder()
-          .masterInstanceType("m5.xlarge")
-          .slaveInstanceType("m5.xlarge")
-          .ec2SubnetId("subnet-085b2af531b50db44")
-          .emrManagedMasterSecurityGroup("sg-04fb79b5932a41298")
-          .emrManagedSlaveSecurityGroup("sg-04fb79b5932a41298")
-          .instanceCount(3)
-          .keepJobFlowAliveWhenNoSteps(true)
+          // We may want to make master and slave instance types different in the future
+          .masterInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
+          .slaveInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
+          // Hack: We hardcode the subnet ID for each customer of Zipline. The subnet gets created from Terraform
+          // so we'll need to be careful that the subnet doesn't get accidentally destroyed.
+          .ec2SubnetId(customerSubnetId)
+          .emrManagedMasterSecurityGroup(customerSecurityGroupId)
+          .emrManagedSlaveSecurityGroup(customerSecurityGroupId)
+          .instanceCount(jobProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount).toInt)
+          .keepJobFlowAliveWhenNoSteps(true) // Keep the cluster alive after the job is done
       .build())
-      .serviceRole("zipline_canary_emr_service_role")
-      .jobFlowRole("zipline_canary_emr_profile")
-      .releaseLabel("emr-7.2.0")
+      // TODO: need to double check that this is how we want our role names to be
+      .serviceRole(s"zipline_${customerId}_emr_service_role")
+      .jobFlowRole(s"zipline_${customerId}_emr_profile")
+      .releaseLabel(EmrReleaseLabel)
       .build()
 
     val jobFlowResponse = emrClient.runJobFlow(
@@ -115,38 +141,74 @@ class EmrSubmitter(emrClient: EmrClient) extends JobSubmitter{
 
 object EmrSubmitter {
   def apply(): EmrSubmitter = {
-    val emrClient = EmrClient.builder()
-      .build()
+    val customerId = sys.env.getOrElse("CUSTOMER_ID", throw new Exception("CUSTOMER_ID not set")).toLowerCase
 
-    new EmrSubmitter(emrClient)
+    new EmrSubmitter(customerId, EmrClient.builder()
+      .build())
   }
 
+  private val ClusterInstanceTypeArgKeyword = "--cluster-instance-type"
+  private val ClusterInstanceCountArgKeyword = "--cluster-instance-count"
+  private val ClusterIdleTimeoutArgKeyword = "--cluster-idle-timeout"
+
+  private val DefaultClusterInstanceType = "m5.xlarge"
+  private val DefaultClusterInstanceCount = "3"
+  private val DefaultClusterIdleTimeout = 60 * 60 * 24 * 2 // 2 days in seconds
 
 
   def main(args: Array[String]): Unit = {
-    val emrSubmitter = EmrSubmitter()
-    val jobId = emrSubmitter.submit(SparkJob,
-      Map.apply(
-        JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar"
-      ),
-      List.empty,
-      "spark-submit",
-      "--class", "ai.chronon.spark.Driver",
-//      "--conf", "spark.files=s3://zipline-warehouse-canary/training_set.v1",
-      "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
-      "join",
-      "--conf-path", "/mnt/zipline/training_set.v1",
-      "--end-date", "2025-02-25",
-      "--conf-type", "joins",
-      "--additional-conf-path","/mnt/zipline/additional-confs.yaml"
-//      "--driver-memory", "10G"
+
+    // List of args that are not application args
+    val internalArgs = Set(
+      JarUriArgKeyword,
+      JobTypeArgKeyword,
+      MainClassKeyword,
+      FlinkMainJarUriArgKeyword,
+      FlinkSavepointUriArgKeyword,
+      ClusterInstanceTypeArgKeyword,
+      ClusterInstanceCountArgKeyword,
+      ClusterIdleTimeoutArgKeyword
     )
 
-    println(jobId)
-//      .withArgs("spark-submit","--executor-memory","1g","--class","org.apache.spark.examples.SparkPi","/usr/lib/spark/examples/jars/spark-examples.jar","10");
+    val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
 
-    //    files: spark.yarn.dist.files
-//    spark.files	 https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/jobs-spark.html
-//
+    val jarUri = args.find(_.startsWith(JarUriArgKeyword)).map(_.split("=")(1)).getOrElse(throw new Exception("Jar URI not found"))
+    val mainClass = args.find(_.startsWith(MainClassKeyword)).map(_.split("=")(1)).getOrElse(throw new Exception("Main class not found"))
+    val jobTypeValue = args.find(_.startsWith(JobTypeArgKeyword)).map(_.split("=")(1)).getOrElse(throw new Exception("Job type not found"))
+    val clusterInstanceType = args.find(_.startsWith(ClusterInstanceTypeArgKeyword)).map(_.split("=")(1)).getOrElse(DefaultClusterInstanceType)
+    val clusterInstanceCount = args.find(_.startsWith(ClusterInstanceCountArgKeyword)).map(_.split("=")(1)).getOrElse(DefaultClusterInstanceCount)
+    val clusterIdleTimeout = args.find(_.startsWith(ClusterIdleTimeoutArgKeyword)).map(_.split("=")(1)).getOrElse(DefaultClusterIdleTimeout.toString)
+
+    val (jobType, jobProps) = jobTypeValue.toLowerCase match {
+      case "spark" => (TypeSparkJob, Map(MainClass -> mainClass, JarURI -> jarUri, ClusterInstanceType -> clusterInstanceType, ClusterInstanceCount -> clusterInstanceCount, ClusterIdleTimeout -> clusterIdleTimeout))
+      // TODO: add flink
+      case _ => throw new Exception("Invalid job type")
+    }
+
+    val finalArgs = userArgs
+
+    val emrSubmitter = EmrSubmitter()
+    val jobId = emrSubmitter.submit(
+     jobType, jobProps, List.empty, finalArgs:_*
+    )
+
+//    val jobId = emrSubmitter.submit(SparkJob,
+//      Map.apply(
+//        JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar"
+//      ),
+//      List.empty,
+//      "spark-submit",
+//      "--class", "ai.chronon.spark.Driver",
+//      "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
+//      "join",
+//      "--conf-path", "/mnt/zipline/training_set.v1",
+//      "--end-date", "2025-02-25",
+//      "--conf-type", "joins",
+//      "--additional-conf-path","/mnt/zipline/additional-confs.yaml"
+//    )
+
+    println("EMR job id: " + jobId)
+    println(s"Safe to exit. Follow the job status at: https://console.aws.amazon.com/emr/home#/clusterDetails/$jobId")
+
   }
 }

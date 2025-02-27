@@ -27,6 +27,7 @@ test_deps = [
     ":cloud_aws_lib",
     "//api:lib",
     "//online:lib",
+    "//spark:lib",
     maven_artifact("software.amazon.awssdk:dynamodb"),
     maven_artifact("software.amazon.awssdk:regions"),
     maven_artifact("software.amazon.awssdk:aws-core"),
