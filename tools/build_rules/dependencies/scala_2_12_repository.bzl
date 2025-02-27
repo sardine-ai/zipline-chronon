@@ -38,6 +38,8 @@ scala_2_12_repository = repository(
         # Google Cloud
         "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.41.1",
 
+        "org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0",
+
         # Circe
         "io.circe:circe-core_2.12:0.14.9",
         "io.circe:circe-generic_2.12:0.14.9",

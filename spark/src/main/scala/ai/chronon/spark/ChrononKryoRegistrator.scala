@@ -169,7 +169,9 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "org.apache.spark.sql.catalyst.expressions.GenericInternalRow",
       "org.apache.datasketches.kll.KllHeapFloatsSketch",
       "org.apache.datasketches.kll.KllSketch$SketchStructure",
-      "org.apache.datasketches.kll.KllSketch$SketchType"
+      "org.apache.datasketches.kll.KllSketch$SketchType",
+      "scala.reflect.ManifestFactory$LongManifest",
+      "scala.collection.immutable.ArraySeq$ofInt"
     )
     names.foreach(name => doRegister(name, kryo))
 
@@ -188,6 +190,31 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       case _: ClassNotFoundException => // do nothing
     }
   }
+}
+
+class ChrononHudiKryoRegistrator extends ChrononKryoRegistrator {
+  override def registerClasses(kryo: Kryo): Unit = {
+    super.registerClasses(kryo)
+    val additionalClassNames = Seq(
+      "org.apache.hudi.storage.StoragePath",
+      "org.apache.hudi.metadata.HoodieBackedTableMetadataWriter$DirectoryInfo",
+      "org.apache.hudi.common.model.HoodieAvroRecord",
+      "org.apache.hudi.common.model.HoodieKey",
+      "org.apache.hudi.common.model.HoodieOperation",
+      "org.apache.hudi.metadata.HoodieMetadataPayload",
+      "org.apache.hudi.common.model.HoodieRecordLocation",
+      "org.apache.hudi.client.FailOnFirstErrorWriteStatus",
+      "org.apache.hudi.common.model.HoodieWriteStat",
+      "org.apache.hudi.common.model.HoodieWriteStat$RuntimeStats",
+      "org.apache.hudi.common.util.collection.ImmutablePair",
+      "org.apache.hudi.avro.model.HoodieMetadataFileInfo",
+      "org.apache.hudi.common.util.Option",
+      "org.apache.hudi.common.model.HoodieDeltaWriteStat",
+      "org.apache.hudi.storage.StoragePathInfo"
+    )
+    additionalClassNames.foreach(name => doRegister(name, kryo))
+  }
+
 }
 
 class ChrononDeltaLakeKryoRegistrator extends ChrononKryoRegistrator {
