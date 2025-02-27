@@ -82,8 +82,8 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
           // We may want to make master and slave instance types different in the future
           .masterInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
           .slaveInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
-          // Hack: We hardcode the subnet ID for each customer of Zipline. The subnet gets created from Terraform
-          // so we'll need to be careful that the subnet doesn't get accidentally destroyed.
+          // Hack: We hardcode the subnet ID and sg id for each customer of Zipline. The subnet gets created from
+          // Terraform so we'll need to be careful that these don't get accidentally destroyed.
           .ec2SubnetId(
             CustomerToSubnetIdMap.getOrElse(customerId,
                                             throw new RuntimeException(s"No subnet id found for $customerId")))

@@ -1,16 +1,95 @@
 package ai.chronon.integrations.aws
 
+import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.spark.SparkJob
 import org.scalatest.flatspec.AnyFlatSpec
 import software.amazon.awssdk.services.emr.EmrClient
 import ai.chronon.spark.JobSubmitterConstants._
-import org.scalatest.BeforeAndAfterAll
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.mockito.Mockito.when
+import org.scalatestplus.mockito.MockitoSugar
+import software.amazon.awssdk.services.emr.model.RunJobFlowRequest
+import software.amazon.awssdk.services.emr.model.RunJobFlowResponse
 
-class EmrSubmitterTest extends AnyFlatSpec with BeforeAndAfterAll {
-//  "EmrSubmitterClient" should "return job id when a job is submitted" in {
-//
-//  }
-//
+class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
+  "EmrSubmitterClient" should "return job id when a job is submitted" in {
+    val jobId = "mock-job-id"
+
+    val mockEmrClient = mock[EmrClient]
+
+    val requestCaptor = org.mockito.ArgumentCaptor.forClass(classOf[RunJobFlowRequest])
+
+    when(
+      mockEmrClient.runJobFlow(
+        requestCaptor.capture()
+      )).thenReturn(RunJobFlowResponse.builder().jobFlowId(jobId).build())
+
+    val expectedCustomerId = "canary"
+    val expectedApplicationArgs = Seq("group-by-backfill", "arg1", "arg2")
+    val expectedFiles = List("s3://random-conf", "s3://random-data")
+    val expectedMainClass = "some-main-class"
+    val expectedJarURI = "s3://-random-jar-uri"
+    val expectedIdleTimeout = 2
+    val expectedClusterInstanceType = "some-type"
+    val expectedClusterInstanceCount = 5
+
+    val submitter = new EmrSubmitter(expectedCustomerId, mockEmrClient)
+    val submittedJobId = submitter.submit(
+      SparkJob,
+      Map(
+        MainClass -> expectedMainClass,
+        JarURI -> expectedJarURI,
+        ClusterIdleTimeout -> expectedIdleTimeout.toString,
+        ClusterInstanceType -> expectedClusterInstanceType,
+        ClusterInstanceCount -> expectedClusterInstanceCount.toString
+      ),
+      expectedFiles,
+      expectedApplicationArgs: _*
+    )
+    assertEquals(submittedJobId, jobId)
+
+    val actualRequest = requestCaptor.getValue
+
+    // "canary" specific assertions
+    assertEquals(actualRequest.logUri(), "s3://zipline-warehouse-canary/emr/")
+    assertEquals(actualRequest.instances().ec2SubnetId(), "subnet-085b2af531b50db44")
+    assertEquals(actualRequest.instances().emrManagedMasterSecurityGroup(), "sg-04fb79b5932a41298")
+    assertEquals(actualRequest.instances().emrManagedSlaveSecurityGroup(), "sg-04fb79b5932a41298")
+
+    // cluster specific assertions
+    assertEquals(actualRequest.releaseLabel(), "emr-7.2.0")
+    assertEquals(actualRequest.instances().masterInstanceType(), expectedClusterInstanceType)
+    assertEquals(actualRequest.instances().slaveInstanceType(), expectedClusterInstanceType)
+    assertEquals(actualRequest.instances().instanceCount(), expectedClusterInstanceCount)
+    assertEquals(actualRequest.instances().keepJobFlowAliveWhenNoSteps(), true)
+    assertEquals("s3://zipline-artifacts-canary/copy_s3_files.sh",
+                 actualRequest.bootstrapActions().get(0).scriptBootstrapAction().path())
+    assertEquals(expectedFiles, actualRequest.bootstrapActions().get(0).scriptBootstrapAction().args().toScala)
+    assertTrue(
+      actualRequest
+        .applications()
+        .toScala
+        .map(app => app.name)
+        .forall(List("Flink", "Zeppelin", "JupyterEnterpriseGateway", "Hive", "Hadoop", "Livy", "Spark").contains))
+    assertEquals("spark-hive-site", actualRequest.configurations().get(0).classification())
+    assertEquals(
+      "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
+      actualRequest.configurations().get(0).properties().get("hive.metastore.client.factory.class")
+    )
+    assertEquals("zipline_canary_emr_profile", actualRequest.jobFlowRole())
+    assertEquals("zipline_canary_emr_service_role", actualRequest.serviceRole())
+    assertEquals(expectedIdleTimeout.toLong, actualRequest.autoTerminationPolicy().idleTimeout())
+
+    // step specific assertions
+    assertEquals(actualRequest.steps().size(), 1)
+    assertEquals(actualRequest.steps().get(0).hadoopJarStep().jar(), "command-runner.jar")
+    assertEquals(
+      List("spark-submit", "--class", expectedMainClass, expectedJarURI) ++ expectedApplicationArgs,
+      actualRequest.steps().get(0).hadoopJarStep().args().toScala
+    )
+  }
+
 //  it should "test flink job locally" ignore {
 //
 //  }
@@ -19,30 +98,30 @@ class EmrSubmitterTest extends AnyFlatSpec with BeforeAndAfterAll {
 //
 //  }
 //
-  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
-    val emrSubmitter = new EmrSubmitter("canary",
-                                        EmrClient
-                                          .builder()
-                                          .build())
-    val jobId = emrSubmitter.submit(
-      SparkJob,
-      Map(
-        MainClass -> "ai.chronon.spark.Driver",
-        JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar"
-      ),
-      List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
-      "group-by-backfill",
-      "--conf-path",
-      "/mnt/zipline/purchases.v1",
-      "--end-date",
-      "2025-02-26",
-      "--conf-type",
-      "group_bys",
-      "--additional-conf-path",
-      "/mnt/zipline/additional-confs.yaml"
-    )
-    println("EMR job id: " + jobId)
-    0
-  }
+//  it should "Used to iterate locally. Do not enable this in CI/CD!" in {
+//    val emrSubmitter = new EmrSubmitter("canary",
+//                                        EmrClient
+//                                          .builder()
+//                                          .build())
+//    val jobId = emrSubmitter.submit(
+//      SparkJob,
+//      Map(
+//        MainClass -> "ai.chronon.spark.Driver",
+//        JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar"
+//      ),
+//      List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
+//      "group-by-backfill",
+//      "--conf-path",
+//      "/mnt/zipline/purchases.v1",
+//      "--end-date",
+//      "2025-02-26",
+//      "--conf-type",
+//      "group_bys",
+//      "--additional-conf-path",
+//      "/mnt/zipline/additional-confs.yaml"
+//    )
+//    println("EMR job id: " + jobId)
+//    0
+//  }
 
 }

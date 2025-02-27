@@ -39,9 +39,9 @@ test_deps = [
     scala_artifact_with_suffix("org.typelevel:cats-core"),
     maven_artifact("com.amazonaws:DynamoDBLocal"),
     scala_artifact_with_suffix("com.chuusai:shapeless"),
-    #    scala_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
-    #    scala_artifact_with_suffix("org.mockito:mockito-scala"),
-    #    maven_artifact("org.mockito:mockito-core"),
+    maven_artifact("junit:junit"),
+    scala_artifact_with_suffix("org.mockito:mockito-scala"),
+    maven_artifact("org.mockito:mockito-core"),
 ] + _CIRCE_DEPS + _SCALA_TEST_DEPS
 
 scala_library(
