@@ -71,8 +71,9 @@
 							<PercentileLineChart
 								data={columnSummary}
 								{xDomain}
-								onbrushend={(detail: { xDomain?: DomainType }) =>
-									detail.xDomain && (xDomain = detail.xDomain)}
+								onbrushend={(detail: { xDomain?: DomainType }) => {
+									xDomain = detail.xDomain;
+								}}
 								renderContext="canvas"
 							/>
 						</div>
