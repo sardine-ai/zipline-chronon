@@ -9,7 +9,6 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { type EntityConfig } from '$lib/types/Entity';
-
 	import TrueFalseBadge from '$lib/components/TrueFalseBadge.svelte';
 
 	const {
