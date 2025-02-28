@@ -580,7 +580,7 @@ class Runner:
             )
         elif (self.sub_help or (self.mode not in SPARK_MODES)) and not self.dataproc:
             if self.mode == "fetch":
-                entrypoint = "ai.chronon.online.FetcherMain"
+                entrypoint = "ai.chronon.online.fetcher.FetcherMain"
             else:
                 entrypoint = "ai.chronon.spark.Driver"
             command_list.append(

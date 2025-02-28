@@ -154,9 +154,7 @@
 			startTimestamp: data.dateRange.startTimestamp,
 			endTimestamp: data.dateRange.endTimestamp
 		}}
-		showActionButtons={true}
-		showCluster
-		showSort={true}
+		showSort
 		context="drift"
 	/>
 </div>
@@ -197,8 +195,9 @@
 									selectSeriesPoint({ series, data });
 								}}
 								{xDomain}
-								onbrushend={(detail: { xDomain?: DomainType }) =>
-									detail.xDomain && (xDomain = detail.xDomain)}
+								onbrushend={(detail: { xDomain?: DomainType }) => {
+									xDomain = detail.xDomain;
+								}}
 								tooltip={{ locked: lockedTooltip }}
 							/>
 						</div>
@@ -250,10 +249,6 @@
 					startTimestamp: data.dateRange.startTimestamp,
 					endTimestamp: data.dateRange.endTimestamp
 				}}
-				showActionButtons={false}
-				showCluster
-				showSort={false}
-				context="drift"
 			/>
 		</DialogHeader>
 
@@ -290,8 +285,9 @@
 										selectSeriesPoint({ series, data });
 									}}
 									{xDomain}
-									onbrushend={(detail: { xDomain?: DomainType }) =>
-										detail.xDomain && (xDomain = detail.xDomain)}
+									onbrushend={(detail: { xDomain?: DomainType }) => {
+										xDomain = detail.xDomain;
+									}}
 									tooltip={{ locked: lockedTooltip }}
 								/>
 							</div>
@@ -307,8 +303,9 @@
 							<PercentileLineChart
 								data={columnSummaryData!}
 								{xDomain}
-								onbrushend={(detail: { xDomain?: DomainType }) =>
-									detail.xDomain && (xDomain = detail.xDomain)}
+								onbrushend={(detail: { xDomain?: DomainType }) => {
+									xDomain = detail.xDomain;
+								}}
 								tooltip={{ locked: lockedTooltip }}
 							/>
 						</div>

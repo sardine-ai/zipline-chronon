@@ -12,7 +12,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import IconArrowRight from '~icons/heroicons/arrow-right';
 	import { page } from '$app/state';
-	import { getEntityConfig, type EntityData } from '../types/Entity/Entity';
+	import { getEntityConfig, type EntityData } from '../types/Entity';
 
 	let {
 		isExpanded,

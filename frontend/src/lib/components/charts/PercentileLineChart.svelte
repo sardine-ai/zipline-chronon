@@ -57,4 +57,9 @@
 		},
 		restProps
 	)}
+	props={{
+		canvas: {
+			class: 'cursor-crosshair'
+		}
+	}}
 />

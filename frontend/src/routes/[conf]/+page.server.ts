@@ -1,6 +1,8 @@
+import { error } from '@sveltejs/kit';
+
 import { Api } from '$lib/api/api';
 import { ConfType, type IConfListResponseArgs } from '$lib/types/codegen';
-import { entityConfig } from '$lib/types/Entity/Entity';
+import { getEntityConfigFromPath } from '$src/lib/types/Entity';
 
 const ConfResponseMap: Record<ConfType, keyof IConfListResponseArgs> = {
 	[ConfType.MODEL]: 'models',
@@ -9,35 +11,29 @@ const ConfResponseMap: Record<ConfType, keyof IConfListResponseArgs> = {
 	[ConfType.JOIN]: 'joins'
 };
 
-export async function load({ fetch, url, params }) {
+export async function load({ fetch, url }) {
 	const path = url.pathname;
-	const entityMatch = Object.values(entityConfig).find((c) =>
-		params.conf.startsWith(c.path?.substring(1) ?? '')
-	);
+	const entityConfig = getEntityConfigFromPath(path);
 
-	if (!entityMatch || entityMatch.confType === null) {
-		return {
-			items: [],
-			basePath: path,
-			title: ''
-		};
+	if (!entityConfig || entityConfig.confType === null) {
+		throw error(404, 'Not found');
 	}
 
 	try {
 		const api = new Api({ fetch });
-		const response = await api.getConfList(entityMatch.confType);
-		if (!response) throw new Error(`Failed to fetch ${entityMatch.label.toLowerCase()}`);
+		const response = await api.getConfList(entityConfig.confType);
+		if (!response) throw new Error(`Failed to fetch ${entityConfig.label.toLowerCase()}`);
 
-		const responseKey = ConfResponseMap[entityMatch.confType];
+		const responseKey = ConfResponseMap[entityConfig.confType];
 		const items = response[responseKey] ?? [];
 
 		return {
 			items: items,
 			basePath: path,
-			title: entityMatch.label
+			title: entityConfig.label
 		};
 	} catch (error) {
-		console.error(`Failed to load ${entityMatch.label.toLowerCase()}:`, error);
+		console.error(`Failed to load ${entityConfig.label.toLowerCase()}:`, error);
 		throw error;
 	}
 }

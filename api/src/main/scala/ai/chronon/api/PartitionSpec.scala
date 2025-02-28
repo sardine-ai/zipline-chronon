@@ -26,10 +26,12 @@ import java.util.Locale
 import java.util.TimeZone
 
 case class PartitionSpec(format: String, spanMillis: Long) {
+
   private def partitionFormatter =
     DateTimeFormatter
       .ofPattern(format, Locale.US)
       .withZone(ZoneOffset.UTC)
+
   private def sdf = {
     val formatter = new SimpleDateFormat(format)
     formatter.setTimeZone(TimeZone.getTimeZone("UTC"))

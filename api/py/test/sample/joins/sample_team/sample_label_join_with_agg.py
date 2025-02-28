@@ -22,8 +22,8 @@ from group_bys.sample_team import (
     group_by_with_kwargs,
 )
 
-from ai.chronon.join import Join, JoinPart, LabelParts
-from ai.chronon.group_by import (
+from ai.chronon.types import Join, JoinPart, LabelParts
+from ai.chronon.types import (
     GroupBy,
     Aggregation,
     Operation,

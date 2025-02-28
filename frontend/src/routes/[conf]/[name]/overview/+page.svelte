@@ -42,7 +42,7 @@
 	import { Button } from '$src/lib/components/ui/button';
 
 	import IconArrowRight from '~icons/heroicons/arrow-right';
-	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity/Entity';
+	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity';
 
 	type DagreData = ComponentProps<Dagre>['data'];
 	type CustomNode = Node & { id: string; key: INodeKeyArgs; value: INodeInfoArgs };
@@ -503,9 +503,12 @@
 							--base00="hsl(var(--background))"
 							--base01="hsl(var(--muted) / 20%)"
 							--base02="hsl(var(--primary-500))"
-							--base03="hsl(var(--neutral-600))"
+							--base03="hsl(var(--border))"
 							--base05="hsl(var(--foreground))"
 							--base08="hsl(var(--primary-700))"
+							--base0A="hsl(80 80% 50%)"
+							--base0E="hsl(270 80% 50%)"
+							--caret-color="hsl(var(--neutral-600))"
 						/>
 					</div>
 				</TabsContent>

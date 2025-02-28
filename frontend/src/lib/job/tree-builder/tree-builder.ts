@@ -5,7 +5,7 @@ import type {
 	INodeKeyArgs,
 	INodeInfoArgs
 } from '$lib/types/codegen';
-import type { EntityData } from '$lib/types/Entity/Entity';
+import type { EntityData } from '$src/lib/types/Entity';
 /**
  * Represents a node in the job tracker's hierarchical tree structure.
  * Used to display jobs and their dependencies in a collapsible tree view.

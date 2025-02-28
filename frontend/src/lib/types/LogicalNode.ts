@@ -3,7 +3,7 @@ import {
 	type IEventSourceArgs,
 	type ISourceArgs
 } from '$lib/types/codegen';
-import { type EntityData } from '$lib/types/Entity/Entity';
+import { type EntityData } from '$src/lib/types/Entity';
 
 /**
  * Returns true if the node is a streaming node

@@ -1,7 +1,6 @@
-
 from ai.chronon.model import Model, ModelType
 from ai.chronon.api.ttypes import DataKind, JoinSource, Source, TDataType
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 from joins.risk import user_transactions
 
 
@@ -13,8 +12,11 @@ source = Source(
     joinSource=JoinSource(
         join=user_transactions.txn_join,
         query=Query(
-            selects=select("user_id"),
-            )
-    ))
+            selects=selects("user_id"),
+        ),
+    )
+)
 
-v1 = Model(source=source, outputSchema=TDataType(DataKind.DOUBLE), modelType=ModelType.XGBoost)
+v1 = Model(
+    source=source, outputSchema=TDataType(DataKind.DOUBLE), modelType=ModelType.XGBoost
+)

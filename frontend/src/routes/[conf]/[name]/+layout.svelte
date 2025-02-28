@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { entityConfig, getEntityType } from '$lib/types/Entity';
 
 	import { Tabs, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
 	import PageHeader from '$lib/components/PageHeader.svelte';
@@ -9,13 +10,14 @@
 	import { Separator } from '$src/lib/components/ui/separator/index.js';
 
 	const { data, children } = $props();
-
-	const pageName = $derived(page.url.pathname.split('/').at(-1));
 </script>
 
-<PageHeader title={data.conf?.metaData?.name ?? 'Unknown'} />
+<PageHeader
+	title={data.conf?.metaData?.name ?? 'Unknown'}
+	learnHref={entityConfig[getEntityType(data.conf)].learnHref}
+/>
 
-<Tabs value={pageName} class="flex-1 flex flex-col">
+<Tabs class="flex-1 flex flex-col">
 	<TabsList class="justify-start">
 		<TabsTrigger href="/{page.params.conf}/{page.params.name}/overview">
 			<IconLineage class="mr-2 h-4 w-4" />
