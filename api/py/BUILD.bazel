@@ -40,7 +40,7 @@ pytest_suite(
     data = ["sample/teams.json"],
     env = {
         "CHRONON_ROOT": "api/py/sample",
-        "PYTHONPATH": ".",
+        #        "PYTHONPATH": ".",
     },
     imports = [
         #        ".",

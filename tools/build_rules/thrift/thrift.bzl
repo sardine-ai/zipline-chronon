@@ -173,6 +173,7 @@ def thrift_python_library(name, srcs, visibility = None):
     py_library(
         name = name,
         srcs = [":" + name + "_gen"],
+        # "." needed for relative imports within the generated files
         imports = [".", "gen_thrift/"],
         visibility = visibility,
     )
