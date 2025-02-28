@@ -11,7 +11,7 @@ cd $WORKING_DIR
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 
-WHEEL_FILE="zipline_ai-0.1.0.dev0-py3-none-any.whl"
+WHEEL_FILE="zipline_ai-0.1.0-py3-none-any.whl "
 
 # Delete gcp tables to start from scratch
 bq rm -f -t canary-443022:data.quickstart_purchases_v1_test
