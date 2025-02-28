@@ -344,7 +344,9 @@ class CatalystUtil(inputSchema: StructType,
     val filteredDf = whereClauseOpt.map(df.where(_)).getOrElse(df)
 
     // extract transform function from the df spark plan
-    val func: InternalRow => ArrayBuffer[InternalRow] = filteredDf.queryExecution.executedPlan match {
+    val execPlan = filteredDf.queryExecution.executedPlan
+    logger.info(s"Catalyst Execution Plan - ${execPlan}")
+    val func: InternalRow => ArrayBuffer[InternalRow] = execPlan match {
       case whc: WholeStageCodegenExec => {
         // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
         require(
