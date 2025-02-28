@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +30,7 @@ v1 = GroupBy(
     production=False,
     table_properties={
         "sample_config_json": """{"sample_key": "sample_value"}""",
-        "description": "sample description"
+        "description": "sample description",
     },
     online=True,
     output_namespace="sample_namespace",

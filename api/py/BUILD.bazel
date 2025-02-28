@@ -36,14 +36,15 @@ py_wheel(
 
 pytest_suite(
     name = "test_all",
-    srcs = glob(["test/**/*.py"]) + glob(["sample/**/*.py"]),
-    data = ["sample/teams.json"],
+    srcs = glob(["test/**/*.py"]),
+    data = ["sample/teams.json"] + glob(["sample/**/*.py"]),
     env = {
         "CHRONON_ROOT": "api/py/sample",
-        #        "PYTHONPATH": ".",
+        "PYTHONPATH": "sample/",
+        "MODULE_SUFFIX_TO_DISCARD": "api.py.sample.",
     },
     imports = [
-        #        ".",
+        ".",
         "sample/",
         #        "../thrift/py-lib_gen/",
     ],

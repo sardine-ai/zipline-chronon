@@ -75,8 +75,20 @@ def import_module_set_name(module, cls):
             # example module.__name__=group_bys.user.avg_session_length, name=v1
             # obj.metaData.name=user.avg_session_length.v1
             # obj.metaData.team=user
-            obj.metaData.name = module.__name__.partition(".")[2] + "." + name
-            obj.metaData.team = module.__name__.split(".")[1]
+
+            discard_part = os.getenv("MODULE_SUFFIX_TO_DISCARD", None)
+
+
+            base = module.__name__
+            # bazel sets api/ as the root during testing so we need to chop the early part
+            if base.startswith(discard_part):
+                base = base[len(discard_part):]
+
+            print(base, discard_part)
+
+            obj.metaData.name = base.partition(".")[2] + "." + name
+            obj.metaData.team = base.split(".")[1]
+
     return module
 
 

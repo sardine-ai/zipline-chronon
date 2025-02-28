@@ -41,7 +41,7 @@ default = Team(
 
 
 test = Team(
-    namespace="test",
+    outputNamespace="test",
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance
@@ -62,7 +62,7 @@ test = Team(
 
 
 sample_team = Team(
-    namespace="test",
+    outputNamespace="test",
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance
@@ -81,10 +81,10 @@ sample_team = Team(
     ),
 )
 
-etsy_search = Team(namespace="etsy-search")
+etsy_search = Team(outputNamespace="etsy-search")
 
-kaggle = Team(namespace="kaggle")
+kaggle = Team(outputNamespace="kaggle")
 
-quickstart = Team(namespace="quickstart")
+quickstart = Team(outputNamespace="quickstart")
 
-risk = Team(namespace="risk")
+risk = Team(outputNamespace="risk")
