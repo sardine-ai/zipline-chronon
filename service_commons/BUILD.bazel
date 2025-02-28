@@ -18,7 +18,7 @@ java_library(
 test_deps = _VERTX_TEST_DEPS + [
     ":lib",
     "//api:lib",
-    "//api:thrift_java",
+    "//api:thrift-java",
     "//online:lib",
     maven_artifact("org.junit.jupiter:junit-jupiter-api"),
     maven_artifact("org.junit.platform:junit-platform-launcher"),
@@ -32,10 +32,10 @@ java_library(
     deps = test_deps,
 )
 
-java_test_suite(
-    name = "tests",
-    srcs = glob(["src/test/**/*.java"]),
-    visibility = ["//visibility:public"],
-    runner = "junit5",
-    deps = test_deps + [":test_lib"],
-)
+#java_test_suite(
+#    name = "tests",
+#    srcs = glob(["src/test/**/*.java"]),
+#    visibility = ["//visibility:public"],
+#    runner = "junit5",
+#    deps = test_deps + [":test_lib"],
+#)

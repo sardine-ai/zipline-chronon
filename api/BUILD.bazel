@@ -1,13 +1,6 @@
-load("//tools/build_rules/thrift:thrift.bzl", "thrift_java_library", "thrift_python_library")
-
-thrift_java_library(
-    name = "thrift_java_srcjar",
-    srcs = glob(["thrift/*.thrift"]),
-)
-
 java_library(
-    name = "thrift_java",
-    srcs = [":thrift_java_srcjar"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
+    name = "thrift-java",
+    srcs = ["//api/thrift:java-srcjar"] + glob(["src/main/java/ai/chronon/api/thrift/**/*.java"]),
     visibility = ["//visibility:public"],
     deps = [
         maven_artifact("javax.annotation:javax.annotation.api"),
@@ -30,7 +23,7 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        ":thrift_java",
+        ":thrift-java",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
@@ -45,7 +38,7 @@ scala_library(
 
 test_deps = [
     ":lib",
-    ":thrift_java",
+    ":thrift-java",
     "//tools/build_rules/spark:spark-exec",
     # Libraries
     maven_artifact("com.fasterxml.jackson.core:jackson-core"),
@@ -86,11 +79,4 @@ scala_test_suite(
     srcs = glob(["src/test/**/*.scala"]),
     visibility = ["//visibility:public"],
     deps = test_deps + [":test-lib"],
-)
-
-thrift_python_library(
-    name = "thrift-gen-py",
-    srcs = glob(["thrift/*.thrift"]),
-    namespace = "ai.chronon",
-    visibility = ["//visibility:public"],
 )

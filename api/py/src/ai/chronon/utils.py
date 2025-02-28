@@ -315,17 +315,24 @@ def get_staging_query_output_table_name(
 
 def get_join_output_table_name(join: api.Join, full_name: bool = False):
     """generate output table name for join backfill job"""
+
     # join sources could also be created inline alongside groupBy file
     # so we specify fallback module as group_bys
     if isinstance(join, api.Join):
         __set_name(join, api.Join, "joins")
+
     # set output namespace
     if not join.metaData.outputNamespace:
         team_name = join.metaData.name.split(".")[0]
+
+        print(f"~~~~ {join.metaData.name}")
+
         namespace = teams.get_team_conf(
-            os.path.join(chronon_root_path, TEAMS_FILE_PATH), team_name, "namespace"
+            os.path.join(os.environ.get("CHRONON_ROOT", chronon_root_path), TEAMS_FILE_PATH), team_name, "namespace"
         )
+
         join.metaData.outputNamespace = namespace
+
     return output_table_name(join, full_name=full_name)
 
 

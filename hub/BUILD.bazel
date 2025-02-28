@@ -8,7 +8,7 @@ scala_library(
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + _CIRCE_DEPS + [
         "//api:lib",
-        "//api:thrift_java",
+        "//api:thrift-java",
         "//online:lib",
         "//service_commons:lib",
         "//spark:lib",
@@ -29,7 +29,7 @@ scala_library(
 
 test_deps = _VERTX_TEST_DEPS + _CIRCE_DEPS + [
     ":lib",
-    "//api:thrift_java",
+    "//api:thrift-java",
     "//api:lib",
     "//online:lib",
     "//spark:lib",

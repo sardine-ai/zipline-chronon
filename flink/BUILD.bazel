@@ -9,7 +9,7 @@ scala_library(
     deps = _FLINK_DEPS + [
         "//aggregator:lib",
         "//api:lib",
-        "//api:thrift_java",
+        "//api:thrift-java",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
         scala_artifact_with_suffix("org.scala-lang.modules:scala-java8-compat"),
@@ -30,7 +30,7 @@ scala_library(
 test_deps = _FLINK_TEST_DEPS + [
     ":lib",
     "//online:lib",
-    "//api:thrift_java",
+    "//api:thrift-java",
     "//api:lib",
     "//aggregator:lib",
     "//tools/build_rules/spark:spark-exec",

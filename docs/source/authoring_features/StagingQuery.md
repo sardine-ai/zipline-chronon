@@ -48,6 +48,7 @@ And then you could use it in your `Join` as follows:
 ```python
 from staging_queries.team_name_folder import file_name
 from ai.chronon.utils import get_staging_query_output_table_name
+
 v1 = Join(
     left=EventSource(
         table=get_staging_query_output_table_name(file_name.staging_query_var_name)

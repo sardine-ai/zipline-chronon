@@ -1,0 +1,14 @@
+load("//tools/build_rules/thrift:thrift.bzl", "thrift_java_library", "thrift_python_library")
+
+thrift_java_library(
+    name = "java-srcjar",
+    srcs = glob(["*.thrift"]),
+    visibility = ["//visibility:public"],
+)
+
+thrift_python_library(
+    name = "py-lib",
+    srcs = glob(["*.thrift"]),
+    namespace = "ai.chronon",
+    visibility = ["//visibility:public"],
+)

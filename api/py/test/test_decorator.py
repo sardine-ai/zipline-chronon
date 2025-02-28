@@ -13,7 +13,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.repo.run import retry_decorator
+from ai.chronon.repo import retry_decorator
 
 import pytest
 

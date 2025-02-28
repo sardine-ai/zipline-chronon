@@ -489,23 +489,25 @@ Goal:
   Step
 1. Identify existing join that share the same set of drivers
 2. Add that join as a bootstrap part in your join in order to reuse the data
+
 ```python
 # ml_models/zipline/joins/team_name_a/model_a.py
 v1 = Join(...)
 # ml_models/zipline/joins/team_name_b/model_b.py
 from joins.team_name_a import model_a
 from ai.chronon.utils import get_join_output_table_name
+
 v2 = Join(
-...,
-bootstrap_parts=[
-	BootstrapPart(
-        table=get_join_output_table_name(model_a.v1, full_name=True),
-        query=Query(
-            # select the list of features to reuse
-            selects=select(
-                feature_a="feature_a",
-                feature_b="feature_b"
-	            )
+    ...,
+    bootstrap_parts=[
+        BootstrapPart(
+            table=get_join_output_table_name(model_a.v1, full_name=True),
+            query=Query(
+                # select the list of features to reuse
+                selects=select(
+                    feature_a="feature_a",
+                    feature_b="feature_b"
+                )
             )
         )
     ]

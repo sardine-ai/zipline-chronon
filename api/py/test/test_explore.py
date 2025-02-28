@@ -16,7 +16,7 @@ Run the flow for materialize.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.repo.explore import (
+from ai.chronon.repo import (
     load_team_data,
     build_index,
     enrich_with_joins,

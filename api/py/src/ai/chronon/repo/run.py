@@ -787,7 +787,7 @@ def split_date_range(start_date, end_date, parallelism):
 
 def set_defaults(ctx):
     """Set default values based on environment"""
-    chronon_repo_path = os.environ.get("CHRONON_REPO_PATH", ".")
+    chronon_repo_path = os.environ.get("CHRONON_REPO_PATH", "")
     today = datetime.today().strftime("%Y-%m-%d")
     defaults = {
         "mode": "backfill",

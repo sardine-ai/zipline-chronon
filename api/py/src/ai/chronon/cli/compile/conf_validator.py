@@ -17,7 +17,6 @@
 
 import json
 import logging
-import os
 import re
 import ai.chronon.api.common.ttypes as common
 

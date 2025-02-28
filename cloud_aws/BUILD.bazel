@@ -16,7 +16,7 @@ scala_library(
         maven_artifact("org.slf4j:slf4j-api"),
         scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
         "//api:lib",
-        "//api:thrift_java",
+        "//api:thrift-java",
         "//online:lib",
         "//spark:lib",
     ],

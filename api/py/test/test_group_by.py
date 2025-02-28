@@ -14,7 +14,7 @@
 
 import pytest, json
 
-from ai.chronon import group_by, query
+from ai.chronon import query, group_by
 from ai.chronon.api import ttypes
 import ai.chronon.api.common.ttypes as common
 

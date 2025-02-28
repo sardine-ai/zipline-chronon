@@ -1,7 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from ai.chronon.cli.logger import get_logger
 

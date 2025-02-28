@@ -53,9 +53,9 @@ def green(text):
 
 def require(cond, message):
     if not cond:
-        print(f"{red("❌")} {message}")
+        print(f"{red('Failed: ')} {message}")
         raise
 
 
 def done(cond, message):
-    print(f"{green("✅")} {message}")
+    print(f"{green('Done: ')} {message}")

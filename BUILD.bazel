@@ -1,1 +1,14 @@
 package(default_visibility = ["//visibility:public"])
+
+genrule(
+    name = "update_requirements_lock",
+    srcs = ["//:requirements.txt"],
+    outs = ["requirements_lock.txt"],
+    cmd = """
+        python3 -m venv $(GENDIR)/temp_env
+        source $(GENDIR)/temp_env/bin/activate
+        pip install -r $(location //:requirements.txt)
+        pip freeze > $(location requirements_lock.txt)
+        deactivate
+    """,
+)

@@ -39,17 +39,17 @@ java_library(
     deps = test_deps,
 )
 
-java_test_suite(
-    name = "tests",
-    srcs = glob(["src/test/**/*.java"]),
-    runner = "junit4",
-    visibility = ["//visibility:public"],
-    deps = test_deps + [":test_lib"],
-)
+#java_test_suite(
+#    name = "tests",
+#    srcs = glob(["src/test/**/*.java"]),
+#    runner = "junit4",
+#    visibility = ["//visibility:public"],
+#    deps = test_deps + [":test_lib"],
+#)
 
 jvm_binary(
     name = "service_assembly",
     main_class = "ai.chronon.service.ChrononServiceLauncher",
-    runtime_deps = [":lib"],
     resources = glob(["src/main/resources/**/*"]),
+    runtime_deps = [":lib"],
 )

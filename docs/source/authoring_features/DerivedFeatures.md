@@ -24,7 +24,7 @@ Join(
     derivations=[
         Derivation(
             name="z_score",
-            expression="(x - x_mean) / x_std", # x, x_mean, x_std are all raw features
+            expression="(x - x_mean) / x_std",  # x, x_mean, x_std are all raw features
         )
     ]
 )
@@ -54,40 +54,40 @@ File `group_bys/sample/card_features.py`
 ```python
 
 from ai.chronon.group_by import (
-   Accuracy,
-   GroupBy,
-   Aggregation,
-   Operation,
-   Window,
-   TimeUnit,
+    Accuracy,
+    GroupBy,
+    Aggregation,
+    Operation,
+    Window,
+    TimeUnit,
 )
 from ai.chronon.api.ttypes import EventSource
 from ai.chronon.query import Query, select
 
 transactions_source = EventSource(
-       table="namespace.transaction_table",  # TODO fill this
-       topic="transactions_kafka_topic",  # TODO fill this - only necessary for online
-       query=Query(selects=select("amount")),
+    table="namespace.transaction_table",  # TODO fill this
+    topic="transactions_kafka_topic",  # TODO fill this - only necessary for online
+    query=Query(selects=select("amount")),
 )
 
 v1 = GroupBy(
-   sources=[transactions_source],
-   keys=["merchant_id"],
-   aggregations=[
-       Aggregation(
-           input_column="amount",
-           operation=Operation.AVERAGE,
-           windows=[Window(7, timeUnit=TimeUnit.DAYS)],
-           buckets=["card_id"]
-       ),
-       Aggregation(
-           input_column="amount",
-           operation=Operation.VARIANCE,
-           windows=[Window(7, timeUnit=TimeUnit.DAYS)],
-           buckets=["card_id"]
-       )
-   ],
-   accuracy=Accuracy.TEMPORAL
+    sources=[transactions_source],
+    keys=["merchant_id"],
+    aggregations=[
+        Aggregation(
+            input_column="amount",
+            operation=Operation.AVERAGE,
+            windows=[Window(7, timeUnit=TimeUnit.DAYS)],
+            buckets=["card_id"]
+        ),
+        Aggregation(
+            input_column="amount",
+            operation=Operation.VARIANCE,
+            windows=[Window(7, timeUnit=TimeUnit.DAYS)],
+            buckets=["card_id"]
+        )
+    ],
+    accuracy=Accuracy.TEMPORAL
 )
 
 ```
@@ -104,9 +104,9 @@ from ai.chronon.join import Join, JoinPart, Derivation
 v1 = Join(
     online=True,
     left=EventSource(
-        table="namespace.your_driver_table" # which contains merchant_ids and timestamps you want backfill for
+        table="namespace.your_driver_table"  # which contains merchant_ids and timestamps you want backfill for
     ),
-    right_parts=[JoinPart(group_by=card_features.v1),],
+    right_parts=[JoinPart(group_by=card_features.v1), ],
     derivations=[
         Derivation(
             name="txn_z_score",
@@ -136,38 +136,36 @@ File `group_bys/sample/merchant_features.py`
 
 ```python
 from ai.chronon.group_by import (
-   Accuracy,
-   GroupBy,
-   Aggregation,
-   Operation,
-   Window,
-   TimeUnit,
+    Accuracy,
+    GroupBy,
+    Aggregation,
+    Operation,
+    Window,
+    TimeUnit,
 )
 from ai.chronon.api.ttypes import EventSource
 from ai.chronon.query import Query, select
 
-
 # TODO Add data tests
 ip_successes_source = EventSource(
-       table="namespace.ip_successes",
-       topic="ip_successes_kafka_topic",
-       query=Query(selects=select("ip", "success")),
+    table="namespace.ip_successes",
+    topic="ip_successes_kafka_topic",
+    query=Query(selects=select("ip", "success")),
 )
-
 
 # use bucketing to produce map of {ip: success_rate} and the client processes into avg
 v1 = GroupBy(
-   sources=[ip_successes_source],
-   keys=["merchant_id"],
-   aggregations=[
-       Aggregation(
-           input_column="success",
-           operation=Operation.AVERAGE,
-           windows=[Window(7, timeUnit=TimeUnit.DAYS)],
-           buckets=["ip"]
-       )
-   ],
-   accuracy=Accuracy.TEMPORAL
+    sources=[ip_successes_source],
+    keys=["merchant_id"],
+    aggregations=[
+        Aggregation(
+            input_column="success",
+            operation=Operation.AVERAGE,
+            windows=[Window(7, timeUnit=TimeUnit.DAYS)],
+            buckets=["ip"]
+        )
+    ],
+    accuracy=Accuracy.TEMPORAL
 )
 ```
 
@@ -183,9 +181,9 @@ from ai.chronon.join import Join, JoinPart, Derivation
 v1 = Join(
     online=True,
     left=EventSource(
-        table="namespace.your_driver_table" # which contains merchant_ids and timestamps you want backfill for
+        table="namespace.your_driver_table"  # which contains merchant_ids and timestamps you want backfill for
     ),
-    right_parts=[JoinPart(group_by=merchant_features.v1),],
+    right_parts=[JoinPart(group_by=merchant_features.v1), ],
     derivations=[
         Derivation(
             name="merchant_success_rate_avg",

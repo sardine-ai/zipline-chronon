@@ -1,5 +1,0 @@
-click
-thrift==0.21
-pytest
-sqlglot
-rich

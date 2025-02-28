@@ -1,4 +1,4 @@
-namespace py ai.chronon.api.common
+namespace py ai.chronon.common
 namespace java ai.chronon.api
 
 // integers map to milliseconds in the timeunit

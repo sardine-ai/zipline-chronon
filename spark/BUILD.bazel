@@ -9,7 +9,7 @@ scala_library(
     deps = [
         "//aggregator:lib",
         "//api:lib",
-        "//api:thrift_java",
+        "//api:thrift-java",
         "//online:lib",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
@@ -54,7 +54,7 @@ test_deps = [
     "//aggregator:lib",
     "//aggregator:test_lib",
     "//api:lib",
-    "//api:thrift_java",
+    "//api:thrift-java",
     "//online:lib",
     "//tools/build_rules/spark:spark-exec",
     # Library

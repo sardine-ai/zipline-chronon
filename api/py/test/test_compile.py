@@ -16,7 +16,7 @@ Run the flow for materialize.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.repo.compile import extract_and_convert
+from ai.chronon.repo import extract_and_convert
 from click.testing import CliRunner
 
 

@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from ai.chronon import query
-from ai.chronon.group_by import GroupBy, TimeUnit, Window
+from ai.chronon.group_by import GroupBy
 from ai.chronon.api.ttypes import (
     EventSource,
     EntitySource,

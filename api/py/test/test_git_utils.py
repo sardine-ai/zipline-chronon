@@ -2,7 +2,6 @@ import pytest
 import os
 import shutil
 import subprocess
-from pathlib import Path
 from ai.chronon.cli.git_utils import (
     get_current_branch,
     get_changes_since_commit,

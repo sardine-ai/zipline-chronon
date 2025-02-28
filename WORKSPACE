@@ -17,6 +17,43 @@ http_archive(
     ],
 )
 
+# ============== PYTHON ===============
+
+http_archive(
+    name = "rules_python",
+    sha256 = "ca77768989a7f311186a29747e3e95c936a41dffac779aff6b443db22290d913",
+    strip_prefix = "rules_python-0.36.0",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.36.0/rules_python-0.36.0.tar.gz",
+)
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+
+py_repositories()
+
+load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+
+python_register_toolchains(
+    name = "python_3_11",
+    # Available versions are listed in @rules_python//python:versions.bzl.
+    # We recommend using the same version your team is already standardized on.
+    python_version = "3.11",
+)
+
+load("@rules_python//python:pip.bzl", "pip_parse")
+load("@python_3_11//:defs.bzl", "interpreter")
+
+pip_parse(
+    name = "pypi",
+    python_interpreter_target = interpreter,
+    requirements_lock = "//:api/py/requirements_lock.txt",
+)
+
+load("@pypi//:requirements.bzl", "install_deps")
+
+install_deps()
+
+# ================ JAVA ==========================
+
 # For Java support
 http_archive(
     name = "rules_java",
@@ -50,7 +87,7 @@ load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
 
 rules_jvm_external_setup()
 
-# For additional rulesets like java_test_suite
+# ============ JUNIT JAVA tests ===============================
 http_archive(
     name = "contrib_rules_jvm",
     sha256 = "2412e22bc1eb9d3a5eae15180f304140f1aad3f8184dbd99c845fafde0964559",
@@ -66,7 +103,9 @@ load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
 
 contrib_rules_jvm_setup()
 
-# For Scala support
+
+# ============== SCALA =========================
+
 http_archive(
     name = "io_bazel_rules_scala",
     sha256 = "e734eef95cf26c0171566bdc24d83bd82bdaf8ca7873bec6ce9b0d524bdaf05d",
@@ -93,7 +132,7 @@ load("@io_bazel_rules_scala//scala/scalafmt:scalafmt_repositories.bzl", "scalafm
 scalafmt_default_config()
 scalafmt_repositories()
 
-# For Protobuf support
+# ========================== PROTOBUF ====================================
 http_archive(
     name = "rules_proto",
     sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
@@ -108,6 +147,9 @@ load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_
 rules_proto_dependencies()
 
 rules_proto_toolchains()
+
+
+# ===================== JVM LIB dependencies ====================
 
 # To load all dependencies used across our modules
 load("//tools/build_rules/dependencies:load_dependencies.bzl", "load_all_dependencies")

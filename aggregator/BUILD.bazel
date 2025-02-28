@@ -8,7 +8,7 @@ scala_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api:lib",
-        "//api:thrift_java",
+        "//api:thrift-java",
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact("com.google.code.gson:gson"),
@@ -24,7 +24,7 @@ scala_library(
 test_deps = [
     ":lib",
     "//api:lib",
-    "//api:thrift_java",
+    "//api:thrift-java",
     # Libraries
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),

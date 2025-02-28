@@ -9,7 +9,7 @@ scala_library(
     deps = [
         "//aggregator:lib",
         "//api:lib",
-        "//api:thrift_java",
+        "//api:thrift-java",
         "//tools/build_rules/spark:spark-exec",
         scala_artifact_with_suffix("org.scala-lang.modules:scala-java8-compat"),
         scala_artifact_with_suffix("org.json4s:json4s-core"),
@@ -39,7 +39,7 @@ scala_library(
 
 test_deps = [
     ":lib",
-    "//api:thrift_java",
+    "//api:thrift-java",
     "//api:lib",
     "//aggregator:lib",
     "//tools/build_rules/spark:spark-exec",

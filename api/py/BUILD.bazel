@@ -1,0 +1,76 @@
+load("@pypi//:requirements.bzl", "requirement")
+load("@rules_python//python:packaging.bzl", "py_wheel")
+load("@rules_python//python:py_test.bzl", "py_test")
+load("//tools/build_rules/python:pytest_suite.bzl", "pytest_suite")
+
+requirements = [
+    requirement("thrift"),
+    requirement("click"),
+    requirement("sqlglot"),
+    requirement("rich"),
+    requirement("google-cloud-storage"),
+    requirement("crcmod"),
+]
+
+py_library(
+    name = "lib",
+    srcs = glob(["src/**/*.py"]),
+    imports = [
+        "src/",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/thrift:py-lib",
+    ] + requirements,
+)
+
+py_wheel(
+    name = "wheel",
+    distribution = "zipline-ai",
+    version = "0.0.1",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lib",
+    ],
+)
+
+pytest_suite(
+    name = "test_all",
+    srcs = glob(["test/**/*.py"]) + glob(["sample/**/*.py"]),
+    data = ["sample/teams.json"],
+    env = {
+        "CHRONON_ROOT": "api/py/sample",
+    },
+    imports = [
+        "../thrift/py-lib_gen/",  # This worked for the Thrift imports
+        "sample/",
+        "src/",
+        "test/",
+    ],
+    deps = [
+        "//api/py:lib",
+        "//api/thrift:py-lib",
+    ] + requirements,
+)
+
+py_binary(
+    name = "update_requirements",
+    srcs = ["update_requirements.py"],
+    visibility = ["//visibility:public"],
+)
+
+# useful for debugging
+py_binary(
+    name = "print_path",
+    srcs = ["print_path.py"],
+    imports = [
+        "../thrift/py-lib_gen/",
+        "sample/",
+        "src/",
+        "test/",
+    ],
+    deps = [
+        "//api/py:lib",
+        "//api/thrift:py-lib",
+    ] + requirements,
+)

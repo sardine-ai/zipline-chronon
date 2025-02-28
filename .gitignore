@@ -17,8 +17,8 @@
 **/.vscode/
 **/__pycache__/
 **/.DS_Store
-api/py/ai/chronon/api/
-api/py/ai/chronon/observability/
+api/py/src/ai/chronon/api/
+api/py/src/ai/chronon/observability/
 api/py/test/sample/production/group_bys/quickstart/
 api/py/test/sample/production/joins/quickstart/
 api/py/.coverage
@@ -34,7 +34,7 @@ api/py/dist/
 api/py/eggs/
 api/py/sdist/
 api/py/build/
-api/py/ai/chronon/thrift/
+api/py/src/ai/chronon/thrift/
 api/py/*.egg-info/
 *.egg
 
