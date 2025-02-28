@@ -40,12 +40,10 @@ pytest_suite(
     data = ["sample/teams.json"],
     env = {
         "CHRONON_ROOT": "api/py/sample",
+        "PYTHONPATH": ".",
     },
     imports = [
-        "../thrift/py-lib_gen/",  # This worked for the Thrift imports
-        "sample/",
-        "src/",
-        "test/",
+        ".",
     ],
     deps = [
         "//api/py:lib",
