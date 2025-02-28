@@ -43,7 +43,7 @@ pytest_suite(
         "PYTHONPATH": ".",
     },
     imports = [
-        ".",
+        #        ".",
         "sample/",
         #        "../thrift/py-lib_gen/",
     ],
