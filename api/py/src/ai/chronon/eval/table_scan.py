@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import re
 from typing import List, Tuple
-import ai.chronon.api.ttypes as chronon
+import gen_thrift.api.ttypes as chronon
 
 
 def clean_table_name(name: str) -> str:

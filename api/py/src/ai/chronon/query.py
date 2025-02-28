@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import ai.chronon.api.ttypes as api
+import gen_thrift.api.ttypes as api
 from typing import List, Dict
 
 

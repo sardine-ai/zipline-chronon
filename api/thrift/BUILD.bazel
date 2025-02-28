@@ -9,6 +9,5 @@ thrift_java_library(
 thrift_python_library(
     name = "py-lib",
     srcs = glob(["*.thrift"]),
-    namespace = "ai.chronon",
     visibility = ["//visibility:public"],
 )

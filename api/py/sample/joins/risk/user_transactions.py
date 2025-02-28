@@ -1,4 +1,4 @@
-from ai.chronon.api.ttypes import Source, EventSource
+from gen_thrift.api.ttypes import Source, EventSource
 from ai.chronon.join import Join, JoinPart
 from ai.chronon.query import Query, selects
 from group_bys.risk.transaction_events import txn_group_by_user, txn_group_by_merchant

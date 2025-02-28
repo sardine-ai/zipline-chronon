@@ -1,4 +1,4 @@
-namespace py ai.chronon.observability
+namespace py observability
 namespace java ai.chronon.observability
 
 include "common.thrift"

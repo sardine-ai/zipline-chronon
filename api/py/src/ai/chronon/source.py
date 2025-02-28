@@ -2,7 +2,7 @@
 Wrappers to directly create Source objects.
 """
 
-import ai.chronon.api.ttypes as ttypes
+import gen_thrift.api.ttypes as ttypes
 
 
 def EventSource(

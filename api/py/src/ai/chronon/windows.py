@@ -1,4 +1,4 @@
-import ai.chronon.api.common.ttypes as common
+import gen_thrift.common.ttypes as common
 
 
 def _days(length: int) -> common.Window:

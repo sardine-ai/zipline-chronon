@@ -9,7 +9,7 @@ import ai.chronon.cli.compile.parse_configs as parser
 import ai.chronon.cli.compile.serializer as serializer
 import ai.chronon.cli.logger as logger
 
-from ai.chronon.api.common.ttypes import ConfigType
+from gen_thrift.common.ttypes import ConfigType
 
 logger = logger.get_logger()
 

@@ -13,8 +13,8 @@
 #     limitations under the License.
 
 from collections import Counter
-import ai.chronon.api.ttypes as api
-import ai.chronon.api.common.ttypes as common
+import gen_thrift.api.ttypes as api
+import gen_thrift.common.ttypes as common
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
 from ai.chronon.group_by import validate_group_by

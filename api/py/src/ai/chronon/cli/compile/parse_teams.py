@@ -1,6 +1,6 @@
 import importlib
 import os
-from ai.chronon.api.ttypes import Team, EnvironmentVariables
+from gen_thrift.api.ttypes import Team, EnvironmentVariables
 from ai.chronon.cli.logger import get_logger, require
 from typing import Any, List, Dict
 

@@ -1,4 +1,4 @@
-from ai.chronon.api.ttypes import Team, EnvironmentVariables
+from gen_thrift.api.ttypes import Team, EnvironmentVariables
 
 
 default = Team(

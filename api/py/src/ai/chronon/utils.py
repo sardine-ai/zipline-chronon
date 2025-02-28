@@ -23,18 +23,17 @@ import tempfile
 from collections.abc import Iterable
 from typing import List, Optional, Union, cast
 
-import ai.chronon.api.ttypes as api
+import gen_thrift.api.ttypes as api
 import ai.chronon.repo.extract_objects as eo
-from ai.chronon.repo import (
+from ai.chronon.repo.constants import (
     # GROUP_BY_FOLDER_NAME,
     # JOIN_FOLDER_NAME,
     # STAGING_QUERY_FOLDER_NAME,
     # MODEL_FOLDER_NAME,
     FOLDER_NAME_TO_CLASS,
     TEAMS_FILE_PATH,
-    teams,
 )
-
+import ai.chronon.repo.teams as teams
 
 ChrononJobTypes = Union[api.GroupBy, api.Join, api.StagingQuery]
 
@@ -328,7 +327,11 @@ def get_join_output_table_name(join: api.Join, full_name: bool = False):
         print(f"~~~~ {join.metaData.name}")
 
         namespace = teams.get_team_conf(
-            os.path.join(os.environ.get("CHRONON_ROOT", chronon_root_path), TEAMS_FILE_PATH), team_name, "namespace"
+            os.path.join(
+                os.environ.get("CHRONON_ROOT", chronon_root_path), TEAMS_FILE_PATH
+            ),
+            team_name,
+            "namespace",
         )
 
         join.metaData.outputNamespace = namespace

@@ -1,4 +1,4 @@
-import ai.chronon.api.ttypes as thrift
+import gen_thrift.api.ttypes as thrift
 
 source = thrift.Source(
     events=thrift.EventSource(

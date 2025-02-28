@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from ai.chronon.join import Join, JoinPart
-from ai.chronon.api.ttypes import Source, EventSource
+from gen_thrift.api.ttypes import Source, EventSource
 from ai.chronon.query import Query, selects
 
 from group_bys.quickstart.purchases import v1 as purchases_v1

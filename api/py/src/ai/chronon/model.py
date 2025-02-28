@@ -1,4 +1,4 @@
-import ai.chronon.api.ttypes as ttypes
+import gen_thrift.api.ttypes as ttypes
 from typing import Optional
 
 
@@ -13,11 +13,13 @@ def Model(
     outputSchema: ttypes.TDataType,
     modelType: ModelType,
     name: str = None,
-    modelParams: Optional[dict[str, str]] = None
+    modelParams: Optional[dict[str, str]] = None,
 ) -> ttypes.Model:
     if not isinstance(source, ttypes.Source):
         raise ValueError("Invalid source type")
-    if not (isinstance(outputSchema, ttypes.TDataType) or isinstance(outputSchema, int)):
+    if not (
+        isinstance(outputSchema, ttypes.TDataType) or isinstance(outputSchema, int)
+    ):
         raise ValueError("outputSchema must be a TDataType or DataKind")
     if isinstance(outputSchema, int):
         # Convert DataKind to TDataType
@@ -30,5 +32,10 @@ def Model(
         name=name,
     )
 
-    return ttypes.Model(modelType=modelType, outputSchema=outputSchema, source=source,
-                        modelParams=modelParams, metaData=metaData)
+    return ttypes.Model(
+        modelType=modelType,
+        outputSchema=outputSchema,
+        source=source,
+        modelParams=modelParams,
+        metaData=metaData,
+    )

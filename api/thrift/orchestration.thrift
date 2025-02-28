@@ -1,4 +1,4 @@
-namespace py ai.chronon.orchestration
+namespace py orchestration
 namespace java ai.chronon.orchestration
 
 include "common.thrift"

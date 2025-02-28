@@ -1,4 +1,4 @@
-namespace py ai.chronon.fetcher
+namespace py fetcher
 namespace java ai.chronon.fetcher
 
 // Capture the information to identify a tile in the fetcher tiling based architecture.

@@ -12,8 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import StagingQuery, MetaData
-
+from gen_thrift.api.ttypes import StagingQuery, MetaData
 
 
 query = """
@@ -31,10 +30,7 @@ WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 staging_query = StagingQuery(
     query=query,
     startPartition="2023-10-31",
-    metaData=MetaData(
-        name='checkouts_staging_query',
-        outputNamespace="data"
-    ),
+    metaData=MetaData(name="checkouts_staging_query", outputNamespace="data"),
     setups=[
         "CREATE OR REPLACE TEMPORARY VIEW checkouts_external USING parquet OPTIONS (path 'gs://zl-warehouse/data/checkouts_ds_not_in_parquet/')",
     ],

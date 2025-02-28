@@ -8,7 +8,7 @@ from ai.chronon.eval.table_scan import (
     table_scans_in_join,
     table_scans_in_source,
 )
-import ai.chronon.api.ttypes as chronon
+import gen_thrift.api.ttypes as chronon
 from pyspark.sql import DataFrame, SparkSession
 
 

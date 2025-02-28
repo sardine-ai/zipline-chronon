@@ -22,7 +22,7 @@ import os
 
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
-from ai.chronon.api.ttypes import GroupBy, Join
+from gen_thrift.api.ttypes import GroupBy, Join
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,
     TEAMS_FILE_PATH,

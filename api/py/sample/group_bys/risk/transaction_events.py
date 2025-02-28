@@ -1,4 +1,4 @@
-from ai.chronon.api.ttypes import Source, EventSource
+from gen_thrift.api.ttypes import Source, EventSource
 from ai.chronon.query import Query, selects
 from ai.chronon.group_by import GroupBy, Aggregation, Operation
 

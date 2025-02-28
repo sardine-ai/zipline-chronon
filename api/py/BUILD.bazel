@@ -44,6 +44,8 @@ pytest_suite(
     },
     imports = [
         ".",
+        "sample/",
+        #        "../thrift/py-lib_gen/",
     ],
     deps = [
         "//api/py:lib",

@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EntitySource
+from gen_thrift.api.ttypes import Source, EntitySource
 from ai.chronon.query import Query, selects
 from ai.chronon.group_by import (
     GroupBy,

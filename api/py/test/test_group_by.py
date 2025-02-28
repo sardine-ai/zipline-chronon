@@ -15,8 +15,8 @@
 import pytest, json
 
 from ai.chronon import query, group_by
-from ai.chronon.api import ttypes
-import ai.chronon.api.common.ttypes as common
+import gen_thrift.api.ttypes as ttypes
+import gen_thrift.common.ttypes as common
 
 
 @pytest.fixture

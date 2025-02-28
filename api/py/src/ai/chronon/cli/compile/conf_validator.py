@@ -18,9 +18,9 @@
 import json
 import logging
 import re
-import ai.chronon.api.common.ttypes as common
+import gen_thrift.common.ttypes as common
 
-from ai.chronon.api.ttypes import (
+from gen_thrift.api.ttypes import (
     Accuracy,
     Aggregation,
     GroupBy,

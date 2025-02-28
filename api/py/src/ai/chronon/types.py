@@ -6,7 +6,7 @@ import ai.chronon.group_by as group_by
 import ai.chronon.query as query
 import ai.chronon.join as join
 import ai.chronon.source as source
-import ai.chronon.api.ttypes as ttypes
+import gen_thrift.api.ttypes as ttypes
 
 
 # source related concepts

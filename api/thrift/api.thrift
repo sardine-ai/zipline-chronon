@@ -1,4 +1,4 @@
-namespace py ai.chronon.api
+namespace py api
 namespace java ai.chronon.api
 
 include "common.thrift"

@@ -24,8 +24,8 @@ import click
 
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
-from ai.chronon.api.ttypes import GroupBy, Join
-from ai.chronon.repo import (
+from gen_thrift.api.ttypes import GroupBy, Join
+from ai.chronon.repo.constants import (
     FOLDER_NAME_TO_CLASS,
     TEAMS_FILE_PATH,
 )

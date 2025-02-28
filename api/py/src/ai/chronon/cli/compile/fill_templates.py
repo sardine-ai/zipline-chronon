@@ -1,5 +1,5 @@
 from ai.chronon import utils
-from ai.chronon.api.ttypes import Join, Team
+from gen_thrift.api.ttypes import Join, Team
 from ai.chronon.cli.compile.compile_context import CompileContext
 
 

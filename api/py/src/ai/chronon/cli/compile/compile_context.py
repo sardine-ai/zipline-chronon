@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import os
 from typing import Any, Dict, List, Type
 
-from ai.chronon.api.common.ttypes import ConfigType
-from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery, Team
+from gen_thrift.common.ttypes import ConfigType
+from gen_thrift.api.ttypes import GroupBy, Join, StagingQuery, Team
 from ai.chronon.cli.compile.compile_status import CompileStatus
 from ai.chronon.cli.compile.serializer import file2thrift
 from ai.chronon.cli.compile.conf_validator import ConfValidator

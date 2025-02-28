@@ -16,7 +16,17 @@ Run the flow for materialize.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.repo import extract_and_convert
+import sys
+import os
+
+# # Add debug code at the top
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# sys.path.insert(0, os.path.join(current_dir, ".."))  # Add parent directory
+# from test_debug import print_path_info
+# print_path_info()
+
+import ai.chronon.types
+import ai.chronon.repo.extract_objects as eo
 from click.testing import CliRunner
 
 
@@ -25,13 +35,13 @@ def test_basic_compile():
     runner = CliRunner()
 
     result = runner.invoke(
-        extract_and_convert,
+        eo.extract_and_convert,
         ["--chronon_root=test/sample", "--input_path=joins/sample_team/"],
     )
     assert result.exit_code == 0
 
     result = runner.invoke(
-        extract_and_convert,
+        eo.extract_and_convert,
         ["--chronon_root=test/sample", "--input_path=joins/sample_team"],
     )
     assert result.exit_code == 0
@@ -46,7 +56,7 @@ def test_basic_compile():
 def test_debug_compile():
     runner = CliRunner()
     result = runner.invoke(
-        extract_and_convert,
+        eo.extract_and_convert,
         ["--chronon_root=test/sample", "--input_path=joins/sample_team/", "--debug"],
     )
     assert result.exit_code == 0
@@ -58,7 +68,7 @@ def test_failed_compile():
     """
     runner = CliRunner()
     result = runner.invoke(
-        extract_and_convert,
+        eo.extract_and_convert,
         [
             "--input_path=joins/sample_team/",
         ],
@@ -72,7 +82,7 @@ def test_failed_compile_missing_input_column():
     """
     runner = CliRunner()
     result = runner.invoke(
-        extract_and_convert,
+        eo.extract_and_convert,
         [
             "--chronon_root=test/sample",
             "--input_path=group_bys/sample_team/sample_group_by_missing_input_column.py",

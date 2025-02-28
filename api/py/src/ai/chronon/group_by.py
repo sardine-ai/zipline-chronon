@@ -12,8 +12,8 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import ai.chronon.api.ttypes as ttypes
-import ai.chronon.api.common.ttypes as common
+import gen_thrift.api.ttypes as ttypes
+import gen_thrift.common.ttypes as common
 import ai.chronon.utils as utils
 import ai.chronon.windows as window_utils
 
@@ -451,7 +451,7 @@ def GroupBy(
     :param sources:
         can be constructed as entities or events or joinSource::
 
-            import ai.chronon.api.ttypes as chronon
+            import gen_thrift.api.ttypes as chronon
             events = chronon.Source(events=chronon.Events(
                 table=YOUR_TABLE,
                 topic=YOUR_TOPIC #  <- OPTIONAL for serving
@@ -473,7 +473,7 @@ def GroupBy(
 
         Multiple sources can be supplied to backfill the historical values with their respective start and end
         partitions. However, only one source is allowed to be a streaming one.
-    :type sources: List[ai.chronon.api.ttypes.Events|ai.chronon.api.ttypes.Entities]
+    :type sources: List[gen_thrift.api.ttypes.Events|gen_thrift.api.ttypes.Entities]
     :param keys:
         List of primary keys that defines the data that needs to be collected in the result table. Similar to the
         GroupBy in the SQL context.
@@ -481,12 +481,12 @@ def GroupBy(
     :param aggregations:
         List of aggregations that needs to be computed for the data following the grouping defined by the keys::
 
-            import ai.chronon.api.ttypes as chronon
+            import gen_thrift.api.ttypes as chronon
             aggregations = [
                 chronon.Aggregation(input_column="entity", operation=Operation.LAST),
                 chronon.Aggregation(input_column="entity", operation=Operation.LAST, windows=['7d'])
             ],
-    :type aggregations: List[ai.chronon.api.ttypes.Aggregation]
+    :type aggregations: List[gen_thrift.api.ttypes.Aggregation]
     :param online:
         Should we upload the result data of this conf into the KV store so that we can fetch/serve this GroupBy online.
         Once Online is set to True, you ideally should not change the conf.
@@ -532,7 +532,7 @@ def GroupBy(
         Defines the computing accuracy of the GroupBy.
         If "Snapshot" is selected, the aggregations are computed based on the partition identifier - "ds" time column.
         If "Temporal" is selected, the aggregations are computed based on the event time - "ts" time column.
-    :type accuracy: ai.chronon.api.ttypes.SNAPSHOT or ai.chronon.api.ttypes.TEMPORAL
+    :type accuracy: gen_thrift.api.ttypes.SNAPSHOT or gen_thrift.api.ttypes.TEMPORAL
     :param lag:
         Param that goes into customJson. You can pull this out of the json at path "metaData.customJson.lag"
         This is used by airflow integration to pick an older hive partition to wait on.
@@ -554,7 +554,7 @@ def GroupBy(
     :param derivations:
         Derivation allows arbitrary SQL select clauses to be computed using columns from the output of group by backfill
         output schema. It is supported for offline computations for now.
-    :type derivations: List[ai.chronon.api.ttypes.Drivation]
+    :type derivations: List[gen_thrift.api.ttypes.Drivation]
     :param kwargs:
         Additional properties that would be passed to run.py if specified under additional_args property.
         And provides an option to pass custom values to the processing logic.

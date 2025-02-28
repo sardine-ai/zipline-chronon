@@ -15,7 +15,7 @@
 import os
 from ai.chronon.repo.serializer import json2thrift, file2thrift
 from ai.chronon import utils
-import ai.chronon.api.ttypes as api
+import gen_thrift.api.ttypes as api
 import pytest
 
 
@@ -100,7 +100,7 @@ def test_edit_distance():
     assert utils.edit_distance("test", "test") == 0
     assert utils.edit_distance("test", "testy") > 0
     assert utils.edit_distance("test", "testing") <= (
-            utils.edit_distance("test", "tester") + utils.edit_distance("tester", "testing")
+        utils.edit_distance("test", "tester") + utils.edit_distance("tester", "testing")
     )
 
 
@@ -320,7 +320,7 @@ def test_join_part_table_names(repo, materialized_join, table_name):
         os.path.join(repo, "production/joins/sample_team", materialized_join), api.Join
     )
     assert (
-            utils.join_part_output_table_name(join, join.joinParts[0], True) == table_name
+        utils.join_part_output_table_name(join, join.joinParts[0], True) == table_name
     )
 
 

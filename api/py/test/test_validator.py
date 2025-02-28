@@ -18,7 +18,7 @@ Forcing validator to fail some tests
 
 import pytest
 
-from ai.chronon.repo import validator
+import ai.chronon.repo.validator as validator
 
 
 @pytest.fixture
