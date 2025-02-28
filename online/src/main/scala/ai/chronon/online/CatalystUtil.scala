@@ -350,7 +350,7 @@ class CatalystUtil(inputSchema: StructType,
         require(
           !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
           s"Too many fields in input schema. Catalyst util max field config: ${CatalystUtil.MaxFields}. " +
-          s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
+            s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
         )
 
     // Use the new recursive approach to build a transformation chain
