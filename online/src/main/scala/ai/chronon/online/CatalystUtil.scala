@@ -344,8 +344,14 @@ class CatalystUtil(inputSchema: StructType,
     val filteredDf = whereClauseOpt.map(df.where(_)).getOrElse(df)
 
     // extract transform function from the df spark plan
-    val execPlan = filteredDf.queryExecution.executedPlan
-    logger.info(s"Catalyst Execution Plan - ${execPlan}")
+    val func: InternalRow => ArrayBuffer[InternalRow] = filteredDf.queryExecution.executedPlan match {
+      case whc: WholeStageCodegenExec => {
+        // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
+        require(
+          !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
+          s"Too many fields in input schema. Catalyst util max field config: ${CatalystUtil.MaxFields}. " +
+          s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
+        )
 
     // Use the new recursive approach to build a transformation chain
     val transformer = buildTransformChain(execPlan)
