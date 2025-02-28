@@ -270,9 +270,25 @@ union Dependency {
     2: optional TableDependency tableDependency
 }
 
-struct PhysicalNodeGraph {
-    1: optional list<PhysicalNodeInstance> leafNodes
-    2: optional map<PhysicalNodeKey, PhysicalNodeInstance> infoMap
+/**
+* Below are dummy thrift objects for execution layer skeleton code using temporal
+* TODO: Need to update these to fill in all the above relevant fields
+**/
+
+struct DummyNode {
+    1: optional string name
+    2: optional list<DummyNode> dependencies
+}
+
+struct DummyNodeGraph {
+    1: optional list<DummyNode> leafNodes
+    2: optional map<string, DummyNode> infoMap
+}
+
+struct DagExecutionWorkflowState {
+    1: optional i64 processedDagCount
+    2: optional i32 maxHistoryLength
+    3: optional list<DummyNodeGraph> pendingDags
 }
 
 /**
