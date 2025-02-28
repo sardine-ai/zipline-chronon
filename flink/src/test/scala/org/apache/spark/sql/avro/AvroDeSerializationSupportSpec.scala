@@ -88,10 +88,19 @@ class AvroDeSerializationSupportSpec extends AnyFlatSpec {
     val sparkRow = deserSchema.deserialize(payloadBytes)
 
     val selects = Map(
-      "listing_id" -> "EXPLODE(SPLIT(COALESCE(properties['sold_listing_ids'], properties['listing_id']), ','))"
+      "favorite" -> "IF(event_name = 'backend_favorite_item2', 1, 0)",
+      "listing_id" -> "EXPLODE(TRANSFORM(SPLIT(COALESCE(properties_top.sold_listing_ids, properties_top.listing_id), ','), e -> CAST(e AS LONG)))", // keeping this on fails unit test
+//      "listing_id" -> "EXPLODE(SPLIT(COALESCE(properties['sold_listing_ids'], properties['listing_id']), ','))", // switching to this makes the test pass and filter correctly
+      "ts" -> "timestamp",
+      "add_cart" -> "IF(event_name = 'backend_add_to_cart', 1, 0)",
+      "purchase" -> "IF(event_name = 'backend_cart_payment', 1, 0)",
+      "view" -> "IF(event_name = 'view_listing',  1, 0)"
     ).toSeq
     val wheres = Seq(
-      s"event_name in ('backend_cart_payment', 'backend_add_to_cart')"
+      "event_name in ('backend_add_to_cart', 'view_listing', 'backend_cart_payment', 'backend_favorite_item2')",
+      "( (properties_top.gdpr_p in ('1', '3') AND properties_top.gdpr_tp in ('1', '3')) OR ((NOT properties_top.gdpr_p IS NOT NULL) AND " +
+        "(NOT properties_top.gdpr_tp IS NOT NULL) AND properties_top.region in ('US', 'CA', 'AU', 'MX', 'JP', 'NZ', 'BR', 'CN') AND event_logger = 'native' AND event_source in ('ios', 'android')) )",
+      "( (NOT properties_top.isBot = 'true') AND (NOT properties_top.isSupportLogin = 'true') )"
     )
     val chrononSchema =
       AvroConversions.toChrononSchema(new Schema.Parser().parse(beaconTopSchema)).asInstanceOf[ChrononStructType]
