@@ -280,17 +280,6 @@ struct DummyNode {
     2: optional list<DummyNode> dependencies
 }
 
-struct DummyNodeGraph {
-    1: optional list<DummyNode> leafNodes
-    2: optional map<string, DummyNode> infoMap
-}
-
-struct DagExecutionWorkflowState {
-    1: optional i64 processedDagCount
-    2: optional i32 maxHistoryLength
-    3: optional list<DummyNodeGraph> pendingDags
-}
-
 /**
 * -- Phase 0 plan -- (same as chronon oss)
 * StagingQuery::query - [deps.table] >> query

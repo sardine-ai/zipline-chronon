@@ -126,7 +126,7 @@ class NodeRunnerActivityTest extends AnyFlatSpec with Matchers with BeforeAndAft
       .setDependencies(util.Arrays.asList(depNode1, depNode2)) // Main node depends on both leaf nodes
   }
 
-  it should "handle dependencies correctly" in {
+  it should "handle simple node with one level deep correctly" in {
     // Trigger activity
     testActivityWorkflow.executeActivity(getSimpleNode)
 
@@ -170,7 +170,7 @@ class NodeRunnerActivityTest extends AnyFlatSpec with Matchers with BeforeAndAft
       .setDependencies(util.Arrays.asList(join))
   }
 
-  it should "handle complex node correctly" in {
+  it should "handle complex node with multiple levels deep correctly" in {
     // Trigger activity
     testActivityWorkflow.executeActivity(getComplexNode)
 
