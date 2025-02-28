@@ -49,6 +49,11 @@
 		hideDelay: 150,
 		...(typeof restProps.tooltip === 'object' ? restProps.tooltip : null)
 	}}
+	props={{
+		canvas: {
+			class: 'cursor-crosshair'
+		}
+	}}
 >
 	<svelte:fragment slot="aboveMarks" let:xScale let:yScale>
 		{#if markPoint}
