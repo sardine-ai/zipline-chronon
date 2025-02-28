@@ -84,10 +84,10 @@ if [[ -n $(git diff HEAD..origin/$local_branch) ]]; then
     exit 1
 fi
 
-set -e
+set -euxo pipefail
 
 SCRIPT_DIRECTORY=$(dirname -- "$(realpath -- "$0")")
-CHRONON_ROOT_DIR=$(dirname "$SCRIPT_DIRECTORY")
+CHRONON_ROOT_DIR=$(dirname "$(dirname "$SCRIPT_DIRECTORY")")
 
 echo "Working in $CHRONON_ROOT_DIR"
 cd $CHRONON_ROOT_DIR
@@ -114,12 +114,19 @@ fi
 thrift --gen py -out api/py/ api/thrift/common.thrift
 thrift --gen py -out api/py/ api/thrift/api.thrift
 thrift --gen py -out api/py/ api/thrift/observability.thrift
-VERSION=$(cat version.sbt | cut -d " " -f3 | tr -d '"') pip wheel api/py
-EXPECTED_ZIPLINE_WHEEL="zipline_ai-0.1.0.dev0-py3-none-any.whl"
+
+WHEEL_VERSION="0.1.0"
+
+VERSION=$WHEEL_VERSION pip wheel api/py
+EXPECTED_ZIPLINE_WHEEL="zipline_ai-$WHEEL_VERSION-py3-none-any.whl"
 if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
     echo "$EXPECTED_ZIPLINE_WHEEL not found"
     exit 1
 fi
+
+# Keeping this here to not break any existing users like Etsy
+OLD_ZIPLINE_WHEEL_NAME="zipline_ai-0.1.0.dev0-py3-none-any.whl"
+cp $EXPECTED_ZIPLINE_WHEEL $OLD_ZIPLINE_WHEEL_NAME
 
 echo "Building jars"
 
@@ -219,6 +226,7 @@ function upload_to_aws() {
                 aws s3 cp "$CLOUD_AWS_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                aws s3 cp "$OLD_ZIPLINE_WHEEL_NAME" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"
@@ -228,6 +236,11 @@ function upload_to_aws() {
   done
 }
 
+
+if [ "$BUILD_AWS" = false ] && [ "$BUILD_GCP" = false ]; then
+  echo "Please select an upload option (--all, --gcp, --aws). Exiting"
+  exit 1
+fi
 
 if [ "$BUILD_AWS" = true ]; then
   if [  ${#INPUT_AWS_CUSTOMER_IDS[@]} -eq 0 ]; then
@@ -245,7 +258,6 @@ if [ "$BUILD_GCP" = true ]; then
   fi
   upload_to_gcp "${GCP_CUSTOMER_IDS[@]}"
 fi
-
 
 # Cleanup wheel stuff
 rm ./*.whl
