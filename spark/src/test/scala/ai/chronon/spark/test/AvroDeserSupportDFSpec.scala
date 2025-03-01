@@ -19,9 +19,11 @@ class AvroDeserSupportDFSpec extends AnyFlatSpec {
     val payloadBytes = java.util.Base64.getDecoder.decode(beaconTopPayload)
 
     val binaryDF = Seq((payloadBytes)).toDF("avro_binary")
-    val resultDF = binaryDF.select(
-      from_avro(col("avro_binary"), beaconTopSchema).as("data")
-    ).select("data.*")
+    val resultDF = binaryDF
+      .select(
+        from_avro(col("avro_binary"), beaconTopSchema).as("data")
+      )
+      .select("data.*")
 
     val selects = Map(
       "favorite" -> "IF(event_name = 'backend_favorite_item2', 1, 0)",
