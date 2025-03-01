@@ -185,63 +185,29 @@ class CatalystUtil(inputSchema: StructType,
   private def extractCodegenStageTransformer(whc: WholeStageCodegenExec): InternalRow => Seq[InternalRow] = {
     logger.info(s"Extracting codegen stage transformer for: ${whc}")
 
-    try {
-      // Generate and compile the code
-      val (ctx, cleanedSource) = whc.doCodeGen()
+    val (ctx, cleanedSource) = whc.doCodeGen()
+    val (clazz, _) = CodeGenerator.compile(cleanedSource)
+    val references = ctx.references.toArray
+    val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
+    val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
+    buffer.init(0, Array(iteratorWrapper))
 
-      // Log a snippet of the generated code for debugging
-      val codeSnippet = cleanedSource.body.split("\n").take(20).mkString("\n")
-      logger.debug(s"Generated code snippet: \n$codeSnippet\n...")
-
-      val (clazz, compilationTime) = CodeGenerator.compile(cleanedSource)
-      logger.info(s"Compiled code in ${compilationTime}ms")
-
-      val references = ctx.references.toArray
-      val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
-      val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
-      buffer.init(0, Array(iteratorWrapper))
-
-      def codegenFunc(row: InternalRow): Seq[InternalRow] = {
-        iteratorWrapper.put(row)
-        val result = ArrayBuffer.empty[InternalRow]
-        while (buffer.hasNext) {
-          result.append(buffer.next())
-        }
-        result
+    def codegenFunc(row: InternalRow): Seq[InternalRow] = {
+      iteratorWrapper.put(row)
+      val result = ArrayBuffer.empty[InternalRow]
+      while (buffer.hasNext) {
+        result.append(buffer.next())
       }
-
-      codegenFunc
-    } catch {
-      case e: Exception =>
-        logger.error(s"Failed to compile code for WholeStageCodegenExec: ${e.getMessage}", e)
-
-        // Fall back to interpreted execution as a last resort
-        logger.warn("Falling back to non-codegen execution path")
-
-        // Create a fallback function that processes the child plan without codegen
-        val childPlan = whc.child
-        row => {
-          // Use a fallback approach based on the child plan type
-          childPlan match {
-            case project: ProjectExec =>
-              extractProjectTransformer(project).apply(row)
-            case filter: FilterExec =>
-              extractFilterTransformer(filter).apply(row)
-            case _ =>
-              // For any other child plan, just return the row as-is
-              // This is a conservative fallback that may not be correct for all cases
-              Seq(row)
-          }
-        }
+      result
     }
+
+    codegenFunc
   }
 
   /** Extracts transformation function from a ProjectExec node
     */
   private def extractProjectTransformer(project: ProjectExec): InternalRow => Seq[InternalRow] = {
-    // Use project.child.output as input schema instead of project.output
-    // This ensures expressions like int32s#8 can be properly resolved
-    val unsafeProjection = UnsafeProjection.create(project.projectList, project.child.output)
+    val unsafeProjection = UnsafeProjection.create(project.projectList, project.output)
 
     row => Seq(unsafeProjection.apply(row))
   }
@@ -262,36 +228,15 @@ class CatalystUtil(inputSchema: StructType,
 
     plan match {
       case whc: WholeStageCodegenExec =>
-        logger.info(s"WholeStageCodegenExec child plan: ${whc.child}")
-
-        // Check for tooManyFields issue and emit a more helpful diagnostic
-        if (WholeStageCodegenExec.isTooManyFields(SQLConf.get, whc.child.schema)) {
-          logger.warn("WholeStageCodegenExec has too many fields which may lead to code generation issues")
-          logger.warn(s"Schema has ${whc.child.schema.size} fields, max is ${SQLConf.get.wholeStageMaxNumFields}")
-        }
-
         // If this is a WholeStageCodegenExec, use its compiled code
         extractCodegenStageTransformer(whc)
 
       case project: ProjectExec =>
-        project.child match {
-          // Special handling for direct RDD scans - no need to process through child
-          case _: RDDScanExec | _: LocalTableScanExec =>
-            // When the child is a simple scan, we can directly apply the projection
-            extractProjectTransformer(project)
+        // For a projection, first process the child and then apply projection
+        val childTransformer = buildTransformChain(project.child)
+        val projectTransformer = extractProjectTransformer(project)
 
-          case _ =>
-            // For complex children, we need to chain the transformations
-            // Create a single function that applies both child and projection transformations
-            // The child transformer generates intermediate rows with the schema that the projection expects
-            val childTransformer = buildTransformChain(project.child)
-            val projectTransformer = extractProjectTransformer(project)
-
-            row => {
-              val intermediateRows = childTransformer(row)
-              intermediateRows.flatMap(projectTransformer)
-            }
-        }
+        row => childTransformer(row).flatMap(projectTransformer)
 
       case filter: FilterExec =>
         // For a filter, first process the child and then apply filter
@@ -346,14 +291,6 @@ class CatalystUtil(inputSchema: StructType,
     // extract transform function from the df spark plan
     val execPlan = filteredDf.queryExecution.executedPlan
     logger.info(s"Catalyst Execution Plan - ${execPlan}")
-    val func: InternalRow => ArrayBuffer[InternalRow] = execPlan match {
-      case whc: WholeStageCodegenExec => {
-        // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
-        require(
-          !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
-          s"Too many fields in input schema. Catalyst util max field config: ${CatalystUtil.MaxFields}. " +
-            s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
-        )
 
     // Use the new recursive approach to build a transformation chain
     val transformer = buildTransformChain(execPlan)
