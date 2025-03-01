@@ -27,12 +27,15 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.FunctionAlreadyExistsException
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
-import org.apache.spark.sql.execution.BufferedRowIterator
-import org.apache.spark.sql.execution.FilterExec
-import org.apache.spark.sql.execution.LocalTableScanExec
-import org.apache.spark.sql.execution.ProjectExec
-import org.apache.spark.sql.execution.RDDScanExec
-import org.apache.spark.sql.execution.WholeStageCodegenExec
+import org.apache.spark.sql.execution.{
+  BufferedRowIterator,
+  FilterExec,
+  InputAdapter,
+  LocalTableScanExec,
+  ProjectExec,
+  RDDScanExec,
+  WholeStageCodegenExec
+}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types
 import org.slf4j.LoggerFactory
@@ -129,7 +132,6 @@ class PooledCatalystUtil(expressions: Seq[(String, String)], inputSchema: Struct
     poolMap.performWithValue(poolKey, cuPool) { _.outputChrononSchema }
 }
 
-// This class by itself it not thread safe because of the transformBuffer
 class CatalystUtil(inputSchema: StructType,
                    selects: Seq[(String, String)],
                    wheres: Seq[String] = Seq.empty,
@@ -178,6 +180,89 @@ class CatalystUtil(inputSchema: StructType,
 
   def getOutputSparkSchema: types.StructType = outputSparkSchema
 
+  /** Extracts transformation function from a WholeStageCodegenExec node
+    */
+  private def extractCodegenStageTransformer(whc: WholeStageCodegenExec): InternalRow => Seq[InternalRow] = {
+    logger.info(s"Extracting codegen stage transformer for: ${whc}")
+
+    val (ctx, cleanedSource) = whc.doCodeGen()
+    val (clazz, _) = CodeGenerator.compile(cleanedSource)
+    val references = ctx.references.toArray
+    val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
+    val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
+    buffer.init(0, Array(iteratorWrapper))
+
+    def codegenFunc(row: InternalRow): Seq[InternalRow] = {
+      iteratorWrapper.put(row)
+      val result = ArrayBuffer.empty[InternalRow]
+      while (buffer.hasNext) {
+        result.append(buffer.next())
+      }
+      result
+    }
+
+    codegenFunc
+  }
+
+  /** Extracts transformation function from a ProjectExec node
+    */
+  private def extractProjectTransformer(project: ProjectExec): InternalRow => Seq[InternalRow] = {
+    val unsafeProjection = UnsafeProjection.create(project.projectList, project.output)
+
+    row => Seq(unsafeProjection.apply(row))
+  }
+
+  /** Extracts transformation function from a FilterExec node
+    */
+  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = { row =>
+    {
+      val passed = CatalystHelper.evalFilterExec(row, filter.condition, filter.child.output)
+      if (passed) Seq(row) else Seq.empty
+    }
+  }
+
+  /** Recursively builds a chain of transformation functions from a SparkPlan
+    */
+  private def buildTransformChain(plan: org.apache.spark.sql.execution.SparkPlan): InternalRow => Seq[InternalRow] = {
+    logger.info(s"Building transform chain for plan: ${plan.getClass.getSimpleName}")
+
+    plan match {
+      case whc: WholeStageCodegenExec =>
+        // If this is a WholeStageCodegenExec, use its compiled code
+        extractCodegenStageTransformer(whc)
+
+      case project: ProjectExec =>
+        // For a projection, first process the child and then apply projection
+        val childTransformer = buildTransformChain(project.child)
+        val projectTransformer = extractProjectTransformer(project)
+
+        row => childTransformer(row).flatMap(projectTransformer)
+
+      case filter: FilterExec =>
+        // For a filter, first process the child and then apply filter
+        val childTransformer = buildTransformChain(filter.child)
+        val filterTransformer = extractFilterTransformer(filter)
+
+        row => childTransformer(row).flatMap(filterTransformer)
+
+      case input: InputAdapter =>
+        // For InputAdapter, just pass through to its child
+        buildTransformChain(input.child)
+
+      case ltse: LocalTableScanExec =>
+        // Input row is unused for LocalTableScanExec
+        _ => ArrayBuffer(ltse.executeCollect(): _*)
+
+      case rddse: RDDScanExec =>
+        val unsafeProjection = UnsafeProjection.create(rddse.schema)
+        row => Seq(unsafeProjection.apply(row))
+
+      case unknown =>
+        logger.warn(s"Unrecognized plan node: ${unknown.getClass.getName}")
+        throw new RuntimeException(s"Unrecognized stage in codegen: ${unknown.getClass}")
+    }
+  }
+
   private def initialize(): (InternalRow => Seq[InternalRow], types.StructType) = {
     val session = CatalystUtil.session
 
@@ -206,90 +291,10 @@ class CatalystUtil(inputSchema: StructType,
     // extract transform function from the df spark plan
     val execPlan = filteredDf.queryExecution.executedPlan
     logger.info(s"Catalyst Execution Plan - ${execPlan}")
-    val func: InternalRow => ArrayBuffer[InternalRow] = execPlan match {
-      case whc: WholeStageCodegenExec => {
-        // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
-        require(
-          !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
-          s"Too many fields in input schema. Catalyst util max field config: ${CatalystUtil.MaxFields}. " +
-            s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
-        )
 
-        val (ctx, cleanedSource) = whc.doCodeGen()
-        val (clazz, _) = CodeGenerator.compile(cleanedSource)
-        val references = ctx.references.toArray
-        val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
-        val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
-        buffer.init(0, Array(iteratorWrapper))
-        def codegenFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-          iteratorWrapper.put(row)
-          val result = ArrayBuffer.empty[InternalRow]
-          while (buffer.hasNext) {
-            result.append(buffer.next())
-          }
-          result
-        }
-        codegenFunc
-      }
+    // Use the new recursive approach to build a transformation chain
+    val transformer = buildTransformChain(execPlan)
 
-      case ProjectExec(projectList, fp @ FilterExec(condition, child)) => {
-        val unsafeProjection = UnsafeProjection.create(projectList, fp.output)
-
-        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-          val r = CatalystHelper.evalFilterExec(row, condition, child.output)
-          if (r)
-            ArrayBuffer(unsafeProjection.apply(row))
-          else
-            ArrayBuffer.empty[InternalRow]
-        }
-
-        projectFunc
-      }
-      case ProjectExec(projectList, childPlan) => {
-        childPlan match {
-          // This WholeStageCodegenExec case is slightly different from the one above as we apply a projection.
-          case whc @ WholeStageCodegenExec(_: FilterExec) =>
-            val unsafeProjection = UnsafeProjection.create(projectList, childPlan.output)
-            val (ctx, cleanedSource) = whc.doCodeGen()
-            val (clazz, _) = CodeGenerator.compile(cleanedSource)
-            val references = ctx.references.toArray
-            val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
-            val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
-            buffer.init(0, Array(iteratorWrapper))
-            def codegenFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-              iteratorWrapper.put(row)
-              val result = ArrayBuffer.empty[InternalRow]
-              while (buffer.hasNext) {
-                result.append(unsafeProjection.apply(buffer.next()))
-              }
-              result
-            }
-            codegenFunc
-          case _ =>
-            val unsafeProjection = UnsafeProjection.create(projectList, childPlan.output)
-            def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-              ArrayBuffer(unsafeProjection.apply(row))
-            }
-            projectFunc
-        }
-      }
-      case ltse: LocalTableScanExec => {
-        // Input `row` is unused because for LTSE, no input is needed to compute the output
-        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] =
-          ArrayBuffer(ltse.executeCollect(): _*)
-
-        projectFunc
-      }
-      case rddse: RDDScanExec => {
-        val unsafeProjection = UnsafeProjection.create(rddse.schema)
-        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] =
-          ArrayBuffer(unsafeProjection.apply(row))
-
-        projectFunc
-      }
-      case unknown => throw new RuntimeException(s"Unrecognized stage in codegen: ${unknown.getClass}")
-    }
-
-    (func, df.schema)
+    (transformer, df.schema)
   }
 }
