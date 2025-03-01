@@ -491,6 +491,28 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
   }
 
   it should "functions with list containers should work" in {
+
+    val listContainersStruct: StructType = StructType(
+      "ListContainersStruct",
+      Array(
+        StructField("bools", ListType(BooleanType)),
+        StructField("int32s", ListType(IntType)),
+        StructField("int64s", ListType(LongType)),
+        StructField("float64s", ListType(DoubleType)),
+        StructField("strings", ListType(StringType)),
+        StructField("bytess", ListType(BinaryType))
+      )
+    )
+
+    val listContainersRow: Map[String, Any] = Map(
+      "bools" -> makeArrayList(false, true, false),
+      "int32s" -> makeArrayList(1, 2, 3),
+      "int64s" -> makeArrayList(4L, 5L, 6L),
+      "float64s" -> makeArrayList(7.7, 8.7, 9.9),
+      "strings" -> makeArrayList("hello", "world"),
+      "bytess" -> makeArrayList("hello".getBytes(), "world".getBytes())
+    )
+
     val selects = Seq(
       "a" -> "ARRAY(2, 4, 6)",
       "b" -> "ARRAY_REPEAT('123', 2)",
@@ -498,14 +520,15 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "d" -> "ARRAY_MIN(`int32s`)",
       "e" -> "CARDINALITY(int32s)"
     )
-    val cu = new CatalystUtil(ListContainersStruct, selects)
-    val res = cu.performSql(ListContainersRow).headOption
+    val cu = new CatalystUtil(listContainersStruct, selects)
+    val res = cu.performSql(listContainersRow).headOption
     assertEquals(res.get.size, 5)
     assertEquals(res.get("a"), makeArrayList(2, 4, 6))
     assertEquals(res.get("b"), makeArrayList("123", "123"))
     assertEquals(res.get("c"), 60)
     assertEquals(res.get("d"), 1)
     assertEquals(res.get("e"), 3)
+
   }
 
   it should "select star with map containers should return as is" in {
