@@ -466,6 +466,7 @@ class CatalystUtilTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs 
       "strings" -> "strings",
       "bytess" -> "bytess"
     )
+
     val cu = new CatalystUtil(ListContainersStruct, selects)
     val res = cu.performSql(ArrayContainersRow).headOption
     assertEquals(res.get.size, 6)

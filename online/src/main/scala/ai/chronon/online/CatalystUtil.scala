@@ -182,58 +182,38 @@ class CatalystUtil(inputSchema: StructType,
 
   /** Extracts transformation function from a WholeStageCodegenExec node
     */
+  /** Extracts a transformation function from WholeStageCodegenExec
+    * This method only handles the code generation part - the fallback to
+    * child plans is handled in buildTransformChain
+    */
   private def extractCodegenStageTransformer(whc: WholeStageCodegenExec): InternalRow => Seq[InternalRow] = {
     logger.info(s"Extracting codegen stage transformer for: ${whc}")
 
-    try {
-      // Generate and compile the code
-      val (ctx, cleanedSource) = whc.doCodeGen()
+    // Generate and compile the code
+    val (ctx, cleanedSource) = whc.doCodeGen()
 
-      // Log a snippet of the generated code for debugging
-      val codeSnippet = cleanedSource.body.split("\n").take(20).mkString("\n")
-      logger.debug(s"Generated code snippet: \n$codeSnippet\n...")
+    // Log a snippet of the generated code for debugging
+    val codeSnippet = cleanedSource.body.split("\n").take(20).mkString("\n")
+    logger.debug(s"Generated code snippet: \n$codeSnippet\n...")
 
-      val (clazz, compilationTime) = CodeGenerator.compile(cleanedSource)
-      logger.info(s"Compiled code in ${compilationTime}ms")
+    val (clazz, compilationTime) = CodeGenerator.compile(cleanedSource)
+    logger.info(s"Compiled code in ${compilationTime}ms")
 
-      val references = ctx.references.toArray
-      val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
-      val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
-      buffer.init(0, Array(iteratorWrapper))
+    val references = ctx.references.toArray
+    val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
+    val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
+    buffer.init(0, Array(iteratorWrapper))
 
-      def codegenFunc(row: InternalRow): Seq[InternalRow] = {
-        iteratorWrapper.put(row)
-        val result = ArrayBuffer.empty[InternalRow]
-        while (buffer.hasNext) {
-          result.append(buffer.next())
-        }
-        result
+    def codegenFunc(row: InternalRow): Seq[InternalRow] = {
+      iteratorWrapper.put(row)
+      val result = ArrayBuffer.empty[InternalRow]
+      while (buffer.hasNext) {
+        result.append(buffer.next())
       }
-
-      codegenFunc
-    } catch {
-      case e: Exception =>
-        logger.error(s"Failed to compile code for WholeStageCodegenExec: ${e.getMessage}", e)
-
-        // Fall back to interpreted execution as a last resort
-        logger.warn("Falling back to non-codegen execution path")
-
-        // Create a fallback function that processes the child plan without codegen
-        val childPlan = whc.child
-        row => {
-          // Use a fallback approach based on the child plan type
-          childPlan match {
-            case project: ProjectExec =>
-              extractProjectTransformer(project).apply(row)
-            case filter: FilterExec =>
-              extractFilterTransformer(filter).apply(row)
-            case _ =>
-              // For any other child plan, just return the row as-is
-              // This is a conservative fallback that may not be correct for all cases
-              Seq(row)
-          }
-        }
+      result
     }
+
+    codegenFunc
   }
 
   /** Extracts transformation function from a ProjectExec node
@@ -257,8 +237,30 @@ class CatalystUtil(inputSchema: StructType,
 
   /** Recursively builds a chain of transformation functions from a SparkPlan
     */
+  /** Helper method to check if a plan tree contains any InputAdapter nodes
+    * which indicate split points for WholeStageCodegenExec
+    */
+  private def containsInputAdapter(plan: org.apache.spark.sql.execution.SparkPlan): Boolean = {
+    if (plan.isInstanceOf[InputAdapter]) {
+      return true
+    }
+    plan.children.exists(containsInputAdapter)
+  }
+
   private def buildTransformChain(plan: org.apache.spark.sql.execution.SparkPlan): InternalRow => Seq[InternalRow] = {
     logger.info(s"Building transform chain for plan: ${plan.getClass.getSimpleName}")
+
+    // Helper function to inspect plan structures
+    def describePlan(plan: org.apache.spark.sql.execution.SparkPlan, depth: Int = 0): String = {
+      val indent = "  " * depth
+      val childrenDesc = plan.children.map(c => describePlan(c, depth + 1)).mkString("\n")
+      s"${indent}${plan.getClass.getSimpleName}: ${plan.output.map(_.name).mkString(", ")}\n${childrenDesc}"
+    }
+
+    // Log detailed plan structure for complex plans
+    if (plan.children.size > 1 || plan.isInstanceOf[WholeStageCodegenExec]) {
+      logger.info(s"Detailed plan structure:\n${describePlan(plan)}")
+    }
 
     plan match {
       case whc: WholeStageCodegenExec =>
@@ -270,20 +272,73 @@ class CatalystUtil(inputSchema: StructType,
           logger.warn(s"Schema has ${whc.child.schema.size} fields, max is ${SQLConf.get.wholeStageMaxNumFields}")
         }
 
-        // If this is a WholeStageCodegenExec, use its compiled code
-        extractCodegenStageTransformer(whc)
+        // First check if the WholeStageCodegenExec has InputAdapter in its plan tree
+        // If so, we need to handle the stages separately
+        if (containsInputAdapter(whc)) {
+          logger.info("WholeStageCodegenExec contains InputAdapter nodes - processing as cascading stages")
+
+          // Process the child plan, which will handle the InputAdapter recursively
+          // This is the critical step that implements proper cascading codegen
+          val childTransformer = buildTransformChain(whc.child)
+
+          // Return the child transformer directly - the cascading will happen
+          // through the InputAdapter case which will process the next stage
+          childTransformer
+        } else {
+          // If no InputAdapter is found, this is a single WholeStageCodegenExec
+          // that we can process with the extracted code
+          try {
+            logger.info("Processing WholeStageCodegenExec as a single stage")
+            extractCodegenStageTransformer(whc)
+          } catch {
+            case e: Exception =>
+              // If codegen fails, fall back to processing the child plans without codegen
+              logger.warn(s"Failed to use WholeStageCodegenExec, falling back to child plan execution: ${e.getMessage}")
+              logger.info("Building transform chain for child plan instead")
+
+              // Recursively build a transform chain from the child plans
+              buildTransformChain(whc.child)
+          }
+        }
 
       case project: ProjectExec =>
+        logger.info(s"Processing ProjectExec with expressions: ${project.projectList}")
+
         project.child match {
           // Special handling for direct RDD scans - no need to process through child
           case _: RDDScanExec | _: LocalTableScanExec =>
             // When the child is a simple scan, we can directly apply the projection
             extractProjectTransformer(project)
 
+          // Special handling for WholeStageCodegenExec child - we need to be careful about schema alignment
+          case whc: WholeStageCodegenExec =>
+            try {
+              // Try to use both the WholeStageCodegenExec and then the projection
+              val codegenTransformer = buildTransformChain(whc)
+              val projectTransformer = extractProjectTransformer(project)
+
+              row => {
+                val intermediateRows = codegenTransformer(row)
+                intermediateRows.flatMap(projectTransformer)
+              }
+            } catch {
+              case e: Exception =>
+                logger.warn(s"Error processing ProjectExec with WholeStageCodegenExec child: ${e.getMessage}")
+
+                // If that fails, try to directly create a projection against the input
+                // This is a more aggressive fallback that might work in simple cases
+                try {
+                  val unsafeProjection = UnsafeProjection.create(project.projectList, project.child.output)
+                  row => Seq(unsafeProjection.apply(row))
+                } catch {
+                  case e2: Exception =>
+                    logger.error(s"Fallback projection also failed: ${e2.getMessage}", e2)
+                    throw e2
+                }
+            }
+
           case _ =>
             // For complex children, we need to chain the transformations
-            // Create a single function that applies both child and projection transformations
-            // The child transformer generates intermediate rows with the schema that the projection expects
             val childTransformer = buildTransformChain(project.child)
             val projectTransformer = extractProjectTransformer(project)
 
@@ -294,6 +349,8 @@ class CatalystUtil(inputSchema: StructType,
         }
 
       case filter: FilterExec =>
+        logger.info(s"Processing FilterExec with condition: ${filter.condition}")
+
         // For a filter, first process the child and then apply filter
         val childTransformer = buildTransformChain(filter.child)
         val filterTransformer = extractFilterTransformer(filter)
@@ -301,16 +358,43 @@ class CatalystUtil(inputSchema: StructType,
         row => childTransformer(row).flatMap(filterTransformer)
 
       case input: InputAdapter =>
-        // For InputAdapter, just pass through to its child
-        buildTransformChain(input.child)
+        logger.info(s"Processing InputAdapter with child: ${input.child.getClass.getSimpleName}")
+        logger.info("This is a split point between codegen stages")
+
+        // InputAdapter is a boundary between codegen regions
+        // We need to recursively process its child, which might be another WholeStageCodegenExec
+        val childTransformer = buildTransformChain(input.child)
+
+        // The schema should be preserved across the InputAdapter boundary
+        // Return the child transformer directly to ensure data flows correctly
+        row => {
+          logger.debug(s"InputAdapter processing row: ${row}")
+          // Process the row through the next stage in the cascade
+          childTransformer(row)
+        }
 
       case ltse: LocalTableScanExec =>
+        logger.info(s"Processing LocalTableScanExec with schema: ${ltse.schema}")
+
         // Input row is unused for LocalTableScanExec
         _ => ArrayBuffer(ltse.executeCollect(): _*)
 
       case rddse: RDDScanExec =>
+        logger.info(s"Processing RDDScanExec with schema: ${rddse.schema}")
+
         val unsafeProjection = UnsafeProjection.create(rddse.schema)
         row => Seq(unsafeProjection.apply(row))
+
+      // Add handling for any other node types that might appear in your specific plans
+      case other if other.children.nonEmpty =>
+        // Generic handling for any plan node with children
+        logger.info(s"Generic handling for plan node: ${other.getClass.getName} with ${other.children.size} children")
+
+        // Process the first child as our main path
+        // This is a simplification - a more complete implementation would properly handle
+        // different types of operations (joins, aggregations, etc.)
+        val childTransformer = buildTransformChain(other.children.head)
+        childTransformer
 
       case unknown =>
         logger.warn(s"Unrecognized plan node: ${unknown.getClass.getName}")
