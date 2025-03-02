@@ -4,7 +4,7 @@ import ai.chronon.online.CatalystUtil
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 
-class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs with TaggedFilterSuite {
+class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLStructs {
 
   "catalyst util" should "work with hive_udfs via setups should work" in {
     val setups = Seq(
@@ -23,6 +23,4 @@ class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLS
     assertEquals(resMap("a"), Int.MaxValue - 1)
     assertEquals(resMap("b"), "hello123")
   }
-
-  override def tagName: String = "catalystUtilHiveUdfTest"
 }
