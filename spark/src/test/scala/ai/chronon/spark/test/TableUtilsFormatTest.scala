@@ -147,7 +147,7 @@ class TableUtilsFormatTest extends AnyFlatSpec {
   it should "return empty read format if table doesn't exist" in {
     val dbName = s"db_${System.currentTimeMillis()}"
     val tableName = s"$dbName.test_table_nonexistent_$format"
-    assertTrue(tableUtils.tableReadFormat(tableName).isEmpty)
+    assertTrue(tableUtils.tableFormatProvider.readFormat(tableName).isEmpty)
     assertFalse(tableUtils.tableReachable(tableName))
   }
 }
@@ -188,7 +188,7 @@ object TableUtilsFormatTest {
     tableUtils.insertPartitions(df2, tableName, autoExpand = true)
 
     // check that we wrote out a table in the right format
-    val readTableFormat = tableUtils.tableReadFormat(tableName).get.toString
+    val readTableFormat = tableUtils.tableFormatProvider.readFormat(tableName).get.toString
     assertTrue(s"Mismatch in table format: $readTableFormat; expected: $format", readTableFormat.toLowerCase == format)
 
     // check we have all the partitions written

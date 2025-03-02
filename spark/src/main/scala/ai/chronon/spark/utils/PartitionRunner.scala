@@ -119,7 +119,7 @@ class PartitionRunner[T](verb: String,
       if (outputDf.columns.contains(tu.partitionColumn)) {
         outputDf.save(outputTable)
       } else {
-        outputDf.saveUnPartitioned(outputTable)
+        outputDf.save(outputTable, partitionColumns = List.empty)
       }
       println(s"""
            |Finished computing range ${i + 1}/$n
