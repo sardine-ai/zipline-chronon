@@ -258,7 +258,7 @@ object GroupByUpload {
     kvDf
       .union(metaDf)
       .withColumn("ds", lit(endDs))
-      .saveUnPartitioned(groupByConf.metaData.uploadTable, groupByConf.metaData.tableProps)
+      .save(groupByConf.metaData.uploadTable, groupByConf.metaData.tableProps, partitionColumns = List.empty)
 
     val kvDfReloaded = tableUtils
       .loadTable(groupByConf.metaData.uploadTable)

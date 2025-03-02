@@ -66,8 +66,6 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val nativeTable = "data.sample_native"
     val table = tableUtils.loadTable(nativeTable)
     table.show
-    val partitioned = tableUtils.isPartitioned(nativeTable)
-    println(partitioned)
     // val database = tableUtils.createDatabase("test_database")
     val allParts = tableUtils.allPartitions(nativeTable)
     println(allParts)
@@ -80,8 +78,6 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     println(bs)
     val table = tableUtils.loadTable(externalTable)
     table.show
-    val partitioned = tableUtils.isPartitioned(externalTable)
-    println(partitioned)
     // val database = tableUtils.createDatabase("test_database")
     val allParts = tableUtils.allPartitions(externalTable)
     println(allParts)

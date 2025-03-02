@@ -51,7 +51,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
     }
     // the input table is not partitioned, usually for data testing or for kaggle demos
     if (stagingQueryConf.startPartition == null) {
-      tableUtils.sql(stagingQueryConf.query).saveUnPartitioned(outputTable)
+      tableUtils.sql(stagingQueryConf.query).save(outputTable, partitionColumns = List.empty)
     } else {
       val overrideStart = overrideStartPartition.getOrElse(stagingQueryConf.startPartition)
       val unfilledRanges =
