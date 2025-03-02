@@ -162,10 +162,6 @@ object Extensions {
                                                    sortByCols = sortByCols)
     }
 
-    def saveUnPartitioned(tableName: String, tableProperties: Map[String, String] = null): Unit = {
-      TableUtils(df.sparkSession).insertUnPartitioned(df, tableName, tableProperties)
-    }
-
     def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {
       columns.foldLeft(df) { (renamedDf, key) =>
         renamedDf.withColumnRenamed(key, s"${prefix}_$key")
