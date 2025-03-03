@@ -406,7 +406,7 @@ class DerivationTest extends AnyFlatSpec {
     )
 
     val bootstrapJoin = baseJoin.deepCopy()
-    bootstrapJoin.getMetaData.setName("test.derivations_logging.bootstrap")
+    bootstrapJoin.getMetaData.setName("test.derivations_logging.bootstrap_copy")
     bootstrapJoin.setBootstrapParts(
       Seq(
         Builders.BootstrapPart(

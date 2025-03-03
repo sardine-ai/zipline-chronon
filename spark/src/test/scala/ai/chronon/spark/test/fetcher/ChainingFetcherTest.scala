@@ -16,7 +16,6 @@
 
 package ai.chronon.spark.test.fetcher
 
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}

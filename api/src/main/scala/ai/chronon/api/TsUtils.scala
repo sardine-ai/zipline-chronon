@@ -14,12 +14,11 @@
  *    limitations under the License.
  */
 
-package ai.chronon.aggregator.windowing
+package ai.chronon.api
 
 import org.apache.commons.lang3.time.FastDateFormat
 
-import java.util.Date
-import java.util.TimeZone
+import java.util.{Date, TimeZone}
 
 object TsUtils {
   val formatter: FastDateFormat = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))

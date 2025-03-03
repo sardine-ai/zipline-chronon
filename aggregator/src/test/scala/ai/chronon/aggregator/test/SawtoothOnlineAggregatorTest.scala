@@ -19,7 +19,6 @@ package ai.chronon.aggregator.test
 import ai.chronon.aggregator.test.SawtoothAggregatorTest.sawtoothAggregate
 import ai.chronon.aggregator.windowing.FiveMinuteResolution
 import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api._

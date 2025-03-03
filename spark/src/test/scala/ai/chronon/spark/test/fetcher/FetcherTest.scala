@@ -17,7 +17,6 @@
 package ai.chronon.spark.test.fetcher
 
 import ai.chronon.aggregator.test.Column
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
@@ -26,7 +25,7 @@ import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.fetcher.FetchContext
-import ai.chronon.online.{fetcher, _}
+import ai.chronon.online._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.test.{DataFrameGen, OnlineUtils, SchemaEvolutionUtils}

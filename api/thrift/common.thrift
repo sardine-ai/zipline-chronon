@@ -19,3 +19,8 @@ enum ConfigType {
     JOIN = 3
     MODEL = 4
 }
+
+struct DateRange {
+    1: string startDate
+    2: string endDate
+}

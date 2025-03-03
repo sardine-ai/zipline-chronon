@@ -35,7 +35,7 @@ import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.Extensions.ChrononStructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.Metrics
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.SparkEnv
