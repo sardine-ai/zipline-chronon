@@ -21,19 +21,22 @@ import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing._
 import ai.chronon.api
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Constants
-import ai.chronon.api.DataModel
+import ai.chronon.api.{
+  Accuracy,
+  Constants,
+  DataModel,
+  ParametricMacro,
+  PartitionRange,
+  PartitionSpec,
+  TsUtils,
+  TimeRange
+}
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ParametricMacro
-import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.PartitionRange
 import ai.chronon.online.RowWrapper
 import ai.chronon.online.SparkConversions
-import ai.chronon.online.TimeRange
 import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -428,8 +431,9 @@ object GroupBy {
 
         // materialize the table with the right end date. QueryRange.end could be shifted for temporal events
         val beforeDs = tableUtils.partitionSpec.before(queryRange.end)
-        val isPreShifted =
+        val isPreShifted = {
           groupByConf.dataModel == DataModel.Events && groupByConf.inferredAccuracy == Accuracy.TEMPORAL
+        }
         val endDate = if (isPreShifted) beforeDs else queryRange.end
 
         val join = new Join(joinConf, endDate, tableUtils, showDf = showDf)

@@ -19,7 +19,7 @@ package ai.chronon.spark.test.join
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.{Builders, Constants, PartitionSpec}
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{contains_any, set_add}
 import ai.chronon.spark.{JoinUtils, SparkSessionBuilder, TableUtils}

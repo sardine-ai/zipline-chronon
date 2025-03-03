@@ -17,9 +17,8 @@
 package ai.chronon.spark.test.streaming
 
 import ai.chronon.aggregator.test.Column
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api
-import ai.chronon.api.{Builders, Operation, TimeUnit, Window}
+import ai.chronon.api.{Builders, Operation, TimeUnit, TsUtils, Window}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.DataFrameGen
 import ai.chronon.spark.{Comparison, Join, SparkSessionBuilder, TableUtils}

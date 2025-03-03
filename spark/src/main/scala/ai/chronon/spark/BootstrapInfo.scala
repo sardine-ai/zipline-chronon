@@ -17,14 +17,10 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Constants
+import ai.chronon.api.{Constants, ExternalPart, JoinPart, PartitionRange, PartitionSpec, StructField}
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ExternalPart
-import ai.chronon.api.JoinPart
-import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.StructField
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.Row
@@ -84,7 +80,8 @@ object BootstrapInfo {
   def from(joinConf: api.Join,
            range: PartitionRange,
            tableUtils: TableUtils,
-           leftSchema: Option[StructType]): BootstrapInfo = {
+           leftSchema: Option[StructType],
+           externalPartsAlreadyIncluded: Boolean = false): BootstrapInfo = {
 
     implicit val tu = tableUtils
     implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
@@ -123,9 +120,13 @@ object BootstrapInfo {
 
     // Enrich each external part with the expected output schema
     logger.info(s"\nCreating BootstrapInfo for ExternalParts for Join ${joinConf.metaData.name}")
-    val externalParts: Seq[ExternalPartMetadata] = Option(joinConf.onlineExternalParts.toScala)
-      .getOrElse(Seq.empty)
-      .map(part => ExternalPartMetadata(part, part.keySchemaFull, part.valueSchemaFull))
+    val externalParts: Seq[ExternalPartMetadata] = if (externalPartsAlreadyIncluded) {
+      Seq.empty
+    } else {
+      Option(joinConf.onlineExternalParts.toScala)
+        .getOrElse(Seq.empty)
+        .map(part => ExternalPartMetadata(part, part.keySchemaFull, part.valueSchemaFull))
+    }
 
     val leftFields = leftSchema
       .map(schema => SparkConversions.toChrononSchema(schema))

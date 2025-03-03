@@ -16,12 +16,11 @@
 
 package ai.chronon.spark
 
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils}
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils, TsUtils}
+import ai.chronon.api.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils.{
   TableAlreadyExists,

@@ -117,7 +117,7 @@ class TableBootstrapTest extends AnyFlatSpec {
 
     // Create bootstrap join using base join as template
     val bootstrapJoin = baseJoin.deepCopy()
-    bootstrapJoin.getMetaData.setName("test.user_transaction_features.bootstrap")
+    bootstrapJoin.getMetaData.setName("test.user_transaction_features.bootstrap_copy")
     bootstrapJoin.setBootstrapParts(Seq(bootstrapPart1, bootstrapPart2).toJava)
 
     // Runs through boostrap backfill which combines backfill and bootstrap
