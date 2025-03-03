@@ -6,20 +6,25 @@ import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterInstanceType
 import ai.chronon.spark.JobSubmitter
 import ai.chronon.spark.JobSubmitterConstants._
 import ai.chronon.spark.JobType
-import ai.chronon.spark.SparkJob
 import ai.chronon.spark.{SparkJob => TypeSparkJob}
 import software.amazon.awssdk.services.emr.EmrClient
+import software.amazon.awssdk.services.emr.model.ActionOnFailure
+import software.amazon.awssdk.services.emr.model.AddJobFlowStepsRequest
 import software.amazon.awssdk.services.emr.model.Application
 import software.amazon.awssdk.services.emr.model.AutoTerminationPolicy
-import software.amazon.awssdk.services.emr.model.BootstrapActionConfig
 import software.amazon.awssdk.services.emr.model.CancelStepsRequest
+import software.amazon.awssdk.services.emr.model.ComputeLimits
+import software.amazon.awssdk.services.emr.model.ComputeLimitsUnitType
 import software.amazon.awssdk.services.emr.model.Configuration
 import software.amazon.awssdk.services.emr.model.DescribeStepRequest
 import software.amazon.awssdk.services.emr.model.HadoopJarStepConfig
+import software.amazon.awssdk.services.emr.model.InstanceGroupConfig
+import software.amazon.awssdk.services.emr.model.InstanceRoleType
 import software.amazon.awssdk.services.emr.model.JobFlowInstancesConfig
+import software.amazon.awssdk.services.emr.model.ManagedScalingPolicy
 import software.amazon.awssdk.services.emr.model.RunJobFlowRequest
-import software.amazon.awssdk.services.emr.model.ScriptBootstrapActionConfig
 import software.amazon.awssdk.services.emr.model.StepConfig
+
 import scala.collection.JavaConverters._
 
 class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitter {
@@ -34,7 +39,8 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
     "Spark"
   )
 
-  private val EmrReleaseLabel = "emr-7.2.0"
+  // TODO: test if this works for Flink
+  private val DefaultEmrReleaseLabel = "emr-7.2.0"
 
   // Customer specific infra configurations
   private val CustomerToSubnetIdMap = Map(
@@ -44,13 +50,11 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
     "canary" -> "sg-04fb79b5932a41298"
   )
 
-  private val CopyS3FilesToMntScript = "copy_s3_files.sh"
-
-  override def submit(jobType: JobType,
-                      jobProperties: Map[String, String],
-                      files: List[String],
-                      args: String*): String = {
-
+  private def createClusterRequestBuilder(emrReleaseLabel: String = DefaultEmrReleaseLabel,
+                                          clusterIdleTimeout: Int = DefaultClusterIdleTimeout,
+                                          masterInstanceType: String = DefaultClusterInstanceType,
+                                          slaveInstanceType: String = DefaultClusterInstanceType,
+                                          instanceCount: Int = DefaultClusterInstanceCount) = {
     val runJobFlowRequestBuilder = RunJobFlowRequest
       .builder()
       .name(s"job-${java.util.UUID.randomUUID.toString}")
@@ -63,7 +67,7 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
       .autoTerminationPolicy(
         AutoTerminationPolicy
           .builder()
-          .idleTimeout(jobProperties.getOrElse(ClusterIdleTimeout, s"$DefaultClusterIdleTimeout").toLong)
+          .idleTimeout(clusterIdleTimeout.toLong)
           .build())
       .configurations(
         Configuration.builder
@@ -78,9 +82,6 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
       .instances(
         JobFlowInstancesConfig
           .builder()
-          // We may want to make master and slave instance types different in the future
-          .masterInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
-          .slaveInstanceType(jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType))
           // Hack: We hardcode the subnet ID and sg id for each customer of Zipline. The subnet gets created from
           // Terraform so we'll need to be careful that these don't get accidentally destroyed.
           .ec2SubnetId(
@@ -88,62 +89,110 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
                                             throw new RuntimeException(s"No subnet id found for $customerId")))
           .emrManagedMasterSecurityGroup(customerSecurityGroupId)
           .emrManagedSlaveSecurityGroup(customerSecurityGroupId)
-          .instanceCount(jobProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount).toInt)
+          .instanceGroups(
+            InstanceGroupConfig
+              .builder()
+              .instanceRole(InstanceRoleType.MASTER)
+              .instanceType(masterInstanceType)
+              .instanceCount(1)
+              .build(),
+            InstanceGroupConfig
+              .builder()
+              .instanceRole(InstanceRoleType.CORE)
+              .instanceType(masterInstanceType)
+              .instanceCount(1)
+              .build()
+          )
           .keepJobFlowAliveWhenNoSteps(true) // Keep the cluster alive after the job is done
           .build())
+      .managedScalingPolicy(
+        ManagedScalingPolicy
+          .builder()
+          .computeLimits(
+            ComputeLimits
+              .builder()
+              .maximumCapacityUnits(instanceCount)
+              .minimumCapacityUnits(1)
+              .unitType(ComputeLimitsUnitType.INSTANCES)
+              .build()
+          )
+          .build()
+      )
       // TODO: need to double check that this is how we want our role names to be
       .serviceRole(s"zipline_${customerId}_emr_service_role")
       .jobFlowRole(s"zipline_${customerId}_emr_profile")
-      .releaseLabel(EmrReleaseLabel)
+      .releaseLabel(emrReleaseLabel)
 
-    // Add single step (spark job) to run:
+  }
+
+  private def createStepConfig(filesToMount: List[String],
+                               mainClass: String,
+                               jarUri: String,
+                               args: String*): StepConfig = {
+    // Copy files from s3 to cluster
+    val awsS3CpArgs = filesToMount.map(file => s"aws s3 cp $file /mnt/zipline/")
     val sparkSubmitArgs =
-      Seq("spark-submit",
-          "--class",
-          jobProperties(MainClass),
-          jobProperties(JarURI)) ++ args // For EMR, we explicitly spark-submit the job
-    val stepConfig = StepConfig
+      List(s"spark-submit --class $mainClass $jarUri ${args.mkString(" ")}")
+    val finalArgs = List(
+      "bash",
+      "-c",
+      (awsS3CpArgs ++ sparkSubmitArgs).mkString("; \n")
+    )
+    println(finalArgs)
+    StepConfig
       .builder()
-      .name("Zipline Job")
-      .actionOnFailure("CANCEL_AND_WAIT") // want the cluster to not terminate if the step fails
+      .name("Run Zipline Job")
+      .actionOnFailure(ActionOnFailure.CANCEL_AND_WAIT)
       .hadoopJarStep(
-        jobType match {
-          case SparkJob =>
-            HadoopJarStepConfig
-              .builder()
-              // Using command-runner.jar from AWS:
-              // https://docs.aws.amazon.com/en_us/emr/latest/ReleaseGuide/emr-spark-submit-step.html
-              .jar("command-runner.jar")
-              .args(sparkSubmitArgs: _*)
-              .build()
-          // TODO: add flink
-          case _ => throw new IllegalArgumentException("Unsupported job type")
-        }
+        HadoopJarStepConfig
+          .builder()
+          // Using command-runner.jar from AWS:
+          // https://docs.aws.amazon.com/en_us/emr/latest/ReleaseGuide/emr-spark-submit-step.html
+          .jar("command-runner.jar")
+          .args(finalArgs: _*)
+          .build()
       )
       .build()
-    runJobFlowRequestBuilder.steps(stepConfig)
+  }
 
-    // Add bootstrap actions if any
-    if (files.nonEmpty) {
-      val artifactsBucket = s"s3://zipline-artifacts-${customerId}/"
-      val bootstrapActionConfig = BootstrapActionConfig
+  override def submit(jobType: JobType,
+                      jobProperties: Map[String, String],
+                      files: List[String],
+                      args: String*): String = {
+    if (jobProperties.get(ShouldCreateCluster).exists(_.toBoolean)) {
+      // create cluster
+      val runJobFlowBuilder = createClusterRequestBuilder(
+        emrReleaseLabel = jobProperties.getOrElse(EmrReleaseLabel, DefaultEmrReleaseLabel),
+        clusterIdleTimeout = jobProperties.getOrElse(ClusterIdleTimeout, DefaultClusterIdleTimeout.toString).toInt,
+        masterInstanceType = jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
+        slaveInstanceType = jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
+        instanceCount = jobProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount.toString).toInt
+      )
+
+      runJobFlowBuilder.steps(createStepConfig(files, jobProperties(MainClass), jobProperties(JarURI), args: _*))
+
+      val responseJobId = emrClient.runJobFlow(runJobFlowBuilder.build()).jobFlowId()
+      println("EMR job id: " + responseJobId)
+      println(
+        s"Safe to exit. Follow the job status at: https://console.aws.amazon.com/emr/home#/clusterDetails/$responseJobId")
+      responseJobId
+
+    } else {
+      // use existing cluster
+      val existingJobId = jobProperties.getOrElse(JobFlowId, throw new RuntimeException("JobFlowId not found"))
+      val request = AddJobFlowStepsRequest
         .builder()
-        .name("EMR Submitter: Copy S3 Files")
-        .scriptBootstrapAction(
-          ScriptBootstrapActionConfig
-            .builder()
-            .path(artifactsBucket + CopyS3FilesToMntScript)
-            .args(files: _*)
-            .build())
+        .jobFlowId(existingJobId)
+        .steps(createStepConfig(files, jobProperties(MainClass), jobProperties(JarURI), args: _*))
         .build()
-      runJobFlowRequestBuilder.bootstrapActions(bootstrapActionConfig)
+
+      val responseStepId = emrClient.addJobFlowSteps(request).stepIds().get(0)
+
+      println("EMR step id: " + responseStepId)
+      println(
+        s"Safe to exit. Follow the job status at: https://console.aws.amazon.com/emr/home#/clusterDetails/$existingJobId")
+      responseStepId
     }
-
-    val jobFlowResponse = emrClient.runJobFlow(
-      runJobFlowRequestBuilder.build()
-    )
-
-    jobFlowResponse.jobFlowId()
   }
 
   override def status(jobId: String): Unit = {
@@ -170,13 +219,13 @@ object EmrSubmitter {
   private val ClusterInstanceTypeArgKeyword = "--cluster-instance-type"
   private val ClusterInstanceCountArgKeyword = "--cluster-instance-count"
   private val ClusterIdleTimeoutArgKeyword = "--cluster-idle-timeout"
+  private val CreateClusterArgKeyword = "--create-cluster"
 
   private val DefaultClusterInstanceType = "m5.xlarge"
-  private val DefaultClusterInstanceCount = "3"
-  private val DefaultClusterIdleTimeout = 60 * 60 * 24 * 2 // 2 days in seconds
+  private val DefaultClusterInstanceCount = 3
+  private val DefaultClusterIdleTimeout = 60 * 60 * 12 // 12h in seconds
 
   def main(args: Array[String]): Unit = {
-
     // List of args that are not application args
     val internalArgs = Set(
       JarUriArgKeyword,
@@ -206,11 +255,12 @@ object EmrSubmitter {
     val clusterInstanceCount = args
       .find(_.startsWith(ClusterInstanceCountArgKeyword))
       .map(_.split("=")(1))
-      .getOrElse(DefaultClusterInstanceCount)
+      .getOrElse(DefaultClusterInstanceCount.toString)
     val clusterIdleTimeout = args
       .find(_.startsWith(ClusterIdleTimeoutArgKeyword))
       .map(_.split("=")(1))
       .getOrElse(DefaultClusterIdleTimeout.toString)
+    val createCluster = args.exists(_.startsWith(CreateClusterArgKeyword))
 
     val (jobType, jobProps) = jobTypeValue.toLowerCase match {
       case "spark" => {
@@ -219,7 +269,8 @@ object EmrSubmitter {
           JarURI -> jarUri,
           ClusterInstanceType -> clusterInstanceType,
           ClusterInstanceCount -> clusterInstanceCount,
-          ClusterIdleTimeout -> clusterIdleTimeout
+          ClusterIdleTimeout -> clusterIdleTimeout,
+          ShouldCreateCluster -> createCluster.toString
         )
         (TypeSparkJob, baseProps)
       }
@@ -230,15 +281,11 @@ object EmrSubmitter {
     val finalArgs = userArgs
 
     val emrSubmitter = EmrSubmitter()
-    val jobId = emrSubmitter.submit(
+    emrSubmitter.submit(
       jobType,
       jobProps,
       List.empty,
       finalArgs: _*
     )
-
-    println("EMR job id: " + jobId)
-    println(s"Safe to exit. Follow the job status at: https://console.aws.amazon.com/emr/home#/clusterDetails/$jobId")
-
   }
 }

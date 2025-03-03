@@ -23,9 +23,14 @@ object JobSubmitterConstants {
   val FlinkMainJarURI = "flinkMainJarUri"
   val SavepointUri = "savepointUri"
   val FlinkStateUri = "flinkStateUri"
+
+  // EMR specific properties
   val ClusterInstanceCount = "clusterInstanceCount"
   val ClusterInstanceType = "clusterInstanceType"
   val ClusterIdleTimeout = "clusterIdleTimeout"
+  val EmrReleaseLabel = "emrReleaseLabel"
+  val ShouldCreateCluster = "shouldCreateCluster"
+  val JobFlowId = "jobFlowId"
 
   val JarUriArgKeyword = "--jar-uri"
   val JobTypeArgKeyword = "--job-type"
