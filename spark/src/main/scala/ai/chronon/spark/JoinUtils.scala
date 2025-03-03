@@ -17,26 +17,26 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Constants
-import ai.chronon.api.DataModel.Events
+import ai.chronon.api.{Accuracy, Constants, JoinPart, PartitionRange}
+import ai.chronon.api.DataModel.{DataModel, Events}
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.PartitionRange
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
+import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.coalesce
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.functions.{coalesce, col, lit, udf}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
 import scala.collection.Seq
+import scala.collection.Map
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 object JoinUtils {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -81,10 +81,39 @@ object JoinUtils {
     }
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
-                               Some(Map(tableUtils.partitionColumn -> null) ++ timeProjection),
+                               Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
                                range = Some(range))
     limit.foreach(l => df = df.limit(l))
     val skewFilter = joinConf.skewFilter()
+    val result = skewFilter
+      .map(sf => {
+        logger.info(s"left skew filter: $sf")
+        df.filter(sf)
+      })
+      .getOrElse(df)
+    if (!allowEmpty && result.isEmpty) {
+      logger.info(s"Left side query below produced 0 rows in range $range, and allowEmpty=false.")
+      return None
+    }
+    Some(result)
+  }
+
+  def leftDfFromSource(left: ai.chronon.api.Source,
+                       range: PartitionRange,
+                       tableUtils: TableUtils,
+                       allowEmpty: Boolean = false,
+                       limit: Option[Int] = None,
+                       skewFilter: Option[String]): Option[DataFrame] = {
+    val timeProjection = if (left.dataModel == Events) {
+      Seq(Constants.TimeColumn -> Option(left.query).map(_.timeColumn).orNull)
+    } else {
+      Seq()
+    }
+    var df = tableUtils.scanDf(left.query,
+                               left.table,
+                               Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
+                               range = Some(range))
+    limit.foreach(l => df = df.limit(l))
     val result = skewFilter
       .map(sf => {
         logger.info(s"left skew filter: $sf")
@@ -211,7 +240,7 @@ object JoinUtils {
 
     val propertiesFragment = if (viewProperties != null && viewProperties.nonEmpty) {
       s"""    TBLPROPERTIES (
-         |    ${viewProperties.transform((k, v) => s"'$k'='$v'").values.mkString(",\n   ")}
+         |    ${viewProperties.toMap.transform((k, v) => s"'$k'='$v'").values.mkString(",\n   ")}
          |    )""".stripMargin
     } else {
       ""
@@ -229,8 +258,8 @@ object JoinUtils {
                             baseView: String,
                             tableUtils: TableUtils,
                             propertiesOverride: Map[String, String] = null): Unit = {
-    val baseViewProperties = tableUtils.getTableProperties(baseView).getOrElse(Map.empty)
-    val labelTableName = baseViewProperties.getOrElse(Constants.LabelViewPropertyKeyLabelTable, "")
+    val baseViewProperties: Map[String, String] = tableUtils.getTableProperties(baseView).getOrElse(Map.empty)
+    val labelTableName = baseViewProperties.getOrElse(Constants.LabelViewPropertyKeyLabelTable.toString, "")
     assert(labelTableName.nonEmpty, "Not able to locate underlying label table for partitions")
 
     val labelMapping: Map[String, Seq[PartitionRange]] = getLatestLabelMapping(labelTableName, tableUtils)
@@ -260,7 +289,7 @@ object JoinUtils {
       else baseViewProperties
     val propertiesFragment = if (mergedProperties.nonEmpty) {
       s"""TBLPROPERTIES (
-         |    ${mergedProperties.transform((k, v) => s"'$k'='$v'").values.mkString(",\n   ")}
+         |    ${mergedProperties.map { case (k, v) => s"'$k'='$v'" }.mkString(",\n   ")}
          |)""".stripMargin
     } else {
       ""
@@ -307,7 +336,7 @@ object JoinUtils {
 
   def genBloomFilterIfNeeded(
       joinPart: ai.chronon.api.JoinPart,
-      joinConf: ai.chronon.api.Join,
+      leftDataModel: DataModel,
       leftRowCount: Long,
       unfilledRange: PartitionRange,
       joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]]): Option[util.Map[String, BloomFilter]] = {
@@ -333,7 +362,7 @@ object JoinUtils {
     logger.info(s"""
            Generating bloom filter for joinPart:
            |  part name : ${joinPart.groupBy.metaData.name},
-           |  left type : ${joinConf.left.dataModel},
+           |  left type : ${leftDataModel},
            |  right type: ${joinPart.groupBy.dataModel},
            |  accuracy  : ${joinPart.groupBy.inferredAccuracy},
            |  part unfilled range: $unfilledRange,
@@ -440,6 +469,137 @@ object JoinUtils {
         false
 
     }
+  }
 
+  def skewFilter(keys: Option[Seq[String]] = None,
+                 skewKeys: Option[Map[String, Seq[String]]],
+                 leftKeyCols: Seq[String],
+                 joiner: String = " OR "): Option[String] = {
+    skewKeys.map { keysMap =>
+      val result = keysMap
+        .filterKeys(key =>
+          keys.forall {
+            _.contains(key)
+          })
+        .map { case (leftKey, values) =>
+          assert(
+            leftKeyCols.contains(leftKey),
+            s"specified skew filter for $leftKey is not used as a key in any join part. " +
+              s"Please specify key columns in skew filters: [${leftKeyCols.mkString(", ")}]"
+          )
+          generateSkewFilterSql(leftKey, values)
+        }
+        .filter(_.nonEmpty)
+        .mkString(joiner)
+      logger.info(s"Generated join left side skew filter:\n    $result")
+      result
+    }
+  }
+
+  def partSkewFilter(joinPart: JoinPart,
+                     skewKeys: Option[Map[String, Seq[String]]],
+                     joiner: String = " OR "): Option[String] = {
+    skewKeys.flatMap { keys =>
+      val result = keys
+        .flatMap { case (leftKey, values) =>
+          Option(joinPart.keyMapping)
+            .map(_.toScala.getOrElse(leftKey, leftKey))
+            .orElse(Some(leftKey))
+            .filter(joinPart.groupBy.keyColumns.contains(_))
+            .map(generateSkewFilterSql(_, values))
+        }
+        .filter(_.nonEmpty)
+        .mkString(joiner)
+
+      if (result.nonEmpty) {
+        logger.info(s"Generated join part skew filter for ${joinPart.groupBy.metaData.name}:\n    $result")
+        Some(result)
+      } else None
+    }
+  }
+
+  private def generateSkewFilterSql(key: String, values: Seq[String]): String = {
+    val nulls = Seq("null", "Null", "NULL")
+    val nonNullFilters = Some(s"$key NOT IN (${values.filterNot(nulls.contains).mkString(", ")})")
+    val nullFilters = if (values.exists(nulls.contains)) Some(s"$key IS NOT NULL") else None
+    (nonNullFilters ++ nullFilters).mkString(" AND ")
+  }
+
+  def findUnfilledRecords(bootstrapDfWithStats: DfWithStats, coveringSets: Seq[CoveringSet]): Option[DfWithStats] = {
+    val bootstrapDf = bootstrapDfWithStats.df
+    if (coveringSets.isEmpty || !bootstrapDf.columns.contains(Constants.MatchedHashes)) {
+      // this happens whether bootstrapParts is NULL for the JOIN and thus no metadata columns were created
+      return Some(bootstrapDfWithStats)
+    }
+    val filterExpr = CoveringSet.toFilterExpression(coveringSets)
+    logger.info(s"Using covering set filter: $filterExpr")
+    val filteredDf = bootstrapDf.where(filterExpr)
+    val filteredCount = filteredDf.count()
+    if (bootstrapDfWithStats.count == filteredCount) { // counting is faster than computing stats
+      Some(bootstrapDfWithStats)
+    } else if (filteredCount == 0) {
+      None
+    } else {
+      Some(DfWithStats(filteredDf)(bootstrapDfWithStats.partitionSpec))
+    }
+  }
+
+  def runSmallMode(tableUtils: TableUtils, leftDf: DataFrame): Boolean = {
+    if (tableUtils.smallModelEnabled) {
+      val thresholdCount = leftDf.limit(Some(tableUtils.smallModeNumRowsCutoff + 1).get).count()
+      val result = thresholdCount <= tableUtils.smallModeNumRowsCutoff
+      if (result) {
+        logger.info(s"Counted $thresholdCount rows, running join in small mode.")
+      } else {
+        logger.info(
+          s"Counted greater than ${tableUtils.smallModeNumRowsCutoff} rows, proceeding with normal computation.")
+      }
+      result
+    } else {
+      false
+    }
+  }
+
+  def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Option[Map[String, Seq[String]]] = {
+    Option(jmap).map(_.toScala.map { case (key, list) =>
+      key -> list.asScala
+    }.toMap)
+  }
+
+  def shiftDays(leftDataModel: DataModel,
+                joinPart: JoinPart,
+                leftTimeRangeOpt: Option[PartitionRange],
+                leftDf: Option[DfWithStats],
+                leftRange: PartitionRange) = {
+    val shiftDays =
+      if (leftDataModel == Events && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+        -1
+      } else {
+        0
+      }
+
+    //  left  | right  | acc
+    // events | events | snapshot  => right part tables are not aligned - so scan by leftTimeRange
+    // events | events | temporal  => already aligned - so scan by leftRange
+    // events | entities | snapshot => right part tables are not aligned - so scan by leftTimeRange
+    // events | entities | temporal => right part tables are aligned - so scan by leftRange
+    // entities | entities | snapshot => right part tables are aligned - so scan by leftRange
+    val rightRange = if (leftDataModel == Events && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+      val leftTimeRange = leftTimeRangeOpt.getOrElse(leftDf.get.timeRange.toPartitionRange)
+      leftTimeRange.shift(shiftDays)
+    } else {
+      leftRange
+    }
+    rightRange
+  }
+
+  def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
+    structType.foldLeft(df) { case (df, field) =>
+      if (df.columns.contains(field.name)) {
+        df
+      } else {
+        df.withColumn(field.name, lit(null).cast(field.dataType))
+      }
+    }
   }
 }

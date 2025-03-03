@@ -23,9 +23,9 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
-import ai.chronon.online.TimeRange
+import ai.chronon.api.TimeRange
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.DataFrameReader

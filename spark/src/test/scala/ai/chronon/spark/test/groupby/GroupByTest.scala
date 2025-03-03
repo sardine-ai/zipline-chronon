@@ -31,7 +31,7 @@ import ai.chronon.api.Source
 import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.RowWrapper
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Extensions._
