@@ -18,13 +18,11 @@ package ai.chronon.aggregator.windowing
 
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing.HopsAggregator._
-import ai.chronon.api.Aggregation
-import ai.chronon.api.DataType
+import ai.chronon.api.{Aggregation, DataType, Row, TsUtils}
 import ai.chronon.api.Extensions.AggregationOps
 import ai.chronon.api.Extensions.AggregationsOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
-import ai.chronon.api.Row
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 

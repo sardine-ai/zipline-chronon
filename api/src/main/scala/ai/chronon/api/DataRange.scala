@@ -14,10 +14,7 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
-
-import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.PartitionSpec
+package ai.chronon.api
 
 sealed trait DataRange {
   def toTimePoints: Array[Long]

@@ -19,10 +19,10 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.DataModel.{DataModel, Entities, Events}
-import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType}
+import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType, PartitionRange}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.{PartitionRange, SparkConversions}
+import ai.chronon.online.{SparkConversions}
 import ai.chronon.spark.Driver.parseConf
 import ai.chronon.spark.Extensions.QuerySparkOps
 import org.apache.datasketches.common.ArrayOfStringsSerDe

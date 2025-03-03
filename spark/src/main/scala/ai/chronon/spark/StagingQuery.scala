@@ -20,7 +20,7 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{EngineType, ParametricMacro}
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.spark.Extensions._
 import org.slf4j.{Logger, LoggerFactory}
 

@@ -17,7 +17,7 @@
 package ai.chronon.spark.test
 
 import ai.chronon.api.PartitionSpec
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession

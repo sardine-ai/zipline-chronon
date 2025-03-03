@@ -1,7 +1,6 @@
 package ai.chronon.online
 
-import ai.chronon.aggregator.windowing.TsUtils
-import ai.chronon.api.Derivation
+import ai.chronon.api.{Derivation, TsUtils}
 import ai.chronon.api.Extensions.DerivationOps
 import ai.chronon.api.LongType
 import ai.chronon.api.StringType

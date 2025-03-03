@@ -21,6 +21,8 @@ import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
 import ai.chronon.api.QueryUtils.buildSelects
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.DateRange
+
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.spark.sql.Column
@@ -1238,6 +1240,14 @@ object Extensions {
   implicit class ModelOps(model: Model) {
     def keyNameForKvStore: String = {
       _keyNameForKvStore(model.metaData, ModelKeyword)
+    }
+  }
+
+  implicit class DateRangeOps(dateRange: DateRange) {
+    def toPartitionRange(implicit partitionSpec: PartitionSpec): PartitionRange = {
+      val start = dateRange.startDate
+      val end = dateRange.endDate
+      new PartitionRange(start, end)
     }
   }
 }

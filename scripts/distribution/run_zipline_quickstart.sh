@@ -23,8 +23,8 @@ git clone git@github.com:zipline-ai/cananry-confs.git
 cd cananry-confs
 
 # Use the branch with Zipline specific team.json
-git fetch origin davidhan/canary
-git checkout davidhan/canary
+git fetch origin davidhan/selects
+git checkout davidhan/selects
 
 # Create a virtualenv to fresh install zipline-ai
 python3 -m venv tmp_chronon
@@ -35,7 +35,7 @@ gcloud storage cp gs://zipline-artifacts-canary/jars/$WHEEL_FILE .
 
 # Install the wheel (force)
 pip uninstall zipline-ai
-pip install --force-reinstall $WHEEL_FILE
+pip install --force-reinstall $WHEEL_FILE --break-system-packages
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
@@ -88,7 +88,7 @@ check_dataproc_job_state $METADATA_UPLOAD_JOB_ID
 # Need to wait for upload-to-kv to finish
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
 touch tmp_fetch.out
-zipline run --mode fetch --conf-type group_bys --name quickstart/purchases.v1_test -k '{"user_id":"5"}' 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+zipline run --mode fetch --conf-type group_bys --name quickstart.purchases.v1_test -k '{"user_id":"5"}' 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
 cat tmp_fetch.out | grep purchase_price_average_14d
 # check if exit code of previous is 0
 if [ $? -ne 0 ]; then

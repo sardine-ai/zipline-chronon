@@ -32,7 +32,7 @@ struct JobTrackerRequest {
    1: optional string name
    2: optional string type
    3: optional string branch
-   10: optional DateRange dateRange // We may not need to use this, but in case it helps with page load times
+   10: optional common.DateRange dateRange // We may not need to use this, but in case it helps with page load times
 }
 
 struct JobTrackerResponse {
@@ -60,7 +60,7 @@ struct TaskInfo {
     2: optional string logPath
     3: optional string trackerUrl
     4: optional TaskArgs taskArgs
-    5: optional DateRange dateRange // specific to batch nodes
+    5: optional common.DateRange dateRange // specific to batch nodes
 
     // time information - useful for gantt / waterfall view
     10: optional i64 submittedTs
@@ -75,10 +75,6 @@ struct TaskInfo {
     31: optional TaskResources utilizedResources
 }
 
-struct DateRange {
-    1: string startDate
-    2: string endDate
-}
 
 struct TaskArgs {
   1: optional list<string> argsList
@@ -113,7 +109,7 @@ struct Submission {
     1: optional orchestration.NodeKey node
     10: optional i64 submittedTs
     20: optional i64 finishedTs
-    21: optional DateRange dateRange
+    21: optional common.DateRange dateRange
 }
 
 enum ConfType{

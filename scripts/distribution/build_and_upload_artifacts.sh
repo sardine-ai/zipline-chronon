@@ -94,8 +94,8 @@ cd $CHRONON_ROOT_DIR
 
 echo "Building wheel"
 #Check python version >= 3.9
-MAJOR_PYTHON_VERSION=$(python --version | cut -d " " -f2 | cut -d "." -f 1)
-MINOR_PYTHON_VERSION=$(python --version | cut -d " " -f2 | cut -d "." -f 2)
+MAJOR_PYTHON_VERSION=$(python3 --version | cut -d " " -f2 | cut -d "." -f 1)
+MINOR_PYTHON_VERSION=$(python3 --version | cut -d " " -f2 | cut -d "." -f 2)
 
 EXPECTED_MINIMUM_MAJOR_PYTHON_VERSION=3
 EXPECTED_MINIMUM_MINOR_PYTHON_VERSION=9
