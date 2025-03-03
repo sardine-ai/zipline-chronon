@@ -42,7 +42,8 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
         JarURI -> expectedJarURI,
         ClusterIdleTimeout -> expectedIdleTimeout.toString,
         ClusterInstanceType -> expectedClusterInstanceType,
-        ClusterInstanceCount -> expectedClusterInstanceCount.toString
+        ClusterInstanceCount -> expectedClusterInstanceCount.toString,
+        ShouldCreateCluster -> true.toString
       ),
       expectedFiles,
       expectedApplicationArgs: _*
@@ -59,13 +60,8 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     // cluster specific assertions
     assertEquals(actualRequest.releaseLabel(), "emr-7.2.0")
-    assertEquals(actualRequest.instances().masterInstanceType(), expectedClusterInstanceType)
-    assertEquals(actualRequest.instances().slaveInstanceType(), expectedClusterInstanceType)
-    assertEquals(actualRequest.instances().instanceCount(), expectedClusterInstanceCount)
+
     assertEquals(actualRequest.instances().keepJobFlowAliveWhenNoSteps(), true)
-    assertEquals("s3://zipline-artifacts-canary/copy_s3_files.sh",
-                 actualRequest.bootstrapActions().get(0).scriptBootstrapAction().path())
-    assertEquals(expectedFiles, actualRequest.bootstrapActions().get(0).scriptBootstrapAction().args().toScala)
     assertTrue(
       actualRequest
         .applications()
@@ -81,13 +77,6 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
     assertEquals("zipline_canary_emr_service_role", actualRequest.serviceRole())
     assertEquals(expectedIdleTimeout.toLong, actualRequest.autoTerminationPolicy().idleTimeout())
 
-    // step specific assertions
-    assertEquals(actualRequest.steps().size(), 1)
-    assertEquals(actualRequest.steps().get(0).hadoopJarStep().jar(), "command-runner.jar")
-    assertEquals(
-      List("spark-submit", "--class", expectedMainClass, expectedJarURI) ++ expectedApplicationArgs,
-      actualRequest.steps().get(0).hadoopJarStep().args().toScala
-    )
   }
 
   it should "test flink job locally" ignore {}

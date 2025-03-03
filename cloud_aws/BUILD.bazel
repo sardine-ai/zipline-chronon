@@ -35,7 +35,6 @@ test_deps = [
     maven_artifact("com.amazonaws:DynamoDBLocal"),
     maven_artifact("org.mockito:mockito-core"),
     maven_artifact("software.amazon.awssdk:auth"),
-    maven_artifact("software.amazon.awssdk:emr"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
     scala_artifact_with_suffix("com.chuusai:shapeless"),
     scala_artifact_with_suffix("org.typelevel:cats-core"),
