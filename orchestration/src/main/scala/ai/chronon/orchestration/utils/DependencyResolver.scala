@@ -4,7 +4,7 @@ import ai.chronon.api
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Window
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.orchestration.Table
 import ai.chronon.orchestration.TableDependency
 

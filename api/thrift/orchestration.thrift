@@ -270,9 +270,48 @@ union Dependency {
     2: optional TableDependency tableDependency
 }
 
+struct SourceWithFilter {
+    1: optional api.Source source
+    2: optional map<string,list<string>> excludeKeys
+}
 
+struct SourceJobArgs {
+    1: optional SourceWithFilter source
+    100: optional common.DateRange range
+    101: optional string outputTable
+}
 
+struct BootstrapJobArgs {
+    1: optional api.Join join
+    2: optional common.DateRange range
+    100: optional string leftSourceTable
+    101: optional string outputTable
+}
 
+struct MergeJobArgs {
+    1: optional api.Join join
+    2: optional common.DateRange range
+    100: optional string leftInputTable
+    101: optional map<api.JoinPart, string> joinPartsToTables
+    102: optional string outputTable
+}
+
+struct JoinDerivationJobArgs {
+   1: optional string trueLeftTable
+   2: optional string baseTable
+   3: optional list<api.Derivation> derivations
+   100: optional common.DateRange range
+   101: optional string outputTable
+}
+
+struct JoinPartJobArgs {
+    1: optional string leftTable
+    2: optional string leftDataModel
+    3: optional api.JoinPart joinPart
+    4: optional string outputTable
+    100: optional common.DateRange range
+    101: optional map<string, list<string>> skewKeys
+}
 
 /**
 * -- Phase 0 plan -- (same as chronon oss)

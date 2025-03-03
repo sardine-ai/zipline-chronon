@@ -23,9 +23,9 @@ import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.AvroConversions
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
-import ai.chronon.online.TimeRange
+import ai.chronon.api.TimeRange
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.DataFrameReader
@@ -160,10 +160,6 @@ object Extensions {
                                                    autoExpand = autoExpand,
                                                    stats = stats,
                                                    sortByCols = sortByCols)
-    }
-
-    def saveUnPartitioned(tableName: String, tableProperties: Map[String, String] = null): Unit = {
-      TableUtils(df.sparkSession).insertUnPartitioned(df, tableName, tableProperties)
     }
 
     def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {

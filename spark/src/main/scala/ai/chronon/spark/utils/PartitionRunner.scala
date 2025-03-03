@@ -3,10 +3,10 @@ package ai.chronon.spark.utils
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.Window
-import ai.chronon.online.PartitionRange
-import ai.chronon.online.PartitionRange.collapseToRange
-import ai.chronon.online.PartitionRange.collapsedPrint
-import ai.chronon.online.PartitionRange.rangesToString
+import ai.chronon.api.PartitionRange
+import ai.chronon.api.PartitionRange.collapseToRange
+import ai.chronon.api.PartitionRange.collapsedPrint
+import ai.chronon.api.PartitionRange.rangesToString
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.DataFrame
@@ -119,7 +119,7 @@ class PartitionRunner[T](verb: String,
       if (outputDf.columns.contains(tu.partitionColumn)) {
         outputDf.save(outputTable)
       } else {
-        outputDf.saveUnPartitioned(outputTable)
+        outputDf.save(outputTable, partitionColumns = List.empty)
       }
       println(s"""
            |Finished computing range ${i + 1}/$n

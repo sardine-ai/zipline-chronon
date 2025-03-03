@@ -17,7 +17,7 @@
 package ai.chronon.spark.test
 
 import ai.chronon.api._
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.spark._
 import ai.chronon.spark.test.TestUtils.makeDf

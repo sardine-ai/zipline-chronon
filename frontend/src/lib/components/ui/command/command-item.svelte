@@ -13,8 +13,8 @@
 <CommandPrimitive.Item
 	{asChild}
 	class={cn(
-		'aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-default select-none items-center !px-4 py-1.5 text-regular outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg:first-of-type]:mr-2 bg-neutral-200 h-10 [&:not(:last-child)]:border-b',
-		'data-[disabled]:cursor-default cursor-pointer',
+		'aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-default select-none items-center px-4! py-1.5 text-regular outline-hidden data-disabled:pointer-events-none data-disabled:opacity-50 [&>svg:first-of-type]:mr-2 bg-neutral-200 h-10 not-last:border-b',
+		'data-disabled:cursor-default cursor-pointer',
 		className
 	)}
 	{...$$restProps}

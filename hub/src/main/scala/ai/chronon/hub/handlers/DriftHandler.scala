@@ -10,6 +10,7 @@ import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.stats.DriftStore
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import ai.chronon.api.Constants
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await
@@ -83,11 +84,18 @@ class DriftHandler(driftStore: DriftStore) {
 
     logger.debug(s"Querying summary store with name: $req.getName")
 
+    // Parse comma-separated percentiles string, fallback to defaults from Constants
+    val percentiles = Option(req.getPercentiles)
+      .filter(_.nonEmpty)
+      .map(_.split(",").toSeq)
+      .getOrElse(Constants.DefaultPercentiles)
+
     driftStore.getSummarySeries(
       req.getName,
       req.getStartTs,
       req.getEndTs,
-      Some(req.getColumnName)
+      Some(req.getColumnName),
+      percentiles
     ) match {
       case Success(summarySeriesFuture) =>
         val result = Await.result(summarySeriesFuture, 30.seconds)

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { ComponentProps } from 'svelte';
 	import { accessor, Circle, findRelatedData, Line, LineChart, Tooltip } from 'layerchart';
+	import merge from 'lodash/merge';
+
 	import { lineChartProps, tooltipProps, type DateValue } from './common';
 	import type { ITileDriftSeriesArgs } from '$src/lib/types/codegen';
 	import { formatDate, formatValue } from '$lib/util/format';
@@ -41,14 +43,25 @@
 			// item: () => 'flex items-center gap-2'
 		}
 	}}
+	brush={{ onbrushend }}
 	renderContext="canvas"
 	{...lineChartProps}
 	{...restProps}
-	brush={{ onbrushend }}
-	tooltip={{
-		hideDelay: 150,
-		...(typeof restProps.tooltip === 'object' ? restProps.tooltip : null)
-	}}
+	{...merge(
+		{},
+		lineChartProps,
+		{
+			props: {
+				canvas: {
+					class: 'cursor-crosshair'
+				}
+			},
+			tooltip: {
+				hideDelay: 150
+			}
+		},
+		restProps
+	)}
 >
 	<svelte:fragment slot="aboveMarks" let:xScale let:yScale>
 		{#if markPoint}
@@ -85,7 +98,7 @@
 					{@const value = seriesTooltipData ? valueAccessor(seriesTooltipData) : null}
 
 					<button
-						class="col-span-full grid grid-cols-[1fr,auto] gap-6 hover:bg-neutral-400 py-2 px-3 rounded"
+						class="col-span-full grid grid-cols-[1fr_auto] gap-6 hover:bg-neutral-400 py-2 px-3 rounded"
 						onclick={() => onitemclick?.({ series: s, data: seriesTooltipData, value })}
 						onmouseenter={() => setHighlightSeriesKey(s.key)}
 						onmouseleave={() => setHighlightSeriesKey(null)}

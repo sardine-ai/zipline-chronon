@@ -92,7 +92,7 @@ class LogBootstrapTest extends AnyFlatSpec {
 
     def createBootstrapJoin(baseJoin: Join): Join = {
       val join = baseJoin.deepCopy()
-      join.getMetaData.setName("test.user_transaction_features.bootstrap")
+      join.getMetaData.setName("test.user_transaction_features.bootstrap_copy")
       join.setBootstrapParts(
         Seq(
           Builders.BootstrapPart(

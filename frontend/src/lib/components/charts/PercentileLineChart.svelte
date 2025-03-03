@@ -52,7 +52,10 @@
 		lineChartProps,
 		{
 			props: {
-				yAxis: { format: 'metric' }
+				yAxis: { format: 'metric' },
+				canvas: {
+					class: 'cursor-crosshair'
+				}
 			}
 		},
 		restProps

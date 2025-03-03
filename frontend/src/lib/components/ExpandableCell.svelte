@@ -12,7 +12,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import IconArrowRight from '~icons/heroicons/arrow-right';
 	import { page } from '$app/state';
-	import { getEntityConfig, type EntityData } from '../types/Entity/Entity';
+	import { getEntityConfig, type EntityData } from '../types/Entity';
 
 	let {
 		isExpanded,
@@ -49,7 +49,7 @@
 			<div class="w-4">
 				{#if $canExpand}
 					<IconChevronDown
-						class="size-4 transition-transform duration-200 text-neutral-900 flex-shrink-0 {$isExpanded
+						class="size-4 transition-transform duration-200 text-neutral-900 shrink-0 {$isExpanded
 							? ''
 							: '-rotate-90'}"
 					/>
@@ -58,7 +58,7 @@
 			{#if Icon}
 				<div
 					style:--color={config.color}
-					class="bg-[hsl(var(--color)/5%)] text-[hsl(var(--color))] w-4 h-4 rounded flex items-center justify-center ml-2 flex-shrink-0"
+					class="bg-[hsl(var(--color)/5%)] text-[hsl(var(--color))] w-4 h-4 rounded flex items-center justify-center ml-2 shrink-0"
 				>
 					<Icon />
 				</div>

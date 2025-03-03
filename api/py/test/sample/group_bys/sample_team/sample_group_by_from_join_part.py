@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from sources import test_sources
-from ai.chronon.group_by import (
+from ai.chronon.types import (
     GroupBy,
     Aggregation,
     Operation,

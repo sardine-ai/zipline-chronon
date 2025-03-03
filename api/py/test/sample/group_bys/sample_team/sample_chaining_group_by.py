@@ -22,17 +22,11 @@ from group_bys.sample_team import (
     entity_sample_group_by_from_module,
 )
 
-from ai.chronon.join import Join, JoinPart
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Accuracy,
-    Operation,
-)
-from ai.chronon.api import ttypes
-from ai.chronon.query import (
+from ai.chronon.types import Join, JoinPart
+from ai.chronon.types import GroupBy, Aggregation, Accuracy, Operation, JoinSource
+from ai.chronon.types import (
     Query,
-    select,
+    selects,
 )
 
 parent_join = Join(
@@ -53,18 +47,16 @@ parent_join = Join(
 
 chaining_group_by_v1 = GroupBy(
     sources=[
-        ttypes.Source(
-            joinSource=ttypes.JoinSource(
-                join=parent_join,
-                query=Query(
-                    selects=select(
-                        event="event_expr",
-                        group_by_subject="group_by_expr",
-                    ),
-                    start_partition="2023-04-15",
-                    time_column="ts",
+        JoinSource(
+            join=parent_join,
+            query=Query(
+                selects=selects(
+                    event="event_expr",
+                    group_by_subject="group_by_expr",
                 ),
-            )
+                start_partition="2023-04-15",
+                time_column="ts",
+            ),
         )
     ],
     keys=["user_id"],

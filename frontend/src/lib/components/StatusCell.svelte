@@ -32,7 +32,7 @@
 				>
 			</p>
 			<div class="mt-4">
-				<Button variant="secondary" class="!text-small !text-neutral-800">
+				<Button variant="secondary" class="text-small! text-neutral-800!">
 					<IconArrowDownOnSquare16Solid class="mr-2 h-4 w-4" />
 					Download Logs
 				</Button>

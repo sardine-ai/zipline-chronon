@@ -21,7 +21,7 @@
 	import { keys } from '@layerstack/utils';
 	import Self from './EntityProperties.svelte';
 	import TrueFalseBadge from '$src/lib/components/TrueFalseBadge.svelte';
-	import { getEntityConfig, type EntityData } from '$src/lib/types/Entity/Entity';
+	import { getEntityConfig, type EntityData } from '$src/lib/types/Entity';
 
 	const {
 		entity,

@@ -22,17 +22,11 @@ from group_bys.sample_team import (
     entity_sample_group_by_from_module,
 )
 
-from ai.chronon.join import Join, JoinPart
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Accuracy,
-    Operation,
-)
-from ai.chronon.api import ttypes
-from ai.chronon.query import (
+from ai.chronon.types import Join, JoinPart
+from ai.chronon.types import GroupBy, Aggregation, Accuracy, Operation, JoinSource
+from ai.chronon.types import (
     Query,
-    select,
+    selects,
 )
 
 parent_join = Join(
@@ -40,11 +34,11 @@ parent_join = Join(
     right_parts=[
         JoinPart(
             group_by=event_sample_group_by.v1,
-            key_mapping={'subject': 'group_by_subject'},
+            key_mapping={"subject": "group_by_subject"},
         ),
         JoinPart(
             group_by=entity_sample_group_by_from_module.v1,
-            key_mapping={'subject': 'group_by_subject'},
+            key_mapping={"subject": "group_by_subject"},
         ),
     ],
     online=True,
@@ -54,16 +48,17 @@ parent_join = Join(
 
 chaining_group_by_v1 = GroupBy(
     name="sample_team.sample_chaining_group_by",
-    sources=ttypes.Source(joinSource=ttypes.JoinSource(
+    sources=JoinSource(
         join=parent_join,
         query=Query(
-            selects=select(
+            selects=selects(
                 event="event_expr",
                 group_by_subject="group_by_expr",
             ),
             start_partition="2023-04-15",
             time_column="ts",
-        ))),
+        ),
+    ),
     keys=["user_id"],
     aggregations=[
         Aggregation(input_column="event", operation=Operation.LAST),
@@ -73,7 +68,7 @@ chaining_group_by_v1 = GroupBy(
     production=True,
     table_properties={
         "sample_config_json": """{"sample_key": "sample_value"}""",
-        "description": "sample description"
+        "description": "sample description",
     },
     output_namespace="sample_namespace",
 )
@@ -83,15 +78,11 @@ v1 = Join(
     right_parts=[
         JoinPart(
             group_by=chaining_group_by_v1,
-            key_mapping={'subject': 'user_id'},
+            key_mapping={"subject": "user_id"},
         ),
     ],
-    additional_args={
-        'custom_arg': 'custom_value'
-    },
-    additional_env={
-        'custom_env': 'custom_env_value'
-    },
+    additional_args={"custom_arg": "custom_value"},
+    additional_env={"custom_env": "custom_env_value"},
     online=True,
-    check_consistency=True
+    check_consistency=True,
 )

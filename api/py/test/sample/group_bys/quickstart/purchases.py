@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 from ai.chronon.group_by import GroupBy, Aggregation, Operation
 
 """
@@ -26,10 +26,8 @@ source = Source(
         table="data.purchases",  # This points to the log table in the warehouse with historical purchase events, updated in batch daily
         topic=None,  # See the 'returns' GroupBy for an example that has a streaming source configured. In this case, this would be the streaming source topic that can be listened to for realtime events
         query=Query(
-            selects=select(
-                "user_id",
-                "purchase_price",
-                bucket_rand="'1'"
+            selects=selects(
+                "user_id", "purchase_price", bucket_rand="'1'"
             ),  # Select the fields we care about
             time_column="ts",
         ),  # The event time

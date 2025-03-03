@@ -2,7 +2,7 @@
 set -e
 
 # Required environment variables
-required_vars=("FETCHER_JAR" "STATSD_HOST" "FETCHER_PORT")
+required_vars=("FETCHER_JAR" "FETCHER_PORT")
 for var in "${required_vars[@]}"; do
   if [ -z "${!var}" ]; then
     echo "Error: Required environment variable $var is not set"
@@ -18,17 +18,23 @@ else
   ONLINE_CLASS=$GCP_ONLINE_CLASS
 fi
 
+if [ -z "$STATSD_HOST" ]; then
+  echo "Statsd Host not configured. Disabling metrics reporting"
+  METRICS_ENABLED="false"
+else
+  METRICS_ENABLED="true"
+fi
+
 JMX_OPTS="-XX:MaxMetaspaceSize=1g -XX:MaxRAMPercentage=70.0 -XX:MinRAMPercentage=70.0 -XX:InitialRAMPercentage=70.0 -XX:MaxHeapFreeRatio=100 -XX:MinHeapFreeRatio=0"
 
 echo "Starting Fetcher service with online jar $ONLINE_JAR and online class $ONLINE_CLASS"
 
-if ! java -Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.JULLogDelegateFactory \
-  -Djava.util.logging.config.file=/srv/zipline/fetcher/logging.properties \
-  -jar $FETCHER_JAR run ai.chronon.service.FetcherVerticle \
+if ! java -jar $FETCHER_JAR run ai.chronon.service.FetcherVerticle \
   $JMX_OPTS \
   -Dserver.port=$FETCHER_PORT \
   -Donline.jar=$ONLINE_JAR \
   -Dai.chronon.metrics.host=$STATSD_HOST \
+  -Dai.chronon.metrics.enabled=$METRICS_ENABLED \
   -Donline.class=$ONLINE_CLASS; then
   echo "Error: Fetcher service failed to start"
   exit 1

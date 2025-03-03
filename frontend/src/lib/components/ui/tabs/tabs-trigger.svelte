@@ -15,7 +15,7 @@
 	export { className as class };
 
 	const _class = cn(
-		'ring-offset-background focus-visible:ring-ring border-b-[3px] border-transparent data-[state=active]:border-b-[3px] data-[state=active]:border-primary-800 data-[state=active]:text-primary-800 inline-flex items-center justify-center whitespace-nowrap px-[10px] py-[5px] text-regular transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow z-10 [&:not(:first-child)]:ml-5',
+		'ring-offset-background focus-visible:ring-ring border-b-[3px] border-transparent data-[state=active]:border-b-[3px] data-[state=active]:border-primary-800 data-[state=active]:text-primary-800 inline-flex items-center justify-center whitespace-nowrap px-[10px] py-[5px] text-regular transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm z-10 not-first:ml-5',
 		className
 	);
 

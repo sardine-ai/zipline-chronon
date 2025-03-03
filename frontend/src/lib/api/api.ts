@@ -135,10 +135,17 @@ export class Api {
 		);
 	}
 
-	async getColumnSummary({ name, columnName, startTs, endTs }: IJoinSummaryRequestArgs) {
+	async getColumnSummary({
+		name,
+		columnName,
+		startTs,
+		endTs,
+		percentiles = 'p5,p50,p95'
+	}: IJoinSummaryRequestArgs & { percentiles?: string }) {
 		const params = new URLSearchParams({
 			startTs: startTs.toString(),
-			endTs: endTs.toString()
+			endTs: endTs.toString(),
+			percentiles
 		});
 		return this.#send<ITileSummarySeriesArgs>(
 			`join/${name}/column/${columnName}/summary?${params.toString()}`

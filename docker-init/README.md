@@ -4,7 +4,7 @@ This directory holds code to setup docker containers for dynamoDB, a spark maste
 
 > **Note**  
 > Make sure you have `docker >= 20.10` installed.  
-> Install appropriate java, scala, and python versions following the instructions in [devnotes.md](../devnotes.md#install-appropriate-java-scala-and-python-versions).
+> Install appropriate java, scala, and python versions following the instructions in [devnotes.md](../docs/source/dev/devnotes.md#install-appropriate-java-scala-and-python-versions).
 
 ```bash
 $ cd chronon

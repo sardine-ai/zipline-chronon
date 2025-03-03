@@ -24,6 +24,7 @@ maven_repository = repository(
         "org.apache.datasketches:datasketches-java:6.1.1",
         "com.fasterxml.jackson.core:jackson-core:2.15.2",
         "com.fasterxml.jackson.core:jackson-databind:2.15.2",
+        "com.fasterxml.jackson.module:jackson-module-afterburner:2.15.2",
         "com.google.code.gson:gson:2.10.1",
         "javax.annotation:javax.annotation-api:1.3.2",
         "com.datadoghq:java-dogstatsd-client:4.4.1",
@@ -43,6 +44,7 @@ maven_repository = repository(
         "net.sf.py4j:py4j:0.10.9.9",
         "org.apache.commons:commons-lang3:3.12.0",
         "org.apache.commons:commons-math3:3.6.1",
+        "org.apache.hudi:hudi-aws-bundle:0.15.0",
 
         # grpc
         "io.grpc:grpc-core:1.62.2",  # required by bigtable
@@ -127,6 +129,8 @@ maven_repository = repository(
         "org.apache.hadoop:hadoop-yarn-api",
         "org.apache.hadoop:hadoop-yarn-client",
         "org.apache.hadoop:hadoop-yarn-common",
+        "org.apache.parquet:parquet-avro",
+        "org.apache.zookeeper:zookeeper",
         "org.scala-lang:scala-library",
         "org.scala-lang:scala-reflect",
     ],

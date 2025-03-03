@@ -3,7 +3,7 @@ import { getSearchParamValues } from './search-params';
 
 export const SORT_DIRECTIONS = ['asc', 'desc'] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
-export type SortContext = 'drift' | 'distributions';
+export type SortContext = 'drift' | 'summary';
 
 export function getSortParamKey(context: SortContext): string {
 	return `${context}Sort`;

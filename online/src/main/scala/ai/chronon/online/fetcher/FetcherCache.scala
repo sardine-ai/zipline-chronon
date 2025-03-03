@@ -26,12 +26,19 @@ trait FetcherCache {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val batchIrCacheName = "batch_cache"
-  val maybeBatchIrCache: Option[BatchIrCache] =
-    Option(System.getProperty("ai.chronon.fetcher.batch_ir_cache_size_elements"))
-      .map(size => new BatchIrCache(batchIrCacheName, size.toInt))
-      .orElse(None)
+  val defaultBatchIrCacheSize = "10000"
 
-  // Caching needs to be configured globally
+  val configuredBatchIrCacheSize: Option[Int] =
+    Option(System.getProperty("ai.chronon.fetcher.batch_ir_cache_size_elements"))
+      .orElse(Some(defaultBatchIrCacheSize))
+      .map(_.toInt)
+      .filter(_ > 0)
+
+  val maybeBatchIrCache: Option[BatchIrCache] =
+    configuredBatchIrCacheSize
+      .map(size => new BatchIrCache(batchIrCacheName, size))
+
+  // Caching needs to be configured globally with a cache size > 0
   def isCacheSizeConfigured: Boolean = maybeBatchIrCache.isDefined
 
   // Caching needs to be enabled for the specific groupBy

@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { Api } from '$lib/api/api';
 import { ConfType } from '$src/lib/types/codegen';
-import { entityConfig } from '$src/lib/types/Entity/Entity';
+import { getEntityConfigFromPath } from '$src/lib/types/Entity';
 import { error } from '@sveltejs/kit';
 
 function getConfApi(api: Api, confType: ConfType, confName: string) {
@@ -29,12 +29,10 @@ function getConfApi(api: Api, confType: ConfType, confName: string) {
 	}
 }
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, url }) => {
 	const api = new Api({ fetch });
 
-	const confType = Object.values(entityConfig).find(
-		(c) => c.path?.slice(1) === params.conf
-	)?.confType;
+	const confType = getEntityConfigFromPath(url.pathname)?.confType;
 
 	if (confType) {
 		const confApi = getConfApi(api, confType, params.name);

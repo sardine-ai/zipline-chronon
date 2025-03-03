@@ -17,7 +17,6 @@
 package ai.chronon.spark.test.groupby
 
 import ai.chronon.aggregator.test.Column
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._

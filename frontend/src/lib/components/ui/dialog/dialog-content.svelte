@@ -27,7 +27,7 @@
 	>
 		<slot />
 		<DialogPrimitive.Close
-			class="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute right-2 top-2 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none border border-border p-2 hover:bg-muted"
+			class="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute right-2 top-2 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none border border-border p-2 hover:bg-muted"
 		>
 			<Cross2 class="h-4 w-4" />
 			<span class="sr-only">Close</span>

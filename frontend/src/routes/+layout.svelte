@@ -5,7 +5,7 @@
 	import NavigationSlider from '$lib/components/NavigationSlider.svelte';
 	import NavigationBar from '$lib/components/NavigationBar.svelte';
 	import BreadcrumbNav from '$lib/components/BreadcrumbNav.svelte';
-	import { entityConfig } from '$lib/types/Entity/Entity';
+	import { entityConfig } from '$lib/types/Entity';
 
 	let { children }: { children: Snippet } = $props();
 

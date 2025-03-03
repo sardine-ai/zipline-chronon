@@ -42,7 +42,7 @@
 	import { Button } from '$src/lib/components/ui/button';
 
 	import IconArrowRight from '~icons/heroicons/arrow-right';
-	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity/Entity';
+	import { type EntityData, getEntityConfig } from '$src/lib/types/Entity';
 
 	type DagreData = ComponentProps<Dagre>['data'];
 	type CustomNode = Node & { id: string; key: INodeKeyArgs; value: INodeInfoArgs };
@@ -294,8 +294,8 @@
 									y="y"
 									class={cn(
 										isStreaming(edge.source.value.conf as EntityData)
-											? 'stroke-blue-500 stroke-[2] [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
-											: 'stroke-purple-500 stroke-[2] [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x',
+											? 'stroke-blue-500 stroke-2 [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
+											: 'stroke-purple-500 stroke-2 [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x',
 										fadeEdge(edge as unknown as { source: CustomNode; target: CustomNode }) &&
 											'opacity-0'
 									)}
@@ -318,12 +318,12 @@
 					{
 						label: 'Batch',
 						class:
-							'stroke-purple-500 stroke-[2] [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x'
+							'stroke-purple-500 stroke-2 [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x'
 					},
 					{
 						label: 'Streaming',
 						class:
-							'stroke-blue-500 stroke-[2] [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
+							'stroke-blue-500 stroke-2 [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
 					}
 				]}
 
@@ -503,9 +503,12 @@
 							--base00="hsl(var(--background))"
 							--base01="hsl(var(--muted) / 20%)"
 							--base02="hsl(var(--primary-500))"
-							--base03="hsl(var(--neutral-600))"
+							--base03="hsl(var(--border))"
 							--base05="hsl(var(--foreground))"
 							--base08="hsl(var(--primary-700))"
+							--base0A="hsl(80 80% 50%)"
+							--base0E="hsl(270 80% 50%)"
+							--caret-color="hsl(var(--neutral-600))"
 						/>
 					</div>
 				</TabsContent>

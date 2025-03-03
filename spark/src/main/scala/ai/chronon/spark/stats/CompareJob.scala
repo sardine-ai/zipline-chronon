@@ -22,7 +22,7 @@ import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
 import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.Analyzer
@@ -79,13 +79,13 @@ class CompareJob(
     logger.info("Saving comparison output..")
     logger.info(
       s"Comparison schema ${compareDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
-    compareDf.saveUnPartitioned(comparisonTableName, tableProps)
+    compareDf.save(comparisonTableName, tableProps, partitionColumns = List.empty)
 
     // Save the metrics table
     logger.info("Saving metrics output..")
     val metricsDf = metricsTimedKvRdd.toFlatDf
     logger.info(s"Metrics schema ${metricsDf.schema.fields.map(sb => (sb.name, sb.dataType)).toMap.mkString("\n - ")}")
-    metricsDf.saveUnPartitioned(metricsTableName, tableProps)
+    metricsDf.save(metricsTableName, tableProps, partitionColumns = List.empty)
 
     logger.info("Printing basic comparison results..")
     logger.info("(Note: This is just an estimation and not a detailed analysis of results)")

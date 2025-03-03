@@ -40,8 +40,7 @@ ENV LOG_PATH=${LOG_PATH:-"/srv/zipline/fetcher/logs"}
 COPY $CLOUD_AWS_JAR_PATH "$CLOUD_AWS_JAR"
 COPY $CLOUD_GCP_JAR_PATH "$CLOUD_GCP_JAR"
 COPY $FETCHER_SVC_JAR_PATH "$FETCHER_JAR"
-COPY $FETCHER_LAUNCH_SCRIPT /srv/fetcher/start.sh
-COPY docker/fetcher/logging.properties /srv/zipline/fetcher/logging.properties
+COPY $FETCHER_LAUNCH_SCRIPT /srv/zipline/fetcher/start.sh
 
 ENV FETCHER_PORT=9000
 
@@ -50,4 +49,4 @@ HEALTHCHECK --start-period=2m --retries=4 CMD curl --fail http://localhost:$FETC
 RUN mkdir -p $LOG_PATH && \
     chmod 755 $LOG_PATH
 
-CMD /srv/fetcher/start.sh
+CMD /srv/zipline/fetcher/start.sh

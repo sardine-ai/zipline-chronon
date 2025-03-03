@@ -16,12 +16,11 @@
 
 package ai.chronon.spark
 
-import ai.chronon.aggregator.windowing.TsUtils
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils}
-import ai.chronon.online.PartitionRange
+import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils, TsUtils}
+import ai.chronon.api.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils.{
   TableAlreadyExists,
@@ -30,7 +29,7 @@ import ai.chronon.spark.TableUtils.{
   TableCreationStatus
 }
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.{DefaultFormatProvider, Format, FormatProvider}
+import ai.chronon.spark.format.{DefaultFormatProvider, FormatProvider}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
@@ -111,7 +110,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   private val aggregationParallelism: Int = sparkSession.conf.get("spark.chronon.group_by.parallelism", "1000").toInt
 
   sparkSession.sparkContext.setLogLevel("ERROR")
-  // converts String-s like "a=b/c=d" to Map("a" -> "b", "c" -> "d")
 
   def preAggRepartition(df: DataFrame): DataFrame =
     if (df.rdd.getNumPartitions < aggregationParallelism) {
@@ -122,7 +120,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def tableReachable(tableName: String): Boolean = {
     try {
-      tableReadFormat(tableName).isDefined
+      tableFormatProvider.readFormat(tableName).isDefined
     } catch {
       case ex: Exception =>
         logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
@@ -135,12 +133,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def loadTable(tableName: String): DataFrame = {
     sparkSession.read.load(DataPointer.from(tableName, sparkSession))
-  }
-
-  def isPartitioned(tableName: String): Boolean = {
-    // TODO: use proper way to detect if a table is partitioned or not
-    val schema = getSchemaFromTable(tableName)
-    schema.fieldNames.contains(partitionColumn)
   }
 
   // Needs provider
@@ -159,17 +151,16 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def tableReadFormat(tableName: String): Option[Format] = tableFormatProvider.readFormat(tableName)
-
-  // Needs provider
   // return all specified partition columns in a table in format of Map[partitionName, PartitionValue]
   def allPartitions(tableName: String, partitionColumnsFilter: Seq[String] = Seq.empty): Seq[Map[String, String]] = {
 
     if (!tableReachable(tableName)) return Seq.empty[Map[String, String]]
 
-    val format = tableReadFormat(tableName).getOrElse(
-      throw new IllegalStateException(
-        s"Could not determine read format of table ${tableName}. It is no longer reachable."))
+    val format = tableFormatProvider
+      .readFormat(tableName)
+      .getOrElse(
+        throw new IllegalStateException(
+          s"Could not determine read format of table ${tableName}. It is no longer reachable."))
     val partitionSeq = format.partitions(tableName)(sparkSession)
 
     if (partitionColumnsFilter.isEmpty) {
@@ -189,7 +180,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  subPartitionsFilter: Map[String, String] = Map.empty,
                  partitionColumnName: String = partitionColumn): Seq[String] = {
 
-    tableReadFormat(tableName)
+    tableFormatProvider
+      .readFormat(tableName)
       .map((format) => {
         val partitions = format.primaryPartitions(tableName, partitionColumnName, subPartitionsFilter)(sparkSession)
 
@@ -383,23 +375,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         logger.error("Error running query:", e)
         throw e
     }
-  }
-
-  // Needs provider
-  def insertUnPartitioned(df: DataFrame,
-                          tableName: String,
-                          tableProperties: Map[String, String] = null,
-                          saveMode: SaveMode = SaveMode.Overwrite,
-                          fileFormat: String = "PARQUET"): Unit = {
-
-    val creationStatus = createTable(df, tableName, Seq.empty[String], tableProperties, fileFormat)
-
-    creationStatus match {
-      case TableUtils.TableCreatedWithoutInitialData | TableUtils.TableAlreadyExists =>
-        repartitionAndWrite(df, tableName, saveMode, None, partitionColumns = Seq.empty)
-      case TableUtils.TableCreatedWithInitialData =>
-    }
-
   }
 
   def columnSizeEstimator(dataType: DataType): Long = {

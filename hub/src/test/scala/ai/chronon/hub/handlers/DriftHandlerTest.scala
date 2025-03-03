@@ -139,7 +139,8 @@ class DriftHandlerTest {
         anyString(),
         anyLong(),
         anyLong(),
-        any[Option[String]]
+        any[Option[String]],
+        any[Seq[String]]
       )).thenReturn(Success(Future.successful(mockSummarySeries)))
 
     val response = handler.getColumnSummary(request)

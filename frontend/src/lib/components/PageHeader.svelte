@@ -3,11 +3,8 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import IconBookOpen from '~icons/heroicons/book-open-16-solid';
 
-	let { title, children }: { title: string; children?: Snippet } = $props();
-
-	function openChronon() {
-		window.open('https://chronon.ai/', '_blank');
-	}
+	let { title, learnHref, children }: { title: string; learnHref?: string; children?: Snippet } =
+		$props();
 </script>
 
 <div class="flex justify-between items-center mb-5">
@@ -16,9 +13,12 @@
 		{#if children}
 			{@render children()}
 		{/if}
-		<Button variant="outline" onclick={openChronon} icon="leading" size="sm">
-			<IconBookOpen class="text-neutral-800" />
-			<span class="text-neutral-800">Learn</span>
-		</Button>
+
+		{#if learnHref}
+			<Button variant="outline" href={learnHref} target="_blank" icon="leading" size="sm">
+				<IconBookOpen class="text-neutral-800" />
+				<span class="text-neutral-800">Learn</span>
+			</Button>
+		{/if}
 	</div>
 </div>

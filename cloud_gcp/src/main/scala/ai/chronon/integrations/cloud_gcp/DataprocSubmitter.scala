@@ -121,16 +121,17 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     val envProps =
       Map(
         "jobmanager.memory.process.size" -> "4G",
-        "taskmanager.memory.process.size" -> "64G",
-        "taskmanager.memory.network.min" -> "1G",
-        "taskmanager.memory.network.max" -> "2G",
+        "taskmanager.memory.process.size" -> "32G",
+        "taskmanager.memory.network.min" -> "512m",
+        "taskmanager.memory.network.max" -> "1G",
         // explicitly set the number of task slots as otherwise it defaults to the number of cores
-        "taskmanager.numberOfTaskSlots" -> "4",
+        // we go with one task slot per TM as we do see issues with Spark setting updates not being respected when there's multiple slots/TM
+        "taskmanager.numberOfTaskSlots" -> "1",
         "taskmanager.memory.managed.fraction" -> "0.5f",
         // default is 256m, we seem to be close to the limit so we give ourselves some headroom
         "taskmanager.memory.jvm-metaspace.size" -> "512m",
         // bump this a bit as Kafka and KV stores often need direct buffers
-        "taskmanager.memory.task.off-heap.size" -> "1G",
+        "taskmanager.memory.task.off-heap.size" -> "512m",
         "yarn.classpath.include-user-jar" -> "FIRST",
         "state.savepoints.dir" -> flinkStateUri,
         "state.checkpoints.dir" -> flinkStateUri,

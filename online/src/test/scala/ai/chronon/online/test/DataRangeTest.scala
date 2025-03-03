@@ -4,8 +4,8 @@ import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.online.PartitionRange
-import ai.chronon.online.PartitionRange.collapseToRange
+import ai.chronon.api.PartitionRange
+import ai.chronon.api.PartitionRange.collapseToRange
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

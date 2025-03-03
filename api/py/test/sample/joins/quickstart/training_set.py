@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 
 from ai.chronon.join import Join, JoinPart
 from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, select
+from ai.chronon.query import Query, selects
 
 from group_bys.quickstart.purchases import v1 as purchases_v1
 from group_bys.quickstart.returns import v1 as returns_v1
@@ -29,18 +28,25 @@ source = Source(
     events=EventSource(
         table="data.checkouts",
         query=Query(
-            selects=select("user_id"), # The primary key used to join various GroupBys together
+            selects=selects(
+                "user_id"
+            ),  # The primary key used to join various GroupBys together
             time_column="ts",
-            ) # The event time used to compute feature values as-of
-    ))
+        ),  # The event time used to compute feature values as-of
+    )
+)
 
-v1 = Join(  
+v1 = Join(
     left=source,
-    right_parts=[JoinPart(group_by=group_by) for group_by in [purchases_v1, returns_v1, users]] # Include the three GroupBys
+    right_parts=[
+        JoinPart(group_by=group_by) for group_by in [purchases_v1, returns_v1, users]
+    ],  # Include the three GroupBys
 )
 
 v2 = Join(
     left=source,
-    right_parts=[JoinPart(group_by=group_by) for group_by in [purchases_v1, returns_v1]], # Include the two online GroupBys
+    right_parts=[
+        JoinPart(group_by=group_by) for group_by in [purchases_v1, returns_v1]
+    ],  # Include the two online GroupBys
     online=True,
 )

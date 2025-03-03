@@ -209,7 +209,8 @@ class CatalystUtil(inputSchema: StructType,
         // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
         require(
           !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
-          s"Too many fields in input schema. We support a max of: ${CatalystUtil.MaxFields}. Schema: ${inputSparkSchema.simpleString}"
+          s"Too many fields in input schema. Catalyst util max field config: ${CatalystUtil.MaxFields}. " +
+            s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
         )
 
         val (ctx, cleanedSource) = whc.doCodeGen()
