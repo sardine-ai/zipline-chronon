@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar
+import software.amazon.awssdk.services.emr.model.ComputeLimitsUnitType
 import software.amazon.awssdk.services.emr.model.RunJobFlowRequest
 import software.amazon.awssdk.services.emr.model.RunJobFlowResponse
 
@@ -57,6 +58,10 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
     assertEquals(actualRequest.instances().ec2SubnetId(), "subnet-085b2af531b50db44")
     assertEquals(actualRequest.instances().emrManagedMasterSecurityGroup(), "sg-04fb79b5932a41298")
     assertEquals(actualRequest.instances().emrManagedSlaveSecurityGroup(), "sg-04fb79b5932a41298")
+    assertEquals(actualRequest.managedScalingPolicy().computeLimits().unitType(), ComputeLimitsUnitType.INSTANCES)
+    assertEquals(actualRequest.managedScalingPolicy().computeLimits().minimumCapacityUnits(), 1)
+    assertEquals(actualRequest.managedScalingPolicy().computeLimits().maximumCapacityUnits(),
+                 expectedClusterInstanceCount)
 
     // cluster specific assertions
     assertEquals(actualRequest.releaseLabel(), "emr-7.2.0")
@@ -77,6 +82,16 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
     assertEquals("zipline_canary_emr_service_role", actualRequest.serviceRole())
     assertEquals(expectedIdleTimeout.toLong, actualRequest.autoTerminationPolicy().idleTimeout())
 
+    assertEquals(actualRequest.steps().size(), 1)
+
+    val stepConfig = actualRequest.steps().get(0)
+    assertEquals(stepConfig.actionOnFailure().name(), "CANCEL_AND_WAIT")
+    assertEquals(stepConfig.name(), "Run Zipline Job")
+    assertEquals(stepConfig.hadoopJarStep().jar(), "command-runner.jar")
+    assertEquals(
+      stepConfig.hadoopJarStep().args().toScala.mkString(" "),
+      s"bash -c aws s3 cp s3://random-conf /mnt/zipline/; \naws s3 cp s3://random-data /mnt/zipline/; \nspark-submit --class some-main-class s3://-random-jar-uri group-by-backfill arg1 arg2"
+    )
   }
 
   it should "test flink job locally" ignore {}
