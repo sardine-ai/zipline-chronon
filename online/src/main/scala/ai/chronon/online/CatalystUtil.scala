@@ -58,9 +58,6 @@ object CatalystUtil {
     private val elemArr: mutable.Queue[T] = mutable.Queue.empty[T]
   }
 
-  // Max fields supported for codegen. If this is exceeded, we fail at creation time to avoid buggy codegen
-  val MaxFields = 1000
-
   lazy val session: SparkSession = {
     val spark = SparkSession
       .builder()
@@ -78,7 +75,6 @@ object CatalystUtil {
       // The default doesn't seem to be set properly in the scala 2.13 version of spark
       // running into this issue https://github.com/dotnet/spark/issues/435
       .config("spark.driver.bindAddress", "127.0.0.1")
-      .config("spark.sql.codegen.maxFields", MaxFields)
       .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
     assert(spark.sessionState.conf.wholeStageEnabled)
