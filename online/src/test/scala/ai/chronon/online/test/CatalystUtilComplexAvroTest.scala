@@ -36,7 +36,7 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
     "( (properties_top.gdpr_p in ('1', '3') AND properties_top.gdpr_tp in ('1', '3')) OR ((NOT properties_top.gdpr_p IS NOT NULL) AND " +
       "(NOT properties_top.gdpr_tp IS NOT NULL) AND properties_top.region in ('US', 'CA', 'AU', 'MX', 'JP', 'NZ', 'BR', 'CN') AND event_logger = 'native' AND event_source in ('ios', 'android')) )",
     "properties_top.isBot IS NULL OR properties_top.isBot != 'true'",
-    "properties_top.isSupportLogin IS NULL OR properties_top.isSupportLogin != 'true'",
+    "properties_top.isSupportLogin IS NULL OR properties_top.isSupportLogin != 'true'"
     // existing predicate that doesn't work
     // "( (NOT properties_top.isBot = 'true') AND (NOT properties_top.isSupportLogin = 'true') )"
   )
@@ -66,98 +66,106 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
   }
 
   it should "matches event_name condition (backend_add_to_cart)" in {
-    val addToCartEvent = createModifiedBeacon(Map(
-      "event_name" -> "backend_add_to_cart",
-      "event_logger" -> "native",
-      "event_source" -> "ios",
-      "properties_top.region" -> "US"
-    ))
+    val addToCartEvent = createModifiedBeacon(
+      Map(
+        "event_name" -> "backend_add_to_cart",
+        "event_logger" -> "native",
+        "event_source" -> "ios",
+        "properties_top.region" -> "US"
+      ))
     val payloadBase64 = serializeToBase64(addToCartEvent)
     val result = processEvent(payloadBase64)
     assert(result.nonEmpty) // expect a result row here
   }
 
   it should "match event_name condition (view_listing) with GDPR consent" in {
-    val viewListingWithGdpr = createModifiedBeacon(Map(
-      "event_name" -> "view_listing",
-      "properties_top.gdpr_p" -> "1",
-      "properties_top.gdpr_tp" -> "1"
-    ))
+    val viewListingWithGdpr = createModifiedBeacon(
+      Map(
+        "event_name" -> "view_listing",
+        "properties_top.gdpr_p" -> "1",
+        "properties_top.gdpr_tp" -> "1"
+      ))
     val payloadBase64 = serializeToBase64(viewListingWithGdpr)
     val result = processEvent(payloadBase64)
     assert(result.nonEmpty) // expect a result row here
   }
 
   it should "match event_name condition (backend_cart_payment) with regional condition" in {
-    val purchaseEventRegional = createModifiedBeacon(Map(
-      "event_name" -> "backend_cart_payment",
-      "event_logger" -> "native",
-      "event_source" -> "android",
-      "properties_top.region" -> "CA"
-    ))
+    val purchaseEventRegional = createModifiedBeacon(
+      Map(
+        "event_name" -> "backend_cart_payment",
+        "event_logger" -> "native",
+        "event_source" -> "android",
+        "properties_top.region" -> "CA"
+      ))
     val payloadBase64 = serializeToBase64(purchaseEventRegional)
     val result = processEvent(payloadBase64)
     assert(result.nonEmpty) // expect a result row here
   }
 
   it should "match event_name condition (backend_favorite_item2) with listing IDs" in {
-    val favoriteEvent = createModifiedBeacon(Map(
-      "event_name" -> "backend_favorite_item2",
-      "event_logger" -> "native",
-      "event_source" -> "ios",
-      "properties_top.region" -> "JP",
-      "properties_top.listing_id" -> "789012,456789"
-    ))
+    val favoriteEvent = createModifiedBeacon(
+      Map(
+        "event_name" -> "backend_favorite_item2",
+        "event_logger" -> "native",
+        "event_source" -> "ios",
+        "properties_top.region" -> "JP",
+        "properties_top.listing_id" -> "789012,456789"
+      ))
     val payloadBase64 = serializeToBase64(favoriteEvent)
     val result = processEvent(payloadBase64)
     assert(result.nonEmpty) // expect a result row here
   }
 
   it should "NOT match (bot flag is true)" in {
-    val botEvent = createModifiedBeacon(Map(
-      "event_name" -> "view_listing",
-      "event_logger" -> "native",
-      "event_source" -> "android",
-      "properties_top.region" -> "US",
-      "properties_top.isBot" -> "true"
-    ))
+    val botEvent = createModifiedBeacon(
+      Map(
+        "event_name" -> "view_listing",
+        "event_logger" -> "native",
+        "event_source" -> "android",
+        "properties_top.region" -> "US",
+        "properties_top.isBot" -> "true"
+      ))
     val payloadBase64 = serializeToBase64(botEvent)
     val result = processEvent(payloadBase64)
     assert(result.isEmpty) // expect no results here
   }
 
   it should "NOT match (support login is true)" in {
-    val supportLoginEvent = createModifiedBeacon(Map(
-      "event_name" -> "backend_add_to_cart",
-      "event_logger" -> "native",
-      "event_source" -> "ios",
-      "properties_top.region" -> "MX",
-      "properties_top.isSupportLogin" -> "true"
-    ))
+    val supportLoginEvent = createModifiedBeacon(
+      Map(
+        "event_name" -> "backend_add_to_cart",
+        "event_logger" -> "native",
+        "event_source" -> "ios",
+        "properties_top.region" -> "MX",
+        "properties_top.isSupportLogin" -> "true"
+      ))
     val payloadBase64 = serializeToBase64(supportLoginEvent)
     val result = processEvent(payloadBase64)
     assert(result.isEmpty) // expect no results here
   }
 
   it should "NOT match (wrong event_name)" in {
-    val wrongEventName = createModifiedBeacon(Map(
-      "event_name" -> "search",
-      "event_logger" -> "native",
-      "event_source" -> "ios",
-      "properties_top.region" -> "US"
-    ))
+    val wrongEventName = createModifiedBeacon(
+      Map(
+        "event_name" -> "search",
+        "event_logger" -> "native",
+        "event_source" -> "ios",
+        "properties_top.region" -> "US"
+      ))
     val payloadBase64 = serializeToBase64(wrongEventName)
     val result = processEvent(payloadBase64)
     assert(result.isEmpty) // expect no results here
   }
 
   it should "NOT match (incompatible region & not GDPR)" in {
-    val wrongRegion = createModifiedBeacon(Map(
-      "event_name" -> "view_listing",
-      "event_logger" -> "native",
-      "event_source" -> "ios",
-      "properties_top.region" -> "UK"
-    ))
+    val wrongRegion = createModifiedBeacon(
+      Map(
+        "event_name" -> "view_listing",
+        "event_logger" -> "native",
+        "event_source" -> "ios",
+        "properties_top.region" -> "UK"
+      ))
     val payloadBase64 = serializeToBase64(wrongRegion)
     val result = processEvent(payloadBase64)
     assert(result.isEmpty) // expect no results here
