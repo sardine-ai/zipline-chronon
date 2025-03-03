@@ -68,3 +68,15 @@ scala_test_suite(
     visibility = ["//visibility:public"],
     deps = test_deps + _SCALA_TEST_DEPS + [":test_lib"],
 )
+
+jvm_binary(
+    name = "temporal_worker",
+    main_class = "ai.chronon.orchestration.temporal.worker.NodeExecutionWorker",
+    runtime_deps = [":lib"],
+)
+
+jvm_binary(
+    name = "node_workflow_runner",
+    main_class = "ai.chronon.orchestration.temporal.runner.NodeExecutionWorkflowRunner",
+    runtime_deps = [":lib"],
+)
