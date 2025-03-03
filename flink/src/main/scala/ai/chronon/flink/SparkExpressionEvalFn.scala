@@ -107,10 +107,9 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
 
       val maybeRow = catalystUtil.performSql(row)
       exprEvalTimeHistogram.update(System.currentTimeMillis() - serFinish)
-      maybeRow.foreach {
-        row =>
-          logger.info(s"Emitting data for row: ${sparkRow.json}")
-          logger.info(s"Output data: ${row}")
+      maybeRow.foreach { row =>
+        logger.info(s"Emitting data for row: ${sparkRow.json}")
+        logger.info(s"Output data: ${row}")
 
         out.collect(row)
       }
