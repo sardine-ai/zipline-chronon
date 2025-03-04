@@ -37,8 +37,6 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
       "(NOT properties_top.gdpr_tp IS NOT NULL) AND properties_top.region in ('US', 'CA', 'AU', 'MX', 'JP', 'NZ', 'BR', 'CN') AND event_logger = 'native' AND event_source in ('ios', 'android')) )",
     "properties_top.isBot IS NULL OR properties_top.isBot != 'true'",
     "properties_top.isSupportLogin IS NULL OR properties_top.isSupportLogin != 'true'"
-    // existing predicate that doesn't work
-    // "( (NOT properties_top.isBot = 'true') AND (NOT properties_top.isSupportLogin = 'true') )"
   )
 
   def processEvent(base64Payload: String): Seq[Map[String, Any]] = {
@@ -58,6 +56,15 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
     cu.performSql(catalystInternalRow)
   }
 
+  private def validateQueryResults(result: Seq[Map[String, Any]], isFavorite: Boolean, isAddCart: Boolean, isPurchase: Boolean, isView: Boolean): Unit = {
+    assert(result.size == 2)
+    assert(result.map(r => r("listing_id")).toSet == Set(123456L, 789012L))
+    assert(result.map(r => r("favorite")).toSet == Set(if (isFavorite) 1 else 0))
+    assert(result.map(r => r("add_cart")).toSet == Set(if (isAddCart) 1 else 0))
+    assert(result.map(r => r("purchase")).toSet == Set(if (isPurchase) 1 else 0))
+    assert(result.map(r => r("view")).toSet == Set(if (isView) 1 else 0))
+  }
+
   it should "successfully deser real beacon payload" in {
     val beaconTopPayload =
       "Jmxpc3RpbmdfaW1hZ2Vfc3dpcGWi5NzBn2UCODNEMTAxNEIxRjAzRDQxMjJBMzVCQzkwNEU0MTYASEExQUEyNEI2LTRFQzMtNDZGMS1BRTZDLTc3NzdGQzQ5QUE4OUhERkUzQjI0QS01MjI0LTRDQzktQkY1NC1DNzhDOEQ1Q0EyQ0QMbmF0aXZlBmlvcxo2OC4yMjYuMTQzLjMwlAJNb3ppbGxhLzUuMCAoaVBob25lOyBDUFUgaVBob25lIE9TIDE4XzFfMSBsaWtlIE1hYyBPUyBYKSBBcHBsZVdlYktpdC82MDUuMS4xNSAoS0hUTUwsIGxpa2UgR2Vja28pIE1vYmlsZS8xNUUxNDggRXRzeUluYy83LjEyIHJ2OjcxMjAwLjgwLjAA2gJldHN5Oi8vc2NyZWVuL2Jyb3dzZWxpc3RpbmdzP3JlZj1wYWdlLTIqbG9jYXRpb24tMTEqaXRlbXNfcGVyX3BhZ2UtMzYqcXVlcnktcnVzdGljJTIwd2VkZGluZyUyMGNha2UlMjBjdXR0ZXIqaXNfYWQtMCpjc2x1Zy00ZGY0ZDE0MGM2OThjZWY0ZTg3NDAwZmFkMjc3MGE2NTAzN2E5MjQwOjY1NTQwMjE4MgIEBmZ2ZRgxNzM5MDUyOTgyLjAcZXRhbGFfb3ZlcnJpZGVMMC4zRDEwMTRCMUYwM0Q0MTIyQTM1QkM5MDRFNDE2LjAuMC4wLjAAAAK6pYMlAgACAAIAAAAAAAL+x9vBn2UCBBhhY3RpdmVfaW5kZXgCMRRudW1faW1hZ2VzBDExAAACCmVuLVVTAAAAAAAAAAAAAAAAAAIkMTczOTM5NTQ3OC40Mjc4MjY5AAIiMTY0NjYxNDEyNy4wMjk1MDECDkV0c3lJbmMCIjE2NDY2MTQxMjcuMDI5NTAxAgxhY3RpdmUCJDcuMTIgcnY6NzEyMDAuODAuMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIYdmlld19saXN0aW5nAAAAAAAAAAAAAAAAAiQxNzM5Mzk1NDc4LjQwNzc2MjECJDE3MzkzOTU0NzguNjc2MTEyMgIUMTczOTM5NTQ3OAAAAgZpT1MCDDE4LjEuMQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjRmcmFuei1wcm9kLTdmNWNjYzY3Yi1xczl4YgAAAAAAAgIzAgIzAAAAAAAAAAAAAAIUaVBob25lMTIsMQISaVBob25lIDExAAAAAAACMkV0c3lMaXN0aW5nVmlld0NvbnRyb2xsZXIAAAIIbnVsbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCHRydWUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgZVU0QAAAAAAAAAAAAAAAAAAAAAAAAAAAIIV2lmaQAAAAAAAAACEHBvcnRyYWl0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCmVuLVVTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgRVUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgoyMjUyOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAh5BbWVyaWNhL0NoaWNhZ28AAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -65,7 +72,7 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
     assert(result.isEmpty) // no rows should be returned as the event is not in the where clause
   }
 
-  it should "matches event_name condition (backend_add_to_cart)" in {
+  it should "match event_name condition (backend_add_to_cart)" in {
     val addToCartEvent = createModifiedBeacon(
       Map(
         "event_name" -> "backend_add_to_cart",
@@ -75,7 +82,8 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
       ))
     val payloadBase64 = serializeToBase64(addToCartEvent)
     val result = processEvent(payloadBase64)
-    assert(result.nonEmpty) // expect a result row here
+    // expect 2 rows for each of the listings, we check those
+    validateQueryResults(result, isFavorite = false, isAddCart = true, isPurchase = false, isView = false)
   }
 
   it should "match event_name condition (view_listing) with GDPR consent" in {
@@ -87,7 +95,8 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
       ))
     val payloadBase64 = serializeToBase64(viewListingWithGdpr)
     val result = processEvent(payloadBase64)
-    assert(result.nonEmpty) // expect a result row here
+    // expect 2 rows for each of the listings, we check those
+    validateQueryResults(result, isFavorite = false, isAddCart = false, isPurchase = false, isView = true)
   }
 
   it should "match event_name condition (backend_cart_payment) with regional condition" in {
@@ -100,7 +109,8 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
       ))
     val payloadBase64 = serializeToBase64(purchaseEventRegional)
     val result = processEvent(payloadBase64)
-    assert(result.nonEmpty) // expect a result row here
+    // expect 2 rows for each of the listings, we check those
+    validateQueryResults(result, isFavorite = false, isAddCart = false, isPurchase = true, isView = false)
   }
 
   it should "match event_name condition (backend_favorite_item2) with listing IDs" in {
@@ -114,7 +124,10 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
       ))
     val payloadBase64 = serializeToBase64(favoriteEvent)
     val result = processEvent(payloadBase64)
-    assert(result.nonEmpty) // expect a result row here
+    // expect 2 rows for each of the listings, we check those
+    assert(result.size == 2)
+    assert(result.map(r => r("listing_id")).map(_.toString).toSet == Set("456789", "789012"))
+    assert(result.map(r => r("favorite")).toSet == Set(1))
   }
 
   it should "NOT match (bot flag is true)" in {
@@ -248,7 +261,7 @@ object BeaconTopPayloadGenerator {
     props.put("isBot", null)
     props.put("isSupportLogin", null)
 
-    props.put("listing_id", "123456")
+    props.put("listing_id", "123456,789012")
     props.put("sold_listing_ids", null)
 
     props
