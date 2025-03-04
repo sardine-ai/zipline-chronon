@@ -17,21 +17,20 @@ run.py needs to only depend in python standard library to simplify execution req
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from google.cloud import storage
-import base64
 import click
-import crcmod
 import json
 import logging
 import multiprocessing
 import os
 import re
 import subprocess
-import time
-from typing import List
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from enum import Enum
+
+from .gcp import generate_dataproc_submitter_args, get_gcp_project_id, get_gcp_bigtable_instance_id, \
+    get_gcp_region_id, download_zipline_dataproc_jar, ZIPLINE_GCP_ONLINE_CLASS_DEFAULT, DATAPROC_ENTRY, \
+    ZIPLINE_GCP_DATAPROC_SUBMITTER_JAR, ZIPLINE_GCP_SERVICE_JAR, ZIPLINE_GCP_ONLINE_JAR_DEFAULT
+from .utils import DataprocJobType, extract_filename_from_path, retry_decorator, get_customer_id
 
 ONLINE_ARGS = "--online-jar={online_jar} --online-class={online_class} "
 OFFLINE_ARGS = "--conf-path={conf_path} --end-date={ds} "
@@ -129,44 +128,7 @@ UNIVERSAL_ROUTES = ["info"]
 APP_NAME_TEMPLATE = "chronon_{conf_type}_{mode}_{context}_{name}"
 RENDER_INFO_DEFAULT_SCRIPT = "scripts/render_info.py"
 
-# GCP DATAPROC SPECIFIC CONSTANTS
-DATAPROC_ENTRY = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter"
-ZIPLINE_ONLINE_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
-ZIPLINE_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.cloud_gcp.GcpApiImpl"
-ZIPLINE_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
-ZIPLINE_DATAPROC_SUBMITTER_JAR = "cloud_gcp_submitter_deploy.jar"
-ZIPLINE_SERVICE_JAR = "service_assembly_deploy.jar"
-
 ZIPLINE_DIRECTORY = "/tmp/zipline"
-
-
-class DataprocJobType(Enum):
-    SPARK = "spark"
-    FLINK = "flink"
-
-
-def retry_decorator(retries=3, backoff=20):
-    def wrapper(func):
-        def wrapped(*args, **kwargs):
-            attempt = 0
-            while attempt <= retries:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    attempt += 1
-                    logging.exception(e)
-                    sleep_time = attempt * backoff
-                    logging.info(
-                        "[{}] Retry: {} out of {}/ Sleeping for {}".format(
-                            func.__name__, attempt, retries, sleep_time
-                        )
-                    )
-                    time.sleep(sleep_time)
-            return func(*args, **kwargs)
-
-        return wrapped
-
-    return wrapper
 
 
 def custom_json(conf):
@@ -483,11 +445,11 @@ class Runner:
             self.spark_submit = args["spark_submit_path"]
         self.list_apps_cmd = args["list_apps"]
 
-    def run_flink_streaming(self):
+    def run_dataproc_flink_streaming(self):
         user_args = {
             "--groupby-name": self.groupby_name,
             "--kafka-bootstrap": self.kafka_bootstrap,
-            "--online-class": ZIPLINE_ONLINE_CLASS_DEFAULT,
+            "--online-class": ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
             "-ZGCP_PROJECT_ID": get_gcp_project_id(),
             "-ZGCP_BIGTABLE_INSTANCE_ID": get_gcp_bigtable_instance_id(),
             "--savepoint-uri": self.savepoint_uri
@@ -566,7 +528,7 @@ class Runner:
 
     def run_streaming(self):
         if self.dataproc:
-            return self.run_flink_streaming()
+            return self.run_dataproc_flink_streaming()
         else:
             return self.run_spark_streaming()
 
@@ -752,10 +714,6 @@ class Runner:
         return final_args
 
 
-def extract_filename_from_path(path):
-    return path.split("/")[-1]
-
-
 def split_date_range(start_date, end_date, parallelism):
     start_date = datetime.strptime(start_date, "%Y-%m-%d")
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
@@ -817,200 +775,11 @@ def set_defaults(ctx):
             ctx.params[key] = value
 
 
-def get_environ_arg(env_name) -> str:
-    value = os.environ.get(env_name)
-    if not value:
-        raise ValueError(f"Please set {env_name} environment variable")
-    return value
-
-
-def get_customer_id() -> str:
-    return get_environ_arg('CUSTOMER_ID')
-
-
-def get_gcp_project_id() -> str:
-    return get_environ_arg('GCP_PROJECT_ID')
-
-
-def get_gcp_bigtable_instance_id() -> str:
-    return get_environ_arg('GCP_BIGTABLE_INSTANCE_ID')
-
-
-def get_gcp_region_id() -> str:
-    return get_environ_arg('GCP_REGION')
-
-
-def generate_dataproc_submitter_args(user_args: str, job_type: DataprocJobType = DataprocJobType.SPARK,
-                                     local_files_to_upload_to_gcs: List[str] = []):
-    customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
-
-    gcs_files = []
-    for source_file in local_files_to_upload_to_gcs:
-        # upload to `metadata` folder
-        destination_file_path = f"metadata/{extract_filename_from_path(source_file)}"
-        gcs_files.append(upload_gcs_blob(
-            customer_warehouse_bucket_name, source_file, destination_file_path))
-
-    # we also want the additional-confs included here. it should already be in the bucket
-
-    zipline_artifacts_bucket_prefix = 'gs://zipline-artifacts'
-
-    gcs_files.append(
-        f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}/confs/additional-confs.yaml")
-
-    gcs_file_args = ",".join(gcs_files)
-
-    # include jar uri. should also already be in the bucket
-    jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + \
-              f"/jars/{ZIPLINE_ONLINE_JAR_DEFAULT}"
-
-    final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
-
-    if job_type == DataprocJobType.FLINK:
-        main_class = "ai.chronon.flink.FlinkJob"
-        flink_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + f"/jars/{ZIPLINE_FLINK_JAR_DEFAULT}"
-        return final_args.format(
-            user_args=user_args,
-            jar_uri=jar_uri,
-            job_type=job_type.value,
-            main_class=main_class
-        ) + f" --flink-main-jar-uri={flink_jar_uri}"
-
-    elif job_type == DataprocJobType.SPARK:
-        main_class = "ai.chronon.spark.Driver"
-        return final_args.format(
-            user_args=user_args,
-            jar_uri=jar_uri,
-            job_type=job_type.value,
-            main_class=main_class
-        ) + f" --additional-conf-path=additional-confs.yaml --gcs-files={gcs_file_args}"
-    else:
-        raise ValueError(f"Invalid job type: {job_type}")
-
-
-def download_zipline_jar(destination_dir: str, customer_id: str, jar_name: str):
-    bucket_name = f"zipline-artifacts-{customer_id}"
-
-    source_blob_name = f"jars/{jar_name}"
-    destination_path = f"{destination_dir}/{jar_name}"
-
-    are_identical = compare_gcs_and_local_file_hashes(bucket_name, source_blob_name,
-                                                      destination_path) if os.path.exists(
-        destination_path) else False
-
-    if are_identical:
-        print(
-            f"{destination_path} matches GCS {bucket_name}/{source_blob_name}")
-    else:
-        print(
-            f"{destination_path} does NOT match GCS {bucket_name}/{source_blob_name}")
-        print(f"Downloading {jar_name} from GCS...")
-
-        download_gcs_blob(bucket_name, source_blob_name,
-                          destination_path)
-    return destination_path
-
-
-@retry_decorator(retries=2, backoff=5)
-def download_gcs_blob(bucket_name, source_blob_name, destination_file_name):
-    """Downloads a blob from the bucket."""
-    try:
-        storage_client = storage.Client(project=get_gcp_project_id())
-        bucket = storage_client.bucket(bucket_name)
-        blob = bucket.blob(source_blob_name)
-        blob.download_to_filename(destination_file_name)
-        print(
-            "Downloaded storage object {} from bucket {} to local file {}.".format(
-                source_blob_name, bucket_name, destination_file_name
-            )
-        )
-    except Exception as e:
-        raise RuntimeError(f"Failed to download {source_blob_name}: {str(e)}")
-
-
-@retry_decorator(retries=2, backoff=5)
-def upload_gcs_blob(bucket_name, source_file_name, destination_blob_name):
-    """Uploads a file to the bucket."""
-
-    try:
-        storage_client = storage.Client(project=get_gcp_project_id())
-        bucket = storage_client.bucket(bucket_name)
-        blob = bucket.blob(destination_blob_name)
-        blob.upload_from_filename(source_file_name)
-
-        print(
-            f"File {source_file_name} uploaded to {destination_blob_name} in bucket {bucket_name}."
-        )
-        return f"gs://{bucket_name}/{destination_blob_name}"
-    except Exception as e:
-        raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
-
-
-def get_gcs_file_hash(bucket_name: str, blob_name: str) -> str:
-    """
-    Get the hash of a file stored in Google Cloud Storage.
-    """
-    storage_client = storage.Client(project=get_gcp_project_id())
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.get_blob(blob_name)
-
-    if not blob:
-        raise FileNotFoundError(f"File {blob_name} not found in bucket {bucket_name}")
-
-    return blob.crc32c
-
-
-def get_local_file_hash(file_path: str) -> str:
-    """
-    Calculate CRC32C hash of a local file.
-
-    Args:
-        file_path: Path to the local file
-
-    Returns:
-        Base64-encoded string of the file's CRC32C hash
-    """
-    crc32c_hash = crcmod.predefined.Crc('crc-32c')
-
-    with open(file_path, "rb") as f:
-        # Read the file in chunks to handle large files efficiently
-        for chunk in iter(lambda: f.read(4096), b""):
-            crc32c_hash.update(chunk)
-
-    # Convert to base64 to match GCS format
-    return base64.b64encode(crc32c_hash.digest()).decode('utf-8')
-
-
-def compare_gcs_and_local_file_hashes(bucket_name: str, blob_name: str, local_file_path: str) -> bool:
-    """
-    Compare hashes of a GCS file and a local file to check if they're identical.
-
-    Args:
-        bucket_name: Name of the GCS bucket
-        blob_name: Name/path of the blob in the bucket
-        local_file_path: Path to the local file
-
-    Returns:
-        True if files are identical, False otherwise
-    """
-    try:
-        gcs_hash = get_gcs_file_hash(bucket_name, blob_name)
-        local_hash = get_local_file_hash(local_file_path)
-
-        print(f"Local hash of {local_file_path}: {local_hash}. GCS file {blob_name} hash: {gcs_hash}")
-
-        return gcs_hash == local_hash
-
-    except Exception as e:
-        print(f"Error comparing files: {str(e)}")
-        return False
-
-
 @click.command(name="run", context_settings=dict(allow_extra_args=True, ignore_unknown_options=True))
 @click.option("--conf", required=False, help="Conf param - required for every mode except fetch")
 @click.option("--env", required=False, default="dev", help="Running environment - default to be dev")
 @click.option("--mode", type=click.Choice(MODE_ARGS.keys()))
-@click.option("--dataproc", is_flag=True, help="Run on dataproc")
+@click.option("--dataproc", is_flag=True, help="Run on Dataproc in GCP")
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
 @click.option("--start-ds", help="override the original start partition for a range backfill. "
@@ -1020,10 +789,10 @@ def compare_gcs_and_local_file_hashes(bucket_name: str, blob_name: str, local_fi
 @click.option("--parallelism", help="break down the backfill range into this number of tasks in parallel. "
                                     "Please use it along with --start-ds and --end-ds and only in manual mode")
 @click.option("--repo", help="Path to chronon repo", default=".")
-@click.option("--online-jar", default=ZIPLINE_ONLINE_JAR_DEFAULT,
+@click.option("--online-jar", default=ZIPLINE_GCP_ONLINE_JAR_DEFAULT,
               help="Jar containing Online KvStore & Deserializer Impl. "
                    "Used for streaming and metadata-upload mode.")
-@click.option("--online-class", default=ZIPLINE_ONLINE_CLASS_DEFAULT,
+@click.option("--online-class", default=ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
               help="Class name of Online Impl. Used for streaming and metadata-upload mode.")
 @click.option("--version", help="Chronon version to use.")
 @click.option("--spark-version", default="2.4.0", help="Spark version to use for downloading jar.")
@@ -1045,7 +814,8 @@ def compare_gcs_and_local_file_hashes(bucket_name: str, blob_name: str, local_fi
               help="Use a mocked data source instead of a real source for groupby-streaming Flink.")
 @click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
 @click.pass_context
-def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar, online_class,
+def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar,
+         online_class,
          version, spark_version, spark_submit_path, spark_streaming_submit_path, online_jar_fetch, sub_help, conf_type,
          online_args, chronon_jar, release_tag, list_apps, render_info, groupby_name, kafka_bootstrap, mock_source,
          savepoint_uri):
@@ -1058,12 +828,14 @@ def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, paralle
     os.makedirs(ZIPLINE_DIRECTORY, exist_ok=True)
 
     if dataproc:
-        jar_path = download_zipline_jar(ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_DATAPROC_SUBMITTER_JAR)
+        jar_path = download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(),
+                                                 ZIPLINE_GCP_DATAPROC_SUBMITTER_JAR)
     elif chronon_jar:
         jar_path = chronon_jar
     else:
-        service_jar_path = download_zipline_jar(ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_SERVICE_JAR)
-        chronon_gcp_jar_path = download_zipline_jar(ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_ONLINE_JAR_DEFAULT)
+        service_jar_path = download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_SERVICE_JAR)
+        chronon_gcp_jar_path = download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(),
+                                                             ZIPLINE_GCP_ONLINE_JAR_DEFAULT)
         jar_path = f"{service_jar_path}:{chronon_gcp_jar_path}"
 
     Runner(ctx.params, os.path.expanduser(jar_path)).run()
