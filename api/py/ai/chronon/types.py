@@ -13,7 +13,7 @@ import ai.chronon.api.ttypes as ttypes
 Query = query.Query
 selects = query.selects
 
-
+Source = ttypes.Source
 EventSource = source.EventSource
 EntitySource = source.EntitySource
 JoinSource = source.JoinSource

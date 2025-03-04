@@ -20,6 +20,8 @@ import logging
 import os
 import re
 import ai.chronon.api.common.ttypes as common
+import glom
+
 
 from ai.chronon.api.ttypes import (
     Accuracy,
@@ -246,27 +248,28 @@ class ConfValidator(object):
         returns:
            materialized version of the obj given the object's name.
         """
-        return next(
-            (
-                x
-                for x in self.old_objs[obj_class.__name__]
-                if x.metaData and x.metaData.name == obj_name
-            ),
-            None,
-        )
+        class_name = obj_class.__name__
+
+        if class_name not in self.old_objs:
+            return None
+        obj_map = self.old_objs[class_name]
+
+        if obj_name not in obj_map:
+            return None
+        return obj_map[obj_name]
 
     def _get_old_joins_with_group_by(self, group_by: GroupBy) -> List[Join]:
         """
         returns:
             materialized joins including the group_by as dicts.
         """
-        return [
-            join
-            for join in self.old_joins
-            if join.joinParts is not None
-            and group_by.metaData.name
-            in [rp.groupBy.metaData.name for rp in join.joinParts]
-        ]
+        joins = []
+        for join in self.old_joins.values():
+            if join.joinParts is not None and group_by.metaData.name in [
+                rp.groupBy.metaData.name for rp in join.joinParts
+            ]:
+                joins.append(join)
+        return joins
 
     def can_skip_materialize(self, obj: object) -> List[str]:
         """
