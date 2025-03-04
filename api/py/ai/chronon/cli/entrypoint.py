@@ -1,19 +1,9 @@
 import click
 from datetime import datetime, timedelta
-import subprocess
 
-import ai.chronon.cli.compile.compiler as compiler
-
-
-def get_current_branch():
-    try:
-        return (
-            subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-            .decode("utf-8")
-            .strip()
-        )
-    except:
-        return "main"
+from ai.chronon.cli.compile.compiler import Compiler
+from ai.chronon.cli.compile.compile_context import CompileContext
+from ai.chronon.cli.git_utils import get_current_branch
 
 
 @click.group()
@@ -26,9 +16,10 @@ def cli():
 @click.option("--branch", default=get_current_branch, help="Branch to sync")
 def sync(branch):
     """Sync data for the specified branch"""
-    click.echo(f"Syncing data for {branch} branch")
-    compile_context = compiler.CompileContext()
-    compiler.main(compile_context)
+    click.echo(f"\nSyncing data for branch \u001b[32m{branch}\u001b[0m")
+    compile_context = CompileContext()
+    compiler = Compiler(compile_context)
+    compiler.compile(compile_context)
 
 
 @cli.command()

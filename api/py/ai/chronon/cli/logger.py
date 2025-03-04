@@ -54,7 +54,7 @@ def green(text):
 def require(cond, message):
     if not cond:
         print(f"{red("❌")} {message}")
-        raise
+        sys.exit(1)
 
 
 def done(cond, message):
