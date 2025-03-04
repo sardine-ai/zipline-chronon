@@ -1,23 +1,19 @@
-from dataclasses import dataclass
 import glob
 import importlib
 import os
-from typing import Any, Dict, List, Tuple
+from typing import List
 
+from ai.chronon.cli.compile import parse_teams, serializer
+from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
+from ai.chronon.cli.compile.compile_context import CompileContext
 from ai.chronon.cli.logger import get_logger
 
 logger = get_logger()
 
 
-@dataclass
-class CompiledObj:
-    name: str
-    obj: Any
-    file: str
-    error: Exception
-
-
-def from_folder(cls: type, input_dir: str) -> List[CompiledObj]:
+def from_folder(
+    cls: type, input_dir: str, compile_context: CompileContext
+) -> List[CompiledObj]:
     """
     Recursively consumes a folder, and constructs a map of
     object qualifier to StagingQuery, GroupBy, or Join
@@ -32,11 +28,36 @@ def from_folder(cls: type, input_dir: str) -> List[CompiledObj]:
         try:
             results_dict = from_file(f, cls, input_dir)
 
-            for k, v in results_dict.items():
-                results.append(CompiledObj(name=k, obj=v, file=f, error=None))
+            for name, obj in results_dict.items():
+                parse_teams.update_metadata(obj, compile_context.teams_dict)
+                obj.metaData.sourceFile = f
+
+                tjson = serializer.thrift_simple_json(obj)
+                result = CompiledObj(
+                    name=name,
+                    obj=obj,
+                    file=f,
+                    error=None,
+                    obj_type=cls.__name__,
+                    tjson=tjson,
+                )
+                results.append(result)
+
+                compile_context.compile_status.add_object_update_display(
+                    result, cls.__name__
+                )
 
         except Exception as e:
-            results.append(CompiledObj(name=None, obj=None, file=f, error=e))
+
+            result = CompiledObj(
+                name=None, obj=None, file=f, error=e, obj_type=cls.__name__, tjson=None
+            )
+
+            results.append(result)
+
+            compile_context.compile_status.add_object_update_display(
+                result, cls.__name__
+            )
 
     return results
 

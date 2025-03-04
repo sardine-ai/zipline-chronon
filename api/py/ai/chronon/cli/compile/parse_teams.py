@@ -1,8 +1,8 @@
 import importlib
 import os
-from ai.chronon.api.ttypes import Team, EnvironmentVariables
+from ai.chronon.api.ttypes import ConfigProperties, Team, EnvironmentVariables
 from ai.chronon.cli.logger import get_logger, require
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Union
 
 logger = get_logger()
 
@@ -15,14 +15,14 @@ def load_teams(conf_root: str) -> Dict[str, Team]:
 
     require(
         os.path.exists(teams_file),
-        f"Team config file: {teams_file} not found. Please add one.",
+        f"Team config file: {teams_file} not found. You might be running this from the wrong directory.",
     )
 
     team_module = importlib.import_module("teams")
 
     require(
         team_module is not None,
-        f"Team config file {teams_file} is not on the PYTHONPATH",
+        f"Team config file {teams_file} is not on the PYTHONPATH. You might need to add the your config directory to the PYTHONPATH.",
     )
 
     team_dict = {}
@@ -30,7 +30,6 @@ def load_teams(conf_root: str) -> Dict[str, Team]:
     for name, obj in team_module.__dict__.items():
         if isinstance(obj, Team):
             obj.name = name
-            logger.info(f"Found team {name}")
             team_dict[name] = obj
 
     return team_dict
@@ -53,7 +52,8 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
     )
 
     require(
-        team in team_dict, f"Team '{team}' not found in teams.py. Please add an entry."
+        team in team_dict,
+        f"Team '{team}' not found in teams.py. Please add an entry 🙏",
     )
 
     require(
@@ -63,10 +63,16 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
     metadata.outputNamespace = team_dict[team].outputNamespace
 
-    metadata.env = _merge_environment_variables(
+    metadata.env = _merge_mode_maps(
         team_dict[_DEFAULT_CONF_TEAM].env,
         team_dict[team].env,
         metadata.env,
+    )
+
+    metadata.conf = _merge_mode_maps(
+        team_dict[_DEFAULT_CONF_TEAM].conf,
+        team_dict[team].conf,
+        metadata.conf,
     )
 
 
@@ -88,22 +94,26 @@ def _merge_maps(*maps: List[Dict[str, str]]):
     return result
 
 
-def _merge_environment_variables(*env_vars: List[EnvironmentVariables]):
+def _merge_mode_maps(
+    *mode_maps: Union[List[EnvironmentVariables], List[ConfigProperties]]
+):
     """
     Merges multiple environment variables into one - with the later maps overriding the earlier ones.
     """
 
     result = EnvironmentVariables()
 
-    for env_var in env_vars:
+    for mode_map in mode_maps:
 
-        if env_var is None:
+        if mode_map is None:
             continue
 
-        result.backfill = _merge_maps(result.backfill, env_var.common, env_var.backfill)
-        result.upload = _merge_maps(result.upload, env_var.common, env_var.upload)
+        result.backfill = _merge_maps(
+            result.backfill, mode_map.common, mode_map.backfill
+        )
+        result.upload = _merge_maps(result.upload, mode_map.common, mode_map.upload)
         result.streaming = _merge_maps(
-            result.streaming, env_var.common, env_var.streaming
+            result.streaming, mode_map.common, mode_map.streaming
         )
 
     return result
