@@ -35,7 +35,7 @@ gcloud storage cp gs://zipline-artifacts-canary/jars/$WHEEL_FILE .
 
 # Install the wheel (force)
 pip uninstall zipline-ai
-pip install --force-reinstall $WHEEL_FILE --break-system-packages
+pip install --force-reinstall $WHEEL_FILE
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
