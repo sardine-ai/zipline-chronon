@@ -5,3 +5,4 @@ google-cloud-bigquery-storage
 pyspark==3.5.4
 sqlglot
 crcmod==1.7
+glom

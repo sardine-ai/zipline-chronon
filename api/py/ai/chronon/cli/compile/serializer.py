@@ -14,10 +14,7 @@
 
 import json
 from thrift.Thrift import TType
-from thrift.protocol.TJSONProtocol import (
-    TSimpleJSONProtocolFactory,
-    TJSONProtocolFactory,
-)
+from thrift.protocol.TJSONProtocol import TSimpleJSONProtocolFactory
 
 from thrift.transport.TTransport import TMemoryBuffer
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated

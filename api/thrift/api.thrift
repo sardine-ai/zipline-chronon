@@ -273,6 +273,9 @@ struct MetaData {
     15: optional observability.DriftSpec driftSpec
 
     16: optional EnvironmentVariables env
+    17: optional ConfigProperties conf
+
+    18: optional string sourceFile
 }
 
 
@@ -466,6 +469,13 @@ struct EnvironmentVariables {
     4: optional map<string, string> streaming
 }
 
+struct ConfigProperties {
+    1: optional map<string, string> common
+    2: optional map<string, string> backfill
+    3: optional map<string, string> upload
+    4: optional map<string, string> streaming
+}
+
 struct Team {
     1: optional string name
     2: optional string description
@@ -475,4 +485,5 @@ struct Team {
     11: optional map<string, string> tableProperties
 
     20: optional EnvironmentVariables env
+    21: optional ConfigProperties conf
 }
