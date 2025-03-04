@@ -57,8 +57,8 @@ maven_repository = repository(
         "org.apache.kafka:kafka-clients:3.8.1",
         "io.confluent:kafka-schema-registry-client:7.8.0",
         "io.confluent:kafka-protobuf-provider:7.8.0",
-        "com.google.protobuf:protobuf-java-util:3.25.1",
-        "com.google.protobuf:protobuf-java:3.25.1",
+        "com.google.protobuf:protobuf-java-util:3.25.5",
+        "com.google.protobuf:protobuf-java:3.25.5",
 
         # Avro
         "org.apache.avro:avro:1.11.3",
@@ -93,6 +93,7 @@ maven_repository = repository(
         "com.google.cloud.bigdataoss:util-hadoop:3.0.0",
         "com.google.cloud:google-cloud-bigtable-emulator:0.178.0",
         "com.google.cloud.hosted.kafka:managed-kafka-auth-login-handler:1.0.3",
+        "com.google.cloud:google-cloud-spanner:6.86.0",
 
         # Flink
         "org.apache.flink:flink-metrics-dropwizard:1.17.0",
@@ -116,8 +117,11 @@ maven_repository = repository(
         "io.vertx:vertx-unit:4.5.10",
 
         # Temporal
-        "io.temporal:temporal-sdk:1.24.1",
-        "io.temporal:temporal-testing:1.24.1",
+        "io.temporal:temporal-sdk:1.28.0",
+        "io.temporal:temporal-testing:1.28.0",
+
+        # Postgres SQL
+        "org.postgresql:postgresql:42.7.5",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",

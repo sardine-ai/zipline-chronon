@@ -1,6 +1,6 @@
+load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 load("@rules_jvm_external//:specs.bzl", "maven")
 load(":defs.bzl", "repository", "versioned_artifacts")
-load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 
 SCALA_2_12_REPOSITORY_NAME = "scala_2_12"
 
@@ -37,7 +37,6 @@ scala_2_12_repository = repository(
 
         # Google Cloud
         "com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.41.1",
-
         "org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0",
 
         # Circe
@@ -45,6 +44,9 @@ scala_2_12_repository = repository(
         "io.circe:circe-generic_2.12:0.14.9",
         "io.circe:circe-parser_2.12:0.14.9",
         "com.chuusai:shapeless_2.12:2.3.12",
+
+        # Slick
+        "com.typesafe.slick:slick_2.12:3.3.0",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",
