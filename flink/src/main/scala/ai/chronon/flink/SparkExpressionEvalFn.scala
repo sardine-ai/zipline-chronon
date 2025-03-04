@@ -30,9 +30,10 @@ import org.slf4j.LoggerFactory
   * GroupBy.
   * @param encoder Spark Encoder for the input data type
   * @param groupBy The GroupBy to evaluate.
+  * @param useCatalyst Whether to use CatalystUtil for evaluation. If false, we use Spark SQL.
   * @tparam T The type of the input data.
   */
-class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends RichFlatMapFunction[T, Map[String, Any]] {
+class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy, useCatalyst: Boolean = true) extends RichFlatMapFunction[T, Map[String, Any]] {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val query: Query = groupBy.streamingSource.get.getEvents.query
@@ -65,6 +66,22 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
     new CatalystUtil(chrononSchema, transforms, filters, groupBy.setups).getOutputSparkSchema
   }
 
+  def runSparkSQL(catalystUtil: CatalystUtil, input: T, encoder: Encoder[T]): Seq[Map[String, Any]] = {
+    val df = CatalystUtil.session.createDataset(Seq(input))(encoder).toDF()
+    val filteredDf = catalystUtil.whereClauseOpt match {
+      case Some(whereClause) => df.where(whereClause)
+      case None => df
+    }
+
+    val projectedDf = filteredDf.selectExpr(catalystUtil.selectClauses: _*)
+    val results = projectedDf.collect().map { row =>
+      val columnNames = projectedDf.columns
+      columnNames.zip(row.toSeq).toMap
+    }.toSeq
+
+    results
+  }
+
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
     catalystUtil = new CatalystUtil(chrononSchema, transforms, filters, groupBy.setups)
@@ -89,6 +106,7 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
     )
     exprEvalSuccessCounter = metricsGroup.counter("spark_expr_eval_success")
     exprEvalErrorCounter = metricsGroup.counter("spark_expr_eval_errors")
+    logger.info(s"Started up SparkExprEval with useCatalyst: $useCatalyst")
   }
 
   def flatMap(inputEvent: T, out: Collector[Map[String, Any]]): Unit = {
@@ -98,7 +116,9 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
       val serFinish = System.currentTimeMillis()
       rowSerTimeHistogram.update(serFinish - start)
 
-      val maybeRow = catalystUtil.performSql(row)
+      val maybeRow =
+        if (useCatalyst) catalystUtil.performSql(row)
+        else runSparkSQL(catalystUtil, inputEvent, encoder)
 
       exprEvalTimeHistogram.update(System.currentTimeMillis() - serFinish)
       maybeRow.foreach { row =>

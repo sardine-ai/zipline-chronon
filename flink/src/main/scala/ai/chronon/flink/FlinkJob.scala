@@ -72,7 +72,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
   logger.info(f"Creating Flink job. groupByName=${groupByName}")
 
   protected val exprEval: SparkExpressionEvalFn[T] =
-    new SparkExpressionEvalFn[T](encoder, groupByServingInfoParsed.groupBy)
+    new SparkExpressionEvalFn[T](encoder, groupByServingInfoParsed.groupBy, useCatalyst = false)
 
   if (groupByServingInfoParsed.groupBy.streamingSource.isEmpty) {
     throw new IllegalArgumentException(
