@@ -13,9 +13,10 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.repo.run import retry_decorator
 
 import pytest
+
+from ai.chronon.repo.utils import retry_decorator
 
 
 def generator():
