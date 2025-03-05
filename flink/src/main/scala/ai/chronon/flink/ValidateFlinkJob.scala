@@ -55,7 +55,7 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
 
     // add a unique record ID to every record
     val sourceStreamWithId: DataStream[EventRecord] = sourceStream
-      .map( e => EventRecord(java.util.UUID.randomUUID().toString, e))
+      .map(e => EventRecord(java.util.UUID.randomUUID().toString, e))
       .uid(s"source-with-id-$groupByName")
       .name(s"Source with ID for $groupByName")
       .setParallelism(sourceStream.getParallelism) // Use same parallelism as previous operator
