@@ -390,6 +390,8 @@ class Runner:
         self.kafka_bootstrap = args.get("kafka_bootstrap")
         self.mock_source = args.get("mock_source")
         self.savepoint_uri = args.get("savepoint_uri")
+        self.validate = args.get("validate")
+        self.validate_rows = args.get("validate_rows")
 
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
@@ -453,11 +455,13 @@ class Runner:
             "--online-class": ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
             "-ZGCP_PROJECT_ID": get_gcp_project_id(),
             "-ZGCP_BIGTABLE_INSTANCE_ID": get_gcp_bigtable_instance_id(),
-            "--savepoint-uri": self.savepoint_uri
+            "--savepoint-uri": self.savepoint_uri,
+            "--validate-rows": self.validate_rows,
         }
 
         flag_args = {
-            "--mock-source": self.mock_source
+            "--mock-source": self.mock_source,
+            "--validate": self.validate
         }
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
 
@@ -815,12 +819,16 @@ def set_defaults(ctx):
 @click.option("--mock-source", is_flag=True,
               help="Use a mocked data source instead of a real source for groupby-streaming Flink.")
 @click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
+@click.option("--validate", is_flag=True,
+              help="Validate the catalyst util Spark expression evaluation logic")
+@click.option("--validate-rows", default="1000",
+              help="Number of rows to  run the validation on")
 @click.pass_context
 def main(ctx, conf, env, mode, dataproc, gcp, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar,
          online_class,
          version, spark_version, spark_submit_path, spark_streaming_submit_path, online_jar_fetch, sub_help, conf_type,
          online_args, chronon_jar, release_tag, list_apps, render_info, groupby_name, kafka_bootstrap, mock_source,
-         savepoint_uri):
+         savepoint_uri, validate, validate_rows):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
     set_runtime_env(ctx.params)
