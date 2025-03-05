@@ -4,15 +4,14 @@ from typing import List
 
 from google.cloud import storage
 import crcmod
-from .utils import get_environ_arg, retry_decorator, DataprocJobType, get_customer_id, \
+from ai.chronon.repo.utils import get_environ_arg, retry_decorator, DataprocJobType, get_customer_id, \
     extract_filename_from_path
 
 # GCP DATAPROC SPECIFIC CONSTANTS
 DATAPROC_ENTRY = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter"
-ZIPLINE_GCP_ONLINE_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
+ZIPLINE_GCP_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
 ZIPLINE_GCP_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.cloud_gcp.GcpApiImpl"
 ZIPLINE_GCP_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
-ZIPLINE_GCP_DATAPROC_SUBMITTER_JAR = "cloud_gcp_submitter_deploy.jar"
 ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 
 
@@ -21,7 +20,6 @@ def get_gcp_project_id() -> str:
 
 
 def get_gcp_bigtable_instance_id() -> str:
-    from py.ai.chronon.repo.utils import get_environ_arg
     return get_environ_arg('GCP_BIGTABLE_INSTANCE_ID')
 
 
@@ -169,14 +167,14 @@ def generate_dataproc_submitter_args(user_args: str, job_type: DataprocJobType =
 
     # include jar uri. should also already be in the bucket
     jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" + \
-              f"/jars/{ZIPLINE_GCP_ONLINE_JAR_DEFAULT}"
+              f"/jars/{ZIPLINE_GCP_JAR_DEFAULT}"
 
     final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
     if job_type == DataprocJobType.FLINK:
         main_class = "ai.chronon.flink.FlinkJob"
-        flink_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"\
-            + f"/jars/{ZIPLINE_GCP_FLINK_JAR_DEFAULT}"
+        flink_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" \
+                        + f"/jars/{ZIPLINE_GCP_FLINK_JAR_DEFAULT}"
         return final_args.format(
             user_args=user_args,
             jar_uri=jar_uri,
