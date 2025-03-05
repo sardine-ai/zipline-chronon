@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
+case class EventRecord(recordId: String, event: Row)
 case class ComparisonResult(recordId: String,
                             isMatch: Boolean,
                             catalystResult: Seq[Map[String, Any]],
@@ -53,8 +54,8 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
         .name(s"Source for $groupByName")
 
     // add a unique record ID to every record
-    val sourceStreamWithId: DataStream[(Row, String)] = sourceStream
-      .map((_, java.util.UUID.randomUUID().toString))
+    val sourceStreamWithId: DataStream[EventRecord] = sourceStream
+      .map( e => EventRecord(java.util.UUID.randomUUID().toString, e))
       .uid(s"source-with-id-$groupByName")
       .name(s"Source with ID for $groupByName")
       .setParallelism(sourceStream.getParallelism) // Use same parallelism as previous operator
@@ -65,8 +66,7 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
       new SparkExpressionEvalFn[Row](encoder, groupByServingInfoParsed.groupBy, useCatalyst = false)
 
     val comparisonStream: DataStream[ComparisonResult] = sourceStreamWithId
-      .map { element =>
-        val (event, id) = element
+      .map { eventRecord =>
         val v1Results = new mutable.ArrayBuffer[Map[String, Any]]()
         val collector1 = new Collector[Map[String, Any]] {
           override def collect(result: Map[String, Any]): Unit = {
@@ -83,10 +83,10 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
           override def close(): Unit = {}
         }
 
-        exprEvalCU.flatMap(event, collector1)
-        exprEvalSparkDf.flatMap(event, collector2)
+        exprEvalCU.flatMap(eventRecord.event, collector1)
+        exprEvalSparkDf.flatMap(eventRecord.event, collector2)
         ComparisonResult(
-          recordId = id,
+          recordId = eventRecord.recordId,
           isMatch = v1Results.size == v2Results.size, // TODO update this!!
           catalystResult = v1Results,
           sparkDfResult = v2Results,
