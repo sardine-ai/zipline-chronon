@@ -1,6 +1,12 @@
+import json
+import logging
 import multiprocessing
+import os
 
-from ai.chronon.repo.utils import *
+from ai.chronon.repo.constants import ONLINE_JAR_ARG, ONLINE_CLASS_ARG, ONLINE_MODES, ROUTES, \
+    UNIVERSAL_ROUTES, SPARK_MODES, MODE_ARGS
+from ai.chronon.repo.utils import check_output, split_date_range, check_call
+
 
 class Runner:
     def __init__(self, args, jar_path):
@@ -10,8 +16,6 @@ class Runner:
         self.mode = args["mode"]
         self.online_jar = args.get(ONLINE_JAR_ARG)
         self.online_class = args.get(ONLINE_CLASS_ARG)
-        self.dataproc = args.get("dataproc")
-        self.cloud_provider = args.get(CLOUD_PROVIDER_KEYWORD,'').upper()
 
         self.conf_type = args.get("conf_type", "").replace("-", "_")  # in case user sets dash instead of underscore
 
@@ -24,7 +28,7 @@ class Runner:
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
         # fetch online jar if necessary
-        if (self.mode in ONLINE_MODES) and (not args["sub_help"] and not self.cloud_provider) and not valid_jar and (
+        if (self.mode in ONLINE_MODES) and (not args["sub_help"]) and not valid_jar and (
                 args.get("online_jar_fetch")):
             print("Downloading online_jar")
             self.online_jar = check_output("{}".format(args["online_jar_fetch"])).decode(

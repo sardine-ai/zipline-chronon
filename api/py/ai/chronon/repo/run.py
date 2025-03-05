@@ -19,11 +19,19 @@ run.py needs to only depend in python standard library to simplify execution req
 
 import click
 import os
+import datetime
 
+from ai.chronon.repo.constants import RENDER_INFO_DEFAULT_SCRIPT, MODE_ARGS, APP_NAME_TEMPLATE, ONLINE_MODES, \
+    ZIPLINE_DIRECTORY, CLOUD_PROVIDER_KEYWORD, GCP, ONLINE_JAR_ARG, ONLINE_CLASS_ARG
 from ai.chronon.repo.default_runner import Runner
-from ai.chronon.repo.gcp import GcpRunner, ZIPLINE_GCP_JAR_DEFAULT, ZIPLINE_GCP_ONLINE_CLASS_DEFAULT, \
-    ZIPLINE_GCP_SERVICE_JAR
-from ai.chronon.repo.utils import *
+from ai.chronon.repo.gcp import (
+    GcpRunner,
+    ZIPLINE_GCP_JAR_DEFAULT,
+    ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
+    ZIPLINE_GCP_SERVICE_JAR,
+)
+from ai.chronon.repo.utils import get_customer_id, set_runtime_env, get_environ_arg
+
 
 def set_defaults(ctx):
     """Set default values based on environment"""
@@ -49,7 +57,8 @@ def set_defaults(ctx):
         "conf_type": "group_bys",
         "online_args": os.environ.get("CHRONON_ONLINE_ARGS", ""),
         "chronon_jar": os.environ.get("CHRONON_DRIVER_JAR"),
-        "list_apps": "python3 " + os.path.join(chronon_repo_path, "scripts/yarn_list.py"),
+        "list_apps": "python3 "
+        + os.path.join(chronon_repo_path, "scripts/yarn_list.py"),
         "render_info": os.path.join(chronon_repo_path, RENDER_INFO_DEFAULT_SCRIPT),
     }
     for key, value in defaults.items():
@@ -57,48 +66,118 @@ def set_defaults(ctx):
             ctx.params[key] = value
 
 
-@click.command(name="run", context_settings=dict(allow_extra_args=True, ignore_unknown_options=True))
-@click.option("--conf", required=False, help="Conf param - required for every mode except fetch")
-@click.option("--env", required=False, default="dev", help="Running environment - default to be dev")
+@click.command(
+    name="run",
+    context_settings=dict(allow_extra_args=True, ignore_unknown_options=True),
+)
+@click.option(
+    "--conf", required=False, help="Conf param - required for every mode except fetch"
+)
+@click.option(
+    "--env",
+    required=False,
+    default="dev",
+    help="Running environment - default to be dev",
+)
 @click.option("--mode", type=click.Choice(MODE_ARGS.keys()))
 @click.option("--dataproc", is_flag=True, help="Run on Dataproc in GCP")
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
-@click.option("--start-ds", help="override the original start partition for a range backfill. "
-                                 "It only supports staging query, group by backfill and join jobs. "
-                                 "It could leave holes in your final output table due to the override date range.")
+@click.option(
+    "--start-ds",
+    help="override the original start partition for a range backfill. "
+    "It only supports staging query, group by backfill and join jobs. "
+    "It could leave holes in your final output table due to the override date range.",
+)
 @click.option("--end-ds", help="the end ds for a range backfill")
-@click.option("--parallelism", help="break down the backfill range into this number of tasks in parallel. "
-                                    "Please use it along with --start-ds and --end-ds and only in manual mode")
+@click.option(
+    "--parallelism",
+    help="break down the backfill range into this number of tasks in parallel. "
+    "Please use it along with --start-ds and --end-ds and only in manual mode",
+)
 @click.option("--repo", help="Path to chronon repo", default=".")
-@click.option("--online-jar", help="Jar containing Online KvStore & Deserializer Impl. "
-                   "Used for streaming and metadata-upload mode.")
-@click.option("--online-class", help="Class name of Online Impl. Used for streaming and metadata-upload mode.")
+@click.option(
+    "--online-jar",
+    help="Jar containing Online KvStore & Deserializer Impl. "
+    "Used for streaming and metadata-upload mode.",
+)
+@click.option(
+    "--online-class",
+    help="Class name of Online Impl. Used for streaming and metadata-upload mode.",
+)
 @click.option("--version", help="Chronon version to use.")
-@click.option("--spark-version", default="2.4.0", help="Spark version to use for downloading jar.")
+@click.option(
+    "--spark-version", default="2.4.0", help="Spark version to use for downloading jar."
+)
 @click.option("--spark-submit-path", help="Path to spark-submit")
-@click.option("--spark-streaming-submit-path", help="Path to spark-submit for streaming")
-@click.option("--online-jar-fetch", help="Path to script that can pull online jar. This will run only "
-                                         "when a file doesn't exist at location specified by online_jar")
-@click.option("--sub-help", is_flag=True, help="print help command of the underlying jar and exit")
-@click.option("--conf-type", help="related to sub-help - no need to set unless you are not working with a conf")
-@click.option("--online-args", help="Basic arguments that need to be supplied to all online modes")
+@click.option(
+    "--spark-streaming-submit-path", help="Path to spark-submit for streaming"
+)
+@click.option(
+    "--online-jar-fetch",
+    help="Path to script that can pull online jar. This will run only "
+    "when a file doesn't exist at location specified by online_jar",
+)
+@click.option(
+    "--sub-help", is_flag=True, help="print help command of the underlying jar and exit"
+)
+@click.option(
+    "--conf-type",
+    help="related to sub-help - no need to set unless you are not working with a conf",
+)
+@click.option(
+    "--online-args", help="Basic arguments that need to be supplied to all online modes"
+)
 @click.option("--chronon-jar", help="Path to chronon OS jar")
 @click.option("--release-tag", help="Use the latest jar for a particular tag.")
-@click.option("--list-apps", help="command/script to list running jobs on the scheduler")
-@click.option("--render-info", help="Path to script rendering additional information of the given config. "
-                                    "Only applicable when mode is set to info")
+@click.option(
+    "--list-apps", help="command/script to list running jobs on the scheduler"
+)
+@click.option(
+    "--render-info",
+    help="Path to script rendering additional information of the given config. "
+    "Only applicable when mode is set to info",
+)
 @click.option("--groupby-name", help="Name of groupby to be used for groupby streaming")
 @click.option("--kafka-bootstrap", help="Kafka bootstrap server in host:port format")
-@click.option("--mock-source", is_flag=True,
-              help="Use a mocked data source instead of a real source for groupby-streaming Flink.")
+@click.option(
+    "--mock-source",
+    is_flag=True,
+    help="Use a mocked data source instead of a real source for groupby-streaming Flink.",
+)
 @click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
 @click.pass_context
-def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar,
-         online_class,
-         version, spark_version, spark_submit_path, spark_streaming_submit_path, online_jar_fetch, sub_help, conf_type,
-         online_args, chronon_jar, release_tag, list_apps, render_info, groupby_name, kafka_bootstrap, mock_source,
-         savepoint_uri):
+def main(
+    ctx,
+    conf,
+    env,
+    mode,
+    dataproc,
+    ds,
+    app_name,
+    start_ds,
+    end_ds,
+    parallelism,
+    repo,
+    online_jar,
+    online_class,
+    version,
+    spark_version,
+    spark_submit_path,
+    spark_streaming_submit_path,
+    online_jar_fetch,
+    sub_help,
+    conf_type,
+    online_args,
+    chronon_jar,
+    release_tag,
+    list_apps,
+    render_info,
+    groupby_name,
+    kafka_bootstrap,
+    mock_source,
+    savepoint_uri,
+):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
     set_runtime_env(ctx.params)
@@ -118,10 +197,15 @@ def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, paralle
         else:
             raise ValueError("Jar path is not set.")
     elif cloud_provider.upper() == GCP:
-        gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(),
-                                                     ZIPLINE_GCP_JAR_DEFAULT)
-        service_jar_path = GcpRunner.download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_SERVICE_JAR)
-        jar_path = f"{service_jar_path}:{gcp_jar_path}" if mode == 'fetch' else gcp_jar_path
+        gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
+            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_JAR_DEFAULT
+        )
+        service_jar_path = GcpRunner.download_zipline_dataproc_jar(
+            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_SERVICE_JAR
+        )
+        jar_path = (
+            f"{service_jar_path}:{gcp_jar_path}" if mode == "fetch" else gcp_jar_path
+        )
 
         ctx.params[ONLINE_JAR_ARG] = ZIPLINE_GCP_JAR_DEFAULT
         ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_GCP_ONLINE_CLASS_DEFAULT

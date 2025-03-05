@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from datetime import timedelta, datetime
 from enum import Enum
 
-from ai.chronon.repo.constants import *
+from ai.chronon.repo.constants import SUPPORTED_SPARK, SCALA_VERSION_FOR_SPARK, APP_NAME_TEMPLATE
 
 
 class DataprocJobType(Enum):
@@ -55,24 +55,6 @@ def get_customer_id() -> str:
 def extract_filename_from_path(path):
     return path.split("/")[-1]
 
-def gen_final_args(mode, online_class="", online_jar="", ds="", conf=None, conf_type=None, start_ds=None, end_ds=None, override_conf_path=None, additional_user_args="", **kwargs):
-    base_args = MODE_ARGS[mode].format(
-        conf_path=override_conf_path if override_conf_path else conf,
-        ds=end_ds if end_ds else ds,
-        online_jar=online_jar,
-        online_class=online_class
-    )
-    base_args = base_args + f" --conf-type={conf_type} " if conf_type else base_args
-
-    override_start_partition_arg = (
-        "--start-partition-override=" + start_ds if start_ds else ""
-    )
-
-    additional_kwargs = " ".join(f"--{key.replace('_', '-')}={value}" for key, value in kwargs.items() if value)
-
-    final_args = " ".join([base_args, str(additional_user_args), override_start_partition_arg, additional_kwargs])
-
-    return final_args
 
 def check_call(cmd):
     print("Running command: " + cmd)
@@ -89,7 +71,6 @@ def custom_json(conf):
     if conf.get("metaData", {}).get("customJson"):
         return json.loads(conf["metaData"]["customJson"])
     return {}
-
 
 
 def download_only_once(url, path, skip_download=False):
