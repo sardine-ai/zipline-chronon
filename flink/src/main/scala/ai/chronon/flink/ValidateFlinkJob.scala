@@ -13,23 +13,19 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
-case class ComparisonResult(
-   recordId: String,
-   isMatch: Boolean,
-   catalystResult: Seq[Map[String, Any]],
-   sparkDfResult: Seq[Map[String, Any]],
-   differences: Map[String, (Any, Any)])
+case class ComparisonResult(recordId: String,
+                            isMatch: Boolean,
+                            catalystResult: Seq[Map[String, Any]],
+                            sparkDfResult: Seq[Map[String, Any]],
+                            differences: Map[String, (Any, Any)])
 
-case class ValidationStats(
-    totalRecords: Int,
-    totalMatches: Int,
-    totalMismatches: Int)
+case class ValidationStats(totalRecords: Int, totalMatches: Int, totalMismatches: Int)
 
 class ValidationFlinkJob[T](eventSrc: FlinkSource[T],
-                  groupByServingInfoParsed: GroupByServingInfoParsed,
-                  encoder: Encoder[T],
-                  parallelism: Int,
-                  validationRows: Int) {
+                            groupByServingInfoParsed: GroupByServingInfoParsed,
+                            encoder: Encoder[T],
+                            parallelism: Int,
+                            validationRows: Int) {
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
   val groupByName: String = groupByServingInfoParsed.groupBy.getMetaData.getName
@@ -67,59 +63,66 @@ class ValidationFlinkJob[T](eventSrc: FlinkSource[T],
     val exprEvalSparkDf: SparkExpressionEvalFn[T] =
       new SparkExpressionEvalFn[T](encoder, groupByServingInfoParsed.groupBy, useCatalyst = false)
 
-    val comparisonStream: DataStream[ComparisonResult] = sourceStreamWithId.map {
-        element =>
-          val (event, id) = element
-          val v1Results = new mutable.ArrayBuffer[Map[String, Any]]()
-          val collector1 = new Collector[Map[String, Any]] {
-            override def collect(result: Map[String, Any]): Unit = {
-              v1Results += result
-            }
-            override def close(): Unit = {}
+    val comparisonStream: DataStream[ComparisonResult] = sourceStreamWithId
+      .map { element =>
+        val (event, id) = element
+        val v1Results = new mutable.ArrayBuffer[Map[String, Any]]()
+        val collector1 = new Collector[Map[String, Any]] {
+          override def collect(result: Map[String, Any]): Unit = {
+            v1Results += result
           }
-
-          val v2Results = new mutable.ArrayBuffer[Map[String, Any]]()
-          val collector2 = new Collector[Map[String, Any]] {
-            override def collect(result: Map[String, Any]): Unit = {
-              v2Results += result
-            }
-            override def close(): Unit = {}
-          }
-
-          exprEvalCU.flatMap(event, collector1)
-          exprEvalSparkDf.flatMap(event, collector2)
-          ComparisonResult(
-            recordId = id,
-            isMatch = v1Results.size == v2Results.size, // TODO update this!!
-            catalystResult = v1Results,
-            sparkDfResult = v2Results,
-            differences = Map.empty
-          )
-    }.uid(s"cu-df-comparison-$groupByName")
-     .name(s"Catalyst util spark df comparison for $groupByName")
-     .setParallelism(sourceStream.getParallelism)
-
-    comparisonStream.countWindowAll(validationRows).apply { (window, input, out: Collector[ValidationStats]) =>
-      var total = 0L
-      var matching = 0L
-      var mismatching = 0L
-        input.asScala.foreach { result =>
-            total += 1
-            if (result.isMatch) {
-              matching += 1
-            } else {
-              mismatching += 1
-            }
+          override def close(): Unit = {}
         }
-      out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
-    }.uid(s"validation-stats-$groupByName")
-     .name(s"Validation stats for $groupByName")
-     .setParallelism(1)
+
+        val v2Results = new mutable.ArrayBuffer[Map[String, Any]]()
+        val collector2 = new Collector[Map[String, Any]] {
+          override def collect(result: Map[String, Any]): Unit = {
+            v2Results += result
+          }
+          override def close(): Unit = {}
+        }
+
+        exprEvalCU.flatMap(event, collector1)
+        exprEvalSparkDf.flatMap(event, collector2)
+        ComparisonResult(
+          recordId = id,
+          isMatch = v1Results.size == v2Results.size, // TODO update this!!
+          catalystResult = v1Results,
+          sparkDfResult = v2Results,
+          differences = Map.empty
+        )
+      }
+      .uid(s"cu-df-comparison-$groupByName")
+      .name(s"Catalyst util spark df comparison for $groupByName")
+      .setParallelism(sourceStream.getParallelism)
+
+    comparisonStream
+      .countWindowAll(validationRows)
+      .apply { (window, input, out: Collector[ValidationStats]) =>
+        var total = 0L
+        var matching = 0L
+        var mismatching = 0L
+        input.asScala.foreach { result =>
+          total += 1
+          if (result.isMatch) {
+            matching += 1
+          } else {
+            mismatching += 1
+          }
+        }
+        out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
+      }
+      .uid(s"validation-stats-$groupByName")
+      .name(s"Validation stats for $groupByName")
+      .setParallelism(1)
   }
 }
 
 object ValidateFlinkJob {
-  def run(metadataStore: MetadataStore, kafkaBootstrap: Option[String], groupByName: String, validateRows: Int): Unit = {
+  def run(metadataStore: MetadataStore,
+          kafkaBootstrap: Option[String],
+          groupByName: String,
+          validateRows: Int): Unit = {
     val maybeServingInfo = metadataStore.getGroupByServingInfo(groupByName)
     val validationJob: ValidationFlinkJob[Row] = maybeServingInfo
       .map { servingInfo =>
@@ -149,7 +152,8 @@ object ValidateFlinkJob {
           parallelism = source.parallelism,
           validationRows = validateRows
         )
-      }.recover { case e: Exception =>
+      }
+      .recover { case e: Exception =>
         throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
       }
       .get

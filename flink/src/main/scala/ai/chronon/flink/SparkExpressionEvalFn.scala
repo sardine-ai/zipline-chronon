@@ -33,7 +33,8 @@ import org.slf4j.LoggerFactory
   * @param useCatalyst Whether to use CatalystUtil for evaluation. If false, we use Spark SQL.
   * @tparam T The type of the input data.
   */
-class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy, useCatalyst: Boolean = true) extends RichFlatMapFunction[T, Map[String, Any]] {
+class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy, useCatalyst: Boolean = true)
+    extends RichFlatMapFunction[T, Map[String, Any]] {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val query: Query = groupBy.streamingSource.get.getEvents.query
@@ -70,14 +71,17 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy, useCatalys
     val df = CatalystUtil.session.createDataset(Seq(input))(encoder).toDF()
     val filteredDf = catalystUtil.whereClauseOpt match {
       case Some(whereClause) => df.where(whereClause)
-      case None => df
+      case None              => df
     }
 
     val projectedDf = filteredDf.selectExpr(catalystUtil.selectClauses: _*)
-    val results = projectedDf.collect().map { row =>
-      val columnNames = projectedDf.columns
-      columnNames.zip(row.toSeq).toMap
-    }.toSeq
+    val results = projectedDf
+      .collect()
+      .map { row =>
+        val columnNames = projectedDf.columns
+        columnNames.zip(row.toSeq).toMap
+      }
+      .toSeq
 
     results
   }
