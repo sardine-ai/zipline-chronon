@@ -197,7 +197,7 @@ class GcpRunner(Runner):
                 jar_uri=jar_uri,
                 job_type=job_type.value,
                 main_class=main_class
-            ) + f" --additional-conf-path=additional-confs.yaml --files={gcs_file_args}"
+            ) + f" --additional-conf-path=additional-confs.yaml --gcs-files={gcs_file_args}"
         else:
             raise ValueError(f"Invalid job type: {job_type}")
 
