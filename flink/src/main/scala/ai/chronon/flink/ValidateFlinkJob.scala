@@ -33,7 +33,9 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
                          validationRows: Int) {
 
   class BuildValidationStatsFn extends AllWindowFunction[ComparisonResult, ValidationStats, GlobalWindow] {
-    override def apply(window: GlobalWindow, input: lang.Iterable[ComparisonResult], out: Collector[ValidationStats]): Unit = {
+    override def apply(window: GlobalWindow,
+                       input: lang.Iterable[ComparisonResult],
+                       out: Collector[ValidationStats]): Unit = {
       var total = 0L
       var matching = 0L
       var mismatching = 0L
