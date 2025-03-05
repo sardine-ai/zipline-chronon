@@ -34,6 +34,8 @@ scala_library(
         maven_artifact("org.apache.avro:avro"),
         maven_artifact("org.apache.thrift:libthrift"),
         maven_artifact("org.apache.kafka:kafka-clients"),
+        maven_artifact("org.apache.hadoop:hadoop-common"),
+        maven_artifact("org.apache.hadoop:hadoop-client-api"),
     ],
 )
 
@@ -65,6 +67,8 @@ test_deps = [
     maven_artifact("com.novocode:junit-interface"),
     maven_artifact("net.bytebuddy:byte-buddy"),
     maven_artifact("net.bytebuddy:byte-buddy-agent"),
+    maven_artifact("org.apache.hadoop:hadoop-common"),
+    maven_artifact("org.apache.hadoop:hadoop-client-api"),
 ]
 
 scala_library(

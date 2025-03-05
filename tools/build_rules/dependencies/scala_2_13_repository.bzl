@@ -33,10 +33,7 @@ scala_2_13_repository = repository(
         "org.json4s:json4s-core_2.13:3.7.0-M11",
         "org.json4s:json4s-ast_2.13:3.7.0-M11",
         "io.delta:delta-spark_2.13:3.2.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.8.0",
-
-        # Google Cloud
-        "com.google.cloud.spark:spark-bigquery-with-dependencies_2.13:0.41.1",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.5.2",
 
         "org.apache.hudi:hudi-spark3.5-bundle_2.13:0.15.0",
 

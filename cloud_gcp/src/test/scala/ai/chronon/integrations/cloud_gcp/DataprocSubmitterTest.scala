@@ -8,7 +8,6 @@ import ai.chronon.spark.JobSubmitterConstants.MainClass
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
-import com.google.cloud.spark.bigquery.BigQueryUtilScala
 import org.junit.Assert.assertEquals
 import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
@@ -46,10 +45,6 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val submittedJobId =
       submitter.submit(spark.SparkJob, Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"), List.empty)
     assertEquals(submittedJobId, jobId)
-  }
-
-  it should "Verify classpath with spark-bigquery-connector" in {
-    BigQueryUtilScala.validateScalaVersionCompatibility()
   }
 
   it should "test flink job locally" ignore {

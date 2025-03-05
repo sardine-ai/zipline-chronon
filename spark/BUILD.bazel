@@ -45,7 +45,8 @@ scala_library(
         maven_artifact("net.sf.py4j:py4j"),
         maven_artifact("org.apache.avro:avro"),
         maven_artifact("org.apache.thrift:libthrift"),
-        spark_artifact("org.apache.hadoop:hadoop-common"),
+        maven_artifact("org.apache.hadoop:hadoop-common"),
+        maven_artifact("org.apache.hadoop:hadoop-client-api"),
     ],
 )
 
@@ -88,6 +89,8 @@ test_deps = [
     maven_artifact("junit:junit"),
     maven_artifact("com.novocode:junit-interface"),
     maven_artifact("org.mockito:mockito-core"),
+    maven_artifact("org.apache.hadoop:hadoop-common"),
+    maven_artifact("org.apache.hadoop:hadoop-client-api"),
 ]
 
 scala_library(
