@@ -15,6 +15,7 @@ maven_repository = repository(
         "org.junit.platform:junit-platform-reporting:1.10.5",
         "com.novocode:junit-interface:0.11",
         "org.mockito:mockito-core:5.12.0",
+        "org.objenesis:objenesis:3.4",
 
         # Add other dependencies
         "org.slf4j:slf4j-api:2.0.12",
@@ -45,6 +46,7 @@ maven_repository = repository(
         "org.apache.commons:commons-lang3:3.12.0",
         "org.apache.commons:commons-math3:3.6.1",
         "org.apache.hudi:hudi-aws-bundle:0.15.0",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
 
         # grpc
         "io.grpc:grpc-core:1.62.2",  # required by bigtable
@@ -66,7 +68,8 @@ maven_repository = repository(
         "org.apache.hive:hive-exec:2.3.9",
 
         # Hadoop
-        "org.apache.hadoop:hadoop-client-api:3.3.4",
+        "org.apache.hadoop:hadoop-client-api:3.4.1",
+        "org.apache.hadoop:hadoop-common:3.4.1",
 
         # AWS
         "software.amazon.awssdk:dynamodb:2.30.13",
@@ -86,8 +89,10 @@ maven_repository = repository(
         # Have to specify in group:artifact:packaging:version format if version doesn't start with a digit
         # Code reference: https://github.com/bazel-contrib/rules_jvm_external/blob/master/private/lib/coordinates.bzl#L44
         "com.google.cloud.bigdataoss:gcs-connector:jar:hadoop3-2.2.26",
-        "com.google.cloud.bigdataoss:gcsio:3.0.3",
-        "com.google.cloud.bigdataoss:util-hadoop:3.0.0",
+        "com.google.cloud.bigdataoss:gcsio:2.2.26",
+        "com.google.cloud.bigdataoss:util-hadoop:jar:hadoop3-2.2.26",
+        "com.google.cloud.bigdataoss:util:2.2.26",
+        "com.google.cloud.spark:spark-3.5-bigquery:0.42.0",
         "com.google.cloud:google-cloud-bigtable-emulator:0.178.0",
         "com.google.cloud.hosted.kafka:managed-kafka-auth-login-handler:1.0.3",
 
@@ -113,6 +118,7 @@ maven_repository = repository(
         "io.vertx:vertx-unit:4.5.10",
     ],
     excluded_artifacts = [
+        "org.apache.beam:beam-sdks-java-io-hadoop-common",
         "org.pentaho:pentaho-aggdesigner-algorithm",
         # Exclude Hadoop from the assembled JAR
         # Else we hit an error - IllegalAccessError: class org.apache.hadoop.hdfs.web.HftpFileSystem cannot access its
@@ -121,7 +127,6 @@ maven_repository = repository(
         # so we ended up removing these from our entire repo as they are required across our project
         "org.apache.hadoop:hadoop-annotations",
         "org.apache.hadoop:hadoop-auth",
-        "org.apache.hadoop:hadoop-common",
         "org.apache.hadoop:hadoop-hdfs-client",
         "org.apache.hadoop:hadoop-hdfs",
         "org.apache.hadoop:hadoop-mapreduce-client-core",
