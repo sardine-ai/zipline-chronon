@@ -291,7 +291,8 @@ object DataprocSubmitter {
       finalArgs: _*
     )
     println("Dataproc submitter job id: " + jobId)
-    println(s"Safe to exit. Follow the job status at: https://console.cloud.google.com/dataproc/jobs/${jobId}")
+    println(
+      s"Safe to exit. Follow the job status at: https://console.cloud.google.com/dataproc/jobs/${jobId}/configuration?region=${region}&project=${projectId}")
   }
 }
 
