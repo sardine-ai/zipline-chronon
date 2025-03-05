@@ -125,16 +125,7 @@ class Runner:
             script=self.spark_submit,
             jar=self.jar_path,
             subcommand=ROUTES[self.conf_type][self.mode],
-            # args=self._gen_final_args(),
-            args=gen_final_args(mode=self.mode,
-                                online_class=self.online_class,
-                                online_jar=self.online_jar,
-                                ds=self.ds,
-                                conf=self.conf,
-                                conf_type=self.conf_type,
-                                start_ds=self.start_ds,
-                                end_ds=self.ds,
-                                additional_user_args=self.args),
+            args=self._gen_final_args(),
             additional_args=os.environ.get(
                 "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
             ),
@@ -184,18 +175,8 @@ class Runner:
                             script=self.spark_submit,
                             jar=self.jar_path,
                             subcommand=ROUTES[self.conf_type][self.mode],
-                            # args=self._gen_final_args(
-                            #     start_ds=start_ds, end_ds=end_ds),
-                            args=gen_final_args(
-                                    mode=MODE_ARGS[self.mode],
-                                    online_class=self.online_class,
-                                    online_jar=self.online_jar,
-                                    ds=self.ds,
-                                    conf=self.conf,
-                                    conf_type=self.conf_type,
-                                    start_ds=start_ds,
-                                    end_ds=end_ds,
-                                    additional_user_args=self.args),
+                            args=self._gen_final_args(
+                                start_ds=start_ds, end_ds=end_ds),
                             additional_args=os.environ.get(
                                 "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                             ),

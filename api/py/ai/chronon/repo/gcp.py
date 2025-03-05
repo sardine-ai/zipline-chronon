@@ -201,6 +201,30 @@ class GcpRunner(Runner):
         else:
             raise ValueError(f"Invalid job type: {job_type}")
 
+    def run_dataproc_flink_streaming(self):
+        user_args = {
+            "--groupby-name": self.groupby_name,
+            "--kafka-bootstrap": self.kafka_bootstrap,
+            "--online-class": ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
+            "-ZGCP_PROJECT_ID": GcpRunner.get_gcp_project_id(),
+            "-ZGCP_BIGTABLE_INSTANCE_ID": GcpRunner.get_gcp_bigtable_instance_id(),
+            "--savepoint-uri": self.savepoint_uri
+        }
+
+        flag_args = {
+            "--mock-source": self.mock_source
+        }
+        flag_args_str = " ".join(key for key, value in flag_args.items() if value)
+
+        user_args_str = " ".join(f"{key}={value}" for key, value in user_args.items() if value)
+
+        dataproc_args = self.generate_dataproc_submitter_args(
+            job_type=DataprocJobType.FLINK,
+            user_args=" ".join([user_args_str, flag_args_str])
+        )
+        command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
+        return command
+
     def run(self):
         command_list = []
         if self.mode == "info":
