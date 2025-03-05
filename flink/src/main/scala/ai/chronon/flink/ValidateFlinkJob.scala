@@ -23,10 +23,10 @@ case class ComparisonResult(recordId: String,
 case class ValidationStats(totalRecords: Int, totalMatches: Int, totalMismatches: Int)
 
 class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
-                            groupByServingInfoParsed: GroupByServingInfoParsed,
-                            encoder: Encoder[Row],
-                            parallelism: Int,
-                            validationRows: Int) {
+                         groupByServingInfoParsed: GroupByServingInfoParsed,
+                         encoder: Encoder[Row],
+                         parallelism: Int,
+                         validationRows: Int) {
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
   val groupByName: String = groupByServingInfoParsed.groupBy.getMetaData.getName
