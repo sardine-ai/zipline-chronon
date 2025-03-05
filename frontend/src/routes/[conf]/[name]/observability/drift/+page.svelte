@@ -145,7 +145,9 @@
 	});
 </script>
 
-<div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
+<div
+	class="sticky top-0 z-20 bg-neutral-50 dark:bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l"
+>
 	<ChartControls
 		{isZoomed}
 		onResetZoom={resetZoom}
@@ -346,12 +348,12 @@
 									{
 										key: 'baseline',
 										data: baselineData,
-										color: '#4B92FF' // TODO: copied from ECharts defaults
+										color: '#2976E6' // TODO: copied from ECharts defaults
 									},
 									{
 										key: 'current',
 										data: currentData,
-										color: '#7DFFB3' // TODO: copied from ECharts defaults
+										color: '#3DDC91' // TODO: copied from ECharts defaults
 									}
 								]}
 								seriesLayout="group"
@@ -361,7 +363,10 @@
 								props={{
 									yAxis: { ...yAxisProps },
 									xAxis: { ...xAxisProps },
-									tooltip: { ...tooltipProps, hideTotal: true }
+									tooltip: { ...tooltipProps, hideTotal: true },
+									bars: {
+										strokeWidth: 0
+									}
 								}}
 							/>
 						</div>
@@ -403,7 +408,7 @@
 											]}
 											key="label"
 											value="value"
-											cRange={['#4B92FF', '#7DFFB3']}
+											cRange={['#2976E6', '#3DDC91']}
 											{...pieChartProps}
 										/>
 									</div>

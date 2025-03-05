@@ -38,7 +38,9 @@
 	}
 </script>
 
-<div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
+<div
+	class="sticky top-0 z-20 bg-neutral-50 dark:bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l"
+>
 	<ChartControls
 		{isZoomed}
 		onResetZoom={resetZoom}

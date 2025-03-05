@@ -78,6 +78,7 @@ const config = {
 				// todo add default and foreground shades for neutral and warning
 				neutral: createColorScale('neutral'),
 				warning: createColorScale('warning'),
+				success: createColorScale('success'),
 				primary: createColorScale('primary'),
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',

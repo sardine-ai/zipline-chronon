@@ -40,7 +40,7 @@
 <div class="flex items-center justify-center h-full relative">
 	<CellDivider />
 	<button
-		class="flex items-center justify-between bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px] max-w-[440px] max-h-[32px]"
+		class="flex items-center justify-between bg-neutral-50 dark:bg-neutral-300 border border-neutral-400 rounded-md p-[5px] pl-0 w-full mr-[18px] max-w-[440px] max-h-[32px]"
 		style:margin-left={`calc(${depth * 0.75}rem)`}
 		onclick={() => ($isExpanded = !$isExpanded)}
 		title={name}

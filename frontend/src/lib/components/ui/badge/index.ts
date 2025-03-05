@@ -13,7 +13,7 @@ export const badgeVariants = tv({
 			outline: 'text-foreground',
 			key: '',
 			'key-bg': 'border-transparent bg-neutral-400',
-			success: 'bg-[#0F2920] text-[#21A378] border-transparent' // todo use our style guide when it is created
+			success: 'bg-success-50 text-success-500 border-transparent' // todo use our style guide when it is created
 		}
 	},
 	compoundVariants: [
