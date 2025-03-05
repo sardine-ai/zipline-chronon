@@ -7,10 +7,13 @@ import ai.chronon.online.{GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction
+import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.apache.flink.util.Collector
 import org.apache.spark.sql.{Encoder, Row}
 import org.slf4j.LoggerFactory
 
+import java.lang
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
@@ -28,6 +31,24 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
                          encoder: Encoder[Row],
                          parallelism: Int,
                          validationRows: Int) {
+
+  class BuildValidationStatsFn extends AllWindowFunction[ComparisonResult, ValidationStats, GlobalWindow] {
+    override def apply(window: GlobalWindow, input: lang.Iterable[ComparisonResult], out: Collector[ValidationStats]): Unit = {
+      var total = 0L
+      var matching = 0L
+      var mismatching = 0L
+      input.asScala.foreach { result =>
+        total += 1
+        if (result.isMatch) {
+          matching += 1
+        } else {
+          mismatching += 1
+        }
+      }
+      out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
+    }
+  }
+
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
   val groupByName: String = groupByServingInfoParsed.groupBy.getMetaData.getName
@@ -100,20 +121,7 @@ class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
 
     comparisonStream
       .countWindowAll(validationRows)
-      .apply { (window, input, out: Collector[ValidationStats]) =>
-        var total = 0L
-        var matching = 0L
-        var mismatching = 0L
-        input.asScala.foreach { result =>
-          total += 1
-          if (result.isMatch) {
-            matching += 1
-          } else {
-            mismatching += 1
-          }
-        }
-        out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
-      }
+      .apply(new BuildValidationStatsFn)
       .returns(TypeInformation.of(classOf[ValidationStats]))
       .uid(s"validation-stats-$groupByName")
       .name(s"Validation stats for $groupByName")
