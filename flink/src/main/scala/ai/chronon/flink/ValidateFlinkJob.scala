@@ -22,9 +22,9 @@ case class ComparisonResult(recordId: String,
 
 case class ValidationStats(totalRecords: Int, totalMatches: Int, totalMismatches: Int)
 
-class ValidationFlinkJob[T](eventSrc: FlinkSource[T],
+class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
                             groupByServingInfoParsed: GroupByServingInfoParsed,
-                            encoder: Encoder[T],
+                            encoder: Encoder[Row],
                             parallelism: Int,
                             validationRows: Int) {
   private[this] val logger = LoggerFactory.getLogger(getClass)
@@ -46,23 +46,23 @@ class ValidationFlinkJob[T](eventSrc: FlinkSource[T],
     logger.info(s"Running Validation job for groupByName=$groupByName, Topic=$topic")
 
     // we expect parallelism on the source stream to be set by the source provider
-    val sourceStream: DataStream[T] =
+    val sourceStream: DataStream[Row] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
         .uid(s"source-$groupByName")
         .name(s"Source for $groupByName")
 
     // add a unique record ID to every record
-    val sourceStreamWithId: DataStream[(T, String)] = sourceStream
+    val sourceStreamWithId: DataStream[(Row, String)] = sourceStream
       .map((_, java.util.UUID.randomUUID().toString))
       .uid(s"source-with-id-$groupByName")
       .name(s"Source with ID for $groupByName")
       .setParallelism(sourceStream.getParallelism) // Use same parallelism as previous operator
 
-    val exprEvalCU: SparkExpressionEvalFn[T] =
-      new SparkExpressionEvalFn[T](encoder, groupByServingInfoParsed.groupBy)
-    val exprEvalSparkDf: SparkExpressionEvalFn[T] =
-      new SparkExpressionEvalFn[T](encoder, groupByServingInfoParsed.groupBy, useCatalyst = false)
+    val exprEvalCU: SparkExpressionEvalFn[Row] =
+      new SparkExpressionEvalFn[Row](encoder, groupByServingInfoParsed.groupBy)
+    val exprEvalSparkDf: SparkExpressionEvalFn[Row] =
+      new SparkExpressionEvalFn[Row](encoder, groupByServingInfoParsed.groupBy, useCatalyst = false)
 
     val comparisonStream: DataStream[ComparisonResult] = sourceStreamWithId
       .map { element =>
@@ -127,7 +127,7 @@ object ValidateFlinkJob {
           groupByName: String,
           validateRows: Int): Unit = {
     val maybeServingInfo = metadataStore.getGroupByServingInfo(groupByName)
-    val validationJob: ValidationFlinkJob[Row] = maybeServingInfo
+    val validationJob: ValidationFlinkJob = maybeServingInfo
       .map { servingInfo =>
         val topicUri = servingInfo.groupBy.streamingSource.get.topic
         val topicInfo = TopicInfo.parse(topicUri)
