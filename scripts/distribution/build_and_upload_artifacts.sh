@@ -110,14 +110,10 @@ if [[ $EXPECTED_MINIMUM_MINOR_PYTHON_VERSION -gt $MINOR_PYTHON_VERSION ]] ; then
     exit 1
 fi
 
-
-thrift --gen py -out api/py/ api/thrift/common.thrift
-thrift --gen py -out api/py/ api/thrift/api.thrift
-thrift --gen py -out api/py/ api/thrift/observability.thrift
-
 WHEEL_VERSION="0.1.0"
 
-VERSION=$WHEEL_VERSION pip wheel api/py
+bash scripts/distribution/build_wheel.sh $WHEEL_VERSION
+
 EXPECTED_ZIPLINE_WHEEL="zipline_ai-$WHEEL_VERSION-py3-none-any.whl"
 if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
     echo "$EXPECTED_ZIPLINE_WHEEL not found"
@@ -160,18 +156,11 @@ if [ "$BUILD_AWS" = true ]; then
 fi
 if [ "$BUILD_GCP" = true ]; then
     bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
-    bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
 
     CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
-    CLOUD_GCP_SUBMITTER_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_submitter_deploy.jar"
 
     if [ ! -f "$CLOUD_GCP_JAR" ]; then
         echo "$CLOUD_GCP_JAR not found"
-        exit 1
-    fi
-
-    if [ ! -f "$CLOUD_GCP_SUBMITTER_JAR" ]; then
-        echo "$CLOUD_GCP_SUBMITTER_JAR not found"
         exit 1
     fi
 
@@ -197,7 +186,6 @@ function upload_to_gcp() {
               do
                 ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars
                 gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$CLOUD_GCP_SUBMITTER_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"

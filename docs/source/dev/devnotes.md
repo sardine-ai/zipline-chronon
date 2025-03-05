@@ -24,6 +24,7 @@ brew install thrift
 ```
 
 ### Install Python dependency packages for API
+
 ```shell
 python3 -m pip install -U tox build
 ```
@@ -37,10 +38,8 @@ python3 -m pip install -U tox build
 * ```asdf exec asdf-plugin-manager update-all```
 * ```asdf install``` (see `.tool-versions` for required runtimes and versions)
 
-
-> NOTE: Use scala `2.12.18` and java `corretto-17` for Zipline distribution. older java `corretto-8` is used for OSS Chronon distribution.
-
-
+> NOTE: Use scala `2.12.18` and java `corretto-17` for Zipline distribution. older java `corretto-8` is used for OSS
+> Chronon distribution.
 
 ### Clone the Chronon Repo
 
@@ -53,12 +52,14 @@ git clone git@github.com:zipline-ai/chronon.git
 ### Installing Bazel
 
 #### On Mac
+
 ```shell
 # Install bazelisk and it automatically pulls right bazel binary
 brew install bazelisk
 ```
 
 #### On Linux
+
 ```shell
 sudo curl -L "https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-amd64" -o /usr/local/bin/bazel
 sudo chmod +x /usr/local/bin/bazel
@@ -69,30 +70,36 @@ export PATH="/usr/local/bin:${PATH}"
 
 - Install `Bazel For IntelliJ` Plugin
 - Follow File > Import Bazel Project
-   - Select root directory as workspace
-   - Use `.bazelproject` as project view file
+    - Select root directory as workspace
+    - Use `.bazelproject` as project view file
 - We should see a bazel icon in the top right corner to the left of search bar
-   - Used for incremental sync after build config changes
-   - The first build might take some time, ~15 minutes or so
+    - Used for incremental sync after build config changes
+    - The first build might take some time, ~15 minutes or so
 - We can directly build and test all our targets from IntelliJ
 
 ### Remote Caching
 
 We enabled remote caching for all our builds/tests for both local development and CI.
-As part of that change we would need to do gcloud auth to read/write from remote cache stored in our BigTable bucket for the local dev builds.
+As part of that change we would need to do gcloud auth to read/write from remote cache stored in our BigTable bucket for
+the local dev builds.
 
 #### For passing GCloud Auth credentials to Bazel
-Create a new .bazelrc.local file with the following content. Also feel free to specify any local overrides to the build/test options here.
+
+Create a new .bazelrc.local file with the following content. Also feel free to specify any local overrides to the
+build/test options here.
 This file is git-ignored.
+
 ```
 build --google_credentials=/Users/{username}/.config/gcloud/application_default_credentials.json
 ```
 
 ### Pinning maven artifacts
+
 We currently pin the versions for all our maven artifacts including all their transitive dependencies so
 we don't have to resolve them during build time which can take up a very long time at times.
 
 We currently have 2 different repositories
+
 1. spark - contains all spark dependencies (pinned to spark_install.json file)
 2. maven - contains all other maven dependencies (pinned to maven_install.json file)
 
@@ -108,9 +115,11 @@ REPIN=1 bazel run @spark//:pin
 
 ### Java not found error on Mac
 
-In case you run into this error the fix is to manually download and install amazon corretto-17 from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html)
+In case you run into this error the fix is to manually download and install amazon corretto-17
+from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads-list.html)
 
 ### Build Uber Jars for deployment
+
 ```shell
 # Command
 # By default we build using scala 2.12
@@ -121,11 +130,8 @@ bazel build --config scala_2.13 //{module}:{target}_deploy.jar
 # Cloud Gcp Jar
 # Creates uber jar in {Workspace}/bazel-bin/cloud_gcp folder with name cloud_gcp_lib_deploy.jar
 bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
-bazel build //cloud_gcp:cloud_gcp_submitter_deploy.jar
 # For scala 2.13
 bazel build --config scala_2.13 //cloud_gcp:cloud_gcp_lib_deploy.jar
-bazel build --config scala_2.13 //cloud_gcp:cloud_gcp_submitter_deploy.jar
-
 # Flink Jars
 bazel build //flink:flink_assembly_deploy.jar
 bazel build //flink:flink_kafka_assembly_deploy.jar
@@ -136,23 +142,29 @@ bazel build //service:service_assembly_deploy.jar
 # Hub Jar
 bazel build //hub:hub_assembly_deploy.jar
 ```
+
 > Note: "_deploy.jar" is bazel specific suffix that's needed for building uber jar with all
-> transitive dependencies, otherwise `bazel build //{module}:{target}` will only include 
+> transitive dependencies, otherwise `bazel build //{module}:{target}` will only include
 > dependencies specified in the target definition
 
 ### All tests for a specific module
+
 Also it's lot easier to just run from IntelliJ
+
 ```shell
 # Example: bazel test //api:tests
 bazel test //{module}:{test_target}
 ```
+
 ### Only test individual test file within a module
+
 ```shell
 # Example: bazel test //api:tests_test_suite_src_test_scala_ai_chronon_api_test_DataPointerTest.scala
 bazel test //{module}:{test_target}_test_suite_{test_file_path}
 ```
 
 ### To clean the repository for a fresh build
+
 ```shell
 # Removes build outputs and action cache.
 bazel clean
@@ -195,11 +207,16 @@ You can invoke this command as below
 ```
 zpush "Your commit message"
 ```
+
 > Note: The quotes are necessary for multi-word commit message.
 
 ## Connect remotely to API Docker JVM
 
-The java process within the container is started with remote debugging [enabled](https://github.com/zipline-ai/chronon/blob/main/docker-init/start.sh#L46) on port 5005 and [exposed](https://github.com/zipline-ai/chronon/blob/main/docker-init/compose.yaml#L70) on the host as `localhost:5005`.  This helps you debug frontend code by triggering a breakpoint in IntelliJ when some code in the frontend is run (i.e. api call, etc)
+The java process within the container is started with remote
+debugging [enabled](https://github.com/zipline-ai/chronon/blob/main/docker-init/start.sh#L46) on port 5005
+and [exposed](https://github.com/zipline-ai/chronon/blob/main/docker-init/compose.yaml#L70) on the host as
+`localhost:5005`. This helps you debug frontend code by triggering a breakpoint in IntelliJ when some code in the
+frontend is run (i.e. api call, etc)
 
 To connect to the process within the container via IntelliJ, follow these steps:
 
@@ -212,25 +229,28 @@ To connect to the process within the container via IntelliJ, follow these steps:
 7. Run the frontend code that will call the api (or call the API endpoint directly such as with `curl`/Postman/etc).
 8. When the breakpoint is hit, you can inspect variables, step through the code, etc.
 
-For more details see IntelliJ remote debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.html)
+For more details see IntelliJ remote
+debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.html)
 
 ## Old SBT Setup
 
 ### Configuring IntelliJ
 
-- Open the project from the root `chronon` directory. 
+- Open the project from the root `chronon` directory.
 - Under File > Project Structure > Platform Settings, add java `corretto-17` and scala `scala-2.12.18` SDKs.
 - Under Intellij IDEA > Settings > Editor > Code Style > Scala enable `scalafmt`.
 - Follow the steps below to configure unit tests in intellij:
-  
+
   Run > Edit Configurations
   ![](./intellij_unit_test_1.png)
 
-  Set the following [java arguments](https://stackoverflow.com/questions/72724816/running-unit-tests-with-spark-3-3-0-on-java-17-fails-with-illegalaccesserror-cl) by copy pasting into the run configuration arguments list:
+  Set the
+  following [java arguments](https://stackoverflow.com/questions/72724816/running-unit-tests-with-spark-3-3-0-on-java-17-fails-with-illegalaccesserror-cl)
+  by copy pasting into the run configuration arguments list:
   ```bash
   --add-opens=java.base/java.lang=ALL-UNNAMED \
   --add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
-  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \ 
+  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
   --add-opens=java.base/java.io=ALL-UNNAMED \
   --add-opens=java.base/java.net=ALL-UNNAMED \
   --add-opens=java.base/java.nio=ALL-UNNAMED \
@@ -247,16 +267,18 @@ For more details see IntelliJ remote debugging [tutorial](https://www.jetbrains.
   Then, set the classpath to `chronon/<module_name>`
   ![](./intellij_unit_test_3.png)
 - Do the same for `ScalaTests` as well.
-- Run an [example test](https://github.com/zipline-ai/chronon/blob/main/spark/src/test/scala/ai/chronon/spark/test/bootstrap/LogBootstrapTest.scala) in Chronon to verify that you’ve set things up correctly.
+- Run
+  an [example test](https://github.com/zipline-ai/chronon/blob/main/spark/src/test/scala/ai/chronon/spark/test/bootstrap/LogBootstrapTest.scala)
+  in Chronon to verify that you’ve set things up correctly.
 
   From CLI: `sbt "testOnly ai.chronon.spark.test.TableUtilsFormatTest"`
 
-
 **Troubleshooting**
 
-Try the following if you are seeing flaky issues in IntelliJ 
+Try the following if you are seeing flaky issues in IntelliJ
+
 ```
-sbt +clean 
+sbt +clean
 sbt +assembly
 ```
 
@@ -267,6 +289,7 @@ sbt py_thrift
 ```
 
 ### Materializing confs
+
 ```
 materialize  --input_path=<path/to/conf>
 ```
@@ -274,20 +297,23 @@ materialize  --input_path=<path/to/conf>
 ### Testing
 
 All tests
+
 ```shell
 sbt test
 ```
 
 Specific submodule tests
+
 ```shell
 sbt "testOnly *<Module>"
-# example to test FetcherTest with 9G memory 
+# example to test FetcherTest with 9G memory
 sbt -mem 9000 "test:testOnly *FetcherTest"
 # example to test specific test method from GroupByTest
 sbt "test:testOnly *GroupByTest -- -t *testSnapshotEntities"
 ```
 
 ### Check module dependencies
+
 ```shell
 # ai.zipline.overwatch.Graph based view of all the dependencies
 sbt dependencyBrowseGraph
@@ -297,23 +323,28 @@ sbt dependencyBrowseTree
 ```
 
 # Chronon Build Process
+
 * Inside the `$CHRONON_OS` directory.
 
 ## Using sbt
+
 ### To build all of the Chronon artifacts locally (builds all the JARs, and Python API)
+
 ```shell
 sbt package
 ```
 
 ### Build Python API
+
 ```shell
 sbt python_api
 ```
 
 Note: This will create the artifacts with the version specific naming specified under `version.sbt`
+
 ```text
 Builds on main branch will result in:
-<artifact-name>-<version>.jar 
+<artifact-name>-<version>.jar
 [JARs]   chronon_2.11-0.7.0-SNAPSHOT.jar
 [Python] chronon-ai-0.7.0-SNAPSHOT.tar.gz
 
@@ -325,19 +356,23 @@ Builds on user branches will result in:
 ```
 
 ### Build a fat jar
+
 ```shell
 sbt assembly
 ```
 
 ### Building a fat jar for just one submodule
+
 ```shell
 sbt 'spark/assembly'
 ```
 
 # Chronon Artifacts Publish Process
+
 * Inside the `$CHRONON_OS` directory.
 
 To publish all the Chronon artifacts of the current git HEAD (builds and publishes all the JARs)
+
 ```shell
 sbt publish
 ```
@@ -349,12 +384,16 @@ NOTE: Python API package will also be generated, but it will not be pushed to an
 push the Python artifacts to the public repository.
 
 ## Setup for publishing artifacts to the JFrog artifactory
+
 1. Login into JFrog artifactory webapp console and create an API Key under user profile section.
 2. In `~/.sbt/1.0/jfrog.sbt` add
+
 ```scala
 credentials += Credentials(Path.userHome / ".sbt" / "jfrog_credentials")
 ```
+
 4. In `~/.sbt/jfrog_credentials` add
+
 ```
 realm=Artifactory Realm
 host=<Artifactory domain of $CHRONON_SNAPSHOT_REPO>
@@ -363,38 +402,51 @@ password=<API Key>
 ```
 
 ## Setup for publishing artifacts to MavenCentral (via sonatype)
+
 1. Get maintainer access to Maven Central on Sonatype
-   1. Create a sonatype account if you don't have one. 
-      1. Sign up here https://issues.sonatype.org/ 
-   2. Ask a current Chronon maintainer to add you to Sonatype project. 
-      1. To add a new member, an existing Chronon maintainer will need to [email Sonatype central support](https://central.sonatype.org/faq/what-happened-to-issues-sonatype-org/#where-did-issuessonatypeorg-go) and request a new member to be added as a maintainer. Include the username for the newly created Sonatype account in the email.    
+    1. Create a sonatype account if you don't have one.
+        1. Sign up here https://issues.sonatype.org/
+    2. Ask a current Chronon maintainer to add you to Sonatype project.
+        1. To add a new member, an existing Chronon maintainer will need
+           to [email Sonatype central support](https://central.sonatype.org/faq/what-happened-to-issues-sonatype-org/#where-did-issuessonatypeorg-go)
+           and request a new member to be added as a maintainer. Include the username for the newly created Sonatype
+           account in the email.
 2. `brew install gpg` on your mac
 3. In `~/.sbt/1.0/sonatype.sbt` add
+
 ```scala
 credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials")
 ```
+
 4. In `~/.sbt/sonatype_credentials` add
+
 ```
 realm=Sonatype Nexus Repository Manager
 host=s01.oss.sonatype.org
 user=<your username>
 password=<your password>
 ```
-5. setup gpg - just first step in this [link](https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html#step+1%3A+PGP+Signatures)
+
+5. setup gpg - just first step in
+   this [link](https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html#step+1%3A+PGP+Signatures)
 
 ## Setup for pushing python API package to PyPi repository
 
-1. Setup your pypi public account and contact @Nikhil to get added to the PyPi package as a [collaborator](https://pypi.org/manage/project/chronon-ai/collaboration/)
+1. Setup your pypi public account and contact @Nikhil to get added to the PyPi package as
+   a [collaborator](https://pypi.org/manage/project/chronon-ai/collaboration/)
 2. Install `tox, build, twine`. There are three python requirements for the python build process.
+
 * tox: Module for testing. To run the tests run tox in the main project directory.
 * build: Module for building. To build run `python -m build` in the main project directory
 * twine: Module for publishing. To upload a distribution run `twine upload dist/<distribution>.whl`
+
 ```
 python3 -m pip install -U tox build twine
 ```
 
 3. Fetch the user token from the PyPi website.
 4. Make sure you have the credentials configuration for the python repositories you manage. Normally in `~/.pypirc`
+
 ```
 [distutils]
   index-servers =
@@ -421,75 +473,102 @@ python3 -m pip install -U tox build twine
 # Chronon Release Process
 
 ## Publishing all the artifacts of Chronon
-1. Run release command in the right HEAD of chronon repository. Before running this, you may want to activate your Python venv or install the required Python packages on the laptop. Otherwise, the Python release will fail due to missing deps.
+
+1. Run release command in the right HEAD of chronon repository. Before running this, you may want to activate your
+   Python venv or install the required Python packages on the laptop. Otherwise, the Python release will fail due to
+   missing deps.
+
 ```
 GPG_TTY=$(tty) sbt -mem 8192 release
 ```
+
 This command will take into the account of `version.sbt` and handles a series of events:
+
 * Marks the current SNAPSHOT codebase as final (git commits).
 * Creates a new git tag (e.g v0.7.0) pointing to the release commit.
 * Builds the artifacts with released versioning suffix and pushes them to Sonatype, and PyPi central.
 * Updates the `version.sbt` to point to the next in line developmental version (git commits).
 
-2. login into the [staging repo](https://s01.oss.sonatype.org/#stagingRepositories) in nexus (same password as sonatype jira) 
-3. In the staging repos list - select your publish 
-     1. select "close" wait for the steps to finish
-     2. Select "refresh" and "release"
-     3. Wait for 30 mins to sync to [maven](https://repo1.maven.org/maven2/) or [sonatype UI](https://search.maven.org/search?q=g:ai.chronon)
+2. login into the [staging repo](https://s01.oss.sonatype.org/#stagingRepositories) in nexus (same password as sonatype
+   jira)
+3. In the staging repos list - select your publish
+    1. select "close" wait for the steps to finish
+    2. Select "refresh" and "release"
+    3. Wait for 30 mins to sync to [maven](https://repo1.maven.org/maven2/)
+       or [sonatype UI](https://search.maven.org/search?q=g:ai.chronon)
 4. Push the local release commits (DO NOT SQUASH), and the new tag created from step 1 to Github.
-     1. chronon repo disallow push to main branch directly, so instead push commits to a branch `git push origin main:your-name--release-xxx`
-     2. your PR should contain exactly two commits, 1 setting the release version, 1 setting the new snapshot version. 
-     3. make sure to use **Rebase pull request** instead of the regular Merge or Squash options when merging the PR.
+    1. chronon repo disallow push to main branch directly, so instead push commits to a branch
+       `git push origin main:your-name--release-xxx`
+    2. your PR should contain exactly two commits, 1 setting the release version, 1 setting the new snapshot version.
+    3. make sure to use **Rebase pull request** instead of the regular Merge or Squash options when merging the PR.
 5. Push release tag to main branch
-     1. tag new version to release commit `Setting version to 0.0.xx`. If not already tagged, can be added by 
+    1. tag new version to release commit `Setting version to 0.0.xx`. If not already tagged, can be added by
      ```
        git tag -fa v0.0.xx <commit-sha>
      ```
-     2. push tag 
+    2. push tag
       ```
         git push origin <tag-name>
       ```
-     3. New tag should be available here  - https://github.com/airbnb/chronon/tags
-6. Verify the Python API from the [PyPi website](https://pypi.org/project/chronon-ai/) that we are pointing to the latest. 
+    3. New tag should be available here - https://github.com/airbnb/chronon/tags
+6. Verify the Python API from the [PyPi website](https://pypi.org/project/chronon-ai/) that we are pointing to the
+   latest.
 
 ### Troubleshooting
+
 * Most common reason for Python failure is re-uploading a version that's already uploaded.
 
 ## [TODO] Publishing a driver to github releases
-We use gh releases to release the driver that can backfill, upload, stream etc. 
+
+We use gh releases to release the driver that can backfill, upload, stream etc.
 Currently the repo is not public and the run.py script can't reach it.
 
 # Chronon Documentation via Sphinx
+
 Run the sbt sphinx command to generate the sphinx docs locally and open it.
+
 ```
 sbt sphinx
 ```
 
 # build artifacts and release to gcloud
+
 ```shell
 bash build.sh
 bash gcloud_release.sh
 ```
 
 # Testing on REPL
+
 {One-time} First install the ammonite REPL with [support](https://ammonite.io/#OlderScalaVersions) for scala 2.12
+
 ```shell
 sudo sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/com-lihaoyi/Ammonite/releases/download/3.0.0-M0/2.12-3.0.0-M0) > /usr/local/bin/amm && chmod +x /usr/local/bin/amm' && amm
 ```
 
 Build the chronon jar for scala 2.12
+
 ```shell
 sbt ++2.12.12 spark/assembly
 ```
 
 Start the REPL
+
 ```shell
 /usr/local/bin/amm
 ```
 
-In the repl prompt load the jar 
+In the repl prompt load the jar
+
 ```scala
 import $cp.spark.target.`scala-2.12`.`spark-assembly-0.0.63-SNAPSHOT.jar`
 ```
 
 Now you can import the chronon classes and use them directly from repl for testing.
+
+
+# Working with the Python API on Pycharm
+1. Download Pycharm
+2. Open up Pycharm at `chronon/api` directory. Limiting the IDE with just this directory will help the IDE not get confused when resolving imports like `ai.chronon...` as IDE may attempt to go to the `java` or `scala` modules instead. Also helpful tip: `Invalidated Caches / Restart` from the `File` menu can help resolve some of the import issues.
+3. Then `Mark Directory as` > `Sources Root` for the `py` directory.
+![img.png](img.png)
