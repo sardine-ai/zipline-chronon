@@ -26,30 +26,30 @@ case class ComparisonResult(recordId: String,
 
 case class ValidationStats(totalRecords: Int, totalMatches: Int, totalMismatches: Int)
 
+class BuildValidationStatsFn extends AllWindowFunction[ComparisonResult, ValidationStats, GlobalWindow] {
+  override def apply(window: GlobalWindow,
+                     input: lang.Iterable[ComparisonResult],
+                     out: Collector[ValidationStats]): Unit = {
+    var total = 0L
+    var matching = 0L
+    var mismatching = 0L
+    input.asScala.foreach { result =>
+      total += 1
+      if (result.isMatch) {
+        matching += 1
+      } else {
+        mismatching += 1
+      }
+    }
+    out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
+  }
+}
+
 class ValidationFlinkJob(eventSrc: KafkaFlinkSource,
                          groupByServingInfoParsed: GroupByServingInfoParsed,
                          encoder: Encoder[Row],
                          parallelism: Int,
                          validationRows: Int) {
-
-  class BuildValidationStatsFn extends AllWindowFunction[ComparisonResult, ValidationStats, GlobalWindow] {
-    override def apply(window: GlobalWindow,
-                       input: lang.Iterable[ComparisonResult],
-                       out: Collector[ValidationStats]): Unit = {
-      var total = 0L
-      var matching = 0L
-      var mismatching = 0L
-      input.asScala.foreach { result =>
-        total += 1
-        if (result.isMatch) {
-          matching += 1
-        } else {
-          mismatching += 1
-        }
-      }
-      out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
-    }
-  }
 
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
