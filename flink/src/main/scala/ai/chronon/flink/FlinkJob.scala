@@ -291,6 +291,12 @@ object FlinkJob {
     // Kafka config is optional as we can support other sources in the future
     val kafkaBootstrap: ScallopOption[String] =
       opt[String](required = false, descr = "Kafka bootstrap server in host:port format")
+    // Run in validate mode - We read rows using Kafka and run them through Spark Df and compare against CatalystUtil output
+    val validate: ScallopOption[Boolean] =
+      opt[Boolean](required = false, descr = "Run in validate mode", default = Some(false))
+    // Number of rows to use for validation
+    val validateRows: ScallopOption[Int] =
+      opt[Int](required = false, descr = "Number of rows to use for validation", default = Some(1000))
 
     val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API / KV Store")
 
@@ -304,9 +310,16 @@ object FlinkJob {
     val props = jobArgs.apiProps.map(identity)
     val useMockedSource = jobArgs.mockSource()
     val kafkaBootstrap = jobArgs.kafkaBootstrap.toOption
+    val validateMode = jobArgs.validate()
+    val validateRows = jobArgs.validateRows()
 
     val api = buildApi(onlineClassName, props)
     val metadataStore = new MetadataStore(FetchContext(api.genKvStore, MetadataDataset))
+
+    if (validateMode) {
+      ValidateFlinkJob.run(metadataStore, kafkaBootstrap, groupByName, validateRows)
+      return
+    }
 
     val flinkJob =
       if (useMockedSource) {
