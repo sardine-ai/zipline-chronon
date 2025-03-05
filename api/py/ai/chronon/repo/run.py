@@ -688,7 +688,8 @@ class Runner:
                         ------------------------------------------------------------------------------------
                         ------------------------------------------------------------------------------------>
                         """)
-                        check_call(f"gcloud dataproc jobs wait {job_id} --region={get_gcp_region_id()}")
+                        check_call(f"gcloud dataproc jobs wait {job_id} --region={get_gcp_region_id()} "
+                                   f"--project={get_gcp_project_id()}")
                     except Exception:
                         # swallow since this is just for tailing logs
                         pass
