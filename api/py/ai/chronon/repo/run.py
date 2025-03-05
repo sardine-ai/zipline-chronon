@@ -19,7 +19,7 @@ run.py needs to only depend in python standard library to simplify execution req
 
 import click
 import os
-import datetime
+from datetime import datetime
 
 from ai.chronon.repo.constants import RENDER_INFO_DEFAULT_SCRIPT, MODE_ARGS, APP_NAME_TEMPLATE, ONLINE_MODES, \
     ZIPLINE_DIRECTORY, CLOUD_PROVIDER_KEYWORD, GCP, ONLINE_JAR_ARG, ONLINE_CLASS_ARG
