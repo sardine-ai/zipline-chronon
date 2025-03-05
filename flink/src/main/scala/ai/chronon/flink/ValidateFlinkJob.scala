@@ -4,6 +4,7 @@ import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.online.{GroupByServingInfoParsed, TopicInfo}
+import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.util.Collector
@@ -92,6 +93,7 @@ class ValidationFlinkJob[T](eventSrc: FlinkSource[T],
           differences = Map.empty
         )
       }
+      .returns(TypeInformation.of(classOf[ComparisonResult]))
       .uid(s"cu-df-comparison-$groupByName")
       .name(s"Catalyst util spark df comparison for $groupByName")
       .setParallelism(sourceStream.getParallelism)
@@ -112,6 +114,7 @@ class ValidationFlinkJob[T](eventSrc: FlinkSource[T],
         }
         out.collect(ValidationStats(total.toInt, matching.toInt, mismatching.toInt))
       }
+      .returns(TypeInformation.of(classOf[ValidationStats]))
       .uid(s"validation-stats-$groupByName")
       .name(s"Validation stats for $groupByName")
       .setParallelism(1)
