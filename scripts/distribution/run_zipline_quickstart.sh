@@ -49,6 +49,7 @@ function check_dataproc_job_state() {
   echo -e "${GREEN} <<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>\033[0m"
   JOB_STATE=$(gcloud dataproc jobs describe $JOB_ID --region=us-central1 --format=flattened | grep "status.state:")
   echo $JOB_STATE
+#  TODO: this doesn't actually fail. need to fix.
   if [ -z "$JOB_STATE" ]; then
         echo "Job failed"
         exit 1
@@ -88,7 +89,7 @@ check_dataproc_job_state $METADATA_UPLOAD_JOB_ID
 # Need to wait for upload-to-kv to finish
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
 touch tmp_fetch.out
-zipline run --mode fetch --conf-type group_bys --name quickstart.purchases.v1_test -k '{"user_id":"5"}' 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+zipline run --mode fetch --conf-type group_bys --name quickstart.purchases.v1_test -k '{"user_id":"5"}' --gcp 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
 cat tmp_fetch.out | grep purchase_price_average_14d
 # check if exit code of previous is 0
 if [ $? -ne 0 ]; then
