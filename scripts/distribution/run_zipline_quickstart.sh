@@ -89,7 +89,7 @@ check_dataproc_job_state $METADATA_UPLOAD_JOB_ID
 # Need to wait for upload-to-kv to finish
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
 touch tmp_fetch.out
-zipline run --mode fetch --conf-type group_bys --name quickstart.purchases.v1_test -k '{"user_id":"5"}' --gcp 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+zipline run --mode fetch --conf-type group_bys --name quickstart.purchases.v1_test -k '{"user_id":"5"}' 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
 cat tmp_fetch.out | grep purchase_price_average_14d
 # check if exit code of previous is 0
 if [ $? -ne 0 ]; then
@@ -98,4 +98,3 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${GREEN}<<<<<.....................................SUCCEEDED!!!.....................................>>>>>\033[0m"
-
