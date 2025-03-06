@@ -40,6 +40,7 @@ import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.streaming.JoinSourceRunner
 import org.apache.commons.io.FileUtils
+import org.apache.spark.SparkEnv
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
@@ -80,6 +81,7 @@ object Driver {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T = {
+    println("Parsing conf")
     println(s"sparkfiles root dir ${SparkFiles.getRootDirectory()}")
     ThriftJsonCodec.fromJsonFile[T](SparkFiles.get(confPath), check = true)
   }
@@ -154,7 +156,7 @@ object Driver {
         descr = "Directory to write locally loaded warehouse data into. This will contain unreadable parquet files"
       )
 
-    lazy val sparkSession: SparkSession = buildSparkSession()
+    val sparkSession: SparkSession = buildSparkSession()
 
     def endDate(): String = endDateInternal.toOption.getOrElse(buildTableUtils().partitionSpec.now)
 
