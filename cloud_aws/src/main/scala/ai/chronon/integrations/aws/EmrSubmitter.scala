@@ -220,7 +220,6 @@ object EmrSubmitter {
   private val ClusterInstanceCountArgKeyword = "--cluster-instance-count"
   private val ClusterIdleTimeoutArgKeyword = "--cluster-idle-timeout"
   private val CreateClusterArgKeyword = "--create-cluster"
-  private val JobFlowIdArgKeyword = "--job-flow-id"
 
   private val DefaultClusterInstanceType = "m5.xlarge"
   private val DefaultClusterInstanceCount = 3
@@ -238,8 +237,7 @@ object EmrSubmitter {
       ClusterInstanceCountArgKeyword,
       ClusterIdleTimeoutArgKeyword,
       FilesArgKeyword,
-      CreateClusterArgKeyword,
-      JobFlowIdArgKeyword
+      CreateClusterArgKeyword
     )
 
     val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
@@ -265,7 +263,8 @@ object EmrSubmitter {
       .map(_.split("=")(1))
       .getOrElse(DefaultClusterIdleTimeout.toString)
     val createCluster = args.exists(_.startsWith(CreateClusterArgKeyword))
-    val jobFlowId = args.find(_.startsWith(JobFlowIdArgKeyword)).map(_.split("=")(1))
+
+    val jobFlowId = sys.env.get("EMR_JOB_FLOW_ID")
 
     // search args array for prefix `--gcs_files`
     val filesArgs = args.filter(_.startsWith(FilesArgKeyword))
@@ -287,7 +286,8 @@ object EmrSubmitter {
           ClusterIdleTimeout -> clusterIdleTimeout,
           ShouldCreateCluster -> createCluster.toString
         )
-        if (!createCluster) {
+
+        if (!createCluster && jobFlowId.isDefined) {
           (TypeSparkJob, baseProps + (JobFlowId -> jobFlowId.get))
         } else {
           (TypeSparkJob, baseProps)
