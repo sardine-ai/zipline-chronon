@@ -400,5 +400,3 @@ class GcpRunner(Runner):
                 except Exception:
                     # swallow since this is just for tailing logs
                     pass
-            else:
-                check_call(command_list[0])

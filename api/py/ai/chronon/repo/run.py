@@ -21,6 +21,8 @@ import click
 import os
 from datetime import datetime
 
+from ai.chronon.repo.aws import AwsRunner, ZIPLINE_AWS_JAR_DEFAULT, ZIPLINE_AWS_SERVICE_JAR, \
+    ZIPLINE_AWS_ONLINE_CLASS_DEFAULT
 from ai.chronon.repo.constants import RENDER_INFO_DEFAULT_SCRIPT, MODE_ARGS, APP_NAME_TEMPLATE, ONLINE_MODES, \
     ZIPLINE_DIRECTORY, CLOUD_PROVIDER_KEYWORD, GCP, ONLINE_JAR_ARG, ONLINE_CLASS_ARG
 from ai.chronon.repo.default_runner import Runner
@@ -211,6 +213,21 @@ def main(
         ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_GCP_ONLINE_CLASS_DEFAULT
         ctx.params[CLOUD_PROVIDER_KEYWORD] = cloud_provider
         GcpRunner(ctx.params, os.path.expanduser(jar_path)).run()
+    elif cloud_provider.upper() == "AWS":
+        aws_jar_path = AwsRunner.download_zipline_aws_jar(
+            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_AWS_JAR_DEFAULT
+        )
+        service_jar_path = AwsRunner.download_zipline_aws_jar(
+            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_AWS_SERVICE_JAR
+        )
+        jar_path = (
+            f"{service_jar_path}:{aws_jar_path}" if mode == "fetch" else aws_jar_path
+        )
+
+        ctx.params[ONLINE_JAR_ARG] = ZIPLINE_AWS_JAR_DEFAULT
+        ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_AWS_ONLINE_CLASS_DEFAULT
+        ctx.params[CLOUD_PROVIDER_KEYWORD] = cloud_provider
+        AwsRunner(ctx.params, os.path.expanduser(jar_path)).run()
     else:
         raise ValueError(f"Unsupported cloud provider: {cloud_provider}")
 
