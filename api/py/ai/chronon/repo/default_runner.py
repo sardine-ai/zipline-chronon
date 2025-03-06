@@ -5,7 +5,7 @@ import os
 
 from ai.chronon.repo.constants import ONLINE_JAR_ARG, ONLINE_CLASS_ARG, ONLINE_MODES, ROUTES, \
     UNIVERSAL_ROUTES, SPARK_MODES, MODE_ARGS
-from ai.chronon.repo.utils import check_output, split_date_range, check_call
+from ai.chronon.repo import utils
 
 
 class Runner:
@@ -31,7 +31,7 @@ class Runner:
         if (self.mode in ONLINE_MODES) and (not args["sub_help"]) and not valid_jar and (
                 args.get("online_jar_fetch")):
             print("Downloading online_jar")
-            self.online_jar = check_output("{}".format(args["online_jar_fetch"])).decode(
+            self.online_jar = utils.check_output("{}".format(args["online_jar_fetch"])).decode(
                 "utf-8"
             )
             os.environ["CHRONON_ONLINE_JAR"] = self.online_jar
@@ -90,7 +90,7 @@ class Runner:
             )
         )
         running_apps = (
-            check_output("{}".format(self.list_apps_cmd))
+            utils.check_output("{}".format(self.list_apps_cmd))
             .decode("utf-8")
             .split("\n")
         )
@@ -168,7 +168,7 @@ class Runner:
                         "To use parallelism, please specify --start-ds and --end-ds to "
                         "break down into multiple backfill jobs"
                     )
-                    date_ranges = split_date_range(
+                    date_ranges = utils.split_date_range(
                         self.start_ds, self.ds, self.parallelism
                     )
                     for start_ds, end_ds in date_ranges:
@@ -209,9 +209,9 @@ class Runner:
                         command_list, self.parallelism
                     )
                 )
-                pool.map(check_call, command_list)
+                pool.map(utils.check_call, command_list)
         elif len(command_list) == 1:
-            check_call(command_list[0])
+            utils.check_call(command_list[0])
 
     def _gen_final_args(self, start_ds=None, end_ds=None, override_conf_path=None, **kwargs):
         base_args = MODE_ARGS[self.mode].format(
