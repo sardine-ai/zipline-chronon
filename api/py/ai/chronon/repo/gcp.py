@@ -12,7 +12,7 @@ from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
     get_environ_arg,
     retry_decorator,
-    DataprocJobType,
+    JobType,
     get_customer_id,
     extract_filename_from_path,
     split_date_range,
@@ -176,7 +176,7 @@ class GcpRunner(Runner):
     def generate_dataproc_submitter_args(
         self,
         user_args: str,
-        job_type: DataprocJobType = DataprocJobType.SPARK,
+        job_type: JobType = JobType.SPARK,
         local_files_to_upload: List[str] = [],
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
@@ -211,7 +211,7 @@ class GcpRunner(Runner):
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
-        if job_type == DataprocJobType.FLINK:
+        if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
             flink_jar_uri = (
                 f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
@@ -227,7 +227,7 @@ class GcpRunner(Runner):
                 + f" --flink-main-jar-uri={flink_jar_uri}"
             )
 
-        elif job_type == DataprocJobType.SPARK:
+        elif job_type == JobType.SPARK:
             main_class = "ai.chronon.spark.Driver"
             return (
                 final_args.format(
@@ -259,7 +259,7 @@ class GcpRunner(Runner):
         )
 
         dataproc_args = self.generate_dataproc_submitter_args(
-            job_type=DataprocJobType.FLINK,
+            job_type=JobType.FLINK,
             user_args=" ".join([user_args_str, flag_args_str]),
         )
         command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"

@@ -12,7 +12,7 @@ from enum import Enum
 from ai.chronon.repo.constants import SUPPORTED_SPARK, SCALA_VERSION_FOR_SPARK, APP_NAME_TEMPLATE
 
 
-class DataprocJobType(Enum):
+class JobType(Enum):
     SPARK = "spark"
     FLINK = "flink"
 

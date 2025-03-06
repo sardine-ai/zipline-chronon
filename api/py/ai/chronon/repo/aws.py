@@ -8,7 +8,7 @@ import boto3
 
 from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
-from ai.chronon.repo.utils import DataprocJobType, get_customer_id, extract_filename_from_path, split_date_range, \
+from ai.chronon.repo.utils import JobType, get_customer_id, extract_filename_from_path, split_date_range, \
     check_call
 
 # AWS SPECIFIC CONSTANTS
@@ -19,6 +19,8 @@ ZIPLINE_AWS_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
 ZIPLINE_AWS_SERVICE_JAR = "service_assembly_deploy.jar"
 
 LOCAL_FILE_TO_ETAG_JSON = f"{ZIPLINE_DIRECTORY}/local_file_to_etag.json"
+
+EMR_MOUNT_FILE_PREFIX = "/mnt/zipline/"
 
 class AwsRunner(Runner):
     def __init__(self, args, jar_path):
@@ -115,7 +117,7 @@ class AwsRunner(Runner):
             return False
 
 
-    def generate_emr_submitter_args(self, user_args: str, job_type: DataprocJobType = DataprocJobType.SPARK,
+    def generate_emr_submitter_args(self, user_args: str, job_type: JobType = JobType.SPARK,
                                     local_files_to_upload: List[str] = []):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
         s3_files = []
@@ -140,7 +142,7 @@ class AwsRunner(Runner):
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
-        if job_type == DataprocJobType.FLINK:
+        if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
             flink_jar_uri = f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}" \
                             + f"/jars/{ZIPLINE_AWS_FLINK_JAR_DEFAULT}"
@@ -151,7 +153,7 @@ class AwsRunner(Runner):
                 main_class=main_class
             ) + f" --flink-main-jar-uri={flink_jar_uri}"
 
-        elif job_type == DataprocJobType.SPARK:
+        elif job_type == JobType.SPARK:
             main_class = "ai.chronon.spark.Driver"
             return final_args.format(
                 user_args=user_args,
@@ -196,14 +198,9 @@ class AwsRunner(Runner):
                         args=self._gen_final_args(
                             start_ds=self.start_ds,
                             end_ds=end_ds,
-                            # overriding the conf here because we only want the
-                            # filename, not the full path. When we upload this to
-                            # GCS, the full path does get reflected on GCS. But
-                            # when we include the gcs file path as part of dataproc,
-                            # the file is copied to root and not the complete path
-                            # is copied.
+                            # when we download files from s3 to emr, they'll be mounted at /mnt/zipline
                             override_conf_path=(
-                                extract_filename_from_path(self.conf)
+                                EMR_MOUNT_FILE_PREFIX + extract_filename_from_path(self.conf)
                                 if self.conf
                                 else None
                             ),
@@ -216,13 +213,13 @@ class AwsRunner(Runner):
                     if self.conf:
                         local_files_to_upload_to_aws.append(self.conf)
 
-                    dataproc_args = self.generate_dataproc_submitter_args(
+                    emr_args = self.generate_emr_submitter_args(
                         local_files_to_upload=[self.conf],
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
                     )
                     command = (
-                        f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
+                        f"java -cp {self.jar_path} {EMR_ENTRY} {emr_args}"
                     )
                     command_list.append(command)
             else:
@@ -230,29 +227,25 @@ class AwsRunner(Runner):
                     subcommand=ROUTES[self.conf_type][self.mode],
                     args=self._gen_final_args(
                         start_ds=self.start_ds,
-                        # overriding the conf here because we only want the filename,
-                        # not the full path. When we upload this to GCS, the full path
-                        # does get reflected on GCS. But when we include the gcs file
-                        # path as part of dataproc, the file is copied to root and
-                        # not the complete path is copied.
+                        # when we download files from s3 to emr, they'll be mounted at /mnt/zipline
                         override_conf_path=(
-                            extract_filename_from_path(self.conf) if self.conf else None
+                            EMR_MOUNT_FILE_PREFIX + extract_filename_from_path(self.conf) if self.conf else None
                         ),
                     ),
                     additional_args=os.environ.get(
                         "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                     ),
                 )
-                local_files_to_upload_to_gcs = []
+                local_files_to_upload = []
                 if self.conf:
-                    local_files_to_upload_to_gcs.append(self.conf)
+                    local_files_to_upload.append(self.conf)
 
-                dataproc_args = self.generate_emr_submitter_args(
-                    # for now, self.conf is the only local file that requires uploading to gcs
-                    local_files_to_upload=local_files_to_upload_to_gcs,
+                emr_args = self.generate_emr_submitter_args(
+                    # for now, self.conf is the only local file that requires uploading
+                    local_files_to_upload=local_files_to_upload,
                     user_args=user_args,
                 )
-                command = f"java -cp {self.jar_path} {EMR_ENTRY} {dataproc_args}"
+                command = f"java -cp {self.jar_path} {EMR_ENTRY} {emr_args}"
                 command_list.append(command)
 
         if len(command_list) > 1:
