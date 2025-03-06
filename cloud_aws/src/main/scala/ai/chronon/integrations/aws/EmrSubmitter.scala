@@ -147,8 +147,6 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
       mainClass,
       "--files",
       filesToMount.mkString(","),
-      "--conf",
-      s"spark.yarn.dist.files=${filesToMount.mkString(",")}",
       jarUri
 //      (sparkSubmitArgs).mkString("; \n")
     ) ++ args

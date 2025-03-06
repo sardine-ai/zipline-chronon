@@ -81,8 +81,7 @@ object Driver {
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T = {
     println("Parsing conf")
-    println(s"sparkfiles root dir ${SparkFiles.getRootDirectory()}")
-    ThriftJsonCodec.fromJsonFile[T](SparkFiles.get(confPath), check = true)
+    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
   }
 
   trait SharedSubCommandArgs {
