@@ -44,10 +44,12 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
 
   // Customer specific infra configurations
   private val CustomerToSubnetIdMap = Map(
-    "canary" -> "subnet-085b2af531b50db44"
+    "canary" -> "subnet-085b2af531b50db44",
+    "dev" -> "subnet-085b2af531b50db44"
   )
   private val CustomerToSecurityGroupIdMap = Map(
-    "canary" -> "sg-04fb79b5932a41298"
+    "canary" -> "sg-04fb79b5932a41298",
+    "dev" -> "sg-04fb79b5932a41298"
   )
 
   private def createClusterRequestBuilder(emrReleaseLabel: String = DefaultEmrReleaseLabel,
