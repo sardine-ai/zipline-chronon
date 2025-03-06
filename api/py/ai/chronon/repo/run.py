@@ -32,6 +32,7 @@ from ai.chronon.repo.gcp import generate_dataproc_submitter_args, get_gcp_projec
     ZIPLINE_GCP_SERVICE_JAR, ZIPLINE_GCP_JAR_DEFAULT
 from ai.chronon.repo.utils import DataprocJobType, extract_filename_from_path, retry_decorator, get_customer_id
 
+
 ONLINE_ARGS = "--online-jar={online_jar} --online-class={online_class} "
 OFFLINE_ARGS = "--conf-path={conf_path} --end-date={ds} "
 ONLINE_WRITE_ARGS = "--conf-path={conf_path} " + ONLINE_ARGS
@@ -782,7 +783,6 @@ def set_defaults(ctx):
 @click.option("--env", required=False, default="dev", help="Running environment - default to be dev")
 @click.option("--mode", type=click.Choice(MODE_ARGS.keys()))
 @click.option("--dataproc", is_flag=True, help="Run on Dataproc in GCP")
-@click.option("--gcp", is_flag=True, help="Use GCP settings")
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
 @click.option("--start-ds", help="override the original start partition for a range backfill. "
@@ -817,7 +817,7 @@ def set_defaults(ctx):
               help="Use a mocked data source instead of a real source for groupby-streaming Flink.")
 @click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
 @click.pass_context
-def main(ctx, conf, env, mode, dataproc, gcp, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar,
+def main(ctx, conf, env, mode, dataproc, ds, app_name, start_ds, end_ds, parallelism, repo, online_jar,
          online_class,
          version, spark_version, spark_submit_path, spark_streaming_submit_path, online_jar_fetch, sub_help, conf_type,
          online_args, chronon_jar, release_tag, list_apps, render_info, groupby_name, kafka_bootstrap, mock_source,
@@ -830,7 +830,7 @@ def main(ctx, conf, env, mode, dataproc, gcp, ds, app_name, start_ds, end_ds, pa
     ctx.params["args"] = " ".join(unknown_args) + extra_args
     os.makedirs(ZIPLINE_DIRECTORY, exist_ok=True)
 
-    if dataproc or gcp:
+    if dataproc or os.environ.get('CLOUD_PROVIDER', '') == 'GCP':
         gcp_jar_path = download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(),
                                                      ZIPLINE_GCP_JAR_DEFAULT)
         service_jar_path = download_zipline_dataproc_jar(ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_SERVICE_JAR)
