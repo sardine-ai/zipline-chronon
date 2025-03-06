@@ -122,7 +122,7 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
       )
       // TODO: need to double check that this is how we want our role names to be
       .serviceRole(s"zipline_${customerId}_emr_service_role")
-      .jobFlowRole(s"zipline_${customerId}_emr_profile")
+      .jobFlowRole(s"zipline_${customerId}_emr_profile_role")
       .releaseLabel(emrReleaseLabel)
 
   }
