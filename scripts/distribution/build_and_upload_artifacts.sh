@@ -184,7 +184,7 @@ function upload_to_gcp() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars
+                ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars/
                 gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
