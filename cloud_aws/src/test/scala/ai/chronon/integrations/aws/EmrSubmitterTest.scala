@@ -98,7 +98,7 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
   it should "test flink kafka ingest job locally" ignore {}
 
-  it should "Used to iterate locally. Do not enable this in CI/CD!" in {
+  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
     val emrSubmitter = new EmrSubmitter("canary",
                                         EmrClient
                                           .builder()

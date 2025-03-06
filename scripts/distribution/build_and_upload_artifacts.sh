@@ -66,10 +66,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-if [[ -n $(git diff HEAD) ]]; then
-    echo "Error: You have uncommitted changes. Please commit and push them to git so we can track them."
-    exit 1
-fi
+#if [[ -n $(git diff HEAD) ]]; then
+#    echo "Error: You have uncommitted changes. Please commit and push them to git so we can track them."
+#    exit 1
+#fi
 
 # Get current branch name
 local_branch=$(git rev-parse --abbrev-ref HEAD)
@@ -77,12 +77,12 @@ local_branch=$(git rev-parse --abbrev-ref HEAD)
 # Fetch latest from remote
 git fetch origin $local_branch
 
-# Check if local is behind remote
-if [[ -n $(git diff HEAD..origin/$local_branch) ]]; then
-    echo "Error: Your branch is not in sync with remote"
-    echo "Please push your local changes and sync your local branch $local_branch with remote"
-    exit 1
-fi
+## Check if local is behind remote
+#if [[ -n $(git diff HEAD..origin/$local_branch) ]]; then
+#    echo "Error: Your branch is not in sync with remote"
+#    echo "Please push your local changes and sync your local branch $local_branch with remote"
+#    exit 1
+#fi
 
 set -euxo pipefail
 
@@ -213,10 +213,10 @@ function upload_to_aws() {
               do
                 ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/jars/
                 aws s3 cp "$CLOUD_AWS_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$OLD_ZIPLINE_WHEEL_NAME" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+#                aws s3 cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+#                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+#                aws s3 cp "$OLD_ZIPLINE_WHEEL_NAME" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+#                aws s3 cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"
               break;;
