@@ -79,8 +79,10 @@ class DummyExtensions extends (SparkSessionExtensions => Unit) {
 object Driver {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
-    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
+  def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T = {
+    println(s"sparkfiles root dir ${SparkFiles.getRootDirectory()}")
+    ThriftJsonCodec.fromJsonFile[T](SparkFiles.get(confPath), check = true)
+  }
 
   trait SharedSubCommandArgs {
     this: ScallopConf =>
