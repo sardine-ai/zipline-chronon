@@ -79,6 +79,7 @@ maven_repository = repository(
         "software.amazon.awssdk:utils:2.30.13",
         "software.amazon.awssdk:auth:2.30.13",
         "software.amazon.awssdk:identity-spi:2.30.13",
+        "software.amazon.awssdk:emr:2.30.13",
         "com.amazonaws:DynamoDBLocal:2.4.0",
 
         # Google Cloud

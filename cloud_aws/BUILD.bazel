@@ -4,6 +4,7 @@ shared_libs = [
     maven_artifact("software.amazon.awssdk:aws-core"),
     maven_artifact("software.amazon.awssdk:sdk-core"),
     maven_artifact("software.amazon.awssdk:utils"),
+    maven_artifact("software.amazon.awssdk:emr"),
     maven_artifact("com.google.guava:guava"),
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("org.apache.hudi:hudi-aws-bundle"),
