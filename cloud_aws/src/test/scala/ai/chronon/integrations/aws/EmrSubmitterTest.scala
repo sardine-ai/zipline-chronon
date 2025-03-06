@@ -108,7 +108,7 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
       Map(
         MainClass -> "ai.chronon.spark.Driver",
         JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
-        JobFlowId -> "j-13BASWFP15TLR"
+        ClusterId -> "j-13BASWFP15TLR"
       ),
       List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
       "group-by-backfill",

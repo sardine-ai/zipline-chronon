@@ -181,7 +181,7 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
 
     } else {
       // use existing cluster
-      val existingJobId = jobProperties.getOrElse(JobFlowId, throw new RuntimeException("JobFlowId not found"))
+      val existingJobId = jobProperties.getOrElse(ClusterId, throw new RuntimeException("JobFlowId not found"))
       val request = AddJobFlowStepsRequest
         .builder()
         .jobFlowId(existingJobId)
@@ -266,7 +266,7 @@ object EmrSubmitter {
       .getOrElse(DefaultClusterIdleTimeout.toString)
     val createCluster = args.exists(_.startsWith(CreateClusterArgKeyword))
 
-    val jobFlowId = sys.env.get("EMR_JOB_FLOW_ID")
+    val clusterId = sys.env.get("EMR_CLUSTER_ID")
 
     // search args array for prefix `--gcs_files`
     val filesArgs = args.filter(_.startsWith(FilesArgKeyword))
@@ -289,8 +289,8 @@ object EmrSubmitter {
           ShouldCreateCluster -> createCluster.toString
         )
 
-        if (!createCluster && jobFlowId.isDefined) {
-          (TypeSparkJob, baseProps + (JobFlowId -> jobFlowId.get))
+        if (!createCluster && clusterId.isDefined) {
+          (TypeSparkJob, baseProps + (ClusterId -> clusterId.get))
         } else {
           (TypeSparkJob, baseProps)
         }
