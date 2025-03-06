@@ -7,13 +7,13 @@
 
 <Tabs class="w-full">
 	<TabsList>
-		<TabsTrigger href="./drift" class="flex items-center">
-			<IconChartLine class="mr-2 size-4" />
-			Drift
-		</TabsTrigger>
 		<TabsTrigger href="./summary" class="flex items-center">
 			<IconTableCells class="mr-2" />
 			Summary
+		</TabsTrigger>
+		<TabsTrigger href="./drift" class="flex items-center">
+			<IconChartLine class="mr-2 size-4" />
+			Drift
 		</TabsTrigger>
 	</TabsList>
 	<Separator fullWidthExtend={true} />
