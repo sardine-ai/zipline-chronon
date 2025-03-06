@@ -28,7 +28,10 @@ import ai.chronon.online.Api
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint
 import ai.chronon.online.TopicChecker
-import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
+import ai.chronon.online.fetcher.ConfPathOrName
+import ai.chronon.online.fetcher.FetchContext
+import ai.chronon.online.fetcher.FetcherMain
+import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.spark.stats.CompareBaseJob
 import ai.chronon.spark.stats.CompareJob
 import ai.chronon.spark.stats.ConsistencyJob
@@ -160,6 +163,19 @@ object Driver {
     protected def buildSparkSession(): SparkSession = {
       implicit val formats: Formats = DefaultFormats
       val yamlLoader = new Yaml()
+
+      // We use the KryoSerializer for group bys and joins since we serialize the IRs.
+      // But since staging query is fairly freeform, it's better to stick to the java serializer.
+      val session =
+        SparkSessionBuilder.build(
+          subcommandName(),
+          local = isLocal,
+          localWarehouseLocation = localWarehouseLocation.toOption,
+          enforceKryoSerializer = !subcommandName().contains("staging_query")
+//          additionalConfig = additionalConfs
+        )
+
+      println(s"${SparkFiles.getRootDirectory()}")
       // print working directory
       println(s"Working directory: ${System.getProperty("user.dir")}")
       val additionalConfs = additionalConfPath.toOption
@@ -173,17 +189,8 @@ object Driver {
         .map((v) => render(v))
         .map(compact)
         .map((str) => parse(str).extract[Map[String, String]])
+      println(additionalConfs)
 
-      // We use the KryoSerializer for group bys and joins since we serialize the IRs.
-      // But since staging query is fairly freeform, it's better to stick to the java serializer.
-      val session =
-        SparkSessionBuilder.build(
-          subcommandName(),
-          local = isLocal,
-          localWarehouseLocation = localWarehouseLocation.toOption,
-          enforceKryoSerializer = !subcommandName().contains("staging_query"),
-          additionalConfig = additionalConfs
-        )
       if (localTableMapping.nonEmpty) {
         localTableMapping.foreach { case (table, filePath) =>
           val file = new File(filePath)
