@@ -160,7 +160,8 @@ object Driver {
     protected def buildSparkSession(): SparkSession = {
       implicit val formats: Formats = DefaultFormats
       val yamlLoader = new Yaml()
-      println(s"David Han - ${SparkFiles.get("additional-confs.yaml")}")
+      // print working directory
+      println(s"Working directory: ${System.getProperty("user.dir")}")
       val additionalConfs = additionalConfPath.toOption
         .map(SparkFiles.get)
         .map(Source.fromFile)
