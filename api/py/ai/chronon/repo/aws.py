@@ -160,7 +160,7 @@ class AwsRunner(Runner):
                 jar_uri=jar_uri,
                 job_type=job_type.value,
                 main_class=main_class
-            ) + f" --additional-conf-path=additional-confs.yaml --files={s3_file_args}"
+            ) + f" --additional-conf-path={EMR_MOUNT_FILE_PREFIX}additional-confs.yaml --files={s3_file_args}"
         else:
             raise ValueError(f"Invalid job type: {job_type}")
 
