@@ -39,6 +39,7 @@ spark_repository = repository(
         "org.apache.hadoop:hadoop-auth",
         "org.apache.hadoop:hadoop-client-api",
         "org.apache.hadoop:hadoop-common",
+        "org.apache.hadoop:hadoop-yarn-api",
         "org.apache.twill:twill-zookeeper",
         "org.apache.zookeeper:zookeeper",
         "com.google.guava:guava",

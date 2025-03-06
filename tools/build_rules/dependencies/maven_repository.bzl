@@ -17,6 +17,8 @@ maven_repository = repository(
         "org.mockito:mockito-core:5.12.0",
         "org.objenesis:objenesis:3.4",
 
+        "org.eclipse.jetty:jetty-util:12.0.16",
+
         # Add other dependencies
         "org.slf4j:slf4j-api:2.0.12",
         "org.apache.logging.log4j:log4j-slf4j-impl:2.20.0",
@@ -70,6 +72,9 @@ maven_repository = repository(
         # Hadoop
         "org.apache.hadoop:hadoop-client-api:3.4.1",
         "org.apache.hadoop:hadoop-common:3.4.1",
+        "org.apache.hadoop:hadoop-yarn-api:3.4.1",
+        "org.apache.hadoop:hadoop-yarn-common:3.4.1",
+
 
         # AWS
         "software.amazon.awssdk:dynamodb:2.30.13",
@@ -118,6 +123,7 @@ maven_repository = repository(
         "io.vertx:vertx-unit:4.5.10",
     ],
     excluded_artifacts = [
+        "org.apache.commons:commons-text",
         "org.apache.beam:beam-sdks-java-io-hadoop-common",
         "org.pentaho:pentaho-aggdesigner-algorithm",
         # Exclude Hadoop from the assembled JAR
@@ -130,9 +136,7 @@ maven_repository = repository(
         "org.apache.hadoop:hadoop-hdfs-client",
         "org.apache.hadoop:hadoop-hdfs",
         "org.apache.hadoop:hadoop-mapreduce-client-core",
-        "org.apache.hadoop:hadoop-yarn-api",
         "org.apache.hadoop:hadoop-yarn-client",
-        "org.apache.hadoop:hadoop-yarn-common",
         "org.apache.parquet:parquet-avro",
         "org.apache.zookeeper:zookeeper",
         "org.scala-lang:scala-library",
