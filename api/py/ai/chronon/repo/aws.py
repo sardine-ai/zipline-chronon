@@ -1,3 +1,4 @@
+import json
 import logging
 import multiprocessing
 import os
@@ -5,7 +6,7 @@ from typing import List
 
 import boto3
 
-from ai.chronon.repo.constants import ROUTES
+from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import DataprocJobType, get_customer_id, extract_filename_from_path, split_date_range, \
     check_call
@@ -17,6 +18,7 @@ ZIPLINE_AWS_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.aws.AwsApiImpl"
 ZIPLINE_AWS_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
 ZIPLINE_AWS_SERVICE_JAR = "service_assembly_deploy.jar"
 
+LOCAL_FILE_TO_ETAG_JSON = f"{ZIPLINE_DIRECTORY}/local_file_to_etag.json"
 
 class AwsRunner(Runner):
     def __init__(self, args, jar_path):
@@ -38,19 +40,79 @@ class AwsRunner(Runner):
 
     @staticmethod
     def download_zipline_aws_jar(destination_dir: str, customer_id: str, jar_name: str):
-        obj = boto3.client("s3")
+        s3_client = boto3.client("s3")
         destination_path = f"{destination_dir}/{jar_name}"
         source_key_name = f"jars/{jar_name}"
+        bucket_name = f"zipline-artifacts-{customer_id}"
 
-        # Downloading a csv file
-        # from S3 bucket to local folder
-        obj.download_file(
-            Filename=destination_path,
-            Bucket=f"zipline-artifacts-{customer_id}",
-            Key=source_key_name
+        are_identical = (
+            AwsRunner.compare_s3_and_local_file_hashes(
+                bucket_name, source_key_name, destination_path
+            )
+            if os.path.exists(destination_path)
+            else False
         )
-        print(f"Downloaded {jar_name} to {destination_path}")
+
+        if are_identical:
+            print(f"{destination_path} matches S3 {bucket_name}/{source_key_name}")
+        else:
+            print(
+                f"{destination_path} does NOT match S3 {bucket_name}/{source_key_name}"
+            )
+            print(f"Downloading {jar_name} from S3...")
+
+            s3_client.download_file(
+                Filename=destination_path,
+                Bucket=bucket_name,
+                Key=source_key_name
+            )
+            # Persist ETag to prevent downloading the same file next time
+            etag = AwsRunner.get_s3_file_hash(bucket_name, source_key_name)
+            if os.path.exists(LOCAL_FILE_TO_ETAG_JSON):
+                with open(LOCAL_FILE_TO_ETAG_JSON, 'r') as file:
+                    data = json.load(file)
+
+                # Add the new entry
+                data[destination_path] = etag
+
+                # Write the updated dictionary back to the file
+                with open(LOCAL_FILE_TO_ETAG_JSON, 'w') as file:
+                    json.dump(data, file)
+            else:
+                with open(LOCAL_FILE_TO_ETAG_JSON, 'w') as file:
+                    data = {destination_path: etag}
+                    json.dump(data, file)
+
         return destination_path
+
+
+    @staticmethod
+    def get_s3_file_hash(bucket_name: str, file_name: str):
+        s3_client = boto3.client("s3")
+        response = s3_client.head_object(Bucket=bucket_name, Key=file_name)
+        return response['ETag'].strip('"')
+
+    @staticmethod
+    def get_local_file_hash(file_name: str):
+        # read in the json file
+        if os.path.exists(LOCAL_FILE_TO_ETAG_JSON):
+            with open(LOCAL_FILE_TO_ETAG_JSON, 'r') as f:
+                data = json.load(f)
+                if file_name in data:
+                    return data[file_name]
+        return None
+
+
+    @staticmethod
+    def compare_s3_and_local_file_hashes(bucket_name: str, s3_file_path: str, local_file_path: str):
+        try:
+            s3_hash = AwsRunner.get_s3_file_hash(bucket_name, s3_file_path)
+            local_hash = AwsRunner.get_local_file_hash(local_file_path)
+            print(f"Local hash: {local_hash}, S3 hash: {s3_hash}")
+            return s3_hash == local_hash
+        except Exception as e:
+            print(f"Error comparing files: {str(e)}")
+            return False
 
 
     def generate_emr_submitter_args(self, user_args: str, job_type: DataprocJobType = DataprocJobType.SPARK,

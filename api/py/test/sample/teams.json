@@ -17,7 +17,7 @@
       "GCP_REGION": "us-central1",
       "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
       "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
-      "CLOUD_PROVIDER": "GCP"
+      "CLOUD_PROVIDER": "AWS"
     },
     "production": {
       "backfill": {
