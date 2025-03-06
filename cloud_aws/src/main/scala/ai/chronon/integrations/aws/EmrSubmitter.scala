@@ -223,7 +223,7 @@ object EmrSubmitter {
 
   private val DefaultClusterInstanceType = "m5.xlarge"
   private val DefaultClusterInstanceCount = 3
-  private val DefaultClusterIdleTimeout = 60 * 60 * 12 // 12h in seconds
+  private val DefaultClusterIdleTimeout = 60 * 60 * 1 // 1h in seconds
 
   def main(args: Array[String]): Unit = {
     // List of args that are not application args
