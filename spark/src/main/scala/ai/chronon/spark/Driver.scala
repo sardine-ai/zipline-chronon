@@ -40,7 +40,6 @@ import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.streaming.JoinSourceRunner
 import org.apache.commons.io.FileUtils
-import org.apache.spark.SparkEnv
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
@@ -156,7 +155,7 @@ object Driver {
         descr = "Directory to write locally loaded warehouse data into. This will contain unreadable parquet files"
       )
 
-    val sparkSession: SparkSession = buildSparkSession()
+    lazy val sparkSession: SparkSession = buildSparkSession()
 
     def endDate(): String = endDateInternal.toOption.getOrElse(buildTableUtils().partitionSpec.now)
 
@@ -398,14 +397,25 @@ object Driver {
         with OfflineSubcommand
         with LocalExportTableAbility
         with ResultValidationAbility {
-      lazy val groupByConf: api.GroupBy = parseConf[api.GroupBy](confPath())
-      override def subcommandName(): String = s"groupBy_${groupByConf.metaData.name}_backfill"
+//      lazy val groupByConf: api.GroupBy = parseConf[api.GroupBy](confPath())
+      override def subcommandName(): String = s"groupBy_backfill"
     }
 
     def run(args: Args): Unit = {
-      val tableUtils = args.buildTableUtils()
+//      val tableUtils = args.buildTableUtils()
+
+      val sparkSession: SparkSession = SparkSession
+        .builder()
+        .appName("groupbybackfill")
+//        .config("spark.master", sys.env.getOrElse("SPARK_MASTER_URL", "local"))
+//        .config("spark.jars", args.onlineJar())
+        .getOrCreate()
+      implicit val tableUtils: TableUtils = TableUtils(sparkSession)
+
+      lazy val groupByConf: api.GroupBy = parseConf[api.GroupBy](args.confPath())
+
       GroupBy.computeBackfill(
-        args.groupByConf,
+        groupByConf,
         args.endDate(),
         tableUtils,
         args.stepDays.toOption,
@@ -414,12 +424,12 @@ object Driver {
       )
 
       if (args.shouldExport()) {
-        args.exportTableToLocal(args.groupByConf.metaData.outputTable, tableUtils)
+        args.exportTableToLocal(groupByConf.metaData.outputTable, tableUtils)
       }
 
       if (args.shouldPerformValidate()) {
-        val df = tableUtils.loadTable(args.groupByConf.metaData.outputTable)
-        args.validateResult(df, args.groupByConf.keys(tableUtils.partitionColumn).toSeq, tableUtils)
+        val df = tableUtils.loadTable(groupByConf.metaData.outputTable)
+        args.validateResult(df, groupByConf.keys(tableUtils.partitionColumn).toSeq, tableUtils)
       }
     }
   }
