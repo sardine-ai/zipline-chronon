@@ -133,13 +133,23 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
                                args: String*): StepConfig = {
     // Copy files from s3 to cluster
     val awsS3CpArgs = filesToMount.map(file => s"aws s3 cp $file /mnt/zipline/")
+
+    val sparkFilesArgs = "--files " + filesToMount.mkString(",")
+
     val sparkSubmitArgs =
-      List(s"spark-submit --class $mainClass $jarUri ${args.mkString(" ")}")
+      List(s"spark-submit --class $mainClass $sparkFilesArgs $jarUri ${args.mkString(" ")}")
     val finalArgs = List(
-      "bash",
-      "-c",
-      (awsS3CpArgs ++ sparkSubmitArgs).mkString("; \n")
-    )
+//      "bash",
+//      "-c",
+//      (awsS3CpArgs ++ sparkSubmitArgs).mkString("; \n")
+      "spark-submit",
+      "--class",
+      mainClass,
+      "--files",
+      filesToMount.mkString(","),
+      jarUri
+//      (sparkSubmitArgs).mkString("; \n")
+    ) ++ args
     println(finalArgs)
     StepConfig
       .builder()

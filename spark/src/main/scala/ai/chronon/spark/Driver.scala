@@ -160,7 +160,9 @@ object Driver {
     protected def buildSparkSession(): SparkSession = {
       implicit val formats: Formats = DefaultFormats
       val yamlLoader = new Yaml()
+      println(s"David Han - ${SparkFiles.get("additional-confs.yaml")}")
       val additionalConfs = additionalConfPath.toOption
+        .map(SparkFiles.get)
         .map(Source.fromFile)
         .map((src) =>
           try { src.mkString }
@@ -675,7 +677,7 @@ object Driver {
       val groupByName = groupByConf.metaData.name
 
       logger.info(s"Triggering bulk load for GroupBy: ${groupByName} for partition: ${args
-        .partitionString()} from table: ${offlineTable}")
+          .partitionString()} from table: ${offlineTable}")
       val kvStore = args.api.genKvStore
       val startTime = System.currentTimeMillis()
 
@@ -685,12 +687,12 @@ object Driver {
       } catch {
         case e: Exception =>
           logger.error(s"Failed to upload GroupBy: ${groupByName} for partition: ${args
-                         .partitionString()} from table: $offlineTable",
+                           .partitionString()} from table: $offlineTable",
                        e)
           throw e
       }
       logger.info(s"Uploaded GroupByUpload data to KV store for GroupBy: ${groupByName}; partition: ${args
-        .partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
+          .partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
   }
 

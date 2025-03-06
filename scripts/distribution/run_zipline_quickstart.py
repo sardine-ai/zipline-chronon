@@ -3,8 +3,6 @@ import tempfile
 import subprocess
 import os
 
-from enum import Enum
-
 GCP = 'GCP'
 AWS = 'AWS'
 

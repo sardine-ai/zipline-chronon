@@ -2,8 +2,9 @@
 # Run this bash script via the python file `distribution/run_zipline_quickstart.py`
 set -xo pipefail
 
-WORKING_DIR=$1
-cd $WORKING_DIR
+mkdir /tmp/zipline/aws/
+rm -rf /tmp/zipline/aws/cananry-confs
+cd /tmp/zipline/aws/
 
 
 GREEN='\033[0;32m'
@@ -35,23 +36,6 @@ pip uninstall zipline-ai
 pip install --force-reinstall $WHEEL_FILE
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-
-# function to check dataproc job id state
-function check_dataproc_job_state() {
-  JOB_ID=$1
-  if [ -z "$JOB_ID" ]; then
-        echo "No job id available to check. Exiting."
-        exit 1
-  fi
-  echo -e "${GREEN} <<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>\033[0m"
-  JOB_STATE=$(gcloud dataproc jobs describe $JOB_ID --region=us-central1 --format=flattened | grep "status.state:")
-  echo $JOB_STATE
-#  TODO: this doesn't actually fail. need to fix.
-  if [ -z "$JOB_STATE" ]; then
-        echo "Job failed"
-        exit 1
-  fi
-}
 
 function check_emr_step_state() {
   STEP_ID=$1
@@ -87,6 +71,8 @@ function check_emr_cluster_state() {
   aws emr describe-cluster --cluster-id $CLUSTER_ID
 }
 
+
+
 EMR_SUBMITTER_ID_CLUSTER_STR="EMR job id"
 EMR_SUBMITER_ID_STEP_STR="EMR step id"
 
@@ -95,13 +81,16 @@ zipline compile --conf=group_bys/quickstart/purchases.py
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
 touch tmp_backfill.out
-zipline run --conf production/group_bys/quickstart/purchases.v1_dev --create-cluster --cluster-instance-count=1 --cluster-idle-timeout=1 2>&1 | tee tmp_backfill.out
-CLUSTER_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITTER_ID_CLUSTER_STR"  | cut -d " " -f5)
-check_emr_cluster_state $CLUSTER_ID
 
-# Get the step id
-STEP_ID=$(aws emr list-steps --cluster-id $CLUSTER_ID | jq -r '.Steps[0].Id')
-check_emr_step_state $STEP_ID $CLUSTER_ID
+CLUSTER_ID=j-13BASWFP15TLR zipline run --conf production/group_bys/quickstart/purchases.v1_dev 2>&1 | tee tmp_backfill.out
+
+#zipline run --conf production/group_bys/quickstart/purchases.v1_dev --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
+#CLUSTER_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITTER_ID_CLUSTER_STR"  | cut -d " " -f5)
+#check_emr_cluster_state $CLUSTER_ID
+#
+## Get the step id
+#STEP_ID=$(aws emr list-steps --cluster-id $CLUSTER_ID | jq -r '.Steps[0].Id')
+#check_emr_step_state $STEP_ID $CLUSTER_ID
 
 
 

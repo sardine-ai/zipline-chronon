@@ -98,7 +98,7 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
   it should "test flink kafka ingest job locally" ignore {}
 
-  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
+  it should "Used to iterate locally. Do not enable this in CI/CD!" in {
     val emrSubmitter = new EmrSubmitter("canary",
                                         EmrClient
                                           .builder()
@@ -113,13 +113,13 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
       List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
       "group-by-backfill",
       "--conf-path",
-      "/mnt/zipline/purchases.v1",
+      "purchases.v1",
       "--end-date",
       "2025-02-26",
       "--conf-type",
       "group_bys",
       "--additional-conf-path",
-      "/mnt/zipline/additional-confs.yaml"
+      "additional-confs.yaml"
     )
     println("EMR job id: " + jobId)
     0
