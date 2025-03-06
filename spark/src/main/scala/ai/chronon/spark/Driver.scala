@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 
 import java.io.File
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Paths
 import scala.collection.JavaConverters._
@@ -82,6 +83,11 @@ object Driver {
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T = {
 //    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
     println(s"sparkfiles root dir ${SparkFiles.getRootDirectory()}")
+    // list the files in the root directory
+    println("list files")
+    val dir = FileSystems.getDefault.getPath(SparkFiles.getRootDirectory())
+    Files.list(dir).iterator().asScala.foreach(println)
+
     ThriftJsonCodec.fromJsonFile[T](SparkFiles.get(confPath), check = true)
 
   }
