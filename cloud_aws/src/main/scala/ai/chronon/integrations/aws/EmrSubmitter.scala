@@ -220,6 +220,7 @@ object EmrSubmitter {
   private val ClusterInstanceCountArgKeyword = "--cluster-instance-count"
   private val ClusterIdleTimeoutArgKeyword = "--cluster-idle-timeout"
   private val CreateClusterArgKeyword = "--create-cluster"
+  private val JobFlowIdArgKeyword = "--job-flow-id"
 
   private val DefaultClusterInstanceType = "m5.xlarge"
   private val DefaultClusterInstanceCount = 3
@@ -235,7 +236,10 @@ object EmrSubmitter {
       FlinkSavepointUriArgKeyword,
       ClusterInstanceTypeArgKeyword,
       ClusterInstanceCountArgKeyword,
-      ClusterIdleTimeoutArgKeyword
+      ClusterIdleTimeoutArgKeyword,
+      FilesArgKeyword,
+      CreateClusterArgKeyword,
+      JobFlowIdArgKeyword
     )
 
     val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
@@ -261,6 +265,17 @@ object EmrSubmitter {
       .map(_.split("=")(1))
       .getOrElse(DefaultClusterIdleTimeout.toString)
     val createCluster = args.exists(_.startsWith(CreateClusterArgKeyword))
+    val jobFlowId = args.find(_.startsWith(JobFlowIdArgKeyword)).map(_.split("=")(1))
+
+    // search args array for prefix `--gcs_files`
+    val filesArgs = args.filter(_.startsWith(FilesArgKeyword))
+    assert(filesArgs.length == 0 || filesArgs.length == 1)
+
+    val files = if (filesArgs.isEmpty) {
+      Array.empty[String]
+    } else {
+      filesArgs(0).split("=")(1).split(",")
+    }
 
     val (jobType, jobProps) = jobTypeValue.toLowerCase match {
       case "spark" => {
@@ -272,7 +287,11 @@ object EmrSubmitter {
           ClusterIdleTimeout -> clusterIdleTimeout,
           ShouldCreateCluster -> createCluster.toString
         )
-        (TypeSparkJob, baseProps)
+        if (!createCluster) {
+          (TypeSparkJob, baseProps + (JobFlowId -> jobFlowId.get))
+        } else {
+          (TypeSparkJob, baseProps)
+        }
       }
       // TODO: add flink
       case _ => throw new Exception("Invalid job type")
@@ -284,7 +303,7 @@ object EmrSubmitter {
     emrSubmitter.submit(
       jobType,
       jobProps,
-      List.empty,
+      files.toList,
       finalArgs: _*
     )
   }

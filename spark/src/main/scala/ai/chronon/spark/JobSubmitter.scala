@@ -37,5 +37,5 @@ object JobSubmitterConstants {
   val MainClassKeyword = "--main-class"
   val FlinkMainJarUriArgKeyword = "--flink-main-jar-uri"
   val FlinkSavepointUriArgKeyword = "--savepoint-uri"
-
+  val FilesArgKeyword = "--files"
 }
