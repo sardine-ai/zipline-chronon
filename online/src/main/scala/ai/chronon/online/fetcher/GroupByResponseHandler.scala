@@ -61,7 +61,14 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
                                                     batchBytes,
                                                     requestContext.copy(servingInfo = newServingInfo))
 
-        newServingInfo.outputCodec.fieldNames.iterator.zip(output.iterator.map(_.asInstanceOf[AnyRef])).toMap
+        val fieldNames = newServingInfo.outputCodec.fieldNames
+        if (output != null) {
+          fieldNames.iterator
+            .zip(output.iterator.map(v => if (v == null) null else v.asInstanceOf[AnyRef]))
+            .toMap
+        } else {
+          fieldNames.map(_ -> null).toMap
+        }
       }
 
     requestContext.metricsContext.distribution("group_by.latency.millis",
@@ -105,7 +112,7 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
     val batchIr: FinalBatchIr =
       getBatchIrFromBatchResponse(batchResponses, batchBytes, servingInfo, toBatchIr, requestContext.keys)
 
-    val output: Array[Any] = if (fetchContext.isTilingEnabled) {
+    if (fetchContext.isTilingEnabled) {
       mergeTiledIrsFromStreaming(requestContext.queryTimeMs, servingInfo, streamingResponses, aggregator, batchIr)
     } else {
       mergeRawEventsFromStreaming(requestContext.queryTimeMs,
@@ -115,7 +122,6 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
                                   aggregator,
                                   batchIr)
     }
-    output
   }
 
   private def mergeRawEventsFromStreaming(queryTimeMs: Long,
@@ -173,7 +179,7 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
                                          servingInfo: GroupByServingInfoParsed,
                                          streamingResponses: Seq[TimedValue],
                                          aggregator: SawtoothOnlineAggregator,
-                                         batchIr: FinalBatchIr) = {
+                                         batchIr: FinalBatchIr): Array[Any] = {
     val streamingIrs: Iterator[TiledIr] = streamingResponses.iterator
       .filter(tVal => tVal.millis >= servingInfo.batchEndTsMillis)
       .flatMap { tVal =>

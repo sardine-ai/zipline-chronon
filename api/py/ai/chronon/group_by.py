@@ -431,20 +431,20 @@ def GroupBy(
     sources: Union[List[_ANY_SOURCE_TYPE], _ANY_SOURCE_TYPE],
     keys: List[str],
     aggregations: Optional[List[ttypes.Aggregation]],
+    derivations: List[ttypes.Derivation] = None,
+    accuracy: ttypes.Accuracy = None,
+    backfill_start_date: str = None,
+    output_namespace: str = None,
+    table_properties: Dict[str, str] = None,
+    tags: Dict[str, str] = None,
     online: bool = DEFAULT_ONLINE,
     production: bool = DEFAULT_PRODUCTION,
-    backfill_start_date: str = None,
-    dependencies: List[str] = None,
-    env: Dict[str, Dict[str, str]] = None,
-    table_properties: Dict[str, str] = None,
-    output_namespace: str = None,
-    accuracy: ttypes.Accuracy = None,
-    lag: int = 0,
+    # execution params
     offline_schedule: str = "@daily",
-    name: str = None,
-    tags: Dict[str, str] = None,
-    derivations: List[ttypes.Derivation] = None,
-    **kwargs,
+    conf: common.ConfigProperties = None,
+    env_vars: common.EnvironmentVariables = None,
+    step_days: int = None,
+    disable_historical_backfill: bool = False,
 ) -> ttypes.GroupBy:
     """
 
@@ -499,10 +499,6 @@ def GroupBy(
         Start date from which GroupBy data should be computed. This will determine how back of a time that Chronon would
         goto to compute the resultant table and its aggregations.
     :type backfill_start_date: str
-    :param dependencies:
-        This goes into MetaData.dependencies - which is a list of string representing which table partitions to wait for
-        Typically used by engines like airflow to create partition sensors.
-    :type dependencies: List[str]
     :param env:
         This is a dictionary of "mode name" to dictionary of "env var name" to "env var value"::
 
@@ -559,6 +555,24 @@ def GroupBy(
         Additional properties that would be passed to run.py if specified under additional_args property.
         And provides an option to pass custom values to the processing logic.
     :type kwargs: Dict[str, str]
+    :param conf:
+        Configuration properties for the GroupBy. Depending on the mode we layer confs with the following priority:
+        1. conf set in the GroupBy.conf.<mode>
+        2. conf set in the GroupBy.conf.common
+        3. conf set in the team.conf.<mode>
+        4. conf set in the team.conf.common
+        5. conf set in the default.conf.<mode>
+        6. conf set in the default.conf.common
+    :param env_vars:
+        Environment variables for the GroupBy. Depending on the mode we layer envs with the following priority:
+        1. env vars set in the GroupBy.env.<mode>
+        2. env vars set in the GroupBy.env.common
+        3. env vars set in the team.env.<mode>
+        4. env vars set in the team.env.common
+        5. env vars set in the default.env.<mode>
+        6. env vars set in the default.env.common
+    :param step_days
+        The maximum number of days to output at once
     :return:
         A GroupBy object containing specified aggregations.
     """
@@ -615,17 +629,18 @@ def GroupBy(
     if not isinstance(sources, list):
         sources = [sources]
 
-    deps = [
-        dep
-        for src in sources
-        for dep in utils.get_dependencies(_normalize_source(src), dependencies, lag=lag)
-    ]
-
     sources = [_sanitize_columns(_normalize_source(source)) for source in sources]
 
-    kwargs.update({"lag": lag})
     # get caller's filename to assign team
     team = inspect.stack()[1].filename.split("/")[-2]
+
+    exec_info = common.ExecutionInfo(
+        scheduleCron=offline_schedule,
+        conf=conf,
+        env=env_vars,
+        stepDays=step_days,
+        historicalBackfill=disable_historical_backfill,
+    )
 
     column_tags = {}
     if aggregations:
@@ -633,20 +648,16 @@ def GroupBy(
             if hasattr(agg, "tags") and agg.tags:
                 for output_col in get_output_col_names(agg):
                     column_tags[output_col] = agg.tags
-    metadata = {"groupby_tags": tags, "column_tags": column_tags}
-    kwargs.update(metadata)
 
     metadata = ttypes.MetaData(
-        name=name,
         online=online,
         production=production,
         outputNamespace=output_namespace,
-        customJson=json.dumps(kwargs),
-        dependencies=deps,
-        modeToEnvMap=env,
         tableProperties=table_properties,
         team=team,
-        offlineSchedule=offline_schedule,
+        executionInfo=exec_info,
+        tags=tags if tags else None,
+        columnTags=column_tags if column_tags else None,
     )
 
     group_by = ttypes.GroupBy(

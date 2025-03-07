@@ -1,10 +1,8 @@
 {
         "metaData": {
           "name": "team.example_group_by.v1",
-          "production": 0,
-          "dependencies": [
-          ],
-          "team": "team"
+          "team": "team",
+          "production": 0
         },
         "sources": [
           {

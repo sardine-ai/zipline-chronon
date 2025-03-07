@@ -1,6 +1,12 @@
+from copy import deepcopy
 import importlib
 import os
-from ai.chronon.api.ttypes import ConfigProperties, Team, EnvironmentVariables
+from ai.chronon.api.common.ttypes import (
+    ExecutionInfo,
+    ConfigProperties,
+    EnvironmentVariables,
+)
+from ai.chronon.api.ttypes import Team
 from ai.chronon.cli.logger import get_logger, require
 from typing import Any, List, Dict, Union
 
@@ -63,16 +69,19 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
     metadata.outputNamespace = team_dict[team].outputNamespace
 
-    metadata.env = _merge_mode_maps(
+    if metadata.executionInfo is None:
+        metadata.executionInfo = ExecutionInfo()
+
+    metadata.executionInfo.env = _merge_mode_maps(
         team_dict[_DEFAULT_CONF_TEAM].env,
         team_dict[team].env,
-        metadata.env,
+        metadata.executionInfo.env,
     )
 
-    metadata.conf = _merge_mode_maps(
+    metadata.executionInfo.conf = _merge_mode_maps(
         team_dict[_DEFAULT_CONF_TEAM].conf,
         team_dict[team].conf,
-        metadata.conf,
+        metadata.executionInfo.conf,
     )
 
 
@@ -101,13 +110,24 @@ def _merge_mode_maps(
     Merges multiple environment variables into one - with the later maps overriding the earlier ones.
     """
 
-    result = EnvironmentVariables()
+    result = None
 
     for mode_map in mode_maps:
 
         if mode_map is None:
             continue
 
+        if result is None:
+            result = deepcopy(mode_map)
+            if result.common is not None:
+                result.backfill = _merge_maps(result.common, result.backfill)
+                result.upload = _merge_maps(result.common, result.upload)
+                result.streaming = _merge_maps(result.common, result.streaming)
+                result.common = None
+            continue
+
+        # we don't set common in the env vars, because we want
+        # group_by.common to take precedence over team.backfill
         result.backfill = _merge_maps(
             result.backfill, mode_map.common, mode_map.backfill
         )

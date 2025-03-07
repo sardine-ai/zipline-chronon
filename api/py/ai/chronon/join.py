@@ -17,11 +17,9 @@ import ai.chronon.api.ttypes as api
 import ai.chronon.api.common.ttypes as common
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
-from ai.chronon.group_by import validate_group_by
 import copy
 import gc
 import importlib
-import json
 import logging
 from typing import List, Dict, Tuple
 
@@ -156,14 +154,11 @@ class DataType:
         )
 
 
-# TODO: custom_json can take privacy information per column, we can propagate
-# it into a governance system
 def ExternalSource(
     name: str,
     team: str,
     key_fields: FieldsType,
     value_fields: FieldsType,
-    custom_json: str = None,
 ) -> api.ExternalSource:
     """
     External sources are online only data sources. During fetching, using
@@ -204,7 +199,7 @@ def ExternalSource(
     """
     assert name != "contextual", "Please use `ContextualSource`"
     return api.ExternalSource(
-        metadata=api.MetaData(name=name, team=team, customJson=custom_json),
+        metadata=api.MetaData(name=name, team=team),
         keySchema=DataType.STRUCT(f"ext_{name}_keys", *key_fields),
         valueSchema=DataType.STRUCT(f"ext_{name}_values", *value_fields),
     )
@@ -294,7 +289,10 @@ def LabelParts(
                                    label join compute tasks
     """
 
-    label_metadata = api.MetaData(offlineSchedule=label_offline_schedule)
+    exec_info = common.ExecutionInfo(
+        scheduleCron=label_offline_schedule,
+    )
+    label_metadata = api.MetaData(executionInfo=exec_info)
 
     for label in labels:
         if label.groupBy.aggregations is not None:
@@ -387,8 +385,6 @@ def BootstrapPart(
         try to utilize key's data from left table; if it's not there, then we utilize bootstrap.
         For contextual features, we also support propagating the key bootstrap to the values.
 
-    Dependencies are auto-generated based on source table and optional start_partition/end_partition.
-    To override, add overriding dependencies to the main one (join.dependencies)
 
     :param table: Name of hive table that contains feature values where rows are 1:1 mapped to left table
     :param key_columns: Keys to join bootstrap table to left table
@@ -400,29 +396,26 @@ def BootstrapPart(
 def Join(
     left: api.Source,
     right_parts: List[api.JoinPart],
-    check_consistency: bool = False,
-    additional_args: List[str] = None,
-    additional_env: List[str] = None,
-    dependencies: List[str] = None,
-    online: bool = False,
-    production: bool = False,
-    output_namespace: str = None,
-    table_properties: Dict[str, str] = None,
-    env: Dict[str, Dict[str, str]] = None,
-    lag: int = 0,
-    skew_keys: Dict[str, List[str]] = None,
-    sample_percent: float = 100.0,
-    consistency_sample_percent: float = 5.0,
     online_external_parts: List[api.ExternalPart] = None,
-    offline_schedule: str = "@daily",
-    historical_backfill: bool = None,
-    row_ids: List[str] = None,
     bootstrap_parts: List[api.BootstrapPart] = None,
     bootstrap_from_log: bool = False,
-    label_part: api.LabelParts = None,
+    row_ids: List[str] = None,
+    skew_keys: Dict[str, List[str]] = None,
     derivations: List[api.Derivation] = None,
-    tags: Dict[str, str] = None,
-    **kwargs,
+    label_part: api.LabelParts = None,
+    output_namespace: str = None,
+    table_properties: Dict[str, str] = None,
+    online: bool = False,
+    production: bool = False,
+    sample_percent: float = 100.0,
+    check_consistency: bool = None,
+    consistency_sample_percent: float = 5.0,
+    # execution params
+    offline_schedule: str = "@daily",
+    historical_backfill: bool = None,
+    conf: common.ConfigProperties = None,
+    env_vars: common.EnvironmentVariables = None,
+    step_days: int = None,
 ) -> api.Join:
     """
     Construct a join object. A join can pull together data from various GroupBy's both offline and online. This is also
@@ -448,10 +441,6 @@ def Join(
     :param additional_env:
         Deprecated, see env
     :type additional_env: List[str]
-    :param dependencies:
-        This goes into MetaData.dependencies - which is a list of string representing which table partitions to wait for
-        Typically used by engines like airflow to create partition sensors.
-    :type dependencies: List[str]
     :param online:
         Should we upload this conf into kv store so that we can fetch/serve this join online.
         Once Online is set to True, you ideally should not change the conf.
@@ -466,24 +455,6 @@ def Join(
     :type output_namespace: str
     :param table_properties:
         Specifies the properties on output hive tables. Can be specified in teams.json.
-    :param env:
-        This is a dictionary of "mode name" to dictionary of "env var name" to "env var value"::
-
-            {
-                'backfill' : { 'VAR1' : 'VAL1', 'VAR2' : 'VAL2' },
-                'upload' : { 'VAR1' : 'VAL1', 'VAR2' : 'VAL2' },
-                'streaming' : { 'VAR1' : 'VAL1', 'VAR2' : 'VAL2' }
-            }
-
-        These vars then flow into run.py and the underlying spark_submit.sh.
-        These vars can be set in other places as well. The priority order (descending) is as below
-
-        1. env vars set while using run.py "VAR=VAL run.py --mode=backfill <name>"
-        2. env vars set here in Join's env param
-        3. env vars set in `team.json['team.production.<MODE NAME>']`
-        4. env vars set in `team.json['default.production.<MODE NAME>']`
-
-    :type env: Dict[str, Dict[str, str]]
     :param lag:
         Param that goes into customJson. You can pull this out of the json at path "metaData.customJson.lag"
         This is used by airflow integration to pick an older hive partition to wait on.
@@ -511,15 +482,30 @@ def Join(
         Logging will be treated as another bootstrap source, but other bootstrap_parts will take precedence.
     :param label_part:
         Label part which contains a list of labels and label refresh window boundary used for the Join
-    :param tags:
-        Additional metadata about the Join that you wish to track. Does not effect computation.
-    :type tags: Dict[str, str]
     :param historical_backfill:
         Flag to indicate whether join backfill should backfill previous holes.
         Setting to false will only backfill latest single partition
     :type historical_backfill: bool
     :return:
         A join object that can be used to backfill or serve data. For ML use-cases this should map 1:1 to model.
+    :param conf:
+        Configuration properties for the join. Depending on the mode we layer confs with the following priority:
+        1. conf set in the join.conf.<mode>
+        2. conf set in the join.conf.common
+        3. conf set in the team.conf.<mode>
+        4. conf set in the team.conf.common
+        5. conf set in the default.conf.<mode>
+        6. conf set in the default.conf.common
+    :param env_vars:
+        Environment variables for the join. Depending on the mode we layer envs with the following priority:
+        1. env vars set in the join.env.<mode>
+        2. env vars set in the join.env.common
+        3. env vars set in the team.env.<mode>
+        4. env vars set in the team.env.common
+        5. env vars set in the default.env.<mode>
+        6. env vars set in the default.env.common
+    :param step_days
+        The maximum number of days to output at once
     """
     # create a deep copy for case: multiple LeftOuterJoin use the same left,
     # validation will fail after the first iteration
@@ -533,41 +519,10 @@ def Join(
         updated_left.events.query.selects.update(
             {"ts": updated_left.events.query.timeColumn}
         )
-    # name is set externally, cannot be set here.
-    # root_keys = set(root_base_source.query.select.keys())
-    # for join_part in right_parts:
-    #    mapping = joinPart.key_mapping if joinPart.key_mapping else {}
-    #    # TODO: Add back validation? Or not?
-    #    #utils.check_contains(mapping.keys(), root_keys, "root key", "")
-    #    uncovered_keys = set(joinPart.groupBy.keyColumns) - set(mapping.values()) - root_keys
-    #    assert not uncovered_keys, f"""
-    #    Not all keys columns needed to join with GroupBy:{joinPart.groupBy.name} are present.
-    #    Missing keys are: {uncovered_keys},
-    #    Missing keys should be either mapped or selected in root.
-    #    KeyMapping only mapped: {mapping.values()}
-    #    Root only selected: {root_keys}
-    #    """
-
-    left_dependencies = utils.get_dependencies(left, dependencies, lag=lag)
-
-    right_info = [
-        (join_part.groupBy.sources, join_part.groupBy.metaData)
-        for join_part in right_parts
-    ]
-    right_info = [
-        (source, meta_data) for (sources, meta_data) in right_info for source in sources
-    ]
-    right_dependencies = [
-        dep
-        for (source, meta_data) in right_info
-        for dep in utils.get_dependencies(source, dependencies, meta_data, lag=lag)
-    ]
 
     if label_part:
-        label_dependencies = utils.get_label_table_dependencies(label_part)
         label_metadata = api.MetaData(
-            dependencies=utils.dedupe_in_order(left_dependencies + label_dependencies),
-            offlineSchedule=label_part.metaData.offlineSchedule,
+            executionInfo=label_part.metaData.executionInfo,
         )
         label_part = api.LabelParts(
             labels=label_part.labels,
@@ -575,27 +530,6 @@ def Join(
             leftEndOffset=label_part.leftEndOffset,
             metaData=label_metadata,
         )
-
-    custom_json = {"check_consistency": check_consistency, "lag": lag}
-
-    if additional_args:
-        custom_json["additional_args"] = additional_args
-
-    if additional_env:
-        custom_json["additional_env"] = additional_env
-    custom_json.update(kwargs)
-
-    custom_json["join_tags"] = tags
-    join_part_tags = {}
-    for join_part in right_parts:
-        if hasattr(join_part, "tags") and join_part.tags:
-            join_part_name = "{}{}".format(
-                join_part.prefix + "_" if join_part.prefix else "",
-                join_part.groupBy.metaData.name,
-            )
-            join_part_tags[join_part_name] = join_part.tags
-        validate_group_by(join_part.groupBy)
-    custom_json["join_part_tags"] = join_part_tags
 
     consistency_sample_percent = (
         consistency_sample_percent if check_consistency else None
@@ -627,26 +561,23 @@ def Join(
             )
         ]
 
-    bootstrap_dependencies = (
-        []
-        if dependencies is not None
-        else utils.get_bootstrap_dependencies(bootstrap_parts)
+    exec_info = common.ExecutionInfo(
+        scheduleCron=offline_schedule,
+        conf=conf,
+        env=env_vars,
+        stepDays=step_days,
+        historicalBackfill=historical_backfill,
     )
 
     metadata = api.MetaData(
         online=online,
         production=production,
-        customJson=json.dumps(custom_json),
-        dependencies=utils.dedupe_in_order(
-            left_dependencies + right_dependencies + bootstrap_dependencies
-        ),
         outputNamespace=output_namespace,
         tableProperties=table_properties,
-        modeToEnvMap=env,
         samplePercent=sample_percent,
-        offlineSchedule=offline_schedule,
+        consistencyCheck=check_consistency,
         consistencySamplePercent=consistency_sample_percent,
-        historicalBackfill=historical_backfill,
+        executionInfo=exec_info,
     )
 
     join = api.Join(

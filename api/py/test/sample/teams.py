@@ -1,4 +1,5 @@
 from ai.chronon.api.ttypes import Team
+from ai.chronon.types import EnvironmentVariables
 
 
 default = Team(

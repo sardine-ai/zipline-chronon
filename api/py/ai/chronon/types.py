@@ -7,6 +7,7 @@ import ai.chronon.query as query
 import ai.chronon.join as join
 import ai.chronon.source as source
 import ai.chronon.api.ttypes as ttypes
+import ai.chronon.api.common.ttypes as common
 
 
 # source related concepts
@@ -46,3 +47,11 @@ DataType = join.DataType
 # Staging Query related concepts
 StagingQuery = ttypes.StagingQuery
 MetaData = ttypes.MetaData
+
+
+EnvironmentVariables = common.EnvironmentVariables
+ConfigProperties = common.ConfigProperties
+ExecutionInfo = common.ExecutionInfo
+TableDependency = common.TableDependency
+
+Team = ttypes.Team

@@ -235,48 +235,57 @@ enum EngineType {
 
 }
 
+/**
+* contains configs params that don't change the contents of the output.
+**/
 struct MetaData {
     1: optional string name
+
+
+    2: optional string team
+
+    // will be set by the compiler based on changes to column lineage - do not manually set
+    3: optional string version
+
+    4: optional string outputNamespace
+
+    5: optional map<string, string> tableProperties
+
+    // tag_key -> tag_value - tags allow for repository wide querying, deprecations etc
+    // this is object level tag - applies to all columns produced by the object - GroupBy, Join, Model etc
+    6: optional map<string, string> tags
+    // column -> tag_key -> tag_value
+    7: optional map<string, map<string, string>> columnTags
+
     // marking this as true means that the conf can be served online
     // once marked online, a conf cannot be changed - compiling the conf won't be allowed
-    2: optional bool online
+    100: optional bool online
+
     // marking this as true means that the conf automatically generates a staging copy
     // this flag is also meant to help a monitoring system re-direct alerts appropriately
-    3: optional bool production
-    4: optional string customJson
-    5: optional list<string> dependencies
-    6: optional map<string, string> tableProperties
-    // todo: add sanity check in materialize script
-    7: optional string outputNamespace
-    // team name for the job
-    8: optional string team
-    // modes - backfill, upload, streaming
-    // join streaming makes sense & join upload probably also makes sense
-    // (These just aren't implemented yet)
-    // The inner map should contain environment variables
+    101: optional bool production
 
-    // DEPRECATED
-    9: optional map<string, map<string, string>> modeToEnvMap
+    102: optional string sourceFile
+
+    // users can put anything they want in here, but the compiler shouldn't
+    103: optional string customJson
+
     // enable job to compute consistency metrics
-    10: optional bool consistencyCheck
+    200: optional bool consistencyCheck
+
     // percentage of online serving requests to log to warehouse
-    11: optional double samplePercent
-    // cron expression for airflow DAG schedule
-    12: optional string offlineSchedule
+    201: optional double samplePercent
+
     // percentage of online serving requests used to compute consistency metrics
-    13: optional double consistencySamplePercent
-    // Flag to indicate whether join backfill should backfill previous holes.
-    // Setting to false will only backfill latest single partition
-    14: optional bool historicalBackfill
+    202: optional double consistencySamplePercent
 
     // specify how to compute drift
-    15: optional observability.DriftSpec driftSpec
+    203: optional observability.DriftSpec driftSpec
 
-    16: optional EnvironmentVariables env
-    17: optional ConfigProperties conf
-
-    18: optional string sourceFile
+    # information that needs to be present on every physical node
+    204: optional common.ExecutionInfo executionInfo
 }
+
 
 
 // Equivalent to a FeatureSet in chronon terms
@@ -315,6 +324,9 @@ struct ExternalPart {
 struct Derivation {
     1: optional string name
     2: optional string expression
+    // do not put tags here as they can make the payload heavy
+    // in the python api we will expose tags but only duck type attach them to the object
+    // and when we ship it to orchestrator / agent etc, we will strip the tags
 }
 
 // A Temporal join - with a root source, with multiple groupby's.
@@ -462,20 +474,6 @@ struct Model {
     5: optional map<string, string> modelParams
 }
 
-struct EnvironmentVariables {
-    1: optional map<string, string> common
-    2: optional map<string, string> backfill
-    3: optional map<string, string> upload
-    4: optional map<string, string> streaming
-}
-
-struct ConfigProperties {
-    1: optional map<string, string> common
-    2: optional map<string, string> backfill
-    3: optional map<string, string> upload
-    4: optional map<string, string> streaming
-}
-
 struct Team {
     1: optional string name
     2: optional string description
@@ -484,6 +482,6 @@ struct Team {
     10: optional string outputNamespace
     11: optional map<string, string> tableProperties
 
-    20: optional EnvironmentVariables env
-    21: optional ConfigProperties conf
+    20: optional common.EnvironmentVariables env
+    21: optional common.ConfigProperties conf
 }
