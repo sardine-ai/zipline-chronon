@@ -35,6 +35,7 @@ class TableUtilsFormatTest extends AnyFlatSpec {
 
   it should "testing dynamic classloading" in {
     assertTrue(tableUtils.tableFormatProvider.isInstanceOf[DefaultFormatProvider])
+    
   }
 
   it should "test insertion of partitioned data and adding of columns" in {
