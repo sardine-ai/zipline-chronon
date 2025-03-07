@@ -100,7 +100,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   private lazy val columnAggregators: Array[ColumnAggregator] =
     new RowAggregator(selectedSchema, aggregationParts).columnAggregators
 
-  //should be only used when aggregations != null
+  // should be only used when aggregations != null
   lazy val aggPartWithSchema: Seq[(api.AggregationPart, api.DataType)] =
     aggregationParts.zip(columnAggregators.map(_.outputType))
 
@@ -247,7 +247,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     val mutationsHashFx = FastHashing.generateKeyBuilder(keyColumns.toArray, mutationDf.schema)
     val mutationPartitionIndex = mutationDf.schema.fieldIndex(tableUtils.partitionColumn)
 
-    //mutations by ds, sorted
+    // mutations by ds, sorted
     val mutationsByKeys: RDD[((KeyWithHash, String), Array[api.Row])] = mutationDf.rdd
       .map { row =>
         (

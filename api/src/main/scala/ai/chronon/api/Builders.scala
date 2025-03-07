@@ -287,9 +287,9 @@ object Builders {
       }
 
       result.setTeam(effectiveTeam)
-      result.setHistoricalBackfill(historicalBackfill)
-      if (dependencies != null)
-        result.setDependencies(dependencies.toSeq.toJava)
+      val executionInfo = new ExecutionInfo()
+        .setHistoricalBackfill(historicalBackfill)
+      result.setExecutionInfo(executionInfo)
       if (samplePercent > 0)
         result.setSamplePercent(samplePercent)
       if (consistencySamplePercent > 0)
