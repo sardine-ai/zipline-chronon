@@ -35,6 +35,7 @@ test_deps = [
     maven_artifact("org.mockito:mockito-core"),
     maven_artifact("software.amazon.awssdk:auth"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
+    maven_artifact("software.amazon.awssdk:url-connection-client"),
     scala_artifact_with_suffix("com.chuusai:shapeless"),
     scala_artifact_with_suffix("org.typelevel:cats-core"),
     scala_artifact_with_suffix("org.mockito:mockito-scala"),
