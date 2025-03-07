@@ -17,7 +17,7 @@ maven_repository = repository(
         "org.mockito:mockito-core:5.12.0",
         "org.objenesis:objenesis:3.4",
 
-        "org.eclipse.jetty:jetty-util:12.0.16",
+        "org.eclipse.jetty:jetty-util:9.4.57.v20241219", # latest version that is still built on jdk 11 and not 17.
 
         # Add other dependencies
         "org.slf4j:slf4j-api:2.0.12",
@@ -83,8 +83,9 @@ maven_repository = repository(
         "software.amazon.awssdk:sdk-core:2.30.13",
         "software.amazon.awssdk:utils:2.30.13",
         "software.amazon.awssdk:auth:2.30.13",
+        "software.amazon.awssdk:url-connection-client:2.30.13",
         "software.amazon.awssdk:identity-spi:2.30.13",
-        "com.amazonaws:DynamoDBLocal:2.4.0",
+        "com.amazonaws:DynamoDBLocal:1.25.1",
 
         # Google Cloud
         "com.google.cloud:google-cloud-bigquery:2.42.0",
