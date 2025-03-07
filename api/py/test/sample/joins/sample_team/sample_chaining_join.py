@@ -17,61 +17,9 @@ Sample Chaining Join
 #     limitations under the License.
 
 from sources import test_sources
-from group_bys.sample_team import (
-    event_sample_group_by,
-    entity_sample_group_by_from_module,
-)
+from group_bys.sample_team.chaining_group_by import chaining_group_by_v1
 
 from ai.chronon.types import Join, JoinPart
-from ai.chronon.types import GroupBy, Aggregation, Accuracy, Operation, JoinSource
-from ai.chronon.types import (
-    Query,
-    selects,
-)
-
-parent_join = Join(
-    left=test_sources.event_source,
-    right_parts=[
-        JoinPart(
-            group_by=event_sample_group_by.v1,
-            key_mapping={"subject": "group_by_subject"},
-        ),
-        JoinPart(
-            group_by=entity_sample_group_by_from_module.v1,
-            key_mapping={"subject": "group_by_subject"},
-        ),
-    ],
-    online=True,
-    check_consistency=True,
-    historical_backfill=False,
-)
-
-chaining_group_by_v1 = GroupBy(
-    name="sample_team.sample_chaining_group_by",
-    sources=JoinSource(
-        join=parent_join,
-        query=Query(
-            selects=selects(
-                event="event_expr",
-                group_by_subject="group_by_expr",
-            ),
-            start_partition="2023-04-15",
-            time_column="ts",
-        ),
-    ),
-    keys=["user_id"],
-    aggregations=[
-        Aggregation(input_column="event", operation=Operation.LAST),
-    ],
-    accuracy=Accuracy.TEMPORAL,
-    online=True,
-    production=True,
-    table_properties={
-        "sample_config_json": """{"sample_key": "sample_value"}""",
-        "description": "sample description",
-    },
-    output_namespace="sample_namespace",
-)
 
 v1 = Join(
     left=test_sources.event_source,
@@ -81,8 +29,6 @@ v1 = Join(
             key_mapping={"subject": "user_id"},
         ),
     ],
-    additional_args={"custom_arg": "custom_value"},
-    additional_env={"custom_env": "custom_env_value"},
     online=True,
     check_consistency=True,
 )

@@ -43,11 +43,19 @@ class Compiler:
                 config_info
             )
 
-        # replace staging_output_dir to output_dir
+        # check if staging_output_dir exists
         staging_dir = self.compile_context.staging_output_dir()
-        output_dir = self.compile_context.output_dir()
-        shutil.rmtree(output_dir)
-        shutil.move(staging_dir, output_dir)
+        if os.path.exists(staging_dir):
+            # replace staging_output_dir to output_dir
+            output_dir = self.compile_context.output_dir()
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            shutil.move(staging_dir, output_dir)
+        else:
+            print(
+                f"Staging directory {staging_dir} does not exist. "
+                "Happens when every chronon config fails to compile or when no chronon configs exist."
+            )
 
         return compile_results
 

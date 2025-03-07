@@ -35,7 +35,6 @@ v1 = StagingQuery(
     metaData=MetaData(
         name="sample_staging_query",
         outputNamespace="sample_namespace",
-        dependencies=["sample_namespace.sample_table/ds={{ ds }}"],
         tableProperties={
             "sample_config_json": """{"sample_key": "sample value}""",
         },

@@ -644,7 +644,7 @@ object Extensions {
           fillIfAbsent
         )
       } else {
-        //todo: this logic is similar in JoinSourceRunner, we can simplify it to a single place
+        // todo: this logic is similar in JoinSourceRunner, we can simplify it to a single place
         val query = streamingSource.getJoinSource.join.left.query
         groupBy.buildLeftStreamingQuery(query, groupBy.keyColumns.toScala)
       }
@@ -851,8 +851,8 @@ object Extensions {
     }
 
     def historicalBackfill: Boolean = {
-      if (join.metaData.isSetHistoricalBackfill) {
-        join.metaData.historicalBackfill
+      if (join.metaData.isSetExecutionInfo && join.metaData.executionInfo.isSetHistoricalBackfill) {
+        join.metaData.executionInfo.historicalBackfill
       } else {
         true
       }

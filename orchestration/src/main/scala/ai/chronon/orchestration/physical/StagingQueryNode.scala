@@ -1,11 +1,9 @@
 package ai.chronon.orchestration.physical
 
 import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.StagingQuery
+import ai.chronon.api.{StagingQuery, TableDependency}
 import ai.chronon.orchestration.PhysicalNodeType
 import ai.chronon.orchestration.StagingQueryNodeType
-import ai.chronon.orchestration.Table
-import ai.chronon.orchestration.TableDependency
 import ai.chronon.orchestration.utils
 import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
 import ai.chronon.orchestration.utils.ShiftConstants.noShift
@@ -14,7 +12,7 @@ class StagingQueryNode(stagingQuery: StagingQuery) extends TabularNode[StagingQu
   override def nodeType: PhysicalNodeType = utils.PhysicalNodeType.from(StagingQueryNodeType.BACKFILL)
 
   override def tableDependencies: Seq[TableDependency] = {
-    val deps = stagingQuery.metaData.dependencies
+    val deps = Seq.empty[String] // TODO: stagingQuery.metaData.dependencies
 
     // example format of dependencies: "sample_namespace.sample_table/ds={{ ds }}"
     // TODO: fix the assumption below later - there is ParametricMacro class that contains some information
@@ -26,7 +24,7 @@ class StagingQueryNode(stagingQuery: StagingQuery) extends TabularNode[StagingQu
         result.setStartOffset(noShift)
         result.setEndOffset(noShift)
         result.setIsCumulative(false)
-        result.setTable(new Table().setTable(tableName))
+        result.setTable(tableName)
         result
       }
     }.toSeq

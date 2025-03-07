@@ -289,8 +289,8 @@ def test_get_related_table_names_for_bootstrap_joins():
         ),
         ("group_by_with_kwargs.v1", "chronon_db.sample_team_group_by_with_kwargs_v1"),
         (
-            "sample_chaining_group_by",
-            "sample_namespace.sample_team_sample_chaining_group_by",
+            "sample_chaining_group_by.chaining_group_by_v1",
+            "test_namespace.sample_team_sample_chaining_group_by_chaining_group_by_v1",
         ),
     ],
 )
@@ -307,7 +307,7 @@ def test_group_by_table_names(repo, materialized_group_by, table_name):
     [
         (
             "sample_chaining_join.v1",
-            "chronon_db.sample_team_sample_chaining_join_v1_sample_team_sample_chaining_group_by",
+            "chronon_db.sample_team_sample_chaining_join_v1_sample_team_chaining_group_by_chaining_group_by_v1",
         ),
         (
             "sample_join.v1",

@@ -1,17 +1,13 @@
 package ai.chronon.orchestration.physical
 
-import ai.chronon.api.Accuracy
+import ai.chronon.api.{Accuracy, Join, TableDependency, Window}
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.Join
-import ai.chronon.api.Window
 import ai.chronon.orchestration.JoinNodeType
 import ai.chronon.orchestration.PhysicalNodeType
-import ai.chronon.orchestration.Table
-import ai.chronon.orchestration.TableDependency
 import ai.chronon.orchestration.utils
 import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
 import ai.chronon.orchestration.utils.DependencyResolver.add
@@ -39,7 +35,7 @@ class JoinBackfill(join: Join) extends TabularNode[Join](join) {
       dep.setStartCutOff(query.getStartPartition)
       dep.setEndCutOff(query.getEndPartition)
       dep.setIsCumulative(false)
-      dep.setTable(new Table().setTable(bootstrapPart.getTable))
+      dep.setTable(bootstrapPart.getTable)
 
       dep
     }

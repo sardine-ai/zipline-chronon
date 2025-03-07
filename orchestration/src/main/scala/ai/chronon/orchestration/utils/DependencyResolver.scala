@@ -2,12 +2,7 @@ package ai.chronon.orchestration.utils
 
 import ai.chronon.api
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.Window
-import ai.chronon.api.PartitionRange
-import ai.chronon.orchestration.Table
-import ai.chronon.orchestration.TableDependency
-
+import ai.chronon.api.{PartitionRange, PartitionSpec, TableDependency, Window}
 import WindowUtils.convertUnits
 
 object DependencyResolver {
@@ -65,7 +60,7 @@ object DependencyResolver {
     if (endCutOff != null) result.setEndCutOff(endCutOff)
 
     result.setIsCumulative(source.isCumulative)
-    result.setTable(new Table().setTable(table))
+    result.setTable(table)
 
     result
   }

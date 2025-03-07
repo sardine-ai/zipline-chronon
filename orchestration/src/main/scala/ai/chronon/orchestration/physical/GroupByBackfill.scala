@@ -2,10 +2,9 @@ package ai.chronon.orchestration.physical
 
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.api.GroupBy
+import ai.chronon.api.{GroupBy, TableDependency}
 import ai.chronon.orchestration.GroupByNodeType
 import ai.chronon.orchestration.PhysicalNodeType
-import ai.chronon.orchestration.TableDependency
 import ai.chronon.orchestration.utils
 import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
 import ai.chronon.orchestration.utils.DependencyResolver.tableDependency
