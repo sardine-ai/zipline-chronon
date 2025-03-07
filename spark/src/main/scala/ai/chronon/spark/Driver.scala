@@ -86,7 +86,25 @@ object Driver {
     // list the files in the root directory
     println("list files")
     val dir = FileSystems.getDefault.getPath(SparkFiles.getRootDirectory())
+    // list files of directory
     Files.list(dir).iterator().asScala.foreach(println)
+
+    val tail = confPath.split("/").last
+    val possiblePaths = Seq(confPath, tail, SparkFiles.get(tail))
+    val statuses = possiblePaths.map(p => p -> new File(p).exists())
+
+    val messages = statuses.map { case (file, present) =>
+      val suffix = if (present) {
+        val fileSize = Files.size(Paths.get(file))
+        s"exists ${FileUtils.byteCountToDisplaySize(fileSize)}"
+      } else {
+        "is not found"
+      }
+      s"$file $suffix"
+    }
+    println(s"File Statuses:\n  ${messages.mkString("\n  ")}")
+    val a = statuses.find(_._2 == true).map(_._1)
+    println(a)
 
     ThriftJsonCodec.fromJsonFile[T](SparkFiles.get(confPath), check = true)
 
