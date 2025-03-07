@@ -9,7 +9,11 @@ import xml.etree.ElementTree as ET
 from datetime import timedelta, datetime
 from enum import Enum
 
-from ai.chronon.repo.constants import SUPPORTED_SPARK, SCALA_VERSION_FOR_SPARK, APP_NAME_TEMPLATE
+from ai.chronon.repo.constants import (
+    SUPPORTED_SPARK,
+    SCALA_VERSION_FOR_SPARK,
+    APP_NAME_TEMPLATE,
+)
 
 
 class JobType(Enum):
@@ -49,7 +53,7 @@ def get_environ_arg(env_name, ignoreError=False) -> str:
 
 
 def get_customer_id() -> str:
-    return get_environ_arg('CUSTOMER_ID')
+    return get_environ_arg("CUSTOMER_ID")
 
 
 def extract_filename_from_path(path):
@@ -57,12 +61,12 @@ def extract_filename_from_path(path):
 
 
 def check_call(cmd):
-    print("Running command: " + cmd)
+    logging.info("Running command: " + cmd)
     return subprocess.check_call(cmd.split(), bufsize=0)
 
 
 def check_output(cmd):
-    print("Running command: " + cmd)
+    logging.info("Running command: " + cmd)
     return subprocess.check_output(cmd.split(), bufsize=0).strip()
 
 
@@ -75,17 +79,16 @@ def custom_json(conf):
 
 def download_only_once(url, path, skip_download=False):
     if skip_download:
-        print("Skipping download of " + path)
+        logging.info("Skipping download of " + path)
         return
     should_download = True
     path = path.strip()
     if os.path.exists(path):
         content_output = check_output("curl -sI " + url).decode("utf-8")
-        content_length = re.search(
-            "(content-length:\\s)(\\d+)", content_output.lower())
+        content_length = re.search("(content-length:\\s)(\\d+)", content_output.lower())
         remote_size = int(content_length.group().split()[-1])
         local_size = int(check_output("wc -c " + path).split()[0])
-        print(
+        logging.info(
             """Files sizes of {url} vs. {path}
     Remote size: {remote_size}
     Local size : {local_size}""".format(
@@ -93,37 +96,39 @@ def download_only_once(url, path, skip_download=False):
             )
         )
         if local_size == remote_size:
-            print("Sizes match. Assuming it's already downloaded.")
+            logging.info("Sizes match. Assuming it's already downloaded.")
             should_download = False
         if should_download:
-            print("Different file from remote at local: " +
-                  path + ". Re-downloading..")
+            logging.info(
+                "Different file from remote at local: " + path + ". Re-downloading.."
+            )
             check_call("curl {} -o {} --connect-timeout 10".format(url, path))
     else:
-        print("No file at: " + path + ". Downloading..")
+        logging.info("No file at: " + path + ". Downloading..")
         check_call("curl {} -o {} --connect-timeout 10".format(url, path))
 
 
 # NOTE: this is only for the open source chronon. For the internal zipline version, we have a different jar to download.
 @retry_decorator(retries=3, backoff=50)
 def download_jar(
-        version,
-        jar_type="uber",
-        release_tag=None,
-        spark_version="2.4.0",
-        skip_download=False,
+    version,
+    jar_type="uber",
+    release_tag=None,
+    spark_version="2.4.0",
+    skip_download=False,
 ):
-    assert (spark_version in SUPPORTED_SPARK), (f"Received unsupported spark version {spark_version}. "
-                                                f"Supported spark versions are {SUPPORTED_SPARK}")
+    assert spark_version in SUPPORTED_SPARK, (
+        f"Received unsupported spark version {spark_version}. "
+        f"Supported spark versions are {SUPPORTED_SPARK}"
+    )
     scala_version = SCALA_VERSION_FOR_SPARK[spark_version]
     maven_url_prefix = os.environ.get("CHRONON_MAVEN_MIRROR_PREFIX", None)
     default_url_prefix = (
         "https://s01.oss.sonatype.org/service/local/repositories/public/content"
     )
     url_prefix = maven_url_prefix if maven_url_prefix else default_url_prefix
-    base_url = "{}/ai/chronon/spark_{}_{}".format(
-        url_prefix, jar_type, scala_version)
-    print("Downloading jar from url: " + base_url)
+    base_url = "{}/ai/chronon/spark_{}_{}".format(url_prefix, jar_type, scala_version)
+    logging.info("Downloading jar from url: " + base_url)
     jar_path = os.environ.get("CHRONON_DRIVER_JAR", None)
     if jar_path is None:
         if version == "latest":
@@ -222,11 +227,22 @@ def set_runtime_env(params):
                 if os.path.isfile(conf_path):
                     with open(conf_path, "r") as conf_file:
                         conf_json = json.load(conf_file)
-                    environment["conf_env"] = (
+
+                    new_env = (
+                        conf_json.get("metaData")
+                        .get("executionInfo", {})
+                        .get("env", {})
+                        .get(effective_mode, {})
+                    )
+
+                    old_env = (
                         conf_json.get("metaData")
                         .get("modeToEnvMap", {})
                         .get(effective_mode, {})
                     )
+
+                    environment["conf_env"] = new_env if new_env else old_env
+
                     # Load additional args used on backfill.
                     if custom_json(conf_json) and effective_mode in [
                         "backfill",
@@ -234,8 +250,7 @@ def set_runtime_env(params):
                         "backfill-final",
                     ]:
                         environment["conf_env"]["CHRONON_CONFIG_ADDITIONAL_ARGS"] = (
-                            " ".join(custom_json(conf_json).get(
-                                "additional_args", []))
+                            " ".join(custom_json(conf_json).get("additional_args", []))
                         )
                     environment["cli_args"]["APP_NAME"] = APP_NAME_TEMPLATE.format(
                         mode=effective_mode,
@@ -248,8 +263,7 @@ def set_runtime_env(params):
                 )
                 # fall-back to prod env even in dev mode when dev env is undefined.
                 environment["production_team_env"] = (
-                    teams_json[team].get("production", {}).get(
-                        effective_mode, {})
+                    teams_json[team].get("production", {}).get(effective_mode, {})
                 )
                 # By default use production env.
                 environment["default_env"] = (
@@ -267,8 +281,7 @@ def set_runtime_env(params):
             environment["cli_args"]["APP_NAME"] = "_".join(
                 [
                     k
-                    for k in
-                    [
+                    for k in [
                         "chronon",
                         conf_type,
                         params["mode"].replace("-", "_") if params["mode"] else None,
@@ -289,14 +302,14 @@ def set_runtime_env(params):
         "common_env",
         "cli_args",
     ]
-    print("Setting env variables:")
+    logging.info("Setting env variables:")
     for key in os.environ:
         if any([key in environment[set_key] for set_key in order]):
-            print(f"From <environment> found {key}={os.environ[key]}")
+            logging.info(f"From <environment> found {key}={os.environ[key]}")
     for set_key in order:
         for key, value in environment[set_key].items():
             if key not in os.environ and value is not None:
-                print(f"From <{set_key}> setting {key}={value}")
+                logging.info(f"From <{set_key}> setting {key}={value}")
                 os.environ[key] = value
 
 
@@ -306,13 +319,12 @@ def split_date_range(start_date, end_date, parallelism):
     if start_date > end_date:
         raise ValueError("Start date should be earlier than end date")
     total_days = (
-                         end_date - start_date
-                 ).days + 1  # +1 to include the end_date in the range
+        end_date - start_date
+    ).days + 1  # +1 to include the end_date in the range
 
     # Check if parallelism is greater than total_days
     if parallelism > total_days:
-        raise ValueError(
-            "Parallelism should be less than or equal to total days")
+        raise ValueError("Parallelism should be less than or equal to total days")
 
     split_size = total_days // parallelism
     date_ranges = []

@@ -20,7 +20,7 @@ bq rm -f -t canary-443022:data.quickstart_purchases_v1_dev_upload
 #TODO: delete bigtable rows
 
 # Clone the cananry configs
-git clone git@github.com:zipline-ai/cananry-confs.git
+git clone git@github.com-zipline:zipline-ai/cananry-confs.git
 cd cananry-confs
 
 # Use the branch with Zipline specific team.json
@@ -60,6 +60,7 @@ function check_dataproc_job_state() {
 DATAPROC_SUBMITTER_ID_STR="Dataproc submitter job id"
 
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
+CHRONON_ROOT=`pwd`/api/py/test/sample
 zipline compile --conf=group_bys/quickstart/purchases.py
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"

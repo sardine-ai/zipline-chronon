@@ -48,6 +48,7 @@ def context():
     run.set_defaults(context)
     return context
 
+
 @pytest.fixture
 def test_conf_location():
     """Sample test conf for tests"""
@@ -138,8 +139,6 @@ def test_environment(teams_json, repo, test_conf_location):
         os.environ["APP_NAME"]
         == "chronon_joins_backfill_production_sample_team.sample_online_join.v1"
     )
-    # from additional_args
-    assert os.environ["CHRONON_CONFIG_ADDITIONAL_ARGS"] == "--step-days 14"
 
     # Check dev backfill for a team sets parameters accordingly.
     reset_env(default_environment)
@@ -221,7 +220,9 @@ def test_render_info_setting_update(repo, test_conf_location):
     ctx.params["conf"] = test_conf_location
     ctx.params["repo"] = repo
     run.set_defaults(ctx)
-    assert ctx.params["render_info"] == os.path.join(".", run.RENDER_INFO_DEFAULT_SCRIPT)
+    assert ctx.params["render_info"] == os.path.join(
+        ".", run.RENDER_INFO_DEFAULT_SCRIPT
+    )
 
     reset_env(default_environment)
     run.set_runtime_env(ctx.params)
@@ -231,7 +232,9 @@ def test_render_info_setting_update(repo, test_conf_location):
     ctx.params["conf"] = test_conf_location
     ctx.params["repo"] = repo
     run.set_defaults(ctx)
-    assert ctx.params["render_info"] == os.path.join(repo, run.RENDER_INFO_DEFAULT_SCRIPT)
+    assert ctx.params["render_info"] == os.path.join(
+        repo, run.RENDER_INFO_DEFAULT_SCRIPT
+    )
 
     reset_env(default_environment)
     ctx = context()

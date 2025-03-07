@@ -1,9 +1,7 @@
 package ai.chronon.api
 
 import ai.chronon.fetcher.TileKey
-import ai.chronon.api.SerdeUtils
 
-import java.io.Serializable
 import scala.jdk.CollectionConverters._
 
 // Convenience functions for working with tiling

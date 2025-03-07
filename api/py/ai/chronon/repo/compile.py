@@ -207,19 +207,20 @@ def _set_templated_values(obj, cls, teams_path, team_name):
     if cls == Join and obj.bootstrapParts:
         for bootstrap in obj.bootstrapParts:
             bootstrap.table = __fill_template(bootstrap.table, obj, namespace)
-        if obj.metaData.dependencies:
-            obj.metaData.dependencies = [
-                __fill_template(dep, obj, namespace)
-                for dep in obj.metaData.dependencies
-            ]
+        # if obj.metaData.dependencies:
+        #     obj.metaData.dependencies = [
+        #         __fill_template(dep, obj, namespace)
+        #         for dep in obj.metaData.dependencies
+        #     ]
     if cls == Join and obj.labelParts:
-        obj.labelParts.metaData.dependencies = [
-            label_dep.replace(
-                "{{ join_backfill_table }}",
-                utils.output_table_name(obj, full_name=True),
-            )
-            for label_dep in obj.labelParts.metaData.dependencies
-        ]
+        pass
+        # obj.labelParts.metaData.dependencies = [
+        #     label_dep.replace(
+        #         "{{ join_backfill_table }}",
+        #         utils.output_table_name(obj, full_name=True),
+        #     )
+        #     for label_dep in obj.labelParts.metaData.dependencies
+        # ]
 
 
 def _write_obj(
