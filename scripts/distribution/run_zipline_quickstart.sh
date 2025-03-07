@@ -2,10 +2,11 @@
 # Run this bash script via the python file `distribution/run_zipline_quickstart.py`
 set -xo pipefail
 
+mkdir -p /tmp/zipline_test/gcp
 
+cd /tmp/zipline_test/gcp
 
-WORKING_DIR=$1
-cd $WORKING_DIR
+rm -rf cananry-confs
 
 
 GREEN='\033[0;32m'
