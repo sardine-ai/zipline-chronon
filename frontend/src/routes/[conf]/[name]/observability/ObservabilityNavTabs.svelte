@@ -5,7 +5,7 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 </script>
 
-<Tabs class="w-full">
+<Tabs class="w-full mt-1">
 	<TabsList>
 		<TabsTrigger href="./summary" class="flex items-center">
 			<IconTableCells class="mr-2" />

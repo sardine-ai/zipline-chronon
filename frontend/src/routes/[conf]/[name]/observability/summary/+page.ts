@@ -26,6 +26,6 @@ export const load = async ({ parent, fetch }) => {
 	});
 
 	return {
-		columnSummariesPromise
+		columnSummaries: await columnSummariesPromise
 	};
 };

@@ -162,57 +162,53 @@
 </div>
 
 <Separator fullWidthExtend={true} wide={true} />
-<CollapsibleSection title="Feature Monitoring" open>
-	{#snippet collapsibleContent()}
-		<ObservabilityNavTabs />
+<ObservabilityNavTabs />
 
-		<div>
-			{#each driftSeriesByGroupName as [groupName, values], i (groupName)}
-				<CollapsibleSection title={groupName} size="small" open>
-					{#snippet collapsibleContent()}
-						<div
-							class={cn(
-								'h-[274px]',
-								i === driftSeriesByGroupName.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
-							)}
-						>
-							<FeaturesLineChart
-								data={values}
-								yDomain={driftMetricDomain}
-								onpointclick={(
-									_e: MouseEvent,
-									{ series, data }: { series: SeriesItem; data: unknown }
-								) => {
-									const url = new URL(window.location.href);
-									url.searchParams.set('node', series.key.toString());
-									url.searchParams.set(
-										'timestamp',
-										new Date((data as DateValue).date).getTime().toString()
-									);
-									pushState(url.toString(), {
-										selectedSeriesPoint: { series, data: data as DateValue }
-									});
-								}}
-								onitemclick={({ series, data }: { series: SeriesItem; data: DateValue }) => {
-									selectSeriesPoint({ series, data });
-								}}
-								{xDomain}
-								onbrushend={(detail: { xDomain?: DomainType }) => {
-									xDomain = detail.xDomain;
-								}}
-								tooltip={{ locked: lockedTooltip }}
-							/>
-						</div>
-					{/snippet}
-				</CollapsibleSection>
-			{:else}
-				<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
-					No drift data available
+<div>
+	{#each driftSeriesByGroupName as [groupName, values], i (groupName)}
+		<CollapsibleSection title={groupName} size="small" open>
+			{#snippet collapsibleContent()}
+				<div
+					class={cn(
+						'h-[274px]',
+						i === driftSeriesByGroupName.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
+					)}
+				>
+					<FeaturesLineChart
+						data={values}
+						yDomain={driftMetricDomain}
+						onpointclick={(
+							_e: MouseEvent,
+							{ series, data }: { series: SeriesItem; data: unknown }
+						) => {
+							const url = new URL(window.location.href);
+							url.searchParams.set('node', series.key.toString());
+							url.searchParams.set(
+								'timestamp',
+								new Date((data as DateValue).date).getTime().toString()
+							);
+							pushState(url.toString(), {
+								selectedSeriesPoint: { series, data: data as DateValue }
+							});
+						}}
+						onitemclick={({ series, data }: { series: SeriesItem; data: DateValue }) => {
+							selectSeriesPoint({ series, data });
+						}}
+						{xDomain}
+						onbrushend={(detail: { xDomain?: DomainType }) => {
+							xDomain = detail.xDomain;
+						}}
+						tooltip={{ locked: lockedTooltip }}
+					/>
 				</div>
-			{/each}
+			{/snippet}
+		</CollapsibleSection>
+	{:else}
+		<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
+			No drift data available
 		</div>
-	{/snippet}
-</CollapsibleSection>
+	{/each}
+</div>
 
 <Dialog
 	open={selectedSeriesPoint != null}
