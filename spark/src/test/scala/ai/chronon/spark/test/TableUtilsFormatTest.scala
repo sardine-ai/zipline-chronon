@@ -10,7 +10,7 @@ import ai.chronon.spark.IncompatibleSchemaException
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.SparkSessionBuilder.FormatTestEnvVar
 import ai.chronon.spark.TableUtils
-import ai.chronon.spark.format.DefaultFormatProvider
+import ai.chronon.spark.format.{DefaultFormatProvider, FormatProvider}
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.DataFrame
@@ -34,7 +34,7 @@ class TableUtilsFormatTest extends AnyFlatSpec {
   val tableUtils: TableUtils = TableUtils(spark)
 
   it should "testing dynamic classloading" in {
-    assertTrue(tableUtils.tableFormatProvider.isInstanceOf[DefaultFormatProvider])
+    assertTrue(FormatProvider.from(spark).isInstanceOf[DefaultFormatProvider])
   }
 
   it should "test insertion of partitioned data and adding of columns" in {
@@ -147,7 +147,7 @@ class TableUtilsFormatTest extends AnyFlatSpec {
   it should "return empty read format if table doesn't exist" in {
     val dbName = s"db_${System.currentTimeMillis()}"
     val tableName = s"$dbName.test_table_nonexistent_$format"
-    assertTrue(tableUtils.tableFormatProvider.readFormat(tableName).isEmpty)
+    assertTrue(FormatProvider.from(spark).readFormat(tableName).isEmpty)
     assertFalse(tableUtils.tableReachable(tableName))
   }
 }
@@ -188,7 +188,7 @@ object TableUtilsFormatTest {
     tableUtils.insertPartitions(df2, tableName, autoExpand = true)
 
     // check that we wrote out a table in the right format
-    val readTableFormat = tableUtils.tableFormatProvider.readFormat(tableName).get.toString
+    val readTableFormat = FormatProvider.from(spark).readFormat(tableName).get.toString
     assertTrue(s"Mismatch in table format: $readTableFormat; expected: $format", readTableFormat.toLowerCase == format)
 
     // check we have all the partitions written

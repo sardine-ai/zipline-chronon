@@ -287,7 +287,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
         .withColumn("ds", lit(ds))
         .withPartitionBasedTimestamp("ts_millis"),
       mockApi.logTable,
-      partitionColumns = Seq("ds", "name")
+      partitionColumns = List("ds", "name")
     )
   }
 
