@@ -167,6 +167,10 @@ class DelegatingBigQueryMetastoreCatalog extends CatalogExtension {
                            schema: StructType,
                            partitions: Array[Transform],
                            properties: util.Map[String, String]): Table = {
+    val provider = properties.get(TableCatalog.PROP_PROVIDER)
+    if (provider.toUpperCase != "ICEBERG") {
+      throw new UnsupportedOperationException("Only creating iceberg tables supported.")
+    }
     icebergCatalog.createTable(ident, schema, partitions, properties)
   }
 

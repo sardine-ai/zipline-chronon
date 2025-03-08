@@ -22,14 +22,8 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils, TsUtils}
 import ai.chronon.api.PartitionRange
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils.{
-  TableAlreadyExists,
-  TableCreatedWithInitialData,
-  TableCreatedWithoutInitialData,
-  TableCreationStatus
-}
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.{DefaultFormatProvider, FormatProvider}
+import ai.chronon.spark.format.{CreationUtils, FormatProvider}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
@@ -43,7 +37,7 @@ import java.io.{PrintWriter, StringWriter}
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
 import scala.collection.{Seq, immutable, mutable}
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
@@ -80,6 +74,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   private val blockingCacheEviction: Boolean =
     sparkSession.conf.get("spark.chronon.table_write.cache.blocking", "false").toBoolean
 
+  private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
+
   val writePrefix: Option[String] = {
 
     val barePrefix = sparkSession.conf.get("spark.chronon.table_write.prefix", "")
@@ -96,7 +92,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
-  @transient implicit lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
+  @transient private implicit lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   private val cacheLevel: Option[StorageLevel] = Try {
     if (cacheLevelString == "NONE") None
@@ -119,23 +115,22 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
 
   def tableReachable(tableName: String): Boolean = {
-    try {
-      tableFormatProvider.readFormat(tableName).isDefined
-    } catch {
-      case ex: Exception =>
+    Try { sparkSession.catalog.getTable(tableName) } match {
+      case Success(_) => true
+      case Failure(ex) => {
         logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
              |Call path:
              |${cleanStackTrace(ex).yellow}
              |""".stripMargin)
         false
+      }
     }
   }
 
   def loadTable(tableName: String): DataFrame = {
-    sparkSession.read.load(DataPointer.from(tableName, sparkSession))
+    sparkSession.read.table(tableName)
   }
 
-  // Needs provider
   def createDatabase(database: String): Boolean = {
     try {
       val command = s"CREATE DATABASE IF NOT EXISTS $database"
@@ -152,9 +147,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   // return all specified partition columns in a table in format of Map[partitionName, PartitionValue]
-  def allPartitions(tableName: String, partitionColumnsFilter: Seq[String] = Seq.empty): Seq[Map[String, String]] = {
+  def allPartitions(tableName: String, partitionColumnsFilter: List[String] = List.empty): List[Map[String, String]] = {
 
-    if (!tableReachable(tableName)) return Seq.empty[Map[String, String]]
+    if (!tableReachable(tableName)) return List.empty[Map[String, String]]
 
     val format = tableFormatProvider
       .readFormat(tableName)
@@ -178,12 +173,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def partitions(tableName: String,
                  subPartitionsFilter: Map[String, String] = Map.empty,
-                 partitionColumnName: String = partitionColumn): Seq[String] = {
+                 partitionColumnName: String = partitionColumn): List[String] = {
 
     tableFormatProvider
       .readFormat(tableName)
       .map((format) => {
-        val partitions = format.primaryPartitions(tableName, partitionColumnName, subPartitionsFilter)(sparkSession)
+        val partitions =
+          format.primaryPartitions(tableName, partitionColumnName, subPartitionsFilter)(sparkSession)
 
         if (partitions.isEmpty) {
           logger.info(s"No partitions found for table: $tableName")
@@ -193,7 +189,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         }
         partitions
       })
-      .getOrElse(Seq.empty)
+      .getOrElse(List.empty)
 
   }
 
@@ -213,26 +209,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       .sorted
   }
 
-  // get all the field names including nested struct type field names
-  def getFieldNames(schema: StructType): Seq[String] = {
-    schema.fields.flatMap { field =>
-      field.dataType match {
-        case nestedSchema: StructType =>
-          val nestedStruct = StructType(
-            nestedSchema.fields.map(nestField =>
-              StructField(s"${field.name}.${nestField.name}",
-                          nestField.dataType,
-                          nestField.nullable,
-                          nestField.metadata)))
-          field.name +: getFieldNames(nestedStruct)
-        case _ =>
-          Seq(field.name)
-      }
-    }
-  }
-
   def getSchemaFromTable(tableName: String): StructType = {
-    sparkSession.read.load(DataPointer.from(tableName, sparkSession)).limit(1).schema
+    loadTable(tableName).schema
   }
 
   def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
@@ -243,63 +221,35 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def createTable(df: DataFrame,
                   tableName: String,
-                  partitionColumns: Seq[String] = Seq.empty,
+                  partitionColumns: List[String] = List.empty,
                   tableProperties: Map[String, String] = null,
-                  fileFormat: String,
-                  autoExpand: Boolean = false): TableCreationStatus = {
+                  fileFormat: String): Unit = {
 
-    val writeFormat = tableFormatProvider.writeFormat(tableName)
-
-    val creationStatus = if (!tableReachable(tableName)) {
-
+    if (!tableReachable(tableName)) {
       try {
-
-        val createTableOperation = {
-          tableFormatProvider
-          writeFormat.generateTableBuilder(df, tableName, partitionColumns.toSeq, tableProperties, fileFormat)
-        }
-
-        createTableOperation(sql)
-
+        sql(
+          CreationUtils
+            .createTableSql(tableName, df.schema, partitionColumns, tableProperties, fileFormat, tableWriteFormat))
       } catch {
-
         case _: TableAlreadyExistsException =>
           logger.info(s"Table $tableName already exists, skipping creation")
-          TableAlreadyExists
         case e: Exception =>
           logger.error(s"Failed to create table $tableName", e)
           throw e
 
       }
-    } else {
-      TableAlreadyExists
     }
-
-    tableFormatProvider match {
-      case DefaultFormatProvider(_) =>
-        if (tableProperties != null && tableProperties.nonEmpty) {
-          val alterTblPropsOperation = writeFormat.alterTableProperties(tableName, tableProperties)
-          alterTblPropsOperation(sql)
-        }
-        if (autoExpand) {
-          expandTable(tableName, df.schema)
-        }
-      case _ => ()
-    }
-
-    creationStatus
   }
 
-  // Needs provider
   def insertPartitions(df: DataFrame,
                        tableName: String,
                        tableProperties: Map[String, String] = null,
-                       partitionColumns: Seq[String] = Seq(partitionColumn),
+                       partitionColumns: List[String] = List(partitionColumn),
                        saveMode: SaveMode = SaveMode.Overwrite,
                        fileFormat: String = "PARQUET",
                        autoExpand: Boolean = false,
                        stats: Option[DfStats] = None,
-                       sortByCols: Seq[String] = Seq.empty): Unit = {
+                       sortByCols: List[String] = List.empty): Unit = {
 
     // partitions to the last
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
@@ -308,7 +258,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       df.col(c)
     }: _*)
 
-    val creationStatus = createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat, autoExpand)
+    createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat)
+
+    if (autoExpand) {
+      expandTable(tableName, dfRearranged.schema)
+    }
 
     val finalizedDf = if (autoExpand) {
       // reselect the columns so that a deprecated columns will be selected as NULL before write
@@ -327,11 +281,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       dfRearranged
     }
 
-    creationStatus match {
-      case TableCreatedWithoutInitialData | TableAlreadyExists =>
-        repartitionAndWrite(finalizedDf, tableName, saveMode, stats, partitionColumns, sortByCols)
-      case TableCreatedWithInitialData =>
-    }
+    repartitionAndWrite(finalizedDf, tableName, saveMode, stats, sortByCols)
   }
 
   // retains only the invocations from chronon code.
@@ -413,28 +363,22 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                                   tableName: String,
                                   saveMode: SaveMode,
                                   stats: Option[DfStats],
-                                  partitionColumns: Seq[String],
                                   sortByCols: Seq[String] = Seq.empty): Unit = {
     wrapWithCache(s"repartition & write to $tableName", df) {
       logger.info("Repartitioning before writing...")
 
-      val dataPointer = DataPointer.from(tableName, sparkSession)
       val repartitioned =
         if (sparkSession.conf.get("spark.chronon.write.repartition", true.toString).toBoolean)
           repartitionInternal(df, tableName, stats, sortByCols)
         else df
 
-      if (partitionColumns.nonEmpty) {
-        repartitioned.write
-          .partitionBy(partitionColumns.toSeq: _*)
-          .mode(saveMode)
-          .save(dataPointer)
-      } else {
-        repartitioned.write
-          .mode(saveMode)
-          .save(dataPointer)
-      }
-
+      repartitioned.write
+        .mode(saveMode)
+        // Requires table to exist before inserting.
+        // Fails if schema does not match.
+        // Does NOT overwrite the schema.
+        // Handles dynamic partition overwrite.
+        .insertInto(tableName)
       logger.info(s"Finished writing to $tableName")
     }.get
   }
@@ -714,15 +658,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
 
-    val dp = DataPointer.from(table, sparkSession)
-    var df = sparkSession.read.load(dp)
+    var df = loadTable(table)
 
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
 
     logger.info(s""" Scanning data:
-                   |  table: ${dp.tableOrPath.green}
-                   |  options: ${dp.readOptions}
-                   |  format: ${dp.readFormat}
+                   |  table: ${table.green}
                    |  selects:
                    |    ${selects.mkString("\n    ").green}
                    |  wheres:
@@ -790,11 +731,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
 object TableUtils {
   def apply(sparkSession: SparkSession) = new TableUtils(sparkSession)
-
-  sealed trait TableCreationStatus
-  case object TableCreatedWithInitialData extends TableCreationStatus
-  case object TableCreatedWithoutInitialData extends TableCreationStatus
-  case object TableAlreadyExists extends TableCreationStatus
 }
 
 sealed case class IncompatibleSchemaException(inconsistencies: Seq[(String, DataType, DataType)]) extends Exception {
