@@ -1,6 +1,5 @@
 package ai.chronon.spark.format
 
-import ai.chronon.spark.TableUtils.{TableCreatedWithoutInitialData, TableCreationStatus}
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import ai.chronon.spark.format.CreationUtils.createTableSql
 import org.apache.spark.sql.DataFrame
@@ -20,7 +19,7 @@ trait Format {
   def primaryPartitions(tableName: String,
                         partitionColumn: String,
                         subPartitionsFilter: Map[String, String] = Map.empty)(implicit
-      sparkSession: SparkSession): Seq[String] = {
+      sparkSession: SparkSession): List[String] = {
 
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
@@ -47,19 +46,19 @@ trait Format {
   //         Map("ds" -> "2023-04-01", "hr" -> "13")
   //         Map("ds" -> "2023-04-02", "hr" -> "00")
   //      )
-  def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]]
+  def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]]
 
   def generateTableBuilder(df: DataFrame,
                            tableName: String,
-                           partitionColumns: Seq[String],
+                           partitionColumns: List[String],
                            tableProperties: Map[String, String],
-                           fileFormat: String): (String => Unit) => TableCreationStatus = {
+                           fileFormat: String): (String => Unit) => Unit = {
 
     def inner(df: DataFrame,
               tableName: String,
-              partitionColumns: Seq[String],
+              partitionColumns: List[String],
               tableProperties: Map[String, String],
-              fileFormat: String)(sqlEvaluator: String => Unit): TableCreationStatus = {
+              fileFormat: String)(sqlEvaluator: String => Unit): Unit = {
       val creationSql =
         createTableSql(tableName,
                        df.schema,
@@ -69,7 +68,7 @@ trait Format {
                        createTableTypeString)
 
       sqlEvaluator(creationSql)
-      TableCreatedWithoutInitialData
+      ()
     }
 
     inner(df, tableName, partitionColumns, tableProperties, fileFormat)

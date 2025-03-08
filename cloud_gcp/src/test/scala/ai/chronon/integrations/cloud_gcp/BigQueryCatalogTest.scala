@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.spark.format.FormatProvider
 import ai.chronon.spark.{SparkSessionBuilder, TableUtils}
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
@@ -13,9 +14,9 @@ import com.google.cloud.spark.bigquery.SparkBigQueryUtil
 import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
 import org.apache.iceberg.gcp.gcs.GCSFileIO
 import org.apache.iceberg.io.ResolvingFileIO
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, to_date}
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.junit.Assert.{assertEquals, assertNotNull, assertTrue}
 import org.objenesis.strategy.StdInstantiatorStrategy
 import org.scalatest.flatspec.AnyFlatSpec
@@ -37,16 +38,27 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
         "spark.hadoop.fs.gs.impl" -> classOf[GoogleHadoopFileSystem].getName,
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> classOf[GoogleHadoopFS].getName,
         // set the following to run local integration tests
-//        "spark.hadoop.google.cloud.auth.service.account.enable" -> false.toString,
-//        "spark.sql.catalog.spark_catalog.catalog-impl" -> classOf[BQMSCatalog].getName,
+//        "spark.sql.catalog.spark_catalog" -> classOf[SparkCatalog].getName,
+//        "spark.hadoop.google.cloud.auth.service.account.enable" -> true.toString,
 //        "spark.sql.catalog.spark_catalog" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
+//        "spark.sql.catalog.spark_catalog.catalog-impl" -> classOf[BQMSCatalog].getName,
 //        "spark.sql.catalog.spark_catalog.io-impl" -> classOf[ResolvingFileIO].getName,
-//        "spark.sql.defaultUrlStreamHandlerFactory.enabled" -> false.toString,
 //        "spark.sql.catalog.spark_catalog.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
 //        "spark.sql.catalog.spark_catalog.gcp_location" -> "us-central1",
 //        "spark.sql.catalog.spark_catalog.gcp_project" -> "canary-443022",
+//
+//        // Set these twice so that we force iceberg to use the BQMSCatalog.
+//        "spark.sql.catalog.default_iceberg" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
+//        "spark.sql.catalog.default_iceberg.catalog-impl" -> classOf[BQMSCatalog].getName,
+//        "spark.sql.catalog.default_iceberg.io-impl" -> classOf[ResolvingFileIO].getName,
+//        "spark.sql.catalog.default_iceberg.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
+//        "spark.sql.catalog.default_iceberg.gcp_location" -> "us-central1",
+//        "spark.sql.catalog.default_iceberg.gcp_project" -> "canary-443022",
+//
+//
 //        "spark.sql.catalogImplementation" -> "in-memory",
 //        "spark.kryo.registrator" -> classOf[ChrononIcebergKryoRegistrator].getName,
+//        "spark.sql.defaultUrlStreamHandlerFactory.enabled" -> false.toString,
       ))
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
@@ -59,7 +71,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   it should "verify dynamic classloading of GCP providers" in {
     assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
-    assertTrue(tableUtils.tableFormatProvider.isInstanceOf[GcpFormatProvider])
+    assertTrue(FormatProvider.from(spark).isInstanceOf[GcpFormatProvider])
   }
 
   it should "bigquery connector converts spark dates regardless of date setting" in {
@@ -114,8 +126,15 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
       Map(
       "file_format" -> "PARQUET",
       "table_type" -> "iceberg"),
-      List("ds"),
-      saveMode = SaveMode.Overwrite)
+      List("ds"))
+
+
+    val icebergCols = spark.catalog.listColumns("data.tchow_test_iceberg")
+    val externalCols = spark.catalog.listColumns("data.checkouts_parquet_partitioned")
+    val nativeCols = spark.catalog.listColumns("data.purchases")
+
+    val icebergPartitions = spark.sql("SELECT * FROM data.tchow_test_iceberg.partitions")
+
 
     val sqlDf = tableUtils.sql(
       s"""

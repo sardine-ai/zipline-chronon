@@ -6,19 +6,21 @@ object CreationUtils {
 
   def createTableSql(tableName: String,
                      schema: StructType,
-                     partitionColumns: Seq[String],
+                     partitionColumns: List[String],
                      tableProperties: Map[String, String],
                      fileFormatString: String,
                      tableTypeString: String): String = {
 
-    val fieldDefinitions = schema
-      .filterNot(field => partitionColumns.contains(field.name))
-      .map(field => s"`${field.name}` ${field.dataType.catalogString}")
+    val noPartitions = StructType(
+      schema
+        .filterNot(field => partitionColumns.contains(field.name)))
 
     val createFragment =
       s"""CREATE TABLE $tableName (
-         |    ${fieldDefinitions.mkString(",\n    ")}
-         |) $tableTypeString """.stripMargin
+         |    ${noPartitions.toDDL}
+         |)
+         |${if (tableTypeString.isEmpty) "" else f"USING ${tableTypeString}"}
+         |""".stripMargin
 
     val partitionFragment = if (partitionColumns != null && partitionColumns.nonEmpty) {
 
@@ -36,13 +38,16 @@ object CreationUtils {
 
     val propertiesFragment = if (tableProperties != null && tableProperties.nonEmpty) {
       s"""TBLPROPERTIES (
-         |    ${tableProperties.transform((k, v) => s"'$k'='$v'").values.mkString(",\n   ")}
+         |    ${(tableProperties + ("file_format" -> fileFormatString) + ("table_type" -> tableTypeString))
+        .transform((k, v) => s"'$k'='$v'")
+        .values
+        .mkString(",\n   ")}
          |)""".stripMargin
     } else {
       ""
     }
 
-    Seq(createFragment, partitionFragment, fileFormatString, propertiesFragment).mkString("\n")
+    Seq(createFragment, partitionFragment, propertiesFragment).mkString("\n")
 
   }
 
