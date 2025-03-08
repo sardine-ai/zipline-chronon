@@ -1,6 +1,6 @@
+load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 load("@rules_jvm_external//:specs.bzl", "maven")
 load(":defs.bzl", "repository", "versioned_artifacts")
-load("@io_bazel_rules_scala_config//:config.bzl", "SCALA_MAJOR_VERSION", "SCALA_VERSION")
 
 SCALA_2_12_REPOSITORY_NAME = "scala_2_12"
 
@@ -34,7 +34,6 @@ scala_2_12_repository = repository(
         "org.json4s:json4s-ast_2.12:3.7.0-M11",
         "io.delta:delta-spark_2.12:3.2.0",
         "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
-
         "org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0",
 
         # Circe
@@ -42,6 +41,9 @@ scala_2_12_repository = repository(
         "io.circe:circe-generic_2.12:0.14.9",
         "io.circe:circe-parser_2.12:0.14.9",
         "com.chuusai:shapeless_2.12:2.3.12",
+
+        # Slick
+        "com.typesafe.slick:slick_2.12:3.3.3",
     ],
     excluded_artifacts = [
         "org.pentaho:pentaho-aggdesigner-algorithm",
