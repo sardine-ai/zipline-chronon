@@ -149,17 +149,17 @@ object Extensions {
 
     def save(tableName: String,
              tableProperties: Map[String, String] = null,
-             partitionColumns: Seq[String] = Seq(tableUtils.partitionColumn),
+             partitionColumns: Seq[String] = List(tableUtils.partitionColumn),
              autoExpand: Boolean = false,
              stats: Option[DfStats] = None,
-             sortByCols: Seq[String] = Seq.empty): Unit = {
+             sortByCols: Seq[String] = List.empty): Unit = {
       TableUtils(df.sparkSession).insertPartitions(df,
                                                    tableName,
                                                    tableProperties,
-                                                   partitionColumns,
+                                                   partitionColumns.toList,
                                                    autoExpand = autoExpand,
                                                    stats = stats,
-                                                   sortByCols = sortByCols)
+                                                   sortByCols = sortByCols.toList)
     }
 
     def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {

@@ -12,10 +12,10 @@ case object DeltaLake extends Format {
   override def name: String = "delta"
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): Seq[String] =
+      implicit sparkSession: SparkSession): List[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
 
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]] = {
+  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
 
     // delta lake doesn't support the `SHOW PARTITIONS <tableName>` syntax - https://github.com/delta-io/delta/issues/996
     // there's alternative ways to retrieve partitions using the DeltaLog abstraction which is what we have to lean into
@@ -28,11 +28,11 @@ case object DeltaLake extends Format {
     val snapshotPartitionsDf = snapshot.allFiles.toDF().select("partitionValues")
 
     val partitions = snapshotPartitionsDf.collect().map(r => r.getAs[Map[String, String]](0))
-    partitions
+    partitions.toList
 
   }
 
-  def createTableTypeString: String = "USING DELTA"
+  def createTableTypeString: String = "DELTA"
 
   def fileFormatString(format: String): String = ""
 

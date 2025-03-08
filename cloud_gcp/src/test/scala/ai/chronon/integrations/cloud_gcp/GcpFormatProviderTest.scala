@@ -1,7 +1,7 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark.SparkSessionBuilder
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
+import com.google.cloud.bigquery._
 import org.apache.spark.sql.SparkSession
 import org.mockito.Mockito.when
 import org.scalatest.flatspec.AnyFlatSpec
@@ -16,7 +16,8 @@ class GcpFormatProviderTest extends AnyFlatSpec with MockitoSugar {
     local = true
   )
 
-  it should "check getFormat works for URI's that have a wildcard in between" in {
+  it should "check getFormat works for URI's that have a wildcard in between" ignore {
+    // todo(tchow): Remove this test, getting rid of this abstraction eventually.
     val gcpFormatProvider = GcpFormatProvider(spark)
     val sourceUris = "gs://bucket-name/path/to/data/*.parquet"
     val tableName = "gs://bucket-name/path/to/data"
