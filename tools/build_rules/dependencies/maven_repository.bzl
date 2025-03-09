@@ -8,6 +8,16 @@ maven_repository = repository(
     pinned = False,
     maven_install_json = "//:maven_install.json",
     artifacts = [
+        # Scala 2.12 libraries
+        "org.scala-lang.modules:scala-collection-compat_2.12:2.6.0",
+        "org.scala-lang.modules:scala-parser-combinators_2.12:2.3.0",
+        "org.scala-lang.modules:scala-java8-compat_2.12:1.0.2",
+
+        # Scala 2.13 libraries
+        "org.scala-lang.modules:scala-collection-compat_2.13:2.6.0",
+        "org.scala-lang.modules:scala-parser-combinators_2.13:2.3.0",
+        "org.scala-lang.modules:scala-java8-compat_2.13:1.0.2",
+
         # Unit testing
         "junit:junit:4.13.2",
         "org.junit.jupiter:junit-jupiter-api:5.10.5",
@@ -16,8 +26,25 @@ maven_repository = repository(
         "com.novocode:junit-interface:0.11",
         "org.mockito:mockito-core:5.12.0",
         "org.objenesis:objenesis:3.4",
+        "org.eclipse.jetty:jetty-util:9.4.57.v20241219",  # latest version that is still built on jdk 11 and not 17.
 
-        "org.eclipse.jetty:jetty-util:9.4.57.v20241219", # latest version that is still built on jdk 11 and not 17.
+        # Unit testing - for scala 2.12
+        "org.scalatestplus:mockito-3-4_2.12:3.2.10.0",
+        "org.mockito:mockito-scala_2.12:1.17.0",
+        "org.scalatest:scalatest_2.12:3.2.15",
+        "org.scalatest:scalatest-shouldmatchers_2.12:3.2.15",
+        "org.scalatest:scalatest-matchers-core_2.12:3.2.15",
+        "org.scalactic:scalactic_2.12:3.2.15",
+        "org.mockito:mockito-core:5.12.0",
+
+        # Unit testing - for scala 2.13
+        "org.scalatestplus:mockito-3-4_2.13:3.2.10.0",
+        "org.mockito:mockito-scala_2.13:1.17.0",
+        "org.scalatest:scalatest_2.13:3.2.15",
+        "org.scalatest:scalatest-shouldmatchers_2.13:3.2.15",
+        "org.scalatest:scalatest-matchers-core_2.13:3.2.15",
+        "org.scalactic:scalactic_2.13:3.2.15",
+        "org.mockito:mockito-core:5.12.0",
 
         # Add other dependencies
         "org.slf4j:slf4j-api:2.0.12",
@@ -49,6 +76,30 @@ maven_repository = repository(
         "org.apache.hudi:hudi-aws-bundle:0.15.0",
         "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
 
+        # Add other dependencies - for scala 2.12
+        "org.apache.logging.log4j:log4j-api-scala_2.12:13.1.0",
+        "com.fasterxml.jackson.module:jackson-module-scala_2.12:2.15.2",
+        "org.rogach:scallop_2.12:5.1.0",
+        "com.softwaremill.sttp.client3:core_2.12:3.9.7",
+        "org.json4s:json4s-jackson_2.12:3.7.0-M11",
+        "org.json4s:json4s-core_2.12:3.7.0-M11",
+        "org.json4s:json4s-ast_2.12:3.7.0-M11",
+        "io.delta:delta-spark_2.12:3.2.0",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
+        "org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0",
+
+        # Add other dependencies - for scala 2.13
+        "org.apache.logging.log4j:log4j-api-scala_2.13:13.1.0",
+        "com.fasterxml.jackson.module:jackson-module-scala_2.13:2.15.2",
+        "org.rogach:scallop_2.13:5.1.0",
+        "com.softwaremill.sttp.client3:core_2.13:3.9.7",
+        "org.json4s:json4s-jackson_2.13:3.7.0-M11",
+        "org.json4s:json4s-core_2.13:3.7.0-M11",
+        "org.json4s:json4s-ast_2.13:3.7.0-M11",
+        "io.delta:delta-spark_2.13:3.2.0",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.5.2",
+        "org.apache.hudi:hudi-spark3.5-bundle_2.13:0.15.0",
+
         # grpc
         "io.grpc:grpc-core:1.69.0",
         "io.grpc:grpc-stub:1.69.0",
@@ -68,13 +119,13 @@ maven_repository = repository(
         "org.apache.hive:hive-metastore:2.3.9",
         # !!! this is a dangerous dependency - only used in //online:test-lib - please don't use it anywhere else
         "org.apache.hive:hive-exec:2.3.9",
+        "org.apache.curator:apache-curator:5.5.0",
 
         # Hadoop
         "org.apache.hadoop:hadoop-client-api:3.4.1",
         "org.apache.hadoop:hadoop-common:3.4.1",
         "org.apache.hadoop:hadoop-yarn-api:3.4.1",
         "org.apache.hadoop:hadoop-yarn-common:3.4.1",
-
 
         # AWS
         "software.amazon.awssdk:dynamodb:2.30.13",
@@ -128,9 +179,38 @@ maven_repository = repository(
         # Postgres SQL
         "org.postgresql:postgresql:42.7.5",
         "org.testcontainers:postgresql:1.20.4",
+
+        # Spark artifacts - for scala 2.12
+        "org.apache.spark:spark-sql_2.12:3.5.1",
+        "org.apache.spark:spark-hive_2.12:3.5.1",
+        "org.apache.spark:spark-streaming_2.12:3.5.1",
+        "org.apache.spark:spark-avro_2.12:3.5.1",
+
+        # Spark artifacts - for scala 2.13
+        "org.apache.spark:spark-sql_2.13:3.5.1",
+        "org.apache.spark:spark-hive_2.13:3.5.1",
+        "org.apache.spark:spark-streaming_2.13:3.5.1",
+        "org.apache.spark:spark-avro_2.13:3.5.1",
+
+        # Circe - for scala 2.12
+        "io.circe:circe-core_2.12:0.14.9",
+        "io.circe:circe-generic_2.12:0.14.9",
+        "io.circe:circe-parser_2.12:0.14.9",
+        "com.chuusai:shapeless_2.12:2.3.12",
+
+        # Circe - for scala 2.13
+        "io.circe:circe-core_2.13:0.14.9",
+        "io.circe:circe-generic_2.13:0.14.9",
+        "io.circe:circe-parser_2.13:0.14.9",
+        "com.chuusai:shapeless_2.13:2.3.12",
+
+        # Slick - for scala 2.12
+        "com.typesafe.slick:slick_2.12:3.3.3",
+
+        # Slick - for scala 2.13
+        "com.typesafe.slick:slick_2.13:3.4.1",
     ],
     excluded_artifacts = [
-        "org.apache.commons:commons-text",
         "org.apache.beam:beam-sdks-java-io-hadoop-common",
         "org.pentaho:pentaho-aggdesigner-algorithm",
         # Exclude Hadoop from the assembled JAR
@@ -146,6 +226,11 @@ maven_repository = repository(
         "org.apache.hadoop:hadoop-yarn-client",
         "org.apache.parquet:parquet-avro",
         "org.apache.zookeeper:zookeeper",
+        # Exclude rocksdb from the assembled JARs that pull this in (e.g. flink, cloud_gcp) as we want to exclude
+        # the rockdb library and rely on those part of the dist / env
+        # Else we hit an error - NoSuchMethodError: 'void org.rocksdb.WriteBatch.remove
+        "org.rocksdb:rocksdbjni",
+        # Exclude scala artifacts as right versions are pulled from scala repository
         "org.scala-lang:scala-library",
         "org.scala-lang:scala-reflect",
     ],
