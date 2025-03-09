@@ -14,7 +14,7 @@ java_library(
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact("org.slf4j:slf4j-api"),
-        scala_artifact_with_suffix("org.json4s:json4s-core"),
+        maven_artifact_with_suffix("org.json4s:json4s-core"),
     ],
 )
 
@@ -50,6 +50,6 @@ java_test_suite(
 jvm_binary(
     name = "service_assembly",
     main_class = "ai.chronon.service.ChrononServiceLauncher",
-    runtime_deps = [":lib"],
     resources = glob(["src/main/resources/**/*"]),
+    runtime_deps = [":lib"],
 )

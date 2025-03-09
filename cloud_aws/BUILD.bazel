@@ -11,8 +11,8 @@ shared_libs = [
     maven_artifact("junit:junit"),
     maven_artifact("com.novocode:junit-interface"),
     maven_artifact("com.fasterxml.jackson.module:jackson-module-afterburner"),
-    scala_artifact_with_suffix("org.apache.hudi:hudi-spark3.5-bundle"),
-    scala_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
+    maven_artifact_with_suffix("org.apache.hudi:hudi-spark3.5-bundle"),
+    maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
     "//api:lib",
     "//api:thrift_java",
     "//online:lib",
@@ -37,9 +37,9 @@ test_deps = [
     maven_artifact("software.amazon.awssdk:auth"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
     maven_artifact("software.amazon.awssdk:url-connection-client"),
-    scala_artifact_with_suffix("com.chuusai:shapeless"),
-    scala_artifact_with_suffix("org.typelevel:cats-core"),
-    scala_artifact_with_suffix("org.mockito:mockito-scala"),
+    maven_artifact_with_suffix("com.chuusai:shapeless"),
+    maven_artifact_with_suffix("org.typelevel:cats-core"),
+    maven_artifact_with_suffix("org.mockito:mockito-scala"),
 ] + _CIRCE_DEPS + _SCALA_TEST_DEPS
 
 scala_test_suite(
