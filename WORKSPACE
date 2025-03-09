@@ -4,7 +4,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Load scala version from the config
 load("//:scala_config.bzl", "scala_version")
+
 scala_version(name = "scala_config")
+
 load("@scala_config//:version.bzl", "SCALA_VERSION")
 
 # Contains useful bazel utility functions and rules
@@ -76,21 +78,28 @@ http_archive(
 
 # Initialize Scala with specific version support
 load("@io_bazel_rules_scala//:scala_config.bzl", "scala_config")
+
 scala_config(scala_version = SCALA_VERSION)
 
 load("@io_bazel_rules_scala//scala:scala.bzl", "scala_repositories")
+
 scala_repositories()
 
 load("@io_bazel_rules_scala//scala:toolchains.bzl", "scala_register_toolchains")
+
 scala_register_toolchains()
 
 load("@io_bazel_rules_scala//testing:scalatest.bzl", "scalatest_repositories", "scalatest_toolchain")
+
 scalatest_repositories()
+
 scalatest_toolchain()
 
 # For scalafmt
 load("@io_bazel_rules_scala//scala/scalafmt:scalafmt_repositories.bzl", "scalafmt_default_config", "scalafmt_repositories")
+
 scalafmt_default_config()
+
 scalafmt_repositories()
 
 # For Protobuf support
@@ -111,10 +120,9 @@ rules_proto_toolchains()
 
 # To load all dependencies used across our modules
 load("//tools/build_rules/dependencies:load_dependencies.bzl", "load_all_dependencies")
+
 load_all_dependencies()
 
 load("@maven//:defs.bzl", pinned_maven_repo_install = "pinned_maven_install")
-pinned_maven_repo_install()
 
-load("@spark//:defs.bzl", pinned_spark_repo_install = "pinned_maven_install")
-pinned_spark_repo_install()
+pinned_maven_repo_install()
