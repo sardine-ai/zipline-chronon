@@ -20,7 +20,7 @@ bq rm -f -t canary-443022:data.quickstart_purchases_v1_dev_upload
 #TODO: delete bigtable rows
 
 # Clone the cananry configs
-git clone git@github.com-zipline:zipline-ai/cananry-confs.git
+git clone https://github.com/zipline-ai/cananry-confs.git
 cd cananry-confs
 
 # Use the branch with Zipline specific team.json
