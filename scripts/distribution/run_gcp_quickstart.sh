@@ -1,5 +1,4 @@
 #!/bin/bash
-# Run this bash script via the python file `distribution/run_zipline_quickstart.py`
 set -xo pipefail
 
 mkdir -p /tmp/zipline_test/gcp
@@ -52,7 +51,7 @@ function check_dataproc_job_state() {
   echo $JOB_STATE
 #  TODO: this doesn't actually fail. need to fix.
   if [ -z "$JOB_STATE" ]; then
-        echo "Job failed"
+        echo -e "${RED} <<<<<<<<<<<<<<<<-----------------JOB FAILED!----------------->>>>>>>>>>>>>>>>>\033[0m"
         exit 1
   fi
 }

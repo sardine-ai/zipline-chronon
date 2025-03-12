@@ -37,6 +37,17 @@ object ScalaJavaConversions {
     }
   }
 
+  implicit class IterableOps[T](iterable: java.lang.Iterable[T]) {
+    def toScala: Iterable[T] = {
+      iterable.asScala
+    }
+  }
+  implicit class JIterableOps[T](iterable: Iterable[T]) {
+    def toJava: java.lang.Iterable[T] = {
+      iterable.asJava
+    }
+  }
+
   implicit class IteratorOps[T](iterator: java.util.Iterator[T]) {
     def toScala: Iterator[T] = {
       iterator.asScala

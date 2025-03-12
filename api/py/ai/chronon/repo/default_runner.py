@@ -24,6 +24,8 @@ class Runner:
         self.kafka_bootstrap = args.get("kafka_bootstrap")
         self.mock_source = args.get("mock_source")
         self.savepoint_uri = args.get("savepoint_uri")
+        self.validate = args.get("validate")
+        self.validate_rows = args.get("validate_rows")
 
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
