@@ -36,14 +36,6 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
 
   override def readFormat(tableName: String): scala.Option[Format] = format(tableName)
 
-  override def writeFormat(table: String): Format = {
-    val writePrefix = TableUtils(sparkSession).writePrefix
-    require(writePrefix.nonEmpty, "Please set conf 'spark.chronon.table_write.prefix' pointing to a data bucket.")
-
-    val path = writePrefix.get + table.sanitize //split("/").map(_.sanitize).mkString("/")
-    GCS(path, "PARQUET")
-  }
-
   private[cloud_gcp] def getFormat(table: Table): Format = {
     table.getDefinition.asInstanceOf[TableDefinition] match {
       case definition: ExternalTableDefinition =>

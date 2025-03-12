@@ -1,11 +1,8 @@
 package ai.chronon.spark.format
 
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.CreationUtils.createTableSql
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 trait Format {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -48,33 +45,6 @@ trait Format {
   //      )
   def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]]
 
-  def generateTableBuilder(df: DataFrame,
-                           tableName: String,
-                           partitionColumns: List[String],
-                           tableProperties: Map[String, String],
-                           fileFormat: String): (String => Unit) => Unit = {
-
-    def inner(df: DataFrame,
-              tableName: String,
-              partitionColumns: List[String],
-              tableProperties: Map[String, String],
-              fileFormat: String)(sqlEvaluator: String => Unit): Unit = {
-      val creationSql =
-        createTableSql(tableName,
-                       df.schema,
-                       partitionColumns,
-                       tableProperties,
-                       fileFormatString(fileFormat),
-                       createTableTypeString)
-
-      sqlEvaluator(creationSql)
-      ()
-    }
-
-    inner(df, tableName, partitionColumns, tableProperties, fileFormat)
-
-  }
-
   def alterTableProperties(tableName: String, tableProperties: Map[String, String]): (String => Unit) => Unit = {
 
     def inner(tableName: String, tableProperties: Map[String, String])(sqlEvaluator: String => Unit) = {
@@ -89,16 +59,7 @@ trait Format {
 
   }
 
-  // Help specify the appropriate table type to use in the Spark create table DDL query
-  def createTableTypeString: String
-
-  // Help specify the appropriate file format to use in the Spark create table DDL query
-  def fileFormatString(format: String): String
-
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean
-
-  // TODO: remove this once all formats implement table creation
-  val canCreateTable: Boolean = false
 
 }

@@ -5,7 +5,7 @@ import ai.chronon.spark.format.Format
 import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, date_format, to_date}
 
 case class BigQueryFormat(project: String, bqClient: BigQuery, override val options: Map[String, String])
@@ -22,13 +22,6 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
-  override def generateTableBuilder(df: DataFrame,
-                                    tableName: String,
-                                    partitionColumns: List[String],
-                                    tableProperties: Map[String, String],
-                                    fileFormat: String): (String => Unit) => Unit = {
-    throw new UnsupportedOperationException("generateTableBuilder not supported for BigQuery")
-  }
 
   override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
     import sparkSession.implicits._
@@ -98,11 +91,6 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     partitionVals.map((p) => Map(partitionCol -> p))
 
   }
-
-  def createTableTypeString: String =
-    throw new UnsupportedOperationException("createTableTypeString not yet supported for BigQuery")
-  def fileFormatString(format: String): String =
-    throw new UnsupportedOperationException("fileFormatString not yet supported for BigQuery")
 
   override def supportSubPartitionsFilter: Boolean = true
 }
