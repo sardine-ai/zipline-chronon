@@ -32,9 +32,5 @@ case object Hive extends Format {
       .toList
   }
 
-  def createTableTypeString: String = ""
-
-  def fileFormatString(format: String): String = s"STORED AS $format"
-
   override def supportSubPartitionsFilter: Boolean = true
 }

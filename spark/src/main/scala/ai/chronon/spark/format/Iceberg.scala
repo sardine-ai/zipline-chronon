@@ -52,9 +52,5 @@ case object Iceberg extends Format {
     }
   }
 
-  def createTableTypeString: String = "ICEBERG"
-
-  def fileFormatString(format: String): String = ""
-
   override def supportSubPartitionsFilter: Boolean = false
 }
