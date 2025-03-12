@@ -32,9 +32,5 @@ case object DeltaLake extends Format {
 
   }
 
-  def createTableTypeString: String = "DELTA"
-
-  def fileFormatString(format: String): String = ""
-
   override def supportSubPartitionsFilter: Boolean = true
 }

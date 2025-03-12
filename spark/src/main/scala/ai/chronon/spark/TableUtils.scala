@@ -76,20 +76,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
-  val writePrefix: Option[String] = {
-
-    val barePrefix = sparkSession.conf.get("spark.chronon.table_write.prefix", "")
-
-    if (barePrefix.isEmpty || barePrefix.toUpperCase() == "NONE") {
-      None
-    } else if (barePrefix.endsWith("/")) {
-      Some(barePrefix)
-    } else {
-      Some(barePrefix + "/")
-    }
-
-  }
-
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
   @transient private implicit lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)

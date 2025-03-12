@@ -4,12 +4,19 @@ import org.apache.spark.sql.types.StructType
 
 object CreationUtils {
 
+  private val ALLOWED_TABLE_TYPES = List("iceberg", "delta", "hive", "parquet", "hudi")
+
   def createTableSql(tableName: String,
                      schema: StructType,
                      partitionColumns: List[String],
                      tableProperties: Map[String, String],
                      fileFormatString: String,
                      tableTypeString: String): String = {
+
+    require(
+      tableTypeString.isEmpty || ALLOWED_TABLE_TYPES.contains(tableTypeString.toLowerCase),
+      s"Invalid table type: ${tableTypeString}. Must be empty OR one of: ${ALLOWED_TABLE_TYPES}"
+    )
 
     val noPartitions = StructType(
       schema
