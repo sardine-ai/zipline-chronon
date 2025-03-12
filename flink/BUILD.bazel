@@ -27,6 +27,7 @@ scala_library(
         maven_artifact("org.apache.hadoop:hadoop-common"),
         maven_artifact("org.apache.hadoop:hadoop-client-api"),
         maven_artifact("org.apache.hadoop:hadoop-yarn-api"),
+        maven_artifact("org.apache.commons:commons-lang3"),
     ],
 )
 

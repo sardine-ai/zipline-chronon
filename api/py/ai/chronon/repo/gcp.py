@@ -258,9 +258,13 @@ class GcpRunner(Runner):
             "-ZGCP_PROJECT_ID": GcpRunner.get_gcp_project_id(),
             "-ZGCP_BIGTABLE_INSTANCE_ID": GcpRunner.get_gcp_bigtable_instance_id(),
             "--savepoint-uri": self.savepoint_uri,
+            "--validate-rows": self.validate_rows,
         }
 
-        flag_args = {"--mock-source": self.mock_source}
+        flag_args = {
+            "--mock-source": self.mock_source,
+            "--validate": self.validate
+        }
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
 
         user_args_str = " ".join(
