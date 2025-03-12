@@ -137,10 +137,10 @@ class CatalystUtil(inputSchema: StructType,
 
   @transient private lazy val logger = LoggerFactory.getLogger(this.getClass)
 
-  private val selectClauses = selects.map { case (name, expr) => s"$expr as $name" }
+  val selectClauses: Seq[String] = selects.map { case (name, expr) => s"$expr as $name" }
   private val sessionTable =
     s"q${math.abs(selectClauses.mkString(", ").hashCode)}_f${math.abs(inputSparkSchema.pretty.hashCode)}"
-  private val whereClauseOpt = Option(wheres)
+  val whereClauseOpt: Option[String] = Option(wheres)
     .filter(_.nonEmpty)
     .map { w =>
       // wrap each clause in parens
