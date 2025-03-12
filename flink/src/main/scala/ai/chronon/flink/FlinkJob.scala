@@ -12,6 +12,7 @@ import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
+import ai.chronon.flink.validation.ValidationFlinkJob
 import ai.chronon.flink.window.AlwaysFireOnElementTrigger
 import ai.chronon.flink.window.FlinkRowAggProcessFunction
 import ai.chronon.flink.window.FlinkRowAggregationFunction
@@ -291,6 +292,12 @@ object FlinkJob {
     // Kafka config is optional as we can support other sources in the future
     val kafkaBootstrap: ScallopOption[String] =
       opt[String](required = false, descr = "Kafka bootstrap server in host:port format")
+    // Run in validate mode - We read rows using Kafka and run them through Spark Df and compare against CatalystUtil output
+    val validate: ScallopOption[Boolean] =
+      opt[Boolean](required = false, descr = "Run in validate mode", default = Some(false))
+    // Number of rows to use for validation
+    val validateRows: ScallopOption[Int] =
+      opt[Int](required = false, descr = "Number of rows to use for validation", default = Some(10000))
 
     val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API / KV Store")
 
@@ -304,9 +311,22 @@ object FlinkJob {
     val props = jobArgs.apiProps.map(identity)
     val useMockedSource = jobArgs.mockSource()
     val kafkaBootstrap = jobArgs.kafkaBootstrap.toOption
+    val validateMode = jobArgs.validate()
+    val validateRows = jobArgs.validateRows()
 
     val api = buildApi(onlineClassName, props)
     val metadataStore = new MetadataStore(FetchContext(api.genKvStore, MetadataDataset))
+
+    if (validateMode) {
+      val validationResults = ValidationFlinkJob.run(metadataStore, kafkaBootstrap, groupByName, validateRows)
+      if (validationResults.map(_.totalMismatches).sum > 0) {
+        val validationSummary = s"Total records: ${validationResults.map(_.totalRecords).sum}, " +
+          s"Total matches: ${validationResults.map(_.totalMatches).sum}, " +
+          s"Total mismatches: ${validationResults.map(_.totalMismatches).sum}"
+        throw new IllegalStateException(
+          s"Spark DF vs Catalyst util validation failed. Validation summary: $validationSummary")
+      }
+    }
 
     val flinkJob =
       if (useMockedSource) {
