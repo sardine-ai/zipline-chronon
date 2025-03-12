@@ -5,7 +5,7 @@ import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery._
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.execution.FileSourceScanExec
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
-import org.apache.spark.sql.{DataFrame, Encoders, Row, SparkSession}
+import org.apache.spark.sql.{Encoders, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
 case class GCS(sourceUri: String, fileFormat: String) extends Format {
@@ -77,18 +77,6 @@ case class GCS(sourceUri: String, fileFormat: String) extends Format {
         }.toMap)
       .toList
   }
-
-  override def generateTableBuilder(df: DataFrame,
-                                    tableName: String,
-                                    partitionColumns: List[String],
-                                    tableProperties: Map[String, String],
-                                    fileFormat: String): (String => Unit) => Unit = {
-    throw new UnsupportedOperationException("generateTableBuilder not supported for GCS")
-  }
-
-  def createTableTypeString: String = throw new UnsupportedOperationException("GCS does not support create table")
-
-  def fileFormatString(format: String): String = ""
 
   override def supportSubPartitionsFilter: Boolean = true
 

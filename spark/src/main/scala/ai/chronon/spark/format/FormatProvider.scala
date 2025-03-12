@@ -16,8 +16,6 @@ trait FormatProvider extends Serializable {
 
   def readFormat(tableName: String): Option[Format]
 
-  def writeFormat(tableName: String): Format
-
   def resolveTableName(tableName: String) = tableName
 
 }
