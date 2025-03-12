@@ -159,6 +159,10 @@ def set_defaults(ctx):
     help="Use a mocked data source instead of a real source for groupby-streaming Flink.",
 )
 @click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
+@click.option("--validate", is_flag=True,
+              help="Validate the catalyst util Spark expression evaluation logic")
+@click.option("--validate-rows", default="10000",
+              help="Number of rows to  run the validation on")
 @click.pass_context
 def main(
     ctx,
@@ -190,6 +194,8 @@ def main(
     kafka_bootstrap,
     mock_source,
     savepoint_uri,
+    validate,
+    validate_rows
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
