@@ -234,8 +234,6 @@ maven_repository = repository(
         # the rockdb library and rely on those part of the dist / env
         # Else we hit an error - NoSuchMethodError: 'void org.rocksdb.WriteBatch.remove
         "org.rocksdb:rocksdbjni",
-        # pull out some slf4j-impl dependencies
-        "org.apache.logging.log4j:log4j-slf4j2-impl",
         # Exclude scala artifacts as right versions are pulled from scala repository
         "org.scala-lang:scala-library",
         "org.scala-lang:scala-reflect",
