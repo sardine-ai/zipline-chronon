@@ -60,6 +60,15 @@ jvm_binary(
     ],
 )
 
+jvm_binary(
+    name = "cloud_gcp_embedded_lib",
+    deploy_env = ["//tools/build_rules/cloud_gcp_embedded:cloud_gcp_embedded"],
+    main_class = "None",
+    runtime_deps = [
+        ":base_cloud_gcp_lib"
+    ],
+)
+
 test_deps = [
     maven_artifact("com.google.cloud:google-cloud-bigtable-emulator"),
 
