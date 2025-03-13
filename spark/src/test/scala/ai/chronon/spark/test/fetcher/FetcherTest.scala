@@ -19,7 +19,7 @@ package ai.chronon.spark.test.fetcher
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
+import ai.chronon.api.Extensions.{GroupByOps, JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.KVStore.GetRequest
@@ -37,6 +37,7 @@ import org.apache.spark.sql.functions.{avg, col, lit}
 import org.apache.spark.sql.{Row, SparkSession}
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.TimeZone
@@ -554,11 +555,16 @@ class FetcherTest extends AnyFlatSpec {
         )
       ),
       accuracy = Accuracy.TEMPORAL,
-      metaData = Builders.MetaData(name = "unit_test/fetcher_tiled_gb",
-                                   namespace = namespace,
-                                   team = "chronon",
-                                   customJson = groupByCustomJson.orNull)
+      metaData = Builders.MetaData(
+        name = "unit_test/fetcher_tiled_gb",
+        namespace = namespace,
+        team = "chronon",
+        customJson = groupByCustomJson.orNull,
+        executionInfo = new ExecutionInfo()
+          .setConf(new ConfigProperties().setServing(Map("tiling" -> "true").toJava))
+      )
     )
+    groupBy.tilingFlag shouldBe true
 
     val joinConf = Builders.Join(
       left = leftSource,
@@ -580,18 +586,7 @@ class FetcherTest extends AnyFlatSpec {
     val kvStoreFunc = () => OnlineUtils.buildInMemoryKVStore("FetcherTest")
     val inMemoryKvStore = kvStoreFunc()
 
-    val tilingEnabledFlagStore = new FlagStore {
-      override def isSet(flagName: String, attributes: util.Map[String, String]): lang.Boolean = {
-        if (flagName == FlagStoreConstants.TILING_ENABLED) {
-          enableTiling
-        } else {
-          false
-        }
-      }
-    }
-
     val mockApi = new MockApi(kvStoreFunc, namespace)
-    mockApi.setFlagStore(tilingEnabledFlagStore)
 
     val joinedDf = new ai.chronon.spark.Join(joinConf, endDs, tableUtils).computeJoin()
     val joinTable = s"$namespace.join_test_expected_${joinConf.metaData.cleanName}"

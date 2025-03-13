@@ -25,18 +25,42 @@ struct DateRange {
     2: string endDate
 }
 
+/**
+* env vars for different modes of execution - with "common" applying to all modes
+* the submitter will set these env vars prior to launching the job
+*
+* these env vars are layered in order of priority
+*   1. company file defaults specified in teams.py - in the "common" team
+*   2. team wide defaults that apply to all objects in the team folder
+*   3. object specific defaults - applies to only the object that are declares them
+*
+* All the maps from the above three places are merged to create final env var
+**/
 struct EnvironmentVariables {
     1: optional map<string, string> common
     2: optional map<string, string> backfill
     3: optional map<string, string> upload
     4: optional map<string, string> streaming
+    5: optional map<string, string> serving
 }
 
+/**
+* job config for different modes of execution - with "common" applying to all modes
+* usually these are spark or flink conf params like "spark.executor.memory" etc
+*
+* these confs are layered in order of priority
+*   1. company file defaults specified in teams.py - in the "common" team
+*   2. team wide defaults that apply to all objects in the team folder
+*   3. object specific defaults - applies to only the object that are declares them
+*
+* All the maps from the above three places are merged to create final conf map
+**/
 struct ConfigProperties {
     1: optional map<string, string> common
     2: optional map<string, string> backfill
     3: optional map<string, string> upload
     4: optional map<string, string> streaming
+    5: optional map<string, string> serving
 }
 
 struct TableDependency {
