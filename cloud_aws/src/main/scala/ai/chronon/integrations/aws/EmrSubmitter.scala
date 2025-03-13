@@ -78,7 +78,7 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
       )
       .applications(ClusterApplications.map(app => Application.builder().name(app).build()): _*)
       // TODO: Could make this generalizable. or use a separate logs bucket
-      .logUri(s"s3://zipline-artifacts-${customerId}/emr/")
+      .logUri(s"s3://zipline-logs-${customerId}/emr/")
       .instances(
         JobFlowInstancesConfig
           .builder()

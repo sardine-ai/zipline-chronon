@@ -61,7 +61,7 @@ class AwsRunner(Runner):
     def download_zipline_aws_jar(destination_dir: str, customer_id: str, jar_name: str):
         s3_client = boto3.client("s3")
         destination_path = f"{destination_dir}/{jar_name}"
-        source_key_name = f"jars/{jar_name}"
+        source_key_name = f"release/latest/jars/{jar_name}"
         bucket_name = f"zipline-artifacts-{customer_id}"
 
         are_identical = (
@@ -193,7 +193,7 @@ class AwsRunner(Runner):
                     job_type=job_type.value,
                     main_class=main_class,
                 )
-                + f" --additional-conf-path=additional-confs.yaml --files={s3_file_args}"
+                + f" --additional-conf-path={EMR_MOUNT_FILE_PREFIX}additional-confs.yaml --files={s3_file_args}"
             )
         else:
             raise ValueError(f"Invalid job type: {job_type}")
