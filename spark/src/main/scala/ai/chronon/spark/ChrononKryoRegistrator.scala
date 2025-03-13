@@ -90,6 +90,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "java.time.LocalDateTime",
       "java.util.ArrayList",
       "java.util.Collections$EmptySet",
+      "java.util.Collections$EmptyList",
       "java.util.HashMap",
       "java.util.HashSet",
       "java.util.concurrent.ConcurrentHashMap",
@@ -205,13 +206,15 @@ class ChrononHudiKryoRegistrator extends ChrononKryoRegistrator {
       "org.apache.hudi.metadata.HoodieMetadataPayload",
       "org.apache.hudi.common.model.HoodieRecordLocation",
       "org.apache.hudi.client.FailOnFirstErrorWriteStatus",
+      "org.apache.hudi.client.WriteStatus",
       "org.apache.hudi.common.model.HoodieWriteStat",
       "org.apache.hudi.common.model.HoodieWriteStat$RuntimeStats",
       "org.apache.hudi.common.util.collection.ImmutablePair",
       "org.apache.hudi.avro.model.HoodieMetadataFileInfo",
       "org.apache.hudi.common.util.Option",
       "org.apache.hudi.common.model.HoodieDeltaWriteStat",
-      "org.apache.hudi.storage.StoragePathInfo"
+      "org.apache.hudi.storage.StoragePathInfo",
+      "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload"
     )
     additionalClassNames.foreach(name => doRegister(name, kryo))
   }

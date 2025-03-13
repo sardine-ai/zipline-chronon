@@ -12,7 +12,7 @@
       "CHRONON_ONLINE_ARGS": "[ONLINE-TODO]args prefixed with -Z become constructor map for your implementation of ai.chronon.online.Api, -Zkv-host=<YOUR_HOST> -Zkv-port=<YOUR_PORT>",
       "PARTITION_COLUMN": "ds",
       "PARTITION_FORMAT": "yyyy-MM-dd",
-      "CUSTOMER_ID": "canary",
+      "CUSTOMER_ID": "dev",
       "GCP_PROJECT_ID": "canary-443022",
       "GCP_REGION": "us-central1",
       "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
