@@ -5,7 +5,7 @@ mkdir -p /tmp/zipline_test/gcp
 
 cd /tmp/zipline_test/gcp
 
-rm -rf cananry-confs
+rm -rf canary-confs
 
 
 GREEN='\033[0;32m'
@@ -18,9 +18,9 @@ bq rm -f -t canary-443022:data.quickstart_purchases_v1_dev
 bq rm -f -t canary-443022:data.quickstart_purchases_v1_dev_upload
 #TODO: delete bigtable rows
 
-# Clone the cananry configs
-git clone git@github.com-zipline:zipline-ai/cananry-confs.git
-cd cananry-confs
+# Clone the canary configs
+git clone git@github.com:zipline-ai/canary-confs.git
+cd canary-confs
 
 # Use the branch with Zipline specific team.json
 git fetch origin davidhan/dev

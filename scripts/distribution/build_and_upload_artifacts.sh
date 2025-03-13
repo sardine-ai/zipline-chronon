@@ -211,11 +211,11 @@ function upload_to_aws() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/jars/
+                ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/latest/jars/
+                ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/latest/wheels/
                 aws s3 cp "$CLOUD_AWS_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$OLD_ZIPLINE_WHEEL_NAME" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_WHEEL_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"

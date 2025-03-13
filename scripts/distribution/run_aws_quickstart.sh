@@ -17,7 +17,7 @@ done
 
 mkdir -p /tmp/zipline_test/aws
 cd /tmp/zipline_test/aws
-rm -rf cananry-confs
+rm -rf canary-confs
 
 # Delete glue tables
 # hardcoding the s3 path here because that's where the underlying location of the data is for this glue database `data`
@@ -35,11 +35,11 @@ sleep 30
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 
-WHEEL_FILE="zipline_ai-0.1.0-py3-none-any.whl "
+WHEEL_FILE="zipline_ai-0.1.0-py3-none-any.whl"
 
-# Clone the cananry configs
-git clone git@github.com:zipline-ai/cananry-confs.git
-cd cananry-confs
+# Clone the canary configs
+git clone git@github.com:zipline-ai/canary-confs.git
+cd canary-confs
 
 # Use the branch with Zipline specific team.json
 git fetch origin davidhan/plaid_groupby
@@ -54,7 +54,7 @@ python3 -m venv tmp_chronon
 source tmp_chronon/bin/activate
 
 # Download the wheel
-aws s3 cp s3://zipline-artifacts-dev/jars/$WHEEL_FILE .
+aws s3 cp s3://zipline-artifacts-dev/release/latest/wheels/$WHEEL_FILE .
 
 # Install the wheel (force)
 pip uninstall zipline-ai
