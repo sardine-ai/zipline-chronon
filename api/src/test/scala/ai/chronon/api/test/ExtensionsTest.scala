@@ -16,17 +16,11 @@
 
 package ai.chronon.api.test
 
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Builders
-import ai.chronon.api.Constants
 import ai.chronon.api.Extensions._
-import ai.chronon.api.GroupBy
 import ai.chronon.api.ScalaJavaConversions._
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.mockito.Mockito.spy
-import org.mockito.Mockito.when
+import ai.chronon.api.{Accuracy, Builders, ConfigProperties, Constants, ExecutionInfo, GroupBy}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.mockito.Mockito.{spy, when}
 import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util.Arrays
@@ -38,24 +32,6 @@ class ExtensionsTest extends AnyFlatSpec {
     assertEquals(
       Map("system" -> "mobile", "currency" -> "USD"),
       source.subPartitionFilters
-    )
-  }
-
-  it should "owning team" in {
-    val metadata =
-      Builders.MetaData(
-        customJson = "{\"check_consistency\": true, \"lag\": 0, \"team_override\": \"ml_infra\"}",
-        team = "chronon"
-      )
-
-    assertEquals(
-      "ml_infra",
-      metadata.owningTeam
-    )
-
-    assertEquals(
-      "chronon",
-      metadata.team
     )
   }
 
@@ -142,17 +118,29 @@ class ExtensionsTest extends AnyFlatSpec {
   }
 
   it should "is tiling enabled" in {
-    def buildGroupByWithCustomJson(customJson: String = null): GroupBy =
+    def buildGroupByWithServingFlags(flags: Map[String, String] = null): GroupByOps = {
+
+      val execInfo: ExecutionInfo = if (flags != null) {
+        new ExecutionInfo()
+          .setConf(new ConfigProperties().setServing(flags.toJava))
+      } else {
+        null
+      }
+
       Builders.GroupBy(
-        metaData = Builders.MetaData(name = "featureGroupName", customJson = customJson)
+        metaData = Builders.MetaData(name = "featureGroupName", executionInfo = execInfo)
       )
 
-    // customJson not set defaults to false
-    assertFalse(buildGroupByWithCustomJson().isTilingEnabled)
-    assertFalse(buildGroupByWithCustomJson("{}").isTilingEnabled)
+    }
 
-    assertTrue(buildGroupByWithCustomJson("{\"enable_tiling\": true}").isTilingEnabled)
-    assertFalse(buildGroupByWithCustomJson("{\"enable_tiling\": false}").isTilingEnabled)
-    assertFalse(buildGroupByWithCustomJson("{\"enable_tiling\": \"string instead of bool\"}").isTilingEnabled)
+    // customJson not set defaults to false
+    assertFalse(buildGroupByWithServingFlags().tilingFlag)
+    assertFalse(buildGroupByWithServingFlags(Map.empty).tilingFlag)
+
+    val trueGb = buildGroupByWithServingFlags(Map("tiling" -> "true"))
+    assertTrue(trueGb.tilingFlag)
+    assertFalse(buildGroupByWithServingFlags(Map("tiling" -> "false")).tilingFlag)
+    assertFalse(buildGroupByWithServingFlags(Map("tiling" -> "invalid")).tilingFlag)
+
   }
 }

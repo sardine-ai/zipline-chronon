@@ -86,7 +86,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
         case Accuracy.TEMPORAL =>
           // Build a tile key for the streaming request
           // When we build support for layering, we can expand this out into a utility that builds n tile keys for n layers
-          val keyBytes = if (fetchContext.isTilingEnabled) {
+          val keyBytes = if (groupByServingInfo.groupByOps.tilingFlag) {
 
             val tileKey = TilingUtils.buildTileKey(
               groupByServingInfo.groupByOps.streamingDataset,

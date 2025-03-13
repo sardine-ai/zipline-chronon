@@ -98,7 +98,7 @@ object Metrics {
         environment = environment,
         join = join.metaData.cleanName,
         production = join.metaData.isProduction,
-        team = join.metaData.owningTeam
+        team = join.metaData.team
       )
     }
 
@@ -108,7 +108,7 @@ object Metrics {
         groupBy = groupBy.metaData.cleanName,
         production = groupBy.metaData.isProduction,
         accuracy = groupBy.inferredAccuracy,
-        team = groupBy.metaData.owningTeam,
+        team = groupBy.metaData.team,
         join = groupBy.sources.toScala
           .find(_.isSetJoinSource)
           .map(_.getJoinSource.join.metaData.cleanName)
@@ -127,7 +127,7 @@ object Metrics {
         environment = environment,
         groupBy = stagingQuery.metaData.cleanName,
         production = stagingQuery.metaData.isProduction,
-        team = stagingQuery.metaData.owningTeam
+        team = stagingQuery.metaData.team
       )
     }
 
