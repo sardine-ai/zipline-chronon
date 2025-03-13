@@ -23,6 +23,8 @@ ZIPLINE_AWS_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.aws.AwsApiImpl"
 ZIPLINE_AWS_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
 ZIPLINE_AWS_SERVICE_JAR = "service_assembly_deploy.jar"
 
+ARTIFACTS_LATEST_RELEASE_JAR_PATH = "release/latest/jars"
+
 LOCAL_FILE_TO_ETAG_JSON = f"{ZIPLINE_DIRECTORY}/local_file_to_etag.json"
 
 EMR_MOUNT_FILE_PREFIX = "/mnt/zipline/"
@@ -61,7 +63,7 @@ class AwsRunner(Runner):
     def download_zipline_aws_jar(destination_dir: str, customer_id: str, jar_name: str):
         s3_client = boto3.client("s3")
         destination_path = f"{destination_dir}/{jar_name}"
-        source_key_name = f"release/latest/jars/{jar_name}"
+        source_key_name = f"{ARTIFACTS_LATEST_RELEASE_JAR_PATH}/{jar_name}"
         bucket_name = f"zipline-artifacts-{customer_id}"
 
         are_identical = (
@@ -163,7 +165,7 @@ class AwsRunner(Runner):
         # include jar uri. should also already be in the bucket
         jar_uri = (
             f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
-            + f"/jars/{ZIPLINE_AWS_JAR_DEFAULT}"
+            + f"/{ARTIFACTS_LATEST_RELEASE_JAR_PATH}/{ZIPLINE_AWS_JAR_DEFAULT}"
         )
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
