@@ -18,26 +18,42 @@ package ai.chronon.spark
 
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Constants, PartitionSpec, Query, QueryUtils, TsUtils}
 import ai.chronon.api.PartitionRange
+import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.Constants
+import ai.chronon.api.PartitionSpec
+import ai.chronon.api.Query
+import ai.chronon.api.QueryUtils
+import ai.chronon.api.TsUtils
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.{CreationUtils, FormatProvider}
+import ai.chronon.spark.format.CreationUtils
+import ai.chronon.spark.format.FormatProvider
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
-import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
+import org.apache.spark.sql.catalyst.plans.logical.Filter
+import org.apache.spark.sql.catalyst.plans.logical.Project
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.AnalysisException
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import java.io.{PrintWriter, StringWriter}
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneId}
-import scala.collection.{Seq, immutable, mutable}
-import scala.util.{Failure, Success, Try}
+import java.time.Instant
+import java.time.ZoneId
+import scala.collection.Seq
+import scala.collection.immutable
+import scala.collection.mutable
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
