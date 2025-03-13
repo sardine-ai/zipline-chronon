@@ -66,6 +66,7 @@ class SparkDFVsCatalystComparisonFn(sparkExpressionEvalFn: SparkExpressionEvalFn
     val matching = comparisonResults.count(_.isMatch)
     val mismatches = comparisonResults.filterNot(_.isMatch)
     logger.info("Wrapped up comparison. Emitted stats")
+    // limit to 100 mismatches to avoid flooding the logs
     out.collect(ValidationStats(total, matching, mismatches.size, mismatches.take(100)))
   }
 }
