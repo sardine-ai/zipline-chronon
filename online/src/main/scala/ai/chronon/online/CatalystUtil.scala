@@ -25,9 +25,27 @@ import ai.chronon.online.Extensions.StructTypeOps
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.FunctionAlreadyExistsException
-import org.apache.spark.sql.catalyst.expressions.{AttributeSet, BindReferences, Expression, Generator, GenericInternalRow, JoinedRow, Nondeterministic, UnsafeProjection}
+import org.apache.spark.sql.catalyst.expressions.{
+  AttributeSet,
+  BindReferences,
+  Expression,
+  Generator,
+  GenericInternalRow,
+  JoinedRow,
+  Nondeterministic,
+  UnsafeProjection
+}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
-import org.apache.spark.sql.execution.{BufferedRowIterator, FilterExec, GenerateExec, InputAdapter, LocalTableScanExec, ProjectExec, RDDScanExec, WholeStageCodegenExec}
+import org.apache.spark.sql.execution.{
+  BufferedRowIterator,
+  FilterExec,
+  GenerateExec,
+  InputAdapter,
+  LocalTableScanExec,
+  ProjectExec,
+  RDDScanExec,
+  WholeStageCodegenExec
+}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types
 import org.apache.spark.sql.types.{LongType, StringType}
@@ -222,22 +240,23 @@ class CatalystUtil(inputSchema: StructType,
     }
   }
 
-  /**
-   * Extracts transformation function from a GenerateExec node
-   */
+  /** Extracts transformation function from a GenerateExec node
+    */
   private def extractGenerateTransformer(generate: GenerateExec): InternalRow => Seq[InternalRow] = {
     logger.info(s"Extracting transformer for GenerateExec with generator: ${generate.generator}")
 
     // Create a bound generator
-    val boundGenerator = BindReferences.bindReference(
-      generate.generator.asInstanceOf[Expression],
-      generate.child.output
-    ).asInstanceOf[Generator]
+    val boundGenerator = BindReferences
+      .bindReference(
+        generate.generator.asInstanceOf[Expression],
+        generate.child.output
+      )
+      .asInstanceOf[Generator]
 
     // Initialize any nondeterministic expressions
     boundGenerator match {
       case n: Nondeterministic => n.initialize(0)
-      case _ => // No initialization needed
+      case _                   => // No initialization needed
     }
 
     // Create a null row for outer join case
@@ -299,7 +318,6 @@ class CatalystUtil(inputSchema: StructType,
       }
     }
   }
-
 
   /** Recursively builds a chain of transformation functions from a SparkPlan
     */
@@ -461,8 +479,9 @@ class CatalystUtil(inputSchema: StructType,
         row => childTransformer(row).flatMap(filterTransformer)
 
       case input: InputAdapter =>
-        logger.info(s"Processing InputAdapter with child: ${input.child.getClass.getSimpleName}. " +
-          s"This is a split point between codegen stages")
+        logger.info(
+          s"Processing InputAdapter with child: ${input.child.getClass.getSimpleName}. " +
+            s"This is a split point between codegen stages")
 
         // InputAdapter is a boundary between codegen regions
         // We need to recursively process its child, which might be another WholeStageCodegenExec
@@ -501,10 +520,11 @@ class CatalystUtil(inputSchema: StructType,
           }
         } else {
           // Standard handling for other cases
-          row => {
-            val childRows = childTransformer(row)
-            childRows
-          }
+          row =>
+            {
+              val childRows = childTransformer(row)
+              childRows
+            }
         }
 
       case ltse: LocalTableScanExec =>

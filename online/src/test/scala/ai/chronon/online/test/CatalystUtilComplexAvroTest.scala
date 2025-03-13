@@ -56,7 +56,11 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
     cu.performSql(catalystInternalRow)
   }
 
-  private def validateQueryResults(result: Seq[Map[String, Any]], isFavorite: Boolean, isAddCart: Boolean, isPurchase: Boolean, isView: Boolean): Unit = {
+  private def validateQueryResults(result: Seq[Map[String, Any]],
+                                   isFavorite: Boolean,
+                                   isAddCart: Boolean,
+                                   isPurchase: Boolean,
+                                   isView: Boolean): Unit = {
     assert(result.size == 2)
     assert(result.map(r => r("listing_id")).toSet == Set(123456L, 789012L))
     assert(result.map(r => r("favorite")).toSet == Set(if (isFavorite) 1 else 0))
