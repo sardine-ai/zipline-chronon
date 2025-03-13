@@ -329,98 +329,6 @@ def get_join_output_table_name(join: api.Join, full_name: bool = False):
     return output_table_name(join, full_name=full_name)
 
 
-def get_dependencies(
-    src: api.Source,
-    dependencies: List[str] = None,
-    meta_data: api.MetaData = None,
-    lag: int = 0,
-) -> List[str]:
-    query = get_query(src)
-    start = query.startPartition
-    end = query.endPartition
-    if meta_data is not None:
-        result = [json.loads(dep) for dep in meta_data.dependencies]
-    elif dependencies:
-        result = [
-            {"name": wait_for_name(dep), "spec": dep, "start": start, "end": end}
-            for dep in dependencies
-        ]
-    else:
-        if src.entities and src.entities.mutationTable:
-            # Opting to use no lag for all use cases because that the "safe catch-all" case when
-            # it comes to dependencies (assuming ds lands before ds + 1). The actual query lag logic
-            # is more complicated and depends on temporal/snapshot accuracy for join.
-            result = list(
-                filter(
-                    None,
-                    [
-                        wait_for_simple_schema(
-                            src.entities.snapshotTable, lag, start, end
-                        ),
-                        wait_for_simple_schema(
-                            src.entities.mutationTable, lag, start, end
-                        ),
-                    ],
-                )
-            )
-        elif src.entities:
-            result = [
-                wait_for_simple_schema(src.entities.snapshotTable, lag, start, end)
-            ]
-        elif src.joinSource:
-            parentJoinOutputTable = get_join_output_table_name(
-                src.joinSource.join, True
-            )
-            result = [wait_for_simple_schema(parentJoinOutputTable, lag, start, end)]
-        else:
-            result = [wait_for_simple_schema(src.events.table, lag, start, end)]
-    return [json.dumps(res) for res in result]
-
-
-def get_bootstrap_dependencies(bootstrap_parts) -> List[str]:
-    if bootstrap_parts is None:
-        return []
-
-    dependencies = []
-    for bootstrap_part in bootstrap_parts:
-        table = bootstrap_part.table
-        start = (
-            bootstrap_part.query.startPartition
-            if bootstrap_part.query is not None
-            else None
-        )
-        end = (
-            bootstrap_part.query.endPartition
-            if bootstrap_part.query is not None
-            else None
-        )
-        dependencies.append(wait_for_simple_schema(table, 0, start, end))
-    return [json.dumps(dep) for dep in dependencies]
-
-
-def get_label_table_dependencies(label_part) -> List[str]:
-    label_info = [
-        (label.groupBy.sources, label.groupBy.metaData) for label in label_part.labels
-    ]
-    label_info = [
-        (source, meta_data) for (sources, meta_data) in label_info for source in sources
-    ]
-    label_dependencies = [
-        dep
-        for (source, meta_data) in label_info
-        for dep in get_dependencies(src=source, meta_data=meta_data)
-    ]
-    label_dependencies.append(
-        json.dumps(
-            {
-                "name": "wait_for_{{ join_backfill_table }}",
-                "spec": "{{ join_backfill_table }}/ds={{ ds }}",
-            }
-        )
-    )
-    return label_dependencies
-
-
 def wait_for_simple_schema(table, lag, start, end):
     if not table:
         return None
@@ -463,7 +371,7 @@ def has_topic(group_by: api.GroupBy) -> bool:
 
 
 def get_offline_schedule(conf: ChrononJobTypes) -> Optional[str]:
-    schedule_interval = conf.metaData.offlineSchedule or "@daily"
+    schedule_interval = conf.metaData.executionInfo.scheduleCron or "@daily"
     if schedule_interval == "@never":
         return None
     return schedule_interval
@@ -491,20 +399,24 @@ def get_applicable_modes(conf: ChrononJobTypes) -> List[str]:
             streaming = has_topic(group_by)
             if temporal_accuracy or streaming:
                 modes.append("streaming")
+
     elif isinstance(conf, api.Join):
+
         join = cast(api.Join, conf)
+
         if get_offline_schedule(conf) is not None:
             modes.append("backfill")
             modes.append("stats-summary")
-        if (
-            join.metaData.customJson is not None
-            and json.loads(join.metaData.customJson).get("check_consistency") is True
-        ):
+
+        if join.metaData.consistencyCheck is True:
             modes.append("consistency-metrics-compute")
+
         if requires_log_flattening_task(join):
             modes.append("log-flattener")
+
         if join.labelParts is not None:
             modes.append("label-join")
+
     elif isinstance(conf, api.StagingQuery):
         modes.append("backfill")
     else:

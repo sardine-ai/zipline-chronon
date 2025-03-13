@@ -1,24 +1,18 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark.TableUtils
-import ai.chronon.spark.TableUtils.TableCreationStatus
 import ai.chronon.spark.format.Format
+import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.connector.common.BigQueryUtil
-import com.google.cloud.spark.bigquery.SchemaConverters
-import com.google.cloud.spark.bigquery.SchemaConvertersConfiguration
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.BigQuery
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.StandardTableDefinition
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TableInfo
-import com.google.cloud.spark.bigquery.repackaged.com.google.cloud.bigquery.TimePartitioning
-import org.apache.spark.sql.DataFrame
+import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.date_format
-import org.apache.spark.sql.functions.to_date
+import org.apache.spark.sql.functions.{col, date_format, to_date}
 
 case class BigQueryFormat(project: String, bqClient: BigQuery, override val options: Map[String, String])
     extends Format {
   override def name: String = "bigquery"
+
+  private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
 
   override def alterTableProperties(tableName: String,
                                     tableProperties: Map[String, String]): (String => Unit) => Unit = {
@@ -26,48 +20,10 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
   }
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): Seq[String] =
+      implicit sparkSession: SparkSession): List[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
-  override def generateTableBuilder(df: DataFrame,
-                                    tableName: String,
-                                    partitionColumns: Seq[String],
-                                    tableProperties: Map[String, String],
-                                    fileFormat: String): (String => Unit) => TableCreationStatus = {
 
-    def inner(df: DataFrame, tableName: String, partitionColumns: Seq[String])(
-        sqlEvaluator: String => Unit): TableCreationStatus = {
-
-      // See: https://cloud.google.com/bigquery/docs/partitioned-tables#limitations
-      // "BigQuery does not support partitioning by multiple columns. Only one column can be used to partition a table."
-      assert(partitionColumns.size < 2,
-             s"BigQuery only supports at most one partition column, incoming spec: ${partitionColumns}")
-      val shadedTableId = BigQueryUtil.parseTableId(tableName)
-
-      val shadedBqSchema =
-        SchemaConverters.from(SchemaConvertersConfiguration.createDefault()).toBigQuerySchema(df.schema)
-
-      val baseTableDef = StandardTableDefinition.newBuilder
-        .setSchema(shadedBqSchema)
-
-      val tableDefinition = partitionColumns.headOption
-        .map((col) => {
-          val timePartitioning = TimePartitioning.newBuilder(TimePartitioning.Type.DAY).setField(col)
-          baseTableDef
-            .setTimePartitioning(timePartitioning.build())
-        })
-        .getOrElse(baseTableDef)
-
-      val tableInfoBuilder = TableInfo.newBuilder(shadedTableId, tableDefinition.build)
-
-      val tableInfo = tableInfoBuilder.build
-      bqClient.create(tableInfo)
-      TableUtils.TableCreatedWithoutInitialData
-    }
-
-    inner(df, tableName, partitionColumns)
-  }
-
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]] = {
+  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
     import sparkSession.implicits._
     val tableIdentifier = BigQueryUtil.parseTableId(tableName)
     val table = tableIdentifier.getTable
@@ -83,7 +39,7 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
            |""".stripMargin
 
     val partitionCol = sparkSession.read
-      .format("bigquery")
+      .format(bqFormat)
       .option("project", project)
       // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
       // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
@@ -109,7 +65,7 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     val partitionFormat = TableUtils(sparkSession).partitionFormat
 
     val partitionInfoDf = sparkSession.read
-      .format("bigquery")
+      .format(bqFormat)
       .option("project", project)
       // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
       // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
@@ -135,11 +91,6 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     partitionVals.map((p) => Map(partitionCol -> p))
 
   }
-
-  def createTableTypeString: String =
-    throw new UnsupportedOperationException("createTableTypeString not yet supported for BigQuery")
-  def fileFormatString(format: String): String =
-    throw new UnsupportedOperationException("fileFormatString not yet supported for BigQuery")
 
   override def supportSubPartitionsFilter: Boolean = true
 }

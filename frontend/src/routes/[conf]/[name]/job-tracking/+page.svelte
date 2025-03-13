@@ -24,6 +24,9 @@
 	import MetadataTableSection from '$lib/components/MetadataTable/MetadataTableSection.svelte';
 	import MetadataTableRow from '$lib/components/MetadataTable/MetadataTableRow.svelte';
 	import { format, PeriodType } from '@layerstack/utils';
+	import IconInformationCircle from '~icons/heroicons/information-circle';
+	import StatusLegend from '$lib/components/StatusLegend.svelte';
+	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
 
 	let { data } = $props();
 
@@ -211,6 +214,19 @@
 	<Separator fullWidthExtend={true} wide={true} />
 
 	<CollapsibleSection title="Timeline" bind:open={isTimelineOpen} class="mt-7">
+		{#snippet headerContentRight()}
+			<Popover>
+				<PopoverTrigger>
+					<Button variant="ghost" class="text-muted-foreground flex items-center gap-1">
+						<IconInformationCircle class="h-4 w-4" />
+						<span class="text-sm">Status Legend</span>
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent side="bottom" align="end" class="p-4 w-auto">
+					<StatusLegend />
+				</PopoverContent>
+			</Popover>
+		{/snippet}
 		{#snippet collapsibleContent()}
 			<div class="flex flex-col gap-2 pt-2 border-t">
 				<div class="grid h-10">

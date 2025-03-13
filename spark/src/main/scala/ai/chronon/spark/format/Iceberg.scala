@@ -10,7 +10,7 @@ case object Iceberg extends Format {
   override def name: String = "iceberg"
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): Seq[String] = {
+      implicit sparkSession: SparkSession): List[String] = {
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
     }
@@ -18,13 +18,13 @@ case object Iceberg extends Format {
     getIcebergPartitions(tableName)
   }
 
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]] = {
+  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
     throw new NotImplementedError(
       "Multi-partitions retrieval is not supported on Iceberg tables yet." +
         "For single partition retrieval, please use 'partition' method.")
   }
 
-  private def getIcebergPartitions(tableName: String)(implicit sparkSession: SparkSession): Seq[String] = {
+  private def getIcebergPartitions(tableName: String)(implicit sparkSession: SparkSession): List[String] = {
 
     val partitionsDf = sparkSession.read
       .format("iceberg")
@@ -40,7 +40,7 @@ case object Iceberg extends Format {
         .collect()
         .filter(_.get(1) == null)
         .map(_.getString(0))
-        .toSeq
+        .toList
 
     } else {
 
@@ -48,13 +48,9 @@ case object Iceberg extends Format {
         .select(date_format(col("partition.ds"), partitionFmt))
         .collect()
         .map(_.getString(0))
-        .toSeq
+        .toList
     }
   }
-
-  def createTableTypeString: String = "USING iceberg"
-
-  def fileFormatString(format: String): String = ""
 
   override def supportSubPartitionsFilter: Boolean = false
 }

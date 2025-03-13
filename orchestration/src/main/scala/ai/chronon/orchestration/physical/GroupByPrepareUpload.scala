@@ -1,8 +1,7 @@
 package ai.chronon.orchestration.physical
 
 import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.GroupBy
-import ai.chronon.orchestration.TableDependency
+import ai.chronon.api.{GroupBy, TableDependency}
 
 class GroupByPrepareUpload(groupBy: GroupBy) extends GroupByBackfill(groupBy) {
   override def outputTable: String = groupBy.metaData.outputTable

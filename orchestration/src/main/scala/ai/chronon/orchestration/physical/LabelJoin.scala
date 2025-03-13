@@ -5,11 +5,9 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.Join
-import ai.chronon.api.Window
+import ai.chronon.api.{Join, TableDependency, Window}
 import ai.chronon.orchestration.JoinNodeType
 import ai.chronon.orchestration.PhysicalNodeType
-import ai.chronon.orchestration.TableDependency
 import ai.chronon.orchestration.utils
 import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
 import ai.chronon.orchestration.utils.DependencyResolver.tableDependency

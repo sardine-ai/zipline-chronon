@@ -20,10 +20,7 @@ case class StagingQueryNodeImpl(stagingQuery: StagingQuery) extends LogicalNodeI
     config
   }
 
-  override def parents: Seq[LogicalNode] =
-    stagingQuery.metaData.dependencies
-      .map(dep => utils.Config.from(dep.split("/").head, TabularDataType.ENTITY))
-      .toSeq
+  override def parents: Seq[LogicalNode] = ???
 
   override def semanticHash: String = {
     stagingQuery.deepCopy().unsetMetaData().hashCode().toHexString

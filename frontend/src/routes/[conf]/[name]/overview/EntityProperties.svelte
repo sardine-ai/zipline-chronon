@@ -37,7 +37,7 @@
 		'name',
 		'team',
 		'outputNamespace',
-		'offlineSchedule',
+		'executionInfo',
 		'online',
 		'production'
 	] satisfies (keyof IMetaDataArgs)[];
@@ -78,6 +78,8 @@
 									<TableCell>
 										{#if prop === 'online' || prop === 'production'}
 											<TrueFalseBadge isTrue={entity.metaData[prop] ?? false} />
+										{:else if prop === 'executionInfo'}
+											{entity.metaData[prop]?.['scheduleCron']}
 										{:else}
 											{entity.metaData[prop]}
 										{/if}

@@ -26,14 +26,7 @@ from ai.chronon.join import Join, JoinPart, LabelParts
 from ai.chronon.group_by import (
     GroupBy,
 )
-
-label_part_group_by = GroupBy(
-    name="sample_label_group_by",
-    sources=test_sources.batch_entity_source,
-    keys=["group_by_subject"],
-    aggregations=None,
-    online=False,
-)
+from group_bys.sample_team.label_part_group_by import label_part_group_by_2
 
 v1 = Join(
     left=test_sources.event_source,
@@ -50,13 +43,11 @@ v1 = Join(
     ],
     label_part=LabelParts(
         [
-            JoinPart(group_by=label_part_group_by),
+            JoinPart(group_by=label_part_group_by_2),
         ],
         left_start_offset=30,
         left_end_offset=10,
         label_offline_schedule="@weekly",
     ),
-    additional_args={"custom_arg": "custom_value"},
-    additional_env={"custom_env": "custom_env_value"},
     online=False,
 )

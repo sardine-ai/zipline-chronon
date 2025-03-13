@@ -40,6 +40,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import IconChatBubbleOvalLeft16Solid from '~icons/heroicons/chat-bubble-oval-left-16-solid';
 	import IconQuestionMarkCircle16Solid from '~icons/heroicons/question-mark-circle-16-solid';
+	import Logo from '$lib/components/Logo.svelte';
 
 	type Props = {
 		navItems: EntityConfig[];
@@ -105,7 +106,7 @@
 <nav class="w-60 p-3 flex flex-col">
 	<div class="ml-2 mt-1 mb-10 flex items-center justify-between">
 		<Button variant="link" href="/" class="p-0 h-6 w-6">
-			<img src="/logo.svg" alt="Zipline Logo" />
+			<Logo class="text-foreground" />
 		</Button>
 	</div>
 	<Button

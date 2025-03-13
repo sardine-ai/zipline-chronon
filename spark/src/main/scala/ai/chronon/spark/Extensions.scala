@@ -149,17 +149,17 @@ object Extensions {
 
     def save(tableName: String,
              tableProperties: Map[String, String] = null,
-             partitionColumns: Seq[String] = Seq(tableUtils.partitionColumn),
+             partitionColumns: Seq[String] = List(tableUtils.partitionColumn),
              autoExpand: Boolean = false,
              stats: Option[DfStats] = None,
-             sortByCols: Seq[String] = Seq.empty): Unit = {
+             sortByCols: Seq[String] = List.empty): Unit = {
       TableUtils(df.sparkSession).insertPartitions(df,
                                                    tableName,
                                                    tableProperties,
-                                                   partitionColumns,
+                                                   partitionColumns.toList,
                                                    autoExpand = autoExpand,
                                                    stats = stats,
-                                                   sortByCols = sortByCols)
+                                                   sortByCols = sortByCols.toList)
     }
 
     def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {
@@ -295,89 +295,6 @@ object Extensions {
         idx += 1
       }
       result
-    }
-  }
-
-  implicit class DataPointerAwareDataFrameWriter[T](dfw: DataFrameWriter[T]) {
-
-    def save(dataPointer: DataPointer): Unit = {
-
-      val optionDfw = dfw.options(dataPointer.writeOptions)
-      dataPointer.writeFormat
-        .map((wf) => {
-          val normalized = wf.toLowerCase
-          normalized match {
-            case "bigquery" | "bq" =>
-              optionDfw
-                .format("bigquery")
-                .save(dataPointer.tableOrPath)
-            case "snowflake" | "sf" =>
-              optionDfw
-                .format("net.snowflake.spark.snowflake")
-                .option("dbtable", dataPointer.tableOrPath)
-                .save()
-            case "parquet" | "csv" =>
-              optionDfw
-                .format(normalized)
-                .save(dataPointer.tableOrPath)
-            case "hive" | "delta" | "iceberg" =>
-              optionDfw
-                .format(normalized)
-                .partitionBy(null: _*)
-                .insertInto(dataPointer.tableOrPath)
-            case _ =>
-              throw new UnsupportedOperationException(s"Unsupported write catalog: ${normalized}")
-          }
-        })
-        .getOrElse(
-          // None case is just table against default catalog
-          optionDfw
-            .format("hive")
-            .partitionBy(null: _*)
-            .insertInto(dataPointer.tableOrPath))
-    }
-  }
-
-  implicit class DataPointerAwareDataFrameReader(dfr: DataFrameReader) {
-
-    def load(dataPointer: DataPointer): DataFrame = {
-      val tableOrPath = dataPointer.tableOrPath
-
-      val optionDfr = dfr.options(dataPointer.readOptions)
-
-      dataPointer.readFormat
-        .map { fmt =>
-          val fmtLower = fmt.toLowerCase
-
-          fmtLower match {
-
-            case "bigquery" | "bq" =>
-              optionDfr
-                .format("bigquery")
-                .load(tableOrPath)
-
-            case "snowflake" | "sf" =>
-              optionDfr
-                .format("net.snowflake.spark.snowflake")
-                .option("dbtable", tableOrPath)
-                .load()
-
-            case "parquet" | "csv" =>
-              optionDfr
-                .format(fmt)
-                .load(tableOrPath)
-
-            case "hive" | "delta" | "iceberg" => optionDfr.table(tableOrPath)
-
-            case _ =>
-              throw new UnsupportedOperationException(s"Unsupported read catalog: $fmtLower")
-
-          }
-        }
-        .getOrElse {
-          // None case is just table against default catalog
-          optionDfr.table(tableOrPath)
-        }
     }
   }
   implicit class SourceSparkOps(source: api.Source) {

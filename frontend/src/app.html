@@ -1,9 +1,18 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/logo.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			const modeWatcherMode = localStorage.getItem('mode-watcher-mode');
+			if (
+				modeWatcherMode === 'dark' ||
+				(modeWatcherMode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+			) {
+				document.documentElement.classList.add('dark');
+			}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

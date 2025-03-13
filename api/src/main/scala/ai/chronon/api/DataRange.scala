@@ -35,7 +35,7 @@ case class TimeRange(start: Long, end: Long)(implicit partitionSpec: PartitionSp
   override def toString: String = s"[${TsUtils.toStr(start)}-${TsUtils.toStr(end)}]"
 }
 // start and end can be null - signifies unbounded-ness
-case class PartitionRange(start: String, end: String)(implicit partitionSpec: PartitionSpec)
+case class PartitionRange(start: String, end: String)(implicit val partitionSpec: PartitionSpec)
     extends DataRange
     with Ordered[PartitionRange] {
 
@@ -81,7 +81,7 @@ case class PartitionRange(start: String, end: String)(implicit partitionSpec: Pa
 
   def steps(days: Int): Seq[PartitionRange] = {
     partitions
-      .sliding(days, days) //sliding(x, x) => tumbling(x)
+      .sliding(days, days) // sliding(x, x) => tumbling(x)
       .map { step => PartitionRange(step.head, step.last) }
       .toSeq
   }

@@ -69,24 +69,6 @@ class TableUtilsTest extends AnyFlatSpec {
     assertEquals(expected, columns.sorted)
   }
 
-  it should "get field names" in {
-    val schema = types.StructType(
-      Seq(
-        types.StructField("name", types.StringType, nullable = true),
-        types.StructField("age", types.IntegerType, nullable = false),
-        types.StructField("address",
-                          types.StructType(
-                            Seq(
-                              types.StructField("street", types.StringType, nullable = true),
-                              types.StructField("city", types.StringType, nullable = true)
-                            )))
-      )
-    )
-    val expectedFieldNames = Seq("name", "age", "address", "address.street", "address.city")
-    val actualFieldNames = tableUtils.getFieldNames(schema)
-    assertEquals(expectedFieldNames, actualFieldNames)
-  }
-
   private def testInsertPartitions(tableName: String,
                                    df1: DataFrame,
                                    df2: DataFrame,
@@ -272,7 +254,7 @@ class TableUtilsTest extends AnyFlatSpec {
     )
     tableUtils.insertPartitions(df1,
                                 tableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+                                partitionColumns = List(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
     tableUtils.dropPartitions(tableName,
                               Seq("2022-10-01", "2022-10-02"),
                               subPartitionFilters = Map(Constants.LabelPartitionColumn -> "2022-11-02"))
@@ -318,13 +300,13 @@ class TableUtilsTest extends AnyFlatSpec {
     )
     tableUtils.insertPartitions(df1,
                                 tableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+                                partitionColumns = List(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
     val par = tableUtils.allPartitions(tableName)
     assertTrue(par.size == 6)
     assertEquals(par.head.keys, Set(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
 
     // filter subset of partitions
-    val filtered = tableUtils.allPartitions(tableName, Seq(Constants.LabelPartitionColumn))
+    val filtered = tableUtils.allPartitions(tableName, List(Constants.LabelPartitionColumn))
     assertTrue(filtered.size == 6)
     assertEquals(filtered.head.keys, Set(Constants.LabelPartitionColumn))
 
@@ -358,7 +340,7 @@ class TableUtilsTest extends AnyFlatSpec {
     )
     tableUtils.insertPartitions(df1,
                                 tableName,
-                                partitionColumns = Seq(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
+                                partitionColumns = List(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
 
   }
 

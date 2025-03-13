@@ -101,7 +101,7 @@ object FetcherTestUtil {
       TableUtils(spark).insertPartitions(
         loggedDf,
         mockApi.logTable,
-        partitionColumns = Seq("ds", "name")
+        partitionColumns = List("ds", "name")
       )
     }
     if (samplePercent > 0) {

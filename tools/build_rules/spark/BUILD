@@ -1,4 +1,5 @@
 load("//tools/build_rules/dependencies:defs.bzl", "get_jars_for_repository")
+load("//tools/build_rules/dependencies:maven_repository.bzl", "MAVEN_REPOSITORY_NAME")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -63,7 +64,7 @@ SPARK_3_5_JARS = SPARK_JARS + [
 java_library(
     name = "spark-exec",
     visibility = ["//visibility:public"],
-    exports = get_jars_for_repository("spark", SPARK_3_5_JARS),
+    exports = get_jars_for_repository(MAVEN_REPOSITORY_NAME, SPARK_3_5_JARS),
 )
 
 # To simulate the spark runtime environment with dependencies we want to exclude from our final deployment jar

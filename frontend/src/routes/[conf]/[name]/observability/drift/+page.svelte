@@ -145,7 +145,9 @@
 	});
 </script>
 
-<div class="sticky top-0 z-20 bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l">
+<div
+	class="sticky top-0 z-20 bg-neutral-50 dark:bg-neutral-100 border-b border-border -mx-8 py-2 px-8 border-l"
+>
 	<ChartControls
 		{isZoomed}
 		onResetZoom={resetZoom}
@@ -160,57 +162,53 @@
 </div>
 
 <Separator fullWidthExtend={true} wide={true} />
-<CollapsibleSection title="Feature Monitoring" open>
-	{#snippet collapsibleContent()}
-		<ObservabilityNavTabs />
+<ObservabilityNavTabs />
 
-		<div>
-			{#each driftSeriesByGroupName as [groupName, values], i (groupName)}
-				<CollapsibleSection title={groupName} size="small" open>
-					{#snippet collapsibleContent()}
-						<div
-							class={cn(
-								'h-[274px]',
-								i === driftSeriesByGroupName.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
-							)}
-						>
-							<FeaturesLineChart
-								data={values}
-								yDomain={driftMetricDomain}
-								onpointclick={(
-									_e: MouseEvent,
-									{ series, data }: { series: SeriesItem; data: unknown }
-								) => {
-									const url = new URL(window.location.href);
-									url.searchParams.set('node', series.key.toString());
-									url.searchParams.set(
-										'timestamp',
-										new Date((data as DateValue).date).getTime().toString()
-									);
-									pushState(url.toString(), {
-										selectedSeriesPoint: { series, data: data as DateValue }
-									});
-								}}
-								onitemclick={({ series, data }: { series: SeriesItem; data: DateValue }) => {
-									selectSeriesPoint({ series, data });
-								}}
-								{xDomain}
-								onbrushend={(detail: { xDomain?: DomainType }) => {
-									xDomain = detail.xDomain;
-								}}
-								tooltip={{ locked: lockedTooltip }}
-							/>
-						</div>
-					{/snippet}
-				</CollapsibleSection>
-			{:else}
-				<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
-					No drift data available
+<div>
+	{#each driftSeriesByGroupName as [groupName, values], i (groupName)}
+		<CollapsibleSection title={groupName} size="small" open>
+			{#snippet collapsibleContent()}
+				<div
+					class={cn(
+						'h-[274px]',
+						i === driftSeriesByGroupName.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
+					)}
+				>
+					<FeaturesLineChart
+						data={values}
+						yDomain={driftMetricDomain}
+						onpointclick={(
+							_e: MouseEvent,
+							{ series, data }: { series: SeriesItem; data: unknown }
+						) => {
+							const url = new URL(window.location.href);
+							url.searchParams.set('node', series.key.toString());
+							url.searchParams.set(
+								'timestamp',
+								new Date((data as DateValue).date).getTime().toString()
+							);
+							pushState(url.toString(), {
+								selectedSeriesPoint: { series, data: data as DateValue }
+							});
+						}}
+						onitemclick={({ series, data }: { series: SeriesItem; data: DateValue }) => {
+							selectSeriesPoint({ series, data });
+						}}
+						{xDomain}
+						onbrushend={(detail: { xDomain?: DomainType }) => {
+							xDomain = detail.xDomain;
+						}}
+						tooltip={{ locked: lockedTooltip }}
+					/>
 				</div>
-			{/each}
+			{/snippet}
+		</CollapsibleSection>
+	{:else}
+		<div class="mt-6 bg-destructive/10 border border-destructive/50 p-4 rounded font-medium">
+			No drift data available
 		</div>
-	{/snippet}
-</CollapsibleSection>
+	{/each}
+</div>
 
 <Dialog
 	open={selectedSeriesPoint != null}
@@ -346,12 +344,12 @@
 									{
 										key: 'baseline',
 										data: baselineData,
-										color: '#4B92FF' // TODO: copied from ECharts defaults
+										color: '#2976E6' // TODO: copied from ECharts defaults
 									},
 									{
 										key: 'current',
 										data: currentData,
-										color: '#7DFFB3' // TODO: copied from ECharts defaults
+										color: '#3DDC91' // TODO: copied from ECharts defaults
 									}
 								]}
 								seriesLayout="group"
@@ -361,7 +359,10 @@
 								props={{
 									yAxis: { ...yAxisProps },
 									xAxis: { ...xAxisProps },
-									tooltip: { ...tooltipProps, hideTotal: true }
+									tooltip: { ...tooltipProps, hideTotal: true },
+									bars: {
+										strokeWidth: 0
+									}
 								}}
 							/>
 						</div>
@@ -403,7 +404,7 @@
 											]}
 											key="label"
 											value="value"
-											cRange={['#4B92FF', '#7DFFB3']}
+											cRange={['#2976E6', '#3DDC91']}
 											{...pieChartProps}
 										/>
 									</div>

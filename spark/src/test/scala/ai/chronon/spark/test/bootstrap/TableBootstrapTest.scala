@@ -58,13 +58,15 @@ class TableBootstrapTest extends AnyFlatSpec {
       )
       .withColumnRenamed("ds", partitionCol)
 
-    val bootstrapDf = if (samplePercent < 1.0) {
+    val rawBootstrapDf = if (samplePercent < 1.0) {
       preSampleBootstrapDf.sample(samplePercent)
     } else {
       preSampleBootstrapDf
     }
 
-    bootstrapDf.save(bootstrapTable, partitionColumns = Seq(partitionCol))
+    rawBootstrapDf.save(bootstrapTable, partitionColumns = Seq(partitionCol))
+
+    val bootstrapDf = tableUtils.loadTable(bootstrapTable)
     val bootstrapDfDefaultPartition = bootstrapDf.withColumnRenamed(partitionCol, "ds")
     val partitionRange = bootstrapDfDefaultPartition.partitionRange
 

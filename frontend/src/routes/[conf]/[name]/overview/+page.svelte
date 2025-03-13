@@ -226,7 +226,7 @@
 								{@const Icon = config?.icon}
 								<Group
 									class={cn(
-										'bg-neutral-300 border border-neutral-400 rounded-md',
+										'bg-neutral-50 dark:bg-neutral-300 border border-neutral-400 rounded-md',
 										'cursor-pointer hover:outline outline-surface-content/20 outline-offset-0 hover:outline-offset-1 transition-all',
 										fadeNode(node) && 'opacity-20'
 									)}
@@ -487,7 +487,7 @@
 				</TabsContent>
 
 				<TabsContent value="details" class="overflow-auto px-7">
-					<div class="border py-2 px-4 rounded-md">
+					<div class="border py-2 px-4 rounded-md bg-neutral-200">
 						<Inspect
 							name={selectedNode.key.name}
 							value={selectedNode.value}
@@ -506,7 +506,7 @@
 							--base03="hsl(var(--border))"
 							--base05="hsl(var(--foreground))"
 							--base08="hsl(var(--primary-700))"
-							--base0A="hsl(80 80% 50%)"
+							--base0A="hsl(80, 90%, 35%)"
 							--base0E="hsl(270 80% 50%)"
 							--caret-color="hsl(var(--neutral-600))"
 						/>

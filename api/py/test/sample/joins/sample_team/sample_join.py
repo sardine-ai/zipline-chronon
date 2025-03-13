@@ -12,6 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+from ai.chronon.types import EnvironmentVariables
 from sources import test_sources
 from group_bys.sample_team import sample_group_by, sample_group_by_group_by
 from ai.chronon.join import (
@@ -22,25 +23,20 @@ from ai.chronon.join import (
 
 v1 = Join(
     left=test_sources.staging_entities,
-    right_parts=[JoinPart(group_by=sample_group_by.v1, tags={"experimental": True})],
-    table_properties={
-        "config_json": """{"sample_key": "sample_value"}"""
-    },
+    right_parts=[JoinPart(group_by=sample_group_by.v1)],
+    table_properties={"config_json": """{"sample_key": "sample_value"}"""},
     output_namespace="sample_namespace",
-    tags={"business_relevance": "personalization"},
-    env={
-        "backfill": {
-            "EXECUTOR_MEMORY": "9G"
-        },
-    },
+    env_vars=EnvironmentVariables(
+        backfill={"EXECUTOR_MEMORY": "9G"},
+    ),
+    online=True,
 )
 
 never = Join(
     left=test_sources.staging_entities,
-    right_parts=[JoinPart(group_by=sample_group_by.v1, tags={"experimental": True})],
+    right_parts=[JoinPart(group_by=sample_group_by.v1)],
     output_namespace="sample_namespace",
-    tags={"business_relevance": "personalization"},
-    offline_schedule='@never',
+    offline_schedule="@never",
 )
 
 group_by_of_group_by = Join(
@@ -51,16 +47,14 @@ group_by_of_group_by = Join(
 
 consistency_check = Join(
     left=test_sources.staging_entities,
-    right_parts=[JoinPart(group_by=sample_group_by.v1, tags={"experimental": True})],
+    right_parts=[JoinPart(group_by=sample_group_by.v1)],
     output_namespace="sample_namespace",
-    tags={"business_relevance": "personalization"},
     check_consistency=True,
 )
 
 no_log_flattener = Join(
     left=test_sources.staging_entities,
-    right_parts=[JoinPart(group_by=sample_group_by.v1, tags={"experimental": True})],
+    right_parts=[JoinPart(group_by=sample_group_by.v1)],
     output_namespace="sample_namespace",
-    tags={"business_relevance": "personalization"},
     sample_percent=0.0,
 )

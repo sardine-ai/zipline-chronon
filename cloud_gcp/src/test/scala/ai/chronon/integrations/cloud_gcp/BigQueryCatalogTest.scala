@@ -1,20 +1,29 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
-import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
-import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
-import com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystemConfiguration
-import com.google.cloud.hadoop.fs.gcs.HadoopConfigurationProperty
+import ai.chronon.spark.format.FormatProvider
+import ai.chronon.spark.{SparkSessionBuilder, TableUtils}
+import com.esotericsoftware.kryo.Kryo
+import com.esotericsoftware.kryo.io.{Input, Output}
+import com.google.cloud.hadoop.fs.gcs.{
+  GoogleHadoopFS,
+  GoogleHadoopFileSystem,
+  GoogleHadoopFileSystemConfiguration,
+  HadoopConfigurationProperty
+}
 import com.google.cloud.spark.bigquery.SparkBigQueryUtil
+import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
+import org.apache.iceberg.gcp.gcs.GCSFileIO
+import org.apache.iceberg.io.ResolvingFileIO
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.functions.to_date
+import org.apache.spark.sql.functions.{col, to_date}
 import org.apache.spark.sql.internal.SQLConf
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.{assertEquals, assertNotNull, assertTrue}
+import org.objenesis.strategy.StdInstantiatorStrategy
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar
+
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import scala.collection.JavaConverters._
 
 class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
@@ -25,28 +34,44 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
       Map(
         "spark.chronon.table.format_provider.class" -> classOf[GcpFormatProvider].getName,
         "hive.metastore.uris" -> "thrift://localhost:9083",
-        "spark.chronon.partition.column" -> "c",
+        "spark.chronon.partition.column" -> "ds",
         "spark.hadoop.fs.gs.impl" -> classOf[GoogleHadoopFileSystem].getName,
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> classOf[GoogleHadoopFS].getName,
-        "spark.hadoop.google.cloud.auth.service.account.enable" -> true.toString
+        // set the following to run local integration tests
+//        "spark.sql.catalog.spark_catalog" -> classOf[SparkCatalog].getName,
+//        "spark.hadoop.google.cloud.auth.service.account.enable" -> true.toString,
+//        "spark.sql.catalog.spark_catalog" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
+//        "spark.sql.catalog.spark_catalog.catalog-impl" -> classOf[BQMSCatalog].getName,
+//        "spark.sql.catalog.spark_catalog.io-impl" -> classOf[ResolvingFileIO].getName,
+//        "spark.sql.catalog.spark_catalog.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
+//        "spark.sql.catalog.spark_catalog.gcp_location" -> "us-central1",
+//        "spark.sql.catalog.spark_catalog.gcp_project" -> "canary-443022",
+//
+//        // Set these twice so that we force iceberg to use the BQMSCatalog.
+//        "spark.sql.catalog.default_iceberg" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
+//        "spark.sql.catalog.default_iceberg.catalog-impl" -> classOf[BQMSCatalog].getName,
+//        "spark.sql.catalog.default_iceberg.io-impl" -> classOf[ResolvingFileIO].getName,
+//        "spark.sql.catalog.default_iceberg.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
+//        "spark.sql.catalog.default_iceberg.gcp_location" -> "us-central1",
+//        "spark.sql.catalog.default_iceberg.gcp_project" -> "canary-443022",
+//
+//
+//        "spark.sql.catalogImplementation" -> "in-memory",
+//        "spark.kryo.registrator" -> classOf[ChrononIcebergKryoRegistrator].getName,
+//        "spark.sql.defaultUrlStreamHandlerFactory.enabled" -> false.toString,
       ))
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
 
-  it should "hive uris are set" in {
-    assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
-  }
-
-  it should "google runtime classes are available" ignore {
-    assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[Long]])
+  it should "google runtime classes are available" in {
+    assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[_]])
     assertCompiles("classOf[GoogleHadoopFileSystem]")
     assertCompiles("classOf[GoogleHadoopFS]")
-    assertCompiles("classOf[GoogleCloudStorageFileSystem]")
-
   }
 
   it should "verify dynamic classloading of GCP providers" in {
-    assertTrue(tableUtils.tableFormatProvider.isInstanceOf[GcpFormatProvider])
+    assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
+    assertTrue(FormatProvider.from(spark).isInstanceOf[GcpFormatProvider])
   }
 
   it should "bigquery connector converts spark dates regardless of date setting" in {
@@ -85,15 +110,97 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
   it should "integration testing bigquery partitions" ignore {
     // TODO(tchow): This test is ignored because it requires a running instance of the bigquery. Need to figure out stubbing locally.
-    // to run this:
-    //    1. Set up a tunnel to dataproc federation proxy:
-    //       gcloud compute ssh zipline-canary-cluster-m \
-    //        --zone us-central1-c \
-    //        -- -f -N -L 9083:localhost:9083
-    //    2. enable this test and off you go.
-    val externalPartitions = tableUtils.partitions("data.checkouts_parquet")
-    println(externalPartitions)
-    val nativePartitions = tableUtils.partitions("data.sample_native")
-    println(nativePartitions)
+    // to run, set `GOOGLE_APPLICATION_CREDENTIALS=<path_to_application_default_credentials.json>
+    val externalPartitions = tableUtils.partitions("data.checkouts_parquet_partitioned")
+     assertEquals(Seq("2023-11-30"), externalPartitions)
+    val nativePartitions = tableUtils.partitions("data.purchases")
+    assertEquals(
+      Set(20231118, 20231122, 20231125, 20231102, 20231123, 20231119, 20231130, 20231101, 20231117, 20231110, 20231108, 20231112, 20231115, 20231116, 20231113, 20231104, 20231103, 20231106, 20231121, 20231124, 20231128, 20231109, 20231127, 20231129, 20231126, 20231114, 20231107, 20231111, 20231120, 20231105).map(_.toString), nativePartitions.toSet)
+
+    val df = tableUtils.loadTable("`canary-443022.data`.purchases")
+    df.show
+
+    tableUtils.insertPartitions(
+      df,
+      "data.tchow_test_iceberg",
+      Map(
+      "file_format" -> "PARQUET",
+      "table_type" -> "iceberg"),
+      List("ds"))
+
+
+    val icebergCols = spark.catalog.listColumns("data.tchow_test_iceberg")
+    val externalCols = spark.catalog.listColumns("data.checkouts_parquet_partitioned")
+    val nativeCols = spark.catalog.listColumns("data.purchases")
+
+    val icebergPartitions = spark.sql("SELECT * FROM data.tchow_test_iceberg.partitions")
+
+
+    val sqlDf = tableUtils.sql(
+      s"""
+        |SELECT ds FROM data.checkouts_parquet_partitioned -- external parquet
+        |UNION ALL
+        |SELECT ds FROM data.purchases -- bigquery native
+        |UNION ALL
+        |SELECT ds FROM data.tchow_test_iceberg -- external iceberg
+        |""".stripMargin)
+    sqlDf.show
+
+  }
+
+  it should "kryo serialization for ResolvingFileIO" in {
+    val registrator = new ChrononIcebergKryoRegistrator()
+    val kryo = new Kryo();
+    kryo.setReferences(true);
+    registrator.registerClasses(kryo)
+
+    // Create an instance of ResolvingFileIO
+    val original = new ResolvingFileIO();
+    original.initialize(Map.empty[String, String].asJava)
+
+    // Serialize the object
+    val outputStream = new ByteArrayOutputStream();
+    val output = new Output(outputStream);
+    kryo.writeClassAndObject(output, original);
+    output.close();
+
+    // Deserialize the object
+    val inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    val input = new Input(inputStream);
+    val deserializedObj = kryo.readClassAndObject(input);
+    input.close();
+
+    assertNotNull("Deserialized object should not be null", deserializedObj);
+    assertTrue("Deserialized object should be an instance of ResolvingFileIO",
+               deserializedObj.isInstanceOf[ResolvingFileIO]);
+  }
+
+  it should "kryo serialization for GCSFileIO" in {
+    val registrator = new ChrononIcebergKryoRegistrator()
+    val kryo = new Kryo();
+    kryo.setReferences(true);
+    kryo.setInstantiatorStrategy(new Kryo.DefaultInstantiatorStrategy(new StdInstantiatorStrategy))
+    registrator.registerClasses(kryo)
+
+    // Create an instance of GCSFileIO
+    val original = new GCSFileIO();
+    original.initialize(Map("k1" -> "v1").asJava)
+
+    // Serialize the object
+    val outputStream = new ByteArrayOutputStream();
+    val output = new Output(outputStream);
+    kryo.writeClassAndObject(output, original);
+    output.close();
+
+    // Deserialize the object
+    val inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    val input = new Input(inputStream);
+    val deserializedObj = kryo.readClassAndObject(input);
+    input.close();
+
+    assertNotNull("Deserialized object should not be null", deserializedObj);
+    assertTrue("Deserialized object should be an instance of GCSFileIO",
+      deserializedObj.isInstanceOf[GCSFileIO]);
+    assertEquals(original.properties(), deserializedObj.asInstanceOf[GCSFileIO].properties())
   }
 }

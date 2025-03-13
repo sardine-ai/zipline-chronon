@@ -50,31 +50,4 @@ case class DefaultFormatProvider(sparkSession: SparkSession) extends FormatProvi
         false
     }
   }
-
-  // Return the write format to use for the given table. The logic at a high level is:
-  // 1) If the user specifies the spark.chronon.table_write.iceberg - we go with Iceberg
-  // 2) If the user specifies a spark.chronon.table_write.format as Hive (parquet), Iceberg or Delta we go with their choice
-  // 3) Default to Hive (parquet)
-  // Note the table_write.iceberg is supported for legacy reasons. Specifying "iceberg" in spark.chronon.table_write.format
-  // is preferred as the latter conf also allows us to support additional formats
-  override def writeFormat(tableName: String): Format = {
-    val useIceberg: Boolean = sparkSession.conf.get("spark.chronon.table_write.iceberg", "false").toBoolean
-
-    // Default provider just looks for any default config.
-    // Unlike read table, these write tables might not already exist.
-    val maybeFormat = sparkSession.conf.getOption("spark.chronon.table_write.format").map(_.toLowerCase) match {
-      case Some("hive")    => Some(Hive)
-      case Some("iceberg") => Some(Iceberg)
-      case Some("delta")   => Some(DeltaLake)
-      case _               => None
-    }
-    (useIceberg, maybeFormat) match {
-      // if explicitly configured Iceberg - we go with that setting
-      case (true, _) => Iceberg
-      // else if there is a write format we pick that
-      case (false, Some(format)) => format
-      // fallback to hive (parquet)
-      case (false, None) => Hive
-    }
-  }
 }

@@ -1,12 +1,11 @@
 <script lang="ts">
-	import type { ComponentProps } from 'svelte';
+	import { type ComponentProps } from 'svelte';
 	import { LineChart } from 'layerchart';
 	import merge from 'lodash/merge';
 
 	import { lineChartProps } from './common';
 	import type { ITileSummarySeriesArgs } from '$src/lib/types/codegen';
 	import { zip } from 'd3';
-	import { Int64 } from '@creditkarma/thrift-server-core';
 	import { NULL_VALUE } from '$src/lib/constants/common';
 
 	type LineChartProps = ComponentProps<typeof LineChart>;
@@ -18,25 +17,22 @@
 	} & Omit<LineChartProps, 'data'>;
 
 	let { data, onbrushend, ...restProps }: Props = $props();
-</script>
 
-<LineChart
-	x="date"
-	y="value"
-	series={[
-		{ label: 'p95', color: '#4B92FF', index: 2 },
-		{ label: 'p50', color: '#7DFFB3', index: 1 },
-		{ label: 'p5', color: '#FDDD61', index: 0 }
+	// Using `$derived()` or defining inline causes performance issue (likely due to creating proxies for deep reactivity).
+	const series = [
+		{ label: 'p95', color: '#2976E6', index: 2 },
+		{ label: 'p50', color: '#3DDC91', index: 1 },
+		{ label: 'p5', color: '#E5B72D', index: 0 }
 	].map((c) => {
 		const timestamps = data.timestamps ?? [];
 		const values = data.percentiles?.[c.index] ?? [];
 
 		return {
 			key: c.label,
-			data: zip<Int64 | number>(
+			data: zip(
 				timestamps.map((ts) => Number(ts)),
 				values
-			).map(([ts, value]) => {
+			).map(([ts, value]: number[]) => {
 				return {
 					date: new Date(ts as number),
 					value: value === NULL_VALUE ? null : value
@@ -44,7 +40,13 @@
 			}),
 			color: c.color
 		};
-	})}
+	});
+</script>
+
+<LineChart
+	x="date"
+	y="value"
+	{series}
 	padding={{ top: 4, left: 36, bottom: 20 }}
 	brush={{ onbrushend }}
 	{...merge(

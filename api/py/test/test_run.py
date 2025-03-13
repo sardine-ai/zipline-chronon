@@ -23,6 +23,9 @@ import time
 
 import pytest
 from ai.chronon.repo import run
+from ai.chronon.repo import default_runner
+from ai.chronon.repo import utils
+from ai.chronon.repo.utils import check_output, check_call
 
 DEFAULT_ENVIRONMENT = os.environ.copy()
 
@@ -45,6 +48,7 @@ def context():
     run.set_defaults(context)
     return context
 
+
 @pytest.fixture
 def test_conf_location():
     """Sample test conf for tests"""
@@ -64,17 +68,17 @@ def test_download_jar(monkeypatch, sleepless):
         return url
 
     monkeypatch.setattr(time, "sleep", sleepless)
-    monkeypatch.setattr(run, "download_only_once", mock_cmd)
-    jar_path = run.download_jar(
+    monkeypatch.setattr(utils, "download_only_once", mock_cmd)
+    jar_path = utils.download_jar(
         "version", jar_type="uber", release_tag=None, spark_version="2.4.0"
     )
     assert jar_path == "/tmp/spark_uber_2.11-version-assembly.jar"
-    jar_path = run.download_jar(
+    jar_path = utils.download_jar(
         "version", jar_type="uber", release_tag=None, spark_version="3.1.1"
     )
     assert jar_path == "/tmp/spark_uber_2.12-version-assembly.jar"
     with pytest.raises(Exception):
-        run.download_jar(
+        utils.download_jar(
             "version", jar_type="uber", release_tag=None, spark_version="2.1.0"
         )
 
@@ -135,8 +139,6 @@ def test_environment(teams_json, repo, test_conf_location):
         os.environ["APP_NAME"]
         == "chronon_joins_backfill_production_sample_team.sample_online_join.v1"
     )
-    # from additional_args
-    assert os.environ["CHRONON_CONFIG_ADDITIONAL_ARGS"] == "--step-days 14"
 
     # Check dev backfill for a team sets parameters accordingly.
     reset_env(default_environment)
@@ -218,7 +220,9 @@ def test_render_info_setting_update(repo, test_conf_location):
     ctx.params["conf"] = test_conf_location
     ctx.params["repo"] = repo
     run.set_defaults(ctx)
-    assert ctx.params["render_info"] == os.path.join(".", run.RENDER_INFO_DEFAULT_SCRIPT)
+    assert ctx.params["render_info"] == os.path.join(
+        ".", run.RENDER_INFO_DEFAULT_SCRIPT
+    )
 
     reset_env(default_environment)
     run.set_runtime_env(ctx.params)
@@ -228,7 +232,9 @@ def test_render_info_setting_update(repo, test_conf_location):
     ctx.params["conf"] = test_conf_location
     ctx.params["repo"] = repo
     run.set_defaults(ctx)
-    assert ctx.params["render_info"] == os.path.join(repo, run.RENDER_INFO_DEFAULT_SCRIPT)
+    assert ctx.params["render_info"] == os.path.join(
+        repo, run.RENDER_INFO_DEFAULT_SCRIPT
+    )
 
     reset_env(default_environment)
     ctx = context()
@@ -251,7 +257,7 @@ def test_render_info(repo, test_conf_location, monkeypatch):
     def mock_exists(_):
         return True
 
-    monkeypatch.setattr(run, "check_call", mock_check_call)
+    monkeypatch.setattr(utils, "check_call", mock_check_call)
     monkeypatch.setattr(os.path, "exists", mock_exists)
     ctx = context()
     run.set_defaults(ctx)
@@ -261,7 +267,7 @@ def test_render_info(repo, test_conf_location, monkeypatch):
     args = ctx.params
 
     args["args"] = ctx.args
-    runner = run.Runner(args, "some.jar")
+    runner = default_runner.Runner(args, "some.jar")
     runner.run()
 
     assert run.RENDER_INFO_DEFAULT_SCRIPT in actual_cmd
@@ -280,8 +286,9 @@ def test_streaming_client(repo, test_online_group_by, monkeypatch):
         print(cmd)
         return "[]".encode("utf8")
 
-    monkeypatch.setattr(run, "check_output", mock_check_output)
-    monkeypatch.setattr(run, "check_call", mock_check_call)
+    monkeypatch.setattr(utils, "check_output", mock_check_output)
+    monkeypatch.setattr(utils, "check_call", mock_check_call)
+
     ctx = context()
     run.set_defaults(ctx)
     # Follow the same flow as __main__: Do a first pass (no env), do a second pass and run.
@@ -294,7 +301,7 @@ def test_streaming_client(repo, test_online_group_by, monkeypatch):
     ctx.params["conf"] = test_online_group_by
     ctx.params["repo"] = repo
     ctx.params["args"] = ""
-    runner = run.Runner(ctx.params, "some.jar")
+    runner = default_runner.Runner(ctx.params, "some.jar")
     runner.run()
     streaming_app_name = runner.app_name
     # Repeat for streaming-client
@@ -308,7 +315,7 @@ def test_streaming_client(repo, test_online_group_by, monkeypatch):
     ctx.params["conf"] = test_online_group_by
     ctx.params["repo"] = repo
     ctx.params["args"] = ""
-    runner = run.Runner(ctx.params, "some.jar")
+    runner = default_runner.Runner(ctx.params, "some.jar")
     runner.run()
     assert streaming_app_name == runner.app_name
 
@@ -322,9 +329,9 @@ def test_streaming_client(repo, test_online_group_by, monkeypatch):
             }
         ).encode("utf8")
 
-    monkeypatch.setattr(run, "check_output", mock_check_output_with_app_other_user)
+    monkeypatch.setattr(utils, "check_output", mock_check_output_with_app_other_user)
     assert "<kill app cmd>" not in calls
-    runner = run.Runner(ctx.params, "some.jar")
+    runner = default_runner.Runner(ctx.params, "some.jar")
     with pytest.raises(RuntimeError):
         runner.run()
 
@@ -341,5 +348,5 @@ def test_split_date_range():
         ("2022-01-09", "2022-01-11"),
     ]
 
-    result = run.split_date_range(start_date, end_date, parallelism)
+    result = utils.split_date_range(start_date, end_date, parallelism)
     assert result == expected_result

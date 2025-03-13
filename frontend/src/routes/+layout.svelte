@@ -6,6 +6,8 @@
 	import NavigationBar from '$lib/components/NavigationBar.svelte';
 	import BreadcrumbNav from '$lib/components/BreadcrumbNav.svelte';
 	import { entityConfig } from '$lib/types/Entity';
+	import { ModeWatcher } from 'mode-watcher';
+	import ModeSwitcher from '$src/lib/components/ModeSwitcher.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -18,6 +20,8 @@
 	const breadcrumbs = $derived($page.url.pathname.split('/').filter(Boolean));
 </script>
 
+<ModeWatcher />
+
 <div class="flex h-screen">
 	<NavigationSlider />
 
@@ -25,7 +29,7 @@
 	<NavigationBar navItems={Object.values(entityConfig).filter((c) => c.confType != null)} {user} />
 	<!-- Main content -->
 	<main
-		class="flex-1 flex flex-col overflow-y-auto bg-neutral-100 relative rounded-tl-xl"
+		class="flex-1 flex flex-col overflow-y-auto bg-neutral-50 dark:bg-neutral-100 relative rounded-tl-xl"
 		data-testid="app-main"
 	>
 		<div class="absolute top-0 bottom-0 w-px bg-border"></div>
@@ -34,7 +38,10 @@
 		></div>
 		<div class="px-8 flex-1 flex flex-col">
 			<div class="flex-1 flex flex-col py-5">
-				<BreadcrumbNav {breadcrumbs} class="mb-[38px]" />
+				<div class="flex justify-between items-start mb-3">
+					<BreadcrumbNav {breadcrumbs} />
+					<ModeSwitcher />
+				</div>
 				{@render children()}
 			</div>
 		</div>

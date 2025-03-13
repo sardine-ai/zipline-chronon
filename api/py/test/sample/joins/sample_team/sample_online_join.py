@@ -42,8 +42,6 @@ v1 = Join(
             key_mapping={"subject": "group_by_subject"},
         ),
     ],
-    additional_args=["--step-days 14"],
-    additional_env={"custom_env": "custom_env_value"},
     online=True,
     check_consistency=True,
 )

@@ -263,7 +263,6 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
             } else {
               groupByResponse
             }
-
           }
           Response(request, responseMapTry)
         }.toList

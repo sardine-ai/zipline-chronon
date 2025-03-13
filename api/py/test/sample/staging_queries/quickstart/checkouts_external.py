@@ -17,15 +17,19 @@ from ai.chronon.api.ttypes import StagingQuery, MetaData
 
 
 query = """
-SELECT
-    ts,
-    ds,
-    return_id,
-    user_id,
-    product_id,
-    refund_amt
-FROM checkouts_external
-WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
+    SELECT
+        purchases.ds,
+        purchases.ts as purchase_ts,
+        purchases.user_id,
+        purchases.purchase_price,
+        checkouts.return_id,
+        checkouts.refund_amt,
+        checkouts.product_id,
+        checkouts.ts as checkout_ts
+    FROM data.purchases AS purchases 
+    LEFT OUTER JOIN data.checkouts_external AS checkouts
+    USING (user_id)
+    WHERE purchases.ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
 
 staging_query = StagingQuery(
@@ -35,7 +39,4 @@ staging_query = StagingQuery(
         name='checkouts_staging_query',
         outputNamespace="data"
     ),
-    setups=[
-        "CREATE OR REPLACE TEMPORARY VIEW checkouts_external USING parquet OPTIONS (path 'gs://zl-warehouse/data/checkouts_ds_not_in_parquet/')",
-    ],
 )

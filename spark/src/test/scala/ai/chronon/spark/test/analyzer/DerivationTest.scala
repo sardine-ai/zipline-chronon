@@ -21,11 +21,10 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
-import ai.chronon.spark.test.{OnlineUtils, SchemaEvolutionUtils}
 import ai.chronon.spark.test.bootstrap.BootstrapUtils
+import ai.chronon.spark.test.{OnlineUtils, SchemaEvolutionUtils}
 import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -160,8 +159,8 @@ class DerivationTest extends AnyFlatSpec {
     val leftTable = baseJoin.left.getEvents.table
 
     /* directly bootstrap a derived feature field */
-    val diffBootstrapDf = spark
-      .table(leftTable)
+    val rawDiffBootstrapDf = tableUtils
+      .loadTable(leftTable)
       .select(
         col("request_id"),
         (rand() * 30000)
@@ -171,7 +170,8 @@ class DerivationTest extends AnyFlatSpec {
       )
       .sample(0.8)
     val diffBootstrapTable = s"$namespace.bootstrap_diff"
-    diffBootstrapDf.save(diffBootstrapTable)
+    rawDiffBootstrapDf.save(diffBootstrapTable)
+    val diffBootstrapDf = tableUtils.loadTable(diffBootstrapTable)
     val diffBootstrapRange = diffBootstrapDf.partitionRange
     val diffBootstrapPart = Builders.BootstrapPart(
       query = Builders.Query(
@@ -183,8 +183,8 @@ class DerivationTest extends AnyFlatSpec {
     )
 
     /* bootstrap an external feature field such that it can be used in a downstream derivation */
-    val externalBootstrapDf = spark
-      .table(leftTable)
+    val rawExternalBootstrapDf = tableUtils
+      .loadTable(leftTable)
       .select(
         col("request_id"),
         (rand() * 30000)
@@ -194,8 +194,9 @@ class DerivationTest extends AnyFlatSpec {
       )
       .sample(0.8)
     val externalBootstrapTable = s"$namespace.bootstrap_external"
-    externalBootstrapDf.save(externalBootstrapTable)
-    val externalBootstrapRange = externalBootstrapDf.partitionRange
+    rawExternalBootstrapDf.save(externalBootstrapTable)
+    val externalBootstrapDf = tableUtils.loadTable(externalBootstrapTable)
+    val externalBootstrapRange = rawExternalBootstrapDf.partitionRange
     val externalBootstrapPart = Builders.BootstrapPart(
       query = Builders.Query(
         selects = Builders.Selects("request_id", "ext_payments_service_user_txn_count_15d"),
@@ -206,8 +207,8 @@ class DerivationTest extends AnyFlatSpec {
     )
 
     /* bootstrap an contextual feature field such that it can be used in a downstream derivation */
-    val contextualBootstrapDf = spark
-      .table(leftTable)
+    val rawContextualBootstrapDf = tableUtils
+      .loadTable(leftTable)
       .select(
         col("request_id"),
         (rand() * 30000)
@@ -217,7 +218,8 @@ class DerivationTest extends AnyFlatSpec {
       )
       .sample(0.8)
     val contextualBootstrapTable = s"$namespace.bootstrap_contextual"
-    contextualBootstrapDf.save(contextualBootstrapTable)
+    rawContextualBootstrapDf.save(contextualBootstrapTable)
+    val contextualBootstrapDf = tableUtils.loadTable(contextualBootstrapTable)
     val contextualBootstrapRange = contextualBootstrapDf.partitionRange
     val contextualBootstrapPart = Builders.BootstrapPart(
       query = Builders.Query(
@@ -296,8 +298,8 @@ class DerivationTest extends AnyFlatSpec {
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
 
-    val bootstrapDf = spark
-      .table(queryTable)
+    val rawBootstrapDf = tableUtils
+      .loadTable(queryTable)
       .select(
         col("request_id"),
         col("user"),
@@ -311,7 +313,8 @@ class DerivationTest extends AnyFlatSpec {
         col("ds")
       )
     val bootstrapTable = s"$namespace.bootstrap_table"
-    bootstrapDf.save(bootstrapTable)
+    rawBootstrapDf.save(bootstrapTable)
+    val bootstrapDf = tableUtils.loadTable(bootstrapTable)
     val bootstrapPart = Builders.BootstrapPart(
       query = Builders.Query(
         selects = Builders.Selects("request_id", "user_amount_30d", "user_amount_30d_minus_15d")
@@ -375,7 +378,7 @@ class DerivationTest extends AnyFlatSpec {
 
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
-    val endDs = spark.table(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
+    val endDs = tableUtils.loadTable(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
 
     val joinPart = Builders.JoinPart(groupBy = groupBy)
     val baseJoin = Builders.Join(
@@ -425,8 +428,8 @@ class DerivationTest extends AnyFlatSpec {
     kvStore.create(Constants.MetadataDataset)
     metadataStore.putJoinConf(bootstrapJoin)
 
-    val requests = spark
-      .table(queryTable)
+    val requests = tableUtils
+      .loadTable(queryTable)
       .select("user", "request_id", "ts")
       .collect()
       .map { row =>
@@ -451,7 +454,7 @@ class DerivationTest extends AnyFlatSpec {
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, endDs)
     val flattenerJob = new LogFlattenerJob(spark, bootstrapJoin, endDs, mockApi.logTable, mockApi.schemaTable)
     flattenerJob.buildLogTable()
-    val logDf = spark.table(bootstrapJoin.metaData.loggedTable)
+    val logDf = tableUtils.loadTable(bootstrapJoin.metaData.loggedTable)
 
     // Verifies that logging is full regardless of select star
     val baseColumns = Seq(
@@ -497,8 +500,8 @@ class DerivationTest extends AnyFlatSpec {
     val namespace = "test_contextual"
     tableUtils.createDatabase(namespace)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
-    val bootstrapDf = spark
-      .table(queryTable)
+    val bootstrapDf = tableUtils
+      .loadTable(queryTable)
       .select(
         col("request_id"),
         (rand() * 30000)

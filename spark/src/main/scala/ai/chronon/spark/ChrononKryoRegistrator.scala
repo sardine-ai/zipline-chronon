@@ -15,22 +15,19 @@
  */
 package ai.chronon.spark
 
-import ai.chronon.aggregator.base.FrequentItemType
-import ai.chronon.aggregator.base.FrequentItemType.DoubleItemType
-import ai.chronon.aggregator.base.FrequentItemType.LongItemType
-import ai.chronon.aggregator.base.FrequentItemType.StringItemType
-import ai.chronon.aggregator.base.FrequentItemsFriendly
+import ai.chronon.aggregator.base.FrequentItemType.{DoubleItemType, LongItemType, StringItemType}
 import ai.chronon.aggregator.base.FrequentItemsFriendly._
-import ai.chronon.aggregator.base.ItemsSketchIR
-import com.esotericsoftware.kryo.Kryo
-import com.esotericsoftware.kryo.Serializer
-import com.esotericsoftware.kryo.io.Input
-import com.esotericsoftware.kryo.io.Output
+import ai.chronon.aggregator.base.{FrequentItemType, FrequentItemsFriendly, ItemsSketchIR}
+import com.esotericsoftware.kryo.{Kryo, Serializer}
+import com.esotericsoftware.kryo.io.{Input, Output}
+import com.esotericsoftware.kryo.serializers.ClosureSerializer
 import org.apache.datasketches.common.ArrayOfItemsSerDe
 import org.apache.datasketches.cpc.CpcSketch
 import org.apache.datasketches.frequencies.ItemsSketch
 import org.apache.datasketches.memory.Memory
 import org.apache.spark.serializer.KryoRegistrator
+
+import java.lang.invoke.SerializedLambda
 
 class CpcSketchKryoSerializer extends Serializer[CpcSketch] {
   override def write(kryo: Kryo, output: Output, sketch: CpcSketch): Unit = {
@@ -79,97 +76,100 @@ class ChrononKryoRegistrator extends KryoRegistrator {
   override def registerClasses(kryo: Kryo): Unit = {
     // kryo.setWarnUnregisteredClasses(true)
     val names = Seq(
-      "java.time.LocalDateTime",
-      "java.time.LocalDate",
-      "org.apache.hadoop.fs.Path",
-      "org.apache.hadoop.fs.FileStatus",
-      "org.apache.hadoop.fs.LocatedFileStatus",
-      "org.apache.hadoop.fs.BlockLocation",
-      "org.apache.hadoop.fs.StorageType",
-      "org.apache.hadoop.fs.permission.FsPermission",
-      "org.apache.hadoop.fs.permission.FsAction",
-      "org.apache.hadoop.fs.FileUtil$CopyMapper",
-      "org.apache.hadoop.fs.FileUtil$CopyReducer",
-      "org.apache.hadoop.fs.FileUtil$CopyFiles",
-      "org.apache.hadoop.fs.FileUtil$CopyListingFileStatus",
-      "org.apache.spark.sql.execution.joins.UnsafeHashedRelation",
-      "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage",
-      "org.apache.spark.sql.execution.datasources.ExecutedWriteSummary",
-      "org.apache.spark.sql.execution.datasources.BasicWriteTaskStats",
-      "org.apache.spark.sql.execution.datasources.WriteTaskResult",
-      "org.apache.spark.sql.execution.datasources.InMemoryFileIndex",
-      "org.apache.spark.sql.execution.joins.LongHashedRelation",
-      "org.apache.spark.sql.execution.joins.LongToUnsafeRowMap",
-      "org.apache.spark.sql.execution.streaming.sources.ForeachWriterCommitMessage$",
-      "org.apache.spark.sql.types.Metadata",
-      "ai.chronon.api.Row",
-      "ai.chronon.spark.KeyWithHash",
+      "ai.chronon.aggregator.base.ApproxHistogramIr",
       "ai.chronon.aggregator.base.MomentsIR",
       "ai.chronon.aggregator.windowing.BatchIr",
-      "ai.chronon.aggregator.base.ApproxHistogramIr",
-      "ai.chronon.online.RowWrapper",
-      "ai.chronon.online.fetcher.Fetcher$Request",
       "ai.chronon.aggregator.windowing.FinalBatchIr",
+      "ai.chronon.api.Row",
       "ai.chronon.online.LoggableResponse",
       "ai.chronon.online.LoggableResponseBase64",
-      "org.apache.datasketches.kll.KllFloatsSketch",
-      "java.util.HashMap",
+      "ai.chronon.online.RowWrapper",
+      "ai.chronon.online.fetcher.Fetcher$Request",
+      "ai.chronon.spark.KeyWithHash",
+      "java.time.LocalDate",
+      "java.time.LocalDateTime",
       "java.util.ArrayList",
-      "java.util.HashSet",
       "java.util.Collections$EmptySet",
-      "org.apache.spark.sql.Row",
-      "org.apache.spark.sql.catalyst.InternalRow",
-      "org.apache.spark.sql.catalyst.expressions.GenericRow",
-      "org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema",
-      "org.apache.spark.sql.catalyst.expressions.UnsafeRow",
-      "org.apache.spark.sql.types.StructField",
-      "org.apache.spark.sql.types.StructType",
-      "org.apache.spark.sql.types.LongType$", // dollar stands for case objects
-      "org.apache.spark.sql.types.StringType",
-      "org.apache.spark.sql.types.StringType$",
-      "org.apache.spark.sql.types.IntegerType$",
-      "org.apache.spark.sql.types.BinaryType",
-      "org.apache.spark.sql.types.DataType",
-      "org.apache.spark.sql.types.NullType$",
-      "org.apache.spark.sql.types.DoubleType$",
-      "org.apache.spark.sql.types.BooleanType$",
-      "org.apache.spark.sql.types.BinaryType$",
-      "org.apache.spark.sql.types.DateType$",
-      "org.apache.spark.sql.types.TimestampType$",
-      "org.apache.spark.util.sketch.BitArray",
-      "org.apache.spark.util.sketch.BloomFilterImpl",
-      "org.apache.spark.util.collection.CompactBuffer",
-      "scala.reflect.ClassTag$$anon$1",
-      "scala.math.Ordering$$anon$4",
-      "org.apache.spark.sql.catalyst.expressions.codegen.LazilyGeneratedOrdering",
-      "org.apache.spark.sql.catalyst.expressions.SortOrder",
-      "org.apache.spark.sql.catalyst.expressions.BoundReference",
-      "org.apache.spark.sql.catalyst.trees.Origin",
-      "org.apache.spark.sql.catalyst.expressions.Ascending$",
-      "org.apache.spark.sql.catalyst.expressions.Descending$",
-      "org.apache.spark.sql.catalyst.expressions.NullsFirst$",
-      "org.apache.spark.sql.catalyst.expressions.NullsLast$",
-      "scala.collection.IndexedSeqLike$Elements",
-      "org.apache.spark.unsafe.types.UTF8String",
-      "scala.reflect.ClassTag$GenericClassTag",
-      "org.apache.spark.util.HadoopFSUtils$SerializableFileStatus",
-      "org.apache.spark.sql.execution.datasources.v2.DataWritingSparkTaskResult",
-      "org.apache.spark.sql.execution.joins.EmptyHashedRelation",
-      "org.apache.spark.util.HadoopFSUtils$SerializableBlockLocation",
-      "scala.reflect.ManifestFactory$LongManifest",
-      "org.apache.spark.sql.execution.joins.EmptyHashedRelation$",
-      "scala.reflect.ManifestFactory$$anon$1",
-      "scala.reflect.ClassTag$GenericClassTag",
-      "org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableFileStatus",
-      "org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation",
-      "scala.reflect.ManifestFactory$$anon$10",
-      "org.apache.spark.sql.catalyst.InternalRow$$anonfun$getAccessor$8",
-      "org.apache.spark.sql.catalyst.InternalRow$$anonfun$getAccessor$5",
-      "scala.collection.immutable.ArraySeq$ofRef",
-      "org.apache.spark.sql.catalyst.expressions.GenericInternalRow",
+      "java.util.Collections$EmptyList",
+      "java.util.HashMap",
+      "java.util.HashSet",
+      "java.util.concurrent.ConcurrentHashMap",
+      "java.util.concurrent.atomic.AtomicBoolean",
+      "org.apache.datasketches.kll.KllFloatsSketch",
       "org.apache.datasketches.kll.KllHeapFloatsSketch",
       "org.apache.datasketches.kll.KllSketch$SketchStructure",
       "org.apache.datasketches.kll.KllSketch$SketchType",
+      "org.apache.hadoop.fs.BlockLocation",
+      "org.apache.hadoop.fs.FileStatus",
+      "org.apache.hadoop.fs.FileUtil$CopyFiles",
+      "org.apache.hadoop.fs.FileUtil$CopyListingFileStatus",
+      "org.apache.hadoop.fs.FileUtil$CopyMapper",
+      "org.apache.hadoop.fs.FileUtil$CopyReducer",
+      "org.apache.hadoop.fs.LocatedFileStatus",
+      "org.apache.hadoop.fs.Path",
+      "org.apache.hadoop.fs.StorageType",
+      "org.apache.hadoop.fs.permission.FsAction",
+      "org.apache.hadoop.fs.permission.FsPermission",
+      "org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage",
+      "org.apache.spark.sql.Row",
+      "org.apache.spark.sql.catalyst.InternalRow",
+      "org.apache.spark.sql.catalyst.InternalRow$$anonfun$getAccessor$5",
+      "org.apache.spark.sql.catalyst.InternalRow$$anonfun$getAccessor$8",
+      "org.apache.spark.sql.catalyst.expressions.Ascending$",
+      "org.apache.spark.sql.catalyst.expressions.BoundReference",
+      "org.apache.spark.sql.catalyst.expressions.Descending$",
+      "org.apache.spark.sql.catalyst.expressions.GenericInternalRow",
+      "org.apache.spark.sql.catalyst.expressions.GenericRow",
+      "org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema",
+      "org.apache.spark.sql.catalyst.expressions.NullsFirst$",
+      "org.apache.spark.sql.catalyst.expressions.NullsLast$",
+      "org.apache.spark.sql.catalyst.expressions.SortOrder",
+      "org.apache.spark.sql.catalyst.expressions.UnsafeRow",
+      "org.apache.spark.sql.catalyst.expressions.codegen.LazilyGeneratedOrdering",
+      "org.apache.spark.sql.catalyst.trees.Origin",
+      "org.apache.spark.sql.execution.datasources.BasicWriteTaskStats",
+      "org.apache.spark.sql.execution.datasources.ExecutedWriteSummary",
+      "org.apache.spark.sql.execution.datasources.InMemoryFileIndex",
+      "org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation",
+      "org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableFileStatus",
+      "org.apache.spark.sql.execution.datasources.WriteTaskResult",
+      "org.apache.spark.sql.execution.datasources.v2.DataWritingSparkTaskResult",
+      "org.apache.spark.sql.execution.joins.EmptyHashedRelation",
+      "org.apache.spark.sql.execution.joins.EmptyHashedRelation$",
+      "org.apache.spark.sql.execution.joins.LongHashedRelation",
+      "org.apache.spark.sql.execution.joins.LongToUnsafeRowMap",
+      "org.apache.spark.sql.execution.joins.UnsafeHashedRelation",
+      "org.apache.spark.sql.execution.streaming.sources.ForeachWriterCommitMessage$",
+      "org.apache.spark.sql.types.BinaryType",
+      "org.apache.spark.sql.types.BinaryType$",
+      "org.apache.spark.sql.types.BooleanType$",
+      "org.apache.spark.sql.types.DataType",
+      "org.apache.spark.sql.types.DateType$",
+      "org.apache.spark.sql.types.DoubleType$",
+      "org.apache.spark.sql.types.IntegerType$",
+      "org.apache.spark.sql.types.LongType$",
+      "org.apache.spark.sql.types.Metadata",
+      "org.apache.spark.sql.types.NullType$",
+      "org.apache.spark.sql.types.StringType",
+      "org.apache.spark.sql.types.StringType$",
+      "org.apache.spark.sql.types.StructField",
+      "org.apache.spark.sql.types.StructType",
+      "org.apache.spark.sql.types.TimestampType$",
+      "org.apache.spark.unsafe.types.UTF8String",
+      "org.apache.spark.util.HadoopFSUtils$SerializableBlockLocation",
+      "org.apache.spark.util.HadoopFSUtils$SerializableFileStatus",
+      "org.apache.spark.util.collection.CompactBuffer",
+      "org.apache.spark.util.sketch.BitArray",
+      "org.apache.spark.util.sketch.BloomFilterImpl",
+      "scala.collection.IndexedSeqLike$Elements",
+      "scala.collection.immutable.ArraySeq$ofRef",
+      "scala.math.Ordering$$anon$4",
+      "scala.reflect.ClassTag$$anon$1",
+      "scala.reflect.ClassTag$GenericClassTag",
+      "scala.reflect.ClassTag$GenericClassTag",
+      "scala.reflect.ManifestFactory$$anon$1",
+      "scala.reflect.ManifestFactory$$anon$10",
+      "scala.reflect.ManifestFactory$LongManifest",
       "scala.reflect.ManifestFactory$LongManifest",
       "scala.collection.immutable.ArraySeq$ofInt"
     )
@@ -180,6 +180,8 @@ class ChrononKryoRegistrator extends KryoRegistrator {
     kryo.register(classOf[CpcSketch], new CpcSketchKryoSerializer())
     kryo.register(classOf[Array[ItemSketchSerializable]])
     kryo.register(classOf[ItemsSketchIR[AnyRef]], new ItemsSketchKryoSerializer[AnyRef])
+    kryo.register(classOf[SerializedLambda])
+    kryo.register(classOf[ClosureSerializer.Closure], new ClosureSerializer)
   }
 
   def doRegister(name: String, kryo: Kryo): Unit = {
@@ -204,13 +206,15 @@ class ChrononHudiKryoRegistrator extends ChrononKryoRegistrator {
       "org.apache.hudi.metadata.HoodieMetadataPayload",
       "org.apache.hudi.common.model.HoodieRecordLocation",
       "org.apache.hudi.client.FailOnFirstErrorWriteStatus",
+      "org.apache.hudi.client.WriteStatus",
       "org.apache.hudi.common.model.HoodieWriteStat",
       "org.apache.hudi.common.model.HoodieWriteStat$RuntimeStats",
       "org.apache.hudi.common.util.collection.ImmutablePair",
       "org.apache.hudi.avro.model.HoodieMetadataFileInfo",
       "org.apache.hudi.common.util.Option",
       "org.apache.hudi.common.model.HoodieDeltaWriteStat",
-      "org.apache.hudi.storage.StoragePathInfo"
+      "org.apache.hudi.storage.StoragePathInfo",
+      "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload"
     )
     additionalClassNames.foreach(name => doRegister(name, kryo))
   }

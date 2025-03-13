@@ -72,12 +72,18 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
     *         )
     */
   def run: Map[String, Map[String, List[String]]] = {
-    nonEmptyFileList.foldLeft(Map.empty[String, Map[String, List[String]]]) { (acc, file) =>
+    val fileList = nonEmptyFileList
+
+    fileList.foldLeft(Map.empty[String, Map[String, List[String]]]) { (acc, file) =>
       // For each end point we apply the extractFn to the file path to extract the key value pair
       val filePath = file.getPath
+      require(filePath.startsWith(dirPath),
+              s"Returned file path $filePath doesn't belong to metadata directory $dirPath")
+      val relativePath = filePath.drop(dirPath.length)
+
       val (optConf, confKeyName) =
         try {
-          filePath match {
+          relativePath match {
             case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
               val conf = loadJsonToConf[api.Join](filePath)
               (conf, conf.map(_.keyNameForKvStore))

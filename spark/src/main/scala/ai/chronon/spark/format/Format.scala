@@ -1,12 +1,8 @@
 package ai.chronon.spark.format
 
-import ai.chronon.spark.TableUtils.{TableCreatedWithoutInitialData, TableCreationStatus}
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.CreationUtils.createTableSql
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 trait Format {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -15,12 +11,22 @@ trait Format {
 
   def options: Map[String, String] = Map.empty[String, String]
 
+  def parseHivePartition(pstring: String): Map[String, String] = {
+    pstring
+      .split("/")
+      .map { part =>
+        val p = part.split("=", 2)
+        p(0) -> p(1)
+      }
+      .toMap
+  }
+
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,
                         partitionColumn: String,
                         subPartitionsFilter: Map[String, String] = Map.empty)(implicit
-      sparkSession: SparkSession): Seq[String] = {
+      sparkSession: SparkSession): List[String] = {
 
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
@@ -47,34 +53,7 @@ trait Format {
   //         Map("ds" -> "2023-04-01", "hr" -> "13")
   //         Map("ds" -> "2023-04-02", "hr" -> "00")
   //      )
-  def partitions(tableName: String)(implicit sparkSession: SparkSession): Seq[Map[String, String]]
-
-  def generateTableBuilder(df: DataFrame,
-                           tableName: String,
-                           partitionColumns: Seq[String],
-                           tableProperties: Map[String, String],
-                           fileFormat: String): (String => Unit) => TableCreationStatus = {
-
-    def inner(df: DataFrame,
-              tableName: String,
-              partitionColumns: Seq[String],
-              tableProperties: Map[String, String],
-              fileFormat: String)(sqlEvaluator: String => Unit): TableCreationStatus = {
-      val creationSql =
-        createTableSql(tableName,
-                       df.schema,
-                       partitionColumns,
-                       tableProperties,
-                       fileFormatString(fileFormat),
-                       createTableTypeString)
-
-      sqlEvaluator(creationSql)
-      TableCreatedWithoutInitialData
-    }
-
-    inner(df, tableName, partitionColumns, tableProperties, fileFormat)
-
-  }
+  def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]]
 
   def alterTableProperties(tableName: String, tableProperties: Map[String, String]): (String => Unit) => Unit = {
 
@@ -90,16 +69,7 @@ trait Format {
 
   }
 
-  // Help specify the appropriate table type to use in the Spark create table DDL query
-  def createTableTypeString: String
-
-  // Help specify the appropriate file format to use in the Spark create table DDL query
-  def fileFormatString(format: String): String
-
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean
-
-  // TODO: remove this once all formats implement table creation
-  val canCreateTable: Boolean = false
 
 }

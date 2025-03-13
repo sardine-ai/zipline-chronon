@@ -110,7 +110,7 @@ enum GroupByNodeType {
 enum JoinNodeType{
     BOOTSTRAP = 1,
     RIGHT_PART = 2,
-    PRE_DERIVATION = 3,
+    MERGE = 3,
     BACKFILL = 4,
     LABEL_PART = 5,
     LABEL_JOIN = 6,
@@ -163,6 +163,7 @@ struct PhysicalNodeKey {
     20: optional string lineageHash
 
 }
+
 struct PhysicalNode {
     1: optional string name
     2: optional PhysicalNodeType nodeType
@@ -170,104 +171,13 @@ struct PhysicalNode {
     /**
     * parentLineageHashes[] + semanticHash of the portion of compute this node does
     **/
-    20: optional string lineageHash
+    20: optional string version
     3: optional LogicalNode config
-
-
 
     21: optional string branch
 
     // null means ad-hoc, zero means continuously running
     40: optional common.Window scheduleInterval
-
-    60: optional Artifact output
-    61: optional list<Dependency> dependencies
-}
-
-struct PhysicalNodeInstance {
-    1: optional PhysicalNode node
-    2: optional map<Dependency, ArtifactRange> dependencyRanges
-    3: optional ArtifactRange outputRange
-}
-
-union Artifact {
-    1: optional Table table
-    2: optional KvEntry kvEntry
-    // could also be a topic, or a blog store location with model weights or image files etc
-}
-
-struct Table {
-    1: optional string table
-//    2: optional string database
-//    3: optional string format
-}
-
-struct KvEntry {
-    // cluser/table/key uniquely identifies the kv entry
-    1: optional string cluster
-    2: optional string table
-    3: optional string keyAsBase64
-}
-
-enum ScanStrategy {
-    ALL = 0
-    LATEST = 1
-    SKIP = 2
-}
-
-struct TableRange {
-    1: optional Table table
-    2: optional string startPartition
-    3: optional string endPartition
-    4: optional ScanStrategy scanStrategy
-}
-
-struct KvRange {
-    1: optional KvEntry kvEntry
-    2: optional i64 startMillis
-    3: optional i64 endMillis
-    4: optional ScanStrategy scanStrategy
-}
-
-union ArtifactRange {
-    1: optional TableRange tableRange
-    2: optional KvRange kvRange
-}
-
-struct KvDependency {
-    1: optional KvEntry kvEntry
-    2: optional common.Window startOffset
-    3: optional common.Window endOffset
-    4: optional ScanStrategy scanStrategy
-}
-
-struct TableDependency {
-    1: optional Table table
-
-    // params to select the partitions of the table for any query range
-    // logic is: [max(query.start - startOffset, startCutOff), min(query.end - endOffset, endCutOff)]
-    2: optional common.Window startOffset
-    3: optional common.Window endOffset
-    4: optional string startCutOff
-    5: optional string endCutOff
-    6: optional map<string, string> partitionFilters
-
-    /**
-    * If isCumulative is true, then for a given output partition any single partition from input on or after the output
-    * is sufficient. What this means is that latest available partition prior to end cut off will be used.
-    **/
-    20: optional bool isCumulative
-
-    /**
-    * JoinParts could use data from batch backfills or upload tables when available
-    * When not available they shouldn't force computation of the backfills and upload tables.
-    **/
-    21: optional bool forceCompute
-}
-
-union Dependency {
-    1: optional KvDependency kvDependency
-    2: optional TableDependency tableDependency
 }
 
 struct SourceWithFilter {
