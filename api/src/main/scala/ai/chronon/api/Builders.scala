@@ -264,14 +264,15 @@ object Builders {
         online: Boolean = false,
         production: Boolean = false,
         customJson: String = null,
-        dependencies: Seq[String] = null,
         namespace: String = null,
         team: String = null,
         samplePercent: Double = 100,
         consistencySamplePercent: Double = 5,
         tableProperties: Map[String, String] = Map.empty,
         historicalBackfill: Boolean = true,
-        driftSpec: DriftSpec = null
+        driftSpec: DriftSpec = null,
+        additionalOutputPartitionColumns: Seq[String] = Seq.empty,
+        executionInfo: ExecutionInfo = null
     ): MetaData = {
       val result = new MetaData()
       result.setName(name)
@@ -287,9 +288,7 @@ object Builders {
       }
 
       result.setTeam(effectiveTeam)
-      val executionInfo = new ExecutionInfo()
-        .setHistoricalBackfill(historicalBackfill)
-      result.setExecutionInfo(executionInfo)
+
       if (samplePercent > 0)
         result.setSamplePercent(samplePercent)
       if (consistencySamplePercent > 0)
@@ -298,6 +297,19 @@ object Builders {
         result.setTableProperties(tableProperties.toJava)
       if (driftSpec != null)
         result.setDriftSpec(driftSpec)
+
+      if (executionInfo != null) {
+        result.setExecutionInfo(executionInfo.setHistoricalBackfill(historicalBackfill))
+      } else {
+        result.setExecutionInfo(
+          new ExecutionInfo()
+            .setHistoricalBackfill(historicalBackfill))
+      }
+
+      if (additionalOutputPartitionColumns.nonEmpty) {
+        result.setAdditionalOutputPartitionColumns(additionalOutputPartitionColumns.toJava)
+      }
+
       result
     }
   }

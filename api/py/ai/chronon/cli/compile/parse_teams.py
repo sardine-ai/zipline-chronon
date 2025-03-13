@@ -123,6 +123,7 @@ def _merge_mode_maps(
                 result.backfill = _merge_maps(result.common, result.backfill)
                 result.upload = _merge_maps(result.common, result.upload)
                 result.streaming = _merge_maps(result.common, result.streaming)
+                result.serving = _merge_maps(result.common, result.serving)
                 result.common = None
             continue
 
@@ -135,5 +136,6 @@ def _merge_mode_maps(
         result.streaming = _merge_maps(
             result.streaming, mode_map.common, mode_map.streaming
         )
+        result.serving = _merge_maps(result.serving, mode_map.common, mode_map.serving)
 
     return result

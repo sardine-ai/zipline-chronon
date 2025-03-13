@@ -249,13 +249,19 @@ struct MetaData {
 
     4: optional string outputNamespace
 
-    5: optional map<string, string> tableProperties
+    /**
+    * By default we will just partition the output by the date column - set via "spark.chronon.partition.column"
+    * With this we will partition the output with the specified additional columns
+    **/
+    5: optional list<string> additionalOutputPartitionColumns
+
+    6: optional map<string, string> tableProperties
 
     // tag_key -> tag_value - tags allow for repository wide querying, deprecations etc
     // this is object level tag - applies to all columns produced by the object - GroupBy, Join, Model etc
-    6: optional map<string, string> tags
+    20: optional map<string, string> tags
     // column -> tag_key -> tag_value
-    7: optional map<string, map<string, string>> columnTags
+    21: optional map<string, map<string, string>> columnTags
 
     // marking this as true means that the conf can be served online
     // once marked online, a conf cannot be changed - compiling the conf won't be allowed
@@ -285,8 +291,6 @@ struct MetaData {
     # information that needs to be present on every physical node
     204: optional common.ExecutionInfo executionInfo
 }
-
-
 
 // Equivalent to a FeatureSet in chronon terms
 struct GroupBy {

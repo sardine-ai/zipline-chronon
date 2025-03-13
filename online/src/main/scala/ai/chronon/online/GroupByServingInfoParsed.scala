@@ -89,7 +89,6 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
   // Start tiling specific variables
 
   lazy val tiledCodec: TileCodec = new TileCodec(groupBy, valueChrononSchema.fields.map(sf => (sf.name, sf.fieldType)))
-  lazy val isTilingEnabled: Boolean = groupByOps.isTilingEnabled
 
   // End tiling specific variables
 
