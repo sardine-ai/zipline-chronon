@@ -112,7 +112,7 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
     val batchIr: FinalBatchIr =
       getBatchIrFromBatchResponse(batchResponses, batchBytes, servingInfo, toBatchIr, requestContext.keys)
 
-    if (fetchContext.isTilingEnabled) {
+    if (servingInfo.groupByOps.tilingFlag) {
       mergeTiledIrsFromStreaming(requestContext.queryTimeMs, servingInfo, streamingResponses, aggregator, batchIr)
     } else {
       mergeRawEventsFromStreaming(requestContext.queryTimeMs,
@@ -145,10 +145,10 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
             s"Failed to decode streaming row for groupBy $gbName" +
               "Streaming rows will be ignored")
 
-          if (fetchContext.shouldStreamingDecodeThrow(gbName)) {
-            throw new RuntimeException(s"Failed to decode streaming row for groupBy $gbName")
-          } else {
+          if (servingInfo.groupByOps.dontThrowOnDecodeFailFlag) {
             null
+          } else {
+            throw new RuntimeException(s"Failed to decode streaming row for groupBy $gbName")
           }
       }
     }

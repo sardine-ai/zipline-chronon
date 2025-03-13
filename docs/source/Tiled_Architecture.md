@@ -80,6 +80,4 @@ the [Chronon on Flink documentation](setup/Flink.md) for instructions. As part o
 modify your KV store implementation to know how to write and fetch tiles.
 
 Once the Flink app is set up and writing tiles to your datastore, the final step is to enable tiled reads in the
-Fetcher. Just add `enable_tiling=true` to
-the [customJson](https://github.com/airbnb/chronon/blob/48b789dd2c216c62bbf1d74fbf4e779f23db541f/api/py/ai/chronon/group_by.py#L561)
-of any GroupBy definition. 
+Fetcher. Just add `tiling=true` to `metaData.executionInfo.conf.serving` of any GroupBy definition.

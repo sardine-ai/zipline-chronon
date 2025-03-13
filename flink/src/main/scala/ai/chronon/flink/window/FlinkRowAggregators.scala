@@ -5,7 +5,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataType
 import ai.chronon.api.GroupBy
 import ai.chronon.api.Row
-import ai.chronon.api.ScalaJavaConversions.ListOps
+import ai.chronon.api.ScalaJavaConversions.{IteratorOps, ListOps}
 import ai.chronon.flink.types.TimestampedIR
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.TileCodec
@@ -42,6 +42,23 @@ class FlinkRowAggregationFunction(
   private val valueColumns: Array[String] = inputSchema.map(_._1).toArray // column order matters
   private val timeColumnAlias: String = Constants.TimeColumn
 
+  private val isMutation: Boolean = {
+    Option(groupBy.getSources).exists(
+      _.iterator().toScala
+        .exists(source => source.isSetEntities && source.getEntities.isSetMutationTopic)
+    )
+  }
+
+  private val reversalIndex = {
+    val result = inputSchema.indexWhere(_._1 == Constants.ReversalColumn)
+
+    if (isMutation)
+      require(result >= 0,
+              s"Please specify source.query.reversal_column for CDC sources, only found, ${inputSchema.map(_._1)}")
+
+    result
+  }
+
   /*
    * Initialize the transient rowAggregator.
    * Running this method is an idempotent operation:
@@ -60,6 +77,7 @@ class FlinkRowAggregationFunction(
       element: Map[String, Any],
       accumulatorIr: TimestampedIR
   ): TimestampedIR = {
+
     // Most times, the time column is a Long, but it could be a Double.
     val tsMills = Try(element(timeColumnAlias).asInstanceOf[Long])
       .getOrElse(element(timeColumnAlias).asInstanceOf[Double].toLong)
@@ -79,7 +97,14 @@ class FlinkRowAggregationFunction(
     )
 
     val partialAggregates = Try {
-      rowAggregator.update(accumulatorIr.ir, row)
+      val isDelete = isMutation && row.getAs[Boolean](reversalIndex)
+
+      if (isDelete) {
+        rowAggregator.delete(accumulatorIr.ir, row)
+      } else {
+        rowAggregator.update(accumulatorIr.ir, row)
+      }
+
     }
 
     partialAggregates match {
