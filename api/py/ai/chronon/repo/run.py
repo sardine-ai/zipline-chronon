@@ -53,7 +53,7 @@ def set_defaults(ctx):
     defaults = {
         "mode": "backfill",
         "dataproc": False,
-        "ds": today,
+        "ds": today,  # TODO: this breaks if the partition column is not the same as yyyy-MM-dd.
         "app_name": os.environ.get("APP_NAME"),
         "online_jar": os.environ.get("CHRONON_ONLINE_JAR"),
         "repo": chronon_repo_path,

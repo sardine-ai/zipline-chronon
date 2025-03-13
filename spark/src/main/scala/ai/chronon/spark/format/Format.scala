@@ -11,6 +11,16 @@ trait Format {
 
   def options: Map[String, String] = Map.empty[String, String]
 
+  def parseHivePartition(pstring: String): Map[String, String] = {
+    pstring
+      .split("/")
+      .map { part =>
+        val p = part.split("=", 2)
+        p(0) -> p(1)
+      }
+      .toMap
+  }
+
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,
