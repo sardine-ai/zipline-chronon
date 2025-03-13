@@ -54,7 +54,7 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val actualRequest = requestCaptor.getValue
 
     // "canary" specific assertions
-    assertEquals(actualRequest.logUri(), "s3://zipline-artifacts-canary/emr/")
+    assertEquals(actualRequest.logUri(), "s3://zipline-logs-canary/emr/")
     assertEquals(actualRequest.instances().ec2SubnetId(), "subnet-085b2af531b50db44")
     assertEquals(actualRequest.instances().emrManagedMasterSecurityGroup(), "sg-04fb79b5932a41298")
     assertEquals(actualRequest.instances().emrManagedSlaveSecurityGroup(), "sg-04fb79b5932a41298")
