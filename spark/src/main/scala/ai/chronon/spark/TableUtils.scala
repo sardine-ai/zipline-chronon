@@ -18,13 +18,8 @@ package ai.chronon.spark
 
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
-import ai.chronon.api.PartitionRange
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.Constants
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.Query
-import ai.chronon.api.QueryUtils
-import ai.chronon.api.TsUtils
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import ai.chronon.spark.format.CreationUtils
