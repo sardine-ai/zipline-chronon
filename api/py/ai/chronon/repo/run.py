@@ -118,7 +118,7 @@ def set_defaults(ctx):
     "--online-class",
     help="Class name of Online Impl. Used for streaming and metadata-upload mode.",
 )
-@click.option("--version", help="Chronon version to use.")
+@click.option("--version", default="latest", help="Chronon version to use.")
 @click.option(
     "--spark-version", default="2.4.0", help="Spark version to use for downloading jar."
 )
