@@ -12,7 +12,6 @@ java_library(
     deps = [
         maven_artifact("javax.annotation:javax.annotation.api"),
         maven_artifact("org.slf4j:slf4j-api"),
-        maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("org.apache.commons:commons-lang3"),
         maven_artifact("com.google.code.gson:gson"),
     ],
@@ -35,7 +34,6 @@ scala_library(
         maven_artifact("com.fasterxml.jackson.core:jackson-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact("org.slf4j:slf4j-api"),
-        maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
         maven_artifact("org.apache.commons:commons-lang3"),
         maven_artifact("com.google.code.gson:gson"),
         maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
@@ -51,7 +49,6 @@ test_deps = [
     maven_artifact("com.fasterxml.jackson.core:jackson-core"),
     maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
     maven_artifact("org.slf4j:slf4j-api"),
-    maven_artifact("org.apache.logging.log4j:log4j-slf4j-impl"),
     # Testing
     maven_artifact_with_suffix("org.scala-lang.modules:scala-parser-combinators"),
     maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),

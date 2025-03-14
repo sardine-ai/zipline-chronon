@@ -102,6 +102,21 @@ scalafmt_default_config()
 
 scalafmt_repositories()
 
+# For jar jar to help with shading
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+git_repository(
+    name = "com_github_johnynek_bazel_jar_jar",
+    commit = "352e66efa42434154ff2c0406ffd395efcbec92c", # Latest commit SHA as of 2024/11/05
+    remote = "https://github.com/johnynek/bazel_jar_jar.git",
+)
+
+load(
+    "@com_github_johnynek_bazel_jar_jar//:jar_jar.bzl",
+    "jar_jar_repositories",
+)
+jar_jar_repositories()
+
 # For Protobuf support
 http_archive(
     name = "rules_proto",
