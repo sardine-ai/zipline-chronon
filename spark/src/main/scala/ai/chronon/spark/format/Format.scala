@@ -1,15 +1,10 @@
 package ai.chronon.spark.format
 
-import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
 import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
 
 trait Format {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-
-  def name: String
-
-  def options: Map[String, String] = Map.empty[String, String]
 
   def parseHivePartition(pstring: String): Map[String, String] = {
     pstring
@@ -54,20 +49,6 @@ trait Format {
   //         Map("ds" -> "2023-04-02", "hr" -> "00")
   //      )
   def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]]
-
-  def alterTableProperties(tableName: String, tableProperties: Map[String, String]): (String => Unit) => Unit = {
-
-    def inner(tableName: String, tableProperties: Map[String, String])(sqlEvaluator: String => Unit) = {
-      val alterSql =
-        alterTablePropertiesSql(tableName, tableProperties)
-
-      sqlEvaluator(alterSql)
-
-    }
-
-    inner(tableName, tableProperties)
-
-  }
 
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean
