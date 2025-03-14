@@ -326,7 +326,7 @@ class CatalystUtil(inputSchema: StructType,
   }
 
   /** Recursively builds a chain of transformation functions from a SparkPlan
-   */
+    */
   private def buildTransformChain(plan: org.apache.spark.sql.execution.SparkPlan): InternalRow => Seq[InternalRow] = {
     logger.info(s"Building transform chain for plan: ${plan.getClass.getSimpleName}")
 
