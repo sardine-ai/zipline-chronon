@@ -9,7 +9,7 @@ import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.yaml.snakeyaml.Yaml
+import org.yaml.shaded_snakeyaml.Yaml
 
 import scala.io.Source
 

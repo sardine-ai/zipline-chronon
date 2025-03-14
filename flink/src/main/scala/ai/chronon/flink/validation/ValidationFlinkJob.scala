@@ -30,7 +30,7 @@ case class ValidationStats(totalRecords: Int,
          |Total Records: $totalRecords
          |Total Matches: $totalMatches
          |Total Mismatches: $totalMismatches
-         |Mismatches:
+         |Mismatch examples (limited to 100):
          |${mismatches.mkString("\n")}
          |""".stripMargin
   }
@@ -66,7 +66,8 @@ class SparkDFVsCatalystComparisonFn(sparkExpressionEvalFn: SparkExpressionEvalFn
     val matching = comparisonResults.count(_.isMatch)
     val mismatches = comparisonResults.filterNot(_.isMatch)
     logger.info("Wrapped up comparison. Emitted stats")
-    out.collect(ValidationStats(total, matching, mismatches.size, mismatches))
+    // limit to 100 mismatches to avoid flooding the logs
+    out.collect(ValidationStats(total, matching, mismatches.size, mismatches.take(100)))
   }
 }
 
