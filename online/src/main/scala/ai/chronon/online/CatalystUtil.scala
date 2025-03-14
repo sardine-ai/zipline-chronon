@@ -48,7 +48,6 @@ import org.apache.spark.sql.execution.{
 }
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types
-import org.apache.spark.sql.types.{LongType, StringType}
 import org.slf4j.LoggerFactory
 
 import java.util.concurrent.ArrayBlockingQueue
@@ -270,9 +269,6 @@ class CatalystUtil(inputSchema: StructType,
       identity
     }
 
-    logger.info(s"Generator schema: ${boundGenerator.elementSchema}")
-    logger.info(s"Output schema: ${generate.output}")
-
     // Return the transformer function
     row => {
       try {
@@ -319,8 +315,6 @@ class CatalystUtil(inputSchema: StructType,
     }
   }
 
-  /** Recursively builds a chain of transformation functions from a SparkPlan
-    */
   /** Helper method to check if a plan tree contains any InputAdapter nodes
     * which indicate split points for WholeStageCodegenExec
     */
@@ -331,6 +325,8 @@ class CatalystUtil(inputSchema: StructType,
     plan.children.exists(containsInputAdapter)
   }
 
+  /** Recursively builds a chain of transformation functions from a SparkPlan
+   */
   private def buildTransformChain(plan: org.apache.spark.sql.execution.SparkPlan): InternalRow => Seq[InternalRow] = {
     logger.info(s"Building transform chain for plan: ${plan.getClass.getSimpleName}")
 

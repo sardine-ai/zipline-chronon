@@ -53,7 +53,6 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
   @transient private var rowSerTimeHistogram: Histogram = _
   @transient private var exprEvalSuccessCounter: Counter = _
   @transient private var exprEvalErrorCounter: Counter = _
-  @transient private var logCounter = 0
 
   // Chronon's CatalystUtil expects a Chronon `StructType` so we convert the
   // Encoder[T]'s schema to one.
@@ -98,12 +97,6 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
   def flatMap(inputEvent: T, out: Collector[Map[String, Any]]): Unit = {
     try {
       val start = System.currentTimeMillis()
-      val sparkRow = inputEvent.asInstanceOf[org.apache.spark.sql.Row]
-      if (logCounter % 10000 == 0) {
-        logCounter = 0
-        logger.info(s"Processing event: ${sparkRow.json}")
-      }
-      logCounter += 1
       val row: InternalRow = rowSerializer(inputEvent)
       val serFinish = System.currentTimeMillis()
       rowSerTimeHistogram.update(serFinish - start)
@@ -111,12 +104,7 @@ class SparkExpressionEvalFn[T](encoder: Encoder[T], groupBy: GroupBy) extends Ri
       val maybeRow = catalystUtil.performSql(row)
 
       exprEvalTimeHistogram.update(System.currentTimeMillis() - serFinish)
-      maybeRow.foreach { row =>
-        logger.info(s"Emitting data for row: ${sparkRow.json}")
-        logger.info(s"Output data: ${row}")
-
-        out.collect(row)
-      }
+      maybeRow.foreach(out.collect)
       exprEvalSuccessCounter.inc()
     } catch {
       case e: Exception =>
