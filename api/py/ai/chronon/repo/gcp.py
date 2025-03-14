@@ -31,10 +31,10 @@ ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 class GcpRunner(Runner):
     def __init__(self, args):
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_JAR_DEFAULT
+            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_GCP_JAR_DEFAULT
         )
         service_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_GCP_SERVICE_JAR
+            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_GCP_SERVICE_JAR
         )
         jar_path = (
             f"{service_jar_path}:{gcp_jar_path}" if args["mode"] == "fetch" else gcp_jar_path
@@ -156,11 +156,11 @@ class GcpRunner(Runner):
 
     @staticmethod
     def download_zipline_dataproc_jar(
-        destination_dir: str, customer_id: str, jar_name: str
+        destination_dir: str, customer_id: str, version: str, jar_name: str
     ):
         bucket_name = f"zipline-artifacts-{customer_id}"
 
-        source_blob_name = f"jars/{jar_name}"
+        source_blob_name = f"release/{version}/jars/{jar_name}"
         destination_path = f"{destination_dir}/{jar_name}"
 
         are_identical = (
@@ -186,6 +186,7 @@ class GcpRunner(Runner):
         self,
         user_args: str,
         job_type: JobType = JobType.SPARK,
+        version: str = "latest",
         local_files_to_upload: List[str] = [],
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
@@ -215,7 +216,7 @@ class GcpRunner(Runner):
         # include jar uri. should also already be in the bucket
         jar_uri = (
             f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
-            + f"/jars/{ZIPLINE_GCP_JAR_DEFAULT}"
+            + f"/release/{version}/jars/{ZIPLINE_GCP_JAR_DEFAULT}"
         )
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
@@ -224,7 +225,7 @@ class GcpRunner(Runner):
             main_class = "ai.chronon.flink.FlinkJob"
             flink_jar_uri = (
                 f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
-                + f"/jars/{ZIPLINE_GCP_FLINK_JAR_DEFAULT}"
+                + f"/release/{version}/jars/{ZIPLINE_GCP_FLINK_JAR_DEFAULT}"
             )
             return (
                 final_args.format(
