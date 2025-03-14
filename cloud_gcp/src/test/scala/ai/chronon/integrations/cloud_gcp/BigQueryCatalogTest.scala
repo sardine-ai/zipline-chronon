@@ -15,6 +15,7 @@ import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
 import org.apache.iceberg.gcp.gcs.GCSFileIO
 import org.apache.iceberg.io.ResolvingFileIO
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.functions.{col, to_date}
 import org.apache.spark.sql.internal.SQLConf
 import org.junit.Assert.{assertEquals, assertNotNull, assertTrue}
@@ -37,28 +38,19 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
         "spark.chronon.partition.column" -> "ds",
         "spark.hadoop.fs.gs.impl" -> classOf[GoogleHadoopFileSystem].getName,
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> classOf[GoogleHadoopFS].getName,
-        // set the following to run local integration tests
-//        "spark.sql.catalog.spark_catalog" -> classOf[SparkCatalog].getName,
-//        "spark.hadoop.google.cloud.auth.service.account.enable" -> true.toString,
-//        "spark.sql.catalog.spark_catalog" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
-//        "spark.sql.catalog.spark_catalog.catalog-impl" -> classOf[BQMSCatalog].getName,
-//        "spark.sql.catalog.spark_catalog.io-impl" -> classOf[ResolvingFileIO].getName,
-//        "spark.sql.catalog.spark_catalog.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
-//        "spark.sql.catalog.spark_catalog.gcp_location" -> "us-central1",
-//        "spark.sql.catalog.spark_catalog.gcp_project" -> "canary-443022",
-//
-//        // Set these twice so that we force iceberg to use the BQMSCatalog.
-//        "spark.sql.catalog.default_iceberg" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
+        "spark.sql.catalogImplementation" -> "in-memory",
+
+//        "spark.sql.defaultCatalog" -> "default_iceberg",
+//        "spark.sql.catalog.default_iceberg" -> classOf[SparkCatalog].getName,
 //        "spark.sql.catalog.default_iceberg.catalog-impl" -> classOf[BQMSCatalog].getName,
 //        "spark.sql.catalog.default_iceberg.io-impl" -> classOf[ResolvingFileIO].getName,
 //        "spark.sql.catalog.default_iceberg.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
 //        "spark.sql.catalog.default_iceberg.gcp_location" -> "us-central1",
 //        "spark.sql.catalog.default_iceberg.gcp_project" -> "canary-443022",
-//
-//
-//        "spark.sql.catalogImplementation" -> "in-memory",
 //        "spark.kryo.registrator" -> classOf[ChrononIcebergKryoRegistrator].getName,
 //        "spark.sql.defaultUrlStreamHandlerFactory.enabled" -> false.toString,
+//
+//        "spark.sql.catalog.default_bigquery" -> classOf[BigQueryCatalog].getName,
       ))
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
@@ -72,6 +64,21 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   it should "verify dynamic classloading of GCP providers" in {
     assertEquals("thrift://localhost:9083", spark.sqlContext.getConf("hive.metastore.uris"))
     assertTrue(FormatProvider.from(spark).isInstanceOf[GcpFormatProvider])
+  }
+
+  it should "be consistent about parsing table names for spark and bigquery" in {
+    val sparkTable = "`project-id`.dataset.table_name"
+
+    val bTableId = SparkBQUtils.toTableId(sparkTable)(spark)
+
+    assertEquals("table_name", bTableId.getTable)
+    assertEquals("dataset", bTableId.getDataset)
+    assertEquals("project-id", bTableId.getProject)
+
+    val invalidSparkTableName = "project-id.dataset.table_name"
+    assertThrows[ParseException] {
+      val notReachable = spark.sessionState.sqlParser.parseMultipartIdentifier(invalidSparkTableName)
+    }
   }
 
   it should "bigquery connector converts spark dates regardless of date setting" in {
@@ -97,10 +104,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   }
 
   it should "integration testing bigquery external table" ignore {
-    val externalTable = "data.checkouts_parquet"
+    val externalTable = "default_bigquery.data.checkouts_parquet"
 
-    val bs = GoogleHadoopFileSystemConfiguration.BLOCK_SIZE
-    println(bs)
     val table = tableUtils.loadTable(externalTable)
     table.show
     // val database = tableUtils.createDatabase("test_database")
