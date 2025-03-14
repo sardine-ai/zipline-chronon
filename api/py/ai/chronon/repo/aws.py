@@ -23,8 +23,6 @@ ZIPLINE_AWS_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.aws.AwsApiImpl"
 ZIPLINE_AWS_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
 ZIPLINE_AWS_SERVICE_JAR = "service_assembly_deploy.jar"
 
-ARTIFACTS_LATEST_RELEASE_JAR_PATH = "release/latest/jars"
-
 LOCAL_FILE_TO_ETAG_JSON = f"{ZIPLINE_DIRECTORY}/local_file_to_etag.json"
 
 EMR_MOUNT_FILE_PREFIX = "/mnt/zipline/"
@@ -33,14 +31,15 @@ EMR_MOUNT_FILE_PREFIX = "/mnt/zipline/"
 class AwsRunner(Runner):
     def __init__(self, args):
         aws_jar_path = AwsRunner.download_zipline_aws_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_AWS_JAR_DEFAULT
+            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_AWS_JAR_DEFAULT
         )
         service_jar_path = AwsRunner.download_zipline_aws_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), ZIPLINE_AWS_SERVICE_JAR
+            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_AWS_SERVICE_JAR
         )
         jar_path = (
             f"{service_jar_path}:{aws_jar_path}" if args['mode'] == "fetch" else aws_jar_path
         )
+        self.version = args.get("version", "latest")
 
         super().__init__(args, os.path.expanduser(jar_path))
 
@@ -60,10 +59,10 @@ class AwsRunner(Runner):
             raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
 
     @staticmethod
-    def download_zipline_aws_jar(destination_dir: str, customer_id: str, jar_name: str):
+    def download_zipline_aws_jar(destination_dir: str, customer_id: str, version: str, jar_name: str):
         s3_client = boto3.client("s3")
         destination_path = f"{destination_dir}/{jar_name}"
-        source_key_name = f"{ARTIFACTS_LATEST_RELEASE_JAR_PATH}/{jar_name}"
+        source_key_name = f"release/{version}/jars/{jar_name}"
         bucket_name = f"zipline-artifacts-{customer_id}"
 
         are_identical = (
@@ -165,7 +164,7 @@ class AwsRunner(Runner):
         # include jar uri. should also already be in the bucket
         jar_uri = (
             f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
-            + f"/{ARTIFACTS_LATEST_RELEASE_JAR_PATH}/{ZIPLINE_AWS_JAR_DEFAULT}"
+            + f"/release/{self.version}/jars/{ZIPLINE_AWS_JAR_DEFAULT}"
         )
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
