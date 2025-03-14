@@ -22,16 +22,16 @@ import com.google.cloud.bigquery.Job
 import com.google.cloud.bigquery.JobId
 import com.google.cloud.bigquery.JobInfo
 import com.google.cloud.bigquery.QueryJobConfiguration
-import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
-import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest
-import com.google.cloud.bigtable.admin.v2.models.GCRules
-import com.google.cloud.bigtable.data.v2.BigtableDataClient
-import com.google.cloud.bigtable.data.v2.models.Filters
-import com.google.cloud.bigtable.data.v2.models.Query
-import com.google.cloud.bigtable.data.v2.models.Range.ByteStringRange
-import com.google.cloud.bigtable.data.v2.models.Range.TimestampRange
-import com.google.cloud.bigtable.data.v2.models.RowMutation
-import com.google.cloud.bigtable.data.v2.models.{TableId => BTTableId}
+import com.google.cloud.shaded_bigtable.admin.v2.BigtableTableAdminClient
+import com.google.cloud.shaded_bigtable.admin.v2.models.CreateTableRequest
+import com.google.cloud.shaded_bigtable.admin.v2.models.GCRules
+import com.google.cloud.shaded_bigtable.data.v2.BigtableDataClient
+import com.google.cloud.shaded_bigtable.data.v2.models.Filters
+import com.google.cloud.shaded_bigtable.data.v2.models.Query
+import com.google.cloud.shaded_bigtable.data.v2.models.Range.ByteStringRange
+import com.google.cloud.shaded_bigtable.data.v2.models.Range.TimestampRange
+import com.google.cloud.shaded_bigtable.data.v2.models.RowMutation
+import com.google.cloud.shaded_bigtable.data.v2.models.{TableId => BTTableId}
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
