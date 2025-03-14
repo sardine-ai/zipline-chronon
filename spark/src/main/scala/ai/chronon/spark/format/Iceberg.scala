@@ -7,8 +7,6 @@ import org.apache.spark.sql.types.StructType
 
 case object Iceberg extends Format {
 
-  override def name: String = "iceberg"
-
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] = {
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {

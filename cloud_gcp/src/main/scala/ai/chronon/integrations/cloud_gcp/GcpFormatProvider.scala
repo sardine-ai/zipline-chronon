@@ -29,7 +29,7 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
 
   private[cloud_gcp] def getFormat(table: Table): Format = {
     table.getDefinition.asInstanceOf[TableDefinition] match {
-      case definition: ExternalTableDefinition =>
+      case _: ExternalTableDefinition =>
         Try {
           val tableRef = new TableReference()
             .setProjectId(table.getTableId.getProject)
@@ -39,23 +39,11 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
           icebergClient.getTable(tableRef) // Just try to load it. It'll fail if it's not an iceberg table.
           Iceberg
         }.recover {
-          case canHandle: NoSuchIcebergTableException =>
-            val formatOptions = definition.getFormatOptions.asInstanceOf[FormatOptions]
-
-            val uri = scala
-              .Option(definition.getHivePartitioningOptions)
-              .map(_.getSourceUriPrefix)
-              .getOrElse {
-                val uris = definition.getSourceUris.asScala
-                require(uris.size == 1, s"External table ${table} can be backed by only one URI.")
-                uris.head.replaceAll("/\\*\\.parquet$", "")
-              }
-
-            GCS(uri, formatOptions.getType)
-          case e: Exception => throw e
+          case _: NoSuchIcebergTableException => BigQueryExternal
+          case e: Exception                   => throw e
         }.get
 
-      case _: StandardTableDefinition => BigQueryFormat
+      case _: StandardTableDefinition => BigQueryNative
 
       case _ =>
         throw new IllegalStateException(s"Cannot support table of type: ${table.getFriendlyName}")

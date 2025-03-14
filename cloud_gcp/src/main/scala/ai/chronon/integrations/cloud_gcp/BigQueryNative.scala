@@ -7,17 +7,10 @@ import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, date_format, to_date}
 
-case object BigQueryFormat extends Format {
-
-  override def name: String = "bigquery"
+case object BigQueryNative extends Format {
 
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
-
-  override def alterTableProperties(tableName: String,
-                                    tableProperties: Map[String, String]): (String => Unit) => Unit = {
-    throw new NotImplementedError("alterTableProperties not yet supported for BigQuery")
-  }
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] =
