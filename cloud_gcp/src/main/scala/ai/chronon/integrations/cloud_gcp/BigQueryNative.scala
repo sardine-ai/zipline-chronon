@@ -2,22 +2,15 @@ package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.format.Format
-import com.google.cloud.bigquery.BigQuery
-import com.google.cloud.bigquery.connector.common.BigQueryUtil
+import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, date_format, to_date}
 
-case class BigQueryFormat(project: String, bqClient: BigQuery, override val options: Map[String, String])
-    extends Format {
-  override def name: String = "bigquery"
+case object BigQueryNative extends Format {
 
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
-
-  override def alterTableProperties(tableName: String,
-                                    tableProperties: Map[String, String]): (String => Unit) => Unit = {
-    throw new NotImplementedError("alterTableProperties not yet supported for BigQuery")
-  }
+  private lazy val bqOptions = BigQueryOptions.getDefaultInstance
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] =
@@ -25,22 +18,24 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
 
   override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
     import sparkSession.implicits._
-    val tableIdentifier = BigQueryUtil.parseTableId(tableName)
+    val tableIdentifier = SparkBQUtils.toTableId(tableName)
+    val providedProject = Option(tableIdentifier.getProject).getOrElse(bqOptions.getProjectId)
     val table = tableIdentifier.getTable
     val database =
-      Option(tableIdentifier.getDataset).getOrElse(throw new IllegalArgumentException("database required!"))
+      Option(tableIdentifier.getDataset).getOrElse(
+        throw new IllegalArgumentException(s"database required for table: ${tableName}"))
 
     // See: https://cloud.google.com/bigquery/docs/information-schema-columns
     val partColsSql =
       s"""
-           |SELECT column_name FROM `${project}.${database}.INFORMATION_SCHEMA.COLUMNS`
+           |SELECT column_name FROM `${providedProject}.${database}.INFORMATION_SCHEMA.COLUMNS`
            |WHERE table_name = '${table}' AND is_partitioning_column = 'YES'
            |
            |""".stripMargin
 
     val partitionCol = sparkSession.read
       .format(bqFormat)
-      .option("project", project)
+      .option("project", providedProject)
       // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
       // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
       .option("viewsEnabled", true)
@@ -54,7 +49,7 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
     // See: https://cloud.google.com/bigquery/docs/information-schema-partitions
     val partValsSql =
       s"""
-           |SELECT partition_id FROM `${project}.${database}.INFORMATION_SCHEMA.PARTITIONS`
+           |SELECT partition_id FROM `${providedProject}.${database}.INFORMATION_SCHEMA.PARTITIONS`
            |WHERE table_name = '${table}'
            |
            |""".stripMargin
@@ -66,7 +61,7 @@ case class BigQueryFormat(project: String, bqClient: BigQuery, override val opti
 
     val partitionInfoDf = sparkSession.read
       .format(bqFormat)
-      .option("project", project)
+      .option("project", providedProject)
       // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
       // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
       .option("viewsEnabled", true)

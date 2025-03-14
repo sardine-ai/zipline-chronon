@@ -154,20 +154,6 @@ object Extensions {
     @deprecated("Use `name` instead.")
     def nameToFilePath: String = metaData.name.replaceFirst("\\.", "/")
 
-    // helper function to extract values from customJson
-    def customJsonLookUp(key: String): Any = {
-      if (metaData.customJson == null) return null
-      val mapper = new ObjectMapper()
-      val typeRef = new TypeReference[java.util.HashMap[String, Object]]() {}
-      val jMap: java.util.Map[String, Object] = mapper.readValue(metaData.customJson, typeRef)
-      jMap.toScala.get(key).orNull
-    }
-
-    def owningTeam: String = {
-      val teamOverride = Try(customJsonLookUp(Constants.TeamOverride).asInstanceOf[String]).toOption
-      teamOverride.getOrElse(metaData.team)
-    }
-
     // if drift spec is set but tile size is not set, default to 30 minutes
     def driftTileSize: Option[Window] = {
       Option(metaData.getDriftSpec) match {
@@ -460,13 +446,6 @@ object Extensions {
       }
     }
 
-    // Check if tiling is enabled for a given GroupBy. Defaults to false if the 'enable_tiling' flag isn't set.
-    def isTilingEnabled: Boolean =
-      groupBy.getMetaData.customJsonLookUp("enable_tiling") match {
-        case s: Boolean => s
-        case _          => false
-      }
-
     def semanticHash: String = {
       val newGroupBy = groupBy.deepCopy()
       newGroupBy.unsetMetaData()
@@ -599,6 +578,22 @@ object Extensions {
       }
       QueryParts(allSelects, wheres)
     }
+
+    def servingFlagValue(flag: String): Option[String] = {
+      for (
+        execInfo <- Option(groupBy.metaData.executionInfo);
+        conf <- Option(execInfo.conf);
+        servingConf <- Option(conf.serving);
+        value <- Option(servingConf.get(flag))
+      ) {
+        return Some(value)
+      }
+      None
+    }
+
+    def tilingFlag: Boolean = servingFlagValue("tiling").exists(_.toLowerCase() == "true")
+
+    def dontThrowOnDecodeFailFlag: Boolean = servingFlagValue("decode.throw_on_fail").exists(_.toLowerCase() == "false")
 
     // build left streaming query for join source runner
     def buildLeftStreamingQuery(query: Query, defaultFieldNames: Seq[String]): String = {

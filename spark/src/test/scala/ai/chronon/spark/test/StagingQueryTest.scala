@@ -25,14 +25,14 @@ import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.StagingQuery
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
-import org.junit.Assert.assertEquals
+import org.junit.Assert.{assertEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 class StagingQueryTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  lazy val spark: SparkSession = SparkSessionBuilder.build("StagingQueryTest", local = true)
+  implicit lazy val spark: SparkSession = SparkSessionBuilder.build("StagingQueryTest", local = true)
   implicit private val tableUtils: TableUtils = TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -284,5 +284,88 @@ class StagingQueryTest extends AnyFlatSpec {
       diff.show()
     }
     assertEquals(0, diff.count())
+  }
+
+  private def getPartitionColumnNames(tableName: String)(implicit spark: SparkSession): Seq[String] = {
+    // Get the catalog table information
+    val tableIdentifier = spark.sessionState.sqlParser.parseTableIdentifier(tableName)
+    val catalogTable = spark.sessionState.catalog.getTableMetadata(tableIdentifier)
+
+    // Extract partition column names from the table schema
+    catalogTable.partitionColumnNames
+  }
+
+  it should "handle additional output partition columns" in {
+    val schema = List(
+      Column("user", StringType, 10),
+      Column("region", StringType, 5, nullRate = 0.0), // partition columns cannot have null
+      Column("device", StringType, 3, nullRate = 0.0), // partition columns cannot have null
+      Column("session_length", IntType, 1000)
+    )
+
+    // Generate test data with columns that can be used for additional partitioning
+    val df = DataFrameGen
+      .events(spark, schema, count = 10000, partitions = 20)
+      .dropDuplicates("ts")
+    logger.info("Generated test data for additional partition columns:")
+    df.show()
+
+    val tableName = s"$namespace.test_additional_partition_cols"
+    df.save(tableName)
+
+    // Define a staging query with multiple additional partition columns
+    val stagingQueryConf = Builders.StagingQuery(
+      query = s"select * from $tableName WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
+      startPartition = ninetyDaysAgo,
+      metaData = Builders.MetaData(
+        name = "test.additional_partitions",
+        namespace = namespace,
+        additionalOutputPartitionColumns = Seq("region", "device"), // Explicitly specify additional partition columns
+        tableProperties = Map("key" -> "val")
+      )
+    )
+
+    val stagingQuery = new StagingQuery(stagingQueryConf, today, tableUtils)
+    stagingQuery.computeStagingQuery(stepDays = Option(30))
+
+    // Verify the data was written correctly
+    val expected = tableUtils.sql(
+      s"select * from $tableName where ds between '$ninetyDaysAgo' and '$today'"
+    )
+
+    val computed = tableUtils.sql(s"select * from ${stagingQueryConf.metaData.outputTable}")
+    val diff = Comparison.sideBySide(expected, computed, List("user", "ts", "ds"))
+
+    val diffCount = diff.count()
+    if (diffCount > 0) {
+      logger.info("Different rows between expected and computed")
+
+      logger.info("Expected rows")
+      expected.show()
+
+      logger.info("Computed rows")
+      computed.show()
+
+      logger.info("Diff rows (SxS)")
+      diff.show()
+    }
+
+    assertEquals(0, diff.count())
+
+    // Verify the table was created with the additional partition columns
+    val tableDesc = spark.sql(s"DESCRIBE ${stagingQueryConf.metaData.outputTable}")
+    val partitionInfo = spark.sql(s"SHOW PARTITIONS ${stagingQueryConf.metaData.outputTable}")
+
+    logger.info("Table description:")
+    tableDesc.show()
+    logger.info("Partition information:")
+    partitionInfo.show()
+
+    // Get the partition column names from the table metadata
+    val partitionColumnNames = getPartitionColumnNames(stagingQueryConf.metaData.outputTable)(spark)
+
+    // Verify all expected partition columns are present
+    val expectedPartitionCols = Seq(tableUtils.partitionColumn, "region", "device")
+    assertEquals(expectedPartitionCols.toSet, partitionColumnNames.toSet)
   }
 }

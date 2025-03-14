@@ -4,8 +4,6 @@ import org.apache.spark.sql.SparkSession
 
 case object Hive extends Format {
 
-  override def name: String = "hive"
-
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] =
     super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
