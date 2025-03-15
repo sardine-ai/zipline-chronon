@@ -18,8 +18,28 @@ package ai.chronon.online
 
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, BindReferences, Expression, Generator, GenericInternalRow, JoinedRow, Nondeterministic, Predicate, UnsafeProjection}
-import org.apache.spark.sql.execution.{BufferedRowIterator, FilterExec, GenerateExec, InputAdapter, LocalTableScanExec, ProjectExec, RDDScanExec, WholeStageCodegenExec}
+import org.apache.spark.sql.catalyst.expressions.{
+  Attribute,
+  AttributeSet,
+  BindReferences,
+  Expression,
+  Generator,
+  GenericInternalRow,
+  JoinedRow,
+  Nondeterministic,
+  Predicate,
+  UnsafeProjection
+}
+import org.apache.spark.sql.execution.{
+  BufferedRowIterator,
+  FilterExec,
+  GenerateExec,
+  InputAdapter,
+  LocalTableScanExec,
+  ProjectExec,
+  RDDScanExec,
+  WholeStageCodegenExec
+}
 import org.apache.spark.sql.internal.SQLConf
 import org.slf4j.LoggerFactory
 
@@ -41,7 +61,7 @@ object CatalystTransformBuilder {
   }
 
   /** Recursively builds a chain of transformation functions from a SparkPlan
-   */
+    */
   def buildTransformChain(plan: org.apache.spark.sql.execution.SparkPlan): InternalRow => Seq[InternalRow] = {
     logger.info(s"Building transform chain for plan: ${plan.getClass.getSimpleName}")
 
@@ -222,10 +242,10 @@ object CatalystTransformBuilder {
         } else {
           // Standard handling for other cases
           row =>
-          {
-            val childRows = childTransformer(row)
-            childRows
-          }
+            {
+              val childRows = childTransformer(row)
+              childRows
+            }
         }
 
       case ltse: LocalTableScanExec =>
@@ -303,9 +323,9 @@ object CatalystTransformBuilder {
   }
 
   /** Extracts a transformation function from WholeStageCodegenExec
-   * This method only handles the code generation part - the fallback to
-   * child plans is handled in buildTransformChain
-   */
+    * This method only handles the code generation part - the fallback to
+    * child plans is handled in buildTransformChain
+    */
   private def extractCodegenStageTransformer(whc: WholeStageCodegenExec): InternalRow => Seq[InternalRow] = {
     logger.info(s"Extracting codegen stage transformer for: ${whc}")
 
@@ -344,8 +364,8 @@ object CatalystTransformBuilder {
     row => Seq(unsafeProjection.apply(row))
   }
 
-  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = {
-    row => {
+  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = { row =>
+    {
       val passed = evalFilterExec(row, filter.condition, filter.child.output)
       if (passed) Seq(row) else Seq.empty
     }
@@ -388,7 +408,10 @@ object CatalystTransformBuilder {
   }
 
   // No required child outputs, simpler case
-  private def extractGenerateEmptyChildren(generate: GenerateExec, boundGenerator: Generator, generatorNullRow: GenericInternalRow, row: InternalRow) = {
+  private def extractGenerateEmptyChildren(generate: GenerateExec,
+                                           boundGenerator: Generator,
+                                           generatorNullRow: GenericInternalRow,
+                                           row: InternalRow) = {
     val generatedRows = boundGenerator.eval(row)
 
     if (generate.outer && generatedRows.isEmpty) {
@@ -401,7 +424,10 @@ object CatalystTransformBuilder {
   }
 
   // If there are required child outputs, we need to join them with generated values
-  private def extractGenerateNonEmptyChildren(generate: GenerateExec, boundGenerator: Generator, generatorNullRow: GenericInternalRow, row: InternalRow) = {
+  private def extractGenerateNonEmptyChildren(generate: GenerateExec,
+                                              boundGenerator: Generator,
+                                              generatorNullRow: GenericInternalRow,
+                                              row: InternalRow) = {
     // Create pruning projection if needed
     val needsPruning = generate.child.outputSet != AttributeSet(generate.requiredChildOutput)
     val pruneChildForResult: InternalRow => InternalRow = if (needsPruning) {
@@ -434,8 +460,8 @@ object CatalystTransformBuilder {
   }
 
   /** Helper method to check if a plan tree contains any InputAdapter nodes
-   * which indicate split points for WholeStageCodegenExec
-   */
+    * which indicate split points for WholeStageCodegenExec
+    */
   private def containsInputAdapter(plan: org.apache.spark.sql.execution.SparkPlan): Boolean = {
     if (plan.isInstanceOf[InputAdapter]) {
       return true
