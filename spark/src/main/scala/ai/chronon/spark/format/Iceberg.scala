@@ -9,6 +9,7 @@ case object Iceberg extends Format {
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] = {
+
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
     }
@@ -29,12 +30,13 @@ case object Iceberg extends Format {
       .load(s"$tableName.partitions")
 
     val index = partitionsDf.schema.fieldIndex("partition")
-    val partitionFmt = TableUtils(sparkSession).partitionFormat
+    val tableUtils = TableUtils(sparkSession)
+    val partitionFmt = tableUtils.partitionFormat
     if (partitionsDf.schema(index).dataType.asInstanceOf[StructType].fieldNames.contains("hr")) {
       // Hour filter is currently buggy in iceberg. https://github.com/apache/iceberg/issues/4718
       // so we collect and then filter.
       partitionsDf
-        .select(date_format(col("partition.ds"), partitionFmt), col("partition.hr"))
+        .select(date_format(col(s"partition.${tableUtils.partitionColumn}"), partitionFmt), col("partition.hr"))
         .collect()
         .filter(_.get(1) == null)
         .map(_.getString(0))
@@ -43,7 +45,7 @@ case object Iceberg extends Format {
     } else {
 
       partitionsDf
-        .select(date_format(col("partition.ds"), partitionFmt))
+        .select(date_format(col(s"partition.${tableUtils.partitionColumn}"), partitionFmt))
         .collect()
         .map(_.getString(0))
         .toList
