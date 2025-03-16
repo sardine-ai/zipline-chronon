@@ -7,3 +7,4 @@ sqlglot
 crcmod==1.7
 glom
 boto3
+importlib-resources==6.5.2
