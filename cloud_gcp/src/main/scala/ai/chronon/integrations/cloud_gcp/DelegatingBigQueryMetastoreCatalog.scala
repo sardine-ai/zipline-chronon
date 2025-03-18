@@ -20,6 +20,7 @@ import org.apache.spark.sql.execution.datasources.parquet.ParquetFileFormat
 import org.apache.spark.sql.execution.datasources.v2.parquet.ParquetTable
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
+import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 
 import java.util
 import scala.jdk.CollectionConverters._
@@ -77,7 +78,7 @@ object DelegatingTable {
   * NOTE that this abstraction currently only supports querying tables that all belong to the same GCP project. Multi-project
   * support will depend on underlying libraries to support them.
   */
-class DelegatingBigQueryMetastoreCatalog extends CatalogExtension {
+class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNamespaces with FunctionCatalog {
 
   @transient private lazy val bqOptions = BigQueryOptions.getDefaultInstance
   @transient private lazy val bigQueryClient: BigQuery = bqOptions.getService
@@ -85,8 +86,6 @@ class DelegatingBigQueryMetastoreCatalog extends CatalogExtension {
   @transient private lazy val icebergCatalog: SparkCatalog = new SparkCatalog()
   @transient private lazy val connectorCatalog: BigQueryCatalog = new BigQueryCatalog()
 
-  // Some stupid spark settings.
-  private var defaultSessionCatalog: CatalogPlugin = null
   private var catalogName: String =
     null // This corresponds to `spark_catalog in `spark.sql.catalog.spark_catalog`. This is necessary for spark to correctly choose which implementation to use.
 
@@ -160,7 +159,7 @@ class DelegatingBigQueryMetastoreCatalog extends CatalogExtension {
           }
         }
       }
-      .getOrElse(defaultSessionCatalog.asInstanceOf[TableCatalog].loadTable(rawIdent))
+      .getOrElse(throw new NoSuchTableException(f"Tgable: ${ident} not found in bigquery catalog."))
   }
 
   override def createTable(ident: Identifier,
@@ -192,12 +191,7 @@ class DelegatingBigQueryMetastoreCatalog extends CatalogExtension {
 
   override def name(): String = catalogName
 
-  override def setDelegateCatalog(delegate: CatalogPlugin): Unit = {
-    defaultSessionCatalog = delegate
-  }
-
   override def listFunctions(namespace: Array[String]): Array[Identifier] = icebergCatalog.listFunctions(namespace)
 
   override def loadFunction(ident: Identifier): UnboundFunction = icebergCatalog.loadFunction(ident)
-
 }
