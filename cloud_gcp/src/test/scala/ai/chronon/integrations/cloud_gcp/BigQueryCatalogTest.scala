@@ -41,7 +41,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
         "spark.sql.catalogImplementation" -> "in-memory",
 
 //        "spark.sql.defaultCatalog" -> "default_iceberg",
-//        "spark.sql.catalog.default_iceberg" -> classOf[SparkCatalog].getName,
+//        "spark.sql.catalog.default_iceberg" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
 //        "spark.sql.catalog.default_iceberg.catalog-impl" -> classOf[BQMSCatalog].getName,
 //        "spark.sql.catalog.default_iceberg.io-impl" -> classOf[ResolvingFileIO].getName,
 //        "spark.sql.catalog.default_iceberg.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
@@ -95,7 +95,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   }
 
   it should "integration testing bigquery native table" ignore {
-    val nativeTable = "data.sample_native"
+    val nativeTable = "data.checkouts"
     val table = tableUtils.loadTable(nativeTable)
     table.show
     // val database = tableUtils.createDatabase("test_database")
