@@ -4,11 +4,9 @@ import org.apache.flink.api.common.serialization.AbstractDeserializationSchema
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.metrics.Counter
 import org.apache.spark.sql.Encoder
-import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.types.StructType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -18,11 +16,7 @@ import scala.util.Try
 class AvroDeserializationSchema(topicName: String, jsonSchema: String, schemaRegistryWireFormat: Boolean)
     extends AbstractDeserializationSchema[Row] {
 
-  def encoder: Encoder[Row] = {
-    val avroDeserializer = AvroDataToCatalyst(null, jsonSchema, Map.empty)
-    val catalystType = avroDeserializer.dataType.asInstanceOf[StructType]
-    Encoders.row(catalystType)
-  }
+  def encoder: Encoder[Row] = AvroCatalystUtils.buildEncoder(jsonSchema)
 
   // these are created on instantiation in the various task manager processes in the open() call
   @transient private var avroDeserializer: AvroDataToCatalyst = _
@@ -37,7 +31,7 @@ class AvroDeserializationSchema(topicName: String, jsonSchema: String, schemaReg
       .addGroup("chronon")
       .addGroup("topic", topicName)
     deserializationErrorCounter = metricsGroup.counter("avro_deserialization_errors")
-    avroDeserializer = AvroDataToCatalyst(null, jsonSchema, Map.empty)
+    avroDeserializer = AvroCatalystUtils.buildAvroDataToCatalyst(jsonSchema)
     sparkRowDeser = encoder.asInstanceOf[ExpressionEncoder[Row]].resolveAndBind().createDeserializer()
   }
 

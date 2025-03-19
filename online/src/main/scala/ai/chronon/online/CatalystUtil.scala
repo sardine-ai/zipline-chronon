@@ -18,22 +18,12 @@ package ai.chronon.online
 
 import ai.chronon.api.DataType
 import ai.chronon.api.StructType
-import ai.chronon.online.CatalystUtil.IteratorWrapper
 import ai.chronon.online.CatalystUtil.PoolKey
 import ai.chronon.online.CatalystUtil.poolMap
 import ai.chronon.online.Extensions.StructTypeOps
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.FunctionAlreadyExistsException
-import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
-import org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator
-import org.apache.spark.sql.execution.BufferedRowIterator
-import org.apache.spark.sql.execution.FilterExec
-import org.apache.spark.sql.execution.LocalTableScanExec
-import org.apache.spark.sql.execution.ProjectExec
-import org.apache.spark.sql.execution.RDDScanExec
-import org.apache.spark.sql.execution.WholeStageCodegenExec
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types
 import org.slf4j.LoggerFactory
 
@@ -41,23 +31,8 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function
 import scala.collection.Seq
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 object CatalystUtil {
-  private class IteratorWrapper[T] extends Iterator[T] {
-    def put(elem: T): Unit = elemArr.enqueue(elem)
-
-    override def hasNext: Boolean = elemArr.nonEmpty
-
-    override def next(): T = elemArr.dequeue()
-
-    private val elemArr: mutable.Queue[T] = mutable.Queue.empty[T]
-  }
-
-  // Max fields supported for codegen. If this is exceeded, we fail at creation time to avoid buggy codegen
-  val MaxFields = 1000
-
   lazy val session: SparkSession = {
     val spark = SparkSession
       .builder()
@@ -75,7 +50,6 @@ object CatalystUtil {
       // The default doesn't seem to be set properly in the scala 2.13 version of spark
       // running into this issue https://github.com/dotnet/spark/issues/435
       .config("spark.driver.bindAddress", "127.0.0.1")
-      .config("spark.sql.codegen.maxFields", MaxFields)
       .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
     assert(spark.sessionState.conf.wholeStageEnabled)
@@ -129,7 +103,6 @@ class PooledCatalystUtil(expressions: Seq[(String, String)], inputSchema: Struct
     poolMap.performWithValue(poolKey, cuPool) { _.outputChrononSchema }
 }
 
-// This class by itself it not thread safe because of the transformBuffer
 class CatalystUtil(inputSchema: StructType,
                    selects: Seq[(String, String)],
                    wheres: Seq[String] = Seq.empty,
@@ -204,90 +177,12 @@ class CatalystUtil(inputSchema: StructType,
     val filteredDf = whereClauseOpt.map(df.where(_)).getOrElse(df)
 
     // extract transform function from the df spark plan
-    val func: InternalRow => ArrayBuffer[InternalRow] = filteredDf.queryExecution.executedPlan match {
-      case whc: WholeStageCodegenExec => {
-        // if we have too many fields, this whole stage codegen will result incorrect code so we fail early
-        require(
-          !WholeStageCodegenExec.isTooManyFields(SQLConf.get, inputSparkSchema),
-          s"Too many fields in input schema. Catalyst util max field config: ${CatalystUtil.MaxFields}. " +
-            s"Spark session setting: ${SQLConf.get.wholeStageMaxNumFields}. Schema: ${inputSparkSchema.simpleString}"
-        )
+    val execPlan = filteredDf.queryExecution.executedPlan
+    logger.info(s"Catalyst Execution Plan - ${execPlan}")
 
-        val (ctx, cleanedSource) = whc.doCodeGen()
-        val (clazz, _) = CodeGenerator.compile(cleanedSource)
-        val references = ctx.references.toArray
-        val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
-        val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
-        buffer.init(0, Array(iteratorWrapper))
-        def codegenFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-          iteratorWrapper.put(row)
-          val result = ArrayBuffer.empty[InternalRow]
-          while (buffer.hasNext) {
-            result.append(buffer.next())
-          }
-          result
-        }
-        codegenFunc
-      }
+    // Use the new recursive approach to build a transformation chain
+    val transformer = CatalystTransformBuilder.buildTransformChain(execPlan)
 
-      case ProjectExec(projectList, fp @ FilterExec(condition, child)) => {
-        val unsafeProjection = UnsafeProjection.create(projectList, fp.output)
-
-        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-          val r = CatalystHelper.evalFilterExec(row, condition, child.output)
-          if (r)
-            ArrayBuffer(unsafeProjection.apply(row))
-          else
-            ArrayBuffer.empty[InternalRow]
-        }
-
-        projectFunc
-      }
-      case ProjectExec(projectList, childPlan) => {
-        childPlan match {
-          // This WholeStageCodegenExec case is slightly different from the one above as we apply a projection.
-          case whc @ WholeStageCodegenExec(_: FilterExec) =>
-            val unsafeProjection = UnsafeProjection.create(projectList, childPlan.output)
-            val (ctx, cleanedSource) = whc.doCodeGen()
-            val (clazz, _) = CodeGenerator.compile(cleanedSource)
-            val references = ctx.references.toArray
-            val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
-            val iteratorWrapper: IteratorWrapper[InternalRow] = new IteratorWrapper[InternalRow]
-            buffer.init(0, Array(iteratorWrapper))
-            def codegenFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-              iteratorWrapper.put(row)
-              val result = ArrayBuffer.empty[InternalRow]
-              while (buffer.hasNext) {
-                result.append(unsafeProjection.apply(buffer.next()))
-              }
-              result
-            }
-            codegenFunc
-          case _ =>
-            val unsafeProjection = UnsafeProjection.create(projectList, childPlan.output)
-            def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] = {
-              ArrayBuffer(unsafeProjection.apply(row))
-            }
-            projectFunc
-        }
-      }
-      case ltse: LocalTableScanExec => {
-        // Input `row` is unused because for LTSE, no input is needed to compute the output
-        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] =
-          ArrayBuffer(ltse.executeCollect(): _*)
-
-        projectFunc
-      }
-      case rddse: RDDScanExec => {
-        val unsafeProjection = UnsafeProjection.create(rddse.schema)
-        def projectFunc(row: InternalRow): ArrayBuffer[InternalRow] =
-          ArrayBuffer(unsafeProjection.apply(row))
-
-        projectFunc
-      }
-      case unknown => throw new RuntimeException(s"Unrecognized stage in codegen: ${unknown.getClass}")
-    }
-
-    (func, df.schema)
+    (transformer, df.schema)
   }
 }
