@@ -126,7 +126,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         "taskmanager.memory.network.max" -> "2G",
         // explicitly set the number of task slots as otherwise it defaults to the number of cores
         // we go with one task slot per TM as we do see issues with Spark setting updates not being respected when there's multiple slots/TM
-        "taskmanager.numberOfTaskSlots" -> "1",
+        "taskmanager.numberOfTaskSlots" -> "4",
         "taskmanager.memory.managed.fraction" -> "0.5f",
         // default is 256m, we seem to be close to the limit so we give ourselves some headroom
         "taskmanager.memory.jvm-metaspace.size" -> "512m",
