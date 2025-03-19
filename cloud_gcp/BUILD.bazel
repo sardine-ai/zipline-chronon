@@ -56,7 +56,7 @@ jvm_binary(
     deploy_env = ["//tools/build_rules/cloud_gcp:cloud_gcp"],
     main_class = "None",
     runtime_deps = [
-        ":base_cloud_gcp_lib"
+        ":base_cloud_gcp_lib",
     ],
 )
 
@@ -65,27 +65,12 @@ jvm_binary(
     deploy_env = ["//tools/build_rules/cloud_gcp_embedded:cloud_gcp_embedded"],
     main_class = "None",
     runtime_deps = [
-        ":base_cloud_gcp_lib"
+        ":base_cloud_gcp_lib",
     ],
 )
 
-test_deps = [
+test_deps = _SCALA_TEST_DEPS + [
     maven_artifact("com.google.cloud:google-cloud-bigtable-emulator"),
-
-    # Testing
-    maven_artifact_with_suffix("org.scalatest:scalatest-matchers-core"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-core"),
-    maven_artifact_with_suffix("org.scalatest:scalatest"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-flatspec"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-funsuite"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-shouldmatchers"),
-    maven_artifact_with_suffix("org.scalactic:scalactic"),
-    maven_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
-    maven_artifact_with_suffix("org.mockito:mockito-scala"),
-    maven_artifact("org.mockito:mockito-core"),
-    maven_artifact("org.scalatest:scalatest-compatible"),
-    maven_artifact("junit:junit"),
-    maven_artifact("com.novocode:junit-interface"),
 ]
 
 java_import(
@@ -105,41 +90,41 @@ scala_test_suite(
 
 create_shaded_library(
     name = "shaded_bigtable",
-    input_artifact = "com.google.cloud:google-cloud-bigtable",
     inline_rules = [
         "rule com.google.cloud.bigtable.** com.google.cloud.shaded_bigtable.@1",
         "rule com.google.bigtable.** com.google.shaded_bigtable.@1",
     ],
+    input_artifact = "com.google.cloud:google-cloud-bigtable",
 )
 
 create_shaded_library(
     name = "shaded_bigtable_proto",
-    input_artifact = "com.google.api.grpc:proto-google-cloud-bigtable-v2",
     inline_rules = [
         "rule com.google.bigtable.** com.google.shaded_bigtable.@1",
     ],
+    input_artifact = "com.google.api.grpc:proto-google-cloud-bigtable-v2",
 )
 
 create_shaded_library(
     name = "shaded_bigtable_admin_proto",
-    input_artifact = "com.google.api.grpc:proto-google-cloud-bigtable-admin-v2",
     inline_rules = [
         "rule com.google.bigtable.** com.google.shaded_bigtable.@1",
     ],
+    input_artifact = "com.google.api.grpc:proto-google-cloud-bigtable-admin-v2",
 )
 
 create_shaded_library(
     name = "shaded_grpc_bigtable",
-    input_artifact = "com.google.api.grpc:grpc-google-cloud-bigtable-v2",
     inline_rules = [
         "rule com.google.bigtable.** com.google.shaded_bigtable.@1",
     ],
+    input_artifact = "com.google.api.grpc:grpc-google-cloud-bigtable-v2",
 )
 
 create_shaded_library(
     name = "shaded_snakeyaml",
-    input_artifact = "org.yaml:snakeyaml",
     inline_rules = [
         "rule org.yaml.snakeyaml.** org.yaml.shaded_snakeyaml.@1",
     ],
+    input_artifact = "org.yaml:snakeyaml",
 )

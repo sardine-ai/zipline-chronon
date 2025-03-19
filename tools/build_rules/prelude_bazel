@@ -41,10 +41,16 @@ _SCALA_TEST_DEPS = [
     maven_artifact_with_suffix("org.scalatest:scalatest-core"),
     maven_artifact_with_suffix("org.scalatest:scalatest"),
     maven_artifact_with_suffix("org.scalatest:scalatest-flatspec"),
+    maven_artifact_with_suffix("org.scalatest:scalatest-funsuite"),
     maven_artifact_with_suffix("org.scalatest:scalatest-shouldmatchers"),
     maven_artifact_with_suffix("org.scalactic:scalactic"),
     maven_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
+    maven_artifact_with_suffix("org.mockito:mockito-scala"),
     maven_artifact("org.scalatest:scalatest-compatible"),
+    maven_artifact("org.mockito:mockito-core"),
+    # We have the following junit dependencies for scala tests in most of our modules
+    maven_artifact("junit:junit"),
+    maven_artifact("com.novocode:junit-interface"),
 ]
 
 _RUNFILES_DEP = [

@@ -13,6 +13,14 @@ scala_library(
         maven_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("io.temporal:temporal-sdk"),
+        maven_artifact("io.temporal:temporal-serviceclient"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact("com.google.protobuf:protobuf-java"),
+        maven_artifact("com.google.code.findbugs:jsr305"),
+        maven_artifact("io.grpc:grpc-core"),
+        maven_artifact("io.grpc:grpc-stub"),
+        maven_artifact("io.grpc:grpc-inprocess"),
         maven_artifact("com.google.cloud:google-cloud-spanner"),
         maven_artifact("org.postgresql:postgresql"),
         maven_artifact_with_suffix("com.typesafe.slick:slick"),
@@ -28,12 +36,20 @@ test_deps = _VERTX_DEPS + _SCALA_TEST_DEPS + [
     maven_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
     maven_artifact("org.apache.logging.log4j:log4j-core"),
     maven_artifact("org.apache.logging.log4j:log4j-api"),
+    maven_artifact("io.temporal:temporal-sdk"),
+    maven_artifact("io.temporal:temporal-testing"),
+    maven_artifact("io.temporal:temporal-serviceclient"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+    maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact("io.grpc:grpc-core"),
+    maven_artifact("io.grpc:grpc-stub"),
+    maven_artifact("io.grpc:grpc-inprocess"),
+    maven_artifact("com.google.guava:guava"),
+    maven_artifact("com.google.protobuf:protobuf-java"),
     maven_artifact("org.testcontainers:postgresql"),
     maven_artifact("org.testcontainers:jdbc"),
     maven_artifact("org.testcontainers:testcontainers"),
     maven_artifact_with_suffix("com.typesafe.slick:slick"),
-    maven_artifact("junit:junit"),
-    maven_artifact("com.novocode:junit-interface"),
 ]
 
 scala_library(
@@ -55,6 +71,20 @@ scala_test_suite(
         exclude = [
             "src/test/**/DagExecutionDaoIntegrationSpec.scala",
             "src/test/**/NodeExecutionDaoIntegrationSpec.scala",
+            "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
+        ],
+    ),
+    visibility = ["//visibility:public"],
+    deps = test_deps + [":test_lib"],
+)
+
+scala_test_suite(
+    name = "integration_tests",
+    srcs = glob(
+        [
+            "src/test/**/DagExecutionDaoIntegrationSpec.scala",
+            "src/test/**/NodeExecutionDaoIntegrationSpec.scala",
+            "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
         ],
     ),
     visibility = ["//visibility:public"],
