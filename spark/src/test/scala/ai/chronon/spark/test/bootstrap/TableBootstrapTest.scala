@@ -47,8 +47,8 @@ class TableBootstrapTest extends AnyFlatSpec {
                          samplePercent: Double = 0.8,
                          partitionCol: String = "ds"): (BootstrapPart, DataFrame) = {
     val bootstrapTable = s"$namespace.$tableName"
-    val preSampleBootstrapDf = spark
-      .table(queryTable)
+    val preSampleBootstrapDf = tableUtils
+      .loadTable(queryTable)
       .select(
         col("request_id"),
         (rand() * 30000)
@@ -175,7 +175,7 @@ class TableBootstrapTest extends AnyFlatSpec {
     tableUtils.createDatabase(namespace)
 
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
-    val endDs = spark.table(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
+    val endDs = tableUtils.loadTable(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
 
     val joinPart = Builders.JoinPart(groupBy = BootstrapUtils.buildGroupBy(namespace, spark))
     val derivations = Seq(

@@ -77,9 +77,9 @@ class JoinTest extends AnyFlatSpec {
     )
     val data = spark.createDataFrame(rows) toDF ("ds", "value")
     data.write.mode(SaveMode.Overwrite).format("hive").partitionBy("ds").saveAsTable(f"${namespace}.table")
-    assertEquals(spark.table(f"${namespace}.table").as[TestRow].collect().toList.sorted, rows.sorted)
+    assertEquals(tableUtils.loadTable(f"${namespace}.table").as[TestRow].collect().toList.sorted, rows.sorted)
 
-    spark.table(f"${namespace}.table").show(truncate = false)
+    tableUtils.loadTable(f"${namespace}.table").show(truncate = false)
 
     val dynamicPartitions = List(
       TestRow("4", "y"),
@@ -92,14 +92,15 @@ class JoinTest extends AnyFlatSpec {
       .mode(SaveMode.Overwrite)
       .insertInto(f"${namespace}.table")
 
-    spark.table(f"${namespace}.table").show(truncate = false)
+    tableUtils.loadTable(f"${namespace}.table").show(truncate = false)
 
     val updatedExpected =
       (rows.map((r) => r.ds -> r.value).toMap ++ dynamicPartitions.map((r) => r.ds -> r.value).toMap).map {
         case (k, v) => TestRow(k, v)
       }.toList
 
-    assertEquals(updatedExpected.sorted, spark.table(f"${namespace}.table").as[TestRow].collect().toList.sorted)
+    assertEquals(updatedExpected.sorted,
+                 tableUtils.loadTable(f"${namespace}.table").as[TestRow].collect().toList.sorted)
 
   }
 
