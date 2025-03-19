@@ -1,5 +1,6 @@
-thrift --gen py -out api/py/ api/thrift/common.thrift
-thrift --gen py -out api/py/ api/thrift/api.thrift
-thrift --gen py -out api/py/ api/thrift/observability.thrift
+set -euxo pipefail
+for file in api/thrift/*.thrift; do
+  thrift --gen py -out api/py/ "$file"
+done
 
 VERSION=$1 pip wheel api/py
