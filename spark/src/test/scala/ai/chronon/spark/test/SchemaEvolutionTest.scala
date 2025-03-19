@@ -303,8 +303,8 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, offlineDs, "2022-10-01")
     val flattenerJob = new LogFlattenerJob(spark, joinConf, offlineDs, mockApi.logTable, mockApi.schemaTable)
     flattenerJob.buildLogTable()
-    val flattenedDf = spark
-      .table(joinConf.metaData.loggedTable)
+    val flattenedDf = tableUtils
+      .loadTable(joinConf.metaData.loggedTable)
       .where(col(tableUtils.partitionColumn) === offlineDs)
     assertEquals(2, flattenedDf.count())
     assertTrue(

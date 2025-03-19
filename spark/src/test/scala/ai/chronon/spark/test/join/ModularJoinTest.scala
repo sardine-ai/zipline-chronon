@@ -4,18 +4,16 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.api.PartitionRange
-import ai.chronon.orchestration.{
-  BootstrapJobArgs,
-  JoinDerivationJobArgs,
-  JoinPartJobArgs,
-  MergeJobArgs,
-  SourceJobArgs,
-  SourceWithFilter
-}
+import ai.chronon.orchestration.BootstrapJobArgs
+import ai.chronon.orchestration.JoinDerivationJobArgs
+import ai.chronon.orchestration.JoinPartJobArgs
+import ai.chronon.orchestration.MergeJobArgs
+import ai.chronon.orchestration.SourceJobArgs
+import ai.chronon.orchestration.SourceWithFilter
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
-import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
+import ai.chronon.spark.test.DataFrameGen
+import ai.chronon.spark.test.TableTestUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert._
@@ -129,8 +127,8 @@ class ModularJoinTest extends AnyFlatSpec {
     // Make bootstrap part and table
     val bootstrapSourceTable = s"$namespace.bootstrap"
     val bootstrapCol = "unit_test_user_transactions_amount_dollars_sum_10d"
-    spark
-      .table(queryTable)
+    tableUtils
+      .loadTable(queryTable)
       .select(
         col("user"),
         col("ts"),
