@@ -217,7 +217,7 @@ object FetcherMain {
               } else {
                 valMap.foreach { case (k, v) => tMap.put(k, v) }
 
-                logger.info(
+                println(
                   s"--- [FETCHED RESULT] ---\n${objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(tMap)}")
               }
               logger.info(s"Fetched in: $awaitTimeMs ms")

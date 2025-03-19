@@ -60,6 +60,8 @@ jobs:
           thrift --gen py -out api/py/ api/thrift/common.thrift
           thrift --gen py -out api/py/ api/thrift/observability.thrift
           thrift --gen py -out api/py/ api/thrift/api.thrift
+          thrift --gen py -out api/py/ api/thrift/lineage.thrift
+          thrift --gen py -out api/py/ api/thrift/orchestration.thrift
           cd api/py
           pip3 install -r requirements/dev.txt
           pip3 install tox

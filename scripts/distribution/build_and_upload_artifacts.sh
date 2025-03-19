@@ -184,12 +184,21 @@ function upload_to_gcp() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars/
-                gcloud storage cp "$CLOUD_GCP_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                OLD_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars/
+
+                gcloud storage cp "$CLOUD_GCP_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$SERVICE_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$FLINK_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+
+                NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/latest/jars/
+                NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/latest/wheels/
+                gcloud storage cp "$CLOUD_GCP_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$FLINK_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"
               break;;
@@ -211,12 +220,12 @@ function upload_to_aws() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/latest/jars/
-                ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/latest/wheels/
-                aws s3 cp "$CLOUD_AWS_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$SERVICE_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$ELEMENT_WHEEL_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                aws s3 cp "$FLINK_JAR" "$ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                NEW_ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/latest/jars/
+                NEW_ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/latest/wheels/
+                aws s3 cp "$CLOUD_AWS_JAR" "$NEW_ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                aws s3 cp "$SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                aws s3 cp "$FLINK_JAR" "$NEW_ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"
               break;;
