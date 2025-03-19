@@ -252,7 +252,7 @@ object CatalystTransformBuilder {
         logger.info(s"Processing LocalTableScanExec with schema: ${ltse.schema}")
 
         // Input row is unused for LocalTableScanExec
-        _ => ArrayBuffer(ltse.executeCollect(): _*)
+        _ => ArrayBuffer(ltse.executeCollect(): _*).toSeq
 
       case rddse: RDDScanExec =>
         logger.info(s"Processing RDDScanExec with schema: ${rddse.schema}")
@@ -350,7 +350,7 @@ object CatalystTransformBuilder {
       while (buffer.hasNext) {
         result.append(buffer.next())
       }
-      result
+      result.toSeq
     }
 
     codegenFunc
@@ -455,7 +455,7 @@ object CatalystTransformBuilder {
         results += joined
       }
 
-      results
+      results.toSeq
     }
   }
 
