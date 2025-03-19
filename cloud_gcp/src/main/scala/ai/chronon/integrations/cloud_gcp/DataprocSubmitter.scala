@@ -138,7 +138,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         // override the local dir for rocksdb as the default ends up being too large file name size wise
         "state.backend.rocksdb.localdir" -> "/tmp/flink-state",
         "state.checkpoint-storage" -> "filesystem",
-        "rest.flamegraph.enabled" -> "true",
+        "rest.flamegraph.enabled" -> "true"
       )
 
     val flinkJobBuilder = FlinkJob
