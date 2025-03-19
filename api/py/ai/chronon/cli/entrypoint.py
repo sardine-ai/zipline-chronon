@@ -1,6 +1,7 @@
-from typing import Dict
-import click
 from datetime import datetime, timedelta
+from typing import Dict
+
+import click
 
 from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.cli.plan.physical_index import (
@@ -40,13 +41,7 @@ def compile() -> Dict[ConfigType, CompileResult]:
 )
 @click.option("--branch", default=get_current_branch, help="Branch to sync")
 def backfill(conf: str, start_date: str, end_date: str):
-    # compile
-    compile_result = compile()
-    physical_index = PhysicalIndex.from_compiled_obj(compile_result)
-    physical_graph = get_backfill_physical_graph(
-        conf, physical_index, start_date, end_date
-    )
-    submit_physical_graph(physical_graph)
+    pass
 
 
 @cli.command()
