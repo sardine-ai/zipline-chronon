@@ -1,9 +1,15 @@
+from typing import Dict
+import click
 from datetime import datetime, timedelta
 
-import click
-
+from ai.chronon.api.common.ttypes import ConfigType
+from ai.chronon.cli.plan.physical_index import (
+    PhysicalIndex,
+    get_backfill_physical_graph,
+    submit_physical_graph,
+)
 from ai.chronon.cli.compile.compile_context import CompileContext
-from ai.chronon.cli.compile.compiler import Compiler
+from ai.chronon.cli.compile.compiler import CompileResult, Compiler
 from ai.chronon.cli.git_utils import get_current_branch
 
 
@@ -13,14 +19,11 @@ def cli():
     pass
 
 
-@cli.command()
-@click.option("--branch", default=get_current_branch, help="Branch to sync")
-def sync(branch):
-    """Sync data for the specified branch"""
-    click.echo(f"\nSyncing data for branch \u001b[32m{branch}\u001b[0m")
+def compile() -> Dict[ConfigType, CompileResult]:
     compile_context = CompileContext()
     compiler = Compiler(compile_context)
-    compiler.compile(compile_context)
+    # TODO(orc): add column lineage to objects
+    return compiler.compile(compile_context)
 
 
 @cli.command()
@@ -35,17 +38,15 @@ def sync(branch):
     default=datetime.now().strftime("%Y-%m-%d"),
     help="End date for backfill (YYYY-MM-DD)",
 )
-@click.option(
-    "--scope",
-    type=click.Choice(["upstream", "self", "downstream"]),
-    default="upstream",
-    help="Scope of configs to backfill",
-)
-def backfill(conf: str, start_date: str, end_date: str, scope: str):
-    """Backfill data between start and end dates"""
-    click.echo(
-        f"Backfilling with scope {scope} for config {conf} from {start_date} to {end_date}"
+@click.option("--branch", default=get_current_branch, help="Branch to sync")
+def backfill(conf: str, start_date: str, end_date: str):
+    # compile
+    compile_result = compile()
+    physical_index = PhysicalIndex.from_compiled_obj(compile_result)
+    physical_graph = get_backfill_physical_graph(
+        conf, physical_index, start_date, end_date
     )
+    submit_physical_graph(physical_graph)
 
 
 @cli.command()

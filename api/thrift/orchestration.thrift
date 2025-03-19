@@ -30,6 +30,7 @@ union LogicalNode {
     5: TabularData tabularData
 }
 
+
 enum LogicalType {
     GROUP_BY = 1,
     JOIN = 2,
@@ -147,38 +148,19 @@ union PhysicalNodeType {
     5: TableNodeType tableNodeType
 }
 
+struct PhysicalNode {
+    1: required string name
+    2: required PhysicalNodeType nodeType
+    3: required LogicalNode logicalNode
+    4: required string confHash
+    5: required list<common.TableDependency> tableDependencies
+    6: required list<string> outputColumns
+    7: required string output_table
+}
+
+
 // ====================== End of physical node types ======================
 
-/**
-* Multiple logical nodes could share the same physical node
-* For that reason we don't have a 1-1 mapping between logical and physical nodes
-**/
-struct PhysicalNodeKey {
-    1: optional string name
-    2: optional PhysicalNodeType nodeType
-
-    /**
-    * parentLineageHashes[] + semanticHash of the portion of compute this node does
-    **/
-    20: optional string lineageHash
-
-}
-
-struct PhysicalNode {
-    1: optional string name
-    2: optional PhysicalNodeType nodeType
-
-    /**
-    * parentLineageHashes[] + semanticHash of the portion of compute this node does
-    **/
-    20: optional string version
-    3: optional LogicalNode config
-
-    21: optional string branch
-
-    // null means ad-hoc, zero means continuously running
-    40: optional common.Window scheduleInterval
-}
 
 struct SourceWithFilter {
     1: optional api.Source source
@@ -260,4 +242,56 @@ struct JoinPartJobArgs {
 * -- Phase 4 Plan -- model training
 * Model::training          - [source.table] >> training
 * Model::bulk_inference    - [source.table] >> bulk_inference
+**/
+
+
+/**
+* physical node -> workflow id
+*
+*
+* ad-hoc -> graph
+*    we will trigger the root node with the right start_date and end_date
+*
+*
+* Global Scheduler Workflow:
+*   1. wakeup more frequently 15 minutes
+*   2. scan database for unscheduled workflows
+*   3. trigger unscheduled but required statuses
+*
+*
+* Workflow is always triggered externally:
+*
+* node.trigger(start_date?, end_date, branch, is_scheduled):
+*
+*    # activity - 1
+*    (missing_start, missing_end) = partition_dao.find_missing(start_date?, end_date)
+*    missing_steps = compute_steps(missing_start, missing_end, branch_dao.get_step_days(this))
+*
+*    foreach_par missing_step in missing_steps:
+*       foreach_par dependency in dependencies:
+*
+*           if dependency.is_internal:
+*
+*              (dep_start, dep_end) = dependency.compute_range(missing_step.start, missing_step.end)
+*              # activity - 2
+*              dependency.trigger_and_wait(dep_start, dep_end, branch)
+*
+*           else:
+*
+*              # activity - 3
+*              if is_scheduled:
+*                 dependency.wait(dep_start, dep_end)
+*              else:
+*                 dependency.fail_if_absent(dep_start, dep_end)
+*
+*       # activity - 4
+*       node.submit_work_and_wait(missing_start, missing_end, branch_dao.get_conf(this))
+*
+*    return
+*
+*
+*
+*
+* sync(physical_graph):
+*
 **/

@@ -67,14 +67,19 @@ struct TableDependency {
     // fully qualified table name
     1: optional string table
 
-    // params to select the partitions of the table for any query range
-    // logic is: [max(query.start - startOffset, startCutOff), min(query.end - endOffset, endCutOff)]
+    // DEPENDENCY_RANGE_LOGIC
+    // 1. get final start_partition, end_partition
+    // 2. break into step ranges
+    // 3. for each dependency
+    //     a. dependency_start: max(query.start - startOffset, startCutOff)
+    //     b. dependency_end: min(query.end - endOffset, endCutOff)
     2: optional Window startOffset
     3: optional Window endOffset
     4: optional string startCutOff
     5: optional string endCutOff
 
     # if not present we will pull from defaults
+    // needed to enumerate what partitions are in a range
     100: optional string partitionColumn
     101: optional string partitionFormat
     102: optional Window partitionInterval
@@ -116,6 +121,7 @@ struct ExecutionInfo {
     4: optional i64 healthCheckIntervalMillis
 
     # relevant for batch jobs
+    # temporal workflow nodes maintain their own cron schedule
     10: optional string scheduleCron
     11: optional i32 stepDays
     12: optional bool historicalBackfill
