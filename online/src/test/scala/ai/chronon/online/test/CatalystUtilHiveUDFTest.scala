@@ -23,4 +23,5 @@ class CatalystUtilHiveUDFTest extends AnyFlatSpec with CatalystUtilTestSparkSQLS
     assertEquals(resMap("a"), Int.MaxValue - 1)
     assertEquals(resMap("b"), "hello123")
   }
+
 }
