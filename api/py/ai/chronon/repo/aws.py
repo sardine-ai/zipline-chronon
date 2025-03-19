@@ -10,10 +10,10 @@ from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
     JobType,
-    get_customer_id,
-    extract_filename_from_path,
-    split_date_range,
     check_call,
+    extract_filename_from_path,
+    get_customer_id,
+    split_date_range,
 )
 
 # AWS SPECIFIC CONSTANTS
@@ -31,13 +31,21 @@ EMR_MOUNT_FILE_PREFIX = "/mnt/zipline/"
 class AwsRunner(Runner):
     def __init__(self, args):
         aws_jar_path = AwsRunner.download_zipline_aws_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_AWS_JAR_DEFAULT
+            ZIPLINE_DIRECTORY,
+            get_customer_id(),
+            args["version"],
+            ZIPLINE_AWS_JAR_DEFAULT,
         )
         service_jar_path = AwsRunner.download_zipline_aws_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_AWS_SERVICE_JAR
+            ZIPLINE_DIRECTORY,
+            get_customer_id(),
+            args["version"],
+            ZIPLINE_AWS_SERVICE_JAR,
         )
         jar_path = (
-            f"{service_jar_path}:{aws_jar_path}" if args['mode'] == "fetch" else aws_jar_path
+            f"{service_jar_path}:{aws_jar_path}"
+            if args["mode"] == "fetch"
+            else aws_jar_path
         )
         self.version = args.get("version", "latest")
 
@@ -56,10 +64,12 @@ class AwsRunner(Runner):
             )
             return f"s3://{bucket_name}/{destination_blob_name}"
         except Exception as e:
-            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
+            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}") from e
 
     @staticmethod
-    def download_zipline_aws_jar(destination_dir: str, customer_id: str, version: str, jar_name: str):
+    def download_zipline_aws_jar(
+        destination_dir: str, customer_id: str, version: str, jar_name: str
+    ):
         s3_client = boto3.client("s3")
         destination_path = f"{destination_dir}/{jar_name}"
         source_key_name = f"release/{version}/jars/{jar_name}"
@@ -136,11 +146,11 @@ class AwsRunner(Runner):
         self,
         user_args: str,
         job_type: JobType = JobType.SPARK,
-        local_files_to_upload: List[str] = [],
+        local_files_to_upload: List[str] = None,
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
         s3_files = []
-        for source_file in local_files_to_upload:
+        for source_file in local_files_to_upload or []:
             # upload to `metadata` folder
             destination_file_path = (
                 f"metadata/{extract_filename_from_path(source_file)}"

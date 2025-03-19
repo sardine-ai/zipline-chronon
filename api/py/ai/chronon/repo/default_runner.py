@@ -3,9 +3,16 @@ import logging
 import multiprocessing
 import os
 
-from ai.chronon.repo.constants import ONLINE_JAR_ARG, ONLINE_CLASS_ARG, ONLINE_MODES, ROUTES, \
-    UNIVERSAL_ROUTES, SPARK_MODES, MODE_ARGS
 from ai.chronon.repo import utils
+from ai.chronon.repo.constants import (
+    MODE_ARGS,
+    ONLINE_CLASS_ARG,
+    ONLINE_JAR_ARG,
+    ONLINE_MODES,
+    ROUTES,
+    SPARK_MODES,
+    UNIVERSAL_ROUTES,
+)
 
 
 class Runner:

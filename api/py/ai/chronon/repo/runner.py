@@ -1,12 +1,13 @@
-import os
 import importlib
 import inspect
+import os
 import subprocess
 from dataclasses import dataclass
-from ai.chronon.repo.compilev2 import extract_and_convert
-from ai.chronon.utils import get_mod_and_var_name_from_gc
-from ai.chronon.repo.hub_uploader import compute_and_upload_diffs
+
 from ai.chronon.repo import FOLDER_NAME_TO_CLASS, OUTPUT_ROOT
+from ai.chronon.repo.compilev2 import extract_and_convert
+from ai.chronon.repo.hub_uploader import compute_and_upload_diffs
+from ai.chronon.utils import get_mod_and_var_name_from_gc
 
 
 @dataclass
@@ -25,11 +26,11 @@ class ConfigDetails:
             obj_type = next(
                 k for k, v in FOLDER_NAME_TO_CLASS.items() if isinstance(obj, v)
             )
-        except StopIteration:
+        except StopIteration as e:
             valid_types = [cls.__name__ for cls in FOLDER_NAME_TO_CLASS.values()]
             raise ValueError(
                 f"Can only run one of {valid_types}, got {type(obj).__name__}"
-            )
+            ) from e
 
         # Get module and variable name
         self.module, self.variable = get_mod_and_var_name_from_gc(obj, obj_type)

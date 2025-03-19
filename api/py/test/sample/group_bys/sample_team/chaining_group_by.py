@@ -1,11 +1,12 @@
-from ai.chronon.types import *
 from joins.sample_team.sample_chaining_join_parent import parent_join
 
-chaining_group_by_v1 = GroupBy(
-    sources=JoinSource(
+import ai.chronon.types as ch
+
+chaining_group_by_v1 = ch.GroupBy(
+    sources=ch.JoinSource(
         join=parent_join,
-        query=Query(
-            selects=selects(
+        query=ch.Query(
+            selects=ch.selects(
                 event="event_expr",
                 group_by_subject="group_by_expr",
             ),
@@ -15,9 +16,9 @@ chaining_group_by_v1 = GroupBy(
     ),
     keys=["user_id"],
     aggregations=[
-        Aggregation(input_column="event", operation=Operation.LAST),
+        ch.Aggregation(input_column="event", operation=ch.Operation.LAST),
     ],
-    accuracy=Accuracy.TEMPORAL,
+    accuracy=ch.Accuracy.TEMPORAL,
     online=True,
     production=True,
     table_properties={

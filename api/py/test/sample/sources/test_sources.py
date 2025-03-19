@@ -12,21 +12,17 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.query import (
-    Query,
-    selects,
-)
-from ai.chronon.utils import get_staging_query_output_table_name
-from ai.chronon.types import *
-
 from staging_queries.sample_team import sample_staging_query
+
+import ai.chronon.types as ch
+from ai.chronon.utils import get_staging_query_output_table_name
 
 
 def basic_event_source(table):
-    return EventSource(
+    return ch.EventSource(
         table=table,
-        query=Query(
-            selects=selects(
+        query=ch.Query(
+            selects=ch.selects(
                 event="event_expr",
                 group_by_subject="group_by_expr",
             ),
@@ -37,10 +33,10 @@ def basic_event_source(table):
 
 
 # Sample Event Source used in tests.
-event_source = EventSource(
+event_source = ch.EventSource(
     table="sample_namespace.sample_table_group_by",
-    query=Query(
-        selects=selects(
+    query=ch.Query(
+        selects=ch.selects(
             event="event_expr",
             group_by_subject="group_by_expr",
         ),
@@ -50,15 +46,15 @@ event_source = EventSource(
 )
 
 # Sample Entity Source
-entity_source = EntitySource(
+entity_source = ch.EntitySource(
     snapshot_table="sample_table.sample_entity_snapshot",
     # hr partition is not necessary - just to demo that we support various
     # partitioning schemes
     mutation_table="sample_table.sample_entity_mutations/hr=00:00",
     mutation_topic="sample_topic",
-    query=Query(
+    query=ch.Query(
         start_partition="2021-03-01",
-        selects=selects(
+        selects=ch.selects(
             group_by_subject="group_by_subject_expr",
             entity="entity_expr",
         ),
@@ -67,11 +63,11 @@ entity_source = EntitySource(
 )
 
 
-batch_entity_source = EntitySource(
+batch_entity_source = ch.EntitySource(
     snapshot_table="sample_table.sample_entity_snapshot",
-    query=Query(
+    query=ch.Query(
         start_partition="2021-03-01",
-        selects=selects(
+        selects=ch.selects(
             group_by_subject="group_by_subject_expr",
             entity="entity_expr",
         ),
@@ -79,7 +75,7 @@ batch_entity_source = EntitySource(
     ),
 )
 
-sq_v1_selects = selects(
+sq_v1_selects = ch.selects(
     **{
         "impressed_unique_count_1d": "impressed_unique_count_1d",
         "viewed_unique_count_1d": "viewed_unique_count_1d",
@@ -89,11 +85,11 @@ sq_v1_selects = selects(
 )
 
 # Sample Entity Source derived from a staging query.
-staging_entities = EntitySource(
+staging_entities = ch.EntitySource(
     snapshot_table="sample_namespace.{}".format(
         get_staging_query_output_table_name(sample_staging_query.v1)
     ),
-    query=Query(
+    query=ch.Query(
         start_partition="2021-03-01",
         selects=sq_v1_selects,
     ),
@@ -101,12 +97,12 @@ staging_entities = EntitySource(
 
 
 # A Source that was deprecated but still relevant (requires stitching).
-events_until_20210409 = EventSource(
+events_until_20210409 = ch.EventSource(
     table="sample_namespace.sample_table_group_by",
-    query=Query(
+    query=ch.Query(
         start_partition="2021-03-01",
         end_partition="2021-04-09",
-        selects=selects(
+        selects=ch.selects(
             **{
                 "group_by_subject": "group_by_subject_expr_old_version",
                 "event": "event_expr_old_version",
@@ -118,11 +114,11 @@ events_until_20210409 = EventSource(
 
 
 # The new source
-events_after_20210409 = EventSource(
+events_after_20210409 = ch.EventSource(
     table="sample_namespace.another_sample_table_group_by",
-    query=Query(
+    query=ch.Query(
         start_partition="2021-03-01",
-        selects=selects(
+        selects=ch.selects(
             **{
                 "group_by_subject": "possibly_different_group_by_subject_expr",
                 "event": "possibly_different_event_expr",

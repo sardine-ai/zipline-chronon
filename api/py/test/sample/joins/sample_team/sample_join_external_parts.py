@@ -20,12 +20,12 @@ from group_bys.sample_team import sample_group_by
 from sources import test_sources
 
 from ai.chronon.join import (
-    Join,
-    JoinPart,
+    ContextualSource,
+    DataType,
     ExternalPart,
     ExternalSource,
-    DataType,
-    ContextualSource
+    Join,
+    JoinPart,
 )
 
 v1 = Join(

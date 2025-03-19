@@ -35,7 +35,6 @@ from ai.chronon.repo import (
     teams,
 )
 
-
 ChrononJobTypes = Union[api.GroupBy, api.Join, api.StagingQuery]
 
 chronon_root_path = ""  # passed from compile.py
@@ -64,7 +63,13 @@ class JsonDiffer:
         self.new_name = "new.json"
         self.old_name = "old.json"
 
-    def diff(self, new_json_str: object, old_json_str: object, skipped_keys=[]) -> str:
+    def diff(
+        self,
+        new_json_str: object,
+        old_json_str: object,
+        skipped_keys: Optional[List[str]] = None,
+    ) -> str:
+        skipped_keys = skipped_keys or []
         new_json = {
             k: v for k, v in json.loads(new_json_str).items() if k not in skipped_keys
         }

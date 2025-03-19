@@ -13,16 +13,21 @@
 #     limitations under the License.
 
 import json
-from ai.chronon.utils import JsonDiffer
-from thrift.Thrift import TType
-from thrift.protocol.TJSONProtocol import (
-    TSimpleJSONProtocolFactory,
-    TJSONProtocolFactory,
-)
 
-from thrift.transport.TTransport import TMemoryBuffer
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
 from thrift import TSerialization
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
+from thrift.protocol.TJSONProtocol import (
+    TJSONProtocolFactory,
+    TSimpleJSONProtocolFactory,
+)
+from thrift.Thrift import TType
+from thrift.transport.TTransport import TMemoryBuffer
+
+from ai.chronon import logger
+from ai.chronon.utils import JsonDiffer
+
+
+logger = logger.get_logger()
 
 
 class ThriftJSONDecoder(json.JSONDecoder):
@@ -40,19 +45,31 @@ class ThriftJSONDecoder(json.JSONDecoder):
         )
 
     def _convert(self, val, ttype, ttype_info):
+        if val is None:
+            return None
+
         if ttype == TType.STRUCT:
             (thrift_class, thrift_spec) = ttype_info
             ret = thrift_class()
             for field in thrift_spec:
                 if field is None:
                     continue
+
                 (_, field_ttype, field_name, field_ttype_info, dummy) = field
+
                 if field_name not in val:
                     continue
+
                 converted_val = self._convert(
                     val[field_name], field_ttype, field_ttype_info
                 )
+
+                if field_name == "setups":
+                    print(val[field_name])
+                    print(converted_val)
+
                 setattr(ret, field_name, converted_val)
+
         elif ttype == TType.LIST:
             (element_ttype, element_ttype_info, _) = ttype_info
             ret = [self._convert(x, element_ttype, element_ttype_info) for x in val]
@@ -124,17 +141,27 @@ def thrift_simple_json(obj):
 
 
 def thrift_simple_json_protected(obj, obj_type) -> str:
+
     serialized = thrift_simple_json(obj)
     # ensure that reversal works - we will use this reversal during deployment
-    thrift_obj = json.loads(serialized, cls=ThriftJSONDecoder, thrift_class=obj_type)
-    actual = thrift_simple_json(thrift_obj)
+    reverse_obj = json.loads(serialized, cls=ThriftJSONDecoder, thrift_class=obj_type)
+    reversed = thrift_simple_json(reverse_obj)
     differ = JsonDiffer()
-    diff = differ.diff(serialized, actual)
-    assert (
-        len(diff) == 0
-    ), f"""Serialization can't be reversed
+    diff = differ.diff(serialized, reversed)
+
+    if len(diff) > 0:
+        logger.info(
+            f"""
+Serialization can't be reversed
 diff: \n{diff}
+original_object: \n{obj}
 original: \n{serialized}
+reversed_object: \n{reverse_obj}
+reversed: \n{reversed}
 """
+        )
+
+    assert len(diff) == 0, f"""Serialization can't be reversed see logs for details"""
+
     differ.clean()
     return serialized

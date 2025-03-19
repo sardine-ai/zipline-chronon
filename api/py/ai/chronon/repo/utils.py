@@ -5,14 +5,13 @@ import re
 import subprocess
 import time
 import xml.etree.ElementTree as ET
-
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 from ai.chronon.repo.constants import (
-    SUPPORTED_SPARK,
-    SCALA_VERSION_FOR_SPARK,
     APP_NAME_TEMPLATE,
+    SCALA_VERSION_FOR_SPARK,
+    SUPPORTED_SPARK,
 )
 
 

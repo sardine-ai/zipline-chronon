@@ -2,22 +2,23 @@ import base64
 import logging
 import multiprocessing
 import os
-from typing import List
+from typing import List, Optional
 
-from google.cloud import storage
 import crcmod
+from google.cloud import storage
 
+from ai.chronon import logger
 from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
-    get_environ_arg,
-    retry_decorator,
     JobType,
-    get_customer_id,
-    extract_filename_from_path,
-    split_date_range,
     check_call,
     check_output,
+    extract_filename_from_path,
+    get_customer_id,
+    get_environ_arg,
+    retry_decorator,
+    split_date_range,
 )
 
 # GCP DATAPROC SPECIFIC CONSTANTS
@@ -31,13 +32,21 @@ ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 class GcpRunner(Runner):
     def __init__(self, args):
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_GCP_JAR_DEFAULT
+            ZIPLINE_DIRECTORY,
+            get_customer_id(),
+            args["version"],
+            ZIPLINE_GCP_JAR_DEFAULT,
         )
         service_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_GCP_SERVICE_JAR
+            ZIPLINE_DIRECTORY,
+            get_customer_id(),
+            args["version"],
+            ZIPLINE_GCP_SERVICE_JAR,
         )
         jar_path = (
-            f"{service_jar_path}:{gcp_jar_path}" if args["mode"] == "fetch" else gcp_jar_path
+            f"{service_jar_path}:{gcp_jar_path}"
+            if args["mode"] == "fetch"
+            else gcp_jar_path
         )
         super().__init__(args, os.path.expanduser(jar_path))
 
@@ -68,7 +77,9 @@ class GcpRunner(Runner):
                 )
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to download {source_blob_name}: {str(e)}")
+            raise RuntimeError(
+                f"Failed to download {source_blob_name}: {str(e)}"
+            ) from e
 
     @staticmethod
     @retry_decorator(retries=2, backoff=5)
@@ -86,7 +97,7 @@ class GcpRunner(Runner):
             )
             return f"gs://{bucket_name}/{destination_blob_name}"
         except Exception as e:
-            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
+            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}") from e
 
     @staticmethod
     def get_gcs_file_hash(bucket_name: str, blob_name: str) -> str:
@@ -172,12 +183,14 @@ class GcpRunner(Runner):
         )
 
         if are_identical:
-            print(f"{destination_path} matches GCS {bucket_name}/{source_blob_name}")
+            logger.info(
+                f"{destination_path} matches GCS {bucket_name}/{source_blob_name}"
+            )
         else:
-            print(
+            logger.info(
                 f"{destination_path} does NOT match GCS {bucket_name}/{source_blob_name}"
             )
-            print(f"Downloading {jar_name} from GCS...")
+            logger.info(f"Downloading {jar_name} from GCS...")
 
             GcpRunner.download_gcs_blob(bucket_name, source_blob_name, destination_path)
         return destination_path
@@ -187,8 +200,9 @@ class GcpRunner(Runner):
         user_args: str,
         job_type: JobType = JobType.SPARK,
         version: str = "latest",
-        local_files_to_upload: List[str] = [],
+        local_files_to_upload: Optional[List[str]] = None,
     ):
+        local_files_to_upload = local_files_to_upload or []
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
 
         gcs_files = []
@@ -262,10 +276,7 @@ class GcpRunner(Runner):
             "--validate-rows": self.validate_rows,
         }
 
-        flag_args = {
-            "--mock-source": self.mock_source,
-            "--validate": self.validate
-        }
+        flag_args = {"--mock-source": self.mock_source, "--validate": self.validate}
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
 
         user_args_str = " ".join(
@@ -392,7 +403,7 @@ class GcpRunner(Runner):
                 job_id = log[
                     log.index(dataproc_submitter_id_str)
                     + len(dataproc_submitter_id_str)
-                    + 1:
+                    + 1 :
                 ]
                 try:
                     print(

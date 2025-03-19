@@ -46,5 +46,6 @@ def _from_str(s: str) -> common.Window:
 
     except ValueError as e:
         if "invalid literal for int()" in str(e):
-            raise ValueError(f"Invalid numeric value in duration: {value}")
-        raise e from None
+            raise ValueError(f"Invalid numeric value in duration: {value}") from e
+        else:
+            raise e
