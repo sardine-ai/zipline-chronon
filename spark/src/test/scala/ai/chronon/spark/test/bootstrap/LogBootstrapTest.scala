@@ -20,7 +20,6 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.LogFlattenerJob
@@ -110,7 +109,7 @@ class LogBootstrapTest extends AnyFlatSpec {
     // Init artifacts to run online fetching and logging
     val kvStore = OnlineUtils.buildInMemoryKVStore(namespace)
     val mockApi = new MockApi(() => kvStore, namespace)
-    val endDs = spark.table(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
+    val endDs = tableUtils.loadTable(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)
     OnlineUtils.serve(tableUtils, kvStore, () => kvStore, namespace, endDs, groupBy)
     val fetcher = mockApi.buildFetcher(debug = true)
 
@@ -118,8 +117,8 @@ class LogBootstrapTest extends AnyFlatSpec {
     kvStore.create(Constants.MetadataDataset)
     metadataStore.putJoinConf(joinV1)
 
-    val requests = spark
-      .table(queryTable)
+    val requests = tableUtils
+      .loadTable(queryTable)
       .where(col(tableUtils.partitionColumn) === endDs)
       .where(col("user").isNotNull and col("request_id").isNotNull)
       .select("user", "request_id", "ts")
@@ -148,7 +147,7 @@ class LogBootstrapTest extends AnyFlatSpec {
     val flattenerJob = new LogFlattenerJob(spark, joinV1, endDs, mockApi.logTable, mockApi.schemaTable)
     flattenerJob.buildLogTable()
 
-    val logDf = spark.table(joinV1.metaData.loggedTable)
+    val logDf = tableUtils.loadTable(joinV1.metaData.loggedTable)
     assertEquals(logDf.count(), responses.length)
 
     val baseJoinJob = new ai.chronon.spark.Join(baseJoinV2, endDs, tableUtils)
