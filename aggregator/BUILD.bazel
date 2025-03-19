@@ -20,11 +20,10 @@ scala_library(
     ],
 )
 
-test_deps = [
+test_deps = _SCALA_TEST_DEPS + [
     ":lib",
     "//api:lib",
     "//api:thrift_java",
-    # Libraries
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("com.google.code.gson:gson"),
     maven_artifact("org.apache.datasketches:datasketches-memory"),
@@ -32,20 +31,6 @@ test_deps = [
     maven_artifact("org.apache.commons:commons-lang3"),
     maven_artifact("org.apache.commons:commons-math3"),
     maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
-    # Testing
-    maven_artifact_with_suffix("org.scalatest:scalatest-matchers-core"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-core"),
-    maven_artifact_with_suffix("org.scalatest:scalatest"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-flatspec"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-funsuite"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-shouldmatchers"),
-    maven_artifact_with_suffix("org.scalactic:scalactic"),
-    maven_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
-    maven_artifact_with_suffix("org.mockito:mockito-scala"),
-    maven_artifact("org.mockito:mockito-core"),
-    maven_artifact("org.scalatest:scalatest-compatible"),
-    maven_artifact("junit:junit"),
-    maven_artifact("com.novocode:junit-interface"),
 ]
 
 scala_library(
