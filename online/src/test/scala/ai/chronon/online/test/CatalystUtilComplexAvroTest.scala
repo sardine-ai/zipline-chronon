@@ -53,7 +53,7 @@ class CatalystUtilComplexAvroTest extends AnyFlatSpec {
     val rowSerializer = eventExprEncoder.createSerializer()
     val cu = new CatalystUtil(chrononSchema, selects, wheres)
     val catalystInternalRow = rowSerializer(sparkRow)
-    cu.performSql(catalystInternalRow)
+    cu.performSql(catalystInternalRow).toSeq
   }
 
   private def validateQueryResults(result: Seq[Map[String, Any]],
