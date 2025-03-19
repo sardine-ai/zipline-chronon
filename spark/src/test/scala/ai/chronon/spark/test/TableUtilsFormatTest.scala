@@ -195,8 +195,8 @@ object TableUtilsFormatTest {
     val returnedPartitions = tableUtils.partitions(tableName)
     assertTrue(returnedPartitions.toSet == Set(ds1, ds2))
 
-    val dataRead1 = spark.table(tableName).where(col("ds") === ds1)
-    val dataRead2 = spark.table(tableName).where(col("ds") === ds2)
+    val dataRead1 = tableUtils.loadTable(tableName).where(col("ds") === ds1)
+    val dataRead2 = tableUtils.loadTable(tableName).where(col("ds") === ds2)
     assertTrue(dataRead1.columns.length == dataRead2.columns.length)
 
     val totalColumnsCount = (df1.schema.fieldNames.toSet ++ df2.schema.fieldNames.toSet).size
