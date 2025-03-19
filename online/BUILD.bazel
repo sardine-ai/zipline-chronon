@@ -38,31 +38,16 @@ scala_library(
     ],
 )
 
-test_deps = [
+test_deps = _SCALA_TEST_DEPS + [
     ":lib",
     "//api:thrift_java",
     "//api:lib",
     "//aggregator:lib",
     "//tools/build_rules/spark:spark-exec",
-    # Libraries
     maven_artifact("com.github.ben-manes.caffeine:caffeine"),
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("com.google.code.gson:gson"),
     maven_artifact("org.apache.hive:hive-exec"),
-    # Testing
-    maven_artifact_with_suffix("org.scalatest:scalatest-matchers-core"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-core"),
-    maven_artifact_with_suffix("org.scalatest:scalatest"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-flatspec"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-funsuite"),
-    maven_artifact_with_suffix("org.scalatest:scalatest-shouldmatchers"),
-    maven_artifact_with_suffix("org.scalactic:scalactic"),
-    maven_artifact_with_suffix("org.scalatestplus:mockito-3-4"),
-    maven_artifact_with_suffix("org.mockito:mockito-scala"),
-    maven_artifact("org.mockito:mockito-core"),
-    maven_artifact("org.scalatest:scalatest-compatible"),
-    maven_artifact("junit:junit"),
-    maven_artifact("com.novocode:junit-interface"),
     maven_artifact("net.bytebuddy:byte-buddy"),
     maven_artifact("net.bytebuddy:byte-buddy-agent"),
     maven_artifact("org.apache.hadoop:hadoop-common"),
