@@ -12,7 +12,7 @@ enum TabularDataType {
 }
 
 /**
-* Represents a group of structureddata assets that the same data flows through
+* Represents a group of structured data assets that the same data flows through
 * just a normalized version of Events + Entity sources.
 **/
 struct TabularData {
@@ -203,6 +203,15 @@ struct JoinPartJobArgs {
     4: optional string outputTable
     100: optional common.DateRange range
     101: optional map<string, list<string>> skewKeys
+}
+
+/**
+* Below are dummy thrift objects for execution layer skeleton code using temporal
+* TODO: Need to update these to fill in all the above relevant fields
+**/
+struct DummyNode {
+    1: optional string name
+    2: optional list<DummyNode> dependencies
 }
 
 /**

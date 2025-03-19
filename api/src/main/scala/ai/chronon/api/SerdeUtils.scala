@@ -1,6 +1,6 @@
 package ai.chronon.api
 
-import ai.chronon.api.thrift.protocol.{TBinaryProtocol, TCompactProtocol}
+import ai.chronon.api.thrift.protocol.TCompactProtocol
 import ai.chronon.api.thrift.{TDeserializer, TSerializer}
 
 object SerdeUtils {
