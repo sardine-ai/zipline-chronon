@@ -299,7 +299,6 @@ object CatalystTransformBuilder {
     }
   }
 
-
   /** Extracts a transformation function from WholeStageCodegenExec
     * This method only handles the code generation part - the fallback to
     * child plans is handled in buildTransformChain
@@ -416,8 +415,7 @@ object CatalystTransformBuilder {
                                               boundGenerator: Generator,
                                               generatorNullRow: GenericInternalRow,
                                               row: InternalRow,
-                                              pruneChildForResult: InternalRow => InternalRow
-                                             ) = {
+                                              pruneChildForResult: InternalRow => InternalRow) = {
     // Prune the child row if needed
     val prunedChildRow = pruneChildForResult(row)
 
