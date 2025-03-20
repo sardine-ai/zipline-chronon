@@ -6,37 +6,31 @@ import ai.chronon.orchestration.persistence.{Dag, DagRootNode, DagExecutionDao, 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-/** Unit tests for DagExecutionDao using a PostgresSQL container
-  */
-class DagExecutionDaoSpec extends BaseDagExecutionDaoSpec with PostgresContainerSpec {
-  // All setup/teardown and test implementations are inherited
-}
-
-trait BaseDagExecutionDaoSpec extends BaseDaoSpec {
+class DagExecutionDaoSpec extends BaseDaoSpec {
   // Create the DAO to test
-  protected lazy val dao = new DagExecutionDao(db)
+  private lazy val dao = new DagExecutionDao(db)
 
   // Default partition spec used for tests
   implicit val partitionSpec: PartitionSpec = PartitionSpec.daily
 
   // Sample data for tests
-  protected val range1 = PartitionRange("2023-01-01", "2023-01-31")
-  protected val range2 = PartitionRange("2023-02-01", "2023-02-28")
+  private val range1 = PartitionRange("2023-01-01", "2023-01-31")
+  private val range2 = PartitionRange("2023-02-01", "2023-02-28")
 
   // Sample DAGs
-  protected val dag1 = Dag(1L, "user1", "main", "abc123")
-  protected val dag2 = Dag(2L, "user2", "feature", "def456")
-  protected val dag3 = Dag(3L, "user1", "dev", "xyz789")
+  private val dag1 = Dag(1L, "user1", "main", "abc123")
+  private val dag2 = Dag(2L, "user2", "feature", "def456")
+  private val dag3 = Dag(3L, "user1", "dev", "xyz789")
 
   // Sample root nodes
-  protected val rootNode1 = DagRootNode(1L, 101L)
-  protected val rootNode2 = DagRootNode(1L, 102L)
-  protected val rootNode3 = DagRootNode(2L, 201L)
+  private val rootNode1 = DagRootNode(1L, 101L)
+  private val rootNode2 = DagRootNode(1L, 102L)
+  private val rootNode3 = DagRootNode(2L, 201L)
 
   // Sample DAG run info
-  protected val dagRunInfo1 = DagRunInfo("run_001", 1L, 101L, "confId1", range1)
-  protected val dagRunInfo2 = DagRunInfo("run_001", 1L, 102L, "confId2", range1)
-  protected val dagRunInfo3 = DagRunInfo("run_002", 2L, 201L, "confId3", range2)
+  private val dagRunInfo1 = DagRunInfo("run_001", 1L, 101L, "confId1", range1)
+  private val dagRunInfo2 = DagRunInfo("run_001", 1L, 102L, "confId2", range1)
+  private val dagRunInfo3 = DagRunInfo("run_002", 2L, 201L, "confId3", range2)
 
   /** Setup method called once before all tests
     */

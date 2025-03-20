@@ -6,25 +6,19 @@ import ai.chronon.orchestration.persistence.{Node, NodeDependsOnNode, NodeExecut
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-/** Unit tests for NodeExecutionDao using a PostgresSQL container
-  */
-class NodeExecutionDaoSpec extends BaseNodeExecutionDaoSpec with PostgresContainerSpec {
-  // All setup/teardown and test implementations are inherited
-}
-
-trait BaseNodeExecutionDaoSpec extends BaseDaoSpec {
+class NodeExecutionDaoSpec extends BaseDaoSpec {
   // Create the DAO to test
-  protected lazy val dao = new NodeExecutionDao(db)
+  private lazy val dao = new NodeExecutionDao(db)
 
   // Default partition spec used for tests
   implicit val partitionSpec: PartitionSpec = PartitionSpec.daily
 
   // Sample data for tests
-  protected val range1 = PartitionRange("2023-01-01", "2023-01-31")
-  protected val range2 = PartitionRange("2023-02-01", "2023-02-28")
+  private val range1 = PartitionRange("2023-01-01", "2023-01-31")
+  private val range2 = PartitionRange("2023-02-01", "2023-02-28")
 
   // Sample Nodes
-  protected val testNodes = Seq(
+  private val testNodes = Seq(
     Node(101L, "extract", "v1", "extraction"),
     Node(102L, "transform", "v1", "transformation"),
     Node(103L, "load", "v1", "loading"),
@@ -32,14 +26,14 @@ trait BaseNodeExecutionDaoSpec extends BaseDaoSpec {
   )
 
   // Sample Node dependencies
-  protected val testNodeDependencies = Seq(
+  private val testNodeDependencies = Seq(
     NodeDependsOnNode(101L, 102L), // extract -> transform
     NodeDependsOnNode(102L, 103L), // transform -> load
     NodeDependsOnNode(102L, 104L) // transform -> validate
   )
 
   // Sample Node run info
-  protected val testNodeRunInfos = Seq(
+  private val testNodeRunInfos = Seq(
     NodeRunInfo("run_001", 101L, "conf1", range1, "COMPLETED"),
     NodeRunInfo("run_002", 102L, "conf1", range1, "RUNNING"),
     NodeRunInfo("run_003", 103L, "conf1", range1, "PENDING"),
@@ -66,11 +60,7 @@ trait BaseNodeExecutionDaoSpec extends BaseDaoSpec {
       // Insert test data
       _ <- dao.insertNodes(testNodes)
       _ <- dao.insertNodeRunInfos(testNodeRunInfos)
-
-      // Insert dependencies one by one
-      _ <- dao.addNodeDependency(101L, 102L)
-      _ <- dao.addNodeDependency(102L, 103L)
-      _ <- dao.addNodeDependency(102L, 104L)
+      _ <- dao.addNodeDependencies(testNodeDependencies)
     } yield ()
 
     // Wait for setup to complete

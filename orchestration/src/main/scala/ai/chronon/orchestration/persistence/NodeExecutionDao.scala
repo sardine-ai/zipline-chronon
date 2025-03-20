@@ -154,6 +154,10 @@ class NodeExecutionDao(db: Database) {
   }
 
   // Node dependency operations
+  def addNodeDependencies(nodeDependencies: Seq[NodeDependsOnNode]): Future[Option[Int]] = {
+    db.run(nodeDependencyTable ++= nodeDependencies)
+  }
+
   def addNodeDependency(parentNodeId: Long, childNodeId: Long): Future[Int] = {
     db.run(nodeDependencyTable += NodeDependsOnNode(parentNodeId, childNodeId))
   }
