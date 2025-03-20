@@ -69,8 +69,6 @@ scala_test_suite(
         ["src/test/**/*.scala"],
         # Excluding integration tests
         exclude = [
-            "src/test/**/DagExecutionDaoIntegrationSpec.scala",
-            "src/test/**/NodeExecutionDaoIntegrationSpec.scala",
             "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
         ],
     ),
@@ -82,8 +80,6 @@ scala_test_suite(
     name = "integration_tests",
     srcs = glob(
         [
-            "src/test/**/DagExecutionDaoIntegrationSpec.scala",
-            "src/test/**/NodeExecutionDaoIntegrationSpec.scala",
             "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
         ],
     ),
