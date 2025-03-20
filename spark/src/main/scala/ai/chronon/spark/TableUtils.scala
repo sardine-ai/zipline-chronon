@@ -375,6 +375,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         // Fails if schema does not match.
         // Does NOT overwrite the schema.
         // Handles dynamic partition overwrite.
+        .option("distribution-mode", "none")
+        .option("target-file-size-bytes", (512 * 1024 * 1024).toString)
         .insertInto(tableName)
       logger.info(s"Finished writing to $tableName")
     }.get
