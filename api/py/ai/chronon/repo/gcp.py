@@ -302,6 +302,7 @@ class GcpRunner(Runner):
             command = self.run_dataproc_flink_streaming()
             command_list.append(command)
         else:
+            local_files_to_upload_to_gcs = [os.path.join(self.repo, self.conf)] if self.conf else []
             if self.parallelism > 1:
                 assert self.start_ds is not None and self.ds is not None, (
                     "To use parallelism, please specify --start-ds and --end-ds to "
@@ -330,7 +331,6 @@ class GcpRunner(Runner):
                             "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                         ),
                     )
-                    local_files_to_upload_to_gcs = [self.conf] if self.conf else []
 
                     dataproc_args = self.generate_dataproc_submitter_args(
                         local_files_to_upload=local_files_to_upload_to_gcs,
@@ -359,8 +359,6 @@ class GcpRunner(Runner):
                         "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                     ),
                 )
-                local_files_to_upload_to_gcs = [self.conf] if self.conf else []
-
                 dataproc_args = self.generate_dataproc_submitter_args(
                     # for now, self.conf is the only local file that requires uploading to gcs
                     local_files_to_upload=local_files_to_upload_to_gcs,
