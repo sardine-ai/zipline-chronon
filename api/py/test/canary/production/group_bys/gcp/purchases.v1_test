@@ -1,0 +1,100 @@
+{
+  "metaData": {
+    "name": "gcp.purchases.v1_test",
+    "team": "gcp",
+    "outputNamespace": "data",
+    "tableProperties": {
+      "source": "chronon"
+    },
+    "online": 1,
+    "executionInfo": {
+      "scheduleCron": "@daily",
+      "historicalBackfill": 0
+    }
+  },
+  "sources": [
+    {
+      "events": {
+        "table": "data.purchases",
+        "query": {
+          "selects": {
+            "user_id": "user_id",
+            "purchase_price": "purchase_price"
+          },
+          "timeColumn": "ts",
+          "setups": []
+        }
+      }
+    }
+  ],
+  "keyColumns": [
+    "user_id"
+  ],
+  "aggregations": [
+    {
+      "inputColumn": "purchase_price",
+      "operation": 7,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "purchase_price",
+      "operation": 6,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "purchase_price",
+      "operation": 8,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "purchase_price",
+      "operation": 13,
+      "argMap": {
+        "k": "10"
+      }
+    }
+  ],
+  "backfillStartDate": "2023-11-01"
+}
