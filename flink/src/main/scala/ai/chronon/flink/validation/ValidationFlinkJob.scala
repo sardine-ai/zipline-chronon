@@ -73,7 +73,8 @@ class SparkDFVsCatalystComparisonFn(sparkExpressionEvalFn: SparkExpressionEvalFn
     val sparkOutputRowCount = sparkSQLResults.values.map(_.size).sum
     logger.info("Wrapped up comparison. Emitted stats")
     // limit to 100 mismatches to avoid flooding the logs
-    out.collect(ValidationStats(total, matching, mismatches.size, cuOutputRowCount, sparkOutputRowCount, mismatches.take(100)))
+    out.collect(
+      ValidationStats(total, matching, mismatches.size, cuOutputRowCount, sparkOutputRowCount, mismatches.take(100)))
   }
 }
 
