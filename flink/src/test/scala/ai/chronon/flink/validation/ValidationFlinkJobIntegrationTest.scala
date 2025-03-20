@@ -87,6 +87,8 @@ class ValidationFlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter 
     val validationStats = validationStatsDs.head
     validationStats.totalRecords shouldBe elements.size
     validationStats.totalMatches shouldBe elements.size
+    validationStats.catalystRowCount shouldBe elements.size
+    validationStats.sparkDfRowCount shouldBe elements.size
     validationStats.totalMismatches shouldBe 0
   }
 }
