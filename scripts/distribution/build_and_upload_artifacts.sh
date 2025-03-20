@@ -6,8 +6,7 @@ function print_usage() {
     echo "  --all       Build and upload all artifacts (GCP and AWS)"
     echo "  --gcp       Build and upload only GCP artifacts"
     echo "  --aws       Build and upload only AWS artifacts"
-    echo "  --aws_customer_ids <customer_id>  Specify AWS customer IDs to upload artifacts to."
-    echo "  --gcp_customer_ids <customer_id>  Specify GCP customer IDs to upload artifacts to."
+    echo "  --customer_ids <customer_id>  Specify customer IDs to upload artifacts to."
     echo "  -h, --help  Show this help message"
 }
 
@@ -39,22 +38,13 @@ while [[ $# -gt 0 ]]; do
             print_usage
             exit 0
             ;;
-        --aws_customer_ids)
+        --customer_ids)
             if [[ -z $2 ]]; then
                 echo "Error: --customer_ids requires a value"
                 print_usage
                 exit 1
             fi
-            INPUT_AWS_CUSTOMER_IDS=("$2")
-            shift 2
-            ;;
-        --gcp_customer_ids)
-            if [[ -z $2 ]]; then
-                echo "Error: --customer_ids requires a value"
-                print_usage
-                exit 1
-            fi
-            INPUT_GCP_CUSTOMER_IDS=("$2")
+            INPUT_CUSTOMER_IDS=("$2")
             shift 2
             ;;
         *)
@@ -241,18 +231,18 @@ if [ "$BUILD_AWS" = false ] && [ "$BUILD_GCP" = false ]; then
 fi
 
 if [ "$BUILD_AWS" = true ]; then
-  if [  ${#INPUT_AWS_CUSTOMER_IDS[@]} -eq 0 ]; then
+  if [  ${#INPUT_CUSTOMER_IDS[@]} -eq 0 ]; then
       echo "No customer ids provided for AWS. Using default: ${AWS_CUSTOMER_IDS[*]}"
     else
-      AWS_CUSTOMER_IDS=("${INPUT_AWS_CUSTOMER_IDS[@]}")
+      AWS_CUSTOMER_IDS=("${INPUT_CUSTOMER_IDS[@]}")
     fi
   upload_to_aws "${AWS_CUSTOMER_IDS[@]}"
 fi
 if [ "$BUILD_GCP" = true ]; then
-  if [  ${#INPUT_GCP_CUSTOMER_IDS[@]} -eq 0 ]; then
+  if [  ${#INPUT_CUSTOMER_IDS[@]} -eq 0 ]; then
     echo "No customer ids provided for GCP. Using default: ${GCP_CUSTOMER_IDS[*]}"
   else
-    GCP_CUSTOMER_IDS=("${INPUT_GCP_CUSTOMER_IDS[@]}")
+    GCP_CUSTOMER_IDS=("${INPUT_CUSTOMER_IDS[@]}")
   fi
   upload_to_gcp "${GCP_CUSTOMER_IDS[@]}"
 fi
