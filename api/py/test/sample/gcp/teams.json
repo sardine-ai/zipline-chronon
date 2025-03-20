@@ -1,0 +1,16 @@
+{
+    "default": {
+        "table_properties": {
+            "source": "chronon"
+        },
+        "common_env": {
+            "CUSTOMER_ID": "<CUSTOMER_ID",
+            "CLOUD_PROVIDER": "gcp"
+        }
+    },
+    "sample_team": {
+        "description": "Team description",
+        "namespace": "chronon_db"
+    }
+
+}

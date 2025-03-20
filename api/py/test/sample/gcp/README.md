@@ -1,0 +1,1 @@
+Fill in CUSTOMER_ID key in `common_env`. And move this teams.json file to the root level.
