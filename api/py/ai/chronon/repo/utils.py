@@ -187,6 +187,7 @@ def set_runtime_env(params):
         "production_team_env": {},
         "cli_args": {},
     }
+
     conf_type = None
     # Normalize modes that are effectively replacement of each other (streaming/local-streaming/streaming-client)
     effective_mode = params["mode"]

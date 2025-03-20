@@ -230,6 +230,9 @@ class AwsRunner(Runner):
         elif self.mode in ["streaming", "streaming-client"]:
             raise ValueError("Streaming is not supported for AWS yet.")
         else:
+            local_files_to_upload_to_aws = []
+            if self.conf:
+                local_files_to_upload_to_aws.append(os.path.join(self.repo, self.conf))
             if self.parallelism > 1:
                 assert self.start_ds is not None and self.ds is not None, (
                     "To use parallelism, please specify --start-ds and --end-ds to "
@@ -254,12 +257,9 @@ class AwsRunner(Runner):
                             "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                         ),
                     )
-                    local_files_to_upload_to_aws = []
-                    if self.conf:
-                        local_files_to_upload_to_aws.append(self.conf)
 
                     emr_args = self.generate_emr_submitter_args(
-                        local_files_to_upload=[self.conf],
+                        local_files_to_upload=local_files_to_upload_to_aws,
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
                     )
@@ -282,13 +282,10 @@ class AwsRunner(Runner):
                         "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                     ),
                 )
-                local_files_to_upload = []
-                if self.conf:
-                    local_files_to_upload.append(self.conf)
 
                 emr_args = self.generate_emr_submitter_args(
                     # for now, self.conf is the only local file that requires uploading
-                    local_files_to_upload=local_files_to_upload,
+                    local_files_to_upload=local_files_to_upload_to_aws,
                     user_args=user_args,
                 )
                 command = f"java -cp {self.jar_path} {EMR_ENTRY} {emr_args}"

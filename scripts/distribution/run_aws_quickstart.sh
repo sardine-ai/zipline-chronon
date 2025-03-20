@@ -15,18 +15,14 @@ for arg in "$@"; do
   fi
 done
 
-mkdir -p /tmp/zipline_test/aws
-cd /tmp/zipline_test/aws
-rm -rf canary-confs
-
 # Delete glue tables
 # hardcoding the s3 path here because that's where the underlying location of the data is for this glue database `data`
 # Faster to just aws s3 rm than to aws glue delete-table-version + delete-partition and then finally delete-table
-aws s3 rm s3://zipline-warehouse-canary/data/quickstart_plaid_fv_v1 --recursive
-aws glue delete-table --database-name data --name quickstart_plaid_fv_v1
+aws s3 rm s3://zipline-warehouse-canary/data/aws_plaid_fv_v1 --recursive
+aws glue delete-table --database-name data --name aws_plaid_fv_v1
 
-#aws s3 rm s3://zipline-warehouse-canary/data/quickstart_purchases_v1_dev --recursive
-#aws glue delete-table --database-name data --name quickstart_purchases_v1_dev
+#aws s3 rm s3://zipline-warehouse-canary/data/aws_purchases_v1_dev --recursive
+#aws glue delete-table --database-name data --name aws_purchases_v1_dev
 
 
 # Sleep for a bit since aws glue delete-table is asynchronous
@@ -37,21 +33,15 @@ RED='\033[0;31m'
 
 WHEEL_FILE="zipline_ai-0.1.0-py3-none-any.whl"
 
-# Clone the canary configs
-git clone git@github.com:zipline-ai/canary-confs.git
-cd canary-confs
-
-# Use the branch with Zipline specific team.json
-git fetch origin davidhan/plaid_groupby
-git checkout davidhan/plaid_groupby
-
 #git fetch origin davidhan/run_aws
 #git checkout davidhan/run_aws
 
 
 # Create a virtualenv to fresh install zipline-ai
-python3 -m venv tmp_chronon
-source tmp_chronon/bin/activate
+VENV_DIR="tmp_chronon"
+rm -rf $VENV_DIR
+python3 -m venv $VENV_DIR
+source $VENV_DIR/bin/activate
 
 # Download the wheel
 aws s3 cp s3://zipline-artifacts-dev/release/latest/wheels/$WHEEL_FILE .
@@ -119,16 +109,20 @@ function check_emr_cluster_state() {
   aws emr describe-cluster --cluster-id $CHECK_CLUSTER_ID
 }
 
+
+CHRONON_ROOT=`pwd`/api/py/test/canary
+export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT"
+
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
-zipline compile --conf=group_bys/quickstart/plaid_fv.py
+zipline compile --repo=$CHRONON_ROOT --conf=group_bys/aws/plaid_fv.py
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
 touch tmp_backfill.out
 
 if [ "$create_cluster" = true ]; then
   echo "Creating a new EMR cluster"
-#  zipline run --conf production/group_bys/quickstart/purchases.v1_dev --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
-  zipline run --conf production/group_bys/quickstart/plaid_fv.v1 --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
+#  zipline run --conf production/group_bys/aws/purchases.v1_dev --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
+  zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/aws/plaid_fv.v1 --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
   EMR_SUBMITTER_ID_CLUSTER_STR="EMR job id"
   CLUSTER_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITTER_ID_CLUSTER_STR"  | cut -d " " -f4) # expecting the cluster id to be the 4th field
   check_emr_cluster_state $CLUSTER_ID
@@ -138,8 +132,8 @@ if [ "$create_cluster" = true ]; then
 else
   CLUSTER_ID=$CANARY_CLUSTER_ID
   echo "Using existing EMR cluster $CLUSTER_ID"
-#  EMR_CLUSTER_ID=$CLUSTER_ID zipline run --conf production/group_bys/quickstart/purchases.v1_dev 2>&1 | tee tmp_backfill.out
-  EMR_CLUSTER_ID=$CLUSTER_ID zipline run --conf production/group_bys/quickstart/plaid_fv.v1 --end-ds 20250220 2>&1 | tee tmp_backfill.out
+#  EMR_CLUSTER_ID=$CLUSTER_ID zipline run --conf production/group_bys/aws/purchases.v1_dev 2>&1 | tee tmp_backfill.out
+  EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/aws/plaid_fv.v1 --end-ds 20250220 2>&1 | tee tmp_backfill.out
   EMR_SUBMITER_ID_STEP_STR="EMR step id"
   STEP_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITER_ID_STEP_STR"  | cut -d " " -f4) # expecting the step id to be the 4th field
   check_emr_step_state $STEP_ID $CLUSTER_ID

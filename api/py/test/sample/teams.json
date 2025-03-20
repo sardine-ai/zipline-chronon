@@ -11,29 +11,23 @@
       "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
       "CHRONON_ONLINE_ARGS": "[ONLINE-TODO]args prefixed with -Z become constructor map for your implementation of ai.chronon.online.Api, -Zkv-host=<YOUR_HOST> -Zkv-port=<YOUR_PORT>",
       "PARTITION_COLUMN": "ds",
-      "PARTITION_FORMAT": "yyyy-MM-dd",
-      "CUSTOMER_ID": "dev",
-      "GCP_PROJECT_ID": "canary-443022",
-      "GCP_REGION": "us-central1",
-      "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
-      "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
-      "CLOUD_PROVIDER": "AWS"
+      "PARTITION_FORMAT": "yyyy-MM-dd"
     },
     "production": {
-      "backfill": {
+      "backfill" : {
         "EXECUTOR_CORES": "1",
         "DRIVER_MEMORY": "15G",
         "EXECUTOR_MEMORY": "8G",
         "PARALLELISM": "4000",
         "MAX_EXECUTORS": "1000"
       },
-      "upload": {
+      "upload" : {
         "EXECUTOR_CORES": "1",
         "EXECUTOR_MEMORY": "8G",
         "PARALLELISM": "1000",
         "MAX_EXECUTORS": "1000"
       },
-      "streaming": {
+      "streaming" : {
         "EXECUTOR_CORES": "2",
         "EXECUTOR_MEMORY": "4G",
         "PARALLELISM": "16"
@@ -45,12 +39,12 @@
     "namespace": "chronon_db",
     "user": "# TODO: ldap user name to run the jobs as, from airflow or your own scheduler",
     "production": {
-      "backfill": {
+      "backfill" : {
         "EXECUTOR_CORES": "4"
       }
     },
     "dev": {
-      "backfill": {
+      "backfill" : {
         "EXECUTOR_CORES": "2",
         "DRIVER_MEMORY": "30G"
       }
@@ -62,10 +56,11 @@
   },
   "quickstart": {
     "description": "Used for the quickstart example",
-    "namespace": "canary-443022.data"
+    "namespace": "default"
   },
   "risk": {
     "description": "Used for proof of concept",
     "namespace": "default"
   }
+
 }
