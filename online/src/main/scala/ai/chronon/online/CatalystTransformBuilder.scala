@@ -348,11 +348,14 @@ object CatalystTransformBuilder {
     row => Seq(unsafeProjection.apply(row))
   }
 
-  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = { row =>
-    {
-      val passed = evalFilterExec(row, filter.condition, filter.child.output)
+  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = {
+    val predicate = Predicate.create(filter.condition, filter.child.output)
+    predicate.initialize(0)
+    val func = { row: InternalRow =>
+      val passed = predicate.eval(row)
       if (passed) Seq(row) else Seq.empty
     }
+    func
   }
 
   private def extractGenerateTransformer(generate: GenerateExec): InternalRow => Seq[InternalRow] = {
