@@ -127,7 +127,7 @@ class ProjectedAvroDeserializationSchema(groupBy: GroupBy, jsonSchema: String, s
     }
 
     maybeMessage
-      .map(m => sparkRowDeser(m))
+      //.map(m => sparkRowDeser(m))
       .recover { case e: Exception =>
         logger.error("Failed to deserialize InternalRow to Row", e)
         deserializationErrorCounter.inc()
@@ -141,10 +141,11 @@ class ProjectedAvroDeserializationSchema(groupBy: GroupBy, jsonSchema: String, s
       "Use the deserialize(message: Array[Byte], out: Collector[Map[String, Any]]) method instead.")
   }
 
-  private def doSparkExprEval(inputEvent: Row, out: Collector[Map[String, Any]]): Unit = {
+  private def doSparkExprEval(inputEvent: InternalRow, out: Collector[Map[String, Any]]): Unit = {
     try {
       val start = System.currentTimeMillis()
-      val row: InternalRow = rowSerializer(inputEvent)
+      //val row: InternalRow = rowSerializer(inputEvent)
+      val row = inputEvent
       val serFinish = System.currentTimeMillis()
       rowSerTimeHistogram.update(serFinish - start)
 
