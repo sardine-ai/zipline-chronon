@@ -261,6 +261,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       expandTable(tableName, dfRearranged.schema)
     }
 
+    // Run tableProperties
+    Option(tableProperties).filter(_.nonEmpty).foreach { props =>
+      sql(alterTablePropertiesSql(tableName, props))
+    }
+
     val finalizedDf = if (autoExpand) {
       // reselect the columns so that a deprecated columns will be selected as NULL before write
       val tableSchema = getSchemaFromTable(tableName)
@@ -375,8 +380,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         // Fails if schema does not match.
         // Does NOT overwrite the schema.
         // Handles dynamic partition overwrite.
-        .option("distribution-mode", "none")
-        .option("target-file-size-bytes", (512 * 1024 * 1024).toString)
         .insertInto(tableName)
       logger.info(s"Finished writing to $tableName")
     }.get
