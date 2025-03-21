@@ -56,7 +56,7 @@ RUN apt install -y \
     rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and install some common Python packages
-RUN pip3 install --break-system-packages pytest tox flake8
+RUN pip3 install --break-system-packages pytest tox flake8 ruff
 
 RUN apt update && apt install -y build-essential git
 RUN mkdir -p /usr/lib/jvm && ln -s /usr/lib/jvm/java-17-openjdk-amd64/ /usr/lib/jvm/default-jvm

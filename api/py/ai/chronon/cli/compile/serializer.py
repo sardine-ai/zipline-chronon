@@ -13,12 +13,12 @@
 #     limitations under the License.
 
 import json
-from thrift.Thrift import TType
-from thrift.protocol.TJSONProtocol import TSimpleJSONProtocolFactory
 
-from thrift.transport.TTransport import TMemoryBuffer
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
 from thrift import TSerialization
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
+from thrift.protocol.TJSONProtocol import TSimpleJSONProtocolFactory
+from thrift.Thrift import TType
+from thrift.transport.TTransport import TMemoryBuffer
 
 
 class ThriftJSONDecoder(json.JSONDecoder):

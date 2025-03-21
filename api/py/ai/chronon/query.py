@@ -12,8 +12,9 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+from typing import Dict, List
+
 import ai.chronon.api.ttypes as api
-from typing import List, Dict
 
 
 def Query(
@@ -22,7 +23,7 @@ def Query(
     start_partition: str = None,
     end_partition: str = None,
     time_column: str = None,
-    setups: List[str] = [],
+    setups: List[str] = None,
     mutation_time_column: str = None,
     reversal_column: str = None,
 ) -> api.Query:

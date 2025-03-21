@@ -22,8 +22,7 @@
             "group_by_subject": "group_by_expr"
           },
           "startPartition": "2021-04-09",
-          "timeColumn": "ts",
-          "setups": []
+          "timeColumn": "ts"
         }
       }
     }

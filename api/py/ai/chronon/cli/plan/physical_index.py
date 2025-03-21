@@ -5,8 +5,8 @@ from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.cli.compile.compiler import CompileResult
 from ai.chronon.cli.plan.controller_iface import ControllerIface
 from ai.chronon.cli.plan.physical_graph import PhysicalGraph
-from ai.chronon.lineage.ttypes import Column, ColumnLineage
 from ai.chronon.cli.plan.physical_node import PhysicalNode
+from ai.chronon.lineage.ttypes import Column, ColumnLineage
 
 
 @dataclass

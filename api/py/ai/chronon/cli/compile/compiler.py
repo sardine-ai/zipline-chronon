@@ -1,18 +1,15 @@
-from dataclasses import dataclass
 import os
 import shutil
 import traceback
-from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
-from ai.chronon.cli.compile.compile_context import CompileContext, ConfigInfo
-
-from ai.chronon.cli.compile.display.class_tracker import ClassTracker
 import ai.chronon.cli.compile.display.compiled_obj
-from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 import ai.chronon.cli.compile.parse_configs as parser
 import ai.chronon.cli.logger as logger
-
 from ai.chronon.api.common.ttypes import ConfigType
+from ai.chronon.cli.compile.compile_context import CompileContext, ConfigInfo
+from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 
 logger = logger.get_logger()
 

@@ -12,16 +12,16 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from sources import test_sources
-from ai.chronon.types import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Accuracy,
-)
 from joins.sample_team.sample_join import v1
-from ai.chronon.utils import join_part_output_table_name
+from sources import test_sources
 
+from ai.chronon.types import (
+    Accuracy,
+    Aggregation,
+    GroupBy,
+    Operation,
+)
+from ai.chronon.utils import join_part_output_table_name
 
 v2 = GroupBy(
     sources=test_sources.basic_event_source(

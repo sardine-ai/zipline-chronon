@@ -19,16 +19,14 @@ import json
 import logging
 import os
 import re
-from ai.chronon.api.ttypes import \
-    GroupBy, Join, Source, Derivation, ExternalPart
+from collections import defaultdict
+from typing import Dict, List, Set
+
+from ai.chronon.api.ttypes import Derivation, ExternalPart, GroupBy, Join, Source
 from ai.chronon.group_by import get_output_col_names
 from ai.chronon.logger import get_logger
-from ai.chronon.repo import JOIN_FOLDER_NAME, \
-    GROUP_BY_FOLDER_NAME
-from ai.chronon.repo.serializer import \
-    thrift_simple_json, file2thrift
-from collections import defaultdict
-from typing import List, Dict, Set
+from ai.chronon.repo import GROUP_BY_FOLDER_NAME, JOIN_FOLDER_NAME
+from ai.chronon.repo.serializer import file2thrift, thrift_simple_json
 
 # Fields that indicate stutus of the entities.
 SKIPPED_FIELDS = frozenset(['metaData'])
@@ -53,7 +51,7 @@ def extract_json_confs(obj_class: type, path: str) -> List[object]:
         conf = file2thrift(path, obj_class)
         return [conf] if is_valid_conf(conf) else []
     result = []
-    for sub_root, sub_dirs, sub_files in os.walk(path):
+    for sub_root, _sub_dirs, sub_files in os.walk(path):
         for f in sub_files:
             if not f.startswith('.'):  # ignore hidden files - such as .DS_Store
                 obj = file2thrift(os.path.join(sub_root, f), obj_class)

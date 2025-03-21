@@ -12,13 +12,13 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.join import Join, JoinPart
-from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, selects
-
 from group_bys.quickstart.purchases import v1 as purchases_v1
 from group_bys.quickstart.returns import v1 as returns_v1
 from group_bys.quickstart.users import v1 as users
+
+from ai.chronon.api.ttypes import EventSource, Source
+from ai.chronon.join import Join, JoinPart
+from ai.chronon.query import Query, selects
 
 """
 This is the "left side" of the join that will comprise our training set. It is responsible for providing the primary keys

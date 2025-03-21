@@ -26,15 +26,14 @@ from ai.chronon.api.ttypes import GroupBy, Join
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,
     TEAMS_FILE_PATH,
+    teams,
 )
-from ai.chronon.repo import teams
 from ai.chronon.repo.serializer import thrift_simple_json_protected
 from ai.chronon.repo.validator import (
     ChrononRepoValidator,
-    get_join_output_columns,
     get_group_by_output_columns,
+    get_join_output_columns,
 )
-
 
 DEFAULT_TEAM_NAME = "default"
 

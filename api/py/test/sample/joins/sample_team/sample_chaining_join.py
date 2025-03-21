@@ -16,8 +16,8 @@ Sample Chaining Join
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from sources import test_sources
 from group_bys.sample_team.chaining_group_by import chaining_group_by_v1
+from sources import test_sources
 
 from ai.chronon.types import Join, JoinPart
 

@@ -12,11 +12,11 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EntitySource
-from ai.chronon.query import Query, selects
+from ai.chronon.api.ttypes import EntitySource, Source
 from ai.chronon.group_by import (
     GroupBy,
 )
+from ai.chronon.query import Query, selects
 
 """
 The primary key for this GroupBy is the same as the primary key of the source table. Therefore,

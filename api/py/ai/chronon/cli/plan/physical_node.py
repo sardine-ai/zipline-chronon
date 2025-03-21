@@ -1,9 +1,6 @@
-from dataclasses import dataclass
 from typing import List
 
-from ai.chronon.api.common.ttypes import TableDependency
 from ai.chronon.api.ttypes import GroupBy, Join, Model, StagingQuery
-from ai.chronon.cli.compile.compile_context import CompiledObj
 from ai.chronon.orchestration.ttypes import PhysicalNode
 
 

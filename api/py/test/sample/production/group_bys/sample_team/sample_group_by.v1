@@ -25,8 +25,7 @@
             "s2CellId": "s2CellId",
             "place_id": "place_id"
           },
-          "startPartition": "2021-03-01",
-          "setups": []
+          "startPartition": "2021-03-01"
         }
       }
     }
