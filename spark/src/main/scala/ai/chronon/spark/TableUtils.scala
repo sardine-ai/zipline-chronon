@@ -89,7 +89,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
-  @transient private implicit lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
+  @transient private lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   private val cacheLevel: Option[StorageLevel] = Try {
     if (cacheLevelString == "NONE") None
@@ -721,13 +721,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     } else {
       scanDf
     }
-  }
-
-  def partitionRange(table: String): PartitionRange = {
-    val parts = partitions(table)
-    val minPartition = if (parts.isEmpty) null else parts.min
-    val maxPartition = if (parts.isEmpty) null else parts.max
-    PartitionRange(minPartition, maxPartition)(partitionSpec)
   }
 }
 
