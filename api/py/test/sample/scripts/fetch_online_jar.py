@@ -20,9 +20,9 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from urllib.request import urlretrieve
-import os
 import logging
+import os
+from urllib.request import urlretrieve
 
 
 def download():

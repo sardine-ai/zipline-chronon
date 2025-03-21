@@ -23,8 +23,7 @@
           },
           "startPartition": "2021-03-01",
           "endPartition": "2021-04-09",
-          "timeColumn": "UNIX_TIMESTAMP(ts) * 1000",
-          "setups": []
+          "timeColumn": "UNIX_TIMESTAMP(ts) * 1000"
         }
       }
     },
@@ -37,8 +36,7 @@
             "event": "possibly_different_event_expr"
           },
           "startPartition": "2021-03-01",
-          "timeColumn": "__timestamp",
-          "setups": []
+          "timeColumn": "__timestamp"
         }
       }
     }

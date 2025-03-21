@@ -963,19 +963,23 @@ object Extensions {
 
       // drop everything if left source changes
       val partsToDrop = if (leftChanged(oldSemanticHash)) {
-        partHashes(oldSemanticHash).keys.toSeq
+        val oldPartHashes = partHashes(oldSemanticHash)
+        oldPartHashes.keys.toSeq
       } else {
-        val changed = partHashes(newSemanticHash).flatMap { case (key, newVal) =>
+        val newPartHashes = partHashes(newSemanticHash)
+        val changed = newPartHashes.flatMap { case (key, newVal) =>
           oldSemanticHash.get(key).filter(_ != newVal).map(_ => key)
         }
         val deleted = partHashes(oldSemanticHash).keys.filterNot(newSemanticHash.contains)
         (changed ++ deleted).toSeq
       }
+
       val added = newSemanticHash.keys.filter(!oldSemanticHash.contains(_)).filter {
         // introduce boostrapTable as a semantic_hash but skip dropping to avoid recompute if it is empty
         case key if key == join.metaData.bootstrapTable => join.isSetBootstrapParts && !join.bootstrapParts.isEmpty
         case _                                          => true
       }
+
       val derivedChanges = oldSemanticHash.get(derivedKey) != newSemanticHash.get(derivedKey)
       // TODO: make this incremental, retain the main table and continue joining, dropping etc
       val mainTable = if (partsToDrop.nonEmpty || added.nonEmpty || derivedChanges) {

@@ -12,13 +12,13 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, selects
+from ai.chronon.api.ttypes import EventSource, Source
 from ai.chronon.group_by import (
-    GroupBy,
     Aggregation,
+    GroupBy,
     Operation,
 )
+from ai.chronon.query import Query, selects
 
 """
 This GroupBy aggregates metrics about a user's previous purchases in various windows.

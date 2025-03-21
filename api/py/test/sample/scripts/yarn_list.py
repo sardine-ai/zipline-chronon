@@ -29,7 +29,6 @@ import json
 import subprocess
 from shlex import split
 
-
 ACTIVE_APP_STATUS = ['SUBMITTED', 'ACCEPTED', 'RUNNING']
 
 # TODO: REPLACE WITH path to your YARN
@@ -92,4 +91,3 @@ if __name__ == "__main__":
     assert cluster is not None, "cluster needs to be set either via $EMR_CLUSTER or via cli"
     get_active_applications(cluster)
     """
-    []

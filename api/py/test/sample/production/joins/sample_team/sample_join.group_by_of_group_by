@@ -23,8 +23,7 @@
           "s2CellId": "s2CellId",
           "place_id": "place_id"
         },
-        "startPartition": "2021-03-01",
-        "setups": []
+        "startPartition": "2021-03-01"
       }
     }
   },
@@ -48,7 +47,7 @@
         "sources": [
           {
             "events": {
-              "table": "sample_namespace.sample_team_sample_group_by_group_by_require_backfill",
+              "table": "sample_namespace.sample_team_sample_group_by_require_backfill",
               "query": {
                 "selects": {
                   "event": "event_expr",
@@ -58,8 +57,7 @@
                   "impressed_unique_count_1d_sum": "impressed_unique_count_1d_sum"
                 },
                 "startPartition": "2021-04-09",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }

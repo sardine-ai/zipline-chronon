@@ -13,10 +13,11 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.join import Join, JoinPart
-from group_bys.kaggle.outbrain import ad_doc, ad_uuid, ad_platform
-from sources.kaggle.outbrain import outbrain_left_events
 from group_bys.kaggle.clicks import ad_streaming
+from group_bys.kaggle.outbrain import ad_doc, ad_platform, ad_uuid
+from sources.kaggle.outbrain import outbrain_left_events
+
+from ai.chronon.join import Join, JoinPart
 
 training_set = Join(  # left equi join
     left=outbrain_left_events(

@@ -23,8 +23,7 @@
           "s2CellId": "s2CellId",
           "place_id": "place_id"
         },
-        "startPartition": "2021-03-01",
-        "setups": []
+        "startPartition": "2021-03-01"
       }
     }
   },
@@ -58,8 +57,7 @@
                   "some_column": "some_column"
                 },
                 "startPartition": "2021-04-09",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }

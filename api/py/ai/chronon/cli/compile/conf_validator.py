@@ -17,26 +17,23 @@
 
 import json
 import logging
-import os
 import re
+from collections import defaultdict
+from typing import Dict, List, Set
+
 import ai.chronon.api.common.ttypes as common
-import glom
-
-
 from ai.chronon.api.ttypes import (
     Accuracy,
     Aggregation,
+    Derivation,
+    ExternalPart,
     GroupBy,
     Join,
     Source,
-    Derivation,
-    ExternalPart,
 )
 from ai.chronon.group_by import get_output_col_names
 from ai.chronon.logger import get_logger
 from ai.chronon.repo.serializer import thrift_simple_json
-from collections import defaultdict
-from typing import List, Dict, Set
 
 # Fields that indicate stutus of the entities.
 SKIPPED_FIELDS = frozenset(["metaData"])

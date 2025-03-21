@@ -16,14 +16,13 @@ Sample Join
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from sources import test_sources
 from group_bys.sample_team import (
-    event_sample_group_by,
     entity_sample_group_by_from_module,
+    event_sample_group_by,
 )
+from sources import test_sources
 
-from ai.chronon.join import Join, JoinPart, Derivation
-
+from ai.chronon.join import Derivation, Join, JoinPart
 
 v1 = Join(
     left=test_sources.event_source,

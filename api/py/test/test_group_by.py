@@ -12,11 +12,12 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import pytest, json
 
+import pytest
+
+import ai.chronon.api.common.ttypes as common
 from ai.chronon import group_by, query
 from ai.chronon.api import ttypes
-import ai.chronon.api.common.ttypes as common
 
 
 @pytest.fixture
@@ -143,7 +144,7 @@ def test_validator_ok():
     )
     group_by.validate_group_by(gb)
     with pytest.raises(ValueError):
-        fail_gb = group_by.GroupBy(
+        group_by.GroupBy(
             sources=event_source("table"),
             keys=["subject"],
             aggregations=group_by.Aggregations(
@@ -154,18 +155,18 @@ def test_validator_ok():
             ),
         )
     with pytest.raises(AssertionError):
-        fail_gb = group_by.GroupBy(
-            sources=event_source("table"),
+        group_by.GroupBy(
+            sources=event_source("table"), 
             keys=["subject"],
             aggregations=None,
         )
     with pytest.raises(AssertionError):
-        fail_gb = group_by.GroupBy(
+        group_by.GroupBy(
             sources=entity_source("table", "mutationTable"),
             keys=["subject"],
             aggregations=None,
         )
-    noagg_gb = group_by.GroupBy(
+    group_by.GroupBy(
         sources=entity_source("table", None),
         keys=["subject"],
         aggregations=None,

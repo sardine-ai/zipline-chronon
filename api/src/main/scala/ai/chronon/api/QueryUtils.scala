@@ -94,7 +94,7 @@ object QueryUtils {
       Option(query.timeColumn).map(Constants.TimeColumn -> _)
 
     val scan = build(selects, from, wheres, Some(timeColumn.toMap))
-    val setups = query.setups.toScala
+    val setups = Option(query.setups).map(_.toScala).getOrElse(Seq.empty)
 
     // TODO support mutations
 

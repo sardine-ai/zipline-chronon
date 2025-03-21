@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery, Model
+from ai.chronon.api.ttypes import GroupBy, Join, Model, StagingQuery
 
 JOIN_FOLDER_NAME = "joins"
 GROUP_BY_FOLDER_NAME = "group_bys"

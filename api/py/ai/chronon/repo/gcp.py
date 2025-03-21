@@ -4,20 +4,20 @@ import multiprocessing
 import os
 from typing import List
 
-from google.cloud import storage
 import crcmod
+from google.cloud import storage
 
 from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
-    get_environ_arg,
-    retry_decorator,
     JobType,
-    get_customer_id,
-    extract_filename_from_path,
-    split_date_range,
     check_call,
     check_output,
+    extract_filename_from_path,
+    get_customer_id,
+    get_environ_arg,
+    retry_decorator,
+    split_date_range,
 )
 
 # GCP DATAPROC SPECIFIC CONSTANTS
@@ -68,7 +68,7 @@ class GcpRunner(Runner):
                 )
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to download {source_blob_name}: {str(e)}")
+            raise RuntimeError(f"Failed to download {source_blob_name}: {str(e)}") from e
 
     @staticmethod
     @retry_decorator(retries=2, backoff=5)
@@ -86,7 +86,7 @@ class GcpRunner(Runner):
             )
             return f"gs://{bucket_name}/{destination_blob_name}"
         except Exception as e:
-            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
+            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}") from e
 
     @staticmethod
     def get_gcs_file_hash(bucket_name: str, blob_name: str) -> str:
@@ -187,7 +187,7 @@ class GcpRunner(Runner):
         user_args: str,
         job_type: JobType = JobType.SPARK,
         version: str = "latest",
-        local_files_to_upload: List[str] = [],
+        local_files_to_upload: List[str] = None,
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
 

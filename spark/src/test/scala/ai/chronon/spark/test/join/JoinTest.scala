@@ -1220,6 +1220,7 @@ class JoinTest extends AnyFlatSpec {
       query = Builders.Query(selects = Builders.Selects("time_spent_ms"),
                              startPartition = tableUtils.partitionSpec.minus(ds, new Window(200, TimeUnit.DAYS)))
     )
+
     val groupBy = Builders.GroupBy(
       sources = Seq(viewsSource),
       keyColumns = Seq("item"),
@@ -1242,8 +1243,8 @@ class JoinTest extends AnyFlatSpec {
     // test older versions before migration
     // older versions do not have the bootstrap hash, but should not trigger recompute if no bootstrap_parts
     val productionHashV1 = Map(
-      "left_source" -> "vbQc07vaqm",
-      "test_namespace_jointest.test_join_migration_user_unit_test_item_views" -> "OLFBDTqwMX"
+      "left_source" -> "0DVP4fhmG8",
+      "test_namespace_jointest.test_join_migration_user_unit_test_item_views" -> "J/Lqxs8k4t"
     )
     assertEquals(0, join.tablesToDrop(productionHashV1).length)
 

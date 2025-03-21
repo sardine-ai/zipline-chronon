@@ -1,16 +1,17 @@
-from typing import Dict
-import click
 from datetime import datetime, timedelta
+from typing import Dict
+
+import click
 
 from ai.chronon.api.common.ttypes import ConfigType
+from ai.chronon.cli.compile.compile_context import CompileContext
+from ai.chronon.cli.compile.compiler import Compiler, CompileResult
+from ai.chronon.cli.git_utils import get_current_branch
 from ai.chronon.cli.plan.physical_index import (
     PhysicalIndex,
     get_backfill_physical_graph,
     submit_physical_graph,
 )
-from ai.chronon.cli.compile.compiler import CompileResult, Compiler
-from ai.chronon.cli.compile.compile_context import CompileContext
-from ai.chronon.cli.git_utils import get_current_branch
 
 
 @click.group()

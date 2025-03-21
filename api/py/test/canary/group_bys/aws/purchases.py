@@ -1,12 +1,6 @@
-from ai.chronon.api.ttypes import Source, EventSource
+from ai.chronon.api.ttypes import EventSource, Source
+from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
 from ai.chronon.query import Query, selects
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Window,
-    TimeUnit
-)
 
 """
 This GroupBy aggregates metrics about a user's previous purchases in various windows.

@@ -1,12 +1,13 @@
-import pytest
 import os
 import shutil
 import subprocess
-from pathlib import Path
+
+import pytest
+
 from ai.chronon.cli.git_utils import (
-    get_current_branch,
     get_changes_since_commit,
     get_changes_since_fork,
+    get_current_branch,
 )
 
 
@@ -26,13 +27,21 @@ def git_repo(tmp_path):
 def test_subfolder_changes(git_repo):
     repo_dir, cleanup = git_repo
     try:
-        # configure default branch to "main"
+        # configure git settings for test
         subprocess.run(
             ["git", "config", "--global", "init.defaultBranch", "main"], check=True
         )
-
-        # 1. Init git repo and create main branch
+        
+        # 1. Init git repo
         subprocess.run(["git", "init"], check=True)
+        
+        # Set local git configs
+        subprocess.run(
+            ["git", "config", "--local", "user.email", "test@example.com"], check=True
+        )
+        subprocess.run(
+            ["git", "config", "--local", "user.name", "Test User"], check=True
+        )
         subprocess.run(["git", "checkout", "-b", "main"], check=True)
         assert get_current_branch() == "main"
 
