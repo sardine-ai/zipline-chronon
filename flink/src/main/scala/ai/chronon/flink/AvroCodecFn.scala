@@ -127,9 +127,8 @@ case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
   *
   * @param groupByServingInfoParsed The GroupBy we are working with
   * @param tilingWindowSizeMs The size of the tiling window in milliseconds
-  * @tparam T The input data type
   */
-case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed, tilingWindowSizeMs: Long)
+case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed, tilingWindowSizeMs: Long)
     extends BaseAvroCodecFn[TimestampedTile, AvroCodecOutput] {
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)

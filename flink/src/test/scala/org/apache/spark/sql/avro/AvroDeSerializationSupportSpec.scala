@@ -1,8 +1,10 @@
 package org.apache.spark.sql.avro
 
+import ai.chronon.api.{Accuracy, Builders, GroupBy, Operation, TimeUnit, Window}
 import ai.chronon.flink.test.UserAvroSchema
 import ai.chronon.online.serde.AvroCodec
 import org.apache.avro.generic.GenericData
+import org.apache.flink.api.common.functions.util.ListCollector
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.api.common.serialization.SerializationSchema
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup
@@ -107,4 +109,37 @@ object AvroObjectCreator {
 
     avroCodec.encodeBinary(record)
   }
+
+  def makeGroupBy(keyColumns: Seq[String], filters: Seq[String] = Seq.empty): GroupBy =
+    Builders.GroupBy(
+      sources = Seq(
+        Builders.Source.events(
+          table = "events.my_stream_raw",
+          topic = "events.my_stream",
+          query = Builders.Query(
+            selects = Map(
+              "id" -> "id",
+              "username" -> "username",
+            ),
+            wheres = filters,
+            timeColumn = "created",
+            startPartition = "20231106"
+          )
+        )
+      ),
+      keyColumns = keyColumns,
+      aggregations = Seq(
+        Builders.Aggregation(
+          operation = Operation.SUM,
+          inputColumn = "username",
+          windows = Seq(
+            new Window(1, TimeUnit.DAYS)
+          )
+        )
+      ),
+      metaData = Builders.MetaData(
+        name = "user-count"
+      ),
+      accuracy = Accuracy.TEMPORAL
+    )
 }
