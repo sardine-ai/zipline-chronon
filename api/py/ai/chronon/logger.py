@@ -21,4 +21,12 @@ LOG_FORMAT = '[%(asctime)-11s] %(levelname)s [%(filename)s:%(lineno)d] %(message
 def get_logger(log_level=logging.INFO):
     logger = logging.getLogger(__name__)
     logger.setLevel(log_level)
+    
+    # Add a formatter to the logger if it doesn't have any handlers
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(LOG_FORMAT)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    
     return logger

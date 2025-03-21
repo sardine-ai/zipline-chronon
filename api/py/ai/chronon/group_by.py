@@ -22,7 +22,9 @@ import ai.chronon.api.common.ttypes as common
 import ai.chronon.api.ttypes as ttypes
 import ai.chronon.utils as utils
 import ai.chronon.windows as window_utils
-from ai.chronon import logger
+
+# Use Python's standard logging module directly
+logger = logging.getLogger(__name__)
 
 OperationType = int  # type(zthrift.Operation.FIRST)
 
@@ -357,7 +359,8 @@ Keys {unselected_keys}, are unselected in source
                             [float(p) >= 0 and float(p) <= 1 for p in percentile_array]
                         )
                     except Exception as e:
-                        logger.exception(e)
+                        # Just log the error message without a special method
+                        logger.info(f"Error processing percentiles: {e}")
                         raise ValueError(
                             "[Percentiles] Unable to decode percentiles value, expected json array with values between"
                             f" 0 and 1 inclusive (ex: [0.6, 0.1]), received: {agg.argMap['percentiles']}"

@@ -26,7 +26,6 @@ from thrift.transport.TTransport import TMemoryBuffer
 from ai.chronon import logger
 from ai.chronon.utils import JsonDiffer
 
-
 logger = logger.get_logger()
 
 
@@ -63,11 +62,7 @@ class ThriftJSONDecoder(json.JSONDecoder):
                 converted_val = self._convert(
                     val[field_name], field_ttype, field_ttype_info
                 )
-
-                if field_name == "setups":
-                    print(val[field_name])
-                    print(converted_val)
-
+                
                 setattr(ret, field_name, converted_val)
 
         elif ttype == TType.LIST:
@@ -161,7 +156,7 @@ reversed: \n{reversed}
 """
         )
 
-    assert len(diff) == 0, f"""Serialization can't be reversed see logs for details"""
+    assert len(diff) == 0, """Serialization can't be reversed see logs for details"""
 
     differ.clean()
     return serialized

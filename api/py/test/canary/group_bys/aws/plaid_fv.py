@@ -1,20 +1,16 @@
-from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, selects
-from ai.chronon.group_by import GroupBy, Aggregation, Operation, Window, TimeUnit
+from ai.chronon.types import Aggregation, EventSource, GroupBy, Operation, Query, selects
 
-source = Source(
-    events=EventSource(
-        table="data.plaid_raw",
-        topic=None,
-        query=Query(
-            selects=selects(
-                "request_ip_v4_address",
-                "fingerprint_pro_data_ip_v4_datacenter_ip",
-                "user_agent_browser",
-                "fingerprint_pro_data_ip_v4_latitude",
-            ),
-            time_column="UNIX_TIMESTAMP(ts) * 1000" # ts is in microseconds, convert to millis
-        )
+source = EventSource(
+    table="data.plaid_raw",
+    topic=None,
+    query=Query(
+        selects=selects(
+            "request_ip_v4_address",
+            "fingerprint_pro_data_ip_v4_datacenter_ip",
+            "user_agent_browser",
+            "fingerprint_pro_data_ip_v4_latitude",
+        ),
+        time_column="UNIX_TIMESTAMP(ts) * 1000" # ts is in microseconds, convert to millis
     )
 )
 

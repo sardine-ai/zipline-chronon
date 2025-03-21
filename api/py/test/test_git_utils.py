@@ -34,6 +34,15 @@ def test_subfolder_changes(git_repo):
 
         # 1. Init git repo and create main branch
         subprocess.run(["git", "init"], check=True)
+        
+        # Set user identity just for this repository (after git init)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"], check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"], check=True
+        )
+        
         subprocess.run(["git", "checkout", "-b", "main"], check=True)
         assert get_current_branch() == "main"
 

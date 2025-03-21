@@ -53,36 +53,12 @@ struct NodeKey {
 }
 
 struct NodeInfo {
-    /**
-    * represents the computation that a node does
-    * direct changes to conf that change output will affect semantic hash
-    * changing spark params etc shouldn't affect this
-    **/
-    11: optional string semanticHash
-
-    /**
-    * simple hash of the entire conf (that is TSimpleJsonProtocol serialized),
-    * computed by cli and used to check if new conf_json need to be pushed from user's machine
-    **/
-    12: optional string confHash
-
-    /**
-    * when new/updated conf's are pushed the branch is also set from the cli
-    * upon merging the branch will be unset
-    **/
-    20: optional string branch
-
-    /**
-    * will be set to the author of the last semantic change to node
-    * (non-semantic changes like code-mods or spark params don't affect this)
-    **/
-    21: optional string author
-
-    /**
-    * contents of the conf itself
-    **/
-    30: optional LogicalNode conf
+   1: optional string name
+   2: optional string contentHash
+   3: optional string lineageHash
 }
+
+
 
 struct NodeConnections {
     1: optional list<NodeKey> parents
@@ -95,7 +71,7 @@ struct NodeGraph {
 }
 
 
-
+// TODO deprecate
 // ====================== physical node types ======================
 enum GroupByNodeType {
     PARTIAL_IR = 1,  // useful only for events - a day's worth of irs
@@ -149,61 +125,119 @@ union PhysicalNodeType {
 }
 
 struct PhysicalNode {
-    1: required string name
-    2: required PhysicalNodeType nodeType
-    3: required LogicalNode logicalNode
-    4: required string confHash
-    5: required list<common.TableDependency> tableDependencies
-    6: required list<string> outputColumns
-    7: required string output_table
+    1: optional string name
+    2: optional PhysicalNodeType nodeType
+    3: optional LogicalNode logicalNode
+    4: optional string confHash
+    100: optional list<common.TableDependency> tableDependencies
+    101: optional list<string> outputColumns
+    102: optional string outputTable
 }
 
+struct PhysicalGraph {
+    1: optional PhysicalNode node,
+    2: optional list<PhysicalGraph> dependencies
+    3: optional common.DateRange range
+}
 
 // ====================== End of physical node types ======================
 
+/**
+* Multiple logical nodes could share the same physical node
+* For that reason we don't have a 1-1 mapping between logical and physical nodes
+**/
+struct PhysicalNodeKey {
+    1: optional string name
+    2: optional PhysicalNodeType nodeType
 
-struct SourceWithFilter {
+    /**
+    * parentLineageHashes[] + semanticHash of the portion of compute this node does
+    **/
+    20: optional string lineageHash
+
+}
+
+// ====================== End of physical node types ======================
+// ====================== Modular Join Spark Job Args ======================
+
+struct SourceWithFilterNode {
     1: optional api.Source source
     2: optional map<string,list<string>> excludeKeys
 }
 
-struct SourceJobArgs {
-    1: optional SourceWithFilter source
-    100: optional common.DateRange range
-    101: optional string outputTable
-}
-
-struct BootstrapJobArgs {
+struct JoinBootstrapNode {
     1: optional api.Join join
-    2: optional common.DateRange range
-    100: optional string leftSourceTable
-    101: optional string outputTable
+    2: optional string leftSourceTable
 }
 
-struct MergeJobArgs {
+struct JoinMergeNode {
     1: optional api.Join join
-    2: optional common.DateRange range
-    100: optional string leftInputTable
-    101: optional map<api.JoinPart, string> joinPartsToTables
-    102: optional string outputTable
+    2: optional string leftInputTable
+    3: optional map<api.JoinPart, string> joinPartsToTables
 }
 
-struct JoinDerivationJobArgs {
+struct JoinDerivationNode {
    1: optional string trueLeftTable
    2: optional string baseTable
    3: optional list<api.Derivation> derivations
-   100: optional common.DateRange range
-   101: optional string outputTable
 }
 
-struct JoinPartJobArgs {
-    1: optional string leftTable
+struct JoinPartNode {
+    1: optional string leftSourceTable
     2: optional string leftDataModel
     3: optional api.JoinPart joinPart
-    4: optional string outputTable
-    100: optional common.DateRange range
-    101: optional map<string, list<string>> skewKeys
+    4: optional map<string, list<string>> skewKeys
 }
+
+struct LabelPartNode {
+    1: optional api.Join join
+}
+
+union NodeUnion {
+    1: SourceWithFilterNode sourceWithFilter
+    2: JoinBootstrapNode joinBootstrap
+    3: JoinPartNode joinPart
+    4: JoinMergeNode joinMerge
+    5: JoinDerivationNode joinDerivation
+    // TODO add label join
+    // TODO: add other types of nodes
+}
+
+struct NodeArgs {
+   1: optional common.DateRange range
+   2: optional string outputTable
+   3: optional map<string, string> inputTableToVersionedTable
+   4: optional common.ExecutionInfo executionInfo
+}
+
+struct NodeWithArgs {
+    1: optional NodeUnion nodeUnion
+    2: optional NodeArgs args
+}
+
+// ====================== End of Modular Join Spark Job Args ===================
+
+// ====================== Orchestration Service API Types ======================
+
+struct DiffRequest {
+    1: optional map<string, string> namesToHashes
+}
+
+struct DiffResponse {
+    1: optional list<string> diff
+}
+
+struct UploadRequest {
+    1: optional list<PhysicalNode> diffNodes
+    2: optional string branch
+    3: optional list<NodeInfo> nodeInfos
+}
+
+struct UploadResponse {
+    1: optional string message
+}
+
+// ====================== End of Orchestration Service API Types ======================
 
 /**
 * Below are dummy thrift objects for execution layer skeleton code using temporal
@@ -269,6 +303,8 @@ struct DummyNode {
 *
 *
 * Workflow is always triggered externally:
+*
+* node = get_node(name, version)
 *
 * node.trigger(start_date?, end_date, branch, is_scheduled):
 *
