@@ -1,7 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from ai.chronon.cli.logger import get_logger
 
@@ -30,7 +30,7 @@ def get_current_branch() -> str:
                 if content.startswith("ref: refs/heads/"):
                     return content.split("/")[-1]
 
-        except:
+        except Exception:
             pass
 
         print(
@@ -70,7 +70,7 @@ def get_file_content_at_commit(file_path: str, commit: str) -> Optional[str]:
 def get_current_file_content(file_path: str) -> Optional[str]:
     try:
         return Path(file_path).read_text()
-    except:
+    except Exception:
         return None
 
 

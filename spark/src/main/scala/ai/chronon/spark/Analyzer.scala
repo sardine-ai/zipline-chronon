@@ -188,7 +188,7 @@ class Analyzer(tableUtils: TableUtils,
                      prefix: String = "",
                      includeOutputTableName: Boolean = false,
                      skewDetection: Boolean = false): (Array[AggregationMetadata], Map[String, DataType]) = {
-    groupByConf.setups.foreach(tableUtils.sql)
+    Option(groupByConf.setups).foreach(_.foreach(tableUtils.sql))
     val groupBy = GroupBy.from(groupByConf, range, tableUtils, computeDependency = skewDetection, finalize = true)
     val name = "group_by/" + prefix + groupByConf.metaData.name
     logger.info(s"""Running GroupBy analysis for $name ...""".stripMargin)
@@ -260,7 +260,7 @@ class Analyzer(tableUtils: TableUtils,
     val name = "joins/" + joinConf.metaData.name
     logger.info(s"""|Running join analysis for $name ...\n""".stripMargin)
     // run SQL environment setups such as UDFs and JARs
-    joinConf.setups.foreach(tableUtils.sql)
+    Option(joinConf.setups).foreach(_.foreach(tableUtils.sql))
 
     val (analysis, leftDf) = if (skewDetection) {
       val leftDf = JoinUtils.leftDf(joinConf, range, tableUtils, allowEmpty = true).get

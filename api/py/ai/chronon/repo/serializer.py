@@ -13,16 +13,17 @@
 #     limitations under the License.
 
 import json
-from ai.chronon.utils import JsonDiffer
-from thrift.Thrift import TType
-from thrift.protocol.TJSONProtocol import (
-    TSimpleJSONProtocolFactory,
-    TJSONProtocolFactory,
-)
 
-from thrift.transport.TTransport import TMemoryBuffer
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
 from thrift import TSerialization
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAccelerated
+from thrift.protocol.TJSONProtocol import (
+    TJSONProtocolFactory,
+    TSimpleJSONProtocolFactory,
+)
+from thrift.Thrift import TType
+from thrift.transport.TTransport import TMemoryBuffer
+
+from ai.chronon.utils import JsonDiffer
 
 
 class ThriftJSONDecoder(json.JSONDecoder):

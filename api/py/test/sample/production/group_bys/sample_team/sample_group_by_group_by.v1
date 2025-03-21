@@ -26,8 +26,7 @@
             "impressed_unique_count_1d_sum": "impressed_unique_count_1d_sum"
           },
           "startPartition": "2021-04-09",
-          "timeColumn": "ts",
-          "setups": []
+          "timeColumn": "ts"
         }
       }
     }

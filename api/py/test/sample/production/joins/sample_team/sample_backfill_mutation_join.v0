@@ -23,8 +23,7 @@
           "ts": "ts"
         },
         "startPartition": "2021-04-09",
-        "timeColumn": "ts",
-        "setups": []
+        "timeColumn": "ts"
       }
     }
   },
@@ -51,8 +50,7 @@
                   "entity": "entity_expr"
                 },
                 "startPartition": "2021-03-01",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }

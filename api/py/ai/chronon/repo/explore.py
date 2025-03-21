@@ -15,14 +15,12 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from contextlib import contextmanager
-from pathlib import Path
-
 import argparse
 import json
 import os
 import subprocess
-
+from contextlib import contextmanager
+from pathlib import Path
 
 CWD = os.getcwd()
 GB_INDEX_SPEC = {
@@ -313,8 +311,8 @@ def author_name_email(file, exclude=None):
     if not os.path.exists(file):
         return ("", "")
     if file not in file_to_author:
-        for file, auth_str in git_info([file], exclude).items():
-            file_to_author[file] = auth_str.split("/")[-2:]
+        for filepath, auth_str in git_info([file], exclude).items():
+            file_to_author[filepath] = auth_str.split("/")[-2:]
     return file_to_author[file]
 
 

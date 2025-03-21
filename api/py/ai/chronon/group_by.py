@@ -12,17 +12,16 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import ai.chronon.api.ttypes as ttypes
-import ai.chronon.api.common.ttypes as common
-import ai.chronon.utils as utils
-import ai.chronon.windows as window_utils
-
-from copy import deepcopy
-import logging
 import inspect
 import json
-from typing import List, Optional, Union, Dict, Callable, Tuple
+import logging
+from copy import deepcopy
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
+import ai.chronon.api.common.ttypes as common
+import ai.chronon.api.ttypes as ttypes
+import ai.chronon.utils as utils
+import ai.chronon.windows as window_utils
 
 OperationType = int  # type(zthrift.Operation.FIRST)
 
@@ -361,7 +360,7 @@ Keys {unselected_keys}, are unselected in source
                         raise ValueError(
                             "[Percentiles] Unable to decode percentiles value, expected json array with values between"
                             f" 0 and 1 inclusive (ex: [0.6, 0.1]), received: {agg.argMap['percentiles']}"
-                        )
+                        ) from e
                 else:
                     raise ValueError(
                         f"[Percentiles] Unsupported arguments for {op_to_str(agg.operation)}, "

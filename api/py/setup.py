@@ -12,10 +12,11 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+import glob
 import os
 import re
+
 from setuptools import find_packages, setup
-import glob
 
 current_dir = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(current_dir, "README.md"), "r") as fh:

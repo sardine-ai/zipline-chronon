@@ -92,7 +92,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
              s"groupBy.metaData.team needs to be set for label join ${jp.groupBy.metaData.name}")
     }
 
-    labelJoinConf.setups.foreach(tableUtils.sql)
+    Option(labelJoinConf.setups).foreach(_.foreach(tableUtils.sql))
     val labelDf = compute(PartitionRange(leftStart, leftEnd), stepDays, Option(labelDS))
 
     if (skipFinalJoin) {

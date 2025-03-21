@@ -173,7 +173,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
       logger.info("Range to fill already computed. Skipping query execution...")
     } else {
       // Register UDFs for the left part computation
-      joinConfCloned.setups.foreach(tableUtils.sql)
+      Option(joinConfCloned.setups).foreach(_.foreach(tableUtils.sql))
       val leftSchema = leftDf(joinConfCloned, unfilledRanges.head, tableUtils, limit = Some(1)).map(df => df.schema)
       val bootstrapInfo = BootstrapInfo.from(joinConfCloned, rangeToFill, tableUtils, leftSchema)
       logger.info(s"Running ranges: $unfilledRanges")

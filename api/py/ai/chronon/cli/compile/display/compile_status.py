@@ -1,11 +1,11 @@
-from typing import Dict, List
+from collections import OrderedDict
+from typing import Dict
+
 from rich.live import Live
 from rich.text import Text
-from rich.console import Console
-from collections import OrderedDict
 
-from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 from ai.chronon.cli.compile.display.class_tracker import ClassTracker
+from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 
 
 class CompileStatus:

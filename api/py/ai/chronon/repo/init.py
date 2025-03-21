@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-import shutil
 import os
-from importlib_resources import files
+import shutil
 
 import click
+from importlib_resources import files
 
 
 @click.command(name="init")

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
 from ai.chronon.cli.plan.physical_graph import PhysicalGraph
-from ai.chronon.cli.plan.physical_index import PhysicalNode
 
 
 class ControllerIface(ABC):

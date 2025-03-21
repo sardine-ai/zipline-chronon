@@ -16,15 +16,14 @@ Sample Label Join
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from sources import test_sources
 from group_bys.sample_team import (
     event_sample_group_by,
     group_by_with_kwargs,
 )
+from group_bys.sample_team.label_part_group_by import label_part_group_by
+from sources import test_sources
 
 from ai.chronon.types import Join, JoinPart, LabelParts
-from group_bys.sample_team.label_part_group_by import label_part_group_by
-
 
 v1 = Join(
     left=test_sources.event_source,

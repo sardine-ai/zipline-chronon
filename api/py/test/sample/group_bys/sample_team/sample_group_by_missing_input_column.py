@@ -14,12 +14,12 @@
 #     limitations under the License.
 
 from sources import test_sources
+
 from ai.chronon.group_by import (
-    GroupBy,
     Aggregation,
+    GroupBy,
     Operation,
 )
-
 
 v1 = GroupBy(
     sources=test_sources.staging_entities,

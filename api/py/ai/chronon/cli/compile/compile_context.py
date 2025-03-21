@@ -1,17 +1,16 @@
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from typing import Any, Dict, List, Type
 
+import ai.chronon.cli.compile.parse_teams as teams
 from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery, Team
-from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
-from ai.chronon.cli.compile.display.compile_status import CompileStatus
-from ai.chronon.cli.compile.serializer import file2thrift
 from ai.chronon.cli.compile.conf_validator import ConfValidator
-import ai.chronon.cli.compile.parse_teams as teams
-from ai.chronon.cli.logger import require, get_logger
+from ai.chronon.cli.compile.display.compile_status import CompileStatus
+from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
+from ai.chronon.cli.compile.serializer import file2thrift
+from ai.chronon.cli.logger import get_logger, require
 from ai.chronon.model import Model
-
 
 logger = get_logger()
 
@@ -129,7 +128,7 @@ class CompileContext:
         if not os.path.exists(output_dir):
             return result
 
-        for sub_root, sub_dirs, sub_files in os.walk(output_dir):
+        for sub_root, _sub_dirs, sub_files in os.walk(output_dir):
 
             for f in sub_files:
 

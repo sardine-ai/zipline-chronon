@@ -206,7 +206,7 @@ object GroupByUpload {
           SparkSessionBuilder
             .build(s"groupBy_${groupByConf.metaData.name}_upload")))
     implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
-    groupByConf.setups.foreach(tableUtils.sql)
+    Option(groupByConf.setups).foreach(_.foreach(tableUtils.sql))
     // add 1 day to the batch end time to reflect data [ds 00:00:00.000, ds + 1 00:00:00.000)
     val batchEndDate = partitionSpec.after(endDs)
     // for snapshot accuracy - we don't need to scan mutations

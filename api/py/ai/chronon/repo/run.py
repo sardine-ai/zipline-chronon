@@ -17,33 +17,34 @@ run.py needs to only depend in python standard library to simplify execution req
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import click
 import os
 from datetime import datetime
 
+import click
+
 from ai.chronon.repo.aws import (
-    AwsRunner,
     ZIPLINE_AWS_JAR_DEFAULT,
     ZIPLINE_AWS_ONLINE_CLASS_DEFAULT,
+    AwsRunner,
 )
 from ai.chronon.repo.constants import (
-    RENDER_INFO_DEFAULT_SCRIPT,
-    MODE_ARGS,
     APP_NAME_TEMPLATE,
-    ONLINE_MODES,
-    ZIPLINE_DIRECTORY,
     CLOUD_PROVIDER_KEYWORD,
     GCP,
-    ONLINE_JAR_ARG,
+    MODE_ARGS,
     ONLINE_CLASS_ARG,
+    ONLINE_JAR_ARG,
+    ONLINE_MODES,
+    RENDER_INFO_DEFAULT_SCRIPT,
+    ZIPLINE_DIRECTORY,
 )
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.gcp import (
-    GcpRunner,
     ZIPLINE_GCP_JAR_DEFAULT,
     ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
+    GcpRunner,
 )
-from ai.chronon.repo.utils import set_runtime_env, get_environ_arg
+from ai.chronon.repo.utils import get_environ_arg, set_runtime_env
 
 
 def set_defaults(ctx):
