@@ -13,7 +13,8 @@ import org.apache.spark.sql.Row
 
 class BaseKafkaFlinkSource[T](kafkaBootstrap: Option[String],
                               deserializationSchema: DeserializationSchema[T],
-                              topicInfo: TopicInfo) extends FlinkSource[T] {
+                              topicInfo: TopicInfo)
+    extends FlinkSource[T] {
   val bootstrap: String =
     kafkaBootstrap.getOrElse(
       topicInfo.params.getOrElse(
@@ -61,4 +62,5 @@ class KafkaFlinkSource(kafkaBootstrap: Option[String],
 
 class ProjectedKafkaFlinkSource(kafkaBootstrap: Option[String],
                                 deserializationSchema: ChrononDeserializationSchema,
-                                topicInfo: TopicInfo) extends BaseKafkaFlinkSource[Map[String, Any]](kafkaBootstrap, deserializationSchema, topicInfo)
+                                topicInfo: TopicInfo)
+    extends BaseKafkaFlinkSource[Map[String, Any]](kafkaBootstrap, deserializationSchema, topicInfo)

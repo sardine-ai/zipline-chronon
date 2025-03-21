@@ -64,7 +64,9 @@ class ProjectedSchemaRegistrySchemaProvider(conf: Map[String, String]) extends P
     parsedSchema.schemaType() match {
       case AvroSchema.TYPE =>
         val schema = parsedSchema.asInstanceOf[AvroSchema]
-        ProjectedAvroDeserializationSupport.build(groupBy: GroupBy, schema.canonicalString(), schemaRegistryWireFormat = true)
+        ProjectedAvroDeserializationSupport.build(groupBy: GroupBy,
+                                                  schema.canonicalString(),
+                                                  schemaRegistryWireFormat = true)
       case _ => throw new IllegalArgumentException(s"Unsupported schema type: ${parsedSchema.schemaType()}")
     }
   }

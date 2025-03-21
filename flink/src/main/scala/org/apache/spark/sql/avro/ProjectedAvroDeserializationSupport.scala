@@ -60,7 +60,8 @@ class ProjectedAvroDeserializationSchema(groupBy: GroupBy, jsonSchema: String, s
   override def projectedSchema: Array[(String, DataType)] = {
     // before we do anything, run our setup statements.
     // in order to create the output schema, we'll evaluate expressions
-    val sparkSchema = new CatalystUtil(chrononInputEventSchema, transforms, filters, groupBy.setups).getOutputSparkSchema
+    val sparkSchema =
+      new CatalystUtil(chrononInputEventSchema, transforms, filters, groupBy.setups).getOutputSparkSchema
     sparkSchema.fields.map { field =>
       (field.name, SparkConversions.toChrononType(field.name, field.dataType))
     }
@@ -120,23 +121,24 @@ class ProjectedAvroDeserializationSchema(groupBy: GroupBy, jsonSchema: String, s
       // unfortunately we need to drop the first 5 bytes (and thus copy the rest of the byte array) as the AvroDataToCatalyst
       // interface takes a byte array and the methods to do the Row conversion etc are all private so we can't reach in
       doDeserialize(messageBytes.drop(5),
-        s"Failed to deserialize message from Avro Bytes to InternalRow. Message schema id $messageSchemaId")
+                    s"Failed to deserialize message from Avro Bytes to InternalRow. Message schema id $messageSchemaId")
     } else {
       doDeserialize(messageBytes, "Failed to deserialize message from Avro Bytes to InternalRow")
     }
 
     maybeMessage
-    .map(m => sparkRowDeser(m))
-    .recover { case e: Exception =>
-      logger.error("Failed to deserialize InternalRow to Row", e)
-      deserializationErrorCounter.inc()
-      null
-    }
-    .foreach(row => doSparkExprEval(row, out))
+      .map(m => sparkRowDeser(m))
+      .recover { case e: Exception =>
+        logger.error("Failed to deserialize InternalRow to Row", e)
+        deserializationErrorCounter.inc()
+        null
+      }
+      .foreach(row => doSparkExprEval(row, out))
   }
 
   override def deserialize(messageBytes: Array[Byte]): Map[String, Any] = {
-    throw new UnsupportedOperationException("Use the deserialize(message: Array[Byte], out: Collector[Map[String, Any]]) method instead.")
+    throw new UnsupportedOperationException(
+      "Use the deserialize(message: Array[Byte], out: Collector[Map[String, Any]]) method instead.")
   }
 
   private def doSparkExprEval(inputEvent: Row, out: Collector[Map[String, Any]]): Unit = {

@@ -119,7 +119,7 @@ object AvroObjectCreator {
           query = Builders.Query(
             selects = Map(
               "id" -> "id",
-              "username" -> "username",
+              "username" -> "username"
             ),
             wheres = filters,
             timeColumn = "created",

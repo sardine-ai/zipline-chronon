@@ -58,10 +58,10 @@ import scala.collection.Seq
   * @param parallelism - Parallelism to use for the Flink job
   */
 class FlinkJob(eventSrc: ProjectedKafkaFlinkSource,
-                  inputSchema: Seq[(String, DataType)],
-                  sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
-                  groupByServingInfoParsed: GroupByServingInfoParsed,
-                  parallelism: Int) {
+               inputSchema: Seq[(String, DataType)],
+               sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
+               groupByServingInfoParsed: GroupByServingInfoParsed,
+               parallelism: Int) {
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
   val groupByName: String = groupByServingInfoParsed.groupBy.getMetaData.getName
