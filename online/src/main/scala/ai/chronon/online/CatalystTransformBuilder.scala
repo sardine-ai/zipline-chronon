@@ -115,7 +115,7 @@ object CatalystTransformBuilder {
 
             // Get the child transformer
             val childTransformer = buildTransformChain(project.child)
-
+            val proj = UnsafeProjection.create(project.projectList, project.child.output)
             // Apply the project to each generated row independently
             row => {
               // Get rows from the generate transformer
@@ -124,7 +124,7 @@ object CatalystTransformBuilder {
               // Apply the projection to each row individually with memory isolation
               val safeRows = childRows.zipWithIndex.map { case (childRow, idx) =>
                 // Create a specialized projection for each row
-                val proj = UnsafeProjection.create(project.projectList, project.child.output)
+
                 val projected = proj(childRow)
 
                 // Create a deep copy of the projected row
@@ -251,7 +251,7 @@ object CatalystTransformBuilder {
 
         // Get transformer for the generate operation
         val generateTransformer = extractGenerateTransformer(generateExec)
-
+        val generateOutput = generateExec.output
         // Chain them together
         row => {
           val intermediateRows = childTransformer(row)
@@ -263,24 +263,24 @@ object CatalystTransformBuilder {
             // Create deep copies of each row to prevent memory reuse
             val safeRows = genRows.zipWithIndex.map { case (genRow, idx) =>
               // Create a new row with copied values
-              val safeRow = new GenericInternalRow(generateExec.output.size)
+              val safeRow = new GenericInternalRow(generateOutput.size)
 
               // Copy all fields from the generator row
-              for (i <- generateExec.output.indices) {
+              for (i <- generateOutput.indices) {
                 try {
-                  val dataType = generateExec.output(i).dataType
+                  val dataType = generateOutput(i).dataType
                   val value = genRow.get(i, dataType)
                   safeRow.update(i, value)
                 } catch {
                   case e: Exception =>
-                    logger.error(s"Error copying field ${generateExec.output(i).name}: ${e.getMessage}")
+                    logger.error(s"Error copying field ${generateOutput(i).name}: ${e.getMessage}")
                 }
               }
 
               // Create an UnsafeRow copy to ensure memory isolation
               val finalRow = new GenericInternalRow(safeRow.numFields)
               for (i <- 0 until safeRow.numFields) {
-                val dataType = generateExec.output(i).dataType
+                val dataType = generateOutput(i).dataType
                 val value = safeRow.get(i, dataType)
                 finalRow.update(i, value)
               }
@@ -297,13 +297,6 @@ object CatalystTransformBuilder {
         logger.warn(s"Unrecognized plan node: ${unsupported.getClass.getName}")
         throw new RuntimeException(s"Unrecognized stage in codegen: ${unsupported.getClass}")
     }
-  }
-
-  private def evalFilterExec(row: InternalRow, condition: Expression, attributes: Seq[Attribute]): Boolean = {
-    val predicate = Predicate.create(condition, attributes)
-    predicate.initialize(0)
-    val r = predicate.eval(row)
-    r
   }
 
   /** Extracts a transformation function from WholeStageCodegenExec
@@ -348,11 +341,14 @@ object CatalystTransformBuilder {
     row => Seq(unsafeProjection.apply(row))
   }
 
-  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = { row =>
-    {
-      val passed = evalFilterExec(row, filter.condition, filter.child.output)
+  private def extractFilterTransformer(filter: FilterExec): InternalRow => Seq[InternalRow] = {
+    val predicate = Predicate.create(filter.condition, filter.child.output)
+    predicate.initialize(0)
+    val func = { row: InternalRow =>
+      val passed = predicate.eval(row)
       if (passed) Seq(row) else Seq.empty
     }
+    func
   }
 
   private def extractGenerateTransformer(generate: GenerateExec): InternalRow => Seq[InternalRow] = {
@@ -375,11 +371,18 @@ object CatalystTransformBuilder {
     // Create a null row for outer join case
     val generatorNullRow = new GenericInternalRow(boundGenerator.elementSchema.length)
 
+    val needsPruning = generate.child.outputSet != AttributeSet(generate.requiredChildOutput)
+    lazy val pruneChildForResult: InternalRow => InternalRow = if (needsPruning) {
+      UnsafeProjection.create(generate.requiredChildOutput, generate.child.output)
+    } else {
+      identity
+    }
+
     // Return the transformer function
     row => {
       try {
         if (generate.requiredChildOutput.nonEmpty) {
-          extractGenerateNonEmptyChildren(generate, boundGenerator, generatorNullRow, row)
+          extractGenerateNonEmptyChildren(generate, boundGenerator, generatorNullRow, row, pruneChildForResult)
         } else {
           extractGenerateEmptyChildren(generate, boundGenerator, generatorNullRow, row)
         }
@@ -411,15 +414,8 @@ object CatalystTransformBuilder {
   private def extractGenerateNonEmptyChildren(generate: GenerateExec,
                                               boundGenerator: Generator,
                                               generatorNullRow: GenericInternalRow,
-                                              row: InternalRow) = {
-    // Create pruning projection if needed
-    val needsPruning = generate.child.outputSet != AttributeSet(generate.requiredChildOutput)
-    val pruneChildForResult: InternalRow => InternalRow = if (needsPruning) {
-      UnsafeProjection.create(generate.requiredChildOutput, generate.child.output)
-    } else {
-      identity
-    }
-
+                                              row: InternalRow,
+                                              pruneChildForResult: InternalRow => InternalRow) = {
     // Prune the child row if needed
     val prunedChildRow = pruneChildForResult(row)
 

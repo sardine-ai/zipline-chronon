@@ -24,12 +24,16 @@ case class EventRecord(recordId: String, event: Row)
 case class ValidationStats(totalRecords: Int,
                            totalMatches: Int,
                            totalMismatches: Int,
+                           catalystRowCount: Int,
+                           sparkDfRowCount: Int,
                            mismatches: Seq[ComparisonResult]) {
   override def toString: String = {
     s"""
          |Total Records: $totalRecords
          |Total Matches: $totalMatches
          |Total Mismatches: $totalMismatches
+         |Total Catalyst Rows: $catalystRowCount
+         |Total Spark DF Rows: $sparkDfRowCount
          |Mismatch examples (limited to 100):
          |${mismatches.mkString("\n")}
          |""".stripMargin
@@ -65,9 +69,12 @@ class SparkDFVsCatalystComparisonFn(sparkExpressionEvalFn: SparkExpressionEvalFn
     val total = comparisonResults.size
     val matching = comparisonResults.count(_.isMatch)
     val mismatches = comparisonResults.filterNot(_.isMatch)
+    val cuOutputRowCount = catalystResults.values.map(_.size).sum
+    val sparkOutputRowCount = sparkSQLResults.values.map(_.size).sum
     logger.info("Wrapped up comparison. Emitted stats")
     // limit to 100 mismatches to avoid flooding the logs
-    out.collect(ValidationStats(total, matching, mismatches.size, mismatches.take(100)))
+    out.collect(
+      ValidationStats(total, matching, mismatches.size, cuOutputRowCount, sparkOutputRowCount, mismatches.take(100)))
   }
 }
 
