@@ -1,5 +1,6 @@
 from sources import test_sources
-from ai.chronon.types import *
+
+from ai.chronon.types import Aggregation, GroupBy, Operation
 
 label_part_group_by = GroupBy(
     sources=test_sources.entity_source,

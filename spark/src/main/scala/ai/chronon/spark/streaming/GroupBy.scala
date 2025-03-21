@@ -140,7 +140,7 @@ class GroupBy(inputStream: DataFrame,
 
     des.createOrReplaceTempView(streamingTable)
 
-    groupByConf.setups.foreach(session.sql)
+    Option(groupByConf.setups).foreach(_.foreach(session.sql))
     val selectedDf = session.sql(streamingQuery)
     assert(selectedDf.schema.fieldNames.contains(Constants.TimeColumn),
            s"time column ${Constants.TimeColumn} must be included in the selects")

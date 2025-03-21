@@ -12,16 +12,17 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EventSource
-from ai.chronon.query import Query, selects
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Accuracy,
-)
-from ai.chronon.utils import get_staging_query_output_table_name
 from staging_queries.kaggle.outbrain import base_table
+
+from ai.chronon.api.ttypes import EventSource, Source
+from ai.chronon.group_by import (
+    Accuracy,
+    Aggregation,
+    GroupBy,
+    Operation,
+)
+from ai.chronon.query import Query, selects
+from ai.chronon.utils import get_staging_query_output_table_name
 
 """
 This GroupBy aggregates clicks by the ad_id primary key, and it is setup to resemble a streaming GroupBy.

@@ -1,14 +1,15 @@
-from copy import deepcopy
 import importlib
 import os
+from copy import deepcopy
+from typing import Any, Dict, List, Union
+
 from ai.chronon.api.common.ttypes import (
-    ExecutionInfo,
     ConfigProperties,
     EnvironmentVariables,
+    ExecutionInfo,
 )
 from ai.chronon.api.ttypes import Team
 from ai.chronon.cli.logger import get_logger, require
-from typing import Any, List, Dict, Union
 
 logger = get_logger()
 

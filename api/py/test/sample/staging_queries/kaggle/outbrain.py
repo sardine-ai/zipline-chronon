@@ -13,7 +13,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import StagingQuery, MetaData
+from ai.chronon.api.ttypes import MetaData, StagingQuery
 
 base_table = StagingQuery(
     query="""

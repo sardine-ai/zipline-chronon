@@ -699,7 +699,7 @@ object GroupBy {
     assert(
       groupByConf.backfillStartDate != null,
       s"GroupBy:${groupByConf.metaData.name} has null backfillStartDate. This needs to be set for offline backfilling.")
-    groupByConf.setups.foreach(tableUtils.sql)
+    Option(groupByConf.setups).foreach(_.foreach(tableUtils.sql))
     val overrideStart = overrideStartPartition.getOrElse(groupByConf.backfillStartDate)
     val outputTable = groupByConf.metaData.outputTable
     val tableProps = Option(groupByConf.metaData.tableProperties)

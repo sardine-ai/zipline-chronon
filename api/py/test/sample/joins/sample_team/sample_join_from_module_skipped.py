@@ -16,11 +16,10 @@ Sample Non Production Join
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from sources import test_sources
 from group_bys.sample_team import sample_non_prod_group_by
+from sources import test_sources
 
 from ai.chronon.join import Join, JoinPart
-
 
 v1 = Join(
     left=test_sources.event_source,

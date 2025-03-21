@@ -1,7 +1,6 @@
 from ai.chronon.api.ttypes import Team
 from ai.chronon.types import EnvironmentVariables
 
-
 default = Team(
     description="Default team",
     email="ml-infra@<customer>.com",  # TODO: Infra team email

@@ -1,5 +1,6 @@
-import ai.chronon.api.ttypes as ttypes
 from typing import Optional
+
+import ai.chronon.api.ttypes as ttypes
 
 
 class ModelType:

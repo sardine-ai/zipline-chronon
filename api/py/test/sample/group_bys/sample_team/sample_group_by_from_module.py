@@ -17,12 +17,12 @@ Sample group by
 #     limitations under the License.
 
 from sources import test_sources
+
 from ai.chronon.types import (
-    GroupBy,
     Aggregation,
+    GroupBy,
     Operation,
 )
-
 
 v1 = GroupBy(
     sources=[

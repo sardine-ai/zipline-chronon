@@ -13,10 +13,12 @@
 #     limitations under the License.
 
 import os
-from ai.chronon.repo.serializer import json2thrift, file2thrift
-from ai.chronon import utils
-import ai.chronon.api.ttypes as api
+
 import pytest
+
+import ai.chronon.api.ttypes as api
+from ai.chronon import utils
+from ai.chronon.repo.serializer import file2thrift, json2thrift
 
 
 @pytest.fixture

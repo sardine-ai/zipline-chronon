@@ -1,5 +1,6 @@
 import difflib
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 from rich.text import Text
 
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
@@ -79,7 +80,7 @@ class ClassTracker:
         if self.files_to_obj:
             text.append("  Compiled ")
             text.append(f"{len(self.new_objs)} ", style="bold green")
-            text.append(f"objects from ")
+            text.append("objects from ")
             text.append(f"{len(self.files_to_obj)} ", style="bold green")
             text.append("files.\n")
 

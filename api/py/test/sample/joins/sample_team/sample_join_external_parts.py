@@ -19,14 +19,7 @@ Sample Join
 from group_bys.sample_team import sample_group_by
 from sources import test_sources
 
-from ai.chronon.join import (
-    Join,
-    JoinPart,
-    ExternalPart,
-    ExternalSource,
-    DataType,
-    ContextualSource
-)
+from ai.chronon.join import ContextualSource, DataType, ExternalPart, ExternalSource, Join, JoinPart
 
 v1 = Join(
     left=test_sources.staging_entities,

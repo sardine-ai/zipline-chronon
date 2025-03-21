@@ -12,10 +12,11 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import Source, EventSource
+from staging_queries.kaggle.outbrain import base_table
+
+from ai.chronon.api.ttypes import EventSource, Source
 from ai.chronon.query import Query, selects
 from ai.chronon.utils import get_staging_query_output_table_name
-from staging_queries.kaggle.outbrain import base_table
 
 """
 Sources allow one-to-one transformations (i.e. row level transformations like ROUND, IF, etc.), but no joins (for this you must use a StagingQuery) or Aggregation (these occur in GroupBy).

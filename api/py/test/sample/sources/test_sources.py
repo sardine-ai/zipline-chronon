@@ -12,14 +12,11 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.query import (
-    Query,
-    selects,
-)
-from ai.chronon.utils import get_staging_query_output_table_name
-from ai.chronon.types import *
-
 from staging_queries.sample_team import sample_staging_query
+
+from ai.chronon.query import Query, selects
+from ai.chronon.types import EntitySource, EventSource
+from ai.chronon.utils import get_staging_query_output_table_name
 
 
 def basic_event_source(table):
