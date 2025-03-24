@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button as ButtonPrimitive } from 'bits-ui';
 	import { type Events, type Props, buttonVariants } from './index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = Props;
 	type $$Events = Events;
@@ -16,7 +16,7 @@
 
 <ButtonPrimitive.Root
 	{builders}
-	class={cn(buttonVariants({ variant, size, icon, className: className as string }))}
+	class={cls(buttonVariants({ variant, size, icon, className: className as string }))}
 	type="button"
 	{...$$restProps}
 	on:click

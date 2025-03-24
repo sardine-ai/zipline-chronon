@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { HTMLLiAttributes } from 'svelte/elements';
 	import ChevronRight from 'svelte-radix/ChevronRight.svelte';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLLiAttributes & {
 		el?: HTMLLIElement;
@@ -15,7 +15,7 @@
 <li
 	role="presentation"
 	aria-hidden="true"
-	class={cn('[&>svg]:size-3.5 text-neutral-800', className)}
+	class={cls('[&>svg]:size-3.5 text-neutral-800', className)}
 	bind:this={el}
 	{...$$restProps}
 >

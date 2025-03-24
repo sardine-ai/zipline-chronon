@@ -29,7 +29,7 @@
 		type INodeKeyArgs
 	} from '$src/lib/types/codegen';
 	import { isStreaming } from '$src/lib/types/LogicalNode.js';
-	import { cn } from '$src/lib/utils';
+	import { cls } from '@layerstack/tailwind';
 	import { Dialog, DialogContent, DialogHeader } from '$lib/components/ui/dialog';
 	import { tooltipProps } from '$src/lib/components/charts/common.js';
 	import { Inspect } from 'svelte-inspect-value';
@@ -225,7 +225,7 @@
 								{@const config = getEntityConfig(node.value.conf as EntityData)}
 								{@const Icon = config?.icon}
 								<Group
-									class={cn(
+									class={cls(
 										'bg-neutral-50 dark:bg-neutral-300 border border-neutral-400 rounded-md',
 										'cursor-pointer hover:outline outline-surface-content/20 outline-offset-0 hover:outline-offset-1 transition-all',
 										fadeNode(node) && 'opacity-20'
@@ -277,7 +277,7 @@
 									data={edge.points}
 									x="x"
 									y="y"
-									class={cn(
+									class={cls(
 										'stroke-neutral-500 stroke-[1.5] [stroke-dasharray:5_5]',
 										fadeEdge(edge as unknown as { source: CustomNode; target: CustomNode }) &&
 											'opacity-20'
@@ -292,7 +292,7 @@
 									data={edge.points}
 									x="x"
 									y="y"
-									class={cn(
+									class={cls(
 										isStreaming(edge.source.value.conf as EntityData)
 											? 'stroke-blue-500 stroke-2 [stroke-dasharray:10_10] [stroke-dashoffset:20] animate-dashoffset-2x'
 											: 'stroke-purple-500 stroke-2 [stroke-dasharray:30_100] [stroke-dashoffset:130] animate-dashoffset-0.5x',
@@ -384,7 +384,7 @@
 							<Tooltip.Item
 								{...tooltipProps.item}
 								label="keyColumns"
-								classes={{ label: cn(tooltipProps.item.classes?.label, 'self-start') }}
+								classes={{ label: cls(tooltipProps.item.classes?.label, 'self-start') }}
 								valueAlign="left"
 							>
 								{#each data.value.conf.keyColumns as keyColumn}
@@ -409,7 +409,7 @@
 							<Tooltip.Item
 								{...tooltipProps.item}
 								label="selects"
-								classes={{ label: cn(tooltipProps.item.classes?.label, 'self-start') }}
+								classes={{ label: cls(tooltipProps.item.classes?.label, 'self-start') }}
 								valueAlign="left"
 							>
 								{#each Object.entries(data.value.conf.query?.selects ?? {}) as [key, _]}
@@ -500,15 +500,15 @@
 							borderless
 							noanimate
 							theme=""
-							--base00="hsl(var(--background))"
-							--base01="hsl(var(--muted) / 20%)"
-							--base02="hsl(var(--primary-500))"
-							--base03="hsl(var(--border))"
-							--base05="hsl(var(--foreground))"
-							--base08="hsl(var(--primary-700))"
+							--base00="var(--color-background)"
+							--base01="color-mix(in oklab, var(--color-muted) 20%, transparent)"
+							--base02="var(--color-primary-500)"
+							--base03="var(--color-border)"
+							--base05="var(--color-foreground)"
+							--base08="var(--color-primary-700)"
 							--base0A="hsl(80, 90%, 35%)"
 							--base0E="hsl(270 80% 50%)"
-							--caret-color="hsl(var(--neutral-600))"
+							--caret-color="var(--color-neutral-600)"
 						/>
 					</div>
 				</TabsContent>

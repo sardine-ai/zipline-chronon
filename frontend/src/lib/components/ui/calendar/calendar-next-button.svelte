@@ -2,7 +2,7 @@
 	import { Calendar as CalendarPrimitive } from 'bits-ui';
 	import ChevronRight from 'svelte-radix/ChevronRight.svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = CalendarPrimitive.NextButtonProps;
 	type $$Events = CalendarPrimitive.NextButtonEvents;
@@ -13,7 +13,7 @@
 
 <CalendarPrimitive.NextButton
 	on:click
-	class={cn(
+	class={cls(
 		buttonVariants({ variant: 'outline' }),
 		'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100',
 		className

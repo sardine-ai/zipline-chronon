@@ -7,13 +7,12 @@
 		BreadcrumbSeparator
 	} from '$lib/components/ui/breadcrumb';
 	import BreadcrumbList from '$lib/components/ui/breadcrumb/breadcrumb-list.svelte';
-	import { cn } from '$lib/utils';
 	import IconSlash from '~icons/heroicons/slash';
 
 	const { breadcrumbs, class: className }: { breadcrumbs: string[]; class?: string } = $props();
 </script>
 
-<Breadcrumb class={cn('', className)}>
+<Breadcrumb class={className}>
 	<BreadcrumbList>
 		<BreadcrumbItem>
 			<BreadcrumbLink href="/">Zipline AI</BreadcrumbLink>

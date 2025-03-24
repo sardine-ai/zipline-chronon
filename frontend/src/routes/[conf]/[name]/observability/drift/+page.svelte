@@ -25,7 +25,7 @@
 		yAxisProps,
 		textClass
 	} from '$lib/components/charts/common';
-	import { cn } from '$src/lib/utils';
+	import { cls } from '@layerstack/tailwind';
 	import { isMacOS } from '$src/lib/util/browser';
 	import { getSortDirection } from '$src/lib/util/sort';
 	import { NULL_VALUE } from '$src/lib/constants/common';
@@ -169,7 +169,7 @@
 		<CollapsibleSection title={groupName} size="small" open>
 			{#snippet collapsibleContent()}
 				<div
-					class={cn(
+					class={cls(
 						'h-[274px]',
 						i === driftSeriesByGroupName.length - 1 && 'mb-[300px]' // Add extra space at bottom of page for tooltip
 					)}
@@ -221,7 +221,7 @@
 	<DialogContent class="max-w-[85vw] h-[95vh] flex flex-col p-0">
 		<DialogHeader class="pt-8 px-7 pb-0">
 			<span
-				class="mb-4 ml-2 text-xl-medium flex items-center gap-2 w-fit"
+				class="mb-4 ml-2 text-xl font-medium flex items-center gap-2 w-fit"
 				role="presentation"
 				onmouseenter={() => {
 					/*highlightSeries(selectedSeries ?? '', dialogGroupChart, 'highlight')*/
@@ -408,7 +408,7 @@
 											{...pieChartProps}
 										/>
 									</div>
-									<div class={cn('text-center', textClass)}>
+									<div class={cls('text-center', textClass)}>
 										{c.label}
 									</div>
 								</div>

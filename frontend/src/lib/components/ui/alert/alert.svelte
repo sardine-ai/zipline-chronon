@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { type Variant, alertVariants } from './index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLDivElement> & {
 		variant?: Variant;
@@ -12,6 +12,6 @@
 	export { className as class };
 </script>
 
-<div class={cn(alertVariants({ variant }), className)} {...$$restProps} role="alert">
+<div class={cls(alertVariants({ variant }), className)} {...$$restProps} role="alert">
 	<slot />
 </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLDivElement>;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<div class={cn('text-sm [&_p]:leading-relaxed', className)} {...$$restProps}>
+<div class={cls('text-sm [&_p]:leading-relaxed', className)} {...$$restProps}>
 	<slot />
 </div>

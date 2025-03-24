@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tabs as TabsPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 	import { page } from '$app/stores';
 
 	type $$Props = Omit<TabsPrimitive.TriggerProps, 'value'> & {
@@ -14,8 +14,8 @@
 	export let href: $$Props['href'] = undefined;
 	export { className as class };
 
-	const _class = cn(
-		'ring-offset-background focus-visible:ring-ring border-b-[3px] border-transparent data-[state=active]:border-b-[3px] data-[state=active]:border-primary-600 dark:data-[state=active]:border-primary-800 data-[state=active]:text-primary-600 dark:data-[state=active]:text-primary-800 inline-flex items-center justify-center whitespace-nowrap px-[10px] py-[5px] text-regular transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 z-10 not-first:ml-5',
+	const _class = cls(
+		'ring-offset-background focus-visible:ring-ring border-b-[3px] border-transparent data-[state=active]:border-b-[3px] data-[state=active]:border-primary-600 dark:data-[state=active]:border-primary-800 data-[state=active]:text-primary-600 dark:data-[state=active]:text-primary-800 inline-flex items-center justify-center whitespace-nowrap px-[10px] py-[5px] text-sm transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 z-10 not-first:ml-5',
 		className
 	);
 

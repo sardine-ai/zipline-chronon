@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { RangeCalendar as RangeCalendarPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = RangeCalendarPrimitive.GridBodyProps;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<RangeCalendarPrimitive.GridBody class={cn(className)} {...$$restProps}>
+<RangeCalendarPrimitive.GridBody class={cls(className)} {...$$restProps}>
 	<slot />
 </RangeCalendarPrimitive.GridBody>

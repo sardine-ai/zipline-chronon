@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { type Variant, badgeVariants } from './index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	let className: string | undefined | null = undefined;
 	export let href: string | undefined = undefined;
@@ -11,7 +11,7 @@
 <svelte:element
 	this={href ? 'a' : 'span'}
 	{href}
-	class={cn(badgeVariants({ variant, className }))}
+	class={cls(badgeVariants({ variant, className }))}
 	{...$$restProps}
 >
 	<slot />

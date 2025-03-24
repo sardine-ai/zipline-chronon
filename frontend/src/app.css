@@ -1,6 +1,130 @@
 @import 'tailwindcss';
 
-@config "../tailwind.config.js";
+@source '../node_modules/svelte-ux/dist';
+@source '../node_modules/layerchart/dist';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	/* shadcn-svelte colors */
+	--color-background: var(--color-neutral-100);
+	--color-foreground: hsl(0 0% 3.9%);
+
+	--color-muted: hsl(0 0% 96.1%);
+	--color-muted-foreground: var(--color-neutral-800);
+	--color-muted-icon-neutral: var(--color-neutral-700);
+	--color-muted-icon-primary: var(--color-primary-700);
+
+	--color-popover: hsl(0 0% 100%);
+	--color-popover-foreground: hsl(0 0% 3.9%);
+
+	--color-card: hsl(0 0% 100%);
+	--color-card-foreground: hsl(0 0% 3.9%);
+
+	--color-border: var(--color-neutral-300);
+	--color-input: hsl(0 0% 89.8%);
+
+	--color-primary: var(--color-primary-300);
+	--color-primary-foreground: var(--color-primary-800);
+
+	--color-secondary: hsl(0 0% 96.1%);
+	--color-secondary-foreground: hsl(0 0% 9%);
+
+	--color-accent: hsl(0 0% 96.1%);
+	--color-accent-foreground: hsl(0 0% 9%);
+
+	--color-destructive: hsl(0 72.2% 50.6%);
+	--color-destructive-foreground: hsl(0 0% 98%);
+
+	--color-ring: hsl(0 0% 3.9%);
+
+	--color-radius: 0.5rem;
+
+	--color-neutral-50: hsl(0 0% 98%);
+	--color-neutral-100: hsl(0 0% 95%);
+	--color-neutral-200: hsl(0 0% 93%);
+	--color-neutral-300: hsl(0 0% 90%);
+	--color-neutral-400: hsl(0 0% 87%);
+	--color-neutral-500: hsl(0 0% 79%);
+	--color-neutral-600: hsl(0 0% 71%);
+	--color-neutral-700: hsl(0 0% 63%);
+	--color-neutral-800: hsl(0 0% 39%);
+	--color-neutral-900: hsl(0 0% 23%);
+	--color-neutral-950: hsl(0 0% 5%);
+	--color-neutral: var(--color-neutral-300);
+	--color-neutral-foreground: var(--color-neutral-800);
+
+	--color-primary-50: hsl(351 100% 97%);
+	--color-primary-100: hsl(354 100% 93%);
+	--color-primary-200: hsl(349 100% 88%);
+	--color-primary-300: hsl(345 95% 84%);
+	--color-primary-400: hsl(345 90% 79%);
+	--color-primary-500: hsl(346 85% 73%);
+	--color-primary-600: hsl(347 80% 55%);
+	--color-primary-700: hsl(347 75% 44%);
+	--color-primary-800: hsl(345 70% 37%);
+	--color-primary-900: hsl(348 65% 30%);
+	--color-primary-950: hsl(352 60% 17%);
+	--color-primary: var(--color-primary-300);
+	--color-primary-foreground: var(--color-primary-800);
+
+	--color-warning-50: hsl(41 66% 10%);
+	--color-warning-100: hsl(40 29% 8%);
+	--color-warning-200: hsl(41 66% 10%);
+	--color-warning-300: hsl(41 100% 12%);
+	--color-warning-400: hsl(42 100% 14%);
+	--color-warning-500: hsl(43 81% 19%);
+	--color-warning-600: hsl(42 58% 26%);
+	--color-warning-700: hsl(42 56% 34%);
+	--color-warning-800: hsl(44 100% 55%);
+	--color-warning-900: hsl(45 100% 60%);
+	--color-warning-950: hsl(40 100% 86%);
+	--color-warning: var(--color-warning-300);
+	--color-warning-foreground: var(--color-warning-800);
+
+	--color-success-50: hsl(151 63% 92%);
+	--color-success-100: hsl(152 60% 85%);
+	--color-success-200: hsl(153 65% 75%);
+	--color-success-300: hsl(155 70% 65%);
+	--color-success-400: hsl(157 80% 50%);
+	--color-success-500: hsl(159 98% 23%);
+	--color-success-600: hsl(159 90% 20%);
+	--color-success-700: hsl(159 80% 17%);
+	--color-success-800: hsl(159 70% 14%);
+	--color-success-900: hsl(159 60% 12%);
+	--color-success-950: hsl(159 46% 11%);
+	--color-success: var(--color-success-300);
+	--color-success-foreground: var(--color-success-800);
+
+	/* LayerChart colors */
+	--color-surface-content: var(--color-card-foreground);
+	--color-surface-100: var(--color-background);
+	--color-surface-200: var(--color-muted);
+	/* Not sure what color maps here (should be darker than 200) */
+	--color-surface-300: var(--color-background);
+
+	/* Scrollbar colors */
+	--color-scroll-thumb: hsla(0, 0%, 87%, 1);
+	--color-scroll-track: transparent;
+
+	/* Fonts */
+	--font-sans: 'Geist Mono (Numbers-only)', 'Geist', 'Inter', sans-serif;
+	--font-mono: 'Geist Mono', 'Inter', monospace;
+
+	/* Animations */
+	--animate-dashoffset-0.5x: animated-dash 2s linear infinite;
+	--animate-dashoffset-1x: animated-dash 1s linear infinite;
+	--animate-dashoffset-2x: animated-dash 0.5s linear infinite;
+	--animate-dashoffset-3x: animated-dash 0.25s linear infinite;
+	--animate-dashoffset-4x: animated-dash 0.125s linear infinite;
+	--animate-dashoffset-5x: animated-dash 0.0625s linear infinite;
+
+	@keyframes animated-dash {
+		100% {
+			stroke-dashoffset: 0;
+		}
+	}
+}
 
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
@@ -39,247 +163,74 @@
 }
 
 @layer base {
-	:root {
-		--background: var(--neutral-100);
-		--foreground: 0 0% 3.9%;
-
-		--muted: 0 0% 96.1%;
-		--muted-foreground: var(--neutral-800);
-		--muted-icon-neutral: var(--neutral-700);
-		--muted-icon-primary: var(--primary-700);
-
-		--popover: 0 0% 100%;
-		--popover-foreground: 0 0% 3.9%;
-
-		--card: 0 0% 100%;
-		--card-foreground: 0 0% 3.9%;
-
-		--border: var(--neutral-300);
-		--input: 0 0% 89.8%;
-
-		--primary: 0 0% 9%;
-		--primary-foreground: 0 0% 98%;
-
-		--secondary: 0 0% 96.1%;
-		--secondary-foreground: 0 0% 9%;
-
-		--accent: 0 0% 96.1%;
-		--accent-foreground: 0 0% 9%;
-
-		--destructive: 0 72.2% 50.6%;
-		--destructive-foreground: 0 0% 98%;
-
-		--ring: 0 0% 3.9%;
-
-		--radius: 0.5rem;
-
-		--neutral-50: 0 0% 98%;
-		--neutral-100: 0 0% 95%;
-		--neutral-200: 0 0% 93%;
-		--neutral-300: 0 0% 90%;
-		--neutral-400: 0 0% 87%;
-		--neutral-500: 0 0% 79%;
-		--neutral-600: 0 0% 71%;
-		--neutral-700: 0 0% 63%;
-		--neutral-800: 0 0% 39%;
-		--neutral-900: 0 0% 23%;
-		--neutral-950: 0 0% 5%;
-
-		--primary-50: 351 100% 97%;
-		--primary-100: 354 100% 93%;
-		--primary-200: 349 100% 88%;
-		--primary-300: 345 95% 84%;
-		--primary-400: 345 90% 79%;
-		--primary-500: 346 85% 73%;
-		--primary-600: 347 80% 55%;
-		--primary-700: 347 75% 44%;
-		--primary-800: 345 70% 37%;
-		--primary-900: 348 65% 30%;
-		--primary-950: 352 60% 17%;
-
-		--warning-50: 41 66% 10%;
-		--warning-100: 40 29% 8%;
-		--warning-200: 41 66% 10%;
-		--warning-300: 41 100% 12%;
-		--warning-400: 42 100% 14%;
-		--warning-500: 43 81% 19%;
-		--warning-600: 42 58% 26%;
-		--warning-700: 42 56% 34%;
-		--warning-800: 44 100% 55%;
-		--warning-900: 45 100% 60%;
-		--warning-950: 40 100% 86%;
-
-		--success-50: 151 63% 92%;
-		--success-100: 152 60% 85%;
-		--success-200: 153 65% 75%;
-		--success-300: 155 70% 65%;
-		--success-400: 157 80% 50%;
-		--success-500: 159 98% 23%;
-		--success-600: 159 90% 20%;
-		--success-700: 159 80% 17%;
-		--success-800: 159 70% 14%;
-		--success-900: 159 60% 12%;
-		--success-950: 159 46% 11%;
-
-		/* Base colors for reuse */
-		--color-failed: 10 35% 55%;
-		--color-failed-border: 10 32% 48%;
-		--color-failed-active: 10 80% 30%;
-
-		--color-running: 250 40% 60%;
-		--color-running-border: 250 38% 52%;
-		--color-running-active: 250 80% 30%;
-
-		/* Job status colors using base variables */
-		--job-RUNNING-bg: var(--color-running);
-		--job-RUNNING-border: var(--color-running-border);
-		--job-RUNNING-active-border: var(--color-running-active);
-
-		--job-WAITING_FOR_UPSTREAM-bg: 210 40% 58%;
-		--job-WAITING_FOR_UPSTREAM-border: 210 38% 50%;
-		--job-WAITING_FOR_UPSTREAM-active-border: 210 80% 30%;
-
-		--job-FAILED-bg: var(--color-failed);
-		--job-FAILED-border: var(--color-failed-border);
-		--job-FAILED-active-border: var(--color-failed-active);
-
-		--job-SUCCESS-bg: 160 45% 52%;
-		--job-SUCCESS-border: 160 42% 45%;
-		--job-SUCCESS-active-border: 160 80% 30%;
-
-		--job-UPSTREAM_FAILED-bg: var(--color-failed);
-		--job-UPSTREAM_FAILED-border: var(--color-failed-border);
-		--job-UPSTREAM_FAILED-active-border: var(--color-failed-active);
-
-		--job-QUEUED-bg: 0 0% 52%;
-		--job-QUEUED-border: 0 0% 46%;
-		--job-QUEUED-active-border: 0 0% 20%; /* Back to 20% lightness */
-
-		--job-UPSTREAM_MISSING-bg: 38 40% 58%;
-		--job-UPSTREAM_MISSING-border: 38 38% 50%;
-		--job-UPSTREAM_MISSING-active-border: 38 80% 30%;
-
-		--job-WAITING_FOR_RESOURCES-bg: var(--color-running);
-		--job-WAITING_FOR_RESOURCES-border: var(--color-running-border);
-		--job-WAITING_FOR_RESOURCES-active-border: var(--color-running-active);
-
-		/* Scrollbar colors */
-		--scrollcolor: hsla(0, 0%, 87%, 1);
-		--scrollbackground: transparent;
-		scrollbar-color: var(--scrollcolor) var(--scrollbackground);
-	}
-
 	.dark {
-		--background: var(--neutral-50);
-		--foreground: 0 0% 100%;
+		--color-background: var(--color-neutral-50);
+		--color-foreground: hsl(0 0% 100%);
 
-		--muted: 0 0% 14.9%;
-		--muted-foreground: var(--neutral-800);
-		--muted-icon-neutral: var(--neutral-700);
-		--muted-icon-primary: var(--primary-700);
+		--color-muted: hsl(0 0% 14.9%);
+		--color-muted-foreground: var(--color-neutral-800);
+		--color-muted-icon-neutral: var(--color-neutral-700);
+		--color-muted-icon-primary: var(--color-primary-700);
 
-		--popover: 0 0% 3.9%;
-		--popover-foreground: 0 0% 98%;
+		--color-popover: hsl(0 0% 3.9%);
+		--color-popover-foreground: hsl(0 0% 98%);
 
-		--card: 0 0% 3.9%;
-		--card-foreground: 0 0% 98%;
+		--color-card: hsl(0 0% 3.9%);
+		--color-card-foreground: hsl(0 0% 98%);
 
-		--border: var(--neutral-300);
-		--input: 0 0% 14.9%;
+		--color-border: var(--color-neutral-300);
+		--color-input: hsl(0 0% 14.9%);
 
-		--neutral-50: 0 0% 5%;
-		--neutral-100: 0 0% 8%;
-		--neutral-200: 0 0% 10%;
-		--neutral-300: 0 0% 13%;
-		--neutral-400: 0 0% 16%;
-		--neutral-500: 0 0% 24%;
-		--neutral-600: 0 0% 32%;
-		--neutral-700: 0 0% 40%;
-		--neutral-800: 0 0% 64%;
-		--neutral-900: 0 0% 80%;
-		--neutral-950: 0 0% 98%;
+		--color-neutral-50: hsl(0 0% 5%);
+		--color-neutral-100: hsl(0 0% 8%);
+		--color-neutral-200: hsl(0 0% 10%);
+		--color-neutral-300: hsl(0 0% 13%);
+		--color-neutral-400: hsl(0 0% 16%);
+		--color-neutral-500: hsl(0 0% 24%);
+		--color-neutral-600: hsl(0 0% 32%);
+		--color-neutral-700: hsl(0 0% 40%);
+		--color-neutral-800: hsl(0 0% 64%);
+		--color-neutral-900: hsl(0 0% 80%);
+		--color-neutral-950: hsl(0 0% 98%);
 
-		--primary-50: 351 24% 6%;
-		--primary-100: 354 20% 10%;
-		--primary-200: 349 48% 15%;
-		--primary-300: 345 62% 19%;
-		--primary-400: 345 58% 23%;
-		--primary-500: 346 50% 29%;
-		--primary-600: 347 45% 37%;
-		--primary-700: 347 45% 48%;
-		--primary-800: 345 100% 65%;
-		--primary-900: 348 100% 78%;
-		--primary-950: 352 100% 91%;
+		--color-primary-50: hsl(351 24% 6%);
+		--color-primary-100: hsl(354 20% 10%);
+		--color-primary-200: hsl(349 48% 15%);
+		--color-primary-300: hsl(345 62% 19%);
+		--color-primary-400: hsl(345 58% 23%);
+		--color-primary-500: hsl(346 50% 29%);
+		--color-primary-600: hsl(347 45% 37%);
+		--color-primary-700: hsl(347 45% 48%);
+		--color-primary-800: hsl(345 100% 65%);
+		--color-primary-900: hsl(348 100% 78%);
+		--color-primary-950: hsl(352 100% 91%);
 
-		--success-50: 159 46% 11%;
-		--success-100: 159 60% 12%;
-		--success-200: 159 70% 14%;
-		--success-300: 159 80% 17%;
-		--success-400: 159 90% 20%;
-		--success-500: 160 66% 38%;
-		--success-600: 157 80% 50%;
-		--success-700: 155 70% 65%;
-		--success-800: 153 65% 75%;
-		--success-900: 152 60% 85%;
-		--success-950: 151 63% 92%;
+		--color-success-50: hsl(159 46% 11%);
+		--color-success-100: hsl(159 60% 12%);
+		--color-success-200: hsl(159 70% 14%);
+		--color-success-300: hsl(159 80% 17%);
+		--color-success-400: hsl(159 90% 20%);
+		--color-success-500: hsl(160 66% 38%);
+		--color-success-600: hsl(157 80% 50%);
+		--color-success-700: hsl(155 70% 65%);
+		--color-success-800: hsl(153 65% 75%);
+		--color-success-900: hsl(152 60% 85%);
+		--color-success-950: hsl(151 63% 92%);
 
-		--secondary: 0 0% 14.9%;
-		--secondary-foreground: 0 0% 98%;
+		--color-secondary: hsl(0 0% 14.9%);
+		--color-secondary-foreground: hsl(0 0% 98%);
 
-		--accent: 0 0% 14.9%;
-		--accent-foreground: 0 0% 98%;
+		--color-accent: hsl(0 0% 14.9%);
+		--color-accent-foreground: hsl(0 0% 98%);
 
-		--destructive: 0 62.8% 30.6%;
-		--destructive-foreground: 0 0% 98%;
+		--color-destructive: hsl(0 62.8% 30.6%);
+		--color-destructive-foreground: hsl(0 0% 98%);
 
-		--ring: 0 0% 83.1%;
-
-		/* Base colors for reuse */
-		--color-failed: 10 24% 20%;
-		--color-failed-border: 10 30% 34%;
-		--color-failed-active: 10 46% 56%;
-
-		--color-running: 250 30% 24%;
-		--color-running-border: 250 30% 40%;
-		--color-running-active: 250 48% 62%;
-
-		/* Job status colors using base variables */
-		--job-RUNNING-bg: var(--color-running);
-		--job-RUNNING-border: var(--color-running-border);
-		--job-RUNNING-active-border: var(--color-running-active);
-
-		--job-WAITING_FOR_UPSTREAM-bg: 210 30% 20%;
-		--job-WAITING_FOR_UPSTREAM-border: 210 30% 34%;
-		--job-WAITING_FOR_UPSTREAM-active-border: 210 46% 56%;
-
-		--job-FAILED-bg: var(--color-failed);
-		--job-FAILED-border: var(--color-failed-border);
-		--job-FAILED-active-border: var(--color-failed-active);
-
-		--job-SUCCESS-bg: 160 40% 17%;
-		--job-SUCCESS-border: 160 40% 28%;
-		--job-SUCCESS-active-border: 160 32% 47%;
-
-		--job-UPSTREAM_FAILED-bg: var(--color-failed);
-		--job-UPSTREAM_FAILED-border: var(--color-failed-border);
-		--job-UPSTREAM_FAILED-active-border: var(--color-failed-active);
-
-		--job-QUEUED-bg: 0 0% 16%;
-		--job-QUEUED-border: 0 0% 24%;
-		--job-QUEUED-active-border: 0 0% 40%;
-
-		--job-UPSTREAM_MISSING-bg: 38 30% 20%;
-		--job-UPSTREAM_MISSING-border: 38 30% 34%;
-		--job-UPSTREAM_MISSING-active-border: 38 46% 56%;
-
-		--job-WAITING_FOR_RESOURCES-bg: var(--color-running);
-		--job-WAITING_FOR_RESOURCES-border: var(--color-running-border);
-		--job-WAITING_FOR_RESOURCES-active-border: var(--color-running-active);
+		--color-ring: hsl(0 0% 83.1%);
 
 		/* Scrollbar colors */
-		--scrollcolor: hsla(0, 0%, 13%, 1);
-		--scrollbackground: transparent;
-		scrollbar-color: var(--scrollcolor) var(--scrollbackground);
+		--color-scroll-thumb: hsla(0, 0%, 13%, 1);
+		--color-scroll-track: transparent;
 	}
 }
 
@@ -292,19 +243,22 @@
 		@apply bg-background text-foreground;
 	}
 
+	/* Scrollbar colors */
+	scrollbar-color: var(--color-scroll-thumb) var(--color-scroll-track);
+
 	::-webkit-scrollbar {
 		border-radius: 1rem;
-		background: var(--scrollbackground);
+		background: var(--color-scroll-track);
 	}
 
 	::-webkit-scrollbar-thumb {
 		border-radius: 1rem;
-		background: var(--scrollcolor);
+		background: var(--color-scroll-thumb);
 	}
 
 	::-webkit-scrollbar-track {
 		border-radius: 1rem;
-		background: var(--scrollbackground);
+		background: var(--color-scroll-track);
 	}
 }
 
@@ -318,12 +272,20 @@
 	}
 
 	@font-face {
-		font-family: 'Geist Mono';
+		font-family: 'Geist Mono (Numbers-only)';
 		src: url('/fonts/GeistMono-1.4.01/webfonts/GeistMono[wght].woff2') format('woff2-variations');
 		font-weight: 100 900;
 		font-style: normal;
 		font-display: swap;
 		unicode-range: U+0030-0039; /* Digits 0-9 */
+	}
+
+	@font-face {
+		font-family: 'Geist Mono';
+		src: url('/fonts/GeistMono-1.4.01/webfonts/GeistMono[wght].woff2') format('woff2-variations');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
 	}
 
 	@font-face {

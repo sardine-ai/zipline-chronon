@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Calendar as CalendarPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = CalendarPrimitive.HeaderProps;
 
@@ -9,7 +9,7 @@
 </script>
 
 <CalendarPrimitive.Header
-	class={cn('relative flex w-full items-center justify-between pt-1', className)}
+	class={cls('relative flex w-full items-center justify-between pt-1', className)}
 	{...$$restProps}
 >
 	<slot />

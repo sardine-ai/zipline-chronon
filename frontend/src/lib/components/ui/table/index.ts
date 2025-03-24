@@ -13,8 +13,8 @@ const tableVariants = tv({
 	base: 'w-full caption-bottom',
 	variants: {
 		density: {
-			compact: 'text-small [&_td]:py-[0.45rem] [&_th]:py-[0.45rem]',
-			default: 'text-regular'
+			compact: 'text-[13px] [&_td]:py-[0.45rem] [&_th]:py-[0.45rem]',
+			default: 'text-sm'
 		}
 	},
 	defaultVariants: {

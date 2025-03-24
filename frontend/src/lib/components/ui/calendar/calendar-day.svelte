@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Calendar as CalendarPrimitive } from 'bits-ui';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = CalendarPrimitive.DayProps;
 	type $$Events = CalendarPrimitive.DayEvents;
@@ -16,7 +16,7 @@
 	on:click
 	{date}
 	{month}
-	class={cn(
+	class={cls(
 		buttonVariants({ variant: 'ghost' }),
 		'h-8 w-8 p-0 font-normal',
 		// Today

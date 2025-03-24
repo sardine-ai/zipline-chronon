@@ -130,12 +130,12 @@
 			</span>
 		{/if}
 	</Button>
-	<Button variant="ghost" class="text-regular" size="nav" href="/" icon="leading">
+	<Button variant="ghost" class="text-sm" size="nav" href="/" icon="leading">
 		<IconSquaresSolid class="text-muted-icon-neutral h-4 w-4" />
 		<span>Home</span>
 	</Button>
 	<Separator class="my-[22px]" />
-	<span class="mb-[10px] px-2 text-xs-medium text-muted-icon-neutral">Datasets</span>
+	<span class="mb-[10px] px-2 text-xs font-medium text-muted-icon-neutral">Datasets</span>
 	<ul class="space-y-[1px] grow">
 		{#each navItems.filter((item) => item.path != null) as item}
 			<li>
@@ -144,7 +144,7 @@
 					size="nav"
 					href={item.path}
 					icon="leading"
-					class="text-regular"
+					class="text-sm"
 				>
 					<item.icon
 						class={`h-4 w-4 ${isActiveRoute(item.path) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}`}
@@ -155,10 +155,10 @@
 		{/each}
 	</ul>
 	<Separator class="mb-6" />
-	<span class="mb-[7px] px-2 text-xs-medium text-muted-icon-neutral">Resources</span>
+	<span class="mb-[7px] px-2 text-xs font-medium text-muted-icon-neutral">Resources</span>
 	<Button
 		variant="ghost"
-		class="w-full text-regular my-[2px]"
+		class="w-full text-sm my-[2px]"
 		size="nav"
 		href="https://docs.chronon.ai"
 		target="_blank"
@@ -170,7 +170,7 @@
 	</Button>
 	<Button
 		variant="ghost"
-		class="w-full text-regular my-[2px]"
+		class="w-full text-sm my-[2px]"
 		size="nav"
 		href="https://join.slack.com/t/chrononworkspace/shared_invite/zt-1no5t3lxd-mFUo644T6tPJOeTeZRTggw"
 		target="_blank"
@@ -183,8 +183,8 @@
 	<div class="flex justify-start">
 		<Button
 			variant="outline"
-			size="md"
-			class="text-small mb-1 mt-5 ml-2"
+			size="sm"
+			class="text-[13px] mb-1 mt-5 ml-2"
 			href="mailto:hello@zipline.ai"
 			icon="leading"
 		>
@@ -203,7 +203,7 @@
 							<IconUser />
 						</AvatarFallback>
 					</Avatar>
-					<span class="ml-3 text-muted-foreground text-regular">{user.name}</span>
+					<span class="ml-3 text-muted-foreground text-sm">{user.name}</span>
 					<IconChevronDown class="ml-3 text-muted-foreground" />
 				</Button>
 			</DropdownMenuTrigger>

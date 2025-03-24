@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLTableSectionElement>;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<thead class={cn('[&_tr]:border-b', className)} {...$$restProps} on:click on:keydown>
+<thead class={cls('[&_tr]:border-b', className)} {...$$restProps} on:click on:keydown>
 	<slot />
 </thead>

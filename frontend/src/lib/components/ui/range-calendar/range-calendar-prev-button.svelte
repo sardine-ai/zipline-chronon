@@ -2,7 +2,7 @@
 	import { RangeCalendar as RangeCalendarPrimitive } from 'bits-ui';
 	import ChevronLeft from 'svelte-radix/ChevronLeft.svelte';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = RangeCalendarPrimitive.PrevButtonProps;
 	type $$Events = RangeCalendarPrimitive.PrevButtonEvents;
@@ -13,7 +13,7 @@
 
 <RangeCalendarPrimitive.PrevButton
 	on:click
-	class={cn(buttonVariants({ variant: 'secondary' }), 'h-7 w-7 p-0', className)}
+	class={cls(buttonVariants({ variant: 'secondary' }), 'h-7 w-7 p-0', className)}
 	{...$$restProps}
 	let:builder
 >

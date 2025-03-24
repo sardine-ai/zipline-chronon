@@ -1,10 +1,12 @@
-import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
+import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
 import Icons from 'unplugin-icons/vite';
 import { promises as fs } from 'node:fs';
 
 export default defineConfig({
 	plugins: [
+		tailwindcss(),
 		sveltekit(),
 		Icons({
 			compiler: 'svelte',

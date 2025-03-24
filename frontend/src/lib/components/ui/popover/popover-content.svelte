@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Popover as PopoverPrimitive } from 'bits-ui';
-	import { cn, flyAndScale } from '$lib/utils.js';
+	import { flyAndScale } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = PopoverPrimitive.ContentProps & {
 		variant?: 'default' | 'light';
@@ -21,7 +22,7 @@
 	{align}
 	{sideOffset}
 	{...$$restProps}
-	class={cn(
+	class={cls(
 		'z-50 w-72 rounded-md border p-4 shadow-md outline-hidden',
 		variant === 'default' && 'bg-popover text-popover-foreground',
 		variant === 'light' && 'bg-neutral-100 border-neutral-400',

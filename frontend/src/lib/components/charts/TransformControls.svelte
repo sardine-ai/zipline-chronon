@@ -8,7 +8,7 @@
 
 	import { Button } from '$lib/components/ui/button';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
-	import { cn } from '$lib/utils';
+	import { cls } from '@layerstack/tailwind';
 
 	type Placement =
 		| 'top-left'
@@ -43,7 +43,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class={cn(
+	class={cls(
 		'bg-surface-100/50 border rounded-full m-1 backdrop-blur-sm z-10 flex p-1',
 		orientation === 'vertical' && 'flex-col',
 		{

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLTableAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 	import { tableVariants } from './index.js';
 
 	interface $$Props extends HTMLTableAttributes {
@@ -18,10 +18,10 @@
 
 <div
 	bind:this={scrollContainer}
-	class={cn('relative w-full overflow-auto', hideScrollbar && 'scrollbar-none')}
+	class={cls('relative w-full overflow-auto', hideScrollbar && 'scrollbar-none')}
 	on:scroll
 >
-	<table class={cn(tableVariants({ density }), className)} {...$$restProps}>
+	<table class={cls(tableVariants({ density }), className)} {...$$restProps}>
 		<slot />
 	</table>
 </div>

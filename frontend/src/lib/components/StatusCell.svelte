@@ -21,7 +21,7 @@
 <Popover.Root closeFocus={null} bind:open={isPopoverOpen}>
 	<Popover.Trigger class="w-full h-full">
 		<div class="flex items-center justify-center bg-neutral-50 pt-1 pb-3">
-			<StatusBar {status} includeHover={true} isActive={isPopoverOpen} />
+			<StatusBar {status} />
 		</div>
 	</Popover.Trigger>
 	<Popover.Content sideOffset={-16} variant="light">
@@ -32,7 +32,7 @@
 				>
 			</p>
 			<div class="mt-4">
-				<Button variant="secondary" class="text-small! text-neutral-800!">
+				<Button variant="secondary" class="text-xs! text-neutral-800!">
 					<IconArrowDownOnSquare16Solid class="mr-2 h-4 w-4" />
 					Download Logs
 				</Button>

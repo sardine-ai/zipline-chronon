@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLTdAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLTdAttributes;
 
@@ -9,7 +9,7 @@
 </script>
 
 <td
-	class={cn(
+	class={cls(
 		'p-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] border-r last:border-r-0',
 		className
 	)}

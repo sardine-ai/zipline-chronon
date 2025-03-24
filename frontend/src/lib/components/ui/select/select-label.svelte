@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = SelectPrimitive.LabelProps;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<SelectPrimitive.Label class={cn('px-2 py-1.5 text-sm font-semibold', className)} {...$$restProps}>
+<SelectPrimitive.Label class={cls('px-2 py-1.5 text-sm font-semibold', className)} {...$$restProps}>
 	<slot />
 </SelectPrimitive.Label>

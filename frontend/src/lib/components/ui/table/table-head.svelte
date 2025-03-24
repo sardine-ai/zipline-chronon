@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLThAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLThAttributes & {
 		element?: HTMLElement;
@@ -13,8 +13,8 @@
 
 <th
 	bind:this={element}
-	class={cn(
-		'text-muted-foreground h-10 px-3 text-left align-middle text-regular [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] border-r last:border-r-0',
+	class={cls(
+		'text-muted-foreground h-10 px-3 text-left align-middle text-sm [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] border-r last:border-r-0',
 		className
 	)}
 	{...$$restProps}
