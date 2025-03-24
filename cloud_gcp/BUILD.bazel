@@ -75,7 +75,7 @@ test_deps = _SCALA_TEST_DEPS + [
 
 java_import(
     name = "iceberg_bigquery_catalog_lib",
-    jars = ["iceberg-bigquery-catalog-1.5.2-1.0.1-beta.jar"],
+    jars = ["iceberg-bigquery-catalog-1.6.1-1.0.1-beta.jar"],
     visibility = ["//visibility:public"],
 )
 
