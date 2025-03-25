@@ -5,7 +5,7 @@ import ai.chronon.api.{StagingQuery, TableDependency}
 import ai.chronon.orchestration.PhysicalNodeType
 import ai.chronon.orchestration.StagingQueryNodeType
 import ai.chronon.orchestration.utils
-import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
+import ai.chronon.api.CollectionExtensions.JListExtension
 import ai.chronon.orchestration.utils.ShiftConstants.noShift
 
 class StagingQueryNode(stagingQuery: StagingQuery) extends TabularNode[StagingQuery](stagingQuery) {

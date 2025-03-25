@@ -1,8 +1,6 @@
-package ai.chronon.orchestration.utils
+package ai.chronon.api
 
-import ai.chronon.api.Constants
-import ai.chronon.api.Query
-import ai.chronon.orchestration.utils.CollectionExtensions.JMapExtension
+import ai.chronon.api.CollectionExtensions.JMapExtension
 
 case class ColumnExpression(column: String, expression: Option[String]) {
   def render: String =

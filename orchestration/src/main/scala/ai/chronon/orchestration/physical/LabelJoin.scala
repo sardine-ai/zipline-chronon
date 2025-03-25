@@ -9,7 +9,7 @@ import ai.chronon.api.{Join, TableDependency, Window}
 import ai.chronon.orchestration.JoinNodeType
 import ai.chronon.orchestration.PhysicalNodeType
 import ai.chronon.orchestration.utils
-import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
+import ai.chronon.api.CollectionExtensions.JListExtension
 import ai.chronon.orchestration.utils.DependencyResolver.tableDependency
 import ai.chronon.orchestration.utils.ShiftConstants.PartitionTimeUnit
 import ai.chronon.orchestration.utils.ShiftConstants.noShift

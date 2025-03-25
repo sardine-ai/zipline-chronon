@@ -5,7 +5,7 @@ import ai.chronon.api.Join
 import ai.chronon.orchestration.LogicalNode
 import ai.chronon.orchestration.TabularDataType
 import ai.chronon.orchestration.utils
-import ai.chronon.orchestration.utils.CollectionExtensions._
+import ai.chronon.api.CollectionExtensions._
 import ai.chronon.orchestration.utils.TabularDataUtils
 
 // Join implementation

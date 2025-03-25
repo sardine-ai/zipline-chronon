@@ -1,8 +1,8 @@
-package ai.chronon.orchestration.test
+package ai.chronon.api.test
 
 import ai.chronon.api
 import ai.chronon.api.Builders._
-import ai.chronon.orchestration.utils.RelevantLeftForJoinPart
+import ai.chronon.api.RelevantLeftForJoinPart
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -98,8 +98,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
       )
     )
 
-    val baseTableName = RelevantLeftForJoinPart.partTableName(baseJoin, joinPart)
-    val extraSelectsTableName = RelevantLeftForJoinPart.partTableName(joinWithExtraSelects, joinPart)
+    val baseTableName = RelevantLeftForJoinPart.fullPartTableName(baseJoin, joinPart)
+    val extraSelectsTableName = RelevantLeftForJoinPart.fullPartTableName(joinWithExtraSelects, joinPart)
 
     baseTableName shouldEqual extraSelectsTableName
   }
@@ -117,8 +117,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
       leftStart = "2024-02-01" // Different start date
     )
 
-    val baseTableName = RelevantLeftForJoinPart.partTableName(baseJoin, joinPart)
-    val differentDateTableName = RelevantLeftForJoinPart.partTableName(joinWithDifferentDate, joinPart)
+    val baseTableName = RelevantLeftForJoinPart.fullPartTableName(baseJoin, joinPart)
+    val differentDateTableName = RelevantLeftForJoinPart.fullPartTableName(joinWithDifferentDate, joinPart)
 
     baseTableName shouldEqual differentDateTableName
   }
@@ -137,8 +137,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
     val (baseJoin, baseJoinPart) = createBasicJoin(groupBy = baseGroupBy)
     val (modifiedJoin, modifiedJoinPart) = createBasicJoin(groupBy = modifiedGroupBy)
 
-    val baseTableName = RelevantLeftForJoinPart.partTableName(baseJoin, baseJoinPart)
-    val modifiedTableName = RelevantLeftForJoinPart.partTableName(modifiedJoin, modifiedJoinPart)
+    val baseTableName = RelevantLeftForJoinPart.fullPartTableName(baseJoin, baseJoinPart)
+    val modifiedTableName = RelevantLeftForJoinPart.fullPartTableName(modifiedJoin, modifiedJoinPart)
 
     baseTableName should not equal modifiedTableName
   }
@@ -157,8 +157,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
     val (baseJoin, baseJoinPart) = createBasicJoin(groupBy = baseGroupBy)
     val (modifiedJoin, modifiedJoinPart) = createBasicJoin(groupBy = modifiedGroupBy)
 
-    val baseTableName = RelevantLeftForJoinPart.partTableName(baseJoin, baseJoinPart)
-    val modifiedTableName = RelevantLeftForJoinPart.partTableName(modifiedJoin, modifiedJoinPart)
+    val baseTableName = RelevantLeftForJoinPart.fullPartTableName(baseJoin, baseJoinPart)
+    val modifiedTableName = RelevantLeftForJoinPart.fullPartTableName(modifiedJoin, modifiedJoinPart)
 
     baseTableName should not equal modifiedTableName
   }
@@ -177,8 +177,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
     val (baseJoin, baseJoinPart) = createBasicJoin(groupBy = baseGroupBy)
     val (modifiedJoin, modifiedJoinPart) = createBasicJoin(groupBy = modifiedGroupBy)
 
-    val baseTableName = RelevantLeftForJoinPart.partTableName(baseJoin, baseJoinPart)
-    val modifiedTableName = RelevantLeftForJoinPart.partTableName(modifiedJoin, modifiedJoinPart)
+    val baseTableName = RelevantLeftForJoinPart.fullPartTableName(baseJoin, baseJoinPart)
+    val modifiedTableName = RelevantLeftForJoinPart.fullPartTableName(modifiedJoin, modifiedJoinPart)
 
     baseTableName should not equal modifiedTableName
   }
@@ -196,8 +196,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
       joinName = "test_join_2" // Different join name
     )
 
-    val tableName1 = RelevantLeftForJoinPart.partTableName(join1, joinPart)
-    val tableName2 = RelevantLeftForJoinPart.partTableName(join2, joinPart)
+    val tableName1 = RelevantLeftForJoinPart.fullPartTableName(join1, joinPart)
+    val tableName2 = RelevantLeftForJoinPart.fullPartTableName(join2, joinPart)
 
     tableName1 shouldEqual tableName2
   }
@@ -214,8 +214,8 @@ class RelevantLeftForJoinPartSpec extends AnyFlatSpec with Matchers {
       groupBy = groupBy
     )
 
-    val tableNameWithPrefix = RelevantLeftForJoinPart.partTableName(joinWithPrefix, joinPartWithPrefix)
-    val tableNameWithoutPrefix = RelevantLeftForJoinPart.partTableName(joinWithoutPrefix, joinPartWithoutPrefix)
+    val tableNameWithPrefix = RelevantLeftForJoinPart.fullPartTableName(joinWithPrefix, joinPartWithPrefix)
+    val tableNameWithoutPrefix = RelevantLeftForJoinPart.fullPartTableName(joinWithoutPrefix, joinPartWithoutPrefix)
 
     tableNameWithPrefix should not equal tableNameWithoutPrefix
     tableNameWithPrefix should include("test_prefix__")

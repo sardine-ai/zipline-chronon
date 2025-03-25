@@ -27,7 +27,7 @@ import ai.chronon.api.PartitionRange
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.Metrics
-import ai.chronon.orchestration.BootstrapJobArgs
+import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.coalescedJoin
 import ai.chronon.spark.JoinUtils.leftDf
@@ -186,11 +186,13 @@ abstract class JoinBase(val joinConfCloned: api.Join,
             .setStartDate(unfilledRange.start)
             .setEndDate(unfilledRange.end)
 
-          val bootstrapJobArgs = new BootstrapJobArgs()
+          val bootstrapMetadata = joinConfCloned.metaData.deepCopy()
+          bootstrapMetadata.setName(bootstrapTable)
+          val bootstrapNode = new JoinBootstrapNode()
             .setJoin(joinConfCloned)
-            .setRange(bootstrapJobDateRange)
+            .setMetaData(bootstrapMetadata)
 
-          val bootstrapJob = new BootstrapJob(bootstrapJobArgs)
+          val bootstrapJob = new BootstrapJob(bootstrapNode, bootstrapJobDateRange)
           bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
         } else {
           logger.info(s"Query produced no results for date range: $unfilledRange. Please check upstream.")
