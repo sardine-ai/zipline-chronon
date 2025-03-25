@@ -4,12 +4,11 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.orchestration.BootstrapJobArgs
-import ai.chronon.orchestration.JoinDerivationJobArgs
-import ai.chronon.orchestration.JoinPartJobArgs
-import ai.chronon.orchestration.MergeJobArgs
-import ai.chronon.orchestration.SourceJobArgs
-import ai.chronon.orchestration.SourceWithFilter
+import ai.chronon.orchestration.JoinBootstrapNode
+import ai.chronon.orchestration.JoinDerivationNode
+import ai.chronon.orchestration.JoinPartNode
+import ai.chronon.orchestration.JoinMergeNode
+import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.test.DataFrameGen
@@ -171,7 +170,7 @@ class ModularJoinTest extends AnyFlatSpec {
       valueSchema = StructType("value_one", Array(StructField("value_number", IntType)))
     )
 
-    val joinConf = Builders.Join(
+    val joinConf: ai.chronon.api.Join = Builders.Join(
       left = Builders.Source.events(
         query = Builders.Query(
           startPartition = start,
@@ -195,21 +194,32 @@ class ModularJoinTest extends AnyFlatSpec {
       metaData = Builders.MetaData(name = "test.user_transaction_features", namespace = namespace, team = "chronon")
     )
 
-    val leftSourceWithFilter = new SourceWithFilter().setSource(joinConf.left)
+    val leftSourceWithFilter = new SourceWithFilterNode().setSource(joinConf.left)
 
     // First run the SourceJob associated with the left
-    val sourceOutputTable = s"${queryTable}_somemd5hash"
+    // Compute source table name using utility function
+    val sourceOutputTable = JoinUtils.computeLeftSourceTableName(joinConf)
+
+    println(s"Source output table: $sourceOutputTable")
+
+    // Split the output table to get namespace and name
+    val sourceParts = sourceOutputTable.split("\\.", 2)
+    val sourceNamespace = sourceParts(0)
+    val sourceName = sourceParts(1)
+
+    // Create metadata for source job
+    val sourceMetaData = new api.MetaData()
+      .setName(sourceName)
+      .setOutputNamespace(sourceNamespace)
+
+    // Set metadata on source node
+    leftSourceWithFilter.setMetaData(sourceMetaData)
 
     val sourceJobRange = new DateRange()
       .setStartDate(start)
       .setEndDate(today)
 
-    val sourceJobArgs = new SourceJobArgs()
-      .setSource(leftSourceWithFilter)
-      .setRange(sourceJobRange)
-      .setOutputTable(sourceOutputTable)
-
-    val sourceRunner = new SourceJob(sourceJobArgs)
+    val sourceRunner = new SourceJob(leftSourceWithFilter, sourceJobRange)
     sourceRunner.run()
     tableUtils.sql(s"SELECT * FROM $sourceOutputTable").show()
     val sourceExpected = spark.sql(s"SELECT *, date as ds FROM $queryTable WHERE date >= '$start' AND date <= '$today'")
@@ -225,17 +235,26 @@ class ModularJoinTest extends AnyFlatSpec {
     assertEquals(0, diff.count())
 
     // Now run the bootstrap part to get the bootstrap table (one of the joinParts)
-    val bootstrapOutputTable = s"$namespace.user_transaction_features_bootstrap"
+    val bootstrapOutputTable = joinConf.metaData.bootstrapTable
     val bootstrapJobRange = new DateRange()
       .setStartDate(start)
       .setEndDate(today)
 
-    val bootstrapJobArgs = new BootstrapJobArgs()
+    // Split bootstrap output table
+    val bootstrapParts = bootstrapOutputTable.split("\\.", 2)
+    val bootstrapNamespace = bootstrapParts(0)
+    val bootstrapName = bootstrapParts(1)
+
+    // Create metadata for bootstrap job
+    val bootstrapMetaData = new api.MetaData()
+      .setName(bootstrapName)
+      .setOutputNamespace(bootstrapNamespace)
+
+    val bootstrapNode = new JoinBootstrapNode()
       .setJoin(joinConf)
-      .setLeftSourceTable(sourceOutputTable)
-      .setRange(bootstrapJobRange)
-      .setOutputTable(bootstrapOutputTable)
-    val bsj = new BootstrapJob(bootstrapJobArgs)
+      .setMetaData(bootstrapMetaData)
+
+    val bsj = new BootstrapJob(bootstrapNode, bootstrapJobRange)
     bsj.run()
     val sourceCount = tableUtils.sql(s"SELECT * FROM $sourceOutputTable").count()
     val bootstrapCount = tableUtils.sql(s"SELECT * FROM $bootstrapOutputTable").count()
@@ -257,68 +276,91 @@ class ModularJoinTest extends AnyFlatSpec {
     tableUtils.sql(s"SELECT * FROM $bootstrapOutputTable").show()
 
     // Now run the join part job that *does not* have a bootstrap
-    val joinPartOutputTable = joinConf.partOutputTable(jp1) + "_suffix1"
+    // Use RelevantLeftForJoinPart to get the full table name (including namespace)
+    val joinPart1TableName = RelevantLeftForJoinPart.partTableName(joinConf, jp1)
+    val outputNamespace = joinConf.metaData.outputNamespace
+    val joinPart1FullTableName = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp1)
 
     val joinPartJobRange = new DateRange()
       .setStartDate(start)
       .setEndDate(today)
 
-    val joinPartJobArgs = new JoinPartJobArgs()
-      .setLeftTable(sourceOutputTable)
+    // Create metadata with name and namespace directly
+    val metaData = new api.MetaData()
+      .setName(joinPart1TableName)
+      .setOutputNamespace(outputNamespace)
+
+    val joinPartNode = new JoinPartNode()
+      .setLeftSourceTable(sourceOutputTable)
       .setLeftDataModel(joinConf.getLeft.dataModel.toString)
       .setJoinPart(jp1)
-      .setOutputTable(joinPartOutputTable)
-      .setRange(joinPartJobRange)
+      .setMetaData(metaData)
 
-    val joinPartJob = new JoinPartJob(joinPartJobArgs)
+    val joinPartJob = new JoinPartJob(joinPartNode, joinPartJobRange)
     joinPartJob.run()
-    tableUtils.sql(s"SELECT * FROM $joinPartOutputTable").show()
+    tableUtils.sql(s"SELECT * FROM $joinPart1FullTableName").show()
 
     // Now run the join part job that *does not* have a bootstrap
-    val joinPart2OutputTable = joinConf.partOutputTable(jp2) + "_suffix2"
-    val joinPartJobArgs2 = new JoinPartJobArgs()
-      .setLeftTable(sourceOutputTable)
+    // Use RelevantLeftForJoinPart to get the appropriate output table name
+    val joinPart2TableName = RelevantLeftForJoinPart.partTableName(joinConf, jp2)
+    val joinPart2FullTableName = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp2)
+
+    val metaData2 = new api.MetaData()
+      .setName(joinPart2TableName)
+      .setOutputNamespace(outputNamespace)
+
+    val joinPartNode2 = new JoinPartNode()
+      .setLeftSourceTable(sourceOutputTable)
       .setLeftDataModel(joinConf.getLeft.dataModel.toString)
       .setJoinPart(jp2)
-      .setOutputTable(joinPart2OutputTable)
-      .setRange(joinPartJobRange)
-    val joinPart2Job = new JoinPartJob(joinPartJobArgs2)
-    joinPart2Job.run()
-    tableUtils.sql(s"SELECT * FROM $joinPart2OutputTable").show()
+      .setMetaData(metaData2)
 
-    // Skip the joinPart that does have a bootstrap, and go straight to final join
-    val finalJoinOutputTable = s"$namespace.test_user_transaction_features_v1"
+    val joinPart2Job = new JoinPartJob(joinPartNode2, joinPartJobRange)
+    joinPart2Job.run()
+    tableUtils.sql(s"SELECT * FROM $joinPart2FullTableName").show()
+
+    // Skip the joinPart that does have a bootstrap, and go straight to merge job
+    val mergeJobOutputTable = joinConf.metaData.outputTable
 
     val mergeJobRange = new DateRange()
       .setStartDate(start)
       .setEndDate(today)
 
-    val mergeJobArgs = new MergeJobArgs()
-      .setJoin(joinConf)
-      .setLeftInputTable(bootstrapOutputTable)
-      .setJoinPartsToTables(Map(jp1 -> joinPartOutputTable, jp2 -> joinPart2OutputTable).asJava)
-      .setOutputTable(finalJoinOutputTable)
-      .setRange(mergeJobRange)
+    // Create metadata for merge job
+    val mergeMetaData = new api.MetaData()
+      .setName(joinConf.metaData.name)
+      .setOutputNamespace(namespace)
 
-    val finalJoinJob = new MergeJob(mergeJobArgs)
+    val mergeNode = new JoinMergeNode()
+      .setJoin(joinConf)
+      .setMetaData(mergeMetaData)
+
+    val finalJoinJob = new MergeJob(mergeNode, mergeJobRange, Seq(jp1, jp2))
     finalJoinJob.run()
-    tableUtils.sql(s"SELECT * FROM $finalJoinOutputTable").show()
+    tableUtils.sql(s"SELECT * FROM $mergeJobOutputTable").show()
 
     // Now run the derivations job
     val derivationOutputTable = s"$namespace.test_user_transaction_features_v1_derived"
 
-    val range = new DateRange()
+    val derivationRange = new DateRange()
       .setStartDate(start)
       .setEndDate(today)
 
-    val joinDerivationJobArgs = new JoinDerivationJobArgs()
-      .setTrueLeftTable(sourceOutputTable)
-      .setBaseTable(finalJoinOutputTable)
-      .setDerivations(joinConf.derivations)
-      .setOutputTable(derivationOutputTable)
-      .setRange(range)
+    // Split derivation output table
+    val derivationParts = derivationOutputTable.split("\\.", 2)
+    val derivationNamespace = derivationParts(0)
+    val derivationName = derivationParts(1)
 
-    val joinDerivationJob = new JoinDerivationJob(joinDerivationJobArgs)
+    // Create metadata for derivation job
+    val derivationMetaData = new api.MetaData()
+      .setName(derivationName)
+      .setOutputNamespace(derivationNamespace)
+
+    val derivationNode = new JoinDerivationNode()
+      .setJoin(joinConf)
+      .setMetaData(derivationMetaData)
+
+    val joinDerivationJob = new JoinDerivationJob(derivationNode, derivationRange)
     joinDerivationJob.run()
     tableUtils.sql(s"SELECT * FROM $derivationOutputTable").show()
 

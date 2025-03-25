@@ -22,7 +22,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.SparkConversions
-import ai.chronon.orchestration.{BootstrapJobArgs, JoinPartJobArgs}
+import ai.chronon.orchestration.{JoinBootstrapNode, JoinPartNode}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils._
 import org.apache.spark.sql
@@ -254,11 +254,14 @@ class Join(joinConf: api.Join,
         .setStartDate(leftRange.start)
         .setEndDate(leftRange.end)
 
-      val bootstrapJobArgs = new BootstrapJobArgs()
-        .setJoin(joinConfCloned)
-        .setRange(bootstrapJobRange)
+      val bootstrapMetadata = joinConfCloned.metaData.deepCopy()
+      bootstrapMetadata.setName(bootstrapTable)
 
-      val bootstrapJob = new BootstrapJob(bootstrapJobArgs)
+      val bootstrapNode = new JoinBootstrapNode()
+        .setJoin(joinConfCloned)
+        .setMetaData(bootstrapMetadata)
+
+      val bootstrapJob = new BootstrapJob(bootstrapNode, bootstrapJobRange)
       bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
     }
 
@@ -329,6 +332,11 @@ class Join(joinConf: api.Join,
                   s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is $leftRange")
               }
 
+              // Small mode changes the JoinPart definition, which creates a different part table hash suffix
+              // We want to make sure output table is consistent based on original semantics, not small mode behavior
+              // So partTable needs to be defined BEFORE the runSmallMode logic below
+              val partTable = RelevantLeftForJoinPart.partTableName(joinConfCloned, joinPart)
+
               val bloomFilterOpt = if (runSmallMode) {
                 // If left DF is small, hardcode the key filter into the joinPart's GroupBy's where clause.
                 injectKeyFilter(leftDf, joinPart)
@@ -337,14 +345,8 @@ class Join(joinConf: api.Join,
                 joinLevelBloomMapOpt
               }
 
-              val partTable = joinConfCloned.partOutputTable(joinPart)
-
-              val runContext = JoinPartJobContext(unfilledLeftDf,
-                                                  bloomFilterOpt,
-                                                  partTable,
-                                                  leftTimeRangeOpt,
-                                                  tableProps,
-                                                  runSmallMode)
+              val runContext =
+                JoinPartJobContext(unfilledLeftDf, bloomFilterOpt, leftTimeRangeOpt, tableProps, runSmallMode)
 
               val skewKeys: Option[Map[String, Seq[String]]] = Option(joinConfCloned.skewKeys).map { jmap =>
                 val scalaMap = jmap.toScala
@@ -356,7 +358,7 @@ class Join(joinConf: api.Join,
               val leftTable = if (usingBootstrappedLeft) {
                 joinConfCloned.metaData.bootstrapTable
               } else {
-                joinConfCloned.getLeft.table
+                JoinUtils.computeLeftSourceTableName(joinConfCloned)
               }
 
               val joinPartJobRange = new DateRange()
@@ -369,15 +371,16 @@ class Join(joinConf: api.Join,
                 }.asJava
               }.orNull
 
-              val joinPartJobArgs = new JoinPartJobArgs()
-                .setLeftTable(leftTable)
+              val joinPartNodeMetadata = joinConfCloned.metaData.deepCopy()
+              joinPartNodeMetadata.setName(partTable)
+
+              val joinPartNode = new JoinPartNode()
                 .setLeftDataModel(joinConfCloned.getLeft.dataModel.toString)
                 .setJoinPart(joinPart)
-                .setOutputTable(joinConfCloned.partOutputTable(joinPart))
-                .setRange(joinPartJobRange)
                 .setSkewKeys(skewKeysAsJava)
+                .setMetaData(joinPartNodeMetadata)
 
-              val joinPartJob = new JoinPartJob(joinPartJobArgs)
+              val joinPartJob = new JoinPartJob(joinPartNode, joinPartJobRange)
               val df = joinPartJob.run(Some(runContext)).map(df => joinPart -> df)
 
               Thread.currentThread().setName(s"done-$threadName")

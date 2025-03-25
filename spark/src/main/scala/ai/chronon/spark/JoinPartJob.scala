@@ -1,11 +1,12 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Constants, JoinPart, PartitionRange, PartitionSpec}
+import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
 import ai.chronon.api.DataModel.{DataModel, Entities, Events}
-import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps}
+import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.orchestration.JoinPartJobArgs
+import ai.chronon.orchestration.JoinPartNode
+
 import ai.chronon.online.Metrics
 import ai.chronon.spark.Extensions.DfWithStats
 import ai.chronon.spark.Extensions._
@@ -23,24 +24,22 @@ import java.util
 
 case class JoinPartJobContext(leftDf: Option[DfWithStats],
                               joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]],
-                              partTable: String,
                               leftTimeRangeOpt: Option[PartitionRange],
                               tableProps: Map[String, String],
                               runSmallMode: Boolean)
 
-class JoinPartJob(args: JoinPartJobArgs, showDf: Boolean = false)(implicit tableUtils: TableUtils) {
+class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)(implicit tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val partitionSpec = tableUtils.partitionSpec
 
-  private val leftTable = args.leftTable
-  private val leftDataModel = args.leftDataModel match {
+  private val leftTable = node.leftSourceTable
+  private val leftDataModel = node.leftDataModel match {
     case "Entities" => Entities
     case "Events"   => Events
   }
-  private val joinPart = args.joinPart
-  private val outputTable = args.outputTable
-  private val dateRange = args.range.toPartitionRange
-  private val skewKeys: Option[Map[String, Seq[String]]] = Option(args.skewKeys).map { skewKeys =>
+  private val joinPart = node.joinPart
+  private val dateRange = range.toPartitionRange
+  private val skewKeys: Option[Map[String, Seq[String]]] = Option(node.skewKeys).map { skewKeys =>
     skewKeys.asScala.map { case (k, v) => k -> v.asScala.toSeq }.toMap
   }
 
@@ -67,7 +66,6 @@ class JoinPartJob(args: JoinPartJobArgs, showDf: Boolean = false)(implicit table
 
       JoinPartJobContext(Option(leftWithStats),
                          joinLevelBloomMapOpt,
-                         outputTable,
                          leftTimeRangeOpt,
                          Map.empty[String, String],
                          runSmallMode)
@@ -79,7 +77,7 @@ class JoinPartJob(args: JoinPartJobArgs, showDf: Boolean = false)(implicit table
       joinPart,
       dateRange,
       jobContext.leftTimeRangeOpt,
-      jobContext.partTable,
+      node.metaData.outputTable,
       jobContext.tableProps,
       jobContext.joinLevelBloomMapOpt,
       jobContext.runSmallMode
