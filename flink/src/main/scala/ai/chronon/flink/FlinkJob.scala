@@ -39,7 +39,7 @@ import org.apache.flink.streaming.api.windowing.assigners.WindowAssigner
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.OutputTag
-import org.apache.spark.sql.Encoder
+import org.apache.spark.sql.{Encoder, Row}
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Serialization
@@ -103,6 +103,21 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
         "Tiling is disabled.")
 
+    val sparkEvalSource = createSparkEvalSource(env) // create the source and spark expr eval datastreams
+    val putRecordDS: DataStream[AvroCodecOutput] = sparkEvalSource
+      .flatMap(AvroCodecFn[T](groupByServingInfoParsed))
+      .uid(s"avro-conversion-$groupByName")
+      .name(s"Avro conversion for $groupByName")
+      .setParallelism(sparkEvalSource.getParallelism)
+
+    AsyncKVStoreWriter.withUnorderedWaits(
+      putRecordDS,
+      sinkFn,
+      groupByName
+    )
+  }
+
+  private def createSparkEvalSource(env: StreamExecutionEnvironment): DataStream[Map[String, Any]] = {
     // we expect parallelism on the source stream to be set by the source provider
     val sourceStream: DataStream[T] =
       eventSrc
@@ -122,17 +137,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .name(s"Spark expression eval with timestamps for $groupByName")
       .setParallelism(sourceStream.getParallelism)
 
-    val putRecordDS: DataStream[AvroCodecOutput] = sparkExprEvalDSWithWatermarks
-      .flatMap(AvroCodecFn[T](groupByServingInfoParsed))
-      .uid(s"avro-conversion-$groupByName")
-      .name(s"Avro conversion for $groupByName")
-      .setParallelism(sourceStream.getParallelism)
-
-    AsyncKVStoreWriter.withUnorderedWaits(
-      putRecordDS,
-      sinkFn,
-      groupByName
-    )
+    sparkExprEvalDSWithWatermarks
   }
 
   /** The "tiled" version of the Flink app.
@@ -157,24 +162,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     val tilingWindowSizeInMillis: Long =
       ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
 
-    // we expect parallelism on the source stream to be set by the source provider
-    val sourceStream: DataStream[T] =
-      eventSrc
-        .getDataStream(topic, groupByName)(env, parallelism)
-        .uid(s"source-$groupByName")
-        .name(s"Source for $groupByName")
-
-    val sparkExprEvalDS: DataStream[Map[String, Any]] = sourceStream
-      .flatMap(exprEval)
-      .uid(s"spark-expr-eval-flatmap-$groupByName")
-      .name(s"Spark expression eval for $groupByName")
-      .setParallelism(sourceStream.getParallelism) // Use same parallelism as previous operator
-
-    val sparkExprEvalDSAndWatermarks: DataStream[Map[String, Any]] = sparkExprEvalDS
-      .assignTimestampsAndWatermarks(watermarkStrategy)
-      .uid(s"spark-expr-eval-timestamps-$groupByName")
-      .name(s"Spark expression eval with timestamps for $groupByName")
-      .setParallelism(sourceStream.getParallelism)
+    val sparkEvalSource = createSparkEvalSource(env)
 
     val inputSchema: Seq[(String, DataType)] =
       exprEval.getOutputSchema.fields
@@ -204,7 +192,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
     // 7. Output: TimestampedTile, containing the current IRs (Avro encoded) and the timestamp of the current element
 
     val tilingDS: SingleOutputStreamOperator[TimestampedTile] =
-      sparkExprEvalDSAndWatermarks
+      sparkEvalSource
         .keyBy(KeySelectorBuilder.build(groupByServingInfoParsed.groupBy))
         .window(window)
         .trigger(trigger)
@@ -216,7 +204,7 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
         )
         .uid(s"tiling-01-$groupByName")
         .name(s"Tiling for $groupByName")
-        .setParallelism(sourceStream.getParallelism)
+        .setParallelism(sparkEvalSource.getParallelism)
 
     // Track late events
     tilingDS
@@ -224,13 +212,13 @@ class FlinkJob[T](eventSrc: FlinkSource[T],
       .flatMap(new LateEventCounter(groupByName))
       .uid(s"tiling-side-output-01-$groupByName")
       .name(s"Tiling Side Output Late Data for $groupByName")
-      .setParallelism(sourceStream.getParallelism)
+      .setParallelism(sparkEvalSource.getParallelism)
 
     val putRecordDS: DataStream[AvroCodecOutput] = tilingDS
       .flatMap(new TiledAvroCodecFn[T](groupByServingInfoParsed, tilingWindowSizeInMillis))
       .uid(s"avro-conversion-01-$groupByName")
       .name(s"Avro conversion for $groupByName")
-      .setParallelism(sourceStream.getParallelism)
+      .setParallelism(sparkEvalSource.getParallelism)
 
     AsyncKVStoreWriter.withUnorderedWaits(
       putRecordDS,
@@ -244,30 +232,30 @@ object FlinkJob {
   // we set an explicit max parallelism to ensure if we do make parallelism setting updates, there's still room
   // to restore the job from prior state. Number chosen does have perf ramifications if too high (can impact rocksdb perf)
   // so we've chosen one that should allow us to scale to jobs in the 10K-50K events / s range.
-  val MaxParallelism: Int = 1260 // highly composite number
+  private val MaxParallelism: Int = 1260 // highly composite number
 
   // We choose to checkpoint frequently to ensure the incremental checkpoints are small in size
   // as well as ensuring the catch-up backlog is fairly small in case of failures
-  val CheckPointInterval: FiniteDuration = 10.seconds
+  private val CheckPointInterval: FiniteDuration = 10.seconds
 
   // We set a more lenient checkpoint timeout to guard against large backlog / catchup scenarios where checkpoints
   // might be slow and a tight timeout will set us on a snowball restart loop
-  val CheckpointTimeout: FiniteDuration = 5.minutes
+  private val CheckpointTimeout: FiniteDuration = 5.minutes
 
   // We use incremental checkpoints and we cap how many we keep around
-  val MaxRetainedCheckpoints: Int = 10
+  private val MaxRetainedCheckpoints: Int = 10
 
   // how many consecutive checkpoint failures can we tolerate - default is 0, we choose a more lenient value
   // to allow us a few tries before we give up
-  val TolerableCheckpointFailures: Int = 5
+  private val TolerableCheckpointFailures: Int = 5
 
   // Keep windows open for a bit longer before closing to ensure we don't lose data due to late arrivals (needed in case of
   // tiling implementation)
-  val AllowedOutOfOrderness: Duration = Duration.ofMinutes(5)
+  private val AllowedOutOfOrderness: Duration = Duration.ofMinutes(5)
 
   // Set an idleness timeout to keep time moving in case of very low traffic event streams as well as late events during
   // large backlog catchups
-  val IdlenessTimeout: Duration = Duration.ofSeconds(30)
+  private val IdlenessTimeout: Duration = Duration.ofSeconds(30)
 
   // We wire up the watermark strategy post the spark expr eval to be able to leverage the user's timestamp column (which is
   // ETLed to Contants.TimeColumn) as the event timestamp and watermark
@@ -304,6 +292,36 @@ object FlinkJob {
     verify()
   }
 
+  case class JobInputs(encoder: Encoder[Row], source: KafkaFlinkSource, tilingEnabled: Boolean)
+
+  object JobInputs {
+    def apply(servingInfo: GroupByServingInfoParsed, kafkaBootstrap: Option[String]): JobInputs = {
+      val topicUri = servingInfo.groupBy.streamingSource.get.topic
+      val topicInfo = TopicInfo.parse(topicUri)
+
+      val schemaProvider =
+        topicInfo.params.get(RegistryHostKey) match {
+          case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
+          case None =>
+            throw new IllegalArgumentException(
+              s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
+        }
+
+      val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)
+
+      val source = topicInfo.messageBus match {
+        case "kafka" =>
+          new KafkaFlinkSource(kafkaBootstrap, deserializationSchema, topicInfo)
+        case _ =>
+          throw new IllegalArgumentException(s"Unsupported message bus: ${topicInfo.messageBus}")
+      }
+
+      val tilingEnabled = servingInfo.groupByOps.tilingFlag
+
+      JobInputs(encoder, source, tilingEnabled)
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     val jobArgs = new JobArgs(args)
     val groupByName = jobArgs.groupbyName()
@@ -328,7 +346,8 @@ object FlinkJob {
       }
     }
 
-    val flinkJob =
+    var tilingFlag = false
+    val flinkJob: FlinkJob[Row] =
       if (useMockedSource) {
         // We will yank this conditional block when we wire up our real sources etc.
         TestFlinkJob.buildTestFlinkJob(api)
@@ -336,34 +355,15 @@ object FlinkJob {
         val maybeServingInfo = metadataStore.getGroupByServingInfo(groupByName)
         maybeServingInfo
           .map { servingInfo =>
-            val topicUri = servingInfo.groupBy.streamingSource.get.topic
-            val topicInfo = TopicInfo.parse(topicUri)
-
-            val schemaProvider =
-              topicInfo.params.get(RegistryHostKey) match {
-                case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
-                case None =>
-                  throw new IllegalArgumentException(
-                    s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
-              }
-
-            val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)
-            val source =
-              topicInfo.messageBus match {
-                case "kafka" =>
-                  new KafkaFlinkSource(kafkaBootstrap, deserializationSchema, topicInfo)
-                case _ =>
-                  throw new IllegalArgumentException(s"Unsupported message bus: ${topicInfo.messageBus}")
-              }
-
+            tilingFlag = servingInfo.groupByOps.tilingFlag
+            val jobInputs = JobInputs(servingInfo, kafkaBootstrap)
             new FlinkJob(
-              eventSrc = source,
+              eventSrc = jobInputs.source,
               sinkFn = new AsyncKVStoreWriter(api, servingInfo.groupBy.metaData.name),
               groupByServingInfoParsed = servingInfo,
-              encoder = encoder,
-              parallelism = source.parallelism
+              encoder = jobInputs.encoder,
+              parallelism = jobInputs.source.parallelism
             )
-
           }
           .recover { case e: Exception =>
             throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
@@ -397,7 +397,7 @@ object FlinkJob {
 
     env.configure(config)
 
-    val jobDatastream = if (api.flagStore.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].toJava)) {
+    val jobDatastream = if (tilingFlag) {
       flinkJob
         .runTiledGroupByJob(env)
     } else {

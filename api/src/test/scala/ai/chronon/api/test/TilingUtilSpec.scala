@@ -23,4 +23,11 @@ class TilingUtilSpec extends AnyFlatSpec with Matchers {
     deserializedKey.getTileSizeMillis should be(10.hours.toMillis)
     deserializedKey.getTileStartTimestampMillis should be(1738195200000L)
   }
+
+  "TilingUtils" should "deser Flink written tile key" in {
+    val base64String = "GChTRUFSQ0hfQkVBQ09OU19MSVNUSU5HX0FDVElPTlNfU1RSRUFNSU5HGWMCkJHL6Q0WgLq3AxaAyJ/uuWUA" //  "Aiw=" // "ArL4u9gL"
+    val bytes = java.util.Base64.getDecoder.decode(base64String)
+    val deserializedKey = TilingUtils.deserializeTileKey(bytes)
+    deserializedKey should not be null
+  }
 }

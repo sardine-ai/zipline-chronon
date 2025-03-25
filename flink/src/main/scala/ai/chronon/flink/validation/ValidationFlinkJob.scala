@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory
 import java.lang
 import scala.collection.mutable
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.flink.FlinkJob.JobInputs
 
 case class EventRecord(recordId: String, event: Row)
 case class ValidationStats(totalRecords: Int,
@@ -136,30 +137,13 @@ object ValidationFlinkJob {
     val maybeServingInfo = metadataStore.getGroupByServingInfo(groupByName)
     val validationJob: ValidationFlinkJob = maybeServingInfo
       .map { servingInfo =>
-        val topicUri = servingInfo.groupBy.streamingSource.get.topic
-        val topicInfo = TopicInfo.parse(topicUri)
+        val jobInputs = JobInputs(servingInfo, kafkaBootstrap)
 
-        val schemaProvider =
-          topicInfo.params.get(RegistryHostKey) match {
-            case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
-            case None =>
-              throw new IllegalArgumentException(
-                s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
-          }
-
-        val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)
-        val source =
-          topicInfo.messageBus match {
-            case "kafka" =>
-              new KafkaFlinkSource(kafkaBootstrap, deserializationSchema, topicInfo)
-            case _ =>
-              throw new IllegalArgumentException(s"Unsupported message bus: ${topicInfo.messageBus}")
-          }
         // keep //ism low as we just need a small set of rows to compare against
         new ValidationFlinkJob(
-          eventSrc = source,
+          eventSrc = jobInputs.source,
           groupByServingInfoParsed = servingInfo,
-          encoder = encoder,
+          encoder = jobInputs.encoder,
           parallelism = 1,
           validationRows = validateRows
         )

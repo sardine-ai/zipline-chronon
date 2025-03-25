@@ -153,7 +153,7 @@ case class TiledAvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParse
         avroConversionErrorCounter.inc()
     }
 
-  def avroConvertTileToPutRequest(in: TimestampedTile): AvroCodecOutput = {
+  private def avroConvertTileToPutRequest(in: TimestampedTile): AvroCodecOutput = {
     val tsMills = in.latestTsMillis
 
     // 'keys' is a map of (key name in schema -> key value), e.g. Map("card_number" -> "4242-4242-4242-4242")
