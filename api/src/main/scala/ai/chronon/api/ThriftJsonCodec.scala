@@ -17,6 +17,7 @@
 package ai.chronon.api
 
 import ai.chronon.api.Extensions.StringsOps
+import ai.chronon.api.HashUtils.md5Bytes
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.thrift.TDeserializer
@@ -72,6 +73,11 @@ object ThriftJsonCodec {
 
   def md5Digest[T <: TBase[_, _]: Manifest](obj: T): String = {
     HashUtils.md5Base64(ThriftJsonCodec.toJsonStr(obj).getBytes(Constants.UTF8))
+  }
+
+  def hexDigest[T <: TBase[_, _]: Manifest](obj: T, length: Int = 6): String = {
+    // Get the MD5 hash bytes
+    md5Bytes(serializer.serialize(obj)).map("%02x".format(_)).mkString.take(length)
   }
 
   def md5Digest[T <: TBase[_, _]: Manifest](obj: util.List[T]): String = {
