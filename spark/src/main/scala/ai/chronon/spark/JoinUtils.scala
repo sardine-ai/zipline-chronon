@@ -17,7 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Constants, JoinPart, PartitionRange}
+import ai.chronon.api.{Accuracy, Constants, JoinPart, PartitionRange, ThriftJsonCodec}
 import ai.chronon.api.DataModel.{DataModel, Events}
 import ai.chronon.api.Extensions.JoinOps
 import ai.chronon.api.Extensions._
@@ -601,5 +601,24 @@ object JoinUtils {
         df.withColumn(field.name, lit(null).cast(field.dataType))
       }
     }
+  }
+
+  /** Computes the name of the source table for a join's left side
+    * This is the output table of the SourceWithFilterNode job that runs for the join
+    * Format: {join_output_namespace}.{join_left_source_table_with_namespace_replaced}_{source_hash}[_{skew_keys_hash}]
+    */
+  def computeLeftSourceTableName(join: api.Join): String = {
+    val source = join.left
+    val namespace = join.metaData.outputNamespace
+    // Replace . with __ in source table name
+    val sourceTable = source.table.replace(".", "__")
+
+    // Calculate source hash
+    val sourceHash = ThriftJsonCodec.hexDigest(source)
+
+    // Calculate skewKeys hash if present, using Option
+    val skewKeysHashSuffix = Option(join.skewKeys) // TODO -- hash this or something?
+
+    s"${namespace}.${sourceTable}_${sourceHash}"
   }
 }

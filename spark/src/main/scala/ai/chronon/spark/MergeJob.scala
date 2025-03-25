@@ -1,11 +1,29 @@
 package ai.chronon.spark
 
 import ai.chronon.spark.JoinUtils.{coalescedJoin, padFields}
-import ai.chronon.orchestration.MergeJobArgs
+import ai.chronon.orchestration.JoinMergeNode
+import ai.chronon.api.{
+  Accuracy,
+  Constants,
+  DateRange,
+  JoinPart,
+  PartitionSpec,
+  QueryUtils,
+  RelevantLeftForJoinPart,
+  StructField,
+  StructType
+}
 import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, ExternalPartOps, GroupByOps, JoinPartOps, SourceOps}
+import ai.chronon.api.Extensions.{
+  DateRangeOps,
+  DerivationOps,
+  ExternalPartOps,
+  GroupByOps,
+  JoinPartOps,
+  MetadataOps,
+  SourceOps
+}
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.api.{Accuracy, Constants, JoinPart, PartitionSpec, QueryUtils, StructField, StructType}
 import ai.chronon.online.SparkConversions
 import org.apache.spark.sql.DataFrame
 import org.slf4j.{Logger, LoggerFactory}
@@ -26,21 +44,24 @@ joinPartsToTables is a map of JoinPart to the table name of the output of that j
 due to bootstrap can be omitted from this map.
  */
 
-class MergeJob(args: MergeJobArgs, tableProps: Map[String, String] = Map.empty)(implicit tableUtils: TableUtils) {
+class MergeJob(node: JoinMergeNode,
+               range: DateRange,
+               joinParts: Seq[JoinPart],
+               tableProps: Map[String, String] = Map.empty)(implicit tableUtils: TableUtils) {
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  private val join = args.join
-  private val leftInputTable = args.leftInputTable
-  private val joinPartsToTables = args.joinPartsToTables.asScala
-  private val outputTable = args.outputTable
-  private val range = args.range.toPartitionRange
+  private val join = node.join
+  private val leftInputTable = join.metaData.bootstrapTable
+  // Use the node's Join's metadata for output table
+  private val outputTable = node.metaData.outputTable
+  private val dateRange = range.toPartitionRange
 
   def run(): Unit = {
-    val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(range))
+    val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dateRange))
     val leftSchema = leftDf.schema
     val bootstrapInfo =
-      BootstrapInfo.from(join, range, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
+      BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
 
     val rightPartsData = getRightPartsData()
 
@@ -63,12 +84,14 @@ class MergeJob(args: MergeJobArgs, tableProps: Map[String, String] = Map.empty)(
   }
 
   private def getRightPartsData(): Seq[(JoinPart, DataFrame)] = {
-    joinPartsToTables.map { case (joinPart, partTable) =>
+    joinParts.map { joinPart =>
+      // Use the RelevantLeftForJoinPart utility to get the part table name
+      val partTable = RelevantLeftForJoinPart.fullPartTableName(join, joinPart)
       val effectiveRange =
         if (join.left.dataModel != Entities && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
-          range.shift(-1)
+          dateRange.shift(-1)
         } else {
-          range
+          dateRange
         }
       val wheres = effectiveRange.whereClauses("ds")
       val sql = QueryUtils.build(null, partTable, wheres)

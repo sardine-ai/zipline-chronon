@@ -44,12 +44,6 @@ struct NodeKey {
 
     2: optional LogicalType logicalType
     3: optional PhysicalNodeType physicalType
-
-    /**
-    * represents the computation of the node including the computation of all its parents
-    * direct and indirect changes that change output will affect lineage hash
-    **/
-    10: optional string lineageHash
 }
 
 struct NodeInfo {
@@ -84,6 +78,8 @@ struct NodeInfo {
     30: optional LogicalNode conf
 }
 
+
+
 struct NodeConnections {
     1: optional list<NodeKey> parents
     2: optional list<NodeKey> children
@@ -95,7 +91,7 @@ struct NodeGraph {
 }
 
 
-
+// TODO deprecate
 // ====================== physical node types ======================
 enum GroupByNodeType {
     PARTIAL_IR = 1,  // useful only for events - a day's worth of irs
@@ -149,61 +145,108 @@ union PhysicalNodeType {
 }
 
 struct PhysicalNode {
-    1: required string name
-    2: required PhysicalNodeType nodeType
-    3: required LogicalNode logicalNode
-    4: required string confHash
-    5: required list<common.TableDependency> tableDependencies
-    6: required list<string> outputColumns
-    7: required string output_table
-}
-
-
-// ====================== End of physical node types ======================
-
-
-struct SourceWithFilter {
-    1: optional api.Source source
-    2: optional map<string,list<string>> excludeKeys
-}
-
-struct SourceJobArgs {
-    1: optional SourceWithFilter source
-    100: optional common.DateRange range
-    101: optional string outputTable
-}
-
-struct BootstrapJobArgs {
-    1: optional api.Join join
-    2: optional common.DateRange range
-    100: optional string leftSourceTable
-    101: optional string outputTable
-}
-
-struct MergeJobArgs {
-    1: optional api.Join join
-    2: optional common.DateRange range
-    100: optional string leftInputTable
-    101: optional map<api.JoinPart, string> joinPartsToTables
+    1: optional string name
+    2: optional PhysicalNodeType nodeType
+    3: optional LogicalNode logicalNode
+    4: optional string confHash
+    100: optional list<common.TableDependency> tableDependencies
+    101: optional list<string> outputColumns
     102: optional string outputTable
 }
 
-struct JoinDerivationJobArgs {
-   1: optional string trueLeftTable
-   2: optional string baseTable
-   3: optional list<api.Derivation> derivations
-   100: optional common.DateRange range
-   101: optional string outputTable
+struct PhysicalGraph {
+    1: optional PhysicalNode node,
+    2: optional list<PhysicalGraph> dependencies
+    3: optional common.DateRange range
 }
 
-struct JoinPartJobArgs {
-    1: optional string leftTable
+// ====================== End of physical node types ======================
+
+/**
+* Multiple logical nodes could share the same physical node
+* For that reason we don't have a 1-1 mapping between logical and physical nodes
+* TODO -- kill this (typescript dependency)
+**/
+struct PhysicalNodeKey {
+    1: optional string name
+    2: optional PhysicalNodeType nodeType
+}
+
+// ====================== End of physical node types ======================
+// ====================== Modular Join Spark Job Args ======================
+
+struct SourceWithFilterNode {
+    1: optional api.Source source
+    2: optional map<string,list<string>> excludeKeys
+    10: optional api.MetaData metaData
+}
+
+struct JoinBootstrapNode {
+    1: optional api.Join join
+    10: optional api.MetaData metaData
+}
+
+struct JoinMergeNode {
+    1: optional api.Join join
+    10: optional api.MetaData metaData
+}
+
+struct JoinDerivationNode {
+   1: optional api.Join join
+   10: optional api.MetaData metaData
+}
+
+struct JoinPartNode {
+    1: optional string leftSourceTable
     2: optional string leftDataModel
     3: optional api.JoinPart joinPart
-    4: optional string outputTable
-    100: optional common.DateRange range
-    101: optional map<string, list<string>> skewKeys
+    4: optional map<string, list<string>> skewKeys
+    10: optional api.MetaData metaData
 }
+
+struct LabelPartNode {
+    1: optional api.Join join
+    10: optional api.MetaData metaData
+}
+
+union NodeUnion {
+    1: SourceWithFilterNode sourceWithFilter
+    2: JoinBootstrapNode joinBootstrap
+    3: JoinPartNode joinPart
+    4: JoinMergeNode joinMerge
+    5: JoinDerivationNode joinDerivation
+    // TODO add label join
+    // TODO: add other types of nodes
+}
+
+// ====================== End of Modular Join Spark Job Args ===================
+
+// ====================== Orchestration Service API Types ======================
+
+struct Conf {
+    1: optional string name
+    2: optional string hash
+    3: optional string contents
+}
+
+struct DiffRequest {
+    1: optional map<string, string> namesToHashes
+}
+
+struct DiffResponse {
+    1: optional list<string> diff
+}
+
+struct UploadRequest {
+    1: optional list<Conf> diffConfs
+    2: optional string branch
+}
+
+struct UploadResponse {
+    1: optional string message
+}
+
+// ====================== End of Orchestration Service API Types ======================
 
 /**
 * Below are dummy thrift objects for execution layer skeleton code using temporal
@@ -269,6 +312,8 @@ struct DummyNode {
 *
 *
 * Workflow is always triggered externally:
+*
+* node = get_node(name, version)
 *
 * node.trigger(start_date?, end_date, branch, is_scheduled):
 *
