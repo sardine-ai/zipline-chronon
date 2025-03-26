@@ -8,15 +8,12 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.FlinkJob.watermarkStrategy
-import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
+import ai.chronon.flink.SourceIdentitySchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.flink.validation.ValidationFlinkJob
-import ai.chronon.flink.window.AlwaysFireOnElementTrigger
-import ai.chronon.flink.window.FlinkRowAggProcessFunction
-import ai.chronon.flink.window.FlinkRowAggregationFunction
-import ai.chronon.flink.window.KeySelectorBuilder
+import ai.chronon.flink.window.{AlwaysFireOnElementTrigger, FlinkRowAggProcessFunction, FlinkRowAggregationFunction, KeySelectorBuilder}
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.TopicInfo
@@ -47,17 +44,15 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
 import scala.collection.Seq
 
-/** Flink job that processes a single streaming GroupBy and writes out the results to the KV store.
+/** Flink job that processes a single streaming GroupBy and writes out the results (in the form of pre-aggregated tiles) to the KV store.
   *
-  * There are two versions of the job, tiled and untiled. The untiled version writes out raw events while the tiled
-  * version writes out pre-aggregates. See the `runGroupByJob` and `runTiledGroupByJob` methods for more details.
-  *
-  * @param eventSrc - Provider of a Flink Datastream[T] for the given topic and groupBy
+  * @param eventSrc - Provider of a Flink Datastream[ Map[String, Any] ] for the given topic and groupBy. The Map contains
+ *                    projected columns from the source data based on projections and filters in the GroupBy.
   * @param sinkFn - Async Flink writer function to help us write to the KV store
   * @param groupByServingInfoParsed - The GroupBy we are working with
   * @param parallelism - Parallelism to use for the Flink job
   */
-class FlinkJob(eventSrc: ProjectedKafkaFlinkSource,
+class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
                inputSchema: Seq[(String, DataType)],
                sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
                groupByServingInfoParsed: GroupByServingInfoParsed,
@@ -272,7 +267,14 @@ object FlinkJob {
                   s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
             }
 
-          val deserializationSchema = schemaProvider.buildProjectedSourceDeserializer(servingInfo.groupBy)
+          val deserializationSchema = schemaProvider.buildDeserializationSchema(servingInfo.groupBy)
+          require(
+            deserializationSchema.isInstanceOf[SourceProjection],
+            s"Expect created deserialization schema for groupBy: $groupByName with $topicInfo to mixin SourceProjection. " +
+              s"We got: ${deserializationSchema.getClass.getSimpleName}"
+          )
+          val projectedSchema = deserializationSchema.asInstanceOf[SourceProjection].projectedSchema
+
           val source =
             topicInfo.messageBus match {
               case "kafka" =>
@@ -283,7 +285,7 @@ object FlinkJob {
 
           new FlinkJob(
             eventSrc = source,
-            deserializationSchema.projectedSchema,
+            projectedSchema,
             sinkFn = new AsyncKVStoreWriter(api, servingInfo.groupBy.metaData.name),
             groupByServingInfoParsed = servingInfo,
             parallelism = source.parallelism

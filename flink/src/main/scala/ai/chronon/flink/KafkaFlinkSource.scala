@@ -56,11 +56,11 @@ class BaseKafkaFlinkSource[T](kafkaBootstrap: Option[String],
 }
 
 class KafkaFlinkSource(kafkaBootstrap: Option[String],
-                       deserializationSchema: DeserializationSchema[Row],
+                       deserializationSchema: ChrononDeserializationSchema[Row],
                        topicInfo: TopicInfo)
     extends BaseKafkaFlinkSource[Row](kafkaBootstrap, deserializationSchema, topicInfo)
 
 class ProjectedKafkaFlinkSource(kafkaBootstrap: Option[String],
-                                deserializationSchema: ChrononDeserializationSchema,
+                                deserializationSchema: ChrononDeserializationSchema[Map[String, Any]],
                                 topicInfo: TopicInfo)
     extends BaseKafkaFlinkSource[Map[String, Any]](kafkaBootstrap, deserializationSchema, topicInfo)

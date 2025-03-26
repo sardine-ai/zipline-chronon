@@ -11,8 +11,7 @@ import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.flink.AsyncKVStoreWriter
-import ai.chronon.flink.FlinkSource
+import ai.chronon.flink.{AsyncKVStoreWriter, FlinkSource, SparkExpressionEvalFn}
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.Extensions.StructTypeOps
@@ -48,7 +47,7 @@ class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestE
   }
 }
 
-class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestEvent] {
+class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn:  SparkExpressionEvalFn[E2ETestEvent]) extends FlinkSource[Map[String, Any]] {
   def watermarkStrategy: WatermarkStrategy[E2ETestEvent] =
     WatermarkStrategy
       .forBoundedOutOfOrderness[E2ETestEvent](Duration.ofSeconds(5))
@@ -58,8 +57,11 @@ class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSour
       })
   override def getDataStream(topic: String, groupName: String)(
       env: StreamExecutionEnvironment,
-      parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
-    env.fromCollection(mockEvents.toJava).assignTimestampsAndWatermarks(watermarkStrategy)
+      parallelism: Int): SingleOutputStreamOperator[Map[String, Any]] = {
+    env
+      .fromCollection(mockEvents.toJava)
+      .assignTimestampsAndWatermarks(watermarkStrategy)
+      .flatMap(sparkExprEvalFn)
   }
 }
 

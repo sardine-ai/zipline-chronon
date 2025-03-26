@@ -2,7 +2,7 @@ package ai.chronon.flink.validation
 
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.test.{CollectSink, FlinkTestUtils}
-import ai.chronon.flink.{FlinkSource, SparkExpressionEvalFn}
+import ai.chronon.flink.{FlinkSource, SparkExpressionEval, SparkExpressionEvalFn}
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
@@ -71,7 +71,7 @@ class ValidationFlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter 
                      StructField("created", LongType))
     val encoder = Encoders.row(StructType(fields))
 
-    val outputSchema = new SparkExpressionEvalFn(encoder, groupBy).getOutputSchema
+    val outputSchema = new SparkExpressionEval(encoder, groupBy).getOutputSchema
 
     val groupByServingInfoParsed =
       FlinkTestUtils.makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
