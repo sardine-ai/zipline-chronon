@@ -32,10 +32,10 @@ source $VENV_DIR/bin/activate
 
 # Download the wheel
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  WHEEL_FILE=$(gcloud storage ls gs://zipline-artifacts-canary/release/candidate/wheels/ | grep zipline_ai | sort | tail -n 1 | xargs -n 1 basename)
+  WHEEL_FILE=$(gcloud storage ls gs://zipline-artifacts-canary/release/candidate/wheels/ | grep zipline_ai | tail -n 1 | xargs -n 1 basename)
   gcloud storage cp gs://zipline-artifacts-canary/release/candidate/wheels/${WHEEL_FILE} .
 else
-  WHEEL_FILE=$(gcloud storage ls gs://zipline-artifacts-dev/release/latest/wheels/ | grep zipline_ai | sort | tail -n 1 | xargs -n 1 basename)
+  WHEEL_FILE=$(gcloud storage ls gs://zipline-artifacts-dev/release/latest/wheels/ | grep zipline_ai | tail -n 1 | xargs -n 1 basename)
   gcloud storage cp gs://zipline-artifacts-dev/release/latest/wheels/${WHEEL_FILE} .
 fi
 # Install the wheel (force)
