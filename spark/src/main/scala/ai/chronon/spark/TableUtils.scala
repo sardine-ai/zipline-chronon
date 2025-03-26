@@ -22,33 +22,21 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.CreationUtils
-import ai.chronon.spark.format.FormatProvider
+import ai.chronon.spark.format.{CreationUtils, FormatProvider}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
-import org.apache.spark.sql.catalyst.plans.logical.Filter
-import org.apache.spark.sql.catalyst.plans.logical.Project
+import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.PrintWriter
-import java.io.StringWriter
+import java.io.{PrintWriter, StringWriter}
+import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
-import java.time.Instant
-import java.time.ZoneId
-import scala.collection.Seq
-import scala.collection.immutable
-import scala.collection.mutable
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.collection.{Seq, mutable}
+import scala.util.{Failure, Success, Try}
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
@@ -244,9 +232,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                        partitionColumns: List[String] = List(partitionColumn),
                        saveMode: SaveMode = SaveMode.Overwrite,
                        fileFormat: String = "PARQUET",
-                       autoExpand: Boolean = false,
-                       stats: Option[DfStats] = None,
-                       sortByCols: List[String] = List.empty): Unit = {
+                       autoExpand: Boolean = false): Unit = {
 
     // partitions to the last
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
@@ -283,7 +269,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       dfRearranged
     }
 
-    repartitionAndWrite(finalizedDf, tableName, saveMode, stats, sortByCols)
+    logger.info(s"Writing to $tableName ...")
+    finalizedDf.write
+      .mode(saveMode)
+      // Requires table to exist before inserting.
+      // Fails if schema does not match.
+      // Does NOT overwrite the schema.
+      // Handles dynamic partition overwrite.
+      .insertInto(tableName)
+    logger.info(s"Finished writing to $tableName")
   }
 
   // retains only the invocations from chronon code.
@@ -329,16 +323,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def columnSizeEstimator(dataType: DataType): Long = {
-    dataType match {
-      // TODO: improve upon this very basic estimate approach
-      case ArrayType(elementType, _)      => 50 * columnSizeEstimator(elementType)
-      case StructType(fields)             => fields.map(_.dataType).map(columnSizeEstimator).sum
-      case MapType(keyType, valueType, _) => 10 * (columnSizeEstimator(keyType) + columnSizeEstimator(valueType))
-      case _                              => 1
-    }
-  }
-
   def wrapWithCache[T](opString: String, dataFrame: DataFrame)(func: => T): Try[T] = {
     val start = System.currentTimeMillis()
     cacheLevel.foreach { level =>
@@ -359,103 +343,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       clear()
       Failure(ex)
     }
-  }
-
-  private def repartitionAndWrite(df: DataFrame,
-                                  tableName: String,
-                                  saveMode: SaveMode,
-                                  stats: Option[DfStats],
-                                  sortByCols: Seq[String] = Seq.empty): Unit = {
-    wrapWithCache(s"repartition & write to $tableName", df) {
-      logger.info("Repartitioning before writing...")
-
-      val repartitioned =
-        if (sparkSession.conf.get("spark.chronon.write.repartition", true.toString).toBoolean)
-          repartitionInternal(df, tableName, stats, sortByCols)
-        else df
-
-      repartitioned.write
-        .mode(saveMode)
-        // Requires table to exist before inserting.
-        // Fails if schema does not match.
-        // Does NOT overwrite the schema.
-        // Handles dynamic partition overwrite.
-        .insertInto(tableName)
-      logger.info(s"Finished writing to $tableName")
-    }.get
-  }
-
-  private def repartitionInternal(df: DataFrame,
-                                  tableName: String,
-                                  stats: Option[DfStats],
-                                  sortByCols: Seq[String]): DataFrame = {
-
-    // get row count and table partition count statistics
-
-    val (rowCount: Long, tablePartitionCount: Int) =
-      if (df.schema.fieldNames.contains(partitionColumn)) {
-        if (stats.isDefined && stats.get.partitionRange.wellDefined) {
-          stats.get.count -> stats.get.partitionRange.partitions.length
-        } else {
-          val result = df.select(count(lit(1)), approx_count_distinct(col(partitionColumn))).head()
-          (result.getAs[Long](0), result.getAs[Long](1).toInt)
-        }
-      } else {
-        (df.count(), 1)
-      }
-
-    // set to one if tablePartitionCount=0 to avoid division by zero
-    val nonZeroTablePartitionCount = if (tablePartitionCount == 0) 1 else tablePartitionCount
-    logger.info(s"$rowCount rows requested to be written into table $tableName")
-    if (rowCount > 0) {
-      val columnSizeEstimate = columnSizeEstimator(df.schema)
-
-      // check if spark is running in local mode or cluster mode
-      val isLocal = sparkSession.conf.get("spark.master").startsWith("local")
-
-      // roughly 1 partition count per 1m rows x 100 columns
-      val rowCountPerPartition = df.sparkSession.conf
-        .getOption(SparkConstants.ChrononRowCountPerPartition)
-        .map(_.toDouble)
-        .flatMap(value => if (value > 0) Some(value) else None)
-        .getOrElse(1e8)
-
-      val totalFileCountEstimate = math.ceil(rowCount * columnSizeEstimate / rowCountPerPartition).toInt
-      val dailyFileCountUpperBound = 2000
-      val dailyFileCountLowerBound = if (isLocal) 1 else 10
-      val dailyFileCountEstimate = totalFileCountEstimate / nonZeroTablePartitionCount + 1
-      val dailyFileCountBounded =
-        math.max(math.min(dailyFileCountEstimate, dailyFileCountUpperBound), dailyFileCountLowerBound)
-
-      val outputParallelism = df.sparkSession.conf
-        .getOption(SparkConstants.ChrononOutputParallelismOverride)
-        .map(_.toInt)
-        .flatMap(value => if (value > 0) Some(value) else None)
-
-      if (outputParallelism.isDefined) {
-        logger.info(s"Using custom outputParallelism ${outputParallelism.get}")
-      }
-      val dailyFileCount = outputParallelism.getOrElse(dailyFileCountBounded)
-
-      // finalized shuffle parallelism
-      val shuffleParallelism = Math.max(dailyFileCount * nonZeroTablePartitionCount, minWriteShuffleParallelism)
-      val saltCol = "random_partition_salt"
-      val saltedDf = df.withColumn(saltCol, round(rand() * (dailyFileCount + 1)))
-
-      logger.info(
-        s"repartitioning data for table $tableName by $shuffleParallelism spark tasks into $tablePartitionCount table partitions and $dailyFileCount files per partition")
-      val (repartitionCols: immutable.Seq[String], partitionSortCols: immutable.Seq[String]) =
-        if (df.schema.fieldNames.contains(partitionColumn)) {
-          (Seq(partitionColumn, saltCol), Seq(partitionColumn) ++ sortByCols)
-        } else { (Seq(saltCol), sortByCols) }
-      logger.info(s"Sorting within partitions with cols: $partitionSortCols")
-
-      saltedDf
-        .repartition(shuffleParallelism, repartitionCols.map(saltedDf.col): _*)
-        .drop(saltCol)
-        .sortWithinPartitions(partitionSortCols.map(col): _*)
-    }
-    df
   }
 
   def chunk(partitions: Set[String]): Seq[PartitionRange] = {

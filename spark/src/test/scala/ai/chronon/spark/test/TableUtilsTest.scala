@@ -17,16 +17,12 @@
 package ai.chronon.spark.test
 
 import ai.chronon.api._
-import ai.chronon.api.PartitionRange
-import ai.chronon.online.SparkConversions
 import ai.chronon.spark._
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
-import org.apache.spark.sql.Row
-import org.apache.spark.sql._
+import org.apache.spark.sql.{Row, _}
 import org.apache.spark.sql.functions.col
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.{assertEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Try
@@ -360,29 +356,6 @@ class TableUtilsTest extends AnyFlatSpec {
       val firstDs = tableUtils.firstAvailablePartition(tableName, Map(Constants.LabelPartitionColumn -> ds))
       assertTrue(firstDs.contains("2022-11-01"))
     }
-  }
-
-  it should "column size estimator" in {
-    val chrononType = StructType(
-      "table_schema",
-      Array(
-        StructField("key", LongType),
-        StructField("ts", LongType),
-        StructField("int_field", IntType),
-        StructField("array_field", ListType(IntType)),
-        StructField("struct_field",
-                    StructType(name = "",
-                               fields = Array(
-                                 StructField("double_field", DoubleType),
-                                 StructField("array_field", ListType(StringType))
-                               )))
-      )
-    )
-    val sparkType = SparkConversions.fromChrononType(chrononType)
-    assertEquals(
-      104L,
-      tableUtils.columnSizeEstimator(sparkType)
-    )
   }
 
   it should "double udf registration" in {
