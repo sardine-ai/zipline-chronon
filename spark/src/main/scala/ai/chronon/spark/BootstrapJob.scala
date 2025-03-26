@@ -1,12 +1,10 @@
 package ai.chronon.spark
 
-import ai.chronon.api
 import ai.chronon.api.Extensions.{BootstrapPartOps, DateRangeOps, ExternalPartOps, MetadataOps, SourceOps, StringsOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, StructField, StructType}
-import ai.chronon.orchestration.JoinBootstrapNode
-import ai.chronon.api.DateRange
+import ai.chronon.api.{Constants, DateRange, PartitionRange, PartitionSpec, StructField, StructType}
 import ai.chronon.online.SparkConversions
+import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, set_add}
 import org.apache.spark.sql

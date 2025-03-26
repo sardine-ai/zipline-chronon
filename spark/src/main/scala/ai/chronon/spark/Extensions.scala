@@ -17,26 +17,17 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Constants
-import ai.chronon.api.DataPointer
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.AvroConversions
-import ai.chronon.api.PartitionRange
-import ai.chronon.online.SparkConversions
-import ai.chronon.api.TimeRange
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange}
+import ai.chronon.online.{AvroConversions, SparkConversions}
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.DataFrameReader
-import org.apache.spark.sql.DataFrameWriter
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.LongType
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.sketch.BloomFilter
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.util
 import scala.collection.Seq
@@ -150,16 +141,12 @@ object Extensions {
     def save(tableName: String,
              tableProperties: Map[String, String] = null,
              partitionColumns: Seq[String] = List(tableUtils.partitionColumn),
-             autoExpand: Boolean = false,
-             stats: Option[DfStats] = None,
-             sortByCols: Seq[String] = List.empty): Unit = {
+             autoExpand: Boolean = false): Unit = {
       TableUtils(df.sparkSession).insertPartitions(df,
                                                    tableName,
                                                    tableProperties,
                                                    partitionColumns.toList,
-                                                   autoExpand = autoExpand,
-                                                   stats = stats,
-                                                   sortByCols = sortByCols.toList)
+                                                   autoExpand = autoExpand)
     }
 
     def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {
