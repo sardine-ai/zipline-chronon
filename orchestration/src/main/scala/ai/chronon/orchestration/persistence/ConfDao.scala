@@ -56,7 +56,7 @@ class BranchToConfTable(tag: Tag) extends Table[BranchToConf](tag, "BranchToConf
   def * = (branch, confName, confHash).mapTo[BranchToConf]
 }
 
-class ConfRepoDao(db: Database) {
+class ConfDao(db: Database) {
   private val confTable = TableQuery[ConfTable]
 
   // Method to create the `Conf` table if it doesn't exist
@@ -89,6 +89,8 @@ class ConfRepoDao(db: Database) {
   // Method to get all confs by company, branch
   def getConfs(): Future[Seq[Conf]] = {
     val query = confTable
+    println("Query: " + query)
+    println("Db: " + db)
     db.run(query.result)
   }
 

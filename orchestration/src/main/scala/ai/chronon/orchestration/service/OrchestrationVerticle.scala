@@ -1,7 +1,7 @@
 package ai.chronon.orchestration.service
 
-import ai.chronon.orchestration.DiffRequest
-import ai.chronon.orchestration.persistence.ConfRepoDao
+import ai.chronon.orchestration.{DiffRequest, UploadRequest}
+import ai.chronon.orchestration.persistence.ConfDao
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpMethod
 import org.slf4j.LoggerFactory
@@ -37,8 +37,21 @@ class OrchestrationVerticle extends AbstractVerticle {
 
   @throws[Exception]
   protected def startHttpServer(port: Int, configJsonString: String, startPromise: Promise[Void]): Unit = {
+    println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    val db = Database.forURL(
+      url = "jdbc:postgresql://localhost:5432/postgres", // Default database name in PostgreSQL
+      user = "postgres",                                 // Default PostgreSQL user
+      password = "postgres",                             // Default password (change if different)
+      driver = "org.postgresql.Driver"
+    )
+    this.db = db
+    println("db: " + db)
+
     val router = Router.router(vertx)
     wireUpCORSConfig(router)
+    
+    // Important: Register BodyHandler BEFORE any routes that need request bodies
+    router.route().handler(BodyHandler.create())
 
     // Health check route
     router
@@ -58,13 +71,15 @@ class OrchestrationVerticle extends AbstractVerticle {
       })
 
     // Routes for uploading data
-    val dao = new ConfRepoDao(this.db)
+    val dao = new ConfDao(this.db)
     val uploadHandler = new UploadHandler(dao)
     router
-      .post("/upload/v1/diff")
+      .get("/upload/v1/diff")
       .handler(RouteHandlerWrapper.createHandler(uploadHandler.getDiff, classOf[DiffRequest]))
-
-    router.route().handler(BodyHandler.create())
+      
+    router
+      .post("/upload/v1/confs")
+      .handler(RouteHandlerWrapper.createHandler(uploadHandler.upload, classOf[UploadRequest]))
 
     // Start HTTP server
     val httpOptions = new HttpServerOptions()
@@ -82,6 +97,8 @@ class OrchestrationVerticle extends AbstractVerticle {
         OrchestrationVerticle.logger.error("Failed to start HTTP server", err)
         startPromise.fail(err)
       })
+
+
   }
 
   override def stop(stopPromise: Promise[Void]): Unit = {

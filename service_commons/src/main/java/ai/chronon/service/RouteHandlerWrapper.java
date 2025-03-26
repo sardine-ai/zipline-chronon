@@ -119,9 +119,9 @@ public class RouteHandlerWrapper {
             } catch (IllegalArgumentException ex) {
                 LOGGER.error("Incorrect arguments passed for handler creation", ex);
                 ctx.response()
-                    .setStatusCode(400)
-                    .putHeader("content-type", "application/json")
-                    .end(toErrorPayload(ex));
+                        .setStatusCode(400)
+                        .putHeader("content-type", "application/json")
+                        .end(toErrorPayload(ex));
             } catch (Exception ex) {
                 LOGGER.error("Internal error occurred during handler creation", ex);
                 ctx.response()
@@ -177,4 +177,3 @@ public class RouteHandlerWrapper {
         return new JsonObject().put("error", sw.getBuffer().toString()).encode();
     }
 }
-
