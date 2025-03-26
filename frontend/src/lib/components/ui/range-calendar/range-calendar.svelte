@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RangeCalendar as RangeCalendarPrimitive } from 'bits-ui';
 	import * as RangeCalendar from './index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = RangeCalendarPrimitive.Props;
 	type $$Events = RangeCalendarPrimitive.Events;
@@ -20,7 +20,7 @@
 	bind:placeholder
 	bind:startValue
 	{weekdayFormat}
-	class={cn('p-3', className)}
+	class={cls('p-3', className)}
 	{...$$restProps}
 	on:keydown
 	let:months

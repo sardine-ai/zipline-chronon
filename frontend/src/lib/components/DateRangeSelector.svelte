@@ -16,7 +16,7 @@
 	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
 	import IconCalendarDateRange from '~icons/heroicons/calendar-date-range-16-solid';
 
-	import { cn } from '$lib/utils';
+	import { cls } from '@layerstack/tailwind';
 	import { RangeCalendar } from '$lib/components/ui/range-calendar/index';
 	import { getDateRangeParamsConfig } from '$lib/util/date-ranges';
 	import IconInformationCircle from '~icons/heroicons/information-circle';
@@ -99,15 +99,14 @@
 					<Button
 						variant="outline"
 						size="sm"
-						class={cn(
-							'rounded-r-none',
-							dateRangePopoverOpen && 'border border-primary-800',
-							'_border-warning-foreground'
+						class={cls(
+							'rounded-r-none font-normal',
+							dateRangePopoverOpen && 'border border-primary-800'
 						)}
 						builders={[builder]}
 					>
 						<span>{selectDateRange?.label || 'Select range'}</span>
-						<span class="border-input border-l mx-2 h-full _border-warning-foreground"></span>
+						<span class="border-input border-l mx-2 h-full"></span>
 						<span>
 							{#if calendarDateRangePopoverOpen || (calendarDateRange?.start == null && fallbackDateRange?.start == null)}
 								Pick a date
@@ -152,8 +151,8 @@
 					<Button
 						variant="outline"
 						size="sm"
-						class={cn(
-							'rounded-l-none border-l-transparent _border-warning-foreground',
+						class={cls(
+							'rounded-l-none border-l-transparent',
 							calendarDateRangePopoverOpen &&
 								'border border-primary-800 bg-primary hover:bg-primary'
 						)}

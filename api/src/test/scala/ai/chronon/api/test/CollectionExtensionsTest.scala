@@ -1,6 +1,6 @@
-package ai.chronon.orchestration.test
+package ai.chronon.api.test
 
-import ai.chronon.orchestration.utils.CollectionExtensions._
+import ai.chronon.api.CollectionExtensions._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

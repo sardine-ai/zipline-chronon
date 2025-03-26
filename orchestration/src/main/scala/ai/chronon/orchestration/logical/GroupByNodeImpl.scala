@@ -5,7 +5,7 @@ import ai.chronon.api.GroupBy
 import ai.chronon.orchestration.LogicalNode
 import ai.chronon.orchestration.TabularDataType
 import ai.chronon.orchestration.utils
-import ai.chronon.orchestration.utils.CollectionExtensions.JListExtension
+import ai.chronon.api.CollectionExtensions.JListExtension
 
 // GroupBy implementation
 case class GroupByNodeImpl(groupBy: GroupBy) extends LogicalNodeImpl {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Separator as SeparatorPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = SeparatorPrimitive.Props & { fullWidthExtend?: boolean; wide?: boolean };
 
@@ -13,7 +13,7 @@
 </script>
 
 <SeparatorPrimitive.Root
-	class={cn(
+	class={cls(
 		'bg-border shrink-0',
 		orientation === 'horizontal' ? 'h-[1px] w-full' : 'min-h-full w-[1px]',
 		fullWidthExtend && 'relative w-[calc(100%+4rem)] -mx-8',

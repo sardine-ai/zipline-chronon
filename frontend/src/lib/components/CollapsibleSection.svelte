@@ -30,11 +30,11 @@
 	const sizeClasses = {
 		small: {
 			wrapper: 'mt-6 mb-8',
-			title: 'text-regular'
+			title: 'text-sm'
 		},
 		default: {
 			wrapper: 'my-8',
-			title: 'text-large-medium'
+			title: 'text-base'
 		},
 		large: {
 			wrapper: 'my-12',

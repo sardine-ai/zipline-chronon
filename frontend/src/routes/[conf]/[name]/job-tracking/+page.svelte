@@ -21,7 +21,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import IconArrowDownOnSquare16Solid from '~icons/heroicons/arrow-down-on-square-16-solid';
 	import MetadataTable from '$lib/components/MetadataTable/MetadataTable.svelte';
-	import MetadataTableSection from '$lib/components/MetadataTable/MetadataTableSection.svelte';
 	import MetadataTableRow from '$lib/components/MetadataTable/MetadataTableRow.svelte';
 	import { format, PeriodType } from '@layerstack/utils';
 	import IconInformationCircle from '~icons/heroicons/information-circle';
@@ -181,39 +180,36 @@
 		// Apply the scroll
 		scrollableDiv.scrollLeft = scrollLeft + deltaX * ratio;
 	}
-
-	let isTimelineOpen = $state(true);
-	let isMetadataOpen = $state(true);
 </script>
 
 <div class="flex flex-col">
-	<CollapsibleSection title="Current job" bind:open={isMetadataOpen} class="mt-5 mb-6">
+	<CollapsibleSection title="Current job" open class="mt-5 mb-6">
 		{#snippet headerContentRight()}
-			<Button variant="outline" size="md" class="text-small! text-muted-foreground">
+			<Button variant="outline" size="md" class="text-sm! text-muted-foreground">
 				<IconArrowDownOnSquare16Solid class="mr-2 h-4 w-4" />
 				Download Logs
 			</Button>
 		{/snippet}
 		{#snippet collapsibleContent()}
 			<!-- todo: use real data from API -->
-			<MetadataTable columns={2}>
-				<MetadataTableSection>
+			<div class="grid gap-4 grid-cols-2">
+				<MetadataTable>
 					<MetadataTableRow label="Job ID" value="chargeback_v1_adhoc_2024-01-03__2024-01-07" />
 					<MetadataTableRow label="Status" value="Running" />
 					<MetadataTableRow label="Start date & time" value="Oct 08, 2024 4:10pm" />
-				</MetadataTableSection>
-				<MetadataTableSection>
+				</MetadataTable>
+				<MetadataTable>
 					<MetadataTableRow label="Run by" value="Nikhil Simha" />
 					<MetadataTableRow label="Adhoc / Scheduled" value="Adhoc" />
 					<MetadataTableRow label="Type" value="Batch upload" />
-				</MetadataTableSection>
-			</MetadataTable>
+				</MetadataTable>
+			</div>
 		{/snippet}
 	</CollapsibleSection>
 
 	<Separator fullWidthExtend={true} wide={true} />
 
-	<CollapsibleSection title="Timeline" bind:open={isTimelineOpen} class="mt-7">
+	<CollapsibleSection title="Timeline" open class="mt-7">
 		{#snippet headerContentRight()}
 			<Popover>
 				<PopoverTrigger>
@@ -257,7 +253,7 @@
 							<TableRow class="border-none">
 								<TableHead
 									bind:element={jobStructureHead}
-									class={`min-w-[250px] ${tableHeadClass} ${stickyCellClass} text-neutral-900 text-regular px-0 pb-2`}
+									class={`min-w-[250px] ${tableHeadClass} ${stickyCellClass} text-neutral-900 text-sm px-0 pb-2`}
 								>
 									Job structure
 								</TableHead>

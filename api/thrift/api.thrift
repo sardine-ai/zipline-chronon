@@ -14,7 +14,7 @@ struct Query {
     3: optional string startPartition
     4: optional string endPartition
     5: optional string timeColumn
-    6: optional list<string> setups = []
+    6: optional list<string> setups
     7: optional string mutationTimeColumn
     8: optional string reversalColumn
     9: optional string partitionColumn

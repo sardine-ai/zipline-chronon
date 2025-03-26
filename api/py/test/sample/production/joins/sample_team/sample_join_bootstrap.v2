@@ -23,8 +23,7 @@
           "ts": "ts"
         },
         "startPartition": "2021-04-09",
-        "timeColumn": "ts",
-        "setups": []
+        "timeColumn": "ts"
       }
     }
   },
@@ -54,8 +53,7 @@
                   "group_by_subject": "group_by_expr"
                 },
                 "startPartition": "2021-04-09",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }
@@ -121,8 +119,7 @@
                   "entity": "entity_expr"
                 },
                 "startPartition": "2021-03-01",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }
@@ -179,8 +176,7 @@
                 },
                 "startPartition": "2021-03-01",
                 "endPartition": "2021-04-09",
-                "timeColumn": "UNIX_TIMESTAMP(ts) * 1000",
-                "setups": []
+                "timeColumn": "UNIX_TIMESTAMP(ts) * 1000"
               }
             }
           },
@@ -193,8 +189,7 @@
                   "event": "possibly_different_event_expr"
                 },
                 "startPartition": "2021-03-01",
-                "timeColumn": "__timestamp",
-                "setups": []
+                "timeColumn": "__timestamp"
               }
             }
           }
@@ -238,8 +233,7 @@
     {
       "table": "chronon_db.sample_team_sample_join_bootstrap_v1",
       "query": {
-        "endPartition": "2023-01-01",
-        "setups": []
+        "endPartition": "2023-01-01"
       }
     },
     {

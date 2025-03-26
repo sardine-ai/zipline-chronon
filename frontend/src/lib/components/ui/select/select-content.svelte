@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import { scale } from 'svelte/transition';
-	import { cn, flyAndScale } from '$lib/utils.js';
+	import { flyAndScale } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = SelectPrimitive.ContentProps;
 
@@ -24,7 +25,7 @@
 	{outTransition}
 	{outTransitionConfig}
 	{sideOffset}
-	class={cn(
+	class={cls(
 		'bg-popover text-popover-foreground relative z-50 min-w-[8rem] overflow-hidden rounded-md border shadow-md focus:outline-hidden',
 		className
 	)}

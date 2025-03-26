@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Dialog as DialogPrimitive } from 'bits-ui';
 	import { fade } from 'svelte/transition';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = DialogPrimitive.OverlayProps;
 
@@ -16,6 +16,6 @@
 <DialogPrimitive.Overlay
 	{transition}
 	{transitionConfig}
-	class={cn('bg-background/80 fixed inset-0 z-50 backdrop-blur-xs ', className)}
+	class={cls('bg-background/80 fixed inset-0 z-50 backdrop-blur-xs ', className)}
 	{...$$restProps}
 />

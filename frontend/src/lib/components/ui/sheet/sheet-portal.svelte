@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Dialog as SheetPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = SheetPrimitive.PortalProps;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<SheetPrimitive.Portal class={cn(className)} {...$$restProps}>
+<SheetPrimitive.Portal class={cls(className)} {...$$restProps}>
 	<slot />
 </SheetPrimitive.Portal>

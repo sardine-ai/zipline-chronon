@@ -6,7 +6,7 @@ from ai.chronon.cli.compile.compiler import CompileResult
 from ai.chronon.cli.plan.controller_iface import ControllerIface
 from ai.chronon.cli.plan.physical_graph import PhysicalGraph
 from ai.chronon.lineage.ttypes import Column, ColumnLineage
-from ai.chronon.cli.plan.physical_node import PhysicalNode
+from ai.chronon.orchestration.ttypes import PhysicalNode
 
 
 @dataclass
@@ -46,6 +46,7 @@ class PhysicalIndex:
 
     def get_deploy_physical_graph(self, conf_name: str, date: str) -> PhysicalGraph:
         raise NotImplementedError("Method not yet implemented")
+
     def submit_physical_graph(self, physical_graph: PhysicalGraph) -> str:
 
         node_to_physical: Dict[str, PhysicalNode] = physical_graph.flatten()

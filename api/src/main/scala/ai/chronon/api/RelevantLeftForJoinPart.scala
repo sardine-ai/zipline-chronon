@@ -1,13 +1,9 @@
-package ai.chronon.orchestration.utils
+package ai.chronon.api
 
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.Extensions.JoinPartOps
-import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.Extensions.StringOps
+import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, SourceOps, StringOps}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api._
-import ai.chronon.orchestration.utils.CollectionExtensions.JMapExtension
-import ai.chronon.orchestration.utils.ColumnExpression.getTimeExpression
+import CollectionExtensions.JMapExtension
+import ai.chronon.api.ColumnExpression.getTimeExpression
 
 // TODO(phase-2): This is not wired into the planner yet
 // computes subset of the left source that is relevant for a join part
@@ -50,6 +46,13 @@ object RelevantLeftForJoinPart {
 
     val combinedHash = HashUtils.md5Hex(relevantLeft.render + joinPart.groupBy.semanticHash).toLowerCase
 
+    // removing ns to keep the table name short, hash is enough to differentiate
+    val leftTable = removeNamespace(relevantLeft.leftTable)
+
+    s"${groupByName}__${leftTable}__$combinedHash"
+  }
+
+  def fullPartTableName(join: Join, joinPart: JoinPart): String = {
     // POLICY: caches are computed per team / namespace.
     // we have four options here
     // - use right namespace. other teams typically won't have perms.
@@ -57,11 +60,7 @@ object RelevantLeftForJoinPart {
     // - use right input table namespace, also suffers from perm issue.
     // - use the join namespace, this could create duplicate tables, but safest.
     val outputNamespace = join.metaData.outputNamespace
-
-    // removing ns to keep the table name short, hash is enough to differentiate
-    val leftTable = removeNamespace(relevantLeft.leftTable)
-
-    s"$outputNamespace.${groupByName}__${leftTable}__$combinedHash"
+    s"$outputNamespace.${partTableName(join, joinPart)}"
   }
 
   // changing the left side shouldn't always change the joinPart table

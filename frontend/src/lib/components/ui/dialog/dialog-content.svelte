@@ -2,7 +2,8 @@
 	import { Dialog as DialogPrimitive } from 'bits-ui';
 	import Cross2 from 'svelte-radix/Cross2.svelte';
 	import * as Dialog from './index.js';
-	import { cn, flyAndScale } from '$lib/utils.js';
+	import { flyAndScale } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = DialogPrimitive.ContentProps;
 
@@ -19,7 +20,7 @@
 	<DialogPrimitive.Content
 		{transition}
 		{transitionConfig}
-		class={cn(
+		class={cls(
 			'bg-background fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg sm:rounded-lg md:w-full',
 			className
 		)}

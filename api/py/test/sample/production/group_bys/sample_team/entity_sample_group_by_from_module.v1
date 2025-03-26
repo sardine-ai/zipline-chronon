@@ -24,8 +24,7 @@
             "entity": "entity_expr"
           },
           "startPartition": "2021-03-01",
-          "timeColumn": "ts",
-          "setups": []
+          "timeColumn": "ts"
         }
       }
     }

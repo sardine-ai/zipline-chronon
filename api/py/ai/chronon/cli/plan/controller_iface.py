@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
-from ai.chronon.cli.plan.physical_graph import PhysicalGraph
-from ai.chronon.cli.plan.physical_index import PhysicalNode
+from ai.chronon.orchestration.ttypes import (
+    BranchMappingRequest,
+    DiffResponse,
+    NodeInfo,
+)
 
 
 class ControllerIface(ABC):
@@ -12,20 +15,15 @@ class ControllerIface(ABC):
     """
 
     @abstractmethod
-    def fetch_missing_confs(self, node_to_hash: Dict[str, str]) -> List[str]:
+    def fetch_missing_confs(self, node_to_hash: Dict[str, str]) -> DiffResponse:
+        # req = DiffRequest(namesToHashes=node_to_hash)
+        # TODO -- call API
         pass
 
     @abstractmethod
-    def upload_conf(self, name: str, hash: str, content: str) -> None:
-        pass
-
-    @abstractmethod
-    def create_workflow(
-        self, physical_graph: PhysicalGraph, start_date: str, end_date: str
-    ) -> str:
-        """
-        Submit a physical graph to the orchestrator and return workflow id
-        """
+    def upload_branch_mappsing(self, node_info: List[NodeInfo], branch: str):
+        # TODO
+        BranchMappingRequest()
         pass
 
     @abstractmethod

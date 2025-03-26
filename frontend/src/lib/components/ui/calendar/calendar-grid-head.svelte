@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Calendar as CalendarPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = CalendarPrimitive.GridHeadProps;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<CalendarPrimitive.GridHead class={cn(className)} {...$$restProps}>
+<CalendarPrimitive.GridHead class={cls(className)} {...$$restProps}>
 	<slot />
 </CalendarPrimitive.GridHead>

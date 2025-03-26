@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLTableSectionElement>;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<tfoot class={cn('bg-primary text-primary-foreground font-medium', className)} {...$$restProps}>
+<tfoot class={cls('bg-primary text-primary-foreground font-medium', className)} {...$$restProps}>
 	<slot />
 </tfoot>

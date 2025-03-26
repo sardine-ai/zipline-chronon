@@ -9,7 +9,7 @@
 		sheetTransitions,
 		sheetVariants
 	} from './index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = SheetPrimitive.ContentProps & {
 		side?: Side;
@@ -40,7 +40,7 @@
 		{inTransitionConfig}
 		{outTransition}
 		{outTransitionConfig}
-		class={cn(sheetVariants({ side }), className)}
+		class={cls(sheetVariants({ side }), className)}
 		{...$$restProps}
 	>
 		<slot />

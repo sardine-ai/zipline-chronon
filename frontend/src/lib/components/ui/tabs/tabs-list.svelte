@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tabs as TabsPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = TabsPrimitive.ListProps;
 
@@ -9,7 +9,7 @@
 </script>
 
 <TabsPrimitive.List
-	class={cn(
+	class={cls(
 		'text-muted-foreground inline-flex h-8 items-center justify-center rounded-lg p-1 pb-[2px]',
 		className
 	)}

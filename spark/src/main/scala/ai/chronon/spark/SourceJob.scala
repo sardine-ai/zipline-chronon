@@ -3,9 +3,9 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.JListOps
-import ai.chronon.orchestration.SourceJobArgs
+import ai.chronon.api.DateRange
 import ai.chronon.api.PartitionRange
-import ai.chronon.orchestration.SourceWithFilter
+import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.parseSkewKeys
 
@@ -17,10 +17,10 @@ import scala.jdk.CollectionConverters._
 Runs and materializes a `Source` for a given `dateRange`. Used in the Join computation flow to first compute the Source,
 then each join may have a further Bootstrap computation to produce the left side for use in the final join step.
  */
-class SourceJob(args: SourceJobArgs)(implicit tableUtils: TableUtils) {
-  private val sourceWithFilter = args.source
-  private val range = args.range.toPartitionRange(tableUtils.partitionSpec)
-  private val outputTable = args.outputTable
+class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtils: TableUtils) {
+  private val sourceWithFilter = node
+  private val dateRange = range.toPartitionRange(tableUtils.partitionSpec)
+  private val outputTable = node.metaData.outputTable
 
   def run(): Unit = {
 
@@ -47,10 +47,10 @@ class SourceJob(args: SourceJobArgs)(implicit tableUtils: TableUtils) {
     val df = tableUtils.scanDf(skewFilteredSource.query,
                                skewFilteredSource.table,
                                Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
-                               range = Some(range))
+                               range = Some(dateRange))
 
     if (df.isEmpty) {
-      throw new RuntimeException(s"Query produced 0 rows in range $range.")
+      throw new RuntimeException(s"Query produced 0 rows in range $dateRange.")
     }
 
     val dfWithTimeCol = if (source.dataModel == Events) {
@@ -59,6 +59,7 @@ class SourceJob(args: SourceJobArgs)(implicit tableUtils: TableUtils) {
       df
     }
 
+    // Save using the provided outputTable or compute one if not provided
     dfWithTimeCol.save(outputTable)
   }
 

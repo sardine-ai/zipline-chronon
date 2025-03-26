@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Command as CommandPrimitive } from 'cmdk-sv';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = CommandPrimitive.CommandProps;
 
@@ -11,7 +11,7 @@
 </script>
 
 <CommandPrimitive.Root
-	class={cn(
+	class={cls(
 		'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md',
 		className
 	)}

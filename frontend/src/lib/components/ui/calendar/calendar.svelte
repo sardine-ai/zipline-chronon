@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Calendar as CalendarPrimitive } from 'bits-ui';
 	import * as Calendar from './index.js';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = CalendarPrimitive.Props;
 	type $$Events = CalendarPrimitive.Events;
@@ -18,7 +18,7 @@
 	bind:value
 	bind:placeholder
 	{weekdayFormat}
-	class={cn('p-3', className)}
+	class={cls('p-3', className)}
 	{...$$restProps}
 	on:keydown
 	let:months

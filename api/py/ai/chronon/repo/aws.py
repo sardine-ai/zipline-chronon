@@ -10,10 +10,10 @@ from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
     JobType,
-    get_customer_id,
-    extract_filename_from_path,
-    split_date_range,
     check_call,
+    extract_filename_from_path,
+    get_customer_id,
+    split_date_range,
 )
 
 # AWS SPECIFIC CONSTANTS
@@ -56,7 +56,7 @@ class AwsRunner(Runner):
             )
             return f"s3://{bucket_name}/{destination_blob_name}"
         except Exception as e:
-            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}")
+            raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}") from e
 
     @staticmethod
     def download_zipline_aws_jar(destination_dir: str, customer_id: str, version: str, jar_name: str):
@@ -136,7 +136,7 @@ class AwsRunner(Runner):
         self,
         user_args: str,
         job_type: JobType = JobType.SPARK,
-        local_files_to_upload: List[str] = [],
+        local_files_to_upload: List[str] = None,
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
         s3_files = []
@@ -220,6 +220,9 @@ class AwsRunner(Runner):
         elif self.mode in ["streaming", "streaming-client"]:
             raise ValueError("Streaming is not supported for AWS yet.")
         else:
+            local_files_to_upload_to_aws = []
+            if self.conf:
+                local_files_to_upload_to_aws.append(os.path.join(self.repo, self.conf))
             if self.parallelism > 1:
                 assert self.start_ds is not None and self.ds is not None, (
                     "To use parallelism, please specify --start-ds and --end-ds to "
@@ -244,12 +247,9 @@ class AwsRunner(Runner):
                             "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                         ),
                     )
-                    local_files_to_upload_to_aws = []
-                    if self.conf:
-                        local_files_to_upload_to_aws.append(self.conf)
 
                     emr_args = self.generate_emr_submitter_args(
-                        local_files_to_upload=[self.conf],
+                        local_files_to_upload=local_files_to_upload_to_aws,
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
                     )
@@ -272,13 +272,10 @@ class AwsRunner(Runner):
                         "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                     ),
                 )
-                local_files_to_upload = []
-                if self.conf:
-                    local_files_to_upload.append(self.conf)
 
                 emr_args = self.generate_emr_submitter_args(
                     # for now, self.conf is the only local file that requires uploading
-                    local_files_to_upload=local_files_to_upload,
+                    local_files_to_upload=local_files_to_upload_to_aws,
                     user_args=user_args,
                 )
                 command = f"java -cp {self.jar_path} {EMR_ENTRY} {emr_args}"

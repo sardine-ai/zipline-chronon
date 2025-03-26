@@ -17,13 +17,13 @@ Temporal entity sample group by
 #     limitations under the License.
 
 from sources import test_sources
-from ai.chronon.types import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Accuracy,
-)
 
+from ai.chronon.types import (
+    Accuracy,
+    Aggregation,
+    GroupBy,
+    Operation,
+)
 
 v0 = GroupBy(
     sources=test_sources.entity_source,

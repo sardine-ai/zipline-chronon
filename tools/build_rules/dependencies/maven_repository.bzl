@@ -74,7 +74,7 @@ maven_repository = repository(
         "org.apache.commons:commons-lang3:3.12.0",
         "org.apache.commons:commons-math3:3.6.1",
         "org.apache.hudi:hudi-aws-bundle:0.15.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1",
 
         # Add other dependencies - for scala 2.12
         "org.apache.logging.log4j:log4j-api-scala_2.12:13.1.0",
@@ -85,7 +85,7 @@ maven_repository = repository(
         "org.json4s:json4s-core_2.12:3.7.0-M11",
         "org.json4s:json4s-ast_2.12:3.7.0-M11",
         "io.delta:delta-spark_2.12:3.2.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1",
         "org.apache.hudi:hudi-spark3.5-bundle_2.12:0.15.0",
 
         # Add other dependencies - for scala 2.13
@@ -97,7 +97,7 @@ maven_repository = repository(
         "org.json4s:json4s-core_2.13:3.7.0-M11",
         "org.json4s:json4s-ast_2.13:3.7.0-M11",
         "io.delta:delta-spark_2.13:3.2.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.5.2",
+        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.6.1",
         "org.apache.hudi:hudi-spark3.5-bundle_2.13:0.15.0",
 
         # grpc
@@ -145,7 +145,6 @@ maven_repository = repository(
         "com.google.api.grpc:proto-google-cloud-bigtable-v2:2.41.0",
         "com.google.api.grpc:proto-google-cloud-bigtable-admin-v2:2.41.0",
         "com.google.api.grpc:grpc-google-cloud-bigtable-v2:2.41.0",
-
         "com.google.cloud:google-cloud-pubsub:1.131.0",
         "com.google.cloud:google-cloud-dataproc:4.52.0",
         # Have to specify in group:artifact:packaging:version format if version doesn't start with a digit

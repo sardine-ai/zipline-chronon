@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLSpanElement> & {
 		el?: HTMLSpanElement;
@@ -16,7 +16,7 @@
 	role="link"
 	aria-disabled="true"
 	aria-current="page"
-	class={cn('text-neutral-700 font-normal', className)}
+	class={cls('text-neutral-700 font-normal', className)}
 	{...$$restProps}
 >
 	<slot />

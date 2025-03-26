@@ -1,7 +1,6 @@
-from ai.chronon.model import Model, ModelType
 from ai.chronon.api.ttypes import DataKind, EventSource, Source, TDataType
+from ai.chronon.model import Model, ModelType
 from ai.chronon.query import Query, selects
-
 
 """
 This is the "left side" of the join that will comprise our training set. It is responsible for providing the primary keys

@@ -1,11 +1,10 @@
 package ai.chronon.spark
 
-import ai.chronon.api
 import ai.chronon.api.Extensions.{BootstrapPartOps, DateRangeOps, ExternalPartOps, MetadataOps, SourceOps, StringsOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, StructField, StructType}
-import ai.chronon.orchestration.BootstrapJobArgs
+import ai.chronon.api.{Constants, DateRange, PartitionRange, PartitionSpec, StructField, StructType}
 import ai.chronon.online.SparkConversions
+import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, set_add}
 import org.apache.spark.sql
@@ -22,25 +21,25 @@ Runs after the `SourceJob` and produces boostrap table that is then used in the 
 Note for orchestrator: This needs to run iff there are bootstraps or external parts to the join (applies additional
 columns that may be used in derivations). Otherwise the left source table can be used directly in final join.
  */
-class BootstrapJob(args: BootstrapJobArgs)(implicit tableUtils: TableUtils) {
+class BootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit tableUtils: TableUtils) {
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  private val join = args.join
-  private val range = args.range.toPartitionRange
-  private val leftSourceTable = Option(args.leftSourceTable)
-  private val outputTable = Option(args.outputTable)
+  private val join = node.join
+  private val dateRange = range.toPartitionRange
+  private val leftSourceTable = JoinUtils.computeLeftSourceTableName(join)
+
+  // Use the node's metadata output table
+  private val outputTable = node.metaData.outputTable
 
   def run(): Unit = {
     // Runs the bootstrap query and produces an output table specific to the `left` side of the Join
     // LeftSourceTable is the same as the SourceJob output table for the Left.
     // `f"${source.table}_${ThriftJsonCodec.md5Digest(sourceWithFilter)}"` Logic should  be computed by orchestrator
     // and passed to both jobs
-    assert(leftSourceTable.isDefined, "Left source table must be defined for calling run on bootstrap job")
+    val leftDf = tableUtils.scanDf(query = null, table = leftSourceTable, range = Some(dateRange))
 
-    val leftDf = tableUtils.scanDf(query = null, table = leftSourceTable.get, range = Some(range))
-
-    val bootstrapInfo = BootstrapInfo.from(join, range, tableUtils, Option(leftDf.schema))
+    val bootstrapInfo = BootstrapInfo.from(join, dateRange, tableUtils, Option(leftDf.schema))
 
     computeBootstrapTable(leftDf = leftDf, bootstrapInfo = bootstrapInfo)
   }
@@ -49,7 +48,7 @@ class BootstrapJob(args: BootstrapJobArgs)(implicit tableUtils: TableUtils) {
                             bootstrapInfo: BootstrapInfo,
                             tableProps: Map[String, String] = null): DataFrame = {
 
-    val bootstrapTable: String = outputTable.getOrElse(join.metaData.bootstrapTable)
+    val bootstrapTable: String = outputTable
 
     def validateReservedColumns(df: DataFrame, table: String, columns: Seq[String]): Unit = {
       val reservedColumnsContained = columns.filter(df.schema.fieldNames.contains)
@@ -76,9 +75,9 @@ class BootstrapJob(args: BootstrapJobArgs)(implicit tableUtils: TableUtils) {
       logger.info(s"\nProcessing Bootstrap from table ${part.table} for range $range")
 
       val bootstrapRange = if (part.isSetQuery) {
-        range.intersect(PartitionRange(part.startPartition, part.endPartition))
+        dateRange.intersect(PartitionRange(part.startPartition, part.endPartition))
       } else {
-        range
+        dateRange
       }
       if (!bootstrapRange.valid) {
         logger.info(s"partition range of bootstrap table ${part.table} is beyond unfilled range")
@@ -133,7 +132,7 @@ class BootstrapJob(args: BootstrapJobArgs)(implicit tableUtils: TableUtils) {
     val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
     logger.info(s"Finished computing bootstrap table $bootstrapTable in $elapsedMins minutes")
 
-    tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(range))
+    tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(dateRange))
   }
 
   /*

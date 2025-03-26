@@ -2,7 +2,8 @@ package ai.chronon.spark
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.orchestration.JoinDerivationJobArgs
+import ai.chronon.api.DateRange
+import ai.chronon.orchestration.JoinDerivationNode
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.functions.{coalesce, col, expr}
 
@@ -15,13 +16,20 @@ True left columns are keys, ts, and anything else selected on left source.
 
 Source -> True left table -> Bootstrap table (sourceTable here)
  */
-class JoinDerivationJob(args: JoinDerivationJobArgs)(implicit tableUtils: TableUtils) {
+class JoinDerivationJob(node: JoinDerivationNode, range: DateRange)(implicit tableUtils: TableUtils) {
   implicit val partitionSpec = tableUtils.partitionSpec
-  private val trueLeftTable = args.trueLeftTable
-  private val dateRange = args.range.toPartitionRange
-  private val baseTable = args.baseTable
-  private val derivations = args.derivations.toScala
-  private val outputTable = args.outputTable
+  private val join = node.join
+  private val dateRange = range.toPartitionRange
+  private val derivations = join.derivations.toScala
+
+  // The true left table is the source table for the join's left side
+  private val trueLeftTable = JoinUtils.computeLeftSourceTableName(join)
+
+  // The base table is the output of the merge job
+  private val baseTable = join.metaData.outputTable
+
+  // Output table for this derivation job comes from the metadata
+  private val outputTable = node.metaData.outputTable
 
   def run(): Unit = {
 

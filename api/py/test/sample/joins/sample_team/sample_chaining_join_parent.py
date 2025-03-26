@@ -1,10 +1,10 @@
-from sources import test_sources
 from group_bys.sample_team import (
-    event_sample_group_by,
     entity_sample_group_by_from_module,
+    event_sample_group_by,
 )
+from sources import test_sources
 
-from ai.chronon.types import *
+from ai.chronon.types import Join, JoinPart
 
 parent_join = Join(
     left=test_sources.event_source,

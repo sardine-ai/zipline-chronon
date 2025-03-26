@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Avatar as AvatarPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = AvatarPrimitive.ImageProps;
 
@@ -13,6 +13,6 @@
 <AvatarPrimitive.Image
 	{src}
 	{alt}
-	class={cn('aspect-square h-full w-full', className)}
+	class={cls('aspect-square h-full w-full', className)}
 	{...$$restProps}
 />

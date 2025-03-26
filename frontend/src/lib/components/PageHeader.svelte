@@ -8,7 +8,7 @@
 </script>
 
 <div class="flex justify-between items-center mb-5">
-	<h1 class="text-2xl-medium">{title}</h1>
+	<h1 class="text-4xl font-medium">{title}</h1>
 	<div class="flex items-center gap-4">
 		{#if children}
 			{@render children()}

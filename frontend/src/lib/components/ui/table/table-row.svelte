@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLTableRowElement> & {
 		'data-state'?: unknown;
@@ -11,7 +11,7 @@
 </script>
 
 <tr
-	class={cn(
+	class={cls(
 		'hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors',
 		className
 	)}

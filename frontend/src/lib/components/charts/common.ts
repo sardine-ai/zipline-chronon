@@ -43,7 +43,7 @@ export const yAxisProps = {
 export const tooltipProps = {
 	root: {
 		variant: 'none',
-		class: 'text-small bg-neutral-200 border border-neutral-400 rounded-md shadow-lg',
+		class: 'text-sm/4 bg-neutral-200 border border-neutral-400 rounded-md shadow-lg',
 		motion: false
 	},
 	header: {

@@ -23,8 +23,7 @@
           "ts": "ts"
         },
         "startPartition": "2021-04-09",
-        "timeColumn": "ts",
-        "setups": []
+        "timeColumn": "ts"
       }
     }
   },
@@ -54,8 +53,7 @@
                   "group_by_subject": "group_by_expr"
                 },
                 "startPartition": "2021-04-09",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }
@@ -121,8 +119,7 @@
                   "entity": "entity_expr"
                 },
                 "startPartition": "2021-03-01",
-                "timeColumn": "ts",
-                "setups": []
+                "timeColumn": "ts"
               }
             }
           }
@@ -163,8 +160,7 @@
           "field_b": "field_b"
         },
         "startPartition": "2022-01-01",
-        "endPartition": "2022-02-01",
-        "setups": []
+        "endPartition": "2022-02-01"
       },
       "keyColumns": [
         "request_id"

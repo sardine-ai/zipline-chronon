@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Dialog as SheetPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = SheetPrimitive.TitleProps;
 
@@ -9,7 +9,7 @@
 </script>
 
 <SheetPrimitive.Title
-	class={cn('text-foreground text-lg font-semibold', className)}
+	class={cls('text-foreground text-lg font-semibold', className)}
 	{...$$restProps}
 >
 	<slot />

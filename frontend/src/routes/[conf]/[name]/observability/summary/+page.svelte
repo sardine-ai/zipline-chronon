@@ -70,7 +70,7 @@
 				open
 				classes={{
 					root: '[&>button]:flex-row-reverse [&>button]:gap-4',
-					trigger: 'text-regular py-4'
+					trigger: 'text-sm py-4'
 				}}
 			>
 				<svelte:fragment slot="icon" let:open>

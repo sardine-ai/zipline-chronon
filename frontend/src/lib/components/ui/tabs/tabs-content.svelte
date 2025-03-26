@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tabs as TabsPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = TabsPrimitive.ContentProps;
 
@@ -10,7 +10,7 @@
 </script>
 
 <TabsPrimitive.Content
-	class={cn(
+	class={cls(
 		'ring-offset-background focus-visible:ring-ring mt-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2',
 		className
 	)}

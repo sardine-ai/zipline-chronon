@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLOlAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLOlAttributes & {
 		el?: HTMLOListElement;
@@ -13,8 +13,8 @@
 
 <ol
 	bind:this={el}
-	class={cn(
-		'text-muted-foreground flex flex-wrap items-center gap-1.5 break-words text-small sm:gap-2.5',
+	class={cls(
+		'text-muted-foreground flex flex-wrap items-center gap-1.5 break-words text-sm/3 sm:gap-2.5',
 		className
 	)}
 	{...$$restProps}

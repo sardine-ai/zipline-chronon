@@ -1,0 +1,16 @@
+{
+    "default": {
+        "table_properties": {
+            "source": "chronon"
+        },
+        "common_env": {
+            "CUSTOMER_ID": "<CUSTOMER_ID>",
+            "CLOUD_PROVIDER": "aws"
+        }
+    },
+    "sample_team": {
+        "description": "Team description",
+        "namespace": "sample_team_namespace"
+    }
+
+}

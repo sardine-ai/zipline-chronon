@@ -12,14 +12,14 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.group_by import (
-    GroupBy,
-    Aggregation,
-    Operation,
-    Accuracy,
-)
-
 from sources.kaggle.outbrain import outbrain_left_events
+
+from ai.chronon.group_by import (
+    Accuracy,
+    Aggregation,
+    GroupBy,
+    Operation,
+)
 
 """
 This file defines a number of GroupBys in a more programatic way, leveraging helper functions that act

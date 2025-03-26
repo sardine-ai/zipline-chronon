@@ -1,7 +1,7 @@
 import glob
+import hashlib
 import json
 import os
-import hashlib
 
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,

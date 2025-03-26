@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAnchorAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAnchorAttributes & {
 		el?: HTMLAnchorElement;
@@ -16,7 +16,7 @@
 	let attrs: Record<string, unknown>;
 
 	$: attrs = {
-		class: cn('hover:text-foreground transition-colors text-neutral-800', className),
+		class: cls('hover:text-foreground transition-colors text-neutral-800', className),
 		href,
 		...$$restProps
 	};

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = DropdownMenuPrimitive.ItemProps & {
 		inset?: boolean;
@@ -13,7 +13,7 @@
 </script>
 
 <DropdownMenuPrimitive.Item
-	class={cn(
+	class={cls(
 		'data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden data-disabled:pointer-events-none data-disabled:opacity-50',
 		inset && 'pl-8',
 		className

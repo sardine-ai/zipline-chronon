@@ -1,8 +1,7 @@
-package ai.chronon.orchestration.test
+package ai.chronon.api.test
 
-import ai.chronon.api.Query
-import ai.chronon.orchestration.utils.ColumnExpression
-import ai.chronon.orchestration.utils.ColumnExpression.getTimeExpression
+import ai.chronon.api.ColumnExpression.getTimeExpression
+import ai.chronon.api.{ColumnExpression, Query}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

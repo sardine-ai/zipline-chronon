@@ -1,5 +1,6 @@
 import os
 from typing import List
+
 from ai.chronon.eval.table_scan import local_warehouse
 
 
@@ -55,12 +56,12 @@ def _sample_bigquery(query, output_path):
 
 
 def _sample_bigquery_fast(query, destination_path):
-    from google.cloud.bigquery_storage import BigQueryReadClient
-    from google.cloud.bigquery_storage_v1.types import ReadSession
-    from google.cloud.bigquery_storage_v1.types import DataFormat
-    from google.cloud import bigquery
-    import pyarrow.parquet as pq
     import os
+
+    import pyarrow.parquet as pq
+    from google.cloud import bigquery
+    from google.cloud.bigquery_storage import BigQueryReadClient
+    from google.cloud.bigquery_storage_v1.types import DataFormat, ReadSession
 
     project_id = os.getenv("GCP_PROJECT_ID")
     assert project_id, "Please set the GCP_PROJECT_ID environment variable"

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Tooltip as TooltipPrimitive } from 'bits-ui';
-	import { cn, flyAndScale } from '$lib/utils.js';
+	import { flyAndScale } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = TooltipPrimitive.ContentProps;
 
@@ -18,7 +19,7 @@
 	{transition}
 	{transitionConfig}
 	{sideOffset}
-	class={cn(
+	class={cls(
 		'bg-neutral-200 border border-neutral-400 text-muted-foreground z-50 overflow-hidden rounded-md px-2 py-1.5 text-xs',
 		className
 	)}

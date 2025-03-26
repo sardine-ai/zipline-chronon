@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLSpanElement>;
 
@@ -9,7 +9,7 @@
 </script>
 
 <span
-	class={cn('text-muted-foreground ml-auto text-xs tracking-widest', className)}
+	class={cls('text-muted-foreground ml-auto text-xs tracking-widest', className)}
 	{...$$restProps}
 >
 	<slot />

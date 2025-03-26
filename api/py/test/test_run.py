@@ -16,16 +16,14 @@ Basic tests for namespace and breaking changes in run.py
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import click
 import json
 import os
 import time
 
+import click
 import pytest
-from ai.chronon.repo import run
-from ai.chronon.repo import default_runner
-from ai.chronon.repo import utils
-from ai.chronon.repo.utils import check_output, check_call
+
+from ai.chronon.repo import default_runner, run, utils
 
 DEFAULT_ENVIRONMENT = os.environ.copy()
 

@@ -2,7 +2,7 @@ package ai.chronon.orchestration
 
 import ai.chronon.orchestration.RepoIndex._
 import ai.chronon.orchestration.RepoTypes._
-import ai.chronon.orchestration.utils.CollectionExtensions.IteratorExtensions
+import ai.chronon.api.CollectionExtensions.IteratorExtensions
 import ai.chronon.orchestration.utils.SequenceMap
 import ai.chronon.orchestration.utils.StringExtensions.StringOps
 import org.apache.logging.log4j.scala.Logging

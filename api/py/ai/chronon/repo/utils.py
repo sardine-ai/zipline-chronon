@@ -5,14 +5,13 @@ import re
 import subprocess
 import time
 import xml.etree.ElementTree as ET
-
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 from ai.chronon.repo.constants import (
-    SUPPORTED_SPARK,
-    SCALA_VERSION_FOR_SPARK,
     APP_NAME_TEMPLATE,
+    SCALA_VERSION_FOR_SPARK,
+    SUPPORTED_SPARK,
 )
 
 
@@ -188,6 +187,7 @@ def set_runtime_env(params):
         "production_team_env": {},
         "cli_args": {},
     }
+
     conf_type = None
     # Normalize modes that are effectively replacement of each other (streaming/local-streaming/streaming-client)
     effective_mode = params["mode"]

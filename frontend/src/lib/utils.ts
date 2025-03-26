@@ -1,31 +1,5 @@
-import { type ClassValue, clsx } from 'clsx';
-import { extendTailwindMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
-
-const customTwMerge = extendTailwindMerge({
-	extend: {
-		classGroups: {
-			'font-size': [
-				'text-3xl-medium',
-				'text-2xl-medium',
-				'text-xl-medium',
-				'text-large-medium',
-				'text-regular-medium',
-				'text-regular',
-				'text-regular-mono',
-				'text-small',
-				'text-xs-medium',
-				'text-xs',
-				'text-xs-mono'
-			]
-		}
-	}
-});
-
-export function cn(...inputs: ClassValue[]) {
-	return customTwMerge(clsx(inputs));
-}
 
 type FlyAndScaleParams = {
 	y?: number;

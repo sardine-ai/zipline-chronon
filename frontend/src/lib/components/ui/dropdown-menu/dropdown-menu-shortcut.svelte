@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = HTMLAttributes<HTMLSpanElement>;
 
@@ -8,6 +8,6 @@
 	export { className as class };
 </script>
 
-<span class={cn('ml-auto text-xs tracking-widest opacity-60', className)} {...$$restProps}>
+<span class={cls('ml-auto text-xs tracking-widest opacity-60', className)} {...$$restProps}>
 	<slot />
 </span>

@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.types import StagingQuery, MetaData
+from ai.chronon.types import MetaData, StagingQuery
 
 query = """
 SELECT

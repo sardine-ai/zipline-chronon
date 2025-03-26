@@ -1,8 +1,8 @@
 import click
 
 from ai.chronon.repo.compile import extract_and_convert
-from ai.chronon.repo.run import main as run_main
 from ai.chronon.repo.init import main as init_main
+from ai.chronon.repo.run import main as run_main
 
 
 @click.group()

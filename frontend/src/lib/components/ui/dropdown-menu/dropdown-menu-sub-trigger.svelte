@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 	import ChevronRight from 'svelte-radix/ChevronRight.svelte';
-	import { cn } from '$lib/utils.js';
+	import { cls } from '@layerstack/tailwind';
 
 	type $$Props = DropdownMenuPrimitive.SubTriggerProps & {
 		inset?: boolean;
@@ -14,7 +14,7 @@
 </script>
 
 <DropdownMenuPrimitive.SubTrigger
-	class={cn(
+	class={cls(
 		'data-highlighted:bg-accent data-[state=open]:bg-accent data-highlighted:text-accent-foreground data-[state=open]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden',
 		inset && 'pl-8',
 		className

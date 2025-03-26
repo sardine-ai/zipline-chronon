@@ -53,10 +53,10 @@ class Evaluator(localWarehouse: LocalWarehouse) {
 
     require(missingTables.isEmpty, "Missing tables in local warehouse: " + missingTables.mkString("[", ", ", "]"))
 
-    sourceSqlBundle.setups.foreach { setup =>
+    Option(sourceSqlBundle.setups).foreach(_.foreach { setup =>
       logger.info(s"Running setup query: $setup")
       localWarehouse.runSetup(setup)
-    }
+    })
 
     logger.info(s"""Running query from source:
          |

@@ -18,16 +18,19 @@ package ai.chronon.spark.test.join
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Builders
-import ai.chronon.api.Constants
+import ai.chronon.api.{
+  Accuracy,
+  Builders,
+  Constants,
+  LongType,
+  Operation,
+  RelevantLeftForJoinPart,
+  StringType,
+  TimeUnit,
+  Window
+}
 import ai.chronon.api.Extensions._
-import ai.chronon.api.LongType
-import ai.chronon.api.Operation
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.StringType
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
@@ -1220,6 +1223,7 @@ class JoinTest extends AnyFlatSpec {
       query = Builders.Query(selects = Builders.Selects("time_spent_ms"),
                              startPartition = tableUtils.partitionSpec.minus(ds, new Window(200, TimeUnit.DAYS)))
     )
+
     val groupBy = Builders.GroupBy(
       sources = Seq(viewsSource),
       keyColumns = Seq("item"),
@@ -1242,8 +1246,8 @@ class JoinTest extends AnyFlatSpec {
     // test older versions before migration
     // older versions do not have the bootstrap hash, but should not trigger recompute if no bootstrap_parts
     val productionHashV1 = Map(
-      "left_source" -> "vbQc07vaqm",
-      "test_namespace_jointest.test_join_migration_user_unit_test_item_views" -> "OLFBDTqwMX"
+      "left_source" -> "0DVP4fhmG8",
+      "test_namespace_jointest.test_join_migration_user_unit_test_item_views" -> "J/Lqxs8k4t"
     )
     assertEquals(0, join.tablesToDrop(productionHashV1).length)
 
@@ -1385,14 +1389,14 @@ class JoinTest extends AnyFlatSpec {
       accuracy = Accuracy.SNAPSHOT
     )
 
+    val jp1 = Builders.JoinPart(groupBy = gb1, prefix = "user1")
+    val jp2 = Builders.JoinPart(groupBy = gb2, prefix = "user2")
+    val jp3 = Builders.JoinPart(groupBy = gb3, prefix = "user3")
+
     // Join
     val joinConf = Builders.Join(
       left = Builders.Source.events(Builders.Query(startPartition = start), table = itemQueriesTable),
-      joinParts = Seq(
-        Builders.JoinPart(groupBy = gb1, prefix = "user1"),
-        Builders.JoinPart(groupBy = gb2, prefix = "user2"),
-        Builders.JoinPart(groupBy = gb3, prefix = "user3")
-      ),
+      joinParts = Seq(jp1, jp2, jp3),
       metaData = Builders.MetaData(name = "unit_test.item_temporal_features.selected_join_parts",
                                    namespace = namespace,
                                    team = "item_team",
@@ -1400,9 +1404,9 @@ class JoinTest extends AnyFlatSpec {
     )
 
     // Drop Join Part tables if any
-    val partTable1 = s"${joinConf.metaData.outputTable}_user1_unit_test_item_views_selected_join_parts_1"
-    val partTable2 = s"${joinConf.metaData.outputTable}_user2_unit_test_item_views_selected_join_parts_2"
-    val partTable3 = s"${joinConf.metaData.outputTable}_user3_unit_test_item_views_selected_join_parts_3"
+    val partTable1 = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp1)
+    val partTable2 = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp2)
+    val partTable3 = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp3)
     spark.sql(s"DROP TABLE IF EXISTS $partTable1")
     spark.sql(s"DROP TABLE IF EXISTS $partTable2")
     spark.sql(s"DROP TABLE IF EXISTS $partTable3")
