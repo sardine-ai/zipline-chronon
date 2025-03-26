@@ -22,7 +22,8 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
     val resultList = new util.ArrayList[Map[String, Any]]()
     val listCollector = new ListCollector(resultList)
 
-    val deserSchema = new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
+    val deserSchema =
+      new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
     deserSchema.open(new DummyInitializationContext)
     val recordBytes = createDummyRecordBytes(schemaStr)
     deserSchema.deserialize(recordBytes, listCollector)
@@ -39,11 +40,10 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
     assert(projectedSparkSchema("ts").dataType == schema("lastLoginTimestamp").dataType)
     // check other fields
     val fieldsToCheck = Set("id", "username", "isActive")
-    fieldsToCheck.map {
-      name =>
-        val sourceField = schema(name)
-        val projectedField = projectedSparkSchema(name)
-        assert(sourceField.dataType == projectedField.dataType, s"Field $name has different types")
+    fieldsToCheck.map { name =>
+      val sourceField = schema(name)
+      val projectedField = projectedSparkSchema(name)
+      assert(sourceField.dataType == projectedField.dataType, s"Field $name has different types")
     }
 
     // sanity check result data
@@ -60,7 +60,8 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
         Map("id" -> "id", "username" -> "username", "isActive" -> "isActive"),
         Seq("id == 45678", "isActive == true")
       )
-    val deserSchema = new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
+    val deserSchema =
+      new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
     deserSchema.open(new DummyInitializationContext)
     val recordBytes = createDummyRecordBytes(schemaStr)
 
@@ -80,7 +81,8 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
         Map("id" -> "id", "username" -> "username", "isActive" -> "isActive"),
         Seq("id == 45678", "isActive == true")
       )
-    val deserSchema = new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
+    val deserSchema =
+      new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
     deserSchema.open(new DummyInitializationContext)
     val recordBytes = createDummyRecordBytes(schemaStr)
 
@@ -94,4 +96,3 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
     assert(resultList.isEmpty)
   }
 }
-

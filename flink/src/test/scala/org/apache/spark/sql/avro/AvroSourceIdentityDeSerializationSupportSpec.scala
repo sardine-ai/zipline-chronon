@@ -51,4 +51,3 @@ class AvroSourceIdentityDeSerializationSupportSpec extends AnyFlatSpec {
     assert(row == null)
   }
 }
-

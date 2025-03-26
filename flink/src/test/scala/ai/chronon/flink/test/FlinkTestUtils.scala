@@ -47,7 +47,8 @@ class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestE
   }
 }
 
-class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn:  SparkExpressionEvalFn[E2ETestEvent]) extends FlinkSource[Map[String, Any]] {
+class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: SparkExpressionEvalFn[E2ETestEvent])
+    extends FlinkSource[Map[String, Any]] {
   def watermarkStrategy: WatermarkStrategy[E2ETestEvent] =
     WatermarkStrategy
       .forBoundedOutOfOrderness[E2ETestEvent](Duration.ofSeconds(5))

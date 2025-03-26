@@ -13,7 +13,12 @@ import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.flink.validation.ValidationFlinkJob
-import ai.chronon.flink.window.{AlwaysFireOnElementTrigger, FlinkRowAggProcessFunction, FlinkRowAggregationFunction, KeySelectorBuilder}
+import ai.chronon.flink.window.{
+  AlwaysFireOnElementTrigger,
+  FlinkRowAggProcessFunction,
+  FlinkRowAggregationFunction,
+  KeySelectorBuilder
+}
 import ai.chronon.online.Api
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.TopicInfo
@@ -47,7 +52,7 @@ import scala.collection.Seq
 /** Flink job that processes a single streaming GroupBy and writes out the results (in the form of pre-aggregated tiles) to the KV store.
   *
   * @param eventSrc - Provider of a Flink Datastream[ Map[String, Any] ] for the given topic and groupBy. The Map contains
- *                    projected columns from the source data based on projections and filters in the GroupBy.
+  *                    projected columns from the source data based on projections and filters in the GroupBy.
   * @param sinkFn - Async Flink writer function to help us write to the KV store
   * @param groupByServingInfoParsed - The GroupBy we are working with
   * @param parallelism - Parallelism to use for the Flink job

@@ -16,7 +16,8 @@ import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import scala.util.Try
 
-abstract class BaseAvroDeserializationSchema[T](groupBy: GroupBy, jsonSchema: String, schemaRegistryWireFormat: Boolean) extends ChrononDeserializationSchema[T] {
+abstract class BaseAvroDeserializationSchema[T](groupBy: GroupBy, jsonSchema: String, schemaRegistryWireFormat: Boolean)
+    extends ChrononDeserializationSchema[T] {
   // these are created on instantiation in the various task manager processes in the open() call
   @transient private var avroDeserializer: AvroDataToCatalyst = _
 
@@ -55,17 +56,16 @@ abstract class BaseAvroDeserializationSchema[T](groupBy: GroupBy, jsonSchema: St
       // unfortunately we need to drop the first 5 bytes (and thus copy the rest of the byte array) as the AvroDataToCatalyst
       // interface takes a byte array and the methods to do the Row conversion etc are all private so we can't reach in
       doDeserialize(messageBytes.drop(5),
-        s"Failed to deserialize message from Avro Bytes to InternalRow. Message schema id $messageSchemaId")
+                    s"Failed to deserialize message from Avro Bytes to InternalRow. Message schema id $messageSchemaId")
     } else {
       doDeserialize(messageBytes, "Failed to deserialize message from Avro Bytes to InternalRow")
     }
 
     maybeMessage
-      .recover {
-        case e: Exception =>
-          logger.error("Failed to deserialize InternalRow to Row", e)
-          deserializationErrorCounter.inc()
-          null
+      .recover { case e: Exception =>
+        logger.error("Failed to deserialize InternalRow to Row", e)
+        deserializationErrorCounter.inc()
+        null
       }
   }
 }
@@ -97,7 +97,8 @@ class AvroSourceIdentityDeserializationSchema(groupBy: GroupBy, jsonSchema: Stri
 }
 
 class AvroSourceProjectionDeserializationSchema(groupBy: GroupBy, jsonSchema: String, schemaRegistryWireFormat: Boolean)
-  extends BaseAvroDeserializationSchema[Map[String, Any]](groupBy, jsonSchema, schemaRegistryWireFormat) with SourceProjection {
+    extends BaseAvroDeserializationSchema[Map[String, Any]](groupBy, jsonSchema, schemaRegistryWireFormat)
+    with SourceProjection {
 
   @transient private var evaluator: SparkExpressionEval[Row] = _
   @transient private var rowSerializer: ExpressionEncoder.Serializer[Row] = _

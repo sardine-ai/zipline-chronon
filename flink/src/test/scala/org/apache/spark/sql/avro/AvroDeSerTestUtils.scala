@@ -10,7 +10,7 @@ import org.apache.flink.util.{SimpleUserCodeClassLoader, UserCodeClassLoader}
 import scala.collection.JavaConverters._
 
 class DummyInitializationContext
-  extends SerializationSchema.InitializationContext
+    extends SerializationSchema.InitializationContext
     with DeserializationSchema.InitializationContext {
   override def getMetricGroup = new UnregisteredMetricsGroup
 

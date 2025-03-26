@@ -35,8 +35,8 @@ abstract class BaseSchemaRegistrySchemaProvider[T](conf: Map[String, String]) ex
     buildSchemaRegistryClient(schemaRegistrySchemeString, schemaRegistryHost, schemaRegistryPortString)
 
   protected[flink] def buildSchemaRegistryClient(schemeString: String,
-                                               registryHost: String,
-                                               maybePortString: Option[String]): SchemaRegistryClient = {
+                                                 registryHost: String,
+                                                 maybePortString: Option[String]): SchemaRegistryClient = {
     maybePortString match {
       case Some(portString) =>
         val registryUrl = s"$schemeString://$registryHost:$portString"
@@ -67,10 +67,10 @@ abstract class BaseSchemaRegistrySchemaProvider[T](conf: Map[String, String]) ex
   }
 }
 
-/**
- * Instance of the Schema Registry provider that skips source projection and returns the source events as is.
- */
-class SourceIdentitySchemaRegistrySchemaProvider(conf: Map[String, String]) extends BaseSchemaRegistrySchemaProvider[Row](conf) {
+/** Instance of the Schema Registry provider that skips source projection and returns the source events as is.
+  */
+class SourceIdentitySchemaRegistrySchemaProvider(conf: Map[String, String])
+    extends BaseSchemaRegistrySchemaProvider[Row](conf) {
 
   override def buildDeserializationSchema(groupBy: GroupBy): ChrononDeserializationSchema[Row] = {
     val parsedSchema = readSchema(groupBy)
@@ -84,10 +84,10 @@ class SourceIdentitySchemaRegistrySchemaProvider(conf: Map[String, String]) exte
   }
 }
 
-/**
- * Instance of the Schema Registry provider that supports source projection.
- */
-class ProjectedSchemaRegistrySchemaProvider(conf: Map[String, String]) extends BaseSchemaRegistrySchemaProvider[Map[String, Any]](conf) {
+/** Instance of the Schema Registry provider that supports source projection.
+  */
+class ProjectedSchemaRegistrySchemaProvider(conf: Map[String, String])
+    extends BaseSchemaRegistrySchemaProvider[Map[String, Any]](conf) {
 
   override def buildDeserializationSchema(groupBy: GroupBy): ChrononDeserializationSchema[Map[String, Any]] = {
     val parsedSchema = readSchema(groupBy)
@@ -95,7 +95,9 @@ class ProjectedSchemaRegistrySchemaProvider(conf: Map[String, String]) extends B
     parsedSchema.schemaType() match {
       case AvroSchema.TYPE =>
         val schema = parsedSchema.asInstanceOf[AvroSchema]
-        new AvroSourceProjectionDeserializationSchema(groupBy, schema.canonicalString(), schemaRegistryWireFormat = true)
+        new AvroSourceProjectionDeserializationSchema(groupBy,
+                                                      schema.canonicalString(),
+                                                      schemaRegistryWireFormat = true)
       case _ => throw new IllegalArgumentException(s"Unsupported schema type: ${parsedSchema.schemaType()}")
     }
   }
