@@ -112,7 +112,7 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
     val batchIr: FinalBatchIr =
       getBatchIrFromBatchResponse(batchResponses, batchBytes, servingInfo, toBatchIr, requestContext.keys)
 
-    if (servingInfo.groupByOps.tilingFlag) {
+    if (fetchContext.isTilingEnabled) {
       mergeTiledIrsFromStreaming(requestContext.queryTimeMs, servingInfo, streamingResponses, aggregator, batchIr)
     } else {
       mergeRawEventsFromStreaming(requestContext.queryTimeMs,

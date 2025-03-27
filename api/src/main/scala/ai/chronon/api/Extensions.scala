@@ -591,8 +591,6 @@ object Extensions {
       None
     }
 
-    def tilingFlag: Boolean = servingFlagValue("tiling").exists(_.toLowerCase() == "true")
-
     def dontThrowOnDecodeFailFlag: Boolean = servingFlagValue("decode.throw_on_fail").exists(_.toLowerCase() == "false")
 
     // build left streaming query for join source runner
