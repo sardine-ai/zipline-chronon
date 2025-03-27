@@ -11,11 +11,11 @@ import ai.chronon.online.Serde
 import ai.chronon.online.serde.AvroSerde
 import com.google.api.gax.core.NoCredentialsProvider
 import com.google.cloud.bigquery.BigQueryOptions
-import com.google.cloud.shaded_bigtable.admin.v2.BigtableTableAdminClient
-import com.google.cloud.shaded_bigtable.admin.v2.BigtableTableAdminSettings
-import com.google.cloud.shaded_bigtable.data.v2.BigtableDataClient
-import com.google.cloud.shaded_bigtable.data.v2.BigtableDataSettings
-import com.google.cloud.shaded_bigtable.data.v2.stub.metrics.NoopMetricsProvider
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings
+import com.google.cloud.bigtable.data.v2.BigtableDataClient
+import com.google.cloud.bigtable.data.v2.BigtableDataSettings
+import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 
 import java.util
 
