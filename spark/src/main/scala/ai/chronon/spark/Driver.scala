@@ -52,7 +52,7 @@ import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Subcommand
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.yaml.shaded_snakeyaml.Yaml
+import org.yaml.snakeyaml.Yaml
 
 import java.io.File
 import java.nio.file.Files

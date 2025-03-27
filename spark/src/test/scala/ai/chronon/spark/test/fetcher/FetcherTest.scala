@@ -559,12 +559,9 @@ class FetcherTest extends AnyFlatSpec {
         name = "unit_test/fetcher_tiled_gb",
         namespace = namespace,
         team = "chronon",
-        customJson = groupByCustomJson.orNull,
-        executionInfo = new ExecutionInfo()
-          .setConf(new ConfigProperties().setServing(Map("tiling" -> "true").toJava))
+        customJson = groupByCustomJson.orNull
       )
     )
-    groupBy.tilingFlag shouldBe true
 
     val joinConf = Builders.Join(
       left = leftSource,
@@ -586,7 +583,18 @@ class FetcherTest extends AnyFlatSpec {
     val kvStoreFunc = () => OnlineUtils.buildInMemoryKVStore("FetcherTest")
     val inMemoryKvStore = kvStoreFunc()
 
+    val tilingEnabledFlagStore = new FlagStore {
+      override def isSet(flagName: String, attributes: util.Map[String, String]): lang.Boolean = {
+        if (flagName == FlagStoreConstants.TILING_ENABLED) {
+          enableTiling
+        } else {
+          false
+        }
+      }
+    }
+
     val mockApi = new MockApi(kvStoreFunc, namespace)
+    mockApi.setFlagStore(tilingEnabledFlagStore)
 
     val joinedDf = new ai.chronon.spark.Join(joinConf, endDs, tableUtils).computeJoin()
     val joinTable = s"$namespace.join_test_expected_${joinConf.metaData.cleanName}"
