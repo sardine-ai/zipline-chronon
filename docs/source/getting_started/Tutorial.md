@@ -34,7 +34,7 @@ In this example, let's assume that we're a large online retailer, and we've dete
 
 ## Raw data sources
 
-Fabricated raw data is included in the [data](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/data) directory. It includes four tables:
+Fabricated raw data is included in the [data](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/data) directory. It includes four tables:
 
 1. Users - includes basic information about users such as account created date; modeled as a batch data source that updates daily
 2. Purchases - a log of all purchases by users; modeled as a log table with a streaming (i.e. Kafka) event-bus counterpart
@@ -101,11 +101,11 @@ v1 = GroupBy(
 )
 ```
 
-See the whole code file here: [purchases GroupBy](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/purchases.py). This is also in your docker image. We'll be running computation for it and the other GroupBys in [Step 3 - Backfilling Data](#step-3---backfilling-data). 
+See the whole code file here: [purchases GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py). This is also in your docker image. We'll be running computation for it and the other GroupBys in [Step 3 - Backfilling Data](#step-3---backfilling-data).
 
 **Feature set 2: Returns data features**
 
-We perform a similar set of aggregations on returns data in the [returns GroupBy](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/returns.py). The code is not included here because it looks similar to the above example.
+We perform a similar set of aggregations on returns data in the [returns GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py). The code is not included here because it looks similar to the above example.
 
 **Feature set 3: User data features**
 
@@ -124,10 +124,10 @@ v1 = GroupBy(
     sources=[source],
     keys=["user_id"], # Primary key is the same as the primary key for the source table
     aggregations=None # In this case, there are no aggregations or windows to define
-) 
+)
 ```
 
-Taken from the [users GroupBy](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/users.py).
+Taken from the [users GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py).
 
 
 ### Step 2 - Join the features together
@@ -147,20 +147,20 @@ Here is what our join looks like:
 ```python
 source = Source(
     events=EventSource(
-        table="data.checkouts", 
+        table="data.checkouts",
         query=Query(
             selects=select("user_id"), # The primary key used to join various GroupBys together
             time_column="ts",
             ) # The event time used to compute feature values as-of
     ))
 
-v1 = Join(  
+v1 = Join(
     left=source,
     right_parts=[JoinPart(group_by=group_by) for group_by in [purchases_v1, refunds_v1, users]] # Include the three GroupBys
 )
 ```
 
-Taken from the [training_set Join](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/joins/quickstart/training_set.py). 
+Taken from the [training_set Join](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/joins/quickstart/training_set.py).
 
 The `left` side of the join is what defines the timestamps and primary keys for the backfill (notice that it is built on top of the `checkout` event, as dictated by our use case).
 
@@ -191,7 +191,7 @@ You can now query the backfilled data using the spark sql shell:
 spark-sql
 ```
 
-And then: 
+And then:
 
 ```sql
 spark-sql> SELECT user_id, quickstart_returns_v1_refund_amt_sum_30d, quickstart_purchases_v1_purchase_price_sum_14d, quickstart_users_v1_email_verified from default.quickstart_training_set_v1 limit 100;
@@ -266,7 +266,7 @@ Map<String, String> keyMap = new HashMap<>();
 keyMap.put("user_id", "123");
 Fetcher.fetch_join(new Request("quickstart/training_set_v1", keyMap))
 ```
-sample response 
+sample response
 ```
 > '{"purchase_price_avg_3d":14.3241, "purchase_price_avg_14d":11.89352, ...}'
 ```
@@ -287,7 +287,7 @@ Step 1: log fetches
 
 First, make sure you've ran a few fetch requests. Run:
 
-`run.py --mode fetch --type join --name quickstart/training_set.v2 -k '{"user_id":"5"}'` 
+`run.py --mode fetch --type join --name quickstart/training_set.v2 -k '{"user_id":"5"}'`
 
 A few times to generate some fetches.
 
@@ -302,7 +302,7 @@ run.py --mode log-flattener --conf production/joins/quickstart/training_set.v2 -
 
 This creates a `default.quickstart_training_set_v2_logged` table that contains the results of each of the fetch requests that you previously made, along with the timestamp at which you made them and the `user` that you requested.
 
-**Note:** Once you run the above command, it will create and "close" the log partitions, meaning that if you make additional fetches on the same day (UTC time) it will not append. If you want to go back and generate more requests for online/offline consistency, you can drop the table (run `DROP TABLE default.quickstart_training_set_v2_logged` in a `spark-sql` shell) before rerunning the above command. 
+**Note:** Once you run the above command, it will create and "close" the log partitions, meaning that if you make additional fetches on the same day (UTC time) it will not append. If you want to go back and generate more requests for online/offline consistency, you can drop the table (run `DROP TABLE default.quickstart_training_set_v2_logged` in a `spark-sql` shell) before rerunning the above command.
 
 Now you can compute consistency metrics with this command:
 

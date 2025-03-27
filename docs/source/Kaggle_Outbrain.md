@@ -18,7 +18,7 @@ One time steps to get up and running with Chronon.
 ```shell
 cd ~/repos
 git clone git@github.com:airbnb/chronon.git
-export PYTHONPATH=/Users/$USER/repos/chronon/api/py/:/Users/$USER/repos/chronon/api/py/test/sample/:$PYTHONPATH
+export PYTHONPATH=/Users/$USER/repos/chronon/api/python/:/Users/$USER/repos/chronon/api/python/test/sample/:$PYTHONPATH
 ```
 
 ### Download Kaggle data
@@ -43,7 +43,7 @@ export SPARK_LOCAL_IP="127.0.0.1"
 ### Now switch to the config repo (within the project)
 This is where we will do the bulk of development iterations from
 ```shell
-cd api/py/test/sample/
+cd api/python/test/sample/
 ```
 
 ## Chronon Development
@@ -80,9 +80,9 @@ There are also a number of other benefits, such as discoverability, feature shar
 
 ### Step 1 - Create and run a Staging Query
 
-Because we have a normalized view of the data, a good first step is join things together so that we can get the relevant primary keys onto the click data (specifically things like the user, device and geo information that we want to aggregate clicks by).  
+Because we have a normalized view of the data, a good first step is join things together so that we can get the relevant primary keys onto the click data (specifically things like the user, device and geo information that we want to aggregate clicks by).
 
-To do this, we'll write a simple SQL join, and define it as a Staging Query. You can see the code [here](../../api/py/test/sample/staging_queries/kaggle/outbrain.py).
+To do this, we'll write a simple SQL join, and define it as a Staging Query. You can see the code [here](../../api/python/test/sample/staging_queries/kaggle/outbrain.py).
 
 Sometimes you won't need to create a Staging Query if your data is sufficiently denormalized, and your raw data already has the relevant fields.
 
@@ -93,7 +93,7 @@ See more detailed documentation on Staging Query [here](https://chronon-ai.pages
 Compiling takes the python that we wrote and turns it into a thrift serialized object that is runnable.
 
 ```shell
-python3 ~/repos/chronon/api/py/ai/chronon/repo/compile.py --input_path=staging_queries/kaggle/outbrain.py
+python3 ~/repos/chronon/api/python/ai/chronon/repo/compile.py --input_path=staging_queries/kaggle/outbrain.py
 ```
 
 #### Run the staging query
@@ -104,7 +104,7 @@ Now that we have our compiled file, we can pass it into the `run.py` runner whic
 mkdir ~/kaggle_outbrain
 
 DRIVER_MEMORY=2G EXECUTOR_CORES=6 EXECUTOR_MEMORY=8G PARALLELISM=10 MAX_EXECUTORS=1 \
-python3 ~/repos/chronon/api/py/ai/chronon/repo/run.py --mode=backfill \
+python3 ~/repos/chronon/api/python/ai/chronon/repo/run.py --mode=backfill \
 --conf=production/staging_queries/kaggle/outbrain.base_table \
 --local-data-path ~/kaggle_outbrain --local-warehouse-location ~/kaggle_outbrain_parquet
 ```
@@ -117,7 +117,7 @@ As long as you see a log line like `Finished writing to default.kaggle_outbrain_
 
 GroupBys are the primary API for creating features in Chronon. Each one is a set of features that share a data source and a primary key.
 
-You can see the Code for GroupBys [here](../../api/py/test/sample/group_bys/kaggle/outbrain.py).
+You can see the Code for GroupBys [here](../../api/python/test/sample/group_bys/kaggle/outbrain.py).
 
 See detailed documentation on GroupBy [here](https://chronon-ai.pages.dev/Introduction#groupby).
 
@@ -127,7 +127,7 @@ See detailed documentation on GroupBy [here](https://chronon-ai.pages.dev/Introd
 
 As the name suggests, the main purpose of a join is to combine multiple GroupBys together into a single data source.
 
-You can see the Code for the join [here](../../api/py/test/sample/joins/kaggle/outbrain.py).
+You can see the Code for the join [here](../../api/python/test/sample/joins/kaggle/outbrain.py).
 
 See detailed documentation on Join [here](https://chronon-ai.pages.dev/Introduction#join).
 
@@ -135,8 +135,8 @@ See detailed documentation on Join [here](https://chronon-ai.pages.dev/Introduct
 
 Again, compiling creates a runnable serialized file out of your python definition.
 ```shell
-PYTHONPATH=/Users/$USER/repos/chronon/api/py/:/Users/$USER/repos/chronon/api/py/test/sample/ \
-python3 ~/repos/chronon/api/py/ai/chronon/repo/compile.py --conf=joins/kaggle/outbrain.py
+PYTHONPATH=/Users/$USER/repos/chronon/api/python/:/Users/$USER/repos/chronon/api/python/test/sample/ \
+python3 ~/repos/chronon/api/python/ai/chronon/repo/compile.py --conf=joins/kaggle/outbrain.py
 ```
 
 #### Run the join
@@ -144,7 +144,7 @@ python3 ~/repos/chronon/api/py/ai/chronon/repo/compile.py --conf=joins/kaggle/ou
 Running the join will backfill a training dataset with each of the features values computed correctly for each row defined on the `left` side of the join.
 ```shell
 DRIVER_MEMORY=4G EXECUTOR_MEMORY=8G EXECUTOR_CORES=6 PARALLELISM=100 MAX_EXECUTORS=1 \
-python3 ~/repos/chronon/api/py/ai/chronon/repo/run.py --mode=backfill \
+python3 ~/repos/chronon/api/python/ai/chronon/repo/run.py --mode=backfill \
 --conf=production/joins/kaggle/outbrain.training_set \
 --local-data-path ~/kaggle_outbrain --local-warehouse-location ~/kaggle_outbrain_parquet \
 --ds=2016-07-01 --step-days=1
@@ -157,16 +157,16 @@ python3 ~/repos/chronon/api/py/ai/chronon/repo/run.py --mode=backfill \
 You can now see the parquet data here.
 ```shell
 tree -h ~/kaggle_outbrain_parquet/data/kaggle_outbrain_training_set/
-``` 
+```
 
 You can also query it using the spark sql shell:
 
 ```shell
-cd ~/kaggle_outbrain_parquet 
+cd ~/kaggle_outbrain_parquet
 ~/spark-2.4.8-bin-hadoop2.7/bin/spark-sql
 ```
 
-And then: 
+And then:
 
 ```
 spark-sql> SELECT * FROM kaggle_outbrain_training_set

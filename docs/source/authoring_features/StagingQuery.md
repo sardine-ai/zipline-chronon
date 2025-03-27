@@ -19,17 +19,17 @@ v1 = StagingQuery(
             b.user_type,
             b.user_country,
             EMAIL_PARSE(b.email) as parsed_email,
-        FROM 
-            data.fct_purchases a 
+        FROM
+            data.fct_purchases a
         JOIN
-            data.dim_users b 
+            data.dim_users b
         ON
             a.id_user=b.id
         AND
             a.ds = b.ds
         WHERE
             a.ds between '{{ start_date }}' AND '{{ end_date }}'
-        AND 
+        AND
             b.ds between '{{ start_date }}' AND '{{ end_date }}'
     """,
     startPartition="2020-04-01",
@@ -56,10 +56,10 @@ v1 = Join(
 )
 ```
 
-Note: The output namespace of the staging query is dependent on the metaData value for output_namespace. By default, the 
-metadata is extracted from [teams.json](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/teams.json) (or default team if one is not set).
+Note: The output namespace of the staging query is dependent on the metaData value for output_namespace. By default, the
+metadata is extracted from [teams.json](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/teams.json) (or default team if one is not set).
 
-**[See more configuration examples here](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/staging_queries)**
+**[See more configuration examples here](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/staging_queries)**
 
 ## Date Logic and Template Parameters
 

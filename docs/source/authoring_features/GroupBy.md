@@ -2,7 +2,7 @@
 
 *We suggest familiarizing yourself with the concepts in this document, however if you'd like you can also jump ahead to the [Examples](#examples).*
 
-`GroupBy` is the primary API through which features are defined in Chronon. It consists of a group of `Aggregation`s (documented below) computed from a `Source` or similar `Source`s of data. 
+`GroupBy` is the primary API through which features are defined in Chronon. It consists of a group of `Aggregation`s (documented below) computed from a `Source` or similar `Source`s of data.
 
 In some cases there could also be no aggregations. This occurs when the primary key of the source dataset matches the primary key of the `GroupBy`, and means that the selected fields are to be used directly as features, with the option of row-to-row transformations (see the [Batch Entity GroupBy](#batch-entity-groupby-examples) example below).
 
@@ -17,10 +17,10 @@ These aggregate and non-aggregated features can be used in various ways:
 
 - **backfilled against another source** - see [Join](./Join.md) documentation. Most commonly used to enrich labelled data with aggregates coming from many different sources & GroupBy's at once.
 
-**selecting the right Source for your `GroupBy`** is a crucial first step to correctly defining a `GroupBy`. 
+**selecting the right Source for your `GroupBy`** is a crucial first step to correctly defining a `GroupBy`.
 See the [Sources](./Source.md) documentation for more info on the options and when to use each.
 
-Often, you might want to chain together aggregations (i.e., first run `LAST` then run `SUM` on the output). 
+Often, you might want to chain together aggregations (i.e., first run `LAST` then run `SUM` on the output).
 This can be achieved by using the output of one `GroupBy` as the input to the next.
 
 # Aggregations
@@ -111,16 +111,16 @@ See the [Bucketed Example](#bucketed-groupby-example)
 
 Chronon can extract values nested in containers and perform aggregations - over lists and maps. See details below for semantics.
 
-## Lists as inputs 
+## Lists as inputs
 
 Aggregations can also accept list columns as input. For example if we want `average` `item_price` from a `user_purchase`
 source, which contains `item_prices` as a `list` of values in each row - represented by a single credit card transaction.
 Simply put, `GroupBy.aggregations[i].input_column` can refer to a column name which contains lists as values. In
 traditional SQL this would require an expensive `explode` command and is supported natively in `Chronon`.
 
-## Maps as inputs 
+## Maps as inputs
 
-Aggregations over columns of type 'Map<String, Value>'. For example - if you have two histograms this will allow for merging those 
+Aggregations over columns of type 'Map<String, Value>'. For example - if you have two histograms this will allow for merging those
 histograms using - min, max, avg, sum etc. You can merge maps of any scalar values types using aggregations that operate on scalar values.
 The output of aggregations with scala values on map types is another map with aggregates as values.
 
@@ -154,7 +154,7 @@ Limitations:
 
 `accuracy` is a toggle that can be supplied to `GroupBy`. It can be either `SNAPSHOT` or `TEMPORAL`.
 `SNAPSHOT` accuracy means that feature values are computed as of midnight only and refreshed once daily.
-`TEMPORAL` accuracy means that feature values are computed in realtime while serving, and in point-in-time-correct 
+`TEMPORAL` accuracy means that feature values are computed in realtime while serving, and in point-in-time-correct
 fashion while backfilling.
 When topic or mutationTopic is specified, we default to `TEMPORAL` otherwise `SNAPSHOT`.
 
@@ -163,8 +163,8 @@ When topic or mutationTopic is specified, we default to `TEMPORAL` otherwise `SN
 
 ## Online/Offline Toggle
 
-`online` is a toggle to specify if the pipelines necessary to maintain feature views should be scheduled. This is for 
-online low-latency serving. 
+`online` is a toggle to specify if the pipelines necessary to maintain feature views should be scheduled. This is for
+online low-latency serving.
 
 ```python
 your_gb = GroupBy(
@@ -196,7 +196,7 @@ The following examples are broken down by source type. We strongly suggest makin
 
 ## Realtime Event GroupBy examples
 
-This example is based on the [returns](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/returns.py) GroupBy from the quickstart guide that performs various aggregations over the `refund_amt` column over various windows.
+This example is based on the [returns](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py) GroupBy from the quickstart guide that performs various aggregations over the `refund_amt` column over various windows.
 
 ```python
 source = Source(
@@ -239,7 +239,7 @@ v1 = GroupBy(
 
 ## Bucketed GroupBy Example
 
-In this example we take the [Purchases GroupBy](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/purchases.py) from the Quickstart tutorial and modify it to include buckets based on a hypothetical `"credit_card_type"` column.
+In this example we take the [Purchases GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py) from the Quickstart tutorial and modify it to include buckets based on a hypothetical `"credit_card_type"` column.
 
 ```python
 source = Source(
@@ -286,7 +286,7 @@ v1 = GroupBy(
 
 ## Simple Batch Event GroupBy examples
 
-Example GroupBy with windowed aggregations. Taken from [purchases.py](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/purchases.py).
+Example GroupBy with windowed aggregations. Taken from [purchases.py](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py).
 
 Important things to note about this case relative to the streaming GroupBy:
 * The default accuracy here is `SNAPSHOT` meaning that updates to the online KV store only happen in batch, and also backfills will be midnight accurate rather than intra day accurate.
@@ -332,7 +332,7 @@ v1 = GroupBy(
 
 ### Batch Entity GroupBy examples
 
-This is taken from the [Users GroupBy](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/users.py) from the quickstart tutorial.
+This is taken from the [Users GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py) from the quickstart tutorial.
 
 
 ```python
@@ -354,5 +354,5 @@ v1 = GroupBy(
     keys=["user_id"], # Primary key is the same as the primary key for the source table
     aggregations=None, # In this case, there are no aggregations or windows to define
     online=True,
-) 
+)
 ```
