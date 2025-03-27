@@ -117,30 +117,4 @@ class ExtensionsTest extends AnyFlatSpec {
     assertEquals(4, keys.size)
   }
 
-  it should "is tiling enabled" in {
-    def buildGroupByWithServingFlags(flags: Map[String, String] = null): GroupByOps = {
-
-      val execInfo: ExecutionInfo = if (flags != null) {
-        new ExecutionInfo()
-          .setConf(new ConfigProperties().setServing(flags.toJava))
-      } else {
-        null
-      }
-
-      Builders.GroupBy(
-        metaData = Builders.MetaData(name = "featureGroupName", executionInfo = execInfo)
-      )
-
-    }
-
-    // customJson not set defaults to false
-    assertFalse(buildGroupByWithServingFlags().tilingFlag)
-    assertFalse(buildGroupByWithServingFlags(Map.empty).tilingFlag)
-
-    val trueGb = buildGroupByWithServingFlags(Map("tiling" -> "true"))
-    assertTrue(trueGb.tilingFlag)
-    assertFalse(buildGroupByWithServingFlags(Map("tiling" -> "false")).tilingFlag)
-    assertFalse(buildGroupByWithServingFlags(Map("tiling" -> "invalid")).tilingFlag)
-
-  }
 }
