@@ -50,8 +50,8 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       .getOrElse(throw new IllegalArgumentException("GCP_BIGTABLE_INSTANCE_ID environment variable not set"))
 
     val maybeAppProfileId = sys.env
-        .get("GCP_BIGTABLE_APP_PROFILE_ID")
-        .orElse(conf.get("GCP_BIGTABLE_APP_PROFILE_ID"))
+      .get("GCP_BIGTABLE_APP_PROFILE_ID")
+      .orElse(conf.get("GCP_BIGTABLE_APP_PROFILE_ID"))
 
     // Create settings builder based on whether we're in emulator mode (e.g. docker) or not
     val (dataSettingsBuilder, adminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
@@ -79,7 +79,8 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
         (dataSettingsBuilder, adminSettingsBuilder, bigQueryClient)
     }
 
-    val dataSettingsBuilderWithProfileId = maybeAppProfileId.map(profileId => dataSettingsBuilder.setAppProfileId(profileId)).getOrElse(dataSettingsBuilder)
+    val dataSettingsBuilderWithProfileId =
+      maybeAppProfileId.map(profileId => dataSettingsBuilder.setAppProfileId(profileId)).getOrElse(dataSettingsBuilder)
     val dataSettings = dataSettingsBuilderWithProfileId.setProjectId(projectId).setInstanceId(instanceId).build()
     val dataClient = BigtableDataClient.create(dataSettings)
 
