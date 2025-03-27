@@ -18,13 +18,13 @@ All sources are basically composed of the following pieces*:
 
 ## Streaming EventSource
 
-Taken from the [returns.py](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/returns.py) example GroupBy in the quickstart tutorial.
+Taken from the [returns.py](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py) example GroupBy in the quickstart tutorial.
 
 ```python
 source = Source(
     events=EventSource(
         table="data.returns", # This points to the log table with historical return events
-        topic="events.returns", # Streaming event 
+        topic="events.returns", # Streaming event
         query=Query(
             selects=select("user_id","refund_amt"), # Select the fields we care about
             time_column="ts") # The event time
@@ -84,7 +84,7 @@ As you can see, a pre-requisite to using the streaming `EntitySource` is a chang
 
 ## Batch EntitySource
 
-Taken from the [users.py](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/quickstart/users.py) example GroupBy in the quickstart tutorial.
+Taken from the [users.py](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py) example GroupBy in the quickstart tutorial.
 
 ```python
 source = Source(

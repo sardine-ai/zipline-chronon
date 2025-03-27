@@ -29,8 +29,8 @@ source ${VIRTUAL_ENV}/bin/activate
 pip install -r docs/sphinx-requirements.txt
 
 # Install the repo's Chronon python API
-# python -m build api/py
-pip install api/py/dist/chronon-ai*.tar.gz
+# python -m build api/python
+pip install api/python/dist/chronon-ai*.tar.gz
 
 # Run the Sphinx build
 ${VIRTUAL_ENV}/bin/sphinx-build -b html docs/source/ ${BUILD_DIR}/html

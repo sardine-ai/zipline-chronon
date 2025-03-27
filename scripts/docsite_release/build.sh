@@ -17,8 +17,8 @@ if [[ "$BRANCH" != "main" ]]; then
   fi
 fi
 
-thrift --gen py -out api/py/ai/chronon api/thrift/common.thrift
-thrift --gen py -out api/py/ai/chronon api/thrift/api.thrift
+thrift --gen py -out api/python/ai/chronon api/thrift/common.thrift
+thrift --gen py -out api/python/ai/chronon api/thrift/api.thrift
 
 DOC_BUILD=docs/build
 VIRTUAL_ENV=${DOC_BUILD}/sphinx
@@ -32,9 +32,9 @@ source ${VIRTUAL_ENV}/bin/activate
 pip install -r docs/sphinx-requirements.txt
 
 # Install the repo's Chronon python API
-rm -rf api/py/dist/
-python -m build api/py
-pip install api/py/dist/chronon_ai*.tar.gz
+rm -rf api/python/dist/
+python -m build api/python
+pip install api/python/dist/chronon_ai*.tar.gz
 
 # Run the Sphinx build
 ${VIRTUAL_ENV}/bin/sphinx-build -b html docs/source/ ${DOC_BUILD}/html
@@ -49,7 +49,7 @@ rm -rf releases
 mkdir releases
 mkdir -p releases/jar_scala_12
 mv ${DOC_BUILD}/html/* releases/
-tar -zcf releases/repo.tar.gz -C api/py/test/sample .
+tar -zcf releases/repo.tar.gz -C api/python/test/sample .
 mv "spark/target/scala-2.12/${SBT_JAR_12}" releases/jar_scala_12/
 cp init.sh releases/init.sh
 cp docker-compose.yml releases/docker-compose.yml

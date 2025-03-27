@@ -43,7 +43,7 @@ pip uninstall zipline-ai
 pip install --force-reinstall $WHEEL_FILE
 
 
-CHRONON_ROOT=`pwd`/api/py/test/canary
+CHRONON_ROOT=`pwd`/api/python/test/canary
 export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT"
 
 

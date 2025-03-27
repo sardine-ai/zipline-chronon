@@ -11,7 +11,7 @@ Add the following to your shell run command files e.g. `~/.bashrc`.
 
 ```
 export CHRONON_OS=<path/to/chronon/repo>
-export CHRONON_API=$CHRONON_OS/api/py
+export CHRONON_API=$CHRONON_OS/api/python
 alias materialize="PYTHONPATH=$CHRONON_API:$PYTHONPATH $CHRONON_API/ai/chronon/repo/compile.py"
 ```
 

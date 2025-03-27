@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'api/py/**'
+      - 'api/python/**'
       - '.github/workflows/test_python.yaml'
   pull_request:
     branches:
       - main
     paths:
-      - 'api/py/**'
+      - 'api/python/**'
       - '.github/workflows/test_python.yaml'
 
 concurrency:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Set up Python virtual environment
         shell: bash
-        run: |          
+        run: |
           python3 -m venv chronon_py_env
           source chronon_py_env/bin/activate
 
@@ -48,16 +48,16 @@ jobs:
         shell: bash
         run: |
           source chronon_py_env/bin/activate
-          cd api/py/ai/chronon
+          cd api/python/ai/chronon
           pip install importlib-metadata==4.11.4
           pip install flake8
           flake8 --extend-ignore=W605,Q000,F631 --exclude=cli
-          
+
       - name: Run Chronon Python lint (ruff)
         shell: bash
         run: |
           source chronon_py_env/bin/activate
-          cd api/py
+          cd api/python
           pip install ruff
           ruff check .
 
@@ -65,12 +65,12 @@ jobs:
         shell: bash
         run: |
           source chronon_py_env/bin/activate
-          thrift --gen py -out api/py/ api/thrift/common.thrift
-          thrift --gen py -out api/py/ api/thrift/observability.thrift
-          thrift --gen py -out api/py/ api/thrift/api.thrift
-          thrift --gen py -out api/py/ api/thrift/lineage.thrift
-          thrift --gen py -out api/py/ api/thrift/orchestration.thrift
-          cd api/py
+          thrift --gen py -out api/python/ api/thrift/common.thrift
+          thrift --gen py -out api/python/ api/thrift/observability.thrift
+          thrift --gen py -out api/python/ api/thrift/api.thrift
+          thrift --gen py -out api/python/ api/thrift/lineage.thrift
+          thrift --gen py -out api/python/ api/thrift/orchestration.thrift
+          cd api/python
           pip3 install -r requirements/dev.txt
           pip3 install tox
           tox
@@ -78,4 +78,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: htmlcov
-          path: api/py/htmlcov
+          path: api/python/htmlcov

@@ -22,8 +22,8 @@ If you have similar features which would require multiple joins or groupbys, cha
 ## How do I use it?
 You can pass in a parent join  **JoinSource** as Source in GroupBys. For example,
 
-```python 
-# Chaining Feature API example 
+```python
+# Chaining Feature API example
 
 # Upstream Join. Regular chronon Join for last prices of listings
 parent_join = Join(
@@ -79,14 +79,14 @@ enriched_listings = Join(
 
 ```
 ### Configuration Example
-[Chaining GroupBy](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/group_bys/sample_team/sample_chaining_group_by.py)
+[Chaining GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/sample_team/sample_chaining_group_by.py)
 
-[Chaining Join](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/joins/sample_team/sample_chaining_join.py)
+[Chaining Join](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/joins/sample_team/sample_chaining_join.py)
 
 ## Clarifications
 - The goal of chaining is to use output of a Join as input to downstream computations like GroupBy or a Join. As of today we support the case 1 and case 2 in future plan
     - Case 1: A Join output is the source of another GroupBy
-    - Case 2: A Join output is the source of another Join – To be supported 
+    - Case 2: A Join output is the source of another Join – To be supported
 
 
 

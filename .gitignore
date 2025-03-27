@@ -17,11 +17,12 @@
 **/.vscode/
 **/__pycache__/
 **/.DS_Store
-api/py/ai/chronon/
-api/py/test/sample/production/group_bys/quickstart/
-api/py/test/sample/production/joins/quickstart/
-api/py/.coverage
-api/py/htmlcov/
+api/python/ai/chronon/api/
+api/python/ai/chronon/observability/
+api/python/test/sample/production/group_bys/quickstart/
+api/python/test/sample/production/joins/quickstart/
+api/python/.coverage
+api/python/htmlcov/
 **/derby.log
 cs
 
@@ -29,12 +30,12 @@ cs
 docs/build/
 
 # Python distribution and packaging
-api/py/dist/
-api/py/eggs/
-api/py/sdist/
-api/py/build/
-api/py/ai/chronon/thrift/
-api/py/*.egg-info/
+api/python/dist/
+api/python/eggs/
+api/python/sdist/
+api/python/build/
+api/python/ai/chronon/thrift/
+api/python/*.egg-info/
 *.egg
 
 # spark test scratch area

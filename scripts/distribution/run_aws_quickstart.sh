@@ -124,7 +124,7 @@ function check_emr_cluster_state() {
 }
 
 
-CHRONON_ROOT=`pwd`/api/py/test/canary
+CHRONON_ROOT=`pwd`/api/python/test/canary
 export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT"
 
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"

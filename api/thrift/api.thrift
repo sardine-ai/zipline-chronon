@@ -6,7 +6,7 @@ include "observability.thrift"
 include "lineage.thrift"
 
 // cd /path/to/chronon
-// thrift --gen py -out api/py/ api/thrift/api.thrift
+// thrift --gen py -out api/python/ api/thrift/api.thrift
 
 struct Query {
     1: optional map<string, string> selects
