@@ -16,4 +16,10 @@ case class FetchContext(kvStore: KVStore,
   def getOrCreateExecutionContext: ExecutionContext = {
     Option(executionContextOverride).getOrElse(FlexibleExecutionContext.buildExecutionContext)
   }
+
+  def isTilingEnabled: Boolean = {
+    Option(flagStore)
+      .map(_.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].toJava))
+      .exists(_.asInstanceOf[Boolean])
+  }
 }
