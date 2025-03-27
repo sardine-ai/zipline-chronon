@@ -21,12 +21,12 @@ RUN chmod +x /start.sh
 WORKDIR /app
 
 # Copy api examples
-COPY ./api/py/test/sample /chronon_sample
+COPY ./api/python/test/sample /chronon_sample
 
 # COPY cli jars
 COPY ./docker-init/build-artifacts/spark_assembly_deploy.jar /app/cli/spark.jar
 COPY ./docker-init/build-artifacts/cloud_aws_lib_deploy.jar /app/cli/cloud_aws.jar
-COPY ./api/py/ai/chronon/repo/run.py /app/cli/
+COPY ./api/python/ai/chronon/repo/run.py /app/cli/
 ENV CHRONON_DRIVER_JAR="/app/cli/spark.jar"
 
 # Set up Spark dependencies to help with launching CLI

@@ -88,7 +88,7 @@ ENV CLOUD_AWS_JAR=${CLOUD_AWS_JAR:-"/srv/cloud_aws/cloud_aws.jar"}
 ENV CLOUD_GCP_JAR=${CLOUD_GCP_JAR:-"/srv/cloud_gcp/cloud_gcp.jar"}
 ENV FETCHER_JAR=${FETCHER_JAR:-"/srv/fetcher/service.jar"}
 
-COPY api/py/test/sample ./
+COPY api/python/test/sample ./
 COPY quickstart/mongo-online-impl /srv/onlineImpl
 COPY $CHRONON_JAR_PATH "$DRIVER_JAR_PATH"
 COPY $CLOUD_AWS_JAR_PATH "$CLOUD_AWS_JAR"

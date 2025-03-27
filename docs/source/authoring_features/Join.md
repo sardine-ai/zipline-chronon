@@ -6,19 +6,19 @@ Let's use an example to explain this further. In the [Quickstart](../getting_sta
 
 This is important because it means that when we serve the model online, inference will be made at checkout time, and therefore backfilled features for training data should correspond to a historical checkout event, with features computed as of those checkout times. In other words, every row of training data for the model has identical feature values to what the model would have seen had it made a production inference request at that time.
 
-To see how we do this, let's take a look at the left side of the join definition (taken from [Quickstart Training Set Join](https://github.com/airbnb/chronon/blob/main/api/py/test/sample/joins/quickstart/training_set.py)).
+To see how we do this, let's take a look at the left side of the join definition (taken from [Quickstart Training Set Join](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/joins/quickstart/training_set.py)).
 
 ```python
 source = Source(
     events=EventSource(
-        table="data.checkouts", 
+        table="data.checkouts",
         query=Query(
             selects=select("user_id"), # The primary key used to join various GroupBys together
             time_column="ts", # The event time used to compute feature values as-of
-            ) 
+            )
     ))
 
-v1 = Join(  
+v1 = Join(
     left=source,
     right_parts=[JoinPart(group_by=group_by) for group_by in [purchases_v1, returns_v1, users]] # Include the three GroupBys
 )
@@ -68,7 +68,7 @@ The first two columns, `user_id` and `ts` are provided by the `left` side of the
 Once the join is merged, Chronon runs the following jobs:
 
 * Daily front-fill of new feature values as upstream data lands in the source tables.
-* If online serving is enabled, then Chronon runs pipelines that measure consistency between an offline join, and an online joins. These output metrics can be used to ensure there are no consistency issues between the data a model is trained on and the data used to serve the model. 
+* If online serving is enabled, then Chronon runs pipelines that measure consistency between an offline join, and an online joins. These output metrics can be used to ensure there are no consistency issues between the data a model is trained on and the data used to serve the model.
 
 These jobs are managed by airflow pipelines (see [Orchestration](../setup/Orchestration.md) documentation).
 
@@ -81,12 +81,12 @@ In the above example, the left source is an `EventSource`, however, in some case
 Using an `EntitySource` will result in meaningfully different results for feature computation, primarily because `EntitySource`s do not have a `time` column. Rather, `EntitySources` have daily snapshots, so feature values are computed as of midnight boundaries on those days.
 
 See the [Computation examples](#computation-examples) for an explanation of how these source types interact with feature computation.
- 
+
 ## KeyMapping and Prefix
 
 `prefix` adds the specified string to the names of the columns from group_by.
 
-`keyMapping` is a map of string to string. This is used to re-map keys from left side into right side. You could have 
+`keyMapping` is a map of string to string. This is used to re-map keys from left side into right side. You could have
 a group_by on the right keyed by `user`. On the left you have chosen to call the user `user_id` or `vendor`. Then you
 can use the remapping facility to specify this relation for each group_by.
 
@@ -121,7 +121,7 @@ label join compute tasks
 
 my_model = Join(
    ...,
-   # Define label table and add it to the training set 
+   # Define label table and add it to the training set
    label_part=LabelPart(
       labels=[JoinPart(group_by=GroupBy( # A `GroupBy` is used as the source of label data, similar to features
          name="my_label",
@@ -135,7 +135,7 @@ my_model = Join(
          aggregations=None,
          keys=["<entity_id>"]
       ))],
-      # For a label_ds of 09/30, you would get label data from 09/01 because of the 30 day start_offset. 
+      # For a label_ds of 09/30, you would get label data from 09/01 because of the 30 day start_offset.
       # If end_offset were set to 3, then label data range would be from 09/01 to 09/28.
       left_start_offset=30,
       left_end_offset=0,
@@ -157,7 +157,7 @@ backfill and the other for label join job.
  # 1. Regular join feature backfill table
  # 2. Joined view with features and labels. On the fly and not materialized
  # 3. Joined view with feature and latest labels available. On the fly and not materialized
- my_team_my_join_v1 
+ my_team_my_join_v1
  my_team_my_join_v1_labeled
  my_team_my_join_v1_labeled_latest
 
@@ -177,7 +177,7 @@ backfill and the other for label join job.
  label_col_3                               | integer |       |label
  label_ds                                  | varchar |       |label version
 
-# sample schema of my_team_my_join_v1_labeled_latest. Same as above. 
+# sample schema of my_team_my_join_v1_labeled_latest. Same as above.
 # If a particular date do have multiple label versions like 2023-01-24, 2023-02-01, 2023-02-08, only the latest label would show up in this view which is .
 
                   Column                   |  Type   | Extra | Comment
@@ -196,10 +196,10 @@ backfill and the other for label join job.
 ```
 
 ## Bootstrap
-Chronon supports feature **bootstrap** as a primitive as part of Join in order to support various kinds of feature 
+Chronon supports feature **bootstrap** as a primitive as part of Join in order to support various kinds of feature
 experimentation workflows that are manually done by clients previously outside of Chronon.
 
-Bootstrap is a preprocessing step in the **Join** job that enriches the left side with precomputed feature data, 
+Bootstrap is a preprocessing step in the **Join** job that enriches the left side with precomputed feature data,
 before running the regular group by backfills if necessary.
 
 More details and scenarios about bootstrap can be found in Bootstrap documentation.
@@ -262,7 +262,7 @@ Chronon improves the overall experience of creating and managing offline dataset
 1. **Logging** - for capturing online production features
    Feature keys & values are now automatically logged and processed into offline tables for all online Chronon requests. You can utilize the offline log table for many purposes, such as ML observability and auto-retraining.
 
-2. **Bootstrap** - for producing feature sets from across sources & environments  
+2. **Bootstrap** - for producing feature sets from across sources & environments
    You can now create a new training set table from multiple data sources. For example, you can utilize logging for production features and backfill for experimental features; you can reuse backfilled data across multiple runs; you can even share feature values produced by other folks. No more backfills if the data is already available somewhere!
 
 3. **Label computation** - for attaching labels to features to form the full training set
@@ -334,11 +334,11 @@ Steps
 # ml_models/zipline/staging_queries/team_name/driver_table.py
 v1 = StagingQuery(
   query="""
-  WITH 
+  WITH
   log_drivers AS (
     SELECT event_id, <entity_keys>, ts, ds
     FROM (
-      SELECT 
+      SELECT
        event_id, <entity_keys>, ts, ds
        , ROW_NUMBER() OVER (PARTITION BY event_id, ds ORDER BY ts DESC) AS rank
       FROM <db_name>.<join_name>_logged
@@ -355,14 +355,14 @@ v1 = StagingQuery(
   )
   SELECT *
   FROM log_drivers
-  UNION ALL 
+  UNION ALL
   SELECT *
   FROM init_drivers
   """
 )
 # ml_models/zipline/joins/team_name/model.py
 v1 = Join(
-  # it's important to use the SAME staging query before and after. 
+  # it's important to use the SAME staging query before and after.
   left=HiveEventSource(
     namespace="db_name",
     table=get_staging_query_output_table_name(driver_table.v1),
@@ -372,10 +372,10 @@ v1 = Join(
   right_parts=[
     JoinPart(group_by=feature_group_1.v1),
     JoinPart(group_by=feature_group_2.v1),
-    
+
     ...
   ],
-  # event_id has to be unique in order to facilitate bootstrap 
+  # event_id has to be unique in order to facilitate bootstrap
   row_ids=["event_id"],
   # event_id is captured from online serving & logging as a contextual feature
   online_external_parts=[
@@ -400,7 +400,7 @@ v2 = Join(
   ),
   # carry over all other parameters from v1 join
   ...
-  # add v1 table as a bootstrap part 
+  # add v1 table as a bootstrap part
   bootstrap_parts=[BootstrapPart(table="db_name.team_name_model_v1")]
 )
 ```
@@ -420,7 +420,7 @@ driver_table = HiveEventSource(
   table=get_staging_query_output_table_name(driver_table.v1),
   query=Query(wheres=downsampling_filters)
 )
-# config for existing model in production 
+# config for existing model in production
 v1 = Join(
   left=driver_table,
   right_parts=right_parts_production,
@@ -449,7 +449,7 @@ Goal
 # ml_models/zipline/staging_queries/team_name/driver_table.py
 v2 = StagingQuery(
   query="""
-	SELECT * 
+	SELECT *
 	FROM db_name.team_name_driver_table_v1
       WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
       UNION ALL
@@ -466,7 +466,7 @@ driver_table = HiveEventSource(
   table=get_staging_query_output_table_name(driver_table.v1),
   query=Query(wheres=downsampling_filters)
 )
-# config for existing model in production 
+# config for existing model in production
 v1 = Join(
   left=driver_table,
   right_parts=right_parts,
@@ -573,7 +573,7 @@ Goal
 # ml_models/zipline/staging_queries/team_name/driver_table.py
 v1 = StagingQuery(
   query="""
-  WITH 
+  WITH
   legacy_drivers AS (
     SELECT ...
     FROM <legacy_table>
@@ -584,14 +584,14 @@ v1 = StagingQuery(
   )
   SELECT *
   FROM legacy_drivers
-  UNION ALL 
+  UNION ALL
   SELECT *
   FROM new_drivers
   """
 )
 # ml_models/zipline/joins/team_name/model.py
 CHRONON_TO_LEGACY_NAME_MAPPING_DICT = {
-	"chronon_output_column_name": "legacy_table_column_name", 
+	"chronon_output_column_name": "legacy_table_column_name",
 	...
 }
 v1 = Join(
@@ -602,7 +602,7 @@ v1 = Join(
     query=Query(...)
   ),
   right_parts=...
-  # event_id has to be unique in order to facilitate bootstrap 
+  # event_id has to be unique in order to facilitate bootstrap
   row_ids=["event_id"],
   bootstrap_parts=[
 	BootstrapPart(
@@ -785,4 +785,4 @@ values for external parts:
     - It is also possible to leverage Chronon to build these bootstrap source tables. In some edge-case scenarios in which
       Chronon native Group Bys cannot meet the serving SLAs for latency or freshness, but nevertheless you can still express
       the backfill logic using Chronon group bys and joins. We call these backfill-only group bys and joins. Clients can make
-      the output table of a backfill-only join as the bootstrap source of the main join. 
+      the output table of a backfill-only join as the bootstrap source of the main join.

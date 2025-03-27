@@ -130,11 +130,11 @@ v1 = Join(
 
 ##### Pre-commit Setup
 
-1. Install pre-commit and other dev libraries: 
+1. Install pre-commit and other dev libraries:
 ```
 pip install -r requirements/dev.txt
 ```
-2. Run the following command under `api/py` to install the git hook scripts: 
+2. Run the following command under `api/python` to install the git hook scripts:
 ```
 pre-commit install
 ```
