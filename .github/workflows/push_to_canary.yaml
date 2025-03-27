@@ -94,7 +94,7 @@ jobs:
         id: bazel-build
         run: |
           bazel clean
-          bazel build //spark:spark_assembly_deploy.jar \
+          bazel build //flink:flink_assembly_deploy.jar \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json 
           bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar \
@@ -108,11 +108,11 @@ jobs:
             --google_credentials=bazel-cache-key.json
 
 
-      - name: Upload Spark Assembly Jar
+      - name: Upload Flink Assembly Jar
         uses: actions/upload-artifact@v4
         with:
-          name: spark-assembly-jar
-          path: bazel-bin/spark/spark_assembly_deploy.jar
+          name: flink-assembly-jar
+          path: bazel-bin/flink/flink_assembly_deploy.jar
 
       - name: Upload Cloud AWS Jar
         uses: actions/upload-artifact@v4
@@ -149,10 +149,10 @@ jobs:
         with:
           name: zipline-ai-wheel
 
-      - name: Download Spark Assembly Jar
+      - name: Download Flink Assembly Jar
         uses: actions/download-artifact@v4
         with:
-          name: spark-assembly-jar
+          name: flink-assembly-jar
 
       - name: Download Cloud AWS Lib Jar
         uses: actions/download-artifact@v4
@@ -175,7 +175,7 @@ jobs:
         run: |
           set -eo pipefail
           aws s3 cp ${{ needs.build_artifacts.outputs.wheel_file }} s3://zipline-artifacts-canary/release/candidate/wheels/ --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          aws s3 cp spark_assembly_deploy.jar s3://zipline-artifacts-canary/release/candidate/jars/spark_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+          aws s3 cp flink_assembly_deploy.jar s3://zipline-artifacts-canary/release/candidate/jars/flink_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           aws s3 cp cloud_aws_lib_deploy.jar s3://zipline-artifacts-canary/release/candidate/jars/cloud_aws_lib_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           aws s3 cp service_assembly_deploy.jar s3://zipline-artifacts-canary/release/candidate/jars/service_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
 
@@ -196,10 +196,10 @@ jobs:
         with:
           name: zipline-ai-wheel
 
-      - name: Download Spark Assembly Jar
+      - name: Download Flink Assembly Jar
         uses: actions/download-artifact@v4
         with:
-          name: spark-assembly-jar
+          name: flink-assembly-jar
 
       - name: Download Cloud GCP Lib Jar
         uses: actions/download-artifact@v4
@@ -231,8 +231,8 @@ jobs:
           set -eo pipefail
           gcloud storage cp ${{ needs.build_artifacts.outputs.wheel_file }} gs://zipline-artifacts-canary/release/candidate/wheels/
           gcloud storage objects update gs://zipline-artifacts-canary/release/candidate/wheels/${{ needs.build_artifacts.outputs.wheel_file }} --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          gcloud storage cp spark_assembly_deploy.jar gs://zipline-artifacts-canary/release/candidate/jars/spark_assembly_deploy.jar
-          gcloud storage objects update gs://zipline-artifacts-canary/release/candidate/jars/spark_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+          gcloud storage cp flink_assembly_deploy.jar gs://zipline-artifacts-canary/release/candidate/jars/flink_assembly_deploy.jar
+          gcloud storage objects update gs://zipline-artifacts-canary/release/candidate/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp cloud_gcp_lib_deploy.jar gs://zipline-artifacts-canary/release/candidate/jars/cloud_gcp_lib_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/candidate/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp service_assembly_deploy.jar gs://zipline-artifacts-canary/release/candidate/jars/service_assembly_deploy.jar
@@ -313,10 +313,10 @@ jobs:
         with:
           name: zipline-ai-wheel
 
-      - name: Download Spark Assembly Jar
+      - name: Download Flink Assembly Jar
         uses: actions/download-artifact@v4
         with:
-          name: spark-assembly-jar
+          name: flink-assembly-jar
 
       - name: Download Cloud AWS Lib Jar
         uses: actions/download-artifact@v4
@@ -339,7 +339,7 @@ jobs:
         run: |
           set -eo pipefail
           aws s3 cp ${{ needs.build_artifacts.outputs.wheel_file }} s3://zipline-artifacts-canary/release/passing-candidate/wheels/ --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          aws s3 cp spark_assembly_deploy.jar s3://zipline-artifacts-canary/release/passing-candidate/jars/spark_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+          aws s3 cp flink_assembly_deploy.jar s3://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           aws s3 cp cloud_aws_lib_deploy.jar s3://zipline-artifacts-canary/release/passing-candidate/jars/cloud_aws_lib_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           aws s3 cp service_assembly_deploy.jar s3://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
 
@@ -360,10 +360,10 @@ jobs:
         with:
           name: zipline-ai-wheel
 
-      - name: Download Spark Assembly Jar
+      - name: Download Flink Assembly Jar
         uses: actions/download-artifact@v4
         with:
-          name: spark-assembly-jar
+          name: flink-assembly-jar
 
       - name: Download Cloud GCP Lib Jar
         uses: actions/download-artifact@v4
@@ -395,8 +395,8 @@ jobs:
           set -eo pipefail
           gcloud storage cp ${{ needs.build_artifacts.outputs.wheel_file }} gs://zipline-artifacts-canary/release/passing-candidate/wheels/
           gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/wheels/${{ needs.build_artifacts.outputs.wheel_file }} --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          gcloud storage cp spark_assembly_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/spark_assembly_deploy.jar
-          gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/spark_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+          gcloud storage cp flink_assembly_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar
+          gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp cloud_gcp_lib_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp service_assembly_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar
@@ -417,7 +417,7 @@ jobs:
         with:
           name: |
             zipline-ai-wheel
-            spark-assembly-jar
+            flink-assembly-jar
             cloud-aws-jar
             cloud-gcp-jar
             service-assembly-jar
