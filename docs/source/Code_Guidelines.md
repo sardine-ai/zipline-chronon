@@ -20,28 +20,28 @@ Any row/column level operation is a part of the inner loop. This is true across 
           Branches in hot path (two `isInstance` calls per value)
           ```scala
           // inefficient version
-          
+
           def toDouble(o: Any): Double = {
-              if (o.isInstance[Int]) { 
+              if (o.isInstance[Int]) {
                 o.asInstanceOf[Int].toDouble
-              } else if (o.isInstance[Long]) { 
+              } else if (o.isInstance[Long]) {
                 o.asInstanceOf[Long].toDouble
-              } 
+              }
               . . .
           }
-          
+
           df.rdd.map(toDouble(row(columnIndex)))
-          ``` 
+          ```
 
           Branches in control path (one `isInstance` call per value)
           ```scala
           // efficient version
-          
+
           def toDoubleFunc(inputType: DataType): Any => Double = {
-              inputType match { 
-                case IntType => x: Any => x.asInstanceOf[Int].toDouble 
-                case LongType => x: Any => x.asInstanceOf[Long].toDouble 
-              } 
+              inputType match {
+                case IntType => x: Any => x.asInstanceOf[Int].toDouble
+                case LongType => x: Any => x.asInstanceOf[Long].toDouble
+              }
           }
           val doubleFunc = toDoubleFunc(df.schema(columnIndex).dataType)
           df.rdd.map(doubleFunc(row(columnIndex)))
@@ -51,22 +51,22 @@ Any row/column level operation is a part of the inner loop. This is true across 
 
 Scala is a large language with a lot of powerful features.
 Some of these features however were added without regard to readability.
-The biggest culprit is the overloading of the 
+The biggest culprit is the overloading of the
 [implicit](https://www.scala-lang.org/blog/2020/05/05/scala-3-import-suggestions.html)
 keyword.
 
-We have restricted the code base to use implicit only to retroactively extend 
+We have restricted the code base to use implicit only to retroactively extend
 classes. A.K.A as extension objects. Every other use should be minimized.
 
-Scala 3 fixes a lot of these design mistakes, but the world is quite far from 
+Scala 3 fixes a lot of these design mistakes, but the world is quite far from
 adopting Scala 3.
 
-Having said all that, Scala 2 is leagues ahead of any other language on JVM, 
-in terms of power. Also Spark APIs are mainly in Scala2.  
+Having said all that, Scala 2 is leagues ahead of any other language on JVM,
+in terms of power. Also Spark APIs are mainly in Scala2.
 
 ### Testing
 
-Every new behavior should be unit-tested. We have implemented a fuzzing framework 
-that can produce data randomly as scala objects or 
+Every new behavior should be unit-tested. We have implemented a fuzzing framework
+that can produce data randomly as scala objects or
 spark tables - [see](../../spark/src/test/scala/ai/chronon/spark/test/DataFrameGen.scala). Use it for testing.
-Python code is also covered by tests - [see](https://github.com/airbnb/chronon/tree/main/api/py/test).
+Python code is also covered by tests - [see](https://github.com/airbnb/chronon/tree/main/api/python/test).
