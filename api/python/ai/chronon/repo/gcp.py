@@ -2,6 +2,7 @@ import base64
 import logging
 import multiprocessing
 import os
+import traceback
 from typing import List
 
 import crcmod
@@ -31,13 +32,21 @@ ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 class GcpRunner(Runner):
     def __init__(self, args):
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_GCP_JAR_DEFAULT
+            ZIPLINE_DIRECTORY,
+            get_customer_id(),
+            args["version"],
+            ZIPLINE_GCP_JAR_DEFAULT,
         )
         service_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_GCP_SERVICE_JAR
+            ZIPLINE_DIRECTORY,
+            get_customer_id(),
+            args["version"],
+            ZIPLINE_GCP_SERVICE_JAR,
         )
         jar_path = (
-            f"{service_jar_path}:{gcp_jar_path}" if args["mode"] == "fetch" else gcp_jar_path
+            f"{service_jar_path}:{gcp_jar_path}"
+            if args["mode"] == "fetch"
+            else gcp_jar_path
         )
         super().__init__(args, os.path.expanduser(jar_path))
 
@@ -68,7 +77,9 @@ class GcpRunner(Runner):
                 )
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to download {source_blob_name}: {str(e)}") from e
+            raise RuntimeError(
+                f"Failed to download {source_blob_name}: {str(e)}"
+            ) from e
 
     @staticmethod
     @retry_decorator(retries=2, backoff=5)
@@ -262,10 +273,7 @@ class GcpRunner(Runner):
             "--validate-rows": self.validate_rows,
         }
 
-        flag_args = {
-            "--mock-source": self.mock_source,
-            "--validate": self.validate
-        }
+        flag_args = {"--mock-source": self.mock_source, "--validate": self.validate}
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
 
         user_args_str = " ".join(
@@ -302,7 +310,9 @@ class GcpRunner(Runner):
             command = self.run_dataproc_flink_streaming()
             command_list.append(command)
         else:
-            local_files_to_upload_to_gcs = [os.path.join(self.repo, self.conf)] if self.conf else []
+            local_files_to_upload_to_gcs = (
+                [os.path.join(self.repo, self.conf)] if self.conf else []
+            )
             if self.parallelism > 1:
                 assert self.start_ds is not None and self.ds is not None, (
                     "To use parallelism, please specify --start-ds and --end-ds to "
@@ -405,6 +415,8 @@ class GcpRunner(Runner):
                     check_call(
                         f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()}"
                     )
-                except Exception:
+                except Exception as e:
+                    print(f"Error waiting for job {job_id}: {e}")
+                    print(traceback.format_exc())
                     # swallow since this is just for tailing logs
                     pass

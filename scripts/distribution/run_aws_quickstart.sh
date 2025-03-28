@@ -129,9 +129,9 @@ export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT"
 
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline compile --repo=$CHRONON_ROOT --conf=group_bys/aws/purchases.py
+  zipline compile -chronon_root=$CHRONON_ROOT --conf=group_bys/aws/purchases.py
 else
-  zipline compile --repo=$CHRONON_ROOT --conf=group_bys/aws/purchases.py
+  zipline compile -chronon_root=$CHRONON_ROOT --conf=group_bys/aws/purchases.py
 fi
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
