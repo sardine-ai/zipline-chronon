@@ -209,12 +209,14 @@ class ChrononHudiKryoRegistrator extends ChrononKryoRegistrator {
       "org.apache.hudi.client.WriteStatus",
       "org.apache.hudi.common.model.HoodieWriteStat",
       "org.apache.hudi.common.model.HoodieWriteStat$RuntimeStats",
-      "org.apache.hudi.common.util.collection.ImmutablePair",
       "org.apache.hudi.avro.model.HoodieMetadataFileInfo",
-      "org.apache.hudi.common.util.Option",
       "org.apache.hudi.common.model.HoodieDeltaWriteStat",
+      "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload",
+      "org.apache.hudi.common.util.collection.ImmutablePair",
+      "org.apache.hudi.common.util.Option",
       "org.apache.hudi.storage.StoragePathInfo",
-      "org.apache.hudi.common.model.OverwriteWithLatestAvroPayload"
+      "org.apache.hudi.metadata.HoodieTableMetadataUtil$DirectoryInfo",
+      "org.apache.spark.sql.execution.datasources.parquet.Spark35ParquetReader"
     )
     additionalClassNames.foreach(name => doRegister(name, kryo))
   }
