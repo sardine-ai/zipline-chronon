@@ -86,6 +86,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "ai.chronon.online.RowWrapper",
       "ai.chronon.online.fetcher.Fetcher$Request",
       "ai.chronon.spark.KeyWithHash",
+      "java.time.Instant",
       "java.time.LocalDate",
       "java.time.LocalDateTime",
       "java.util.ArrayList",

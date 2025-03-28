@@ -37,12 +37,23 @@ object AvroConversions {
   def toAvroValue(value: AnyRef, schema: Schema): Object =
     schema.getType match {
       case Schema.Type.UNION => toAvroValue(value, schema.getTypes.get(1))
-      case Schema.Type.LONG  => value.asInstanceOf[Long].asInstanceOf[Object]
+
+      // Timestamp Type
+      case Schema.Type.LONG
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.timestampMillis().getName =>
+        // Avro represents as java.time.Instant: https://github.com/apache/avro/blob/fe0261deecf22234bbd09251764152d4bf9a9c4a/lang/java/avro/src/main/java/org/apache/avro/data/TimeConversions.java#L131
+        value.asInstanceOf[java.time.Instant].asInstanceOf[Object]
+
+      case Schema.Type.LONG => value.asInstanceOf[Long].asInstanceOf[Object]
+
+      // DateType
       case Schema.Type.INT
           if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
         // Avro represents as java.time.LocalDate: https://github.com/apache/avro/blob/fe0261deecf22234bbd09251764152d4bf9a9c4a/lang/java/avro/src/main/java/org/apache/avro/data/TimeConversions.java#L38
         value.asInstanceOf[java.time.LocalDate].asInstanceOf[Object]
-      case Schema.Type.INT    => value.asInstanceOf[Int].asInstanceOf[Object]
+
+      case Schema.Type.INT => value.asInstanceOf[Int].asInstanceOf[Object]
+
       case Schema.Type.FLOAT  => value.asInstanceOf[Float].asInstanceOf[Object]
       case Schema.Type.DOUBLE => value.asInstanceOf[Double].asInstanceOf[Object]
       case _                  => value
@@ -61,7 +72,11 @@ object AvroConversions {
       case Schema.Type.INT
           if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
         DateType
-      case Schema.Type.INT     => IntType
+      case Schema.Type.INT => IntType
+
+      case Schema.Type.LONG
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.timestampMillis().getName =>
+        TimestampType
       case Schema.Type.LONG    => LongType
       case Schema.Type.FLOAT   => FloatType
       case Schema.Type.DOUBLE  => DoubleType
@@ -120,6 +135,8 @@ object AvroConversions {
       case BooleanType => Schema.create(Schema.Type.BOOLEAN)
       case DateType =>
         LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT))
+      case TimestampType =>
+        LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG))
       case _ =>
         throw new UnsupportedOperationException(
           s"Cannot convert chronon type $dataType to avro type. Cast it to string please")

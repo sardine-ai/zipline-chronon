@@ -22,7 +22,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange}
 import ai.chronon.online.{AvroConversions, SparkConversions}
 import org.apache.avro.Schema
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, types}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{LongType, StructType}
@@ -226,14 +226,28 @@ object Extensions {
     def withTimeBasedColumn(columnName: String,
                             timeColumn: String = Constants.TimeColumn,
                             format: String = tableUtils.partitionSpec.format): DataFrame =
-      df.withColumn(columnName, from_unixtime(df.col(timeColumn) / 1000, format))
+      df.schema.find(_.name == timeColumn) match {
 
-    def addTimebasedColIfExists(): DataFrame =
-      if (df.schema.names.contains(Constants.TimeColumn)) {
-        df.withTimeBasedColumn(Constants.TimePartitionColumn)
-      } else {
-        df
+        case Some(types.StructField(_, types.LongType, _, _)) =>
+          df.withColumn(columnName, from_unixtime(df.col(timeColumn) / 1000, format))
+
+        case Some(types.StructField(_, otherType, _, _)) =>
+          throw new IllegalStateException(s"$timeColumn column has incorrect type ${otherType.simpleString}")
+
+        case None =>
+          throw new IllegalStateException(
+            s"$timeColumn column not found among ${df.columns.mkString("Array(", ", ", ")")}")
       }
+
+    def addTimeBasedColIfExists(): DataFrame = {
+      df.schema.find(_.name == Constants.TimeColumn) match {
+        case Some(field) =>
+          require(field.dataType == types.LongType,
+                  s"timestamp column must be of type LONG, found ${field.dataType.simpleString} instead")
+          df.withTimeBasedColumn(Constants.TimePartitionColumn)
+        case _ => df
+      }
+    }
 
     private def camelToSnake(name: String) = {
       val res = "([a-z]+)([A-Z]\\w+)?".r

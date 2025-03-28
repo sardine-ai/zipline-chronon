@@ -180,7 +180,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
       unfilledRanges.foreach { unfilledRange =>
         val leftDf = JoinUtils.leftDf(joinConfCloned, unfilledRange, tableUtils)
         if (leftDf.isDefined) {
-          val leftTaggedDf = leftDf.get.addTimebasedColIfExists()
+          val leftTaggedDf = leftDf.get.addTimeBasedColIfExists()
 
           val bootstrapJobDateRange = new DateRange()
             .setStartDate(unfilledRange.start)

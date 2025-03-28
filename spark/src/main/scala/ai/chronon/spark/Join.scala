@@ -217,7 +217,7 @@ class Join(joinConf: api.Join,
 
   override def computeFinalJoin(leftDf: DataFrame, leftRange: PartitionRange, bootstrapInfo: BootstrapInfo): Unit = {
     val bootstrapDf =
-      tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(leftRange)).addTimebasedColIfExists()
+      tableUtils.scanDf(query = null, table = bootstrapTable, range = Some(leftRange)).addTimeBasedColIfExists()
     val rightPartsData = getRightPartsData(leftRange)
     val joinedDfTry =
       try {
@@ -243,7 +243,7 @@ class Join(joinConf: api.Join,
                             runSmallMode: Boolean = false,
                             usingBootstrappedLeft: Boolean = false): Option[DataFrame] = {
 
-    val leftTaggedDf = leftDf.addTimebasedColIfExists()
+    val leftTaggedDf = leftDf.addTimeBasedColIfExists()
 
     // compute bootstrap table - a left outer join between left source and various bootstrap source table
     // this becomes the "new" left for the following GB backfills
@@ -397,7 +397,7 @@ class Join(joinConf: api.Join,
           // a bootstrap source can cover a partial date range. we combine the columns using coalesce-rule
           Success(
             rightResults
-              .foldLeft(bootstrapDf.addTimebasedColIfExists()) { case (partialDf, (rightPart, rightDf)) =>
+              .foldLeft(bootstrapDf.addTimeBasedColIfExists()) { case (partialDf, (rightPart, rightDf)) =>
                 joinWithLeft(partialDf, rightDf, rightPart)
               }
               // drop all processing metadata columns

@@ -18,6 +18,7 @@ package ai.chronon.api
 
 import org.apache.commons.lang3.time.FastDateFormat
 
+import java.time.Instant
 import java.util.{Date, TimeZone}
 
 object TsUtils {
@@ -35,6 +36,10 @@ object TsUtils {
 
   def datetimeToTs(desiredTime: String): Long = {
     formatter.parse(desiredTime).getTime
+  }
+
+  def datetimeToInstant(desiredTime: String): Instant = {
+    Instant.ofEpochMilli(datetimeToTs(desiredTime));
   }
 
   def round(epochMillis: Long, roundMillis: Long): Long =

@@ -20,6 +20,7 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
+import ai.chronon.online.{AvroConversions, SparkConversions}
 import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.{GroupByUpload, SparkSessionBuilder, TableUtils}
@@ -29,10 +30,13 @@ import com.google.gson.Gson
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.slf4j.{Logger, LoggerFactory}
+import org.apache.spark.sql.types
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.util.Try
 
 class GroupByUploadTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -149,7 +153,7 @@ class GroupByUploadTest extends AnyFlatSpec {
     tableUtils.sql(s"USE $namespace")
 
     val ratingsTable = s"${namespace}.ratings"
-    def ts(arg: String) = TsUtils.datetimeToTs(s"2023-$arg:00")
+    def ts(arg: String) = TsUtils.datetimeToInstant(s"2023-$arg:00")
 
     val ratingsColumns = Seq("review", "rating", "category_ratings", "ts", "ds")
     val ratingsData = Seq(
@@ -162,6 +166,13 @@ class GroupByUploadTest extends AnyFlatSpec {
     val ratingsDf = spark.createDataFrame(ratingsRdd).toDF(ratingsColumns: _*)
     ratingsDf.save(ratingsTable)
     ratingsDf.show()
+
+    ratingsDf.schema.find(_.name == "ts") shouldBe Some(types.StructField("ts", types.TimestampType))
+
+    val ratingsAvroSchema = Try {
+      AvroConversions.fromChrononSchema(SparkConversions.toChrononStruct("ratings_schema", ratingsDf.schema))
+    }
+    ratingsAvroSchema.isSuccess shouldBe true
 
     val ratingsMutationsColumns = Seq("is_before", "mutation_ts", "review", "rating", "category_ratings", "ts", "ds")
 
@@ -181,6 +192,8 @@ class GroupByUploadTest extends AnyFlatSpec {
     ratingsMutationsDf.save(s"${ratingsTable}_mutations")
     ratingsMutationsDf.show()
 
+    ratingsMutationsDf.schema.find(_.name == "ts") shouldBe Some(types.StructField("ts", types.TimestampType))
+
     val reviewsTable = s"${namespace}.reviews"
     val reviewsColumns = Seq("review", "listing", "ts", "ds")
     val reviewsData = Seq(
@@ -193,6 +206,8 @@ class GroupByUploadTest extends AnyFlatSpec {
     reviewsDf.save(reviewsTable)
     reviewsDf.show()
 
+    reviewsDf.schema.find(_.name == "ts") shouldBe Some(types.StructField("ts", types.TimestampType))
+
     val reviewsMutationsColumns = Seq("is_before", "mutation_ts", "review", "listing", "ts", "ds")
     val reviewsMutations = Seq(
       (true, ts("08-15 06:00"), "review2", "listing1", ts("07-13 11:00"), "2023-08-15"), // delete
@@ -203,9 +218,12 @@ class GroupByUploadTest extends AnyFlatSpec {
     reviewsMutationsDf.save(s"${reviewsTable}_mutations")
     reviewsMutationsDf.show()
 
+    reviewsMutationsDf.schema.find(_.name == "ts") shouldBe Some(types.StructField("ts", types.TimestampType))
+
     val leftRatings =
       Builders.Source.entities(
-        Builders.Query(selects = Builders.Selects("review", "rating", "category_ratings", "ts")),
+        Builders.Query(selects =
+          Builders.Selects("review", "rating", "category_ratings") ++ Map("ts" -> "UNIX_TIMESTAMP(ts)*1000")),
         snapshotTable = ratingsTable,
         mutationTopic = s"${ratingsTable}_mutations",
         mutationTable = s"${ratingsTable}_mutations"
@@ -215,7 +233,8 @@ class GroupByUploadTest extends AnyFlatSpec {
       metaData = Builders.MetaData(namespace = namespace, name = "review_attrs"),
       sources = Seq(
         Builders.Source.entities(
-          Builders.Query(selects = Builders.Selects("review", "listing", "ts")),
+          Builders.Query(selects =
+            Builders.Selects.exprs("review" -> "review", "listing" -> "listing", "ts" -> "UNIX_TIMESTAMP(ts)*1000")),
           snapshotTable = reviewsTable,
           mutationTopic = s"${reviewsTable}_mutations",
           mutationTable = s"${reviewsTable}_mutations"
@@ -240,7 +259,8 @@ class GroupByUploadTest extends AnyFlatSpec {
         Builders.Source.joinSource(
           join = joinConf,
           query = Builders.Query(selects =
-            Builders.Selects("review", "review_attrs_listing_last", "rating", "category_ratings", "ts"))
+            Builders.Selects("review", "review_attrs_listing_last", "rating", "category_ratings") ++ Map(
+              "ts" -> "UNIX_TIMESTAMP(ts)*1000"))
         )),
       keyColumns = collection.Seq("review_attrs_listing_last"),
       aggregations = Seq(
@@ -285,13 +305,19 @@ class GroupByUploadTest extends AnyFlatSpec {
     val requestResponse = Seq(
       Fetcher.Request("listing_ratings",
                       Map("review_attrs_listing_last" -> "listing1"),
-                      Some(ts("08-15 05:00"))) -> 4.5,
-      Fetcher.Request("listing_ratings", Map("review_attrs_listing_last" -> "listing1"), Some(ts("08-15 08:00"))) -> 4,
-      Fetcher.Request("listing_ratings", Map("review_attrs_listing_last" -> "listing1"), Some(ts("08-15 11:00"))) -> 2,
+                      Some(ts("08-15 05:00").toEpochMilli)) -> 4.5,
+      Fetcher.Request("listing_ratings",
+                      Map("review_attrs_listing_last" -> "listing1"),
+                      Some(ts("08-15 08:00").toEpochMilli)) -> 4,
+      Fetcher.Request("listing_ratings",
+                      Map("review_attrs_listing_last" -> "listing1"),
+                      Some(ts("08-15 11:00").toEpochMilli)) -> 2,
       Fetcher.Request("listing_ratings",
                       Map("review_attrs_listing_last" -> "listing2"),
-                      Some(ts("08-15 07:00"))) -> null,
-      Fetcher.Request("listing_ratings", Map("review_attrs_listing_last" -> "listing2"), Some(ts("08-15 10:00"))) -> 3
+                      Some(ts("08-15 07:00").toEpochMilli)) -> null,
+      Fetcher.Request("listing_ratings",
+                      Map("review_attrs_listing_last" -> "listing2"),
+                      Some(ts("08-15 10:00").toEpochMilli)) -> 3
     )
     val responseF = fetcher.fetchGroupBys(requestResponse.map(_._1))
 

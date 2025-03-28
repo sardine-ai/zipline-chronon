@@ -48,6 +48,7 @@ class InMemoryStream {
 
     val writer = new SpecificDatumWriter[GenericRecord](schema)
     writer.getData.addLogicalTypeConversion(new TimeConversions.DateConversion())
+    writer.getData.addLogicalTypeConversion(new TimeConversions.TimestampMillisConversion())
     val out = new ByteArrayOutputStream()
     val encoder: BinaryEncoder = EncoderFactory.get().binaryEncoder(out, null)
     writer.write(gr, encoder)
