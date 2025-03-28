@@ -5,10 +5,7 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.Extensions.WindowUtils
-import ai.chronon.api.GroupBy
-import ai.chronon.api.MetaData
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.TilingUtils
+import ai.chronon.api.{GroupBy, MetaData, PartitionSpec, TilingUtils, TimeRange}
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.ListResponse
@@ -26,12 +23,9 @@ import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest
 import com.google.cloud.bigtable.admin.v2.models.GCRules
 import com.google.cloud.bigtable.data.v2.BigtableDataClient
-import com.google.cloud.bigtable.data.v2.models.Filters
-import com.google.cloud.bigtable.data.v2.models.Query
+import com.google.cloud.bigtable.data.v2.models.{Filters, Query, RowMutation, TableId, TableId => BTTableId}
 import com.google.cloud.bigtable.data.v2.models.Range.ByteStringRange
 import com.google.cloud.bigtable.data.v2.models.Range.TimestampRange
-import com.google.cloud.bigtable.data.v2.models.RowMutation
-import com.google.cloud.bigtable.data.v2.models.{TableId => BTTableId}
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -119,6 +113,58 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     }
   }
 
+  sealed trait FilterInstance {
+    val filter: Filters.Filter
+  }
+
+  object FilterInstance {
+    def toChain(instances: Seq[FilterInstance]): Filters.ChainFilter = {
+      instances.foldLeft(Filters.FILTERS.chain()) { case (chain, instance) => chain.filter(instance.filter) }
+    }
+  }
+
+  case class TimestampRangeFilter(startMs: Long, endMs: Long) extends FilterInstance {
+    override val filter: Filters.Filter =
+      Filters.FILTERS.timestamp().range().startClosed(startMs * 1000).endClosed(endMs * 1000)
+  }
+
+  case object LatestCellFilter extends FilterInstance {
+    override val filter: Filters.Filter = Filters.FILTERS.limit().cellsPerRow(1)
+  }
+
+  // https://github.com/googleapis/sdk-platform-java/blob/68df88832b5fba396acda996056f8c0fe3a881cb/api-common-java/src/main/java/com/google/api/core/ApiFutures.java#L308
+  def batchGet(requests: Seq[KVStore.GetRequest], dataset: String, instances: Seq[FilterInstance]): Unit = {
+
+    /** List<ApiFuture<Row>> rows = new ArrayList<>();
+      *    *
+      *    *   try (Batcher<ByteString, Row> batcher = bigtableDataClient.newBulkReadRowsBatcher("[TABLE]")) {
+      *    *     for (String someValue : someCollection) {
+      *    *       ApiFuture<Row> rowFuture =
+      *    *           batcher.add(ByteString.copyFromUtf8("[ROW KEY]"));
+      *    *       rows.add(rowFuture);
+      *    *     }
+      *    *
+      *    *     // [Optional] Sends collected elements for batching asynchronously.
+      *    *     batcher.sendOutstanding();
+      *    *
+      *    *     // [Optional] Invokes sendOutstanding() and awaits until all pending entries are resolved.
+      *    *     batcher.flush();
+      *    *   }
+      *    *   // batcher.close() invokes `flush()` which will in turn invoke `sendOutstanding()` with await for
+      *    *   pending batches until its resolved.
+      *    *
+      *    *   List<Row> actualRows = ApiFutures.allAsList(rows).get();
+      */
+
+    val batcher = dataClient.newBulkReadRowsBatcher(TableId.of(dataset), FilterInstance.toChain(instances))
+    requests.foreach { request =>
+      val rowKey = buildRowKey(request)
+      batcher.add(request.keyBytes)
+
+    }
+
+  }
+
   override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = {
     logger.info(s"Performing multi-get for ${requests.size} requests")
     val resultFutures = requests.map { request =>
@@ -184,6 +230,10 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     Future.sequence(resultFutures)
   }
 
+  private def buildTimeFilter(startTs: Long, endTs: Long): Filters.TimestampRangeFilter = {
+    Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000)
+  }
+
   private def setQueryTimeSeriesFilters(query: Query,
                                         startTs: Long,
                                         endTs: Long,
@@ -206,7 +256,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     })
 
     // Bigtable uses microseconds and we need to scan from startTs (millis) to endTs (millis)
-    query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000))
+    query.filter(buildTimeFilter(startTs, endTs))
   }
 
   override def list(request: ListRequest): Future[ListResponse] = {
