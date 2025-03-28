@@ -40,8 +40,8 @@ class OrchestrationVerticle extends AbstractVerticle {
     println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     val db = Database.forURL(
       url = "jdbc:postgresql://localhost:5432/postgres", // Default database name in PostgreSQL
-      user = "postgres",                                 // Default PostgreSQL user
-      password = "postgres",                             // Default password (change if different)
+      user = "postgres", // Default PostgreSQL user
+      password = "postgres", // Default password (change if different)
       driver = "org.postgresql.Driver"
     )
     this.db = db
@@ -49,7 +49,7 @@ class OrchestrationVerticle extends AbstractVerticle {
 
     val router = Router.router(vertx)
     wireUpCORSConfig(router)
-    
+
     // Important: Register BodyHandler BEFORE any routes that need request bodies
     router.route().handler(BodyHandler.create())
 
@@ -76,7 +76,7 @@ class OrchestrationVerticle extends AbstractVerticle {
     router
       .get("/upload/v1/diff")
       .handler(RouteHandlerWrapper.createHandler(uploadHandler.getDiff, classOf[DiffRequest]))
-      
+
     router
       .post("/upload/v1/confs")
       .handler(RouteHandlerWrapper.createHandler(uploadHandler.upload, classOf[UploadRequest]))
@@ -97,7 +97,6 @@ class OrchestrationVerticle extends AbstractVerticle {
         OrchestrationVerticle.logger.error("Failed to start HTTP server", err)
         startPromise.fail(err)
       })
-
 
   }
 

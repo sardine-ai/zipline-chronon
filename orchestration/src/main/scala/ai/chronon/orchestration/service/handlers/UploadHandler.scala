@@ -10,7 +10,7 @@ import scala.concurrent.duration.DurationInt
 
 class UploadHandler(confDao: ConfDao) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
-  
+
   // Initialize the database tables when the handler is created
   println("Initializing ConfDao tables...")
   Await.result(confDao.createConfTableIfNotExists(), 10.seconds)
@@ -18,7 +18,7 @@ class UploadHandler(confDao: ConfDao) {
 
   def getDiff(req: DiffRequest): DiffResponse = {
     println(s"Getting diff for ${req.namesToHashes}")
-    
+
     // Ensure table exists before querying
     val existingConfs = Await.result(confDao.getConfs(), 10.seconds)
     println(s"Found existing $existingConfs")
@@ -38,7 +38,7 @@ class UploadHandler(confDao: ConfDao) {
     println(s"Uploading ${req.diffConfs.size()} confs")
 
     try {
-      
+
       val daoConfs = req.diffConfs.toScala.map { conf =>
         Conf(
           conf.getContents,
