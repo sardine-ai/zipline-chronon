@@ -48,6 +48,8 @@ class GcpRunner(Runner):
             if args["mode"] == "fetch"
             else gcp_jar_path
         )
+
+        self._args = args
         super().__init__(args, os.path.expanduser(jar_path))
 
     @staticmethod
@@ -202,6 +204,9 @@ class GcpRunner(Runner):
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
 
+        if local_files_to_upload is None:
+            local_files_to_upload = []
+
         gcs_files = []
         for source_file in local_files_to_upload:
             # upload to `metadata` folder
@@ -305,6 +310,20 @@ class GcpRunner(Runner):
                     subcommand=ROUTES[self.conf_type][self.mode],
                 )
             )
+        elif self.mode == "metastore":
+            # We could presumably support other metastore options but
+            # for now only poking for a particular partition is supported.
+            args = self._args.get("args")
+            supported_subcommands = ["check-partitions"]
+            assert "check-partitions" in args, f"Must specify one of the following subcommands: {supported_subcommands}"
+            assert "--partition-names" in args, "Must specify a list of `--partition-names=schema.table/pk1=pv1/pk2=pv2"
+
+            dataproc_args = self.generate_dataproc_submitter_args(
+                # for now, self.conf is the only local file that requires uploading to gcs
+                user_args=args,
+            )
+            command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
+            command_list.append(command)
         elif self.mode in ["streaming", "streaming-client"]:
             # streaming mode
             command = self.run_dataproc_flink_streaming()
