@@ -184,16 +184,16 @@ maven_repository = repository(
         "org.testcontainers:postgresql:1.20.4",
 
         # Spark artifacts - for scala 2.12
-        "org.apache.spark:spark-sql_2.12:3.5.1",
-        "org.apache.spark:spark-hive_2.12:3.5.1",
-        "org.apache.spark:spark-streaming_2.12:3.5.1",
-        "org.apache.spark:spark-avro_2.12:3.5.1",
+        "org.apache.spark:spark-sql_2.12:3.5.3",
+        "org.apache.spark:spark-hive_2.12:3.5.3",
+        "org.apache.spark:spark-streaming_2.12:3.5.3",
+        "org.apache.spark:spark-avro_2.12:3.5.3",
 
         # Spark artifacts - for scala 2.13
-        "org.apache.spark:spark-sql_2.13:3.5.1",
-        "org.apache.spark:spark-hive_2.13:3.5.1",
-        "org.apache.spark:spark-streaming_2.13:3.5.1",
-        "org.apache.spark:spark-avro_2.13:3.5.1",
+        "org.apache.spark:spark-sql_2.13:3.5.3",
+        "org.apache.spark:spark-hive_2.13:3.5.3",
+        "org.apache.spark:spark-streaming_2.13:3.5.3",
+        "org.apache.spark:spark-avro_2.13:3.5.3",
 
         # Circe - for scala 2.12
         "io.circe:circe-core_2.12:0.14.9",
