@@ -6,16 +6,6 @@ import org.slf4j.{Logger, LoggerFactory}
 trait Format {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def parseHivePartition(pstring: String): Map[String, String] = {
-    pstring
-      .split("/")
-      .map { part =>
-        val p = part.split("=", 2)
-        p(0) -> p(1)
-      }
-      .toMap
-  }
-
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,
@@ -52,5 +42,19 @@ trait Format {
 
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean
+
+}
+
+object Format {
+
+  def parseHiveStylePartition(pstring: String): Map[String, String] = {
+    pstring
+      .split("/")
+      .map { part =>
+        val p = part.split("=", 2)
+        p(0) -> p(1)
+      }
+      .toMap
+  }
 
 }
