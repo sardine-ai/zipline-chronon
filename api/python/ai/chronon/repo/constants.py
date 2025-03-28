@@ -52,6 +52,7 @@ MODE_ARGS = {
     "metadata-export": OFFLINE_ARGS,
     "label-join": OFFLINE_ARGS,
     "streaming-client": ONLINE_WRITE_ARGS,
+    "metastore": "--partition-names={partition_names}",
     "info": "",
 }
 

@@ -36,6 +36,7 @@ import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryPacker
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.streaming.JoinSourceRunner
+import ai.chronon.spark.format.Format
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkFiles
 import org.apache.spark.sql.DataFrame
@@ -94,7 +95,7 @@ object Driver {
 
   trait OfflineSubcommand extends SharedSubCommandArgs {
     this: ScallopConf =>
-    val confPath: ScallopOption[String] = opt[String](required = true, descr = "Path to conf")
+    val confPath: ScallopOption[String] = opt[String](required = false, descr = "Path to conf")
 
     val additionalConfPath: ScallopOption[String] =
       opt[String](required = false, descr = "Path to additional driver job configurations")
@@ -820,6 +821,51 @@ object Driver {
     }
   }
 
+  object CheckPartitions {
+    private val helpNamingConvention =
+      "Please follow the naming convention: --partition-names=schema.table/pk1=pv1/pk2=pv2"
+
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("check-partitions") with OfflineSubcommand {
+
+      val partitionNames = opt[List[String]](
+        name = "partition-names",
+        descr = "List of partition names",
+        default = Some(Nil)
+      )
+
+      override def subcommandName(): String = "metastore_check_partitions"
+    }
+
+    def run(args: Args): Unit = {
+      val partitionNames = args.partitionNames()
+      val tablesToPartitionSpec = partitionNames.map((p) =>
+        p.split("/").toList match {
+          case fullTableName :: partitionSpec :: Nil => (fullTableName, Format.parseHiveStylePartition(partitionSpec))
+          case fullTableName :: Nil =>
+            throw new IllegalArgumentException(
+              s"A partition spec must be specified for ${fullTableName}. ${helpNamingConvention}")
+          case _ =>
+            throw new IllegalArgumentException(
+              s"Invalid partition name argument: ${partitionNames}. ${helpNamingConvention}")
+        })
+
+      val tableUtils = args.buildTableUtils()
+
+      val isAllPartitionsPresent = tablesToPartitionSpec.forall { case (tbl, spec) =>
+        tableUtils.allPartitions(tbl).contains(spec)
+      }
+      if (isAllPartitionsPresent) {
+        logger.info(s"All partitions ${partitionNames} are present.")
+        sys.exit(0)
+      } else {
+        logger.info(s"Not all partitions ${partitionNames} are present.")
+        sys.exit(1)
+      }
+
+    }
+  }
+
   object CreateSummaryDataset {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     class Args extends Subcommand("create-summary-dataset") with OnlineSubcommand
@@ -912,6 +958,8 @@ object Driver {
     addSubcommand(CreateStatsTableArgs)
     object SummarizeAndUploadArgs extends SummarizeAndUpload.Args
     addSubcommand(SummarizeAndUploadArgs)
+    object CheckPartitionArgs extends CheckPartitions.Args
+    addSubcommand(CheckPartitionArgs)
     requireSubcommand()
     verify()
   }
@@ -953,6 +1001,7 @@ object Driver {
           case args.JoinBackfillFinalArgs  => JoinBackfillFinal.run(args.JoinBackfillFinalArgs)
           case args.CreateStatsTableArgs   => CreateSummaryDataset.run(args.CreateStatsTableArgs)
           case args.SummarizeAndUploadArgs => SummarizeAndUpload.run(args.SummarizeAndUploadArgs)
+          case args.CheckPartitionArgs     => CheckPartitions.run(args.CheckPartitionArgs)
           case _                           => logger.info(s"Unknown subcommand: $x")
         }
       case None => logger.info("specify a subcommand please")
