@@ -19,8 +19,8 @@
 **/.DS_Store
 api/python/ai/chronon/api/
 api/python/ai/chronon/observability/
-api/python/test/sample/production/group_bys/quickstart/
-api/python/test/sample/production/joins/quickstart/
+api/python/test/canary/production/
+api/python/test/sample/production/
 api/python/.coverage
 api/python/htmlcov/
 **/derby.log
