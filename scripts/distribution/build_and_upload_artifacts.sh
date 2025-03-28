@@ -146,11 +146,18 @@ if [ "$BUILD_AWS" = true ]; then
 fi
 if [ "$BUILD_GCP" = true ]; then
     bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+    # also build embedded 2.13 jar
+    bazel build //cloud_gcp:cloud_gcp_embedded_lib_deploy.jar --config scala_2.13
 
     CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
+    CLOUD_GCP_EMBEDDED_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_embedded_lib_deploy.jar"
 
     if [ ! -f "$CLOUD_GCP_JAR" ]; then
         echo "$CLOUD_GCP_JAR not found"
+        exit 1
+    fi
+    if [ ! -f "$CLOUD_GCP_EMBEDDED_JAR" ]; then
+        echo "$CLOUD_GCP_EMBEDDED_JAR not found"
         exit 1
     fi
 
@@ -177,6 +184,7 @@ function upload_to_gcp() {
                 OLD_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars/
 
                 gcloud storage cp "$CLOUD_GCP_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$CLOUD_GCP_EMBEDDED_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SERVICE_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
@@ -185,6 +193,7 @@ function upload_to_gcp() {
                 NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/latest/jars/
                 NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/latest/wheels/
                 gcloud storage cp "$CLOUD_GCP_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$CLOUD_GCP_EMBEDDED_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
