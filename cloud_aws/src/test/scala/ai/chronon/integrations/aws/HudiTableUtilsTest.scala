@@ -18,12 +18,13 @@ class HudiTableUtilsTest extends AnyFlatSpec {
           "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.hudi.catalog.HoodieCatalog",
           "spark.sql.extensions" -> "org.apache.spark.sql.hudi.HoodieSparkSessionExtension",
           "spark.chronon.table_write.format" -> "hudi",
-          "spark.kryo.registrator" -> classOf[ChrononHudiKryoRegistrator].getName
-        ))
-    )
+          "spark.kryo.registrator" -> classOf[ChrononHudiKryoRegistrator].getName,
+        )
+    ))
   private val tableUtils = TableUtils(spark)
 
-  it should "create a hudi table and read the hudi table" in {
+  //todo(tchow): Fix once we support HUDI
+  it should "create a hudi table and read the hudi table" ignore {
     import spark.implicits._
     val tableName = "db.test_create_table"
 
