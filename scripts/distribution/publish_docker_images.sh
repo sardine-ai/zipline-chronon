@@ -22,7 +22,7 @@ fi
 set -e
 
 SCRIPT_DIRECTORY=$(dirname -- "$(realpath -- "$0")")
-CHRONON_ROOT_DIR=$(dirname "$SCRIPT_DIRECTORY")
+CHRONON_ROOT_DIR=$(dirname "$(dirname "$SCRIPT_DIRECTORY")")
 
 echo "Working in $CHRONON_ROOT_DIR"
 cd $CHRONON_ROOT_DIR

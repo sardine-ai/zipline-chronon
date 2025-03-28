@@ -140,10 +140,10 @@ maven_repository = repository(
 
         # Google Cloud
         "com.google.cloud:google-cloud-bigquery:2.42.0",
-        "com.google.cloud:google-cloud-bigtable:2.41.0",
-        "com.google.api.grpc:proto-google-cloud-bigtable-v2:2.41.0",
-        "com.google.api.grpc:proto-google-cloud-bigtable-admin-v2:2.41.0",
-        "com.google.api.grpc:grpc-google-cloud-bigtable-v2:2.41.0",
+        "com.google.cloud:google-cloud-bigtable:2.57.1",
+        "com.google.api.grpc:proto-google-cloud-bigtable-v2:2.57.1",
+        "com.google.api.grpc:proto-google-cloud-bigtable-admin-v2:2.57.1",
+        "com.google.api.grpc:grpc-google-cloud-bigtable-v2:2.57.1",
         "com.google.cloud:google-cloud-pubsub:1.131.0",
         "com.google.cloud:google-cloud-dataproc:4.52.0",
         # Have to specify in group:artifact:packaging:version format if version doesn't start with a digit
