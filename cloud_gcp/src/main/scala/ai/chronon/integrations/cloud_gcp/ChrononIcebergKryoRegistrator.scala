@@ -36,6 +36,7 @@ class ChrononIcebergKryoRegistrator extends ChrononKryoRegistrator {
       "org.apache.iceberg.spark.source.SparkWrite$TaskCommit",
       "org.apache.iceberg.types.Types$DateType",
       "org.apache.iceberg.types.Types$NestedField",
+      "org.apache.iceberg.types.Types$StringType",
       "org.apache.iceberg.types.Types$StructType",
       "org.apache.iceberg.util.SerializableMap"
     )
