@@ -49,7 +49,7 @@ class DirectColumnAggregator[Input, IR, Output](agg: BaseAggregator[Input, IR, O
   override def updateCol(colIr: Any, inputRow: Row): Any = {
     val inputVal = inputRow.get(columnIndices.input)
 
-    if (inputVal == null) return inputVal // null inputs are ignored
+    if (inputVal == null) return colIr // null inputs are ignored
 
     if (colIr == null) return dispatcher.prepare(inputRow)
 
@@ -58,11 +58,10 @@ class DirectColumnAggregator[Input, IR, Output](agg: BaseAggregator[Input, IR, O
 
   override def deleteCol(colIr: Any, inputRow: Row): Any = {
     val inputVal = inputRow.get(columnIndices.input)
+
     if (inputVal == null) return colIr
 
-    if (colIr == null) {
-      return dispatcher.inversePrepare(inputRow)
-    }
+    if (colIr == null) return dispatcher.inversePrepare(inputRow)
 
     dispatcher.deleteColumn(colIr.asInstanceOf[IR], inputRow)
   }
