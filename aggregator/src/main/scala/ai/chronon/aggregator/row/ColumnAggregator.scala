@@ -27,11 +27,19 @@ import java.util
 import scala.collection.JavaConverters.asScalaIteratorConverter
 
 abstract class ColumnAggregator extends Serializable {
+
+  val columnIndices: ColumnIndices
+
   def outputType: DataType
 
   def irType: DataType
 
-  def update(ir: Array[Any], inputRow: Row): Unit
+  def updateCol(colIr: Any, inputRow: Row): Any
+
+  final def update(ir: Array[Any], inputRow: Row): Unit = {
+    val updated = updateCol(ir(columnIndices.output), inputRow)
+    ir.update(columnIndices.output, updated)
+  }
 
   // ir1 is mutated, ir2 isn't
   def merge(ir1: Any, ir2: Any): Any
@@ -40,7 +48,14 @@ abstract class ColumnAggregator extends Serializable {
 
   def finalize(ir: Any): Any
 
-  def delete(ir: Array[Any], inputRow: Row): Unit
+  def deleteCol(colIr: Any, inputRow: Row): Any
+
+  final def delete(ir: Array[Any], inputRow: Row): Unit = {
+    if (isDeletable) {
+      val deleted = deleteCol(ir(columnIndices.output), inputRow)
+      ir.update(columnIndices.output, deleted)
+    }
+  }
 
   def isDeletable: Boolean
 

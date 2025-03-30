@@ -21,11 +21,13 @@ import ai.chronon.api.DataType
 import ai.chronon.api.Row
 
 class DirectColumnAggregator[Input, IR, Output](agg: BaseAggregator[Input, IR, Output],
-                                                columnIndices: ColumnIndices,
+                                                columnIndicesArg: ColumnIndices,
                                                 dispatcher: Dispatcher[Input, Any])
     extends ColumnAggregator {
   override def outputType: DataType = agg.outputType
   override def irType: DataType = agg.irType
+
+  override val columnIndices: ColumnIndices = columnIndicesArg
 
   override def merge(ir1: Any, ir2: Any): Any = {
     if (ir2 == null) return ir1
@@ -44,32 +46,25 @@ class DirectColumnAggregator[Input, IR, Output](agg: BaseAggregator[Input, IR, O
     agg.bulkMerge(nonNullIrs.map(_.asInstanceOf[IR]))
   }
 
-  // non bucketed update
-  override def update(ir: Array[Any], inputRow: Row): Unit = {
+  override def updateCol(colIr: Any, inputRow: Row): Any = {
     val inputVal = inputRow.get(columnIndices.input)
-    if (inputVal == null) return // null inputs are ignored
-    val previousVal = ir(columnIndices.output)
-    if (previousVal == null) { // value is absent - so init
-      ir.update(columnIndices.output, dispatcher.prepare(inputRow))
-      return
-    }
-    val previous = previousVal.asInstanceOf[IR]
-    val updated = dispatcher.updateColumn(previous, inputRow)
-    ir.update(columnIndices.output, updated)
+
+    if (inputVal == null) return inputVal // null inputs are ignored
+
+    if (colIr == null) return dispatcher.prepare(inputRow)
+
+    dispatcher.updateColumn(colIr.asInstanceOf[IR], inputRow)
   }
 
-  override def delete(ir: Array[Any], inputRow: Row): Unit = {
-    if (!agg.isDeletable) return
+  override def deleteCol(colIr: Any, inputRow: Row): Any = {
     val inputVal = inputRow.get(columnIndices.input)
-    if (inputVal == null) return
-    val previousVal = ir(columnIndices.output)
-    if (previousVal == null) {
-      ir.update(columnIndices.output, dispatcher.inversePrepare(inputRow))
-      return
+    if (inputVal == null) return colIr
+
+    if (colIr == null) {
+      return dispatcher.inversePrepare(inputRow)
     }
-    val previous = previousVal.asInstanceOf[IR]
-    val deleted = dispatcher.deleteColumn(previous, inputRow)
-    ir.update(columnIndices.output, deleted)
+
+    dispatcher.deleteColumn(colIr.asInstanceOf[IR], inputRow)
   }
 
   override def finalize(ir: Any): Any = numberSanityCheck(guardedApply(agg.finalize, ir))

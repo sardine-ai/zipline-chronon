@@ -25,8 +25,10 @@ import java.util
 
 abstract class MapColumnAggregatorBase[Input, IR, Output](agg: BaseAggregator[Input, IR, Output])
     extends ColumnAggregator {
+
   type IrMap = util.HashMap[String, IR]
   protected def castIr(ir: Any): IrMap = ir.asInstanceOf[IrMap]
+
   final override def merge(ir1: Any, ir2: Any): Any = {
     if (ir2 == null) return ir1
     // we need to clone here because the contract is to only mutate ir1

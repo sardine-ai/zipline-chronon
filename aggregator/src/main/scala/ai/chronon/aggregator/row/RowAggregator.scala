@@ -48,6 +48,7 @@ class RowAggregator(val inputSchema: Seq[(String, DataType)], val aggregationPar
         assert(bucketType == StringType, s"bucketing column: $bucketCol needs to be a string, but found $bucketType")
         bIndex
       }
+
       try {
         ColumnAggregator.construct(
           inputType,
@@ -61,6 +62,7 @@ class RowAggregator(val inputSchema: Seq[(String, DataType)], val aggregationPar
             s"Failed to create ${spec.operation} aggregator for ${spec.inputColumn} column of type $inputType",
             e)
       }
+
     }
   }.toArray
 
