@@ -1,9 +1,14 @@
 package ai.chronon.flink.validation
 
 import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
-import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
+import ai.chronon.flink.SourceIdentitySchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.validation.SparkExprEvalComparisonFn.compareResultRows
-import ai.chronon.flink.{FlinkSource, KafkaFlinkSource, SchemaRegistrySchemaProvider, SparkExpressionEvalFn}
+import ai.chronon.flink.{
+  FlinkSource,
+  KafkaFlinkSource,
+  SourceIdentitySchemaRegistrySchemaProvider,
+  SparkExpressionEvalFn
+}
 import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.online.{GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -141,13 +146,14 @@ object ValidationFlinkJob {
 
         val schemaProvider =
           topicInfo.params.get(RegistryHostKey) match {
-            case Some(_) => new SchemaRegistrySchemaProvider(topicInfo.params)
+            case Some(_) => new SourceIdentitySchemaRegistrySchemaProvider(topicInfo.params)
             case None =>
               throw new IllegalArgumentException(
                 s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
           }
 
-        val (encoder, deserializationSchema) = schemaProvider.buildEncoderAndDeserSchema(topicInfo)
+        val deserializationSchema = schemaProvider.buildDeserializationSchema(servingInfo.groupBy)
+
         val source =
           topicInfo.messageBus match {
             case "kafka" =>
@@ -159,7 +165,7 @@ object ValidationFlinkJob {
         new ValidationFlinkJob(
           eventSrc = source,
           groupByServingInfoParsed = servingInfo,
-          encoder = encoder,
+          encoder = deserializationSchema.sourceEventEncoder,
           parallelism = 1,
           validationRows = validateRows
         )
