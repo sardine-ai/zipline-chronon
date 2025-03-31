@@ -44,7 +44,7 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Failure
 import scala.util.Success
-import scala.collection.Seq
+import scala.collection.{Seq, mutable}
 
 /** BigTable based KV store implementation. We store a few kinds of data in our KV store:
   * 1) Entity data - An example is thrift serialized Groupby / Join configs. If entities are updated / rewritten, we
@@ -121,67 +121,96 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
   override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = {
     logger.info(s"Performing multi-get for ${requests.size} requests")
-    val resultFutures = requests.map { request =>
+
+    // Group requests by dataset to minimize the number of BigTable calls
+    val requestsByDataset = requests.groupBy(_.dataset)
+
+    // For each dataset, make a single query with all relevant row keys
+    val datasetFutures = requestsByDataset.map { case (dataset, datasetRequests) =>
+      // Create a single query for all requests in this dataset
       val query = Query
-        .create(mapDatasetToTable(request.dataset))
+        .create(mapDatasetToTable(dataset))
         .filter(Filters.FILTERS.family().exactMatch(ColumnFamilyString))
         .filter(Filters.FILTERS.qualifier().exactMatch(ColumnFamilyQualifierString))
 
-      val tableType = getTableType(request.dataset)
+      // Track which request corresponds to which row key(s)
+      val requestsWithRowKeys = datasetRequests.map { request =>
+        val tableType = getTableType(dataset)
+        val rowKeys = new mutable.ArrayBuffer[ByteString]()
 
-      (request.startTsMillis, tableType) match {
+        // Apply the appropriate filters based on request type
+        (request.startTsMillis, tableType) match {
+          case (Some(startTs), TileSummaries) =>
+            val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
+            // Use existing method to add row keys
+            val (_, addedRowKeys) = setQueryTimeSeriesFilters(query, startTs, endTime, request.keyBytes, dataset)
+            rowKeys ++= addedRowKeys
 
-        case (Some(startTs), TileSummaries) =>
-          val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
-          setQueryTimeSeriesFilters(query, startTs, endTime, request.keyBytes, request.dataset)
+          case (Some(startTs), StreamingTable) =>
+            val tileKey = TilingUtils.deserializeTileKey(request.keyBytes)
+            val tileSizeMs = tileKey.tileSizeMillis
+            val baseKeyBytes = tileKey.keyBytes.asScala.map(_.asInstanceOf[Byte])
+            val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
 
-        case (Some(startTs), StreamingTable) =>
-          // we generate the RowKey corresponding to the given tile details (identified by
-          // dataset, keybytes and tile size). The time range required (startTs to endTime) is
-          // used to query the appropriate set of tiles
-          val tileKey = TilingUtils.deserializeTileKey(request.keyBytes)
-          val tileSizeMs = tileKey.tileSizeMillis
-          val baseKeyBytes = tileKey.keyBytes.asScala.map(_.asInstanceOf[Byte])
-          val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
-          setQueryTimeSeriesFilters(query, startTs, endTime, baseKeyBytes, request.dataset, Some(tileSizeMs))
+            // Use existing method to add row keys
+            val (_, addedRowKeys) =
+              setQueryTimeSeriesFilters(query, startTs, endTime, baseKeyBytes, dataset, Some(tileSizeMs))
+            rowKeys ++= addedRowKeys
 
-        case _ =>
-          // for non-timeseries data, we just look up based on the base row key
-          val baseRowKey = buildRowKey(request.keyBytes, request.dataset)
-          query.rowKey(ByteString.copyFrom(baseRowKey))
-          // we also limit to the latest cell per row as we don't want clients to iterate over all prior edits
-          query.filter(Filters.FILTERS.limit().cellsPerRow(1))
+          case _ =>
+            // For non-timeseries data, just add the single row key
+            val baseRowKey = buildRowKey(request.keyBytes, dataset)
+            query.rowKey(ByteString.copyFrom(baseRowKey))
+            query.filter(Filters.FILTERS.limit().cellsPerRow(1))
+            rowKeys.append(ByteString.copyFrom(baseRowKey))
+        }
+
+        (request, rowKeys)
       }
 
       val startTs = System.currentTimeMillis()
-      // we go through a couple of future conversion hops to go from ApiFuture to Scala Future
+
+      // Make a single BigTable call for all rows in this dataset
       val apiFuture = dataClient.readRowsCallable().all().futureCall(query)
       val completableFuture = ApiFutureUtils.toCompletableFuture(apiFuture)
       val scalaResultFuture = FutureConverters.toScala(completableFuture)
 
+      // Process all results at once
       scalaResultFuture
         .map { rows =>
           metricsContext.distribution("multiGet.latency", System.currentTimeMillis() - startTs)
           metricsContext.increment("multiGet.successes")
 
-          val timedValues = rows.asScala.flatMap { row =>
-            row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
-              // Convert back to milliseconds
-              KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
+          // Create a map for quick lookup by row key
+          val rowKeyToRowMap = rows.asScala.map(row => row.getKey() -> row).toMap
+
+          // Map back to original requests
+          requestsWithRowKeys.map { case (request, rowKeys) =>
+            // Get all cells from all row keys for this request
+            val timedValues = rowKeys.flatMap { rowKey =>
+              rowKeyToRowMap.get(rowKey).toSeq.flatMap { row =>
+                row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
+                  KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
+                }
+              }
             }
+
+            KVStore.GetResponse(request, Success(timedValues))
           }
-
-          KVStore.GetResponse(request, Success(timedValues))
-
         }
         .recover { case e: Exception =>
           logger.error("Error getting values", e)
           metricsContext.increment("multiGet.bigtable_errors", s"exception:${e.getClass.getName}")
-          KVStore.GetResponse(request, Failure(e))
-        }
-    }
 
-    Future.sequence(resultFutures)
+          // If the batch fails, return failures for all requests in the batch
+          datasetRequests.map { request =>
+            KVStore.GetResponse(request, Failure(e))
+          }
+        }
+    }.toSeq
+
+    // Combine results from all datasets
+    Future.sequence(datasetFutures).map(_.flatten)
   }
 
   private def setQueryTimeSeriesFilters(query: Query,
@@ -189,24 +218,28 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
                                         endTs: Long,
                                         keyBytes: Seq[Byte],
                                         dataset: String,
-                                        maybeTileSize: Option[Long] = None): Query = {
+                                        maybeTileSize: Option[Long] = None): (Query, Iterable[ByteString]) = {
     // we need to generate a rowkey corresponding to each day from the startTs to now
     val millisPerDay = 1.day.toMillis
 
     val startDay = startTs - (startTs % millisPerDay)
     val endDay = endTs - (endTs % millisPerDay)
 
-    (startDay to endDay by millisPerDay).foreach(dayTs => {
-      val rowKey =
-        maybeTileSize
-          .map(tileSize => buildTiledRowKey(keyBytes, dataset, dayTs, tileSize))
-          .getOrElse(buildRowKey(keyBytes, dataset, Some(dayTs)))
+    // get the rowKeys
+    val rowKeyByteStrings =
+      (startDay to endDay by millisPerDay).map(dayTs => {
+        val rowKey =
+          maybeTileSize
+            .map(tileSize => buildTiledRowKey(keyBytes, dataset, dayTs, tileSize))
+            .getOrElse(buildRowKey(keyBytes, dataset, Some(dayTs)))
+        val rowKeyByteString = ByteString.copyFrom(rowKey)
+        query.rowKey(rowKeyByteString)
+        rowKeyByteString
+      })
 
-      query.rowKey(ByteString.copyFrom(rowKey))
-    })
-
-    // Bigtable uses microseconds and we need to scan from startTs (millis) to endTs (millis)
-    query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000))
+    // Bigtable uses microseconds, and we need to scan from startTs (millis) to endTs (millis)
+    (query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000)),
+     rowKeyByteStrings)
   }
 
   override def list(request: ListRequest): Future[ListResponse] = {
