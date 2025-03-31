@@ -69,7 +69,7 @@
 		"layerchart": "^2.0.0-next.1",
 		"lodash": "^4.17.21",
 		"mode-watcher": "^0.5.1",
-		"svelte-inspect-value": "0.3.0",
+		"svelte-inspect-value": "0.4.0",
 		"svelte-ux": "^2.0.0-next.2",
 		"tailwind-variants": "^0.3.1"
 	},
