@@ -70,7 +70,8 @@ class Analyzer(tableUtils: TableUtils,
                count: Int = 64,
                sample: Double = 0.1,
                skewDetection: Boolean = false,
-               silenceMode: Boolean = false) {
+               silenceMode: Boolean = false,
+               confType: Option[String] = None) {
 
   implicit val tu = tableUtils
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -565,17 +566,33 @@ class Analyzer(tableUtils: TableUtils,
       .toMap
   }
 
-  def run(): Unit =
-    conf match {
+  def run(): Unit = {
+
+    val analyzerConf = conf match {
       case confPath: String =>
-        if (confPath.contains("/joins/")) {
-          val joinConf = parseConf[api.Join](confPath)
-          analyzeJoin(joinConf, skewDetection = skewDetection)
-        } else if (confPath.contains("/group_bys/")) {
-          val groupByConf = parseConf[api.GroupBy](confPath)
-          analyzeGroupBy(groupByConf, skewDetection = skewDetection)
+        if (confType.isDefined) {
+          // TODO: davidhan - temporary hack for now as current approach with dataproc has the conf path only have the
+          //  filename
+          confType.get match {
+            case "group_bys" => parseConf[api.GroupBy](confPath)
+            case "joins"     => parseConf[api.Join](confPath)
+          }
+        } else {
+          if (confPath.contains("/joins/")) { parseConf[api.Join](confPath) }
+          else if (confPath.contains("/group_bys/")) {
+            parseConf[api.GroupBy](confPath)
+          }
         }
-      case groupByConf: api.GroupBy => analyzeGroupBy(groupByConf, skewDetection = skewDetection)
-      case joinConf: api.Join       => analyzeJoin(joinConf, skewDetection = skewDetection)
+      case groupByConf: api.GroupBy => groupByConf
+      case joinConf: api.Join       => joinConf
     }
+
+    analyzerConf match {
+      case groupByConf: api.GroupBy =>
+        analyzeGroupBy(groupByConf, skewDetection = skewDetection)
+      case joinConf: api.Join =>
+        analyzeJoin(joinConf, skewDetection = skewDetection)
+      case _ => throw new IllegalArgumentException("No configuration found for Analyzer")
+    }
+  }
 }

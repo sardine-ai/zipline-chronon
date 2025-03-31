@@ -469,7 +469,8 @@ object Driver {
         args.endDate(),
         args.skewKeyCount(),
         args.sample(),
-        args.skewDetection()
+        args.skewDetection(),
+        confType = Some(args.confType())
       ).run
     }
   }
@@ -675,8 +676,8 @@ object Driver {
 
       val groupByName = groupByConf.metaData.name
 
-      logger.info(s"Triggering bulk load for GroupBy: ${groupByName} for partition: ${args
-        .partitionString()} from table: ${offlineTable}")
+      logger.info(
+        s"Triggering bulk load for GroupBy: ${groupByName} for partition: ${args.partitionString()} from table: ${offlineTable}")
       val kvStore = args.api.genKvStore
       val startTime = System.currentTimeMillis()
 
@@ -685,13 +686,14 @@ object Driver {
         kvStore.bulkPut(offlineTable, groupByName, args.partitionString())
       } catch {
         case e: Exception =>
-          logger.error(s"Failed to upload GroupBy: ${groupByName} for partition: ${args
-                         .partitionString()} from table: $offlineTable",
-                       e)
+          logger.error(
+            s"Failed to upload GroupBy: ${groupByName} for partition: ${args.partitionString()} from table: $offlineTable",
+            e)
           throw e
       }
-      logger.info(s"Uploaded GroupByUpload data to KV store for GroupBy: ${groupByName}; partition: ${args
-        .partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
+      logger.info(
+        s"Uploaded GroupByUpload data to KV store for GroupBy: ${groupByName}; partition: " +
+          s"${args.partitionString()} in ${(System.currentTimeMillis() - startTime) / 1000} seconds")
     }
   }
 
