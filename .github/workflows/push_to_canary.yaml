@@ -7,7 +7,6 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   AWS_ACCOUNT_ID: ${{secrets.AWS_ACCOUNT_ID}}
@@ -476,7 +475,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "Zipline CI Tests Failed\n\n The integration tests failed for commit ${{ github.sha }} on branch ${{ github.ref }}. Please check the logs for more details.",
+              "text": "Zipline CI Tests Failed\n\n The integration tests failed for commit <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.sha }}> on branch ${{ github.ref }}. Please check the logs for more details.",
               "attachments": [
                 {
                   "text": "",
