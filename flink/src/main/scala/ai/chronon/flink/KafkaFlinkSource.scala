@@ -11,11 +11,10 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.spark.sql.Row
 
-class KafkaFlinkSource(kafkaBootstrap: Option[String],
-                       deserializationSchema: DeserializationSchema[Row],
-                       topicInfo: TopicInfo)
-    extends FlinkSource[Row] {
-
+class BaseKafkaFlinkSource[T](kafkaBootstrap: Option[String],
+                              deserializationSchema: DeserializationSchema[T],
+                              topicInfo: TopicInfo)
+    extends FlinkSource[T] {
   val bootstrap: String =
     kafkaBootstrap.getOrElse(
       topicInfo.params.getOrElse(
@@ -37,9 +36,9 @@ class KafkaFlinkSource(kafkaBootstrap: Option[String],
   }
 
   override def getDataStream(topic: String, groupByName: String)(env: StreamExecutionEnvironment,
-                                                                 parallelism: Int): SingleOutputStreamOperator[Row] = {
+                                                                 parallelism: Int): SingleOutputStreamOperator[T] = {
     val kafkaSource = KafkaSource
-      .builder[Row]()
+      .builder[T]()
       .setTopics(topicInfo.name)
       .setGroupId(s"chronon-$groupByName")
       // we might have a fairly large backlog to catch up on, so we choose to go with the latest offset when we're
@@ -55,3 +54,13 @@ class KafkaFlinkSource(kafkaBootstrap: Option[String],
       .setParallelism(parallelism)
   }
 }
+
+class KafkaFlinkSource(kafkaBootstrap: Option[String],
+                       deserializationSchema: ChrononDeserializationSchema[Row],
+                       topicInfo: TopicInfo)
+    extends BaseKafkaFlinkSource[Row](kafkaBootstrap, deserializationSchema, topicInfo)
+
+class ProjectedKafkaFlinkSource(kafkaBootstrap: Option[String],
+                                deserializationSchema: ChrononDeserializationSchema[Map[String, Any]],
+                                topicInfo: TopicInfo)
+    extends BaseKafkaFlinkSource[Map[String, Any]](kafkaBootstrap, deserializationSchema, topicInfo)

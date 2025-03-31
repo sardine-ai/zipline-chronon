@@ -1,8 +1,8 @@
 package ai.chronon.flink.test
 
-import ai.chronon.flink.SchemaRegistrySchemaProvider
-import ai.chronon.flink.SchemaRegistrySchemaProvider.RegistryHostKey
-import ai.chronon.online.TopicInfo
+import ai.chronon.api.{Accuracy, Builders, GroupBy}
+import ai.chronon.flink.SourceIdentitySchemaRegistrySchemaProvider
+import ai.chronon.flink.SourceIdentitySchemaRegistrySchemaProvider.RegistryHostKey
 import io.confluent.kafka.schemaregistry.SchemaProvider
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider
@@ -14,7 +14,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import scala.jdk.CollectionConverters._
 
 class MockSchemaRegistrySchemaProvider(conf: Map[String, String], mockSchemaRegistryClient: MockSchemaRegistryClient)
-    extends SchemaRegistrySchemaProvider(conf) {
+    extends SourceIdentitySchemaRegistrySchemaProvider(conf) {
   override def buildSchemaRegistryClient(schemeString: String,
                                          registryHost: String,
                                          maybePortString: Option[String]): MockSchemaRegistryClient =
@@ -23,16 +23,17 @@ class MockSchemaRegistrySchemaProvider(conf: Map[String, String], mockSchemaRegi
 
 class SchemaRegistrySchemaProviderSpec extends AnyFlatSpec {
 
-  val avroSchemaProvider: SchemaProvider = new AvroSchemaProvider
-  val protoSchemaProvider: SchemaProvider = new ProtobufSchemaProvider
+  private val avroSchemaProvider: SchemaProvider = new AvroSchemaProvider
+  private val protoSchemaProvider: SchemaProvider = new ProtobufSchemaProvider
   val schemaRegistryClient = new MockSchemaRegistryClient(Seq(avroSchemaProvider, protoSchemaProvider).asJava)
-  val schemaRegistrySchemaProvider =
+  private val schemaRegistrySchemaProvider =
     new MockSchemaRegistrySchemaProvider(Map(RegistryHostKey -> "localhost"), schemaRegistryClient)
 
   it should "fail if the schema subject is not found" in {
-    val topicInfo = new TopicInfo("test-topic", "kafka", Map.empty)
+    val topicInfo = "kafka://test-topic"
+    val groupBy = makeGroupBy(topicInfo)
     assertThrows[IllegalArgumentException] {
-      schemaRegistrySchemaProvider.buildEncoderAndDeserSchema(topicInfo)
+      schemaRegistrySchemaProvider.buildDeserializationSchema(groupBy)
     }
   }
 
@@ -40,9 +41,9 @@ class SchemaRegistrySchemaProviderSpec extends AnyFlatSpec {
     val avroSchemaStr =
       "{ \"type\": \"record\", \"name\": \"test1\", \"fields\": [ { \"type\": \"string\", \"name\": \"field1\" }, { \"type\": \"int\", \"name\": \"field2\" }]}"
     schemaRegistryClient.register("test-topic-avro-value", new AvroSchema(avroSchemaStr))
-    val topicInfo = new TopicInfo("test-topic-avro", "kafka", Map.empty)
-    val (encoder, deserSchema) = schemaRegistrySchemaProvider.buildEncoderAndDeserSchema(topicInfo)
-    assert(encoder != null)
+    val topicInfo = "kafka://test-topic-avro"
+    val groupBy = makeGroupBy(topicInfo)
+    val deserSchema = schemaRegistrySchemaProvider.buildDeserializationSchema(groupBy)
     assert(deserSchema != null)
   }
 
@@ -50,18 +51,42 @@ class SchemaRegistrySchemaProviderSpec extends AnyFlatSpec {
     val avroSchemaStr =
       "{ \"type\": \"record\", \"name\": \"test1\", \"fields\": [ { \"type\": \"string\", \"name\": \"field1\" }, { \"type\": \"int\", \"name\": \"field2\" }]}"
     schemaRegistryClient.register("my-subject", new AvroSchema(avroSchemaStr))
-    val topicInfo = new TopicInfo("another-topic", "kafka", Map("subject" -> "my-subject"))
-    val (encoder, deserSchema) = schemaRegistrySchemaProvider.buildEncoderAndDeserSchema(topicInfo)
-    assert(encoder != null)
+    val topicInfo = "kafka://another-topic/subject=my-subject"
+    val groupBy = makeGroupBy(topicInfo)
+    val deserSchema = schemaRegistrySchemaProvider.buildDeserializationSchema(groupBy)
     assert(deserSchema != null)
   }
 
   it should "fail if we're trying to retrieve a proto schema" in {
     val protoSchemaStr = "message Foo { required string f" + " = 1; }"
     schemaRegistryClient.register("test-topic-proto-value", new ProtobufSchema(protoSchemaStr))
-    val topicInfo = new TopicInfo("test-topic-proto", "kafka", Map.empty)
+    val topicInfo = "kafka://test-topic-proto"
+    val groupBy = makeGroupBy(topicInfo)
     assertThrows[IllegalArgumentException] {
-      schemaRegistrySchemaProvider.buildEncoderAndDeserSchema(topicInfo)
+      schemaRegistrySchemaProvider.buildDeserializationSchema(groupBy)
     }
+  }
+
+  def makeGroupBy(topicInfo: String): GroupBy = {
+    Builders.GroupBy(
+      sources = Seq(
+        Builders.Source.events(
+          table = "events.my_stream_raw",
+          topic = topicInfo,
+          query = Builders.Query(
+            selects = Map(
+              "id" -> "id",
+              "int_val" -> "int_val",
+              "double_val" -> "double_val"
+            ),
+            wheres = Seq.empty,
+            timeColumn = "created",
+            startPartition = "20231106"
+          )
+        )
+      ),
+      keyColumns = Seq("id"),
+      accuracy = Accuracy.TEMPORAL
+    )
   }
 }
