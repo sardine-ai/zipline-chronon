@@ -3,7 +3,6 @@ package ai.chronon.flink
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 
-// TODO deprecate this in favor of Api.readTopic + Api.streamDecoder
 abstract class FlinkSource[T] extends Serializable {
 
   /** Return a Flink DataStream for the given topic and groupBy.
