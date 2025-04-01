@@ -59,8 +59,8 @@ object DependencyResolver {
     if (startCutOff != null) result.setStartCutOff(startCutOff)
     if (endCutOff != null) result.setEndCutOff(endCutOff)
 
-    result.setIsCumulative(source.isCumulative)
-    result.setTable(table)
+    result.tableInfo.setIsCumulative(source.isCumulative)
+    result.tableInfo.setTable(table)
 
     result
   }
@@ -87,7 +87,7 @@ object DependencyResolver {
       return NoPartitions
     }
 
-    if (tableDep.isCumulative) {
+    if (tableDep.tableInfo.isCumulative) {
       return LatestPartitionInRange(end, tableDep.getEndCutOff)
     }
 

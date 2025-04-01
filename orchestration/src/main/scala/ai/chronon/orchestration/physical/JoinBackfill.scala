@@ -34,8 +34,8 @@ class JoinBackfill(join: Join) extends TabularNode[Join](join) {
       dep.setEndOffset(noShift)
       dep.setStartCutOff(query.getStartPartition)
       dep.setEndCutOff(query.getEndPartition)
-      dep.setIsCumulative(false)
-      dep.setTable(bootstrapPart.getTable)
+      dep.tableInfo.setIsCumulative(false)
+      dep.tableInfo.setTable(bootstrapPart.getTable)
 
       dep
     }

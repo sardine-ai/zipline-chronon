@@ -23,8 +23,8 @@ class StagingQueryNode(stagingQuery: StagingQuery) extends TabularNode[StagingQu
         val result = new TableDependency()
         result.setStartOffset(noShift)
         result.setEndOffset(noShift)
-        result.setIsCumulative(false)
-        result.setTable(tableName)
+        result.tableInfo.setIsCumulative(false)
+        result.tableInfo.setTable(tableName)
         result
       }
     }.toSeq
