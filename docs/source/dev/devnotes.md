@@ -474,69 +474,17 @@ python3 -m pip install -U tox build twine
 
 ## Publishing all the artifacts of Chronon
 
-1. Run release command in the right HEAD of chronon repository. Before running this, you may want to activate your
-   Python venv or install the required Python packages on the laptop. Otherwise, the Python release will fail due to
-   missing deps.
+1. Run release command (e.g. `gh release create v0.0.xx`) in the right HEAD of chronon repository, or on the UI, click 
+ `Releases` button on the right side of the repository and then select "Draft a new release". When creating a new 
+release, make sure to tag the release with the next version number.
 
-```
-GPG_TTY=$(tty) sbt -mem 8192 release
-```
+This command will take into the account the name of the tag and handles a series of events:
 
-This command will take into the account of `version.sbt` and handles a series of events:
+* Rebuilds the wheel based on the last passing integration tests
+* Publishes them to GCP and AWS artifacts buckets if the tests pass
+* Also publishes the artifacts to jfrog artifactory if the tests pass
+* If the tests fail it will convert the release to a draft
 
-* Marks the current SNAPSHOT codebase as final (git commits).
-* Creates a new git tag (e.g v0.7.0) pointing to the release commit.
-* Builds the artifacts with released versioning suffix and pushes them to Sonatype, and PyPi central.
-* Updates the `version.sbt` to point to the next in line developmental version (git commits).
-
-2. login into the [staging repo](https://s01.oss.sonatype.org/#stagingRepositories) in nexus (same password as sonatype
-   jira)
-3. In the staging repos list - select your publish
-    1. select "close" wait for the steps to finish
-    2. Select "refresh" and "release"
-    3. Wait for 30 mins to sync to [maven](https://repo1.maven.org/maven2/)
-       or [sonatype UI](https://search.maven.org/search?q=g:ai.chronon)
-4. Push the local release commits (DO NOT SQUASH), and the new tag created from step 1 to Github.
-    1. chronon repo disallow push to main branch directly, so instead push commits to a branch
-       `git push origin main:your-name--release-xxx`
-    2. your PR should contain exactly two commits, 1 setting the release version, 1 setting the new snapshot version.
-    3. make sure to use **Rebase pull request** instead of the regular Merge or Squash options when merging the PR.
-5. Push release tag to main branch
-    1. tag new version to release commit `Setting version to 0.0.xx`. If not already tagged, can be added by
-     ```
-       git tag -fa v0.0.xx <commit-sha>
-     ```
-    2. push tag
-      ```
-        git push origin <tag-name>
-      ```
-    3. New tag should be available here - https://github.com/airbnb/chronon/tags
-6. Verify the Python API from the [PyPi website](https://pypi.org/project/chronon-ai/) that we are pointing to the
-   latest.
-
-### Troubleshooting
-
-* Most common reason for Python failure is re-uploading a version that's already uploaded.
-
-## [TODO] Publishing a driver to github releases
-
-We use gh releases to release the driver that can backfill, upload, stream etc.
-Currently the repo is not public and the run.py script can't reach it.
-
-# Chronon Documentation via Sphinx
-
-Run the sbt sphinx command to generate the sphinx docs locally and open it.
-
-```
-sbt sphinx
-```
-
-# build artifacts and release to gcloud
-
-```shell
-bash build.sh
-bash gcloud_release.sh
-```
 
 # Testing on REPL
 
