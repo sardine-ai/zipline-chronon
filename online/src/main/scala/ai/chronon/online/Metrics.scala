@@ -213,6 +213,9 @@ object Metrics {
     def distribution(metric: String, value: Long): Unit =
       stats.distribution(prefix(metric), value, Context.sampleRate, tags)
 
+    def distribution(metric: String, value: Long, tag: String): Unit =
+      stats.distribution(prefix(metric), value, Context.sampleRate, s"$tags,$tag")
+
     def count(metric: String, value: Long): Unit = stats.count(prefix(metric), value, tags)
 
     def gauge(metric: String, value: Long): Unit = stats.gauge(prefix(metric), value, tags)
