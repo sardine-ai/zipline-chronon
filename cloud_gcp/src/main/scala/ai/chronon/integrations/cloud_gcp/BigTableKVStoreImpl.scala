@@ -178,8 +178,8 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       // Process all results at once
       scalaResultFuture
         .map { rows =>
-          metricsContext.distribution("multiGet.latency", System.currentTimeMillis() - startTs)
-          metricsContext.increment("multiGet.successes")
+          metricsContext.distribution("multiGet.latency", System.currentTimeMillis() - startTs, s"dataset:$dataset")
+          metricsContext.increment("multiGet.successes", s"dataset:$dataset")
 
           // Create a map for quick lookup by row key
           val rowKeyToRowMap = rows.asScala.map(row => row.getKey() -> row).toMap
@@ -200,7 +200,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         }
         .recover { case e: Exception =>
           logger.error("Error getting values", e)
-          metricsContext.increment("multiGet.bigtable_errors", s"exception:${e.getClass.getName}")
+          metricsContext.increment("multiGet.bigtable_errors", s"exception:${e.getClass.getName},dataset:$dataset")
 
           // If the batch fails, return failures for all requests in the batch
           datasetRequests.map { request =>
@@ -281,8 +281,8 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
     rowsScalaFuture
       .map { rows =>
-        metricsContext.distribution("list.latency", System.currentTimeMillis() - startTs)
-        metricsContext.increment("list.successes")
+        metricsContext.distribution("list.latency", System.currentTimeMillis() - startTs, s"dataset:${request.dataset}")
+        metricsContext.increment("list.successes", s"dataset:${request.dataset}")
 
         val listValues = rows.asScala.flatMap { row =>
           row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
@@ -301,7 +301,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       }
       .recover { case e: Exception =>
         logger.error("Error listing values", e)
-        metricsContext.increment("list.bigtable_errors", s"exception:${e.getClass.getName}")
+        metricsContext.increment("list.bigtable_errors", s"exception:${e.getClass.getName},dataset:${request.dataset}")
 
         ListResponse(request, Failure(e), Map.empty)
 
@@ -347,13 +347,15 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         val scalaFuture = FutureConverters.toScala(completableFuture)
         scalaFuture
           .map { _ =>
-            metricsContext.distribution("multiPut.latency", System.currentTimeMillis() - startTs)
-            metricsContext.increment("multiPut.successes")
+            metricsContext.distribution("multiPut.latency",
+                                        System.currentTimeMillis() - startTs,
+                                        s"dataset:${request.dataset}")
+            metricsContext.increment("multiPut.successes", s"dataset:${request.dataset}")
             true
           }
           .recover { case e: Exception =>
             logger.error("Error putting data", e)
-            metricsContext.increment("multiPut.failures", s"exception:${e.getClass.getName}")
+            metricsContext.increment("multiPut.failures", s"exception:${e.getClass.getName},dataset:${request.dataset}")
             false
           }
       }
