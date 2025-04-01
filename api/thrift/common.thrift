@@ -63,21 +63,9 @@ struct ConfigProperties {
     5: optional map<string, string> serving
 }
 
-struct TableDependency {
+struct TableInfo {
     // fully qualified table name
     1: optional string table
-
-    // DEPENDENCY_RANGE_LOGIC
-    // 1. get final start_partition, end_partition
-    // 2. break into step ranges
-    // 3. for each dependency
-    //     a. dependency_start: max(query.start - startOffset, startCutOff)
-    //     b. dependency_end: min(query.end - endOffset, endCutOff)
-    2: optional Window startOffset
-    3: optional Window endOffset
-    4: optional string startCutOff
-    5: optional string endCutOff
-
     # if not present we will pull from defaults
     // needed to enumerate what partitions are in a range
     100: optional string partitionColumn
@@ -89,6 +77,22 @@ struct TableDependency {
     * is sufficient. What this means is that latest available partition prior to end cut off will be used.
     **/
     200: optional bool isCumulative
+}
+
+struct TableDependency {
+    // fully qualified table name
+    1: optional TableInfo tableInfo
+
+    // DEPENDENCY_RANGE_LOGIC
+    // 1. get final start_partition, end_partition
+    // 2. break into step ranges
+    // 3. for each dependency
+    //     a. dependency_start: max(query.start - startOffset, startCutOff)
+    //     b. dependency_end: min(query.end - endOffset, endCutOff)
+    2: optional Window startOffset
+    3: optional Window endOffset
+    4: optional string startCutOff
+    5: optional string endCutOff
 
     /**
     * JoinParts could use data from batch backfill-s or upload tables when available
@@ -126,6 +130,7 @@ struct ExecutionInfo {
     11: optional i32 stepDays
     12: optional bool historicalBackfill
     13: optional list<TableDependency> tableDependencies
+    14: optional TableInfo outputTableInfo
 
     # relevant for streaming jobs
     200: optional list<KvDependency> kvDependency
