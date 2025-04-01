@@ -29,7 +29,7 @@ class BaseKafkaFlinkSource[T](kafkaBootstrap: Option[String],
   TopicChecker.topicShouldExist(topicInfo.name, bootstrap, topicInfo.params)
 
   // we use a small scale factor as topics are often over partitioned. We can make this configurable via topicInfo
-  val scaleFactor = 0.125
+  val scaleFactor = 0.25
 
   implicit val parallelism: Int = {
     math.ceil(TopicChecker.getPartitions(topicInfo.name, bootstrap, topicInfo.params) * scaleFactor).toInt
