@@ -17,10 +17,8 @@
 package ai.chronon.online.test
 
 import ai.chronon.aggregator.windowing.FinalBatchIr
-import ai.chronon.api.Builders
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.GroupBy
-import ai.chronon.api.MetaData
+import ai.chronon.api.{MetaData, TimeUnit, Window}
+import ai.chronon.api.Extensions.{GroupByOps, WindowOps}
 import ai.chronon.online.fetcher.Fetcher.ColumnSpec
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.fetcher.Fetcher.Response
@@ -29,8 +27,6 @@ import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.fetcher.{FetchContext, GroupByFetcher, MetadataStore}
 import ai.chronon.online.{fetcher, _}
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.mockito.Answers
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
@@ -248,5 +244,35 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
 
     val result = baseFetcher.parseGroupByResponse("prefix", request, response)
     result.keySet shouldBe Set("name_exception")
+  }
+
+  it should "check late batch data is handled correctly" in {
+    // lookup request - 03/20/2024 01:00 UTC
+    // batch landing time 03/17/2024 00:00 UTC
+    val longWindows = Seq(new Window(7, TimeUnit.DAYS), new Window(10, TimeUnit.DAYS))
+    val tailHops2d = new Window(2, TimeUnit.DAYS).millis
+    val result = groupByFetcher.checkLateBatchData(1710896400000L, "myGroupBy", 1710633600000L, tailHops2d, longWindows)
+    result shouldBe 1L
+
+    // try the same with a shorter lookback window
+    val shortWindows = Seq(new Window(1, TimeUnit.DAYS), new Window(10, TimeUnit.HOURS))
+    val result2 =
+      groupByFetcher.checkLateBatchData(1710896400000L, "myGroupBy", 1710633600000L, tailHops2d, shortWindows)
+    result2 shouldBe 0L
+  }
+
+  it should "check late batch data handles case when batch data isn't late" in {
+    // lookup request - 03/20/2024 01:00 UTC
+    // batch landing time 03/19/2024 00:00 UTC
+    val longWindows = Seq(new Window(7, TimeUnit.DAYS), new Window(10, TimeUnit.DAYS))
+    val tailHops2d = new Window(2, TimeUnit.DAYS).millis
+    val result = groupByFetcher.checkLateBatchData(1710896400000L, "myGroupBy", 1710806400000L, tailHops2d, longWindows)
+    result shouldBe 0L
+
+    // try the same with a shorter lookback window
+    val shortWindows = Seq(new Window(1, TimeUnit.DAYS), new Window(10, TimeUnit.HOURS))
+    val result2 =
+      groupByFetcher.checkLateBatchData(1710896400000L, "myGroupBy", 1710633600000L, tailHops2d, shortWindows)
+    result2 shouldBe 0L
   }
 }
