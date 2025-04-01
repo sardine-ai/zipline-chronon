@@ -2,7 +2,6 @@ import base64
 import logging
 import multiprocessing
 import os
-import traceback
 from typing import List
 
 import crcmod
@@ -425,21 +424,16 @@ class GcpRunner(Runner):
                     + len(dataproc_submitter_id_str)
                     + 1:
                 ]
-                try:
-                    print(
-                        """
-                    <-----------------------------------------------------------------------------------
-                    ------------------------------------------------------------------------------------
-                                                      DATAPROC LOGS
-                    ------------------------------------------------------------------------------------
-                    ------------------------------------------------------------------------------------>
+                print(
                     """
-                    )
-                    check_call(
-                        f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()}"
-                    )
-                except Exception as e:
-                    print(f"Error waiting for job {job_id}: {e}")
-                    print(traceback.format_exc())
-                    # swallow since this is just for tailing logs
-                    pass
+                <-----------------------------------------------------------------------------------
+                ------------------------------------------------------------------------------------
+                                                  DATAPROC LOGS
+                ------------------------------------------------------------------------------------
+                ------------------------------------------------------------------------------------>
+                """
+                )
+                check_call(
+                    f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()}"
+                )
+                return job_id
