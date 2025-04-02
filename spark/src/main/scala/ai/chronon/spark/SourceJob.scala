@@ -1,16 +1,14 @@
 package ai.chronon.spark
-import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Events
+import ai.chronon.api.{Constants, DateRange}
 import ai.chronon.api.Extensions._
+import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.ScalaJavaConversions.JListOps
-import ai.chronon.api.DateRange
-import ai.chronon.api.PartitionRange
 import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.parseSkewKeys
 
-import scala.collection.Seq
-import scala.collection.Map
+import scala.collection.{Map, Seq}
 import scala.jdk.CollectionConverters._
 
 /*
@@ -60,7 +58,7 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
     }
 
     // Save using the provided outputTable or compute one if not provided
-    dfWithTimeCol.save(outputTable)
+    dfWithTimeCol.save(outputTable, tableProperties = sourceWithFilter.metaData.tableProps)
   }
 
   private def formatFilterString(keys: Option[Map[String, Seq[String]]] = None): Option[String] = {

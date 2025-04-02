@@ -60,7 +60,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       JoinPartJobContext(Option(leftWithStats),
                          joinLevelBloomMapOpt,
                          leftTimeRangeOpt,
-                         Map.empty[String, String],
+                         Option(node.metaData.tableProps).getOrElse(Map.empty[String, String]),
                          runSmallMode)
     }
 
