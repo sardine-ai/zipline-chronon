@@ -64,6 +64,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   // default threshold is 100K rows
   val bloomFilterThreshold: Long =
     sparkSession.conf.get("spark.chronon.backfill.bloomfilter.threshold", "1000000").toLong
+  val checkLeftTimeRange: Boolean =
+    sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
 
   private val minWriteShuffleParallelism = 200
 
