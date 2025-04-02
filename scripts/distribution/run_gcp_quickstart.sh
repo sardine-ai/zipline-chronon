@@ -55,10 +55,10 @@ function check_dataproc_job_state() {
         exit 1
   fi
   echo -e "${GREEN} <<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>\033[0m"
-  JOB_STATE=$(gcloud dataproc jobs describe $JOB_ID --region=us-central1 --format=flattened | grep "status.state:")
+  JOB_STATE=$(gcloud dataproc jobs describe $JOB_ID --region=us-central1 --format=flattened | grep "status.state:" | awk '{print $NF}')
   echo $JOB_STATE
 #  TODO: this doesn't actually fail. need to fix.
-  if [ -z "$JOB_STATE" ]; then
+  if [ -z "$JOB_STATE" ] || [ "$JOB_STATE" == "ERROR" ]; then
         echo -e "${RED} <<<<<<<<<<<<<<<<-----------------JOB FAILED!----------------->>>>>>>>>>>>>>>>>\033[0m"
         exit 1
   fi
