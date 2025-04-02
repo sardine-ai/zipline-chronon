@@ -26,6 +26,9 @@ SPARK_MODES = [
     "log-flattener",
     "metadata-export",
     "label-join",
+    "source-job",
+    "join-part-job",
+    "merge-job",
 ]
 MODES_USING_EMBEDDED = ["metadata-upload", "fetch", "local-streaming"]
 
@@ -52,6 +55,9 @@ MODE_ARGS = {
     "metadata-export": OFFLINE_ARGS,
     "label-join": OFFLINE_ARGS,
     "streaming-client": ONLINE_WRITE_ARGS,
+    "source-job": OFFLINE_ARGS,
+    "join-part-job": OFFLINE_ARGS,
+    "merge-job": OFFLINE_ARGS,
     "metastore": "--partition-names={partition_names}",
     "info": "",
 }
@@ -83,6 +89,9 @@ ROUTES = {
         "log-flattener": "log-flattener",
         "metadata-export": "metadata-export",
         "label-join": "label-join",
+        "source-job": "source-job",
+        "join-part-job": "join-part-job",
+        "merge-job": "merge-job",
     },
     "staging_queries": {
         "backfill": "staging-query-backfill",
