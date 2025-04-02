@@ -17,27 +17,18 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Constants
 import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.DateRange
 import ai.chronon.api.Extensions._
-import ai.chronon.api.JoinPart
-import ai.chronon.api.PartitionRange
-import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
 import ai.chronon.online.Metrics
 import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.JoinUtils.coalescedJoin
-import ai.chronon.spark.JoinUtils.leftDf
-import ai.chronon.spark.JoinUtils.shouldRecomputeLeft
-import ai.chronon.spark.JoinUtils.tablesToRecompute
+import ai.chronon.spark.JoinUtils.{coalescedJoin, leftDf, shouldRecomputeLeft, tablesToRecompute}
 import com.google.gson.Gson
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.time.Instant
 import scala.collection.JavaConverters._
@@ -60,9 +51,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
   val bootstrapTable: String = joinConfCloned.metaData.bootstrapTable
 
   // Get table properties from config
-  protected val confTableProps: Map[String, String] = Option(joinConfCloned.metaData.tableProperties)
-    .map(_.asScala.toMap)
-    .getOrElse(Map.empty[String, String])
+  protected val confTableProps: Map[String, String] =
+    Option(joinConfCloned.metaData.tableProps).getOrElse(Map.empty[String, String])
 
   private val gson = new Gson()
   // Combine tableProperties set on conf with encoded Join

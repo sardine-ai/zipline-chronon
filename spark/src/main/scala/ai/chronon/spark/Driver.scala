@@ -858,6 +858,7 @@ object Driver {
       val sourceMetaData = new api.MetaData()
         .setName(sourceName)
         .setOutputNamespace(sourceNamespace)
+        .setTableProperties(join.metaData.tableProperties)
 
       sourceWithFilterNode.setMetaData(sourceMetaData)
 

@@ -1,18 +1,5 @@
 package ai.chronon.spark
 
-import ai.chronon.spark.JoinUtils.{coalescedJoin, padFields}
-import ai.chronon.orchestration.JoinMergeNode
-import ai.chronon.api.{
-  Accuracy,
-  Constants,
-  DateRange,
-  JoinPart,
-  PartitionSpec,
-  QueryUtils,
-  RelevantLeftForJoinPart,
-  StructField,
-  StructType
-}
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.Extensions.{
   DateRangeOps,
@@ -24,16 +11,27 @@ import ai.chronon.api.Extensions.{
   SourceOps
 }
 import ai.chronon.api.ScalaJavaConversions.ListOps
+import ai.chronon.api.{
+  Accuracy,
+  Constants,
+  DateRange,
+  JoinPart,
+  PartitionSpec,
+  QueryUtils,
+  RelevantLeftForJoinPart,
+  StructField,
+  StructType
+}
 import ai.chronon.online.SparkConversions
-import org.apache.spark.sql.DataFrame
-import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.orchestration.JoinMergeNode
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.JoinUtils.{coalescedJoin, padFields}
 import org.apache.spark.sql
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_add, date_format, to_date}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.Seq
-import scala.collection.Map
-import java.time.Instant
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -44,10 +42,7 @@ joinPartsToTables is a map of JoinPart to the table name of the output of that j
 due to bootstrap can be omitted from this map.
  */
 
-class MergeJob(node: JoinMergeNode,
-               range: DateRange,
-               joinParts: Seq[JoinPart],
-               tableProps: Map[String, String] = Map.empty)(implicit tableUtils: TableUtils) {
+class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(implicit tableUtils: TableUtils) {
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
@@ -80,7 +75,7 @@ class MergeJob(node: JoinMergeNode,
           Failure(e)
       }
     val df = processJoinedDf(joinedDfTry, leftDf, bootstrapInfo, leftDf)
-    df.save(outputTable, tableProps.toMap, autoExpand = true)
+    df.save(outputTable, node.metaData.tableProps, autoExpand = true)
   }
 
   private def getRightPartsData(): Seq[(JoinPart, DataFrame)] = {
