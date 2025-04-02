@@ -45,11 +45,10 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
 
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
-      val df =
-        tableUtils.scanDf(skewFilteredSource.query,
-                          skewFilteredSource.table,
-                          Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
-                          range = Some(dayStep))
+      val df = tableUtils.scanDf(skewFilteredSource.query,
+                                 skewFilteredSource.table,
+                                 Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
+                                 range = Some(dayStep))
 
       if (df.isEmpty) {
         throw new RuntimeException(s"Query produced 0 rows in range $dayStep.")
