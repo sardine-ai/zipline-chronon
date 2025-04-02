@@ -333,7 +333,6 @@ object JoinUtils {
   def genBloomFilterIfNeeded(
       joinPart: ai.chronon.api.JoinPart,
       leftDataModel: DataModel,
-      leftRowCount: Long,
       unfilledRange: PartitionRange,
       joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]]): Option[util.Map[String, BloomFilter]] = {
 
@@ -362,7 +361,6 @@ object JoinUtils {
            |  right type: ${joinPart.groupBy.dataModel},
            |  accuracy  : ${joinPart.groupBy.inferredAccuracy},
            |  part unfilled range: $unfilledRange,
-           |  left row count: $leftRowCount
            |  bloom sizes: $bloomSizes
            |  groupBy: ${joinPart.groupBy.toString}
            |""".stripMargin)

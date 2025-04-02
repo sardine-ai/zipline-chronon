@@ -2,7 +2,8 @@ package ai.chronon.spark
 
 import ai.chronon.api.DataModel.{Entities, Events}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
-import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange}
+import ai.chronon.api.PartitionRange.toTimeRange
+import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange}
 import ai.chronon.online.Metrics
 import ai.chronon.orchestration.JoinPartNode
 import ai.chronon.spark.Extensions.{DfWithStats, _}
@@ -38,9 +39,18 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
 
   def run(context: Option[JoinPartJobContext] = None): Option[DataFrame] = {
 
+    logger.info(s"Running join part job for ${joinPart.groupBy.metaData.name} on range $dateRange")
+
     val jobContext = context.getOrElse {
       // LeftTable is already computed by SourceJob, no need to apply query/filters/etc
-      val cachedLeftDf = tableUtils.scanDf(query = null, leftTable, range = Some(dateRange))
+      val relevantLeftCols =
+        joinPart.rightToLeft.keys.toArray ++ Seq(tableUtils.partitionColumn) ++ (leftDataModel match {
+          case Entities => None
+          case Events   => Some(Constants.TimeColumn)
+        })
+
+      val query = Builders.Query(selects = relevantLeftCols.map(t => t -> t).toMap)
+      val cachedLeftDf = tableUtils.scanDf(query = query, leftTable, range = Some(dateRange))
 
       val leftTimeRangeOpt: Option[PartitionRange] =
         if (cachedLeftDf.schema.fieldNames.contains(Constants.TimePartitionColumn)) {
@@ -55,7 +65,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       val leftWithStats = cachedLeftDf.withStats
 
       val joinLevelBloomMapOpt =
-        JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, cachedLeftDf.count, dateRange, None)
+        JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, dateRange, None)
 
       JoinPartJobContext(Option(leftWithStats),
                          joinLevelBloomMapOpt,
@@ -107,9 +117,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
         }
         val elapsedMins = (System.currentTimeMillis() - start) / 60000
         partMetrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
-        val partitionCount = rightRange.partitions.length
-        partMetrics.gauge(Metrics.Name.PartitionCount, partitionCount)
-        logger.info(s"Wrote $partitionCount partitions to join part table: $partTable in $elapsedMins minutes")
+        logger.info(s"Wrote to join part table: $partTable in $elapsedMins minutes")
       } catch {
         case e: Exception =>
           logger.error(s"Error while processing groupBy: ${joinPart.groupBy.getMetaData.getName}")
@@ -137,15 +145,12 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     }
 
     val statsDf = leftDfWithStats.get
-    val rowCount = statsDf.count
-    val unfilledRange = statsDf.partitionRange
 
-    logger.info(
-      s"\nBackfill is required for ${joinPart.groupBy.metaData.name} for $rowCount rows on range $unfilledRange")
+    logger.info(s"\nBackfill is required for ${joinPart.groupBy.metaData.name}")
     val rightBloomMap = if (skipBloom) {
       None
     } else {
-      JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, rowCount, unfilledRange, joinLevelBloomMapOpt)
+      JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, dateRange, joinLevelBloomMapOpt)
     }
 
     val rightSkewFilter = JoinUtils.partSkewFilter(joinPart, skewKeys)
@@ -160,12 +165,15 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
                    showDf = showDf)
 
     // all lazy vals - so evaluated only when needed by each case.
-    lazy val partitionRangeGroupBy = genGroupBy(unfilledRange)
+    lazy val partitionRangeGroupBy = genGroupBy(dateRange)
 
-    lazy val unfilledTimeRange = {
+    lazy val unfilledPartitionRange = if (tableUtils.checkLeftTimeRange) {
       val timeRange = statsDf.timeRange
-      logger.info(s"left unfilled time range: $timeRange")
-      timeRange
+      logger.info(s"left unfilled time range checked to be: $timeRange")
+      timeRange.toPartitionRange
+    } else {
+      logger.info(s"Not checking time range, but inferring it from partition range: $dateRange")
+      dateRange
     }
 
     val leftSkewFilter =
@@ -202,7 +210,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       skewFilteredLeft.select(columns: _*)
     }
 
-    lazy val shiftedPartitionRange = unfilledTimeRange.toPartitionRange.shift(-1)
+    lazy val shiftedPartitionRange = unfilledPartitionRange.shift(-1)
 
     val renamedLeftDf = renamedLeftRawDf.select(renamedLeftRawDf.columns.map {
       case c if c == tableUtils.partitionColumn =>
@@ -210,12 +218,12 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       case c => renamedLeftRawDf.col(c)
     }.toList: _*)
     val rightDf = (leftDataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {
-      case (Entities, Events, _)   => partitionRangeGroupBy.snapshotEvents(unfilledRange)
+      case (Entities, Events, _)   => partitionRangeGroupBy.snapshotEvents(dateRange)
       case (Entities, Entities, _) => partitionRangeGroupBy.snapshotEntities
       case (Events, Events, Accuracy.SNAPSHOT) =>
         genGroupBy(shiftedPartitionRange).snapshotEvents(shiftedPartitionRange)
       case (Events, Events, Accuracy.TEMPORAL) =>
-        genGroupBy(unfilledTimeRange.toPartitionRange).temporalEvents(renamedLeftDf, Some(unfilledTimeRange))
+        genGroupBy(unfilledPartitionRange).temporalEvents(renamedLeftDf, Some(toTimeRange(unfilledPartitionRange)))
 
       case (Events, Entities, Accuracy.SNAPSHOT) => genGroupBy(shiftedPartitionRange).snapshotEntities
 

@@ -165,4 +165,10 @@ object PartitionRange {
     if (ranges == null) return ""
     rangesToString(ranges)
   }
+
+  def toTimeRange(partitionRange: PartitionRange): TimeRange = {
+    val spec = partitionRange.partitionSpec
+    val shiftedEnd = spec.after(partitionRange.end)
+    TimeRange(spec.epochMillis(partitionRange.start), spec.epochMillis(shiftedEnd) - 1)(spec)
+  }
 }
