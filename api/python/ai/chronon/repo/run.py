@@ -164,6 +164,7 @@ def set_defaults(ctx):
               help="Validate the catalyst util Spark expression evaluation logic")
 @click.option("--validate-rows", default="10000",
               help="Number of rows to  run the validation on")
+@click.option("--join-part-name", help="Name of the join part to use for join-part-job")
 @click.pass_context
 def main(
     ctx,
@@ -196,7 +197,8 @@ def main(
     mock_source,
     savepoint_uri,
     validate,
-    validate_rows
+    validate_rows,
+    join_part_name
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
