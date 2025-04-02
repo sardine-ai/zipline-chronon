@@ -138,8 +138,6 @@ class RowAggregatorTest extends AnyFlatSpec {
     expectedVals
       .zip(finalized)
       .zip(rowAggregator.outputSchema.map(_._1))
-      .foreach { case ((expected, actual), _) =>
-        assertEquals(expected, actual)
-      }
+      .foreach { case ((expected, actual), _) => assertEquals(expected, actual) }
   }
 }

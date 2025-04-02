@@ -41,7 +41,7 @@ default = Team(
 
 
 test = Team(
-    namespace="test",
+    namespace="test", # should be 'catalog_name'.'db_name'
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance

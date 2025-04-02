@@ -37,6 +37,11 @@ object TsUtils {
     formatter.parse(desiredTime).getTime
   }
 
+  @inline
   def round(epochMillis: Long, roundMillis: Long): Long =
     (epochMillis / roundMillis) * roundMillis
+
+  @inline
+  def roundUp(epochMillis: Long, roundMillis: Long): Long =
+    Math.ceil(epochMillis.toDouble / roundMillis.toDouble).toLong * roundMillis
 }
