@@ -42,23 +42,26 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
       })
       .getOrElse(source)
 
-    val df = tableUtils.scanDf(skewFilteredSource.query,
-                               skewFilteredSource.table,
-                               Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
-                               range = Some(dateRange))
+    // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
+    dateRange.steps(days = 1).foreach { dayStep =>
+      val df = tableUtils.scanDf(skewFilteredSource.query,
+                                 skewFilteredSource.table,
+                                 Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
+                                 range = Some(dayStep))
 
-    if (df.isEmpty) {
-      throw new RuntimeException(s"Query produced 0 rows in range $dateRange.")
+      if (df.isEmpty) {
+        throw new RuntimeException(s"Query produced 0 rows in range $dayStep.")
+      }
+
+      val dfWithTimeCol = if (source.dataModel == Events) {
+        df.withTimeBasedColumn(Constants.TimePartitionColumn)
+      } else {
+        df
+      }
+
+      // Save using the provided outputTable or compute one if not provided
+      dfWithTimeCol.save(outputTable, tableProperties = sourceWithFilter.metaData.tableProps)
     }
-
-    val dfWithTimeCol = if (source.dataModel == Events) {
-      df.withTimeBasedColumn(Constants.TimePartitionColumn)
-    } else {
-      df
-    }
-
-    // Save using the provided outputTable or compute one if not provided
-    dfWithTimeCol.save(outputTable, tableProperties = sourceWithFilter.metaData.tableProps)
   }
 
   private def formatFilterString(keys: Option[Map[String, Seq[String]]] = None): Option[String] = {

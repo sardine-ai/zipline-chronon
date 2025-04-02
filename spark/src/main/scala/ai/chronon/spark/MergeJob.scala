@@ -16,6 +16,7 @@ import ai.chronon.api.{
   Constants,
   DateRange,
   JoinPart,
+  PartitionRange,
   PartitionSpec,
   QueryUtils,
   RelevantLeftForJoinPart,
@@ -47,46 +48,54 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val join = node.join
-  private val leftInputTable = join.metaData.bootstrapTable
+  private val leftInputTable = if (join.bootstrapParts != null) {
+    join.metaData.bootstrapTable
+  } else {
+    JoinUtils.computeLeftSourceTableName(join)
+  }
   // Use the node's Join's metadata for output table
   private val outputTable = node.metaData.outputTable
   private val dateRange = range.toPartitionRange
 
   def run(): Unit = {
-    val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dateRange))
-    val leftSchema = leftDf.schema
+    val leftDfForSchema = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dateRange))
+    val leftSchema = leftDfForSchema.schema
     val bootstrapInfo =
       BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
 
-    val rightPartsData = getRightPartsData()
+    // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
+    dateRange.steps(days = 1).foreach { dayStep =>
+      val rightPartsData = getRightPartsData(dayStep)
+      val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dayStep))
 
-    val joinedDfTry =
-      try {
-        Success(
-          rightPartsData
-            .foldLeft(leftDf) { case (partialDf, (rightPart, rightDf)) =>
-              joinWithLeft(partialDf, rightDf, rightPart)
-            }
-            // drop all processing metadata columns
-            .drop(Constants.MatchedHashes, Constants.TimePartitionColumn))
-      } catch {
-        case e: Exception =>
-          e.printStackTrace()
-          Failure(e)
-      }
-    val df = processJoinedDf(joinedDfTry, leftDf, bootstrapInfo, leftDf)
-    df.save(outputTable, node.metaData.tableProps, autoExpand = true)
+      val joinedDfTry =
+        try {
+          Success(
+            rightPartsData
+              .foldLeft(leftDf) { case (partialDf, (rightPart, rightDf)) =>
+                joinWithLeft(partialDf, rightDf, rightPart)
+              }
+              // drop all processing metadata columns
+              .drop(Constants.MatchedHashes, Constants.TimePartitionColumn))
+        } catch {
+          case e: Exception =>
+            e.printStackTrace()
+            Failure(e)
+        }
+      val df = processJoinedDf(joinedDfTry, leftDf, bootstrapInfo, leftDf)
+      df.save(outputTable, node.metaData.tableProps, autoExpand = true)
+    }
   }
 
-  private def getRightPartsData(): Seq[(JoinPart, DataFrame)] = {
+  private def getRightPartsData(dayStep: PartitionRange): Seq[(JoinPart, DataFrame)] = {
     joinParts.map { joinPart =>
       // Use the RelevantLeftForJoinPart utility to get the part table name
       val partTable = RelevantLeftForJoinPart.fullPartTableName(join, joinPart)
       val effectiveRange =
         if (join.left.dataModel != Entities && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
-          dateRange.shift(-1)
+          dayStep.shift(-1)
         } else {
-          dateRange
+          dayStep
         }
       val wheres = effectiveRange.whereClauses("ds")
       val sql = QueryUtils.build(null, partTable, wheres)
