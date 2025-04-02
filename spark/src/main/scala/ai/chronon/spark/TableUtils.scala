@@ -66,6 +66,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.backfill.bloomfilter.threshold", "1000000").toLong
   val checkLeftTimeRange: Boolean =
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
+  val carryOnlyRequiredColsFromLeftInJoin: Boolean =
+    sparkSession.conf.get("spark.chronon.join.backfill.carry_only_required_cols", "false").toBoolean
+  val ziplineInternalRowIdCol: String =
+    sparkSession.conf.get("spark.chronon.join.backfill.internal_row_id_col", "__zipline_row_id__")
 
   private val minWriteShuffleParallelism = 200
 
