@@ -37,8 +37,9 @@ class MutationsTest extends AnyFlatSpec {
 
   val spark: SparkSession =
     SparkSessionBuilder.build("MutationsTest",
-                              local = true
-    ) //, additionalConfig = Some(Map("spark.chronon.backfill.validation.enabled" -> "false")))
+                              local = true,
+                              additionalConfig =
+                                Some(Map("spark.chronon.join.backfill.check.left_time_range" -> "true")))
   private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private def namespace(suffix: String) = s"test_mutations_$suffix"
@@ -823,6 +824,7 @@ class MutationsTest extends AnyFlatSpec {
   }
 
   it should "test with generated data" in {
+
     val suffix = "generated"
     val reviews = List(
       Column("listing_id", api.StringType, 10),
