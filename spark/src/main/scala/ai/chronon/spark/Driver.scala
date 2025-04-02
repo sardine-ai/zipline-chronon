@@ -417,12 +417,12 @@ object Driver {
 
     def run(args: Args): Unit = {
       val tableUtils = args.buildTableUtils()
-      val labelJoin = new LabelJoin(
+      val labelJoin = new LabelJoinV2(
         args.joinConf,
         tableUtils,
         args.endDate()
       )
-      labelJoin.computeLabelJoin(args.stepDays.toOption)
+      labelJoin.compute()
 
       if (args.shouldExport()) {
         args.exportTableToLocal(args.joinConf.metaData.outputLabelTable, tableUtils)
