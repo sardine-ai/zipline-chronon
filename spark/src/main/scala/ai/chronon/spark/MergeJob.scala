@@ -236,12 +236,15 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
    * This is so that if any derivations depend on the these group by fields, they will still pass and not complain
    * about missing columns. This is necessary when we directly bootstrap a derived column and skip the base columns.
    */
-  private def padGroupByFields(baseJoinDf: DataFrame, bootstrapInfo: BootstrapInfo, allBaseCols: Seq[String]): DataFrame = {
+  private def padGroupByFields(baseJoinDf: DataFrame,
+                               bootstrapInfo: BootstrapInfo,
+                               allBaseCols: Seq[String]): DataFrame = {
     // if we're not carrying heavy fields, the baseJoinDf might be missing some columns that we'll join back
     // later in the job, in that case we don't want to pad them here, that's the `allBaseCols` argument
-    val groupByFields = toSparkSchema(bootstrapInfo.joinParts.flatMap(_.valueSchema)
-      .filterNot(field => allBaseCols.contains(field.name))
-    )
+    val groupByFields = toSparkSchema(
+      bootstrapInfo.joinParts
+        .flatMap(_.valueSchema)
+        .filterNot(field => allBaseCols.contains(field.name)))
     padFields(baseJoinDf, groupByFields)
   }
 
@@ -263,13 +266,12 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
     }
   }
 
-  def processJoinedDf(joinedDfTry: Try[DataFrame],
-                      leftCols: Seq[String],
-                      bootstrapInfo: BootstrapInfo): DataFrame = {
+  def processJoinedDf(joinedDfTry: Try[DataFrame], leftCols: Seq[String], bootstrapInfo: BootstrapInfo): DataFrame = {
     if (joinedDfTry.isFailure) throw joinedDfTry.failed.get
     val joinedDf = joinedDfTry.get
     val outputColumns = joinedDf.columns.filter(bootstrapInfo.fieldNames ++ leftCols)
-    val finalBaseDf = padGroupByFields(joinedDf.selectExpr(outputColumns.map(c => s"`$c`"): _*), bootstrapInfo, leftCols)
+    val finalBaseDf =
+      padGroupByFields(joinedDf.selectExpr(outputColumns.map(c => s"`$c`"): _*), bootstrapInfo, leftCols)
     val finalDf = cleanUpContextualFields(finalBaseDf, bootstrapInfo, leftCols)
     finalDf.explain()
     finalDf
