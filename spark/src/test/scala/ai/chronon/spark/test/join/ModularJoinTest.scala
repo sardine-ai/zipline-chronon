@@ -394,7 +394,7 @@ class ModularJoinTest extends AnyFlatSpec {
                 |  FROM queries
                 |  LEFT OUTER JOIN $dollarTable as dollar
                 |  on queries.user == dollar.user
-                |  GROUP BY queries.user, queries.ts, queries.ds
+                |  GROUP BY queries.user, queries.ts, queries.ds, queries.some_col
                 |""".stripMargin
     spark.sql(expectedQuery).show()
     val expected = spark.sql(expectedQuery)

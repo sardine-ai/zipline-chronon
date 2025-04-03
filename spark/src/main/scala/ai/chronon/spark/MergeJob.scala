@@ -76,6 +76,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
 
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
+      logger.info(s"Running merge for ${dayStep.start}")
       val rightPartsData = getRightPartsData(dayStep)
 
       val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dayStep))
@@ -126,15 +127,11 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
             Failure(e)
         }
 
-      val leftSourceSchema = tableUtils.getSchemaFromTable(leftSourceTable).fieldNames
-      val leftSourceSchemaForProcessing = if (carryOnlyRequiredCols) {
-        leftSourceSchema ++ Seq(tableUtils.ziplineInternalRowIdCol)
-      } else {
-        leftSourceSchema
-      }
       // leftSource can equal leftDfForMerge columns when there is no bootstrapping
       // We need both schemas for processing and cleaning up contextual fields
-      val mergedDf = processJoinedDf(joinedDfTry, leftSourceSchemaForProcessing, bootstrapInfo, leftDfForMerge.columns)
+      val colsForProcessing = leftDf.columns ++
+        (if (carryOnlyRequiredCols) Seq(tableUtils.ziplineInternalRowIdCol) else Seq.empty)
+      val mergedDf = processJoinedDf(joinedDfTry, colsForProcessing, bootstrapInfo)
 
       val outputDf = if (carryOnlyRequiredCols) {
         val nonRequiredColumns =
@@ -151,6 +148,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
       }
 
       outputDf.save(outputTable, node.metaData.tableProps, autoExpand = true)
+      logger.info(s"Saved merged data to $outputTable for range ${dayStep.start}")
     }
   }
 
@@ -241,8 +239,12 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
    * This is so that if any derivations depend on the these group by fields, they will still pass and not complain
    * about missing columns. This is necessary when we directly bootstrap a derived column and skip the base columns.
    */
-  private def padGroupByFields(baseJoinDf: DataFrame, bootstrapInfo: BootstrapInfo): DataFrame = {
-    val groupByFields = toSparkSchema(bootstrapInfo.joinParts.flatMap(_.valueSchema))
+  private def padGroupByFields(baseJoinDf: DataFrame, bootstrapInfo: BootstrapInfo, allBaseCols: Seq[String]): DataFrame = {
+    // if we're not carrying heavy fields, the baseJoinDf might be missing some columns that we'll join back
+    // later in the job, in that case we don't want to pad them here, that's the `allBaseCols` argument
+    val groupByFields = toSparkSchema(bootstrapInfo.joinParts.flatMap(_.valueSchema)
+      .filterNot(field => allBaseCols.contains(field.name))
+    )
     padFields(baseJoinDf, groupByFields)
   }
 
@@ -266,12 +268,11 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
 
   def processJoinedDf(joinedDfTry: Try[DataFrame],
                       leftCols: Seq[String],
-                      bootstrapInfo: BootstrapInfo,
-                      bootstrapCols: Seq[String]): DataFrame = {
+                      bootstrapInfo: BootstrapInfo): DataFrame = {
     if (joinedDfTry.isFailure) throw joinedDfTry.failed.get
     val joinedDf = joinedDfTry.get
     val outputColumns = joinedDf.columns.filter(bootstrapInfo.fieldNames ++ leftCols)
-    val finalBaseDf = padGroupByFields(joinedDf.selectExpr(outputColumns.map(c => s"`$c`"): _*), bootstrapInfo)
+    val finalBaseDf = padGroupByFields(joinedDf.selectExpr(outputColumns.map(c => s"`$c`"): _*), bootstrapInfo, leftCols)
     val finalDf = cleanUpContextualFields(finalBaseDf, bootstrapInfo, leftCols)
     finalDf.explain()
     finalDf
