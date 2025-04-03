@@ -44,15 +44,6 @@ jobs:
           python3 -m venv chronon_py_env
           source chronon_py_env/bin/activate
 
-      - name: Run Chronon Python lint (flake8)
-        shell: bash
-        run: |
-          source chronon_py_env/bin/activate
-          cd api/python/ai/chronon
-          pip install importlib-metadata==4.11.4
-          pip install flake8
-          flake8 --extend-ignore=W605,Q000,F631 --exclude=cli
-
       - name: Run Chronon Python lint (ruff)
         shell: bash
         run: |
