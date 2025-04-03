@@ -257,14 +257,30 @@ jobs:
           role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/github_actions
           aws-region: ${{secrets.AWS_REGION}}
 
-
-      # TODO Test 'run' commands when they are ready
       - name: Run Quickstart Integration Tests
         id: aws_integration_tests
         shell: bash
         run: |
           set -xo pipefail
           ./scripts/distribution/run_aws_quickstart.sh --canary          
+
+      - name:  On Fail Notify Slack
+        id: notify_slack
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_AWS_WEBHOOK_URL }}
+        with:
+          payload: |
+            {
+              "text": "Zipline AWS CI Tests Failed\n\n The integration tests failed for commit <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.sha }}> on branch ${{ github.ref }}. Please check the logs for more details.",
+              "attachments": [
+                {
+                  "text": "",
+                  "color": "#ff0000"
+                }
+              ]
+            }
 
 
   run_gcp_integration_tests:
@@ -297,6 +313,23 @@ jobs:
           set -xo pipefail
           ./scripts/distribution/run_gcp_quickstart.sh --canary
 
+      - name:  On Fail Notify Slack
+        id: notify_slack
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GCP_WEBHOOK_URL }}
+        with:
+          payload: |
+            {
+              "text": "Zipline GCP CI Tests Failed\n\n The integration tests failed for commit <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.sha }}> on branch ${{ github.ref }}. Please check the logs for more details.",
+              "attachments": [
+                {
+                  "text": "",
+                  "color": "#ff0000"
+                }
+              ]
+            }
 
   push_to_aws_passing:
     needs: [ build_artifacts, run_gcp_integration_tests, run_aws_integration_tests ]
@@ -471,7 +504,7 @@ jobs:
       - name: Send Failure Notification
         uses: slackapi/slack-github-action@v1
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TESTS_WEBHOOK_URL }}
         with:
           payload: |
             {
