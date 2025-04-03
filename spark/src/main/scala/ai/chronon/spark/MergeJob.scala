@@ -137,9 +137,6 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
         val nonRequiredColumns =
           leftSchema.fieldNames.filterNot(requiredColumns.contains) ++ Seq(tableUtils.ziplineInternalRowIdCol)
         val nonRequiredDf = leftDfWithUUID.select(nonRequiredColumns.map(col): _*)
-        // val fused = mergedDf.join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
-        // val allColumns = (requiredColumns ++ nonRequiredColumns).map(fused(_)).toList
-        // fused.select(allColumns: _*)
         mergedDf
           .join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
           .drop(tableUtils.ziplineInternalRowIdCol)
