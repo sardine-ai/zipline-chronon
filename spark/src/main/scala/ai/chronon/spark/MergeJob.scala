@@ -66,30 +66,49 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
     val bootstrapInfo =
       BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
 
-    val requiredColumns = join.joinParts.asScala.flatMap(_.rightToLeft.keys).distinct ++ Seq(
-      tableUtils.partitionColumn) ++ (join.left.dataModel match {
-      case Entities => None
-      case Events   => Some(Constants.TimeColumn)
-    })
+    val requiredColumns: Seq[String] =
+      join.joinParts.asScala.flatMap(_.rightToLeft.keys).distinct ++
+        Seq(tableUtils.partitionColumn) ++
+        (join.left.dataModel match {
+          case Entities => Seq.empty
+          case Events   => Seq(Constants.TimeColumn, Constants.TimePartitionColumn)
+        })
 
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
       val rightPartsData = getRightPartsData(dayStep)
 
-      val leftDfWithUUID = tableUtils
-        .scanDf(query = null, table = leftInputTable, range = Some(dayStep))
-        .withColumn(tableUtils.ziplineInternalRowIdCol, monotonically_increasing_id())
+      val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dayStep))
+
+      lazy val leftDfWithUUID = leftDf.withColumn(tableUtils.ziplineInternalRowIdCol, monotonically_increasing_id())
 
       lazy val requiredColumnsDf =
-        leftDfWithUUID.select((requiredColumns ++ Seq(tableUtils.ziplineInternalRowIdCol)).map(col): _*)
+        leftDfWithUUID.select((requiredColumns ++ Seq(tableUtils.ziplineInternalRowIdCol)).toSeq.map(col): _*)
 
-      val leftDfForMerge = if (tableUtils.carryOnlyRequiredColsFromLeftInJoin) {
+      val carryOnlyRequiredCols = if (tableUtils.carryOnlyRequiredColsFromLeftInJoin) {
+        val result = requiredColumns.toSet != leftDf.schema.fieldNames.toSet
+        if (result) {
+          logger.info(
+            s"Carrying only required columns from left: ${requiredColumns.toSet}"
+          )
+        } else {
+          logger.info(
+            s"Carrying all columns from left even though carryOnlyRequiredColsFromLeftInJoin set to true: " +
+              s"Required set (${requiredColumns.toSet}) == Entire set (${leftDf.schema.fieldNames.toSet})"
+          )
+        }
+        result
+      } else {
+        false
+      }
+
+      val leftDfForMerge = if (carryOnlyRequiredCols) {
         // If we're only carrying over the required columns from the left we need to
         // take the requiredColumns and the RowId to join back to the non-required values after merge
         requiredColumnsDf
       } else {
         // Else we just need the base DF without the UUID
-        leftDfWithUUID
+        leftDf
       }
 
       val joinedDfTry =
@@ -107,22 +126,29 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
             Failure(e)
         }
 
-      // leftSource can equal leftSchema when there is no bootstrapping
-      // We need both schemas for processing and cleaning up contextual fields
       val leftSourceSchema = tableUtils.getSchemaFromTable(leftSourceTable).fieldNames
-      val leftInputSchema = tableUtils.getSchemaFromTable(leftInputTable).fieldNames
-      val mergedDf = processJoinedDf(joinedDfTry, leftSourceSchema, bootstrapInfo, leftInputSchema)
+      val leftSourceSchemaForProcessing = if (carryOnlyRequiredCols) {
+        leftSourceSchema ++ Seq(tableUtils.ziplineInternalRowIdCol)
+      } else {
+        leftSourceSchema
+      }
+      // leftSource can equal leftDfForMerge columns when there is no bootstrapping
+      // We need both schemas for processing and cleaning up contextual fields
+      val mergedDf = processJoinedDf(joinedDfTry, leftSourceSchemaForProcessing, bootstrapInfo, leftDfForMerge.columns)
 
-      val outputDf = if (tableUtils.carryOnlyRequiredColsFromLeftInJoin) {
+      val outputDf = if (carryOnlyRequiredCols) {
         val nonRequiredColumns =
           leftSchema.fieldNames.filterNot(requiredColumns.contains) ++ Seq(tableUtils.ziplineInternalRowIdCol)
         val nonRequiredDf = leftDfWithUUID.select(nonRequiredColumns.map(col): _*)
-        val fused = mergedDf.join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
-        val allColumns = (requiredColumns ++ nonRequiredColumns).map(fused(_)).toList
-        fused.select(allColumns: _*)
+        // val fused = mergedDf.join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
+        // val allColumns = (requiredColumns ++ nonRequiredColumns).map(fused(_)).toList
+        // fused.select(allColumns: _*)
+        mergedDf
+          .join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
+          .drop(tableUtils.ziplineInternalRowIdCol)
       } else {
         mergedDf
-      }.drop(tableUtils.ziplineInternalRowIdCol)
+      }
 
       outputDf.save(outputTable, node.metaData.tableProps, autoExpand = true)
     }
@@ -244,7 +270,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
                       bootstrapCols: Seq[String]): DataFrame = {
     if (joinedDfTry.isFailure) throw joinedDfTry.failed.get
     val joinedDf = joinedDfTry.get
-    val outputColumns = joinedDf.columns.filter(bootstrapInfo.fieldNames ++ bootstrapCols)
+    val outputColumns = joinedDf.columns.filter(bootstrapInfo.fieldNames ++ leftCols)
     val finalBaseDf = padGroupByFields(joinedDf.selectExpr(outputColumns.map(c => s"`$c`"): _*), bootstrapInfo)
     val finalDf = cleanUpContextualFields(finalBaseDf, bootstrapInfo, leftCols)
     finalDf.explain()

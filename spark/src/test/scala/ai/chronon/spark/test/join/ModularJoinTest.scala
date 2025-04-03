@@ -22,7 +22,10 @@ import scala.collection.JavaConverters._
 
 class ModularJoinTest extends AnyFlatSpec {
 
-  val spark: SparkSession = SparkSessionBuilder.build("ModularJoinTest", local = true)
+  val spark: SparkSession = SparkSessionBuilder.build(
+    "ModularJoinTest",
+    local = true,
+    additionalConfig = Some(Map("spark.chronon.join.backfill.carry_only_required_cols" -> "true")))
   private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -115,7 +118,8 @@ class ModularJoinTest extends AnyFlatSpec {
 
     val queriesSchema = List(
       Column("user_name", api.StringType, 10),
-      Column("user", api.StringType, 10)
+      Column("user", api.StringType, 10),
+      Column("some_col", api.StringType, 10)
     )
 
     val queryTable = s"$namespace.queries"
@@ -265,6 +269,7 @@ class ModularJoinTest extends AnyFlatSpec {
         "user",
         "ts",
         "user_name",
+        "some_col",
         "ts_ds",
         "matched_hashes",
         "unit_test_user_transactions_amount_dollars_sum_10d",
@@ -369,6 +374,7 @@ class ModularJoinTest extends AnyFlatSpec {
                 |   queries AS (
                 |     SELECT user_name,
                 |         user,
+                |         some_col,
                 |         ts,
                 |         date as ds
                 |     from $queryTable
@@ -380,6 +386,7 @@ class ModularJoinTest extends AnyFlatSpec {
                 |         AND date <= '$today')
                 |  SELECT
                 |    queries.user,
+                |    queries.some_col,
                 |    queries.ts,
                 |    queries.ds,
                 |    SUM(IF(dollar.ts < queries.ts, dollar.amount_dollars, null)) / 1 as ratio_derivation,
@@ -391,7 +398,8 @@ class ModularJoinTest extends AnyFlatSpec {
                 |""".stripMargin
     spark.sql(expectedQuery).show()
     val expected = spark.sql(expectedQuery)
-    val computed = spark.sql(s"SELECT user, ts, ds, ratio_derivation, external_coalesce FROM $derivationOutputTable")
+    val computed =
+      spark.sql(s"SELECT user, some_col, ts, ds, ratio_derivation, external_coalesce FROM $derivationOutputTable")
 
     val finalDiff = Comparison.sideBySide(computed, expected, List("user", "ts", "ds"))
 

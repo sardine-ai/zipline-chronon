@@ -6,8 +6,7 @@ import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.ScalaJavaConversions.JListOps
 import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.JoinUtils.parseSkewKeys
-import org.apache.spark.sql.functions.monotonically_increasing_id
+import ai.chronon.spark.JoinUtils.{logger, parseSkewKeys}
 
 import scala.collection.{Map, Seq}
 import scala.jdk.CollectionConverters._
@@ -43,6 +42,7 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
       })
       .getOrElse(source)
 
+    var producedSomeData = false
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
       val df = tableUtils.scanDf(skewFilteredSource.query,
@@ -51,7 +51,9 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
                                  range = Some(dayStep))
 
       if (df.isEmpty) {
-        throw new RuntimeException(s"Query produced 0 rows in range $dayStep.")
+        logger.warn(s"Source query produced 0 rows in range $dayStep.")
+      } else {
+        producedSomeData = true
       }
 
       val dfWithTimeCol = if (source.dataModel == Events) {
@@ -63,6 +65,8 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
       // Save using the provided outputTable or compute one if not provided
       dfWithTimeCol.save(outputTable, tableProperties = sourceWithFilter.metaData.tableProps)
     }
+
+    assert(producedSomeData, s"Source query produced 0 rows for all steps in range $dateRange.")
   }
 
   private def formatFilterString(keys: Option[Map[String, Seq[String]]] = None): Option[String] = {
