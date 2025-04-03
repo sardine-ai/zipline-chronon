@@ -13,7 +13,6 @@ import ai.chronon.api.Extensions.{
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api.{
   Accuracy,
-  Builders,
   Constants,
   DateRange,
   JoinPart,
@@ -118,7 +117,9 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
         val nonRequiredColumns =
           leftSchema.fieldNames.filterNot(requiredColumns.contains) ++ Seq(tableUtils.ziplineInternalRowIdCol)
         val nonRequiredDf = leftDfWithUUID.select(nonRequiredColumns.map(col): _*)
-        mergedDf.join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
+        val fused = mergedDf.join(nonRequiredDf, Seq(tableUtils.ziplineInternalRowIdCol), "inner")
+        val allColumns = (requiredColumns ++ nonRequiredColumns).map(fused(_)).toList
+        fused.select(allColumns: _*)
       } else {
         mergedDf
       }.drop(tableUtils.ziplineInternalRowIdCol)
