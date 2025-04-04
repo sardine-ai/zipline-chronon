@@ -1,5 +1,6 @@
 package ai.chronon.orchestration.test.temporal.workflow
 
+import ai.chronon.orchestration.pubsub.{GcpPubSubMessage, PubSubMessage, PubSubPublisher}
 import ai.chronon.orchestration.temporal.activity.NodeExecutionActivityImpl
 import ai.chronon.orchestration.temporal.constants.NodeExecutionWorkflowTaskQueue
 import ai.chronon.orchestration.temporal.workflow.{
@@ -12,15 +13,21 @@ import io.temporal.api.enums.v1.WorkflowExecutionStatus
 import io.temporal.client.WorkflowClient
 import io.temporal.testing.TestWorkflowEnvironment
 import io.temporal.worker.Worker
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatestplus.mockito.MockitoSugar.mock
+
+import java.util.concurrent.CompletableFuture
 
 class NodeExecutionWorkflowFullDagSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
 
   private var testEnv: TestWorkflowEnvironment = _
   private var worker: Worker = _
   private var workflowClient: WorkflowClient = _
+  private var mockPublisher: PubSubPublisher = _
   private var mockWorkflowOps: WorkflowOperations = _
 
   override def beforeEach(): Unit = {
@@ -32,9 +39,14 @@ class NodeExecutionWorkflowFullDagSpec extends AnyFlatSpec with Matchers with Be
     // Mock workflow operations
     mockWorkflowOps = new WorkflowOperationsImpl(workflowClient)
 
-    // Create activity with mocked dependencies
-    val activity = new NodeExecutionActivityImpl(mockWorkflowOps)
+    // Mock PubSub publisher
+    mockPublisher = mock[PubSubPublisher]
+    val completedFuture = CompletableFuture.completedFuture("message-id-123")
+    when(mockPublisher.publish(ArgumentMatchers.any[PubSubMessage])).thenReturn(completedFuture)
+    when(mockPublisher.topicId).thenReturn("test-topic")
 
+    // Create activity with mocked dependencies
+    val activity = new NodeExecutionActivityImpl(mockWorkflowOps, mockPublisher)
     worker.registerActivitiesImplementations(activity)
 
     // Start the test environment

@@ -1,6 +1,7 @@
 package ai.chronon.orchestration.test.temporal.activity
 
 import ai.chronon.orchestration.DummyNode
+import ai.chronon.orchestration.pubsub.{JobSubmissionMessage, PubSubPublisher}
 import ai.chronon.orchestration.temporal.activity.{NodeExecutionActivity, NodeExecutionActivityImpl}
 import ai.chronon.orchestration.temporal.constants.NodeExecutionWorkflowTaskQueue
 import ai.chronon.orchestration.temporal.workflow.WorkflowOperations
@@ -10,6 +11,7 @@ import io.temporal.client.{WorkflowClient, WorkflowOptions}
 import io.temporal.testing.TestWorkflowEnvironment
 import io.temporal.worker.Worker
 import io.temporal.workflow.{Workflow, WorkflowInterface, WorkflowMethod}
+import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import org.mockito.Mockito.{atLeastOnce, verify, when}
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
@@ -20,16 +22,18 @@ import java.lang.{Void => JavaVoid}
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
-// Test workflow just for activity testing
-// This is needed for testing manual completion logic for our activity as it's not supported for
+// Test workflows for activity testing
+// These are needed for testing manual completion logic for our activities as it's not supported for
 // test activity environment
+
+// Workflow for testing triggerDependency
 @WorkflowInterface
-trait TestActivityWorkflow {
+trait TestTriggerDependencyWorkflow {
   @WorkflowMethod
   def triggerDependency(node: DummyNode): Unit
 }
 
-class TestActivityWorkflowImpl extends TestActivityWorkflow {
+class TestTriggerDependencyWorkflowImpl extends TestTriggerDependencyWorkflow {
   private val activity = Workflow.newActivityStub(
     classOf[NodeExecutionActivity],
     ActivityOptions
@@ -40,6 +44,27 @@ class TestActivityWorkflowImpl extends TestActivityWorkflow {
 
   override def triggerDependency(node: DummyNode): Unit = {
     activity.triggerDependency(node)
+  }
+}
+
+// Workflow for testing submitJob
+@WorkflowInterface
+trait TestSubmitJobWorkflow {
+  @WorkflowMethod
+  def submitJob(node: DummyNode): Unit
+}
+
+class TestSubmitJobWorkflowImpl extends TestSubmitJobWorkflow {
+  private val activity = Workflow.newActivityStub(
+    classOf[NodeExecutionActivity],
+    ActivityOptions
+      .newBuilder()
+      .setStartToCloseTimeout(Duration.ofSeconds(5))
+      .build()
+  )
+
+  override def submitJob(node: DummyNode): Unit = {
+    activity.submitJob(node)
   }
 }
 
@@ -55,26 +80,34 @@ class NodeExecutionActivityTest extends AnyFlatSpec with Matchers with BeforeAnd
   private var worker: Worker = _
   private var workflowClient: WorkflowClient = _
   private var mockWorkflowOps: WorkflowOperations = _
-  private var testActivityWorkflow: TestActivityWorkflow = _
+  private var mockPublisher: PubSubPublisher = _
+  private var testTriggerWorkflow: TestTriggerDependencyWorkflow = _
+  private var testSubmitWorkflow: TestSubmitJobWorkflow = _
 
   override def beforeEach(): Unit = {
     testEnv = TemporalTestEnvironmentUtils.getTestWorkflowEnv
     worker = testEnv.newWorker(NodeExecutionWorkflowTaskQueue.toString)
-    worker.registerWorkflowImplementationTypes(classOf[TestActivityWorkflowImpl])
+    worker.registerWorkflowImplementationTypes(
+      classOf[TestTriggerDependencyWorkflowImpl],
+      classOf[TestSubmitJobWorkflowImpl]
+    )
     workflowClient = testEnv.getWorkflowClient
 
-    // Create mock workflow operations
+    // Create mock dependencies
     mockWorkflowOps = mock[WorkflowOperations]
+    mockPublisher = mock[PubSubPublisher]
+    when(mockPublisher.topicId).thenReturn("test-topic")
 
     // Create activity with mocked dependencies
-    val activity = new NodeExecutionActivityImpl(mockWorkflowOps)
+    val activity = new NodeExecutionActivityImpl(mockWorkflowOps, mockPublisher)
     worker.registerActivitiesImplementations(activity)
 
     // Start the test environment
     testEnv.start()
 
-    // Create test activity workflow
-    testActivityWorkflow = workflowClient.newWorkflowStub(classOf[TestActivityWorkflow], workflowOptions)
+    // Create test activity workflows
+    testTriggerWorkflow = workflowClient.newWorkflowStub(classOf[TestTriggerDependencyWorkflow], workflowOptions)
+    testSubmitWorkflow = workflowClient.newWorkflowStub(classOf[TestSubmitJobWorkflow], workflowOptions)
   }
 
   override def afterEach(): Unit = {
@@ -91,7 +124,7 @@ class NodeExecutionActivityTest extends AnyFlatSpec with Matchers with BeforeAnd
     when(mockWorkflowOps.startNodeWorkflow(testNode)).thenReturn(completedFuture)
 
     // Trigger activity method
-    testActivityWorkflow.triggerDependency(testNode)
+    testTriggerWorkflow.triggerDependency(testNode)
 
     // Assert
     verify(mockWorkflowOps).startNodeWorkflow(testNode)
@@ -108,7 +141,7 @@ class NodeExecutionActivityTest extends AnyFlatSpec with Matchers with BeforeAnd
 
     // Trigger activity and expect it to fail
     val exception = intercept[RuntimeException] {
-      testActivityWorkflow.triggerDependency(testNode)
+      testTriggerWorkflow.triggerDependency(testNode)
     }
 
     // Verify that the exception is propagated correctly
@@ -119,26 +152,42 @@ class NodeExecutionActivityTest extends AnyFlatSpec with Matchers with BeforeAnd
   }
 
   it should "submit job successfully" in {
-    val testActivityEnvironment = TemporalTestEnvironmentUtils.getTestActivityEnv
-
-    // Get the activity stub (interface) to use for testing
-    val activity = testActivityEnvironment.newActivityStub(
-      classOf[NodeExecutionActivity],
-      ActivityOptions
-        .newBuilder()
-        .setScheduleToCloseTimeout(Duration.ofSeconds(10))
-        .build()
-    )
-
-    // Create activity implementation with mock workflow operations
-    val activityImpl = new NodeExecutionActivityImpl(mockWorkflowOps)
-
-    // Register activity implementation with the test environment
-    testActivityEnvironment.registerActivitiesImplementations(activityImpl)
-
     val testNode = new DummyNode().setName("test-node")
+    val completedFuture = CompletableFuture.completedFuture("message-id-123")
 
-    activity.submitJob(testNode)
-    testActivityEnvironment.close()
+    // Mock PubSub publisher to return a completed future
+    when(mockPublisher.publish(ArgumentMatchers.any[JobSubmissionMessage])).thenReturn(completedFuture)
+
+    // Trigger activity method
+    testSubmitWorkflow.submitJob(testNode)
+
+    // Use a capture to verify the message passed to the publisher
+    val messageCaptor = ArgumentCaptor.forClass(classOf[JobSubmissionMessage])
+    verify(mockPublisher).publish(messageCaptor.capture())
+
+    // Verify the message content
+    val capturedMessage = messageCaptor.getValue
+    capturedMessage.nodeName should be(testNode.name)
+  }
+
+  it should "fail when publishing to PubSub fails" in {
+    val testNode = new DummyNode().setName("failing-node")
+    val expectedException = new RuntimeException("Failed to publish message")
+    val failedFuture = new CompletableFuture[String]()
+    failedFuture.completeExceptionally(expectedException)
+
+    // Mock PubSub publisher to return a failed future
+    when(mockPublisher.publish(ArgumentMatchers.any[JobSubmissionMessage])).thenReturn(failedFuture)
+
+    // Trigger activity and expect it to fail
+    val exception = intercept[RuntimeException] {
+      testSubmitWorkflow.submitJob(testNode)
+    }
+
+    // Verify that the exception is propagated correctly
+    exception.getMessage should include("failed")
+
+    // Verify the message was passed to the publisher
+    verify(mockPublisher, atLeastOnce()).publish(ArgumentMatchers.any[JobSubmissionMessage])
   }
 }

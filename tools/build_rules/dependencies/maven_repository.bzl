@@ -156,6 +156,10 @@ maven_repository = repository(
         "com.google.cloud:google-cloud-bigtable-emulator:0.178.0",
         "com.google.cloud.hosted.kafka:managed-kafka-auth-login-handler:1.0.3",
         "com.google.cloud:google-cloud-spanner:6.86.0",
+        "com.google.api:api-common:2.46.1",
+        "com.google.api:gax:2.60.0",
+        "com.google.api:gax-grpc:2.60.0",
+        "com.google.api.grpc:proto-google-cloud-pubsub-v1:1.120.0",
 
         # Flink
         "org.apache.flink:flink-metrics-dropwizard:1.17.0",

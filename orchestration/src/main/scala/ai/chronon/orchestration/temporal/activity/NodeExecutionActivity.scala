@@ -1,8 +1,10 @@
 package ai.chronon.orchestration.temporal.activity
 
 import ai.chronon.orchestration.DummyNode
+import ai.chronon.orchestration.pubsub.{JobSubmissionMessage, PubSubPublisher}
 import ai.chronon.orchestration.temporal.workflow.WorkflowOperations
 import io.temporal.activity.{Activity, ActivityInterface, ActivityMethod}
+import org.slf4j.LoggerFactory
 
 /** Defines helper activity methods that are needed for node execution workflow
   */
@@ -22,10 +24,14 @@ import io.temporal.activity.{Activity, ActivityInterface, ActivityMethod}
 /** Dependency injection through constructor is supported for activities but not for workflows
   * https://community.temporal.io/t/complex-workflow-dependencies/511
   */
-class NodeExecutionActivityImpl(workflowOps: WorkflowOperations) extends NodeExecutionActivity {
+class NodeExecutionActivityImpl(
+    workflowOps: WorkflowOperations,
+    pubSubPublisher: PubSubPublisher
+) extends NodeExecutionActivity {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   override def triggerDependency(dependency: DummyNode): Unit = {
-
     val context = Activity.getExecutionContext
     context.doNotCompleteOnReturn()
 
@@ -46,6 +52,27 @@ class NodeExecutionActivityImpl(workflowOps: WorkflowOperations) extends NodeExe
   }
 
   override def submitJob(node: DummyNode): Unit = {
-    // TODO: Actual Implementation for job submission
+    logger.info(s"Submitting job for node: ${node.name}")
+
+    val context = Activity.getExecutionContext
+    context.doNotCompleteOnReturn()
+
+    val completionClient = context.useLocalManualCompletion()
+
+    // Create a message from the node
+    val message = JobSubmissionMessage.fromDummyNode(node)
+
+    // Publish the message
+    val future = pubSubPublisher.publish(message)
+
+    future.whenComplete((messageId, error) => {
+      if (error != null) {
+        logger.error(s"Failed to submit job for node: ${node.name}", error)
+        completionClient.fail(error)
+      } else {
+        logger.info(s"Successfully submitted job for node: ${node.name} with messageId: $messageId")
+        completionClient.complete(messageId)
+      }
+    })
   }
 }
