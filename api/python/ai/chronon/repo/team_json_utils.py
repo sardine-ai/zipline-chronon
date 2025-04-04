@@ -1,5 +1,4 @@
-"""A module used for reading teams.json file.
-"""
+"""A module used for reading teams.json file."""
 
 #     Copyright (C) 2023 The Chronon Authors.
 #
@@ -18,7 +17,7 @@
 import json
 
 # `default` team in teams.json contains default values.
-DEFAULT_CONF_TEAM = 'default'
+DEFAULT_CONF_TEAM = "default"
 
 loaded_jsons = {}
 

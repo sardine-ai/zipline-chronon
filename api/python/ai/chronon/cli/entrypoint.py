@@ -24,7 +24,7 @@ def compile() -> Dict[ConfigType, CompileResult]:
     compile_context = CompileContext()
     compiler = Compiler(compile_context)
     # TODO(orc): add column lineage to objects
-    return compiler.compile(compile_context)
+    return compiler.compile()
 
 
 @cli.command()

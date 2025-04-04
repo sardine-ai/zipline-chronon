@@ -32,8 +32,8 @@ from ai.chronon.repo.explore import (
 
 
 @pytest.mark.parametrize("keyword", ["event", "entity"])
-def test_basic_flow(teams_json, rootdir, keyword):
-    teams = load_team_data(teams_json)
+def test_basic_flow(teams_json, rootdir, keyword, repo):
+    teams = load_team_data(teams_root=repo)
     root = os.path.join(rootdir, "sample")
     gb_index = build_index("group_bys", GB_INDEX_SPEC, root=root, teams=teams)
     join_index = build_index("joins", JOIN_INDEX_SPEC, root=root, teams=teams)

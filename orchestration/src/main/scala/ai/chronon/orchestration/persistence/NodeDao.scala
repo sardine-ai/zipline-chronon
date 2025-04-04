@@ -50,9 +50,6 @@ class NodeRunDependencyTable(tag: Tag) extends Table[NodeRunDependency](tag, "No
   val parentRunId = column[String]("parent_run_id")
   val childRunId = column[String]("child_run_id")
 
-  // Composite primary key
-//  def pk = primaryKey("pk_node_run_dependency", (parentRunId, childRunId))
-
   def * = (parentRunId, childRunId).mapTo[NodeRunDependency]
 }
 
@@ -62,9 +59,6 @@ class NodeRunAttemptTable(tag: Tag) extends Table[NodeRunAttempt](tag, "NodeRunA
   val startTime = column[String]("start_time")
   val endTime = column[Option[String]]("end_time")
   val status = column[String]("status")
-
-  // Composite primary key
-//  def pk = primaryKey("pk_node_run_attempt", (runId, attemptId))
 
   def * = (runId, attemptId, startTime, endTime, status).mapTo[NodeRunAttempt]
 }

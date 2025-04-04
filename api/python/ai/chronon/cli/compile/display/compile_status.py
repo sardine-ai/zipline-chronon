@@ -13,10 +13,17 @@ class CompileStatus:
     Uses rich ui - to consolidate and sink the overview of the compile process to the bottom.
     """
 
-    def __init__(self):
+    def __init__(self, use_live: bool = False):
         self.cls_to_tracker: Dict[str, ClassTracker] = OrderedDict()
-        self.live = Live(refresh_per_second=50)
+        self.use_live = use_live
+        # we need vertical_overflow to be visible as the output gets cufoff when our output goes past the termianal window
+        # but then we start seeing duplicates: https://github.com/Textualize/rich/issues/3263
+        self.live = Live(refresh_per_second=50, vertical_overflow='visible')
         self.live.start()
+
+    def print_live_console(self, msg: str):
+        if self.use_live:
+            self.live.console.print(msg)
 
     def add_object_update_display(
         self, compiled: CompiledObj, obj_type: str = None
@@ -52,11 +59,11 @@ class CompileStatus:
 
     def close(self) -> None:
         self._update_display()
-        self.live.stop()
+        if self.use_live:
+            self.live.stop()
 
-    def _update_display(self) -> Text:
-        # self.live.clear()
-        text = Text("")
+    def generate_update_display_text(self) -> Text:
+        text = Text(overflow="fold", no_wrap=False)
 
         for obj_type, tracker in self.cls_to_tracker.items():
             text.append(f"\n{obj_type}-s:\n", style="cyan")
@@ -74,4 +81,14 @@ class CompileStatus:
                 text.append(diff)
 
         text.append("\n")
-        self.live.update(text)
+        return text
+
+    def _update_display(self):
+        # self.live.clear()
+
+        text = self.generate_update_display_text()
+        if self.use_live:
+            self.live.update(text, refresh=True)
+        return text
+
+

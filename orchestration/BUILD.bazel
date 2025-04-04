@@ -7,10 +7,10 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + [
-        "//service_commons:lib",
         "//api:lib",
         "//api:thrift_java",
         "//online:lib",
+        "//service_commons:lib",
         maven_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact("org.apache.logging.log4j:log4j-api"),
@@ -20,12 +20,18 @@ scala_library(
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact("com.google.protobuf:protobuf-java"),
         maven_artifact("com.google.code.findbugs:jsr305"),
+        maven_artifact("io.grpc:grpc-api"),
         maven_artifact("io.grpc:grpc-core"),
         maven_artifact("io.grpc:grpc-stub"),
         maven_artifact("io.grpc:grpc-inprocess"),
         maven_artifact("com.google.cloud:google-cloud-spanner"),
+        maven_artifact("com.google.cloud:google-cloud-pubsub"),
+        maven_artifact("com.google.api:gax"),
+        maven_artifact("com.google.api:gax-grpc"),
+        maven_artifact("com.google.api.grpc:proto-google-cloud-pubsub-v1"),
         maven_artifact("org.postgresql:postgresql"),
         maven_artifact_with_suffix("com.typesafe.slick:slick"),
+        maven_artifact("com.google.api:api-common"),
     ],
 )
 
@@ -44,6 +50,7 @@ test_deps = _VERTX_DEPS + _SCALA_TEST_DEPS + [
     maven_artifact("io.temporal:temporal-serviceclient"),
     maven_artifact("com.fasterxml.jackson.core:jackson-core"),
     maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact("io.grpc:grpc-api"),
     maven_artifact("io.grpc:grpc-core"),
     maven_artifact("io.grpc:grpc-stub"),
     maven_artifact("io.grpc:grpc-inprocess"),
@@ -53,6 +60,11 @@ test_deps = _VERTX_DEPS + _SCALA_TEST_DEPS + [
     maven_artifact("org.testcontainers:jdbc"),
     maven_artifact("org.testcontainers:testcontainers"),
     maven_artifact_with_suffix("com.typesafe.slick:slick"),
+    maven_artifact("com.google.cloud:google-cloud-pubsub"),
+    maven_artifact("com.google.api:gax"),
+    maven_artifact("com.google.api:gax-grpc"),
+    maven_artifact("com.google.api.grpc:proto-google-cloud-pubsub-v1"),
+    maven_artifact("com.google.api:api-common"),
 ]
 
 scala_library(
@@ -73,6 +85,7 @@ scala_test_suite(
         # Excluding integration tests
         exclude = [
             "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
+            "src/test/**/GcpPubSubIntegrationSpec.scala",
         ],
     ),
     visibility = ["//visibility:public"],
@@ -84,8 +97,12 @@ scala_test_suite(
     srcs = glob(
         [
             "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
+            "src/test/**/GcpPubSubIntegrationSpec.scala",
         ],
     ),
+    env = {
+        "PUBSUB_EMULATOR_HOST": "localhost:8085",
+    },
     visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )
