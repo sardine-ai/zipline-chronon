@@ -23,7 +23,8 @@ from group_bys.sample_team import (
 )
 from sources import test_sources
 
-from ai.chronon.types import Join, JoinPart
+from ai.chronon.repo.constants import RunMode
+from ai.chronon.types import EnvironmentVariables, Join, JoinPart
 
 v1 = Join(
     left=test_sources.event_source,
@@ -41,6 +42,11 @@ v1 = Join(
             key_mapping={"subject": "group_by_subject"},
         ),
     ],
+    env_vars=EnvironmentVariables(
+        modeEnvironments={
+            RunMode.BACKFILL: {"EXECUTOR_MEMORY": "9G"},
+        }
+    ),
     online=True,
     check_consistency=True,
 )

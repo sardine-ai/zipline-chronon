@@ -128,11 +128,8 @@ CHRONON_ROOT=`pwd`/api/python/test/canary
 export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT"
 
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
-if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline compile --chronon_root=$CHRONON_ROOT --conf=group_bys/aws/purchases.py
-else
-  zipline compile --chronon_root=$CHRONON_ROOT --conf=group_bys/aws/purchases.py
-fi
+
+zipline compile --chronon_root=$CHRONON_ROOT
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
 touch tmp_backfill.out
@@ -140,9 +137,9 @@ touch tmp_backfill.out
 if [ "$create_cluster" = true ]; then
   echo "Creating a new EMR cluster"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
   else
-    zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
   fi
   EMR_SUBMITTER_ID_CLUSTER_STR="EMR job id"
   CLUSTER_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITTER_ID_CLUSTER_STR"  | cut -d " " -f4) # expecting the cluster id to be the 4th field
@@ -154,9 +151,9 @@ else
   CLUSTER_ID=$CANARY_CLUSTER_ID
   echo "Using existing EMR cluster $CLUSTER_ID"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=canary EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
   else
-    EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/aws/purchases.v1_dev --end-ds 20250220 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=dev EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 2>&1 | tee tmp_backfill.out
   fi
 
   EMR_SUBMITER_ID_STEP_STR="EMR step id"

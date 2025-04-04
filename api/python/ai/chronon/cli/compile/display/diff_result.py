@@ -9,12 +9,6 @@ class DiffResult:
         self.added: List[str] = []
         self.updated: List[str] = []
 
-    def added(self, name: str) -> None:
-        self.added.append(name)
-
-    def updated(self, name: str) -> None:
-        self.updated.append(name)
-
     def render(self, deleted_names: List[str], indent="  ") -> Text:
 
         def added_signage():
@@ -28,9 +22,9 @@ class DiffResult:
 
         added = [(added_signage(), name) for name in self.added]
 
-        udpated = [(updated_signage(), name) for name in self.updated]
+        updated = [(updated_signage(), name) for name in self.updated]
 
-        result_order = added + udpated
+        result_order = added + updated
 
         if deleted_names:
             deleted = [(deleted_signage(), name) for name in deleted_names]
@@ -38,7 +32,7 @@ class DiffResult:
 
         result_order = sorted(result_order, key=lambda t: t[1])
 
-        text = Text()
+        text = Text(overflow="fold", no_wrap=False)
         for signage, name in result_order:
             text.append(indent)
             text.append(signage)
@@ -47,6 +41,6 @@ class DiffResult:
             text.append("\n")
 
         if not text:
-            return Text(indent + "No changes detected\n", style="dim")
+            return Text(indent + "No new changes detected\n", style="dim")
 
         return text

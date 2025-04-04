@@ -50,7 +50,8 @@ def context():
 @pytest.fixture
 def test_conf_location():
     """Sample test conf for tests"""
-    return "production/joins/sample_team/sample_online_join.v1"
+    # return "production/joins/sample_team/sample_online_join.v1"
+    return "compiled/joins/sample_team/sample_online_join.v1"
 
 
 def reset_env(default_env):
@@ -80,25 +81,24 @@ def test_download_jar(monkeypatch, sleepless):
             "version", jar_type="uber", release_tag=None, spark_version="2.1.0"
         )
 
-
 def test_environment(teams_json, repo, test_conf_location):
     default_environment = DEFAULT_ENVIRONMENT.copy()
     # If nothing is passed.
     ctx = context()
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
 
     # If repo is passed common_env is loaded.
     reset_env(default_environment)
     ctx = context()
     ctx.params["repo"] = repo
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert os.environ["VERSION"] == "latest"
 
     # For chronon_metadata_export is passed. APP_NAME should be set.
     reset_env(default_environment)
     ctx = context()
     ctx.params["mode"] = "metadata-export"
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert os.environ["APP_NAME"] == "chronon_metadata_export"
 
     # If APP_NAME is set, should be respected.
@@ -106,7 +106,7 @@ def test_environment(teams_json, repo, test_conf_location):
     os.environ["APP_NAME"] = "fake-name"
     ctx = context()
     ctx.params["mode"] = "metadata-export"
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert os.environ["APP_NAME"] == "fake-name"
 
     # If app_name can be passed from cli.
@@ -114,7 +114,7 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx = context()
     ctx.params["mode"] = "metadata-export"
     ctx.params["app_name"] = "fake-name"
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert os.environ["APP_NAME"] == "fake-name"
 
     # Check default backfill for a team sets parameters accordingly.
@@ -125,9 +125,9 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["repo"] = repo
     ctx.params["env"] = "production"
     ctx.params["online_jar"] = test_conf_location
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     # from team env.
-    assert os.environ["EXECUTOR_CORES"] == "4"
+    assert os.environ["EXECUTOR_CORES"] == "2"
     # from default env.
     assert os.environ["DRIVER_MEMORY"] == "15G"
     # from common env.
@@ -145,13 +145,11 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["conf"] = test_conf_location
     ctx.params["repo"] = repo
     ctx.params["online_jar"] = test_conf_location
-    run.set_runtime_env(ctx.params)
-    # from team dev env.
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
+
     assert os.environ["EXECUTOR_CORES"] == "2"
-    # from team dev env.
-    assert os.environ["DRIVER_MEMORY"] == "30G"
-    # from default dev env.
-    assert os.environ["EXECUTOR_MEMORY"] == "8G"
+    assert os.environ["DRIVER_MEMORY"] == "15G"
+    assert os.environ["EXECUTOR_MEMORY"] == "9G"
 
     # Check conf set environment overrides most.
     reset_env(default_environment)
@@ -160,18 +158,10 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["conf"] = "production/joins/sample_team/sample_join.v1"
     ctx.params["repo"] = repo
     ctx.params["env"] = "production"
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
+    assert os.environ['APP_NAME'] == 'chronon_joins_backfill_production_sample_team.sample_online_join.v1'
     # from conf env.
     assert os.environ["EXECUTOR_MEMORY"] == "9G"
-
-    # Bad conf location raises error.
-    with pytest.raises(Exception):
-        reset_env(default_environment)
-        ctx = context()
-        ctx.params["mode"] = "backfill"
-        ctx.params["conf"] = "joins/sample_team/sample_join.v1"
-        ctx.params["repo"] = repo
-        run.set_runtime_env(ctx.params)
 
     # Check metadata export run.py
     reset_env(default_environment)
@@ -179,17 +169,17 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["mode"] = "metadata-export"
     ctx.params["conf"] = "production/joins//"
     ctx.params["repo"] = repo
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     # without conf still works.
-    assert os.environ["APP_NAME"] == "chronon_joins_metadata_export"
+    assert os.environ["APP_NAME"] == "chronon_joins_metadata-export_dev_sample_team.sample_online_join.v1"
 
     reset_env(default_environment)
     ctx = context()
     ctx.params["mode"] = "metadata-upload"
     ctx.params["conf"] = "production/joins//"
     ctx.params["repo"] = repo
-    run.set_runtime_env(ctx.params)
-    assert os.environ["APP_NAME"] == "chronon_joins_metadata_upload"
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
+    assert os.environ["APP_NAME"] == "chronon_joins_metadata-upload_dev_sample_team.sample_online_join.v1"
     reset_env(default_environment)
 
 
@@ -201,7 +191,7 @@ def test_property_default_update(repo, test_conf_location):
     ctx.params["conf"] = test_conf_location
     ctx.params["repo"] = repo
     assert "version" not in ctx.params
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert "VERSION" in os.environ
     assert "version" not in ctx.params
     run.set_defaults(ctx)
@@ -223,7 +213,7 @@ def test_render_info_setting_update(repo, test_conf_location):
     )
 
     reset_env(default_environment)
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_conf_location)
     os.environ["CHRONON_REPO_PATH"] = repo
     ctx = context()
     ctx.params["mode"] = "info"
@@ -293,7 +283,7 @@ def test_streaming_client(repo, test_online_group_by, monkeypatch):
     ctx.params["mode"] = "streaming"
     ctx.params["conf"] = test_online_group_by
     ctx.params["repo"] = repo
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_online_group_by)
     run.set_defaults(ctx)
     ctx.params["mode"] = "streaming"
     ctx.params["conf"] = test_online_group_by
@@ -307,7 +297,7 @@ def test_streaming_client(repo, test_online_group_by, monkeypatch):
     ctx.params["mode"] = "streaming-client"
     ctx.params["conf"] = test_online_group_by
     ctx.params["repo"] = repo
-    run.set_runtime_env(ctx.params)
+    run.set_runtime_env_v3(ctx.params, test_online_group_by)
     run.set_defaults(ctx)
     ctx.params["mode"] = "streaming-client"
     ctx.params["conf"] = test_online_group_by

@@ -67,14 +67,14 @@ function check_dataproc_job_state() {
 DATAPROC_SUBMITTER_ID_STR="Dataproc submitter job id"
 
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
-zipline compile --chronon_root=$CHRONON_ROOT --conf=group_bys/gcp/purchases.py
+zipline compile --chronon_root=$CHRONON_ROOT
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
 touch tmp_backfill.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/gcp/purchases.v1_test --dataproc --version candidate 2>&1 | tee tmp_backfill.out
+  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test --dataproc --version candidate 2>&1 | tee tmp_backfill.out
 else
-  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode backfill --conf production/group_bys/gcp/purchases.v1_dev --dataproc 2>&1 | tee tmp_backfill.out
+  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev --dataproc 2>&1 | tee tmp_backfill.out
 fi
 BACKFILL_JOB_ID=$(cat tmp_backfill.out | grep "$DATAPROC_SUBMITTER_ID_STR"  | cut -d " " -f5)
 check_dataproc_job_state $BACKFILL_JOB_ID
@@ -82,9 +82,9 @@ check_dataproc_job_state $BACKFILL_JOB_ID
 echo -e "${GREEN}<<<<<.....................................GROUP-BY-UPLOAD.....................................>>>>>\033[0m"
 touch tmp_gbu.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode upload --conf production/group_bys/gcp/purchases.v1_test --ds  2023-12-01 --dataproc --version candidate 2>&1 | tee tmp_gbu.out
+  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode upload --conf compiled/group_bys/gcp/purchases.v1_test --ds  2023-12-01 --dataproc --version candidate 2>&1 | tee tmp_gbu.out
 else
-  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode upload --conf production/group_bys/gcp/purchases.v1_dev --ds  2023-12-01 --dataproc 2>&1 | tee tmp_gbu.out
+  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev --ds  2023-12-01 --dataproc 2>&1 | tee tmp_gbu.out
 fi
 GBU_JOB_ID=$(cat tmp_gbu.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
 check_dataproc_job_state $GBU_JOB_ID
@@ -93,9 +93,9 @@ check_dataproc_job_state $GBU_JOB_ID
 echo -e "${GREEN}<<<<<.....................................UPLOAD-TO-KV.....................................>>>>>\033[0m"
 touch tmp_upload_to_kv.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode upload-to-kv --conf production/group_bys/gcp/purchases.v1_test --partition-string=2023-12-01 --dataproc --version candidate 2>&1 | tee tmp_upload_to_kv.out
+  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_test --partition-string=2023-12-01 --dataproc --version candidate 2>&1 | tee tmp_upload_to_kv.out
 else
-  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode upload-to-kv --conf production/group_bys/gcp/purchases.v1_dev --partition-string=2023-12-01 --dataproc 2>&1 | tee tmp_upload_to_kv.out
+  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_dev --partition-string=2023-12-01 --dataproc 2>&1 | tee tmp_upload_to_kv.out
 fi
 UPLOAD_TO_KV_JOB_ID=$(cat tmp_upload_to_kv.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
 check_dataproc_job_state $UPLOAD_TO_KV_JOB_ID
@@ -103,9 +103,9 @@ check_dataproc_job_state $UPLOAD_TO_KV_JOB_ID
 echo -e "${GREEN}<<<<< .....................................METADATA-UPLOAD.....................................>>>>>\033[0m"
 touch tmp_metadata_upload.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode metadata-upload --conf production/group_bys/gcp/purchases.v1_test --dataproc --version candidate 2>&1 | tee tmp_metadata_upload.out
+  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_test --dataproc --version candidate 2>&1 | tee tmp_metadata_upload.out
 else
-  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode metadata-upload --conf production/group_bys/gcp/purchases.v1_dev --dataproc 2>&1 | tee tmp_metadata_upload.out
+  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_dev --dataproc 2>&1 | tee tmp_metadata_upload.out
 fi
 METADATA_UPLOAD_JOB_ID=$(cat tmp_metadata_upload.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
 check_dataproc_job_state $METADATA_UPLOAD_JOB_ID
@@ -114,9 +114,9 @@ check_dataproc_job_state $METADATA_UPLOAD_JOB_ID
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
 touch tmp_fetch.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode fetch --conf=production/group_bys/gcp/purchases.v1_test -k '{"user_id":"5"}' --name gcp.purchases.v1_test --version candidate  2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+  CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_test -k '{"user_id":"5"}' --name gcp.purchases.v1_test --version candidate  2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
 else
-  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode fetch --conf=production/group_bys/gcp/purchases.v1_dev  -k '{"user_id":"5"}' --name gcp.purchases.v1_dev  2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+  CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_dev  -k '{"user_id":"5"}' --name gcp.purchases.v1_dev  2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
 fi
 cat tmp_fetch.out | grep purchase_price_average_14d
 # check if exit code of previous is 0

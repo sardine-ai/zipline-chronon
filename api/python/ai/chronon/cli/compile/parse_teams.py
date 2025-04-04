@@ -1,7 +1,10 @@
 import importlib
+import importlib.util
 import os
+import sys
 from copy import deepcopy
-from typing import Any, Dict, List, Union
+from enum import Enum
+from typing import Any, Dict, Optional, Union
 
 from ai.chronon.api.common.ttypes import (
     ConfigProperties,
@@ -9,31 +12,49 @@ from ai.chronon.api.common.ttypes import (
     ExecutionInfo,
 )
 from ai.chronon.api.ttypes import Team
-from ai.chronon.cli.logger import get_logger, require
+from ai.chronon.cli.logger import get_logger
 
 logger = get_logger()
 
-_DEFAULT_CONF_TEAM = "common"
+_DEFAULT_CONF_TEAM = "default"
+
+
+def import_module_from_file(file_path):
+    # Get the module name from the file path (without .py extension)
+    module_name = file_path.split("/")[-1].replace(".py", "")
+
+    # Create the module spec
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+
+    # Create the module based on the spec
+    module = importlib.util.module_from_spec(spec)
+
+    # Add the module to sys.modules
+    sys.modules[module_name] = module
+
+    # Execute the module
+    spec.loader.exec_module(module)
+
+    return module
 
 
 def load_teams(conf_root: str) -> Dict[str, Team]:
 
     teams_file = os.path.join(conf_root, "teams.py")
 
-    require(
-        os.path.exists(teams_file),
-        f"Team config file: {teams_file} not found. You might be running this from the wrong directory.",
-    )
+    assert os.path.exists(
+        teams_file
+    ), f"Team config file: {teams_file} not found. You might be running this from the wrong directory."
 
-    team_module = importlib.import_module("teams")
+    team_module = import_module_from_file(teams_file)
 
-    require(
-        team_module is not None,
-        f"Team config file {teams_file} is not on the PYTHONPATH. You might need to add the your config directory to the PYTHONPATH.",
+    assert team_module is not None, (
+        f"Team config file {teams_file} is not on the PYTHONPATH. You might need to add the your config "
+        f"directory to the PYTHONPATH."
     )
 
     team_dict = {}
-
+    logger.info(f"Processing teams from path {teams_file}")
     for name, obj in team_module.__dict__.items():
         if isinstance(obj, Team):
             obj.name = name
@@ -44,29 +65,26 @@ def load_teams(conf_root: str) -> Dict[str, Team]:
 
 def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
-    require(obj is not None, "Cannot update metadata None object")
+    assert obj is not None, "Cannot update metadata None object"
 
     metadata = obj.metaData
 
-    require(obj.metaData is not None, "Cannot update empty metadata")
+    assert obj.metaData is not None, "Cannot update empty metadata"
 
     name = obj.metaData.name
     team = obj.metaData.team
 
-    require(
-        team is not None,
-        f"Team name is required in metadata for {name}. This usually set by compiler. Internal error.",
-    )
+    assert (
+        team is not None
+    ), f"Team name is required in metadata for {name}. This usually set by compiler. Internal error."
 
-    require(
-        team in team_dict,
-        f"Team '{team}' not found in teams.py. Please add an entry 🙏",
-    )
+    assert (
+        team in team_dict
+    ), f"Team '{team}' not found in teams.py. Please add an entry 🙏"
 
-    require(
-        _DEFAULT_CONF_TEAM in team_dict,
-        f"'{_DEFAULT_CONF_TEAM}' team not found in teams.py, please add an entry 🙏",
-    )
+    assert (
+        _DEFAULT_CONF_TEAM in team_dict
+    ), f"'{_DEFAULT_CONF_TEAM}' team not found in teams.py, please add an entry 🙏."
 
     metadata.outputNamespace = team_dict[team].outputNamespace
 
@@ -77,16 +95,18 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
         team_dict[_DEFAULT_CONF_TEAM].env,
         team_dict[team].env,
         metadata.executionInfo.env,
+        env_or_config_attribute=EnvOrConfigAttribute.ENV,
     )
 
     metadata.executionInfo.conf = _merge_mode_maps(
         team_dict[_DEFAULT_CONF_TEAM].conf,
         team_dict[team].conf,
         metadata.executionInfo.conf,
+        env_or_config_attribute=EnvOrConfigAttribute.CONFIG,
     )
 
 
-def _merge_maps(*maps: List[Dict[str, str]]):
+def _merge_maps(*maps: Optional[Dict[str, str]]):
     """
     Merges multiple maps into one - with the later maps overriding the earlier ones.
     """
@@ -104,14 +124,22 @@ def _merge_maps(*maps: List[Dict[str, str]]):
     return result
 
 
+class EnvOrConfigAttribute(str, Enum):
+    ENV = "modeEnvironments"
+    CONFIG = "modeConfigs"
+
+
 def _merge_mode_maps(
-    *mode_maps: Union[List[EnvironmentVariables], List[ConfigProperties]]
+    *mode_maps: Union[EnvironmentVariables, ConfigProperties],
+    env_or_config_attribute: EnvOrConfigAttribute,
 ):
     """
     Merges multiple environment variables into one - with the later maps overriding the earlier ones.
     """
 
     result = None
+
+    final_common = {}
 
     for mode_map in mode_maps:
 
@@ -121,22 +149,33 @@ def _merge_mode_maps(
         if result is None:
             result = deepcopy(mode_map)
             if result.common is not None:
-                result.backfill = _merge_maps(result.common, result.backfill)
-                result.upload = _merge_maps(result.common, result.upload)
-                result.streaming = _merge_maps(result.common, result.streaming)
-                result.serving = _merge_maps(result.common, result.serving)
+                mode_environments_or_configs = getattr(result, env_or_config_attribute)
+                if mode_environments_or_configs:
+                    for mode in mode_environments_or_configs:
+                        mode_environments_or_configs[mode] = _merge_maps(
+                            result.common, mode_environments_or_configs[mode]
+                        )
+
+                final_common = _merge_maps(final_common, result.common)
                 result.common = None
             continue
 
         # we don't set common in the env vars, because we want
         # group_by.common to take precedence over team.backfill
-        result.backfill = _merge_maps(
-            result.backfill, mode_map.common, mode_map.backfill
-        )
-        result.upload = _merge_maps(result.upload, mode_map.common, mode_map.upload)
-        result.streaming = _merge_maps(
-            result.streaming, mode_map.common, mode_map.streaming
-        )
-        result.serving = _merge_maps(result.serving, mode_map.common, mode_map.serving)
+        final_common = _merge_maps(final_common, result.common, mode_map.common)
+
+        mode_environments_or_configs = getattr(result, env_or_config_attribute)
+        if mode_environments_or_configs:
+            for mode in mode_environments_or_configs:
+                mode_environments_or_configs[mode] = _merge_maps(
+                    mode_environments_or_configs[mode],
+                    mode_map.common,
+                    getattr(mode_map, env_or_config_attribute).get(mode),
+                )
+
+    if result:
+        # Want to persist the merged common as the default mode map if
+        # user has not explicitly set a mode they want to run, we can use common.
+        result.common = final_common
 
     return result
