@@ -1,101 +1,142 @@
+from enum import Enum
+
+
+class RunMode(str, Enum):
+    def __str__(self):
+        return self.value
+
+    BACKFILL = "backfill"
+    BACKFILL_LEFT = "backfill-left"
+    BACKFILL_FINAL = "backfill-final"
+    UPLOAD = "upload"
+    UPLOAD_TO_KV = "upload-to-kv"
+    STATS_SUMMARY = "stats-summary"
+    LOG_SUMMARY = "log-summary"
+    ANALYZE = "analyze"
+    STREAMING = "streaming"
+    METADATA_UPLOAD = "metadata-upload"
+    FETCH = "fetch"
+    CONSISTENCY_METRICS_COMPUTE = "consistency-metrics-compute"
+    COMPARE = "compare"
+    LOCAL_STREAMING = "local-streaming"
+    LOG_FLATTENER = "log-flattener"
+    METADATA_EXPORT = "metadata-export"
+    LABEL_JOIN = "label-join"
+    STREAMING_CLIENT = "streaming-client"
+    SOURCE_JOB = "source-job"
+    JOIN_PART_JOB = "join-part-job"
+    MERGE_JOB = "merge-job"
+    METASTORE = "metastore"
+    INFO = "info"
+
+
 ONLINE_ARGS = "--online-jar={online_jar} --online-class={online_class} "
 OFFLINE_ARGS = "--conf-path={conf_path} --end-date={ds} "
 ONLINE_WRITE_ARGS = "--conf-path={conf_path} " + ONLINE_ARGS
 
 ONLINE_OFFLINE_WRITE_ARGS = OFFLINE_ARGS + ONLINE_ARGS
 ONLINE_MODES = [
-    "streaming",
-    "metadata-upload",
-    "fetch",
-    "local-streaming",
-    "streaming-client",
+    RunMode.STREAMING,
+    RunMode.METADATA_UPLOAD,
+    RunMode.FETCH,
+    RunMode.LOCAL_STREAMING,
+    RunMode.STREAMING_CLIENT,
 ]
 SPARK_MODES = [
-    "backfill",
-    "backfill-left",
-    "backfill-final",
-    "upload",
-    "upload-to-kv",
-    "streaming",
-    "streaming-client",
-    "consistency-metrics-compute",
-    "compare",
-    "analyze",
-    "stats-summary",
-    "log-summary",
-    "log-flattener",
-    "metadata-export",
-    "label-join",
-    "source-job",
-    "join-part-job",
-    "merge-job",
+    RunMode.BACKFILL,
+    RunMode.BACKFILL_LEFT,
+    RunMode.BACKFILL_FINAL,
+    RunMode.UPLOAD,
+    RunMode.UPLOAD_TO_KV,
+    RunMode.STREAMING,
+    RunMode.STREAMING_CLIENT,
+    RunMode.CONSISTENCY_METRICS_COMPUTE,
+    RunMode.COMPARE,
+    RunMode.ANALYZE,
+    RunMode.STATS_SUMMARY,
+    RunMode.LOG_SUMMARY,
+    RunMode.LOG_FLATTENER,
+    RunMode.METADATA_EXPORT,
+    RunMode.LABEL_JOIN,
+    RunMode.SOURCE_JOB,
+    RunMode.JOIN_PART_JOB,
+    RunMode.MERGE_JOB,
 ]
-MODES_USING_EMBEDDED = ["metadata-upload", "fetch", "local-streaming"]
+MODES_USING_EMBEDDED = [
+    RunMode.METADATA_UPLOAD,
+    RunMode.FETCH,
+    RunMode.LOCAL_STREAMING,
+]
 
 # Constants for supporting multiple spark versions.
 SUPPORTED_SPARK = ["2.4.0", "3.1.1", "3.2.1", "3.5.1"]
-SCALA_VERSION_FOR_SPARK = {"2.4.0": "2.11", "3.1.1": "2.12", "3.2.1": "2.13", "3.5.1": "2.12"}
+SCALA_VERSION_FOR_SPARK = {
+    "2.4.0": "2.11",
+    "3.1.1": "2.12",
+    "3.2.1": "2.13",
+    "3.5.1": "2.12",
+}
 
 MODE_ARGS = {
-    "backfill": OFFLINE_ARGS,
-    "backfill-left": OFFLINE_ARGS,
-    "backfill-final": OFFLINE_ARGS,
-    "upload": OFFLINE_ARGS,
-    "upload-to-kv": ONLINE_WRITE_ARGS,
-    "stats-summary": OFFLINE_ARGS,
-    "log-summary": OFFLINE_ARGS,
-    "analyze": OFFLINE_ARGS,
-    "streaming": ONLINE_WRITE_ARGS,
-    "metadata-upload": ONLINE_WRITE_ARGS,
-    "fetch": ONLINE_ARGS,
-    "consistency-metrics-compute": OFFLINE_ARGS,
-    "compare": OFFLINE_ARGS,
-    "local-streaming": ONLINE_WRITE_ARGS + " -d",
-    "log-flattener": OFFLINE_ARGS,
-    "metadata-export": OFFLINE_ARGS,
-    "label-join": OFFLINE_ARGS,
-    "streaming-client": ONLINE_WRITE_ARGS,
-    "source-job": OFFLINE_ARGS,
-    "join-part-job": OFFLINE_ARGS,
-    "merge-job": OFFLINE_ARGS,
-    "metastore": "--partition-names={partition_names}",
-    "info": "",
+    RunMode.BACKFILL: OFFLINE_ARGS,
+    RunMode.BACKFILL_LEFT: OFFLINE_ARGS,
+    RunMode.BACKFILL_FINAL: OFFLINE_ARGS,
+    RunMode.UPLOAD: OFFLINE_ARGS,
+    RunMode.UPLOAD_TO_KV: ONLINE_WRITE_ARGS,
+    RunMode.STATS_SUMMARY: OFFLINE_ARGS,
+    RunMode.LOG_SUMMARY: OFFLINE_ARGS,
+    RunMode.ANALYZE: OFFLINE_ARGS,
+    RunMode.STREAMING: ONLINE_WRITE_ARGS,
+    RunMode.METADATA_UPLOAD: ONLINE_WRITE_ARGS,
+    RunMode.FETCH: ONLINE_ARGS,
+    RunMode.CONSISTENCY_METRICS_COMPUTE: OFFLINE_ARGS,
+    RunMode.COMPARE: OFFLINE_ARGS,
+    RunMode.LOCAL_STREAMING: ONLINE_WRITE_ARGS + " -d",
+    RunMode.LOG_FLATTENER: OFFLINE_ARGS,
+    RunMode.METADATA_EXPORT: OFFLINE_ARGS,
+    RunMode.LABEL_JOIN: OFFLINE_ARGS,
+    RunMode.STREAMING_CLIENT: ONLINE_WRITE_ARGS,
+    RunMode.SOURCE_JOB: OFFLINE_ARGS,
+    RunMode.JOIN_PART_JOB: OFFLINE_ARGS,
+    RunMode.MERGE_JOB: OFFLINE_ARGS,
+    RunMode.METASTORE: "--partition-names={partition_names}",
+    RunMode.INFO: "",
 }
 
 ROUTES = {
     "group_bys": {
-        "upload": "group-by-upload",
-        "upload-to-kv": "groupby-upload-bulk-load",
-        "backfill": "group-by-backfill",
-        "streaming": "group-by-streaming",
-        "metadata-upload": "metadata-upload",
-        "local-streaming": "group-by-streaming",
-        "fetch": "fetch",
-        "analyze": "analyze",
-        "metadata-export": "metadata-export",
-        "streaming-client": "group-by-streaming",
+        RunMode.UPLOAD: "group-by-upload",
+        RunMode.UPLOAD_TO_KV: "group-by-upload-bulk-load",
+        RunMode.BACKFILL: "group-by-backfill",
+        RunMode.STREAMING: "group-by-streaming",
+        RunMode.METADATA_UPLOAD: "metadata-upload",
+        RunMode.LOCAL_STREAMING: "group-by-streaming",
+        RunMode.FETCH: "fetch",
+        RunMode.ANALYZE: "analyze",
+        RunMode.METADATA_EXPORT: "metadata-export",
+        RunMode.STREAMING_CLIENT: "group-by-streaming",
     },
     "joins": {
-        "backfill": "join",
-        "backfill-left": "join-left",
-        "backfill-final": "join-final",
-        "metadata-upload": "metadata-upload",
-        "fetch": "fetch",
-        "consistency-metrics-compute": "consistency-metrics-compute",
-        "compare": "compare-join-query",
-        "stats-summary": "stats-summary",
-        "log-summary": "log-summary",
-        "analyze": "analyze",
-        "log-flattener": "log-flattener",
-        "metadata-export": "metadata-export",
-        "label-join": "label-join",
-        "source-job": "source-job",
-        "join-part-job": "join-part-job",
-        "merge-job": "merge-job",
+        RunMode.BACKFILL: "join",
+        RunMode.BACKFILL_LEFT: "join-left",
+        RunMode.BACKFILL_FINAL: "join-final",
+        RunMode.METADATA_UPLOAD: "metadata-upload",
+        RunMode.FETCH: "fetch",
+        RunMode.CONSISTENCY_METRICS_COMPUTE: "consistency-metrics-compute",
+        RunMode.COMPARE: "compare-join-query",
+        RunMode.STATS_SUMMARY: "stats-summary",
+        RunMode.LOG_SUMMARY: "log-summary",
+        RunMode.ANALYZE: "analyze",
+        RunMode.LOG_FLATTENER: "log-flattener",
+        RunMode.METADATA_EXPORT: "metadata-export",
+        RunMode.LABEL_JOIN: "label-join",
+        RunMode.SOURCE_JOB: "source-job",
+        RunMode.JOIN_PART_JOB: "join-part-job",
+        RunMode.MERGE_JOB: "merge-job",
     },
     "staging_queries": {
-        "backfill": "staging-query-backfill",
-        "metadata-export": "metadata-export",
+        RunMode.BACKFILL: "staging-query-backfill",
+        RunMode.METADATA_EXPORT: "metadata-export",
     },
 }
 
@@ -106,12 +147,12 @@ RENDER_INFO_DEFAULT_SCRIPT = "scripts/render_info.py"
 
 ZIPLINE_DIRECTORY = "/tmp/zipline"
 
-CLOUD_PROVIDER_KEYWORD = 'CLOUD_PROVIDER'
+CLOUD_PROVIDER_KEYWORD = "CLOUD_PROVIDER"
 
 # cloud provider
-AWS = 'AWS'
-GCP = 'GCP'
+AWS = "AWS"
+GCP = "GCP"
 
 # arg keywords
-ONLINE_CLASS_ARG = 'online_class'
-ONLINE_JAR_ARG = 'online_jar'
+ONLINE_CLASS_ARG = "online_class"
+ONLINE_JAR_ARG = "online_jar"

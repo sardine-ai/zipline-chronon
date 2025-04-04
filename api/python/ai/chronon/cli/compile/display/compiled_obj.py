@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, List, Optional
 
 
 @dataclass
@@ -7,6 +7,6 @@ class CompiledObj:
     name: str
     obj: Any
     file: str
-    error: Exception
+    errors: Optional[List[Exception]]
     obj_type: str
     tjson: str
