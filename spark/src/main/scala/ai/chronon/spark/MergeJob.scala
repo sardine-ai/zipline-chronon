@@ -76,7 +76,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
       logger.info(s"Running merge for ${dayStep.start}")
       val rightPartsData = getRightPartsData(dayStep)
 
-      val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dayStep)).persist(StorageLevel.MEMORY_AND_DISK)
+      val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dayStep))
       val leftSchema = leftDf.schema
       val bootstrapInfo =
         BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
