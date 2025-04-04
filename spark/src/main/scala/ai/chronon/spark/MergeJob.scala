@@ -1,40 +1,17 @@
 package ai.chronon.spark
 
 import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.Extensions.{
-  DateRangeOps,
-  DerivationOps,
-  ExternalPartOps,
-  GroupByOps,
-  JoinPartOps,
-  MetadataOps,
-  SourceOps
-}
-import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.api.{
-  Accuracy,
-  Constants,
-  DateRange,
-  JoinPart,
-  PartitionRange,
-  PartitionSpec,
-  QueryUtils,
-  RelevantLeftForJoinPart,
-  StructField,
-  StructType
-}
-import ai.chronon.online.SparkConversions
+import ai.chronon.api.Extensions.{DateRangeOps, GroupByOps, JoinPartOps, MetadataOps, SourceOps}
+import ai.chronon.api._
 import ai.chronon.orchestration.JoinMergeNode
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.JoinUtils.{coalescedJoin, padFields}
-import org.apache.spark.sql
+import ai.chronon.spark.JoinUtils.coalescedJoin
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_add, date_format, to_date}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.Seq
-import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /*
 leftInputTable is either the output of the SourceJob or the output of the BootstrapJob depending on if there are bootstraps or external parts.
@@ -48,7 +25,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val join = node.join
-  private val leftInputTable = if (join.bootstrapParts != null) {
+  private val leftInputTable = if (join.bootstrapParts != null || join.onlineExternalParts != null) {
     join.metaData.bootstrapTable
   } else {
     JoinUtils.computeLeftSourceTableName(join)
@@ -60,8 +37,6 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
   def run(): Unit = {
     val leftDfForSchema = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dateRange))
     val leftSchema = leftDfForSchema.schema
-    val bootstrapInfo =
-      BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
 
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
@@ -82,8 +57,8 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
             e.printStackTrace()
             Failure(e)
         }
-      val df = processJoinedDf(joinedDfTry, leftDf, bootstrapInfo, leftDf)
-      df.save(outputTable, node.metaData.tableProps, autoExpand = true)
+
+      joinedDfTry.get.save(outputTable, node.metaData.tableProps, autoExpand = true)
     }
   }
 
@@ -165,49 +140,4 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
 
     joinedDf
   }
-
-  private def toSparkSchema(fields: Seq[StructField]): sql.types.StructType =
-    SparkConversions.fromChrononSchema(StructType("", fields.toArray))
-
-  /*
-   * For all external fields that are not already populated during the group by backfill step, fill in NULL.
-   * This is so that if any derivations depend on the these group by fields, they will still pass and not complain
-   * about missing columns. This is necessary when we directly bootstrap a derived column and skip the base columns.
-   */
-  private def padGroupByFields(baseJoinDf: DataFrame, bootstrapInfo: BootstrapInfo): DataFrame = {
-    val groupByFields = toSparkSchema(bootstrapInfo.joinParts.flatMap(_.valueSchema))
-    padFields(baseJoinDf, groupByFields)
-  }
-
-  def cleanUpContextualFields(finalDf: DataFrame, bootstrapInfo: BootstrapInfo, leftColumns: Seq[String]): DataFrame = {
-
-    val contextualNames =
-      bootstrapInfo.externalParts.filter(_.externalPart.isContextual).flatMap(_.keySchema).map(_.name)
-    val projections = if (join.isSetDerivations) {
-      join.derivations.toScala.derivationProjection(bootstrapInfo.baseValueNames).map(_._1)
-    } else {
-      Seq()
-    }
-    contextualNames.foldLeft(finalDf) { case (df, name) =>
-      if (leftColumns.contains(name) || projections.contains(name)) {
-        df
-      } else {
-        df.drop(name)
-      }
-    }
-  }
-
-  def processJoinedDf(joinedDfTry: Try[DataFrame],
-                      leftDf: DataFrame,
-                      bootstrapInfo: BootstrapInfo,
-                      bootstrapDf: DataFrame): DataFrame = {
-    if (joinedDfTry.isFailure) throw joinedDfTry.failed.get
-    val joinedDf = joinedDfTry.get
-    val outputColumns = joinedDf.columns.filter(bootstrapInfo.fieldNames ++ bootstrapDf.columns)
-    val finalBaseDf = padGroupByFields(joinedDf.selectExpr(outputColumns.map(c => s"`$c`"): _*), bootstrapInfo)
-    val finalDf = cleanUpContextualFields(finalBaseDf, bootstrapInfo, leftDf.columns)
-    finalDf.explain()
-    finalDf
-  }
-
 }
