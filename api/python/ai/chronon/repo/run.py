@@ -19,6 +19,8 @@ run.py needs to only depend in python standard library to simplify execution req
 
 import os
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as ver
 
 import click
 
@@ -48,9 +50,10 @@ from ai.chronon.repo.utils import get_environ_arg, set_runtime_env_v3
 
 
 def set_defaults(ctx):
-    """Set default values based on environment"""
+    """Set default values based on environment."""
     chronon_repo_path = os.environ.get("CHRONON_REPO_PATH", ".")
     today = datetime.today().strftime("%Y-%m-%d")
+
     defaults = {
         "mode": "backfill",
         "dataproc": False,
@@ -79,6 +82,14 @@ def set_defaults(ctx):
         if ctx.params.get(key) is None and value is not None:
             ctx.params[key] = value
 
+
+def _set_package_version():
+    try:
+        package_version = ver("zipline-ai")
+    except PackageNotFoundError:
+        print("No package found. Continuing with the latest version.")
+        package_version = "latest"
+    return package_version
 
 @click.command(
     name="run",
@@ -119,7 +130,7 @@ def set_defaults(ctx):
     "--online-class",
     help="Class name of Online Impl. Used for streaming and metadata-upload mode.",
 )
-@click.option("--version", default="latest", help="Chronon version to use.")
+@click.option("--version", default=_set_package_version, help="Chronon version to use.")
 @click.option(
     "--spark-version", default="2.4.0", help="Spark version to use for downloading jar."
 )
