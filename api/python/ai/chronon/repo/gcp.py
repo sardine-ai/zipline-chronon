@@ -197,8 +197,8 @@ class GcpRunner(Runner):
     def generate_dataproc_submitter_args(
         self,
         user_args: str,
+        version: str,
         job_type: JobType = JobType.SPARK,
-        version: str = "latest",
         local_files_to_upload: List[str] = None,
     ):
         customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
@@ -286,8 +286,8 @@ class GcpRunner(Runner):
 
         dataproc_args = self.generate_dataproc_submitter_args(
             job_type=JobType.FLINK,
+            version=self._args["version"],
             user_args=" ".join([user_args_str, flag_args_str]),
-            version=self._args.get("version", "latest"),
         )
         command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
         return command
@@ -321,7 +321,7 @@ class GcpRunner(Runner):
             dataproc_args = self.generate_dataproc_submitter_args(
                 # for now, self.conf is the only local file that requires uploading to gcs
                 user_args=args,
-                version=self._args.get("version", "latest"),
+                version=self._args["version"],
             )
             command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
             command_list.append(command)
@@ -366,7 +366,7 @@ class GcpRunner(Runner):
                         local_files_to_upload=local_files_to_upload_to_gcs,
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
-                        version=self._args.get("version", "latest"),
+                        version=self._args["version"],
                     )
                     command = (
                         f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
@@ -394,7 +394,7 @@ class GcpRunner(Runner):
                     # for now, self.conf is the only local file that requires uploading to gcs
                     local_files_to_upload=local_files_to_upload_to_gcs,
                     user_args=user_args,
-                    version=self._args.get("version", "latest"),
+                    version=self._args["version"],
                 )
                 command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
                 command_list.append(command)
