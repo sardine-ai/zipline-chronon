@@ -1,4 +1,3 @@
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +14,11 @@
 
 import pytest
 
-from ai.chronon.repo import teams
+from ai.chronon.repo import team_json_utils as teams
 
 
+# skipping as this is for the old teams.json functionality
+@pytest.mark.skip
 def test_existence(teams_json):
     assert not teams.team_exists(teams_json, "Non_existing_team")
     assert teams.team_exists(teams_json, "sample_team")

@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from enum import Enum
 
+from ai.chronon.cli.compile.parse_teams import EnvOrConfigAttribute
 from ai.chronon.repo.constants import (
     APP_NAME_TEMPLATE,
     SCALA_VERSION_FOR_SPARK,
@@ -163,6 +164,68 @@ def get_teams_json_file_path(repo_path):
     return os.path.join(repo_path, "teams.json")
 
 
+def get_teams_py_file_path(repo_path):
+    return os.path.join(repo_path, "teams.py")
+
+def set_runtime_env_v3(params, conf):
+    effective_mode = params.get("mode")
+
+    runtime_env = {"APP_NAME": params.get("app_name")}
+
+    if params.get("repo") and conf and effective_mode:
+        # get the conf file
+        conf_path = os.path.join(params["repo"], conf)
+        if os.path.isfile(conf_path):
+            with open(conf_path, "r") as infile:
+                conf_json = json.load(infile)
+                env = conf_json.get("metaData", {}).get("executionInfo", {}).get("env", {})
+                runtime_env.update(env.get(EnvOrConfigAttribute.ENV,{}).get(effective_mode,{}) or env.get("common", {}))
+                # Also set APP_NAME
+                try:
+                    _, conf_type, team, _ = conf.split("/")[-4:]
+                except Exception as e:
+                    logging.error(
+                        "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
+                           conf
+                        )
+                    )
+                    raise e
+                if not team:
+                    team = "default"
+                # context is the environment in which the job is running, which is provided from the args,
+                # default to be dev.
+                if params["env"]:
+                    context = params["env"]
+                else:
+                    context = "dev"
+                logging.info(f"Context: {context} -- conf_type: {conf_type} -- team: {team}")
+
+                runtime_env["APP_NAME"] = APP_NAME_TEMPLATE.format(
+                    mode=effective_mode,
+                    conf_type=conf_type,
+                    context=context,
+                    name=conf_json["metaData"]["name"],
+                )
+        else:
+            if not params.get("app_name") and not os.environ.get("APP_NAME"):
+                # Provide basic app_name when no conf is defined.
+                # Modes like metadata-upload and metadata-export can rely on conf-type or folder rather than a conf.
+                runtime_env["APP_NAME"] = "_".join(
+                    [
+                        k
+                        for k in [
+                            "chronon",
+                            effective_mode.replace("-", "_")
+                        ]
+                        if k is not None
+                    ]
+                )
+    for key, value in runtime_env.items():
+        if key not in os.environ and value is not None:
+            logging.info(f"Setting to environment: {key}={value}")
+            os.environ[key] = value
+
+# TODO: delete this when we cutover
 def set_runtime_env(params):
     """
     Setting the runtime environment variables.
@@ -179,6 +242,7 @@ def set_runtime_env(params):
         - default team environment per context and mode set on teams.json
         - Common Environment set in teams.json
     """
+
     environment = {
         "common_env": {},
         "conf_env": {},
@@ -194,39 +258,96 @@ def set_runtime_env(params):
     if effective_mode and "streaming" in effective_mode:
         effective_mode = "streaming"
     if params["repo"]:
-        teams_file = get_teams_json_file_path(params["repo"])
-        if os.path.exists(teams_file):
-            with open(teams_file, "r") as infile:
-                teams_json = json.load(infile)
-            # we should have a fallback if user wants to set to something else `default`
-            environment["common_env"] = teams_json.get("default", {}).get(
-                "common_env", {}
+
+        # Break if teams.json and teams.py exists
+        teams_json_file = get_teams_json_file_path(params["repo"])
+        teams_py_file = get_teams_py_file_path(params["repo"])
+
+        if os.path.exists(teams_json_file) and os.path.exists(teams_py_file):
+            raise ValueError(
+                "Both teams.json and teams.py exist. Please only use teams.py."
             )
-            if params["conf"] and effective_mode:
-                try:
-                    _, conf_type, team, _ = params["conf"].split("/")[-4:]
-                except Exception as e:
-                    logging.error(
-                        "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
-                            params["conf"]
-                        )
-                    )
-                    raise e
-                if not team:
-                    team = "default"
-                # context is the environment in which the job is running, which is provided from the args,
-                # default to be dev.
-                if params["env"]:
-                    context = params["env"]
-                else:
-                    context = "dev"
-                logging.info(
-                    f"Context: {context} -- conf_type: {conf_type} -- team: {team}"
+
+        if os.path.exists(teams_json_file):
+            set_runtime_env_teams_json(
+                environment, params, effective_mode, teams_json_file
+            )
+        if params["app_name"]:
+            environment["cli_args"]["APP_NAME"] = params["app_name"]
+        else:
+            if not params["app_name"] and not environment["cli_args"].get("APP_NAME"):
+                # Provide basic app_name when no conf is defined.
+                # Modes like metadata-upload and metadata-export can rely on conf-type or folder rather than a conf.
+                environment["cli_args"]["APP_NAME"] = "_".join(
+                    [
+                        k
+                        for k in [
+                            "chronon",
+                            conf_type,
+                            (
+                                params["mode"].replace("-", "_")
+                                if params["mode"]
+                                else None
+                            ),
+                        ]
+                        if k is not None
+                    ]
                 )
-                conf_path = os.path.join(params["repo"], params["conf"])
-                if os.path.isfile(conf_path):
-                    with open(conf_path, "r") as conf_file:
-                        conf_json = json.load(conf_file)
+
+        # Adding these to make sure they are printed if provided by the environment.
+        environment["cli_args"]["CHRONON_DRIVER_JAR"] = params["chronon_jar"]
+        environment["cli_args"]["CHRONON_ONLINE_JAR"] = params["online_jar"]
+        environment["cli_args"]["CHRONON_ONLINE_CLASS"] = params["online_class"]
+        order = [
+            "conf_env",
+            "team_env",  # todo: team_env maybe should be below default/common_env
+            "production_team_env",
+            "default_env",
+            "common_env",
+            "cli_args",
+        ]
+        logging.info("Setting env variables:")
+        for key in os.environ:
+            if any([key in (environment.get(set_key, {}) or {}) for set_key in order]):
+                logging.info(f"From <environment> found {key}={os.environ[key]}")
+        for set_key in order:
+            for key, value in (environment.get(set_key, {}) or {}).items():
+                if key not in os.environ and value is not None:
+                    logging.info(f"From <{set_key}> setting {key}={value}")
+                    os.environ[key] = value
+
+# TODO: delete this when we cutover
+def set_runtime_env_teams_json(environment, params, effective_mode, teams_json_file):
+    if os.path.exists(teams_json_file):
+        with open(teams_json_file, "r") as infile:
+            teams_json = json.load(infile)
+        # we should have a fallback if user wants to set to something else `default`
+        environment["common_env"] = teams_json.get("default", {}).get("common_env", {})
+        if params["conf"] and effective_mode:
+            try:
+                _, conf_type, team, _ = params["conf"].split("/")[-4:]
+            except Exception as e:
+                logging.error(
+                    "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
+                        params["conf"]
+                    )
+                )
+                raise e
+            if not team:
+                team = "default"
+            # context is the environment in which the job is running, which is provided from the args,
+            # default to be dev.
+            if params["env"]:
+                context = params["env"]
+            else:
+                context = "dev"
+            logging.info(
+                f"Context: {context} -- conf_type: {conf_type} -- team: {team}"
+            )
+            conf_path = os.path.join(params["repo"], params["conf"])
+            if os.path.isfile(conf_path):
+                with open(conf_path, "r") as conf_file:
+                    conf_json = json.load(conf_file)
 
                     new_env = (
                         conf_json.get("metaData")

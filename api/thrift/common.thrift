@@ -37,11 +37,8 @@ struct DateRange {
 * All the maps from the above three places are merged to create final env var
 **/
 struct EnvironmentVariables {
-    1: optional map<string, string> common
-    2: optional map<string, string> backfill
-    3: optional map<string, string> upload
-    4: optional map<string, string> streaming
-    5: optional map<string, string> serving
+    1: map<string, string> common
+    2: map<string, map<string, string>> modeEnvironments
 }
 
 /**
@@ -56,11 +53,8 @@ struct EnvironmentVariables {
 * All the maps from the above three places are merged to create final conf map
 **/
 struct ConfigProperties {
-    1: optional map<string, string> common
-    2: optional map<string, string> backfill
-    3: optional map<string, string> upload
-    4: optional map<string, string> streaming
-    5: optional map<string, string> serving
+    1: map<string, string> common
+    2: map<string, map<string, string>> modeConfigs
 }
 
 struct TableInfo {

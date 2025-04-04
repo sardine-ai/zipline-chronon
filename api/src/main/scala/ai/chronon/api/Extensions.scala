@@ -21,10 +21,6 @@ import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
 import ai.chronon.api.QueryUtils.buildSelects
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.DateRange
-
-import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
 import org.slf4j.Logger
@@ -585,7 +581,7 @@ object Extensions {
       for (
         execInfo <- Option(groupBy.metaData.executionInfo);
         conf <- Option(execInfo.conf);
-        servingConf <- Option(conf.serving);
+        servingConf <- Option(conf.modeConfigs.get("serving"));
         value <- Option(servingConf.get(flag))
       ) {
         return Some(value)

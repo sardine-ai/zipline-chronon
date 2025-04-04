@@ -1,3 +1,4 @@
+import copy
 import glob
 import importlib
 import os
@@ -33,11 +34,15 @@ def from_folder(
                 obj.metaData.sourceFile = f
 
                 tjson = serializer.thrift_simple_json(obj)
+
+                # Perform validation
+                errors = compile_context.validator.validate_obj(obj)
+
                 result = CompiledObj(
                     name=name,
                     obj=obj,
                     file=f,
-                    error=None,
+                    errors=errors if len(errors) > 0 else None,
                     obj_type=cls.__name__,
                     tjson=tjson,
                 )
@@ -48,16 +53,13 @@ def from_folder(
                 )
 
         except Exception as e:
-
             result = CompiledObj(
-                name=None, obj=None, file=f, error=e, obj_type=cls.__name__, tjson=None
+                name=None, obj=None, file=f, errors=[e], obj_type=cls.__name__, tjson=None
             )
 
             results.append(result)
 
-            compile_context.compile_status.add_object_update_display(
-                result, cls.__name__
-            )
+            compile_context.compile_status.add_object_update_display(result, cls.__name__)
 
     return results
 
@@ -71,7 +73,9 @@ def from_file(file_path: str, cls: type, input_dir: str):
     rel_path_without_extension = os.path.splitext(rel_path)[0]
 
     module_name = rel_path_without_extension.replace("/", ".")
-    conf_type, team_name, rest = module_name.split(".", 2)
+
+    conf_type, team_name_with_path = module_name.split(".", 1)
+    mod_path  = team_name_with_path.replace("/", ".")
 
     module = importlib.import_module(module_name)
 
@@ -81,10 +85,12 @@ def from_file(file_path: str, cls: type, input_dir: str):
 
         if isinstance(obj, cls):
 
-            name = f"{team_name}.{rest}.{var_name}"
-            obj.metaData.name = name
-            obj.metaData.team = team_name
+            copied_obj = copy.deepcopy(obj)
 
-            result[name] = obj
+            name = f"{mod_path}.{var_name}"
+            copied_obj.metaData.name = name
+            copied_obj.metaData.team = mod_path.split(".")[0]
+
+            result[name] = copied_obj
 
     return result

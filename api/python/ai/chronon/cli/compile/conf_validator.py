@@ -289,7 +289,7 @@ class ConfValidator(object):
                 )
         return reasons
 
-    def validate_obj(self, obj: object) -> List[str]:
+    def validate_obj(self, obj: object) -> List[BaseException]:
         """
         Validate Chronon API obj against other entities in the repo.
 
@@ -333,7 +333,7 @@ class ConfValidator(object):
 
     def _validate_derivations(
         self, pre_derived_cols: List[str], derivations: List[Derivation]
-    ) -> List[str]:
+    ) -> List[BaseException]:
         """
         Validate join/groupBy's derivation is defined correctly.
 
@@ -361,22 +361,23 @@ class ConfValidator(object):
                     and derivation.expression not in ("ds", "ts")
                 ):
                     errors.append(
-                        "Incorrect derivation expression {}, expression not found in pre-derived columns {}".format(
+                        ValueError("Incorrect derivation expression {}, expression not found in pre-derived columns {}"
+                        .format(
                             derivation.expression, pre_derived_cols
-                        )
+                        ))
                     )
             if derivation.name != "*":
                 if derivation.name in derived_columns:
                     errors.append(
-                        "Incorrect derivation name {} due to output column name conflict".format(
+                        ValueError("Incorrect derivation name {} due to output column name conflict".format(
                             derivation.name
                         )
-                    )
+                    ))
                 else:
                     derived_columns.add(derivation.name)
         return errors
 
-    def _validate_join(self, join: Join) -> List[str]:
+    def _validate_join(self, join: Join) -> List[BaseException]:
         """
         Validate join's status with materialized versions of group_bys
         included by the join.
@@ -406,25 +407,25 @@ class ConfValidator(object):
             self._validate_group_by(group_by) for group_by in included_group_bys
         ]
         errors += [
-            f"join {join.metaData.name}'s underlying {error}"
+            ValueError(f"join {join.metaData.name}'s underlying {error}")
             for errors in group_by_errors
             for error in errors
         ]
         # Check if the production join is using non production groupBy
         if join.metaData.production and non_prod_old_group_bys:
             errors.append(
-                "join {} is production but includes the following non production group_bys: {}".format(
+                ValueError("join {} is production but includes the following non production group_bys: {}".format(
                     join.metaData.name, ", ".join(non_prod_old_group_bys)
                 )
-            )
+            ))
         # Check if the online join is using the offline groupBy
         if join.metaData.online:
             if offline_included_group_bys:
                 errors.append(
-                    "join {} is online but includes the following offline group_bys: {}".format(
+                    ValueError("join {} is online but includes the following offline group_bys: {}".format(
                         join.metaData.name, ", ".join(offline_included_group_bys)
                     )
-                )
+                ))
         # Only validate the join derivation when the underlying groupBy is valid
         group_by_correct = all(not errors for errors in group_by_errors)
         if join.derivations and group_by_correct:
@@ -438,7 +439,7 @@ class ConfValidator(object):
             errors.extend(self._validate_derivations(columns, join.derivations))
         return errors
 
-    def _validate_group_by(self, group_by: GroupBy) -> List[str]:
+    def _validate_group_by(self, group_by: GroupBy) -> List[BaseException]:
         """
         Validate group_by's status with materialized versions of joins
         including the group_by.
@@ -465,26 +466,29 @@ class ConfValidator(object):
         # batch features cannot contain hourly windows
         if (no_topic and non_temporal) and has_hourly_windows:
             errors.append(
-                f"group_by {group_by.metaData.name} is defined to be daily refreshed but contains hourly windows. "
+                ValueError(f"group_by {group_by.metaData.name} is defined to be daily refreshed but contains "
+                           f"hourly windows. "
+                           )
             )
 
         # group by that are marked explicitly offline should not be present in
         # materialized online joins.
         if group_by.metaData.online is False and online_joins:
             errors.append(
-                "group_by {} is explicitly marked offline but included in "
+                ValueError("group_by {} is explicitly marked offline but included in "
                 "the following online joins: {}".format(
                     group_by.metaData.name, ", ".join(online_joins)
-                )
+                ))
             )
         # group by that are marked explicitly non-production should not be
         # present in materialized production joins.
         if prod_joins:
             if group_by.metaData.production is False:
                 errors.append(
-                    "group_by {} is explicitly marked as non-production but included in the following production "
+                    ValueError(
+                        "group_by {} is explicitly marked as non-production but included in the following production "
                     "joins: {}".format(group_by.metaData.name, ", ".join(prod_joins))
-                )
+                ))
             # if the group by is included in any of materialized production join,
             # set it to production in the materialized output.
             else:
@@ -507,8 +511,8 @@ class ConfValidator(object):
                 and (src.events.query.timeColumn is None)
             ):
                 errors.append(
-                    "Please set query.timeColumn for Cumulative Events Table: {}".format(
+                    ValueError("Please set query.timeColumn for Cumulative Events Table: {}".format(
                         src.events.table
-                    )
+                    ))
                 )
         return errors
