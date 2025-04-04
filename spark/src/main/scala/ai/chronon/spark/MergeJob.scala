@@ -61,6 +61,10 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
   private val dateRange = range.toPartitionRange
 
   def run(): Unit = {
+    val leftDfForSchema = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dateRange))
+    val leftSchema = leftDfForSchema.schema
+    val bootstrapInfo =
+      BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
 
     val requiredColumns: Seq[String] =
       join.joinParts.asScala.flatMap(_.rightToLeft.keys).distinct ++
@@ -72,16 +76,10 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
 
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
-      import org.apache.spark.storage.StorageLevel
       logger.info(s"Running merge for ${dayStep.start}")
       val rightPartsData = getRightPartsData(dayStep)
 
       val leftDf = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dayStep))
-      val leftSchema = leftDf.schema
-      val bootstrapInfo =
-        BootstrapInfo.from(join, dateRange, tableUtils, Option(leftSchema), externalPartsAlreadyIncluded = true)
-
-
 
       lazy val leftDfWithUUID = leftDf.withColumn(tableUtils.ziplineInternalRowIdCol, monotonically_increasing_id())
 
