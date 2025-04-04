@@ -25,6 +25,7 @@ v1 = GroupBy(
     sources=test_sources.staging_entities,
     keys=["s2CellId", "place_id"],
     aggregations=[
+        # Intentionally left out `input_column` to test error handling
         Aggregation(operation=Operation.COUNT),
         Aggregation(operation=Operation.COUNT),
     ],

@@ -73,7 +73,7 @@ JOIN_INDEX_SPEC = {
 }
 
 DEFAULTS_SPEC = {
-    "output_namespace": "namespace",
+    'outputNamespace': "namespace"
 }
 
 GB_REL_PATH = "production/group_bys"
@@ -144,7 +144,8 @@ def build_entry(conf, index_spec, conf_type, root=CWD, teams=None):
     # Update missing values with teams defaults.
     for field, mapped_field in DEFAULTS_SPEC.items():
         if field in entry and not entry[field]:
-            entry[field] = [teams[team][mapped_field]]
+            team_dict = teams[team].__dict__
+            entry[field] = [team_dict[mapped_field]]
 
     file_base = "/".join(conf_module.split(".")[:-1])
     py_file = file_base + ".py"
@@ -366,14 +367,21 @@ def events_without_topics(output_file=None, exclude_commit_message=None):
     print(",".join(list(emails)))
 
 
-def load_team_data(path):
-    with open(path, 'r') as infile:
-        teams = json.load(infile)
-    base_defaults = teams.get('default', {})
-    full_info = teams.copy()
-    for team, values in teams.items():
-        full_info[team] = dict(base_defaults, **values)
-    return full_info
+def load_team_data(path='', teams_root=None):
+    # Check if path is teams.json or teams.py
+    if 'teams.json' in path:
+        with open(path, 'r') as infile:
+            teams = json.load(infile)
+        base_defaults = teams.get('default', {})
+        full_info = teams.copy()
+        for team, values in teams.items():
+            full_info[team] = dict(base_defaults, **values)
+        return full_info
+    else:
+        from ai.chronon.cli.compile import parse_teams
+        assert teams_root is not None, "Need root to load teams.py"
+        teams_py = parse_teams.load_teams(teams_root)
+        return teams_py
 
 
 # register all handlers here
@@ -392,7 +400,7 @@ if __name__ == "__main__":
     if not (root.endswith("chronon") or root.endswith("zipline")):
         print("This script needs to be run from chronon conf root - with folder named 'chronon' or 'zipline', found: "
               + root)
-    teams = load_team_data(os.path.join(root, 'teams.json'))
+    teams = load_team_data(os.path.join(root, 'teams.json'), teams_root=root)
     gb_index = build_index("group_bys", GB_INDEX_SPEC, root=root, teams=teams)
     join_index = build_index("joins", JOIN_INDEX_SPEC, root=root, teams=teams)
     enrich_with_joins(gb_index, join_index, root=root, teams=teams)

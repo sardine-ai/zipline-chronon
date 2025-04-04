@@ -1,4 +1,5 @@
 from ai.chronon.api.ttypes import Team
+from ai.chronon.repo.constants import RunMode
 from ai.chronon.types import EnvironmentVariables
 
 default = Team(
@@ -18,73 +19,77 @@ default = Team(
             "GCP_DATAPROC_CLUSTER_NAME": "canary-2",  # TODO: GCP Dataproc Cluster Name
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",  # TODO: GCP Bigtable Instance ID
         },
-        backfill={  # Backfills tend to be larger than other jobs
-            "EXECUTOR_CORES": "3",
-            "DRIVER_MEMORY": "15G",
-            "EXECUTOR_MEMORY": "24G",
-            "PARALLELISM": "4000",
-            "MAX_EXECUTORS": "1000",
-        },
-        upload={
-            "EXECUTOR_CORES": "3",
-            "EXECUTOR_MEMORY": "24G",
-            "PARALLELISM": "1000",
-            "MAX_EXECUTORS": "1000",
-        },
-        streaming={
-            "EXECUTOR_CORES": "2",
-            "EXECUTOR_MEMORY": "4G",
-            "PARTITIONS_PER_EXECUTOR": "2",
+        modeEnvironments={
+            RunMode.BACKFILL: {
+                "EXECUTOR_CORES": "2",
+                "DRIVER_MEMORY": "15G",
+                "EXECUTOR_MEMORY": "4G",
+                "PARALLELISM": "4",
+                "MAX_EXECUTORS": "4",
+            },
+            RunMode.UPLOAD: {
+                "PARALLELISM": "2",
+                "MAX_EXECUTORS": "4",
+            },
+            RunMode.STREAMING: {
+                "EXECUTOR_CORES": "2",
+                "EXECUTOR_MEMORY": "4G",
+                "PARTITIONS_PER_EXECUTOR": "2",
+            },
         },
     ),
 )
 
 
 test = Team(
-    namespace="test",
+    outputNamespace="test",
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance
         },
-        backfill={  # smaller jobs for testing
-            "EXECUTOR_CORES": "2",
-            "DRIVER_MEMORY": "15G",
-            "EXECUTOR_MEMORY": "4G",
-            "PARALLELISM": "4",
-            "MAX_EXECUTORS": "4",
-        },
-        upload={
-            "PARALLELISM": "2",
-            "MAX_EXECUTORS": "4",
+        modeEnvironments={
+            RunMode.BACKFILL: {
+                "EXECUTOR_CORES": "2",
+                "DRIVER_MEMORY": "15G",
+                "EXECUTOR_MEMORY": "4G",
+                "PARALLELISM": "4",
+                "MAX_EXECUTORS": "4",
+            },
+            RunMode.UPLOAD: {
+                "PARALLELISM": "2",
+                "MAX_EXECUTORS": "4",
+            },
         },
     ),
 )
 
 
 sample_team = Team(
-    namespace="test",
+    outputNamespace="test",
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance
         },
-        backfill={  # smaller jobs for testing
-            "EXECUTOR_CORES": "2",
-            "DRIVER_MEMORY": "15G",
-            "EXECUTOR_MEMORY": "4G",
-            "PARALLELISM": "4",
-            "MAX_EXECUTORS": "4",
-        },
-        upload={
-            "PARALLELISM": "2",
-            "MAX_EXECUTORS": "4",
+        modeEnvironments={
+            RunMode.BACKFILL: {
+                "EXECUTOR_CORES": "2",
+                "DRIVER_MEMORY": "15G",
+                "EXECUTOR_MEMORY": "4G",
+                "PARALLELISM": "4",
+                "MAX_EXECUTORS": "4",
+            },
+            RunMode.UPLOAD: {
+                "PARALLELISM": "2",
+                "MAX_EXECUTORS": "4",
+            },
         },
     ),
 )
 
-our clients_search = Team(namespace="our clients-search")
+our clients_search = Team(outputNamespace="our clients-search")
 
-kaggle = Team(namespace="kaggle")
+kaggle = Team(outputNamespace="kaggle")
 
-quickstart = Team(namespace="quickstart")
+quickstart = Team(outputNamespace="quickstart")
 
-risk = Team(namespace="risk")
+risk = Team(outputNamespace="risk")

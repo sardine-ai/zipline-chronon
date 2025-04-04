@@ -18,7 +18,7 @@ logger = logger.get_logger()
 class CompileResult:
     config_info: ConfigInfo
     obj_dict: Dict[str, Any]
-    error_dict: Dict[str, List[str]]
+    error_dict: Dict[str, List[BaseException]]
 
 
 class Compiler:
@@ -27,18 +27,19 @@ class Compiler:
         self.compile_context = compile_context
 
     def compile(
-        self, compile_context: CompileContext
+        self
     ) -> Dict[ConfigType, CompileResult]:
 
-        config_infos = compile_context.config_infos
+        config_infos = self.compile_context.config_infos
 
         compile_results = {}
 
         for config_info in config_infos:
-
-            compile_results[config_info.config_type] = self._compile_class_configs(
+            configs = self._compile_class_configs(
                 config_info
             )
+
+            compile_results[config_info.config_type] = configs
 
         # check if staging_output_dir exists
         staging_dir = self.compile_context.staging_output_dir()
@@ -53,6 +54,10 @@ class Compiler:
                 f"Staging directory {staging_dir} does not exist. "
                 "Happens when every chronon config fails to compile or when no chronon configs exist."
             )
+
+        # TODO: temporarily just print out the final results of the compile until live fix is implemented:
+        #  https://github.com/Textualize/rich/pull/3637
+        print(self.compile_context.compile_status.generate_update_display_text())
 
         return compile_results
 
@@ -83,7 +88,7 @@ class Compiler:
     def _write_objects_in_folder(
         self,
         compiled_objects: List[ai.chronon.cli.compile.display.compiled_obj.CompiledObj],
-    ) -> Tuple[Dict[str, Any], Dict[str, List[str]]]:
+    ) -> Tuple[Dict[str, Any], Dict[str, List[BaseException]]]:
 
         error_dict = {}
         object_dict = {}
@@ -92,39 +97,30 @@ class Compiler:
 
             if co.obj:
 
-                errors = self._write_object(co)
+                if co.errors:
+                    error_dict[co.name] = co.errors
 
-                if errors:
-                    error_dict[co.name] = errors
-
-                    for error in errors:
-                        print(f"\nError processing conf {co.name}: {error}")
+                    for error in co.errors:
+                        self.compile_context.compile_status.print_live_console(f"Error processing conf {co.name}: {error}")
                         traceback.print_exception(
-                            type(error), error, error.__traceback__
-                        )
-                        print("\n")
+                            type(error), error, error.__traceback__)
 
                 else:
+                    self._write_object(co)
                     object_dict[co.name] = co.obj
-
             else:
-                error_dict[co.file] = co.error
+                error_dict[co.file] = co.errors
 
-                print(f"\nError processing file {co.file}: {co.error}")
-                traceback.print_exception(
-                    type(co.error), co.error, co.error.__traceback__
-                )
-                print("\n")
+                self.compile_context.compile_status.print_live_console(f"Error processing file {co.file}: {co.errors}")
+                for error in co.errors:
+                    traceback.print_exception(
+                        type(error), error, error.__traceback__)
 
         return object_dict, error_dict
 
-    def _write_object(self, compiled_obj: CompiledObj) -> Optional[List[str]]:
+    def _write_object(self, compiled_obj: CompiledObj) -> Optional[List[BaseException]]:
 
         obj = compiled_obj.obj
-
-        errors = self.compile_context.validator.validate_obj(obj)
-        if errors:
-            return errors
 
         output_path = self.compile_context.staging_output_path(obj)
 

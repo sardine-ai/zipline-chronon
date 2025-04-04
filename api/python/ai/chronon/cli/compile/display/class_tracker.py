@@ -15,7 +15,7 @@ class ClassTracker:
     def __init__(self):
         self.existing_objs: Dict[str, CompiledObj] = {}  # name to obj
         self.files_to_obj: Dict[str, List[Any]] = {}
-        self.files_to_errors: Dict[str, Exception] = {}
+        self.files_to_errors: Dict[str, List[Exception]] = {}
         self.new_objs: Dict[str, CompiledObj] = {}  # name to obj
         self.diff_result = DiffResult()
         self.deleted_names: List[str] = []
@@ -25,12 +25,12 @@ class ClassTracker:
 
     def add(self, compiled: CompiledObj) -> None:
 
-        if compiled.error:
+        if compiled.errors:
 
             if compiled.file not in self.files_to_errors:
                 self.files_to_errors[compiled.file] = []
 
-            self.files_to_errors[compiled.file].append(compiled.error)
+            self.files_to_errors[compiled.file].extend(compiled.errors)
 
         else:
             if compiled.file not in self.files_to_obj:
@@ -62,7 +62,9 @@ class ClassTracker:
                 self.diff_result.updated.append(compiled.name)
 
         else:
-            self.diff_result.added.append(compiled.name)
+            if not compiled.errors:
+                self.diff_result.added.append(compiled.name)
+
 
     def close(self) -> None:
         self.closed = True
@@ -70,7 +72,7 @@ class ClassTracker:
         self.deleted_names = list(self.existing_objs.keys() - self.new_objs.keys())
 
     def to_status(self) -> Text:
-        text = Text()
+        text = Text(overflow="fold", no_wrap=False)
 
         if self.existing_objs:
             text.append(
@@ -92,12 +94,12 @@ class ClassTracker:
         return text
 
     def to_errors(self) -> Text:
-        text = Text()
+        text = Text(overflow="fold", no_wrap=False)
 
         if self.files_to_errors:
             for file, error in self.files_to_errors.items():
                 text.append("  ERROR ", style="bold red")
-                text.append(f"- {file}: {error[0]}\n")
+                text.append(f"- {file}: {str(error)}\n")
 
         return text
 

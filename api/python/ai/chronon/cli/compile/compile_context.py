@@ -4,13 +4,12 @@ from typing import Any, Dict, List, Type
 
 import ai.chronon.cli.compile.parse_teams as teams
 from ai.chronon.api.common.ttypes import ConfigType
-from ai.chronon.api.ttypes import GroupBy, Join, StagingQuery, Team
+from ai.chronon.api.ttypes import GroupBy, Join, Model, StagingQuery, Team
 from ai.chronon.cli.compile.conf_validator import ConfValidator
 from ai.chronon.cli.compile.display.compile_status import CompileStatus
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 from ai.chronon.cli.compile.serializer import file2thrift
 from ai.chronon.cli.logger import get_logger, require
-from ai.chronon.model import Model
 
 logger = get_logger()
 
@@ -45,7 +44,7 @@ class CompileContext:
             ConfigInfo(folder_name="models", cls=Model, config_type=ConfigType.MODEL),
         ]
 
-        self.compile_status = CompileStatus()
+        self.compile_status = CompileStatus(use_live=False)
 
         self.existing_confs: Dict[Type, Dict[str, Any]] = {}
         for config_info in self.config_infos:
@@ -147,7 +146,7 @@ class CompileContext:
                             name=obj.metaData.name,
                             obj=obj,
                             file=obj.metaData.sourceFile,
-                            error=None,
+                            errors=None,
                             obj_type=obj_class.__name__,
                             tjson=open(full_path).read(),
                         )
@@ -157,7 +156,7 @@ class CompileContext:
                         )
 
                     else:
-                        logger.error(
+                        logger.errors(
                             f"Parsed object from {full_path} has no metaData attribute"
                         )
 

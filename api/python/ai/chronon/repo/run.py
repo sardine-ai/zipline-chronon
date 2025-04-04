@@ -44,7 +44,7 @@ from ai.chronon.repo.gcp import (
     ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
     GcpRunner,
 )
-from ai.chronon.repo.utils import get_environ_arg, set_runtime_env
+from ai.chronon.repo.utils import get_environ_arg, set_runtime_env_v3
 
 
 def set_defaults(ctx):
@@ -85,8 +85,8 @@ def set_defaults(ctx):
     context_settings=dict(allow_extra_args=True, ignore_unknown_options=True),
 )
 @click.option(
-    "--conf", required=False, help="Conf param - required for every mode except fetch"
-)
+    "--conf", required=True, help="Conf param - required for every mode"
+)  # TODO: @davidhan - we should be able to infer this in the future
 @click.option(
     "--env",
     required=False,
@@ -160,10 +160,14 @@ def set_defaults(ctx):
     help="Use a mocked data source instead of a real source for groupby-streaming Flink.",
 )
 @click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
-@click.option("--validate", is_flag=True,
-              help="Validate the catalyst util Spark expression evaluation logic")
-@click.option("--validate-rows", default="10000",
-              help="Number of rows to  run the validation on")
+@click.option(
+    "--validate",
+    is_flag=True,
+    help="Validate the catalyst util Spark expression evaluation logic",
+)
+@click.option(
+    "--validate-rows", default="10000", help="Number of rows to  run the validation on"
+)
 @click.option("--join-part-name", help="Name of the join part to use for join-part-job")
 @click.pass_context
 def main(
@@ -198,11 +202,11 @@ def main(
     savepoint_uri,
     validate,
     validate_rows,
-    join_part_name
+    join_part_name,
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
-    set_runtime_env(ctx.params)
+    set_runtime_env_v3(ctx.params, conf)
     set_defaults(ctx)
     extra_args = (" " + online_args) if mode in ONLINE_MODES and online_args else ""
     ctx.params["args"] = " ".join(unknown_args) + extra_args

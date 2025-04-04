@@ -659,7 +659,7 @@ object Driver {
 
   object GroupByUploadToKVBulkLoad {
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-    class Args extends Subcommand("groupby-upload-bulk-load") with OnlineSubcommand {
+    class Args extends Subcommand("group-by-upload-bulk-load") with OnlineSubcommand {
       // Expectation that run.py only sets confPath
       val confPath: ScallopOption[String] = opt[String](required = false, descr = "path to groupBy conf")
 

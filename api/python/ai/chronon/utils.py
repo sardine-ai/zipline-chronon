@@ -25,15 +25,8 @@ from typing import List, Optional, Union, cast
 
 import ai.chronon.api.ttypes as api
 import ai.chronon.repo.extract_objects as eo
-from ai.chronon.repo import (
-    # GROUP_BY_FOLDER_NAME,
-    # JOIN_FOLDER_NAME,
-    # STAGING_QUERY_FOLDER_NAME,
-    # MODEL_FOLDER_NAME,
-    FOLDER_NAME_TO_CLASS,
-    TEAMS_FILE_PATH,
-    teams,
-)
+from ai.chronon.cli.compile import parse_teams
+from ai.chronon.repo import FOLDER_NAME_TO_CLASS
 
 ChrononJobTypes = Union[api.GroupBy, api.Join, api.StagingQuery]
 
@@ -63,7 +56,9 @@ class JsonDiffer:
         self.new_name = "new.json"
         self.old_name = "old.json"
 
-    def diff(self, new_json_str: object, old_json_str: object, skipped_keys=None) -> str:
+    def diff(
+        self, new_json_str: object, old_json_str: object, skipped_keys=None
+    ) -> str:
         if skipped_keys is None:
             skipped_keys = []
         new_json = {
@@ -314,6 +309,11 @@ def get_staging_query_output_table_name(
     return output_table_name(staging_query, full_name=full_name)
 
 
+def get_team_conf_from_py(team, key):
+    team_module = importlib.import_module(f"teams.{team}")
+    return getattr(team_module, key)
+
+
 def get_join_output_table_name(join: api.Join, full_name: bool = False):
     """generate output table name for join backfill job"""
     # join sources could also be created inline alongside groupBy file
@@ -323,8 +323,8 @@ def get_join_output_table_name(join: api.Join, full_name: bool = False):
     # set output namespace
     if not join.metaData.outputNamespace:
         team_name = join.metaData.name.split(".")[0]
-        namespace = teams.get_team_conf(
-            os.path.join(chronon_root_path, TEAMS_FILE_PATH), team_name, "namespace"
+        namespace = (
+            parse_teams.load_teams(chronon_root_path).get(team_name).outputNamespace
         )
         join.metaData.outputNamespace = namespace
     return output_table_name(join, full_name=full_name)

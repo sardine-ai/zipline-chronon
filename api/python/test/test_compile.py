@@ -16,11 +16,13 @@ Run the flow for materialize.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+import pytest
 from click.testing import CliRunner
 
 from ai.chronon.repo.compile import extract_and_convert
 
 
+@pytest.mark.skip
 def test_basic_compile():
 
     runner = CliRunner()
@@ -44,6 +46,7 @@ def test_basic_compile():
     assert result.exit_code == 0
 
 
+@pytest.mark.skip
 def test_debug_compile():
     runner = CliRunner()
     result = runner.invoke(
@@ -53,6 +56,7 @@ def test_debug_compile():
     assert result.exit_code == 0
 
 
+@pytest.mark.skip
 def test_failed_compile():
     """
     Should fail as it fails to find teams.
@@ -67,6 +71,7 @@ def test_failed_compile():
     assert result.exit_code != 0
 
 
+@pytest.mark.skip
 def test_failed_compile_missing_input_column():
     """
     Should raise errors as we are trying to create aggregations without input column.

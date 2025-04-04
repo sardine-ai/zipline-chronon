@@ -19,6 +19,7 @@ from ai.chronon.join import (
     Join,
     JoinPart,
 )
+from ai.chronon.repo.constants import RunMode
 from ai.chronon.types import EnvironmentVariables
 
 v1 = Join(
@@ -27,7 +28,9 @@ v1 = Join(
     table_properties={"config_json": """{"sample_key": "sample_value"}"""},
     output_namespace="sample_namespace",
     env_vars=EnvironmentVariables(
-        backfill={"EXECUTOR_MEMORY": "9G"},
+        modeEnvironments={
+            RunMode.BACKFILL: {"EXECUTOR_MEMORY": "9G"},
+        }
     ),
     online=True,
 )

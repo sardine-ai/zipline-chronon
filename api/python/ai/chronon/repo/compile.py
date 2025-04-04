@@ -25,11 +25,8 @@ import click
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
 from ai.chronon.api.ttypes import GroupBy, Join
-from ai.chronon.repo import (
-    FOLDER_NAME_TO_CLASS,
-    TEAMS_FILE_PATH,
-    teams,
-)
+from ai.chronon.repo import FOLDER_NAME_TO_CLASS, TEAMS_FILE_PATH
+from ai.chronon.repo import team_json_utils as teams
 from ai.chronon.repo.serializer import thrift_simple_json_protected
 from ai.chronon.repo.validator import (
     ChrononRepoValidator,
