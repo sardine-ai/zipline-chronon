@@ -19,6 +19,8 @@
 **/.DS_Store
 api/python/ai/chronon/api/
 api/python/ai/chronon/observability/
+api/py/ai/chronon/api/
+api/py/ai/chronon/observability/
 api/python/test/canary/production/
 api/python/test/sample/production/
 api/python/.coverage
