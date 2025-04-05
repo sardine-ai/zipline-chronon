@@ -264,10 +264,6 @@ struct MetaData {
     // column -> tag_key -> tag_value
     21: optional map<string, map<string, string>> columnTags
 
-    // A stage is a "sub-transformation" of a given node. For example a `GroupBy` can consist of selects (with SQL expressions), filters (in the form of where clauses), followed by aggregations defined in the Zipline DSL.
-    // Each of this is a `stage` with its own column level lineage.
-    8: optional list<lineage.StageWithLineage> stagesWithLineage
-
     // marking this as true means that the conf can be served online
     // once marked online, a conf cannot be changed - compiling the conf won't be allowed
     100: optional bool online
