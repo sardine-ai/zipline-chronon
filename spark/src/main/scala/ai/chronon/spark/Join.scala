@@ -25,22 +25,17 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.orchestration.{JoinBootstrapNode, JoinPartNode}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils._
+import ai.chronon.spark.batch._
 import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
 import java.util.concurrent.Executors
-import scala.collection.Seq
-import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContextExecutorService
-import scala.concurrent.Future
+import scala.collection.{Seq, mutable}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutorService, Future}
 import scala.jdk.CollectionConverters._
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /*
  * hashes: a list containing bootstrap hashes that represent the list of bootstrap parts that a record has matched

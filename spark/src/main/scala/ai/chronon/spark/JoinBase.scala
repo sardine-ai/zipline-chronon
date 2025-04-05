@@ -25,6 +25,7 @@ import ai.chronon.online.Metrics
 import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, leftDf, shouldRecomputeLeft, tablesToRecompute}
+import ai.chronon.spark.batch._
 import com.google.gson.Gson
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
