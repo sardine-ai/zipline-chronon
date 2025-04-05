@@ -19,16 +19,13 @@ package ai.chronon.spark.test
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.StagingQuery
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{Comparison, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.batch.StagingQuery
 import org.apache.spark.sql.SparkSession
-import org.junit.Assert.{assertEquals, assertTrue}
+import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 class StagingQueryTest extends AnyFlatSpec {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)

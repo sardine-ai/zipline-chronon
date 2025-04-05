@@ -49,6 +49,30 @@ scala_library(
     ],
 )
 
+scala_library(
+    name = "batch_lib",
+    srcs = glob(["src/main/scala/ai/chronon/spark/batch/*.scala"]),
+    format = select({
+        "//tools/config:scala_2_13": False,
+        "//conditions:default": True,
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//aggregator:lib",
+        "//api:lib",
+        "//api:thrift_java",
+        "//online:lib",
+        "//spark:lib",
+        "//tools/build_rules/spark:spark-exec",
+        maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
+        maven_artifact_with_suffix("org.scala-lang.modules:scala-java8-compat"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
+        maven_artifact_with_suffix("org.rogach:scallop"),
+    ],
+)
+
 test_deps = _SCALA_TEST_DEPS + [
     ":lib",
     "//aggregator:lib",
@@ -86,6 +110,20 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = test_deps + _RUNFILES_DEP,
+)
+
+scala_test_suite(
+    name = "batch_test",
+    srcs = glob([
+        "src/test/scala/ai/chronon/spark/test/batch/*.scala",
+    ]),
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    tags = ["medium"],
+    visibility = ["//visibility:public"],
+    deps = test_deps + [
+        "test_lib",
+        ":batch_lib",
+    ],
 )
 
 scala_test_suite(
@@ -169,8 +207,8 @@ jvm_binary(
 
 create_shaded_library(
     name = "shaded_snakeyaml",
-    input_artifact = "org.yaml:snakeyaml",
     inline_rules = [
         "rule org.yaml.snakeyaml.** org.yaml.shaded_snakeyaml.@1",
     ],
+    input_artifact = "org.yaml:snakeyaml",
 )
