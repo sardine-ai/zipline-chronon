@@ -1,4 +1,4 @@
-package ai.chronon.spark
+package ai.chronon.spark.batch
 
 import ai.chronon.api.Extensions.{BootstrapPartOps, DateRangeOps, ExternalPartOps, MetadataOps, SourceOps, StringsOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
@@ -7,6 +7,7 @@ import ai.chronon.online.SparkConversions
 import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, set_add}
+import ai.chronon.spark.{BootstrapInfo, JoinUtils, TableUtils}
 import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{coalesce, col, lit, typedLit}
