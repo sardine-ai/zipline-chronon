@@ -1,12 +1,12 @@
-package ai.chronon.spark
+package ai.chronon.spark.batch
 import ai.chronon.api.DataModel.Events
-import ai.chronon.api.{Constants, DateRange}
-import ai.chronon.api.Extensions._
-import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Extensions.{MetadataOps, _}
 import ai.chronon.api.ScalaJavaConversions.JListOps
+import ai.chronon.api.{Constants, DateRange}
 import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.parseSkewKeys
+import ai.chronon.spark.TableUtils
 
 import scala.collection.{Map, Seq}
 import scala.jdk.CollectionConverters._

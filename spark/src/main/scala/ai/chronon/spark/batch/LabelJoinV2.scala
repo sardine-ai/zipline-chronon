@@ -1,11 +1,11 @@
-package ai.chronon.spark
-
+package ai.chronon.spark.batch
 import ai.chronon.api
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online.Metrics
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.DataType

@@ -21,6 +21,7 @@ import ai.chronon.api.{Constants, DateRange, RelevantLeftForJoinPart, ThriftJson
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
 import ai.chronon.api.thrift.TBase
+import ai.chronon.spark.batch._
 import ai.chronon.online.Api
 import ai.chronon.online.MetadataDirWalker
 import ai.chronon.online.MetadataEndPoint

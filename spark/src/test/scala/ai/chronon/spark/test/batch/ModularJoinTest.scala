@@ -1,24 +1,24 @@
-package ai.chronon.spark.test.join
+package ai.chronon.spark.test.batch
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.orchestration.JoinBootstrapNode
-import ai.chronon.orchestration.JoinDerivationNode
-import ai.chronon.orchestration.JoinPartNode
-import ai.chronon.orchestration.JoinMergeNode
-import ai.chronon.orchestration.SourceWithFilterNode
+import ai.chronon.orchestration.{
+  JoinBootstrapNode,
+  JoinDerivationNode,
+  JoinMergeNode,
+  JoinPartNode,
+  SourceWithFilterNode
+}
+import ai.chronon.spark.batch._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
-import ai.chronon.spark.test.DataFrameGen
-import ai.chronon.spark.test.TableTestUtils
+import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
-
-import scala.collection.JavaConverters._
 
 class ModularJoinTest extends AnyFlatSpec {
 

@@ -1,5 +1,4 @@
-package ai.chronon.spark
-
+package ai.chronon.spark.batch
 import ai.chronon.api.DataModel.{Entities, Events}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.PartitionRange.toTimeRange
@@ -7,6 +6,7 @@ import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, Parti
 import ai.chronon.online.Metrics
 import ai.chronon.orchestration.JoinPartNode
 import ai.chronon.spark.Extensions.{DfWithStats, _}
+import ai.chronon.spark.{GroupBy, JoinUtils, TableUtils}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_format}
 import org.apache.spark.util.sketch.BloomFilter
