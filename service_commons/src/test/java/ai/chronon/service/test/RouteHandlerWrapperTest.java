@@ -52,31 +52,31 @@ class RouteHandlerWrapperTest {
 
         // Create handler for pojo
         Function<TestInput, TestOutput> transformer = input ->
-            new TestOutput(
-                    input.getUserId(),
-                    String.format("Status: %s, Role: %s, Accuracy: %s, Limit: %d, Amount: %.2f, Active: %b, Items: %s, Props: %s",
-                            input.getStatus(),
-                            input.getRole(),
-                            input.getAccuracy(),
-                            input.getLimit(),
-                            input.getAmount(),
-                            input.isActive(),
-                            input.getItems() != null ? String.join(",", input.getItems()) : "null",
-                            input.getProps() != null ?
-                                    input.getProps().entrySet()
-                                            .stream()
-                                            .map(entry -> entry.getKey() + ":" + entry.getValue())
-                                            .collect(Collectors.joining(","))
-                                    : "null"
-                    )
-            );
+                new TestOutput(
+                        input.getUserId(),
+                        String.format("Status: %s, Role: %s, Accuracy: %s, Limit: %d, Amount: %.2f, Active: %b, Items: %s, Props: %s",
+                                input.getStatus(),
+                                input.getRole(),
+                                input.getAccuracy(),
+                                input.getLimit(),
+                                input.getAmount(),
+                                input.isActive(),
+                                input.getItems() != null ? String.join(",", input.getItems()) : "null",
+                                input.getProps() != null ?
+                                        input.getProps().entrySet()
+                                                .stream()
+                                                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                                                .collect(Collectors.joining(","))
+                                        : "null"
+                        )
+                );
 
         // Create handler for thrift
         Function<TileKey, TileKey> thriftTransformer = input -> input;
 
         // Create handler for thrift with enum inside
         Function<Window, Window> windowTransformer = input -> input;
-        
+
         // Create handler for nested thrift objects
         Function<UploadRequest, UploadRequest> uploadTransformer = input -> input;
 
@@ -91,7 +91,7 @@ class RouteHandlerWrapperTest {
 
         router.get("/api/window/units/:timeUnit/")
                 .handler(RouteHandlerWrapper.createHandler(windowTransformer, Window.class));
-                
+
         router.post("/api/upload/:branch")
                 .handler(RouteHandlerWrapper.createHandler(uploadTransformer, UploadRequest.class));
 
@@ -282,7 +282,7 @@ class RouteHandlerWrapperTest {
                     testContext.completeNow();
                 })));
     }
-    
+
     @Test
     void testNestedThriftObject(VertxTestContext testContext) {
         // Create a JSON payload with nested objects
@@ -290,17 +290,17 @@ class RouteHandlerWrapperTest {
                 .put("name", "testConfig1")
                 .put("hash", "abc123")
                 .put("contents", "config contents 1");
-                
+
         JsonObject confObject2 = new JsonObject()
                 .put("name", "testConfig2")
                 .put("hash", "def456")
                 .put("contents", "config contents 2");
-                
+
         JsonObject requestBody = new JsonObject()
                 .put("diffConfs", new io.vertx.core.json.JsonArray()
                         .add(confObject1)
                         .add(confObject2));
-                
+
         client.post("/api/upload/feature-branch")
                 .putHeader("Content-Type", "application/json")
                 .sendJson(requestBody)
