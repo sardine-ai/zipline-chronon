@@ -4,20 +4,21 @@ import ai.chronon.api.thrift.*;
 import ai.chronon.api.thrift.protocol.TBinaryProtocol;
 import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol;
 import ai.chronon.api.thrift.transport.TTransportException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Handler;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Base64;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Wrapper class for creating Route handlers that map parameters to an Input object and transform it to Output
@@ -58,7 +59,28 @@ public class RouteHandlerWrapper {
         return tb;
     }
 
-    private static final Map<Class<?>, Map<String, Method>> SETTER_CACHE = new ConcurrentHashMap<>();
+    /**
+     * Combines path parameters, query parameters, and JSON body into a single JSON object.
+     * Returns the JSON object as a string.
+     */
+    public static String combinedParamJson(RoutingContext ctx) {
+        JsonObject params = ctx.body().asJsonObject();
+        if (params == null) {
+            params = new JsonObject();
+        }
+
+        // Add path parameters
+        for (Map.Entry<String, String> entry : ctx.pathParams().entrySet()) {
+            params.put(entry.getKey(), entry.getValue());
+        }
+
+        // Add query parameters
+        for (Map.Entry<String, String> entry : ctx.queryParams().entries()) {
+            params.put(entry.getKey(), entry.getValue());
+        }
+
+        return params.encodePrettily();
+    }
 
     /**
      * Creates a RoutingContext handler that maps parameters to an Input object and transforms it to Output
@@ -74,167 +96,85 @@ public class RouteHandlerWrapper {
 
         return ctx -> {
             try {
-                // Create map with path parameters
-                Map<String, String> params = new HashMap<>(ctx.pathParams());
+                String encodedParams = combinedParamJson(ctx);
 
-                // Add query parameters
-                for (Map.Entry<String, String> entry : ctx.queryParams().entries()) {
-                    params.put(entry.getKey(), entry.getValue());
-                }
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-                I input = createInputFromParams(params, inputClass);
+                I input = mapper.readValue(encodedParams, inputClass);
                 O output = transformer.apply(input);
 
                 String responseFormat = ctx.request().getHeader(RESPONSE_CONTENT_TYPE_HEADER);
                 if (responseFormat == null || responseFormat.equals("application/json")) {
-                    try {
-                        TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
-                        String jsonString = serializer.toString((TBase)output);
-                        ctx.response()
-                           .setStatusCode(200)
-                           .putHeader("content-type", JSON_TYPE_VALUE)
-                           .end(jsonString);
-                    } catch (TException e) {
-                        LOGGER.error("Failed to serialize response", e);
-                        throw new RuntimeException(e);
-                    } catch (Exception e) {
-                        LOGGER.error("Unexpected error during serialization", e);
-                        throw new RuntimeException(e);
-                    }
+                    String outputJson = outputToJson(ctx, output);
+                    ctx.response()
+                            .setStatusCode(200)
+                            .putHeader("content-type", JSON_TYPE_VALUE)
+                            .end(outputJson);
                 } else {
-                    if (!responseFormat.equals(TBINARY_B64_TYPE_VALUE)) {
-                        throw new IllegalArgumentException(String.format("Unsupported response-content-type: %s. Supported values are: %s and %s", responseFormat, JSON_TYPE_VALUE, TBINARY_B64_TYPE_VALUE));
-                    }
-
-                    // Verify output is a Thrift object before casting
-                    if (!(output instanceof TBase)) {
-                        throw new IllegalArgumentException("Output must be a Thrift object for binary serialization");
-                    }
-                    TBase<?, TFieldIdEnum> tb = (TBase<?, TFieldIdEnum>) output;
-                    // Serialize output to Thrift BinaryProtocol
-                    byte[] serializedOutput = binarySerializer.get().serialize(tb);
-                    String responseBase64 = base64Encoder.get().encodeToString(serializedOutput);
-
+                    String responseBase64 = convertToTBinaryB64(responseFormat, output);
                     ctx.response().setStatusCode(200).putHeader("content-type", TBINARY_B64_TYPE_VALUE).end(responseBase64);
                 }
+
             } catch (IllegalArgumentException ex) {
                 LOGGER.error("Incorrect arguments passed for handler creation", ex);
-                ctx.response().setStatusCode(400).putHeader("content-type", "application/json").end(new JsonObject().put("error", ex.getMessage()).encode());
+                ctx.response()
+                    .setStatusCode(400)
+                    .putHeader("content-type", "application/json")
+                    .end(toErrorPayload(ex));
             } catch (Exception ex) {
                 LOGGER.error("Internal error occurred during handler creation", ex);
-                ctx.response().setStatusCode(500).putHeader("content-type", "application/json").end(new JsonObject().put("error", ex.getMessage()).encode());
+                ctx.response()
+                        .setStatusCode(500)
+                        .putHeader("content-type", "application/json")
+                        .end(toErrorPayload(ex));
             }
         };
     }
 
-    public static <I> I createInputFromParams(Map<String, String> params, Class<I> inputClass) throws Exception {
-        // Create new instance using no-args constructor
-        I input = inputClass.getDeclaredConstructor().newInstance();
-
-
-        Map<String, Method> setters = SETTER_CACHE.computeIfAbsent(inputClass, cls ->
-             Arrays.stream(cls.getMethods())
-                    .filter(RouteHandlerWrapper::isSetter)
-                    .collect(Collectors.toMap(RouteHandlerWrapper::getFieldNameFromSetter, method -> method))
-        );
-
-        // Find and invoke setters for matching parameters
-        for (Map.Entry<String, String> param : params.entrySet()) {
-            Method setter = setters.get(param.getKey());
-            if (setter != null) {
-                String paramValue = param.getValue();
-
-                if (paramValue != null) {
-                    Type paramType = setter.getGenericParameterTypes()[0];
-                    Object convertedValue = convertValue(paramValue, paramType);
-                    setter.invoke(input, convertedValue);
-                }
-            }
+    private static <O> String convertToTBinaryB64(String responseFormat, O output) throws TException {
+        if (!responseFormat.equals(TBINARY_B64_TYPE_VALUE)) {
+            throw new IllegalArgumentException(String.format("Unsupported response-content-type: %s. Supported values are: %s and %s", responseFormat, JSON_TYPE_VALUE, TBINARY_B64_TYPE_VALUE));
         }
 
-        return input;
-    }
-
-    private static boolean isSetter(Method method) {
-        return method.getName().startsWith("set") && !method.getName().endsWith("IsSet") && method.getParameterCount() == 1 && (method.getReturnType() == void.class || method.getReturnType() == method.getDeclaringClass());
-    }
-
-    private static String getFieldNameFromSetter(Method method) {
-        String methodName = method.getName();
-        String fieldName = methodName.substring(3); // Remove "set"
-        return fieldName.substring(0, 1).toLowerCase() + fieldName.substring(1);
-    }
-
-    private static Object convertValue(String value, Type targetType) {  // Changed parameter to Type
-        // Handle Class types
-        if (targetType instanceof Class) {
-            Class<?> targetClass = (Class<?>) targetType;
-
-            if (targetClass == String.class) {
-                return value;
-            } else if (targetClass == Integer.class || targetClass == int.class) {
-                return Integer.parseInt(value);
-            } else if (targetClass == Long.class || targetClass == long.class) {
-                return Long.parseLong(value);
-            } else if (targetClass == Double.class || targetClass == double.class) {
-                return Double.parseDouble(value);
-            } else if (targetClass == Boolean.class || targetClass == boolean.class) {
-                return Boolean.parseBoolean(value);
-            } else if (targetClass == Float.class || targetClass == float.class) {
-                return Float.parseFloat(value);
-            } else if (targetClass.isEnum()) {
-                try {
-                    // Try custom fromString method first
-                    Method fromString = targetClass.getMethod("fromString", String.class);
-                    Object result = fromString.invoke(null, value);
-                    if (value != null && result == null) {
-                        throw new IllegalArgumentException(String.format("Invalid enum value %s for type %s", value, targetClass.getSimpleName()));
-                    }
-                    return result;
-                } catch (NoSuchMethodException e) {
-                    // Fall back to standard enum valueOf
-                    return Enum.valueOf(targetClass.asSubclass(Enum.class), value.toUpperCase());
-                } catch (Exception e) {
-                    throw new IllegalArgumentException(String.format("Error converting %s to enum type %s : %s", value, targetClass.getSimpleName(), e.getMessage()));
-                }
-            }
+        // Verify output is a Thrift object before casting
+        if (!(output instanceof TBase)) {
+            throw new IllegalArgumentException("Output must be a Thrift object for binary serialization");
         }
+        TBase<?, TFieldIdEnum> tb = (TBase<?, TFieldIdEnum>) output;
+        // Serialize output to Thrift BinaryProtocol
+        byte[] serializedOutput = binarySerializer.get().serialize(tb);
+        String responseBase64 = base64Encoder.get().encodeToString(serializedOutput);
+        return responseBase64;
+    }
 
-        // Handle parameterized types (List, Map)
-        if (targetType instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) targetType;
-            Class<?> rawType = (Class<?>) parameterizedType.getRawType();
-
-            // Handle List types
-            if (List.class.isAssignableFrom(rawType)) {
-                Type elementType = parameterizedType.getActualTypeArguments()[0];
-                return Arrays
-                        .stream(value.split(","))
-                        .map(v -> convertValue(v.trim(), elementType))
-                        .collect(Collectors.toList());
+    private static <O> String outputToJson(RoutingContext ctx, O output) {
+        try {
+            String jsonString;
+            if (output instanceof TBase) {
+                // For Thrift objects, use TSerializer
+                TSerializer serializer = new TSerializer(new TSimpleJSONProtocol.Factory());
+                jsonString = serializer.toString((TBase) output);
+            } else {
+                // For regular Java objects, use Vertx's JSON support
+                JsonObject jsonObject = new JsonObject(Json.encode(output));
+                jsonString = jsonObject.encode();
             }
-
-            // Handle Map types
-            if (Map.class.isAssignableFrom(rawType)) {
-                Type keyType = parameterizedType.getActualTypeArguments()[0];
-                Type valueType = parameterizedType.getActualTypeArguments()[1];
-                return Arrays
-                        .stream(value.split(","))
-                        .map(entry -> entry.split(":"))
-                        .filter(kv -> {
-                            if (kv.length != 2) {
-                                throw new IllegalArgumentException("Invalid map entry format. Expected 'key:value' but got: " + String.join(":", kv));
-                            }
-                            return true;
-                        })
-                        .collect(Collectors.toMap(
-                                kv -> convertValue(kv[0].trim(), keyType),
-                                kv -> convertValue(kv[1].trim(), valueType)
-                        ));
-            }
+            return jsonString;
+        } catch (TException e) {
+            LOGGER.error("Failed to serialize response", e);
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error during serialization", e);
+            throw new RuntimeException(e);
         }
+    }
 
-        throw new IllegalArgumentException("Unsupported type: " + targetType.getTypeName());
+    public static String toErrorPayload(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw, true);
+        throwable.printStackTrace(pw);
+        return new JsonObject().put("error", sw.getBuffer().toString()).encode();
     }
 }
 

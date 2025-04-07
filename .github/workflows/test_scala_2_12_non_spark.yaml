@@ -12,6 +12,7 @@ on:
       - 'hub/**'
       - 'orchestration/**'
       - 'service/**'
+      - 'service_commons/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_2_12_non_spark.yaml'
@@ -26,6 +27,7 @@ on:
       - 'hub/**'
       - 'orchestration/**'
       - 'service/**'
+      - 'service_commons/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_2_12_non_spark.yaml'
@@ -95,6 +97,13 @@ jobs:
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //service:tests
+
+      - name: Run service_commons tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //service_commons:tests
 
       - name: Run orchestrator tests
         run: |
