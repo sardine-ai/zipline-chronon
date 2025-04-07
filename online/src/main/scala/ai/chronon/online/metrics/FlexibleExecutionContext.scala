@@ -14,13 +14,10 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.metrics
 
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContextExecutor
+import java.util.concurrent.{ArrayBlockingQueue, ThreadPoolExecutor, TimeUnit}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 object FlexibleExecutionContext {
   def buildExecutor: ThreadPoolExecutor =

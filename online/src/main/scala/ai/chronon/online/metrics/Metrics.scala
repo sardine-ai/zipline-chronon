@@ -14,18 +14,12 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.metrics
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import com.timgroup.statsd.{
-  Event,
-  NoOpStatsDClient,
-  NonBlockingStatsDClient,
-  NonBlockingStatsDClientBuilder,
-  StatsDClient
-}
+import com.timgroup.statsd.{Event, NoOpStatsDClient, NonBlockingStatsDClientBuilder, StatsDClient}
 
 object Metrics {
   object Environment extends Enumeration {
@@ -91,6 +85,7 @@ object Metrics {
   }
 
   object Context {
+
     val sampleRate: Double = 0.1
 
     def apply(environment: Environment, join: Join): Context = {

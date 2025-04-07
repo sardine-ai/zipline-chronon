@@ -62,6 +62,7 @@ scala_library(
         "//api:lib",
         "//api:thrift_java",
         "//online:lib",
+        "//online:metrics_lib",
         "//spark:lib",
         "//tools/build_rules/spark:spark-exec",
         maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),

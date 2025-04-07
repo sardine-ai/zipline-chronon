@@ -27,6 +27,7 @@ import scala.compat.java8.FutureConverters;
 import scala.concurrent.Future;
 import scala.concurrent.ExecutionContext;
 import scala.util.Try;
+import ai.chronon.online.metrics.Metrics;
 
 import java.util.ArrayList;
 import java.util.List;

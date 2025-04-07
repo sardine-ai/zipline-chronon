@@ -1,4 +1,22 @@
 scala_library(
+    name = "metrics_lib",
+    srcs = glob(["src/main/scala/ai/chronon/online/metrics/*.scala"]),
+    format = select({
+        "//tools/config:scala_2_13": False,  # Disable for 2.13
+        "//conditions:default": True,  # Enable for other versions
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api:lib",
+        "//api:thrift_java",
+        maven_artifact("com.datadoghq:java-dogstatsd-client"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
+    ],
+)
+
+scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]) + glob(["src/main/**/*.java"]),
     format = select({
@@ -7,6 +25,7 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
+        ":metrics_lib",
         "//aggregator:lib",
         "//api:lib",
         "//api:thrift_java",

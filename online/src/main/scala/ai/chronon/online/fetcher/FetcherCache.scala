@@ -4,7 +4,8 @@ import ai.chronon.aggregator.windowing.FinalBatchIr
 import ai.chronon.api.GroupBy
 import ai.chronon.online.KVStore.{GetRequest, TimedValue}
 import ai.chronon.online.fetcher.FetcherCache._
-import ai.chronon.online.{GroupByServingInfoParsed, Metrics}
+import ai.chronon.online.GroupByServingInfoParsed
+import ai.chronon.online.metrics.Metrics
 import com.github.benmanes.caffeine.cache.{Cache => CaffeineCache}
 import org.slf4j.{Logger, LoggerFactory}
 

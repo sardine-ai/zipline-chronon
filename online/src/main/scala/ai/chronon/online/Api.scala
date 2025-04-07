@@ -60,7 +60,7 @@ object KVStore {
 // used for streaming writes, batch bulk uploads & fetching
 trait KVStore {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  implicit val executionContext: ExecutionContext = FlexibleExecutionContext.buildExecutionContext
+  implicit val executionContext: ExecutionContext = metrics.FlexibleExecutionContext.buildExecutionContext
   def create(dataset: String): Unit
 
   def create(dataset: String, props: Map[String, Any]): Unit = create(dataset)
@@ -205,7 +205,7 @@ trait StreamBuilder {
 }
 
 object ExternalSourceHandler {
-  private[ExternalSourceHandler] val executor = FlexibleExecutionContext.buildExecutionContext
+  private[ExternalSourceHandler] val executor = metrics.FlexibleExecutionContext.buildExecutionContext
 }
 
 // user facing class that needs to be implemented for external sources defined in a join

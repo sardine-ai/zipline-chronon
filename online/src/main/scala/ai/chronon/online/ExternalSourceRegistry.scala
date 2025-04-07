@@ -18,13 +18,10 @@ package ai.chronon.online
 
 import ai.chronon.api.Constants
 import ai.chronon.online.fetcher.Fetcher.{Request, Response}
-
-import scala.collection.Seq
-import scala.collection.mutable
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Success
+import ai.chronon.online.metrics.Metrics.Context
+import scala.collection.{Seq, mutable}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 // users can simply register external endpoints with a lambda that can return the future of a response given keys
 // keys and values need to match schema in ExternalSource - chronon will validate automatically
@@ -53,8 +50,7 @@ class ExternalSourceRegistry extends Serializable {
   // 1. keys match
   // 2. report missing & extra values
   // 3. schema integrity of returned values
-  def fetchRequests(requests: Seq[Request], context: Metrics.Context)(implicit
-      ec: ExecutionContext): Future[Seq[Response]] = {
+  def fetchRequests(requests: Seq[Request], context: Context)(implicit ec: ExecutionContext): Future[Seq[Response]] = {
     val startTime = System.currentTimeMillis()
     // we make issue one batch request per external source and flatten out it later
     val responsesByNameF: List[Future[Seq[Response]]] = requests

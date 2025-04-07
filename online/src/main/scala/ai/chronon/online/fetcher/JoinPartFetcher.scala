@@ -61,18 +61,21 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
     val joinDecomposed: Seq[(Request, Try[Seq[Either[PrefixedRequest, KeyMissingException]]])] =
       requests.map { request =>
         // use passed-in join or fetch one
+        import ai.chronon.online.metrics
         val joinTry: Try[JoinOps] = joinConf
           .map(conf => Success(JoinOps(conf)))
           .getOrElse(metadataStore.getJoinConf(request.name))
 
-        var joinContext: Option[Metrics.Context] = None
+        var joinContext: Option[metrics.Metrics.Context] = None
 
         val decomposedTry = joinTry.map { join =>
-          joinContext = Some(Metrics.Context(Metrics.Environment.JoinFetching, join.join))
+          import ai.chronon.online.metrics
+          joinContext = Some(metrics.Metrics.Context(metrics.Metrics.Environment.JoinFetching, join.join))
           joinContext.get.increment("join_request.count")
 
           join.joinPartOps.map { part =>
-            val joinContextInner = Metrics.Context(joinContext.get, part)
+            import ai.chronon.online.metrics
+            val joinContextInner = metrics.Metrics.Context(joinContext.get, part)
             val missingKeys = part.leftToRight.keys.filterNot(request.keys.contains)
 
             if (missingKeys.nonEmpty) {

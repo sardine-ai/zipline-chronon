@@ -1,7 +1,8 @@
 package ai.chronon.online.fetcher
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.ScalaJavaConversions.JMapOps
-import ai.chronon.online.{FlagStore, FlagStoreConstants, FlexibleExecutionContext, KVStore}
+import ai.chronon.online.metrics.FlexibleExecutionContext
+import ai.chronon.online.{FlagStore, FlagStoreConstants, KVStore}
 
 import scala.concurrent.ExecutionContext
 
