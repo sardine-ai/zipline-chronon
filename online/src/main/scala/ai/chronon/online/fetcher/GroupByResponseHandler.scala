@@ -88,7 +88,7 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
                                  requestContext: RequestContext): Array[Any] = {
 
     val servingInfo = requestContext.servingInfo
-    val mutations: Boolean = servingInfo.groupByOps.dataModel == DataModel.Entities
+    val mutations: Boolean = servingInfo.groupByOps.dataModel == DataModel.ENTITIES
     val aggregator: SawtoothOnlineAggregator = servingInfo.aggregator
 
     if (aggregator.batchEndTs > requestContext.queryTimeMs) {
@@ -151,8 +151,8 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
                                           batchIr: FinalBatchIr): Array[Any] = {
 
     val selectedCodec = servingInfo.groupByOps.dataModel match {
-      case DataModel.Events   => servingInfo.valueAvroCodec
-      case DataModel.Entities => servingInfo.mutationValueAvroCodec
+      case DataModel.EVENTS   => servingInfo.valueAvroCodec
+      case DataModel.ENTITIES => servingInfo.mutationValueAvroCodec
     }
 
     def decodeRow(timedValue: TimedValue): Row = {

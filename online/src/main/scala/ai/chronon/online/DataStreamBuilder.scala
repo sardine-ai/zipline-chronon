@@ -19,7 +19,6 @@ package ai.chronon.online
 import ai.chronon.api
 import ai.chronon.api.Constants
 import ai.chronon.api.DataModel
-import ai.chronon.api.DataModel.DataModel
 import ai.chronon.api.ScalaJavaConversions._
 import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
@@ -56,7 +55,7 @@ case class DataStream(df: DataFrame, partitions: Int, topicInfo: TopicInfo) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // apply a query to a given data stream
-  def apply(query: api.Query, keys: Seq[String] = null, dataModel: DataModel = DataModel.Events): DataStream = {
+  def apply(query: api.Query, keys: Seq[String] = null, dataModel: DataModel = DataModel.EVENTS): DataStream = {
     // apply setups
     Option(query.setups).map(_.toScala.map { setup =>
       Try(df.sparkSession.sql(setup)) match {
@@ -73,8 +72,8 @@ case class DataStream(df: DataFrame, partitions: Int, topicInfo: TopicInfo) {
     // TODO: Explore whether timeColumn for entities can be dropped in life-time aggregate cases
     val timeSelects: Map[String, String] = Map(Constants.TimeColumn -> timeColumn) ++ (dataModel match {
       // these are derived from Mutation class for streaming case - we ignore what is set in conf
-      case DataModel.Entities => Map(Constants.ReversalColumn -> null, Constants.MutationTimeColumn -> null)
-      case DataModel.Events   => Map.empty
+      case DataModel.ENTITIES => Map(Constants.ReversalColumn -> null, Constants.MutationTimeColumn -> null)
+      case DataModel.EVENTS   => Map.empty
     })
     val selectsOption: Option[Map[String, String]] = for {
       selectMap <- Option(query.selects).map(_.toScala.toMap)
@@ -87,8 +86,8 @@ case class DataStream(df: DataFrame, partitions: Int, topicInfo: TopicInfo) {
 
     // enrich where clauses
     val timeIsPresent = dataModel match {
-      case api.DataModel.Entities => s"${Constants.MutationTimeColumn} is NOT NULL"
-      case api.DataModel.Events   => s"$timeColumn is NOT NULL"
+      case api.DataModel.ENTITIES => s"${Constants.MutationTimeColumn} is NOT NULL"
+      case api.DataModel.EVENTS   => s"$timeColumn is NOT NULL"
     }
 
     val atLeastOneKeyIsPresent =

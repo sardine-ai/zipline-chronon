@@ -18,8 +18,8 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.{Builders, Constants, JoinPart, PartitionSpec, TimeUnit, Window}
-import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.DataModel.Events
+import ai.chronon.api.DataModel.ENTITIES
+import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionRange
 import ai.chronon.online.metrics.Metrics
@@ -59,7 +59,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
 
   def computeLabelJoin(stepDays: Option[Int] = None, skipFinalJoin: Boolean = false): DataFrame = {
     // validations
-    assert(Option(joinConf.left.dataModel).equals(Option(Events)),
+    assert(Option(joinConf.left.dataModel).equals(Option(EVENTS)),
            s"join.left.dataMode needs to be Events for label join ${joinConf.metaData.name}")
 
     assert(Option(joinConf.metaData.team).nonEmpty,
@@ -67,7 +67,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
 
     labelJoinConf.labels.asScala.foreach { jp =>
       if (Option(jp.groupBy.aggregations).isDefined) {
-        assert(Option(jp.groupBy.dataModel).equals(Option(Events)),
+        assert(Option(jp.groupBy.dataModel).equals(Option(EVENTS)),
                s"groupBy.dataModel must be Events for label join with aggregations ${jp.groupBy.metaData.name}")
 
         assert(Option(jp.groupBy.aggregations).get.size() == 1,
@@ -83,7 +83,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                s"${aggWindow.timeUnit} window time unit not supported for label aggregations.")
       } else {
         assert(
-          Option(jp.groupBy.dataModel).equals(Option(Entities)),
+          Option(jp.groupBy.dataModel).equals(Option(ENTITIES)),
           s"To perform a none-aggregation label join, the groupBy.dataModel must be entities: ${jp.groupBy.metaData.name}"
         )
       }
@@ -243,9 +243,9 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                                rightSkewFilter)
 
     val df = (joinConf.left.dataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {
-      case (Events, Entities, _) =>
+      case (EVENTS, ENTITIES, _) =>
         groupBy.snapshotEntities
-      case (Events, Events, _) =>
+      case (EVENTS, EVENTS, _) =>
         groupBy.snapshotEvents(leftRange)
       case (_, _, _) =>
         throw new IllegalArgumentException(

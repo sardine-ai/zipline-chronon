@@ -17,7 +17,10 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.DataModel.Entities
+import ai.chronon.api.DataModel.ENTITIES
+import ai.chronon.api.Accuracy
+import ai.chronon.api.Constants
+import ai.chronon.api.DateRange
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
@@ -65,7 +68,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     // compute join keys, besides the groupBy keys -  like ds, ts etc.,
     val additionalKeys: Seq[String] = {
-      if (joinConfCloned.left.dataModel == Entities) {
+      if (joinConfCloned.left.dataModel == ENTITIES) {
         Seq(tableUtils.partitionColumn)
       } else if (joinPart.groupBy.inferredAccuracy == Accuracy.TEMPORAL) {
         Seq(Constants.TimeColumn, tableUtils.partitionColumn)

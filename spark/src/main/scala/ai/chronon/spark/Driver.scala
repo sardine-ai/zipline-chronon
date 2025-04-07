@@ -19,8 +19,9 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
+import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.{Constants, DateRange, RelevantLeftForJoinPart, ThriftJsonCodec}
+import ai.chronon.api.{Constants, DateRange, ThriftJsonCodec}
 import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
 import ai.chronon.online.{Api, MetadataDirWalker, MetadataEndPoint, TopicChecker}
 import ai.chronon.orchestration.{JoinMergeNode, JoinPartNode}
@@ -890,7 +891,7 @@ object Driver {
       val joinPartNode = new JoinPartNode()
         .setJoinPart(joinPart)
         .setLeftSourceTable(JoinUtils.computeLeftSourceTableName(join))
-        .setLeftDataModel(join.left.dataModel.toString)
+        .setLeftDataModel(join.left.dataModel)
         .setSkewKeys(join.skewKeys)
 
       // Set the metadata

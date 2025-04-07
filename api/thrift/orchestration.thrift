@@ -176,37 +176,38 @@ struct PhysicalNodeKey {
 // ====================== Modular Join Spark Job Args ======================
 
 struct SourceWithFilterNode {
-    1: optional api.Source source
-    2: optional map<string,list<string>> excludeKeys
-    10: optional api.MetaData metaData
+    1: optional api.MetaData metaData
+
+    2: optional api.Source source
+    3: optional map<string,list<string>> excludeKeys
 }
 
 struct JoinBootstrapNode {
-    1: optional api.Join join
-    10: optional api.MetaData metaData
+    1: optional api.MetaData metaData
+    2: optional api.Join join
 }
 
 struct JoinMergeNode {
-    1: optional api.Join join
-    10: optional api.MetaData metaData
+    1: optional api.MetaData metaData
+    2: optional api.Join join
 }
 
 struct JoinDerivationNode {
-   1: optional api.Join join
-   10: optional api.MetaData metaData
+    1: optional api.MetaData metaData
+    2: optional api.Join join
 }
 
 struct JoinPartNode {
-    1: optional string leftSourceTable
-    2: optional string leftDataModel
-    3: optional api.JoinPart joinPart
-    4: optional map<string, list<string>> skewKeys
-    10: optional api.MetaData metaData
+    1: optional api.MetaData metaData
+    2: optional string leftSourceTable
+    3: optional api.DataModel leftDataModel
+    4: optional api.JoinPart joinPart
+    5: optional map<string, list<string>> skewKeys
 }
 
 struct LabelPartNode {
-    1: optional api.Join join
-    10: optional api.MetaData metaData
+    1: optional api.MetaData metaData
+    2: optional api.Join join
 }
 
 union NodeUnion {
@@ -215,6 +216,7 @@ union NodeUnion {
     3: JoinPartNode joinPart
     4: JoinMergeNode joinMerge
     5: JoinDerivationNode joinDerivation
+    6: LabelPartNode labelPart
     // TODO add label join
     // TODO: add other types of nodes
 }

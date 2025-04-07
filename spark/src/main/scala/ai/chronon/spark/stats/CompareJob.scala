@@ -18,7 +18,7 @@ package ai.chronon.spark.stats
 
 import ai.chronon.api
 import ai.chronon.api.Constants
-import ai.chronon.api.DataModel.Events
+import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
@@ -174,7 +174,7 @@ object CompareJob {
       joinConf.rowIds.toScala
     } else {
       val keyCols = joinConf.leftKeyCols ++ Seq(tableUtils.partitionColumn)
-      if (joinConf.left.dataModel == Events) {
+      if (joinConf.left.dataModel == EVENTS) {
         keyCols ++ Seq(Constants.TimeColumn)
       } else {
         keyCols

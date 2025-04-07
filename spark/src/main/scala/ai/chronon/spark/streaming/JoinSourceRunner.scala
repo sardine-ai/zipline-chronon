@@ -77,12 +77,12 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
       extends Serializable
 
   val valueZSchema: api.StructType = groupByConf.dataModel match {
-    case api.DataModel.Events   => servingInfoProxy.valueChrononSchema
-    case api.DataModel.Entities => servingInfoProxy.mutationValueChrononSchema
+    case api.DataModel.EVENTS   => servingInfoProxy.valueChrononSchema
+    case api.DataModel.ENTITIES => servingInfoProxy.mutationValueChrononSchema
   }
   val (additionalColumns, eventTimeColumn) = groupByConf.dataModel match {
-    case api.DataModel.Entities => Constants.MutationFields.map(_.name) -> Constants.MutationTimeColumn
-    case api.DataModel.Events   => Seq.empty[String] -> Constants.TimeColumn
+    case api.DataModel.ENTITIES => Constants.MutationFields.map(_.name) -> Constants.MutationTimeColumn
+    case api.DataModel.EVENTS   => Seq.empty[String] -> Constants.TimeColumn
   }
 
   val keyColumns: Array[String] = groupByConf.keyColumns.toScala.toArray

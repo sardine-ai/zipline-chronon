@@ -1,7 +1,7 @@
 package ai.chronon.api.test
 
 import ai.chronon.api._
-import ai.chronon.api.dependency.DependencyResolver
+import ai.chronon.api.planner.DependencyResolver
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

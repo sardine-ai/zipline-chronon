@@ -53,14 +53,14 @@ object OnlineUtils {
                    dropDsOnWrite: Boolean,
                    isTiled: Boolean): Unit = {
     val inputStreamDf = groupByConf.dataModel match {
-      case DataModel.Entities =>
+      case DataModel.ENTITIES =>
         assert(!isTiled, "Tiling is not supported for Entity groupBy's yet (Only Event groupBy are supported)")
 
         val entity = groupByConf.streamingSource.get
         val df = tableUtils.sql(s"SELECT * FROM ${entity.getEntities.mutationTable} WHERE ds = '$ds'")
         df.withColumnRenamed(entity.query.reversalColumn, Constants.ReversalColumn)
           .withColumnRenamed(entity.query.mutationTimeColumn, Constants.MutationTimeColumn)
-      case DataModel.Events =>
+      case DataModel.EVENTS =>
         val table = groupByConf.streamingSource.get.table
         tableUtils.sql(s"SELECT * FROM $table WHERE ds >= '$ds'")
     }

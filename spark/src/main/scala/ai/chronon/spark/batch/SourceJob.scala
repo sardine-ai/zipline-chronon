@@ -1,8 +1,8 @@
 package ai.chronon.spark.batch
-import ai.chronon.api.DataModel.Events
+import ai.chronon.api.DataModel.EVENTS
+import ai.chronon.api.{Constants, DateRange}
 import ai.chronon.api.Extensions.{MetadataOps, _}
 import ai.chronon.api.ScalaJavaConversions.JListOps
-import ai.chronon.api.{Constants, DateRange}
 import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.parseSkewKeys
@@ -24,7 +24,7 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
 
     val source = sourceWithFilter.source
 
-    val timeProjection = if (source.dataModel == Events) {
+    val timeProjection = if (source.dataModel == EVENTS) {
       Seq(Constants.TimeColumn -> Option(source.query).map(_.timeColumn).orNull)
     } else {
       Seq()
@@ -53,7 +53,7 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
         throw new RuntimeException(s"Query produced 0 rows in range $dayStep.")
       }
 
-      val dfWithTimeCol = if (source.dataModel == Events) {
+      val dfWithTimeCol = if (source.dataModel == EVENTS) {
         df.withTimeBasedColumn(Constants.TimePartitionColumn)
       } else {
         df
