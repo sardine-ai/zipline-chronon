@@ -3,7 +3,6 @@ namespace java ai.chronon.api
 
 include "common.thrift"
 include "observability.thrift"
-include "lineage.thrift"
 
 // cd /path/to/chronon
 // thrift --gen py -out api/python/ api/thrift/api.thrift

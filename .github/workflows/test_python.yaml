@@ -55,12 +55,11 @@ jobs:
       - name: Run Chronon Python tests
         shell: bash
         run: |
+          set -euxo pipefail
           source chronon_py_env/bin/activate
-          thrift --gen py -out api/python/ api/thrift/common.thrift
-          thrift --gen py -out api/python/ api/thrift/observability.thrift
-          thrift --gen py -out api/python/ api/thrift/api.thrift
-          thrift --gen py -out api/python/ api/thrift/lineage.thrift
-          thrift --gen py -out api/python/ api/thrift/orchestration.thrift
+          for file in api/thrift/*.thrift; do
+            thrift --gen py -out api/python/ "$file"
+          done
           cd api/python
           pip3 install -r requirements/dev.txt
           pip3 install tox
