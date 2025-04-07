@@ -77,7 +77,6 @@ else
   CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev --dataproc 2>&1 | tee tmp_backfill.out
 fi
 BACKFILL_JOB_ID=$(cat tmp_backfill.out | grep "$DATAPROC_SUBMITTER_ID_STR"  | cut -d " " -f5)
-check_dataproc_job_state $BACKFILL_JOB_ID
 
 echo -e "${GREEN}<<<<<.....................................GROUP-BY-UPLOAD.....................................>>>>>\033[0m"
 touch tmp_gbu.out
@@ -87,7 +86,6 @@ else
   CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev --ds  2023-12-01 --dataproc 2>&1 | tee tmp_gbu.out
 fi
 GBU_JOB_ID=$(cat tmp_gbu.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
-check_dataproc_job_state $GBU_JOB_ID
 
 # Need to wait for upload to finish
 echo -e "${GREEN}<<<<<.....................................UPLOAD-TO-KV.....................................>>>>>\033[0m"
@@ -98,7 +96,6 @@ else
   CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_dev --partition-string=2023-12-01 --dataproc 2>&1 | tee tmp_upload_to_kv.out
 fi
 UPLOAD_TO_KV_JOB_ID=$(cat tmp_upload_to_kv.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
-check_dataproc_job_state $UPLOAD_TO_KV_JOB_ID
 
 echo -e "${GREEN}<<<<< .....................................METADATA-UPLOAD.....................................>>>>>\033[0m"
 touch tmp_metadata_upload.out
@@ -108,7 +105,6 @@ else
   CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_dev --dataproc 2>&1 | tee tmp_metadata_upload.out
 fi
 METADATA_UPLOAD_JOB_ID=$(cat tmp_metadata_upload.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
-check_dataproc_job_state $METADATA_UPLOAD_JOB_ID
 
 # Need to wait for upload-to-kv to finish
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
