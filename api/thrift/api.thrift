@@ -465,24 +465,92 @@ struct DataSpec {
 }
 
 // ====================== Model related concepts ======================
-enum ModelType { // don't plan to do much with this anytime soon
-    XGBoost = 0
-    PyTorch = 1
-    TensorFlow = 2
-    ScikitLearn = 3
-    LightGBM = 4
-
-    Other = 100
+enum ModelTrainingType { // we will conditionally trigger training based on this
+    PRE_TRAINED = 0
+    TRAINED = 1
 }
 
+struct ExistingInferenceEndpoint {
+    1: optional string endpointPath
+    2: optional string additionalInfoJson // gets passed into the inferencing endpoint
+}
+
+struct ResourceAllocation {
+    1: optional i64 numWorkers
+    2: optional string hostSku
+
+    10: optional double cpuCores
+    11: optional i64 memoryBytes
+    12: optional double gpuCores
+    13: optional i64 gpuMemoryBytes
+    // TODO add disk, network etc
+
+    100: optional string additionalConfigJson
+}
+
+
+// chronon will trigger the deployment
+// will be passed to the implementation of InferencePlatform
+struct HostableInferenceEndpoint {
+    1: optional Model model
+    2: optional string artifactPath
+    3: optional list<ResourceAllocation> resourceAllocations
+}
+
+struct EmbeddedInference {
+    1: optional Model model
+    2: optional string artifactPath
+    3: optional string artifactType
+}
+
+union InferencePattern {
+    1: optional ExistingInferenceEndpoint existingEndpoint
+    2: optional HostableInferenceEndpoint hostableEndpoint
+    3: optional EmbeddedInference embedded
+}
+
+enum ModelServingType { // we will conditionally trigger hosting based on this
+    /**
+    *  Chronon will assume that an external endpoint has been prepared
+    **/
+    SELF_HOSTED = 0
+
+    /**
+    * Chronon will prepare the Inference endpoint
+    *
+    * To prepare an end-point:
+    *   - we will call into the ModelPlatform interface with a EndPointSpec and optional model path
+    *   - users can customize the implementation of the model platform
+    *   - batch inference will still also do batch gets into this end-point with batchSize defined in EndPointSpec
+    **/
+    HOSTED = 1
+
+    /**
+    * we will colocate model inference on the "executor" / "server" for offline and online inference
+    * useful for smaller & simpler models that can run on cpu-s.
+    **/
+    EMBEDDED = 2
+}
+
+// encapsulates either a trained or pre-trained model
+// even for out of band hosted models we will need the output schema to plumb into column lineage
 struct Model {
     1: optional MetaData metaData
-    2: optional ModelType modelType
+    2: optional ModelTrainingType modelType
     3: optional TDataType outputSchema
     4: optional Source source
     5: optional map<string, string> modelParams
 }
 
+// independent of model
+// used by orchestrator to deploy trained or pre-trained model for inference
+//
+struct ModelDeployment {
+    1: optional i64 minWorkerCount
+    2: optional i64 maxWorkerCount
+    3: optional string workerType
+    4: optional string scalingPolicyJson
+}
 struct Team {
     1: optional string name
     2: optional string description
