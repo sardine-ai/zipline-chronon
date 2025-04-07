@@ -1,10 +1,9 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.JobAuth
-import ai.chronon.spark.JobSubmitter
-import ai.chronon.spark.JobSubmitterConstants._
-import ai.chronon.spark.JobType
-import ai.chronon.spark.{FlinkJob => TypeFlinkJob}
-import ai.chronon.spark.{SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.JobSubmitter
+import ai.chronon.spark.submission.JobSubmitterConstants._
+import ai.chronon.spark.submission.JobType
+import ai.chronon.spark.submission.{FlinkJob => TypeFlinkJob}
+import ai.chronon.spark.submission.{SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import org.json4s._
@@ -304,5 +303,3 @@ object DataprocSubmitter {
       s"Safe to exit. Follow the job status at: https://console.cloud.google.com/dataproc/jobs/${jobId}/configuration?region=${region}&project=${projectId}")
   }
 }
-
-object DataprocAuth extends JobAuth {}

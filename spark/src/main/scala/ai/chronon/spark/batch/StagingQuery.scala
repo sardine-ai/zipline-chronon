@@ -2,12 +2,15 @@ package ai.chronon.spark.batch
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{EngineType, ParametricMacro, PartitionRange}
+import ai.chronon.api.thrift.TBase
+import ai.chronon.api.{EngineType, ParametricMacro, PartitionRange, ThriftJsonCodec}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{Args, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.{SparkSessionBuilder, TableUtils}
+import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -85,6 +88,24 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
         throw new Exception(fullMessage)
       }
     }
+  }
+}
+
+class Args(args: Seq[String]) extends ScallopConf(args) {
+  val confPath: ScallopOption[String] = opt[String](required = true)
+  val endDate: ScallopOption[String] = opt[String](required = false)
+  val stepDays: ScallopOption[Int] = opt[Int](required = false) // doesn't apply to uploads
+  val skipEqualCheck: ScallopOption[Boolean] =
+    opt[Boolean](required = false, default = Some(false)) // only applies to join job for versioning
+  def parseConf[T <: TBase[_, _]: Manifest: ClassTag]: T =
+    ThriftJsonCodec.fromJsonFile[T](confPath(), check = true)
+
+  override def toString(): String = {
+    s"""
+       |confPath = $confPath
+       |endDate = $endDate
+       |stepDays = $stepDays
+       |skipEqualCheck = $skipEqualCheck""".stripMargin
   }
 }
 

@@ -1,10 +1,10 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.spark
-import ai.chronon.spark.JobSubmitterConstants.FlinkMainJarURI
-import ai.chronon.spark.JobSubmitterConstants.FlinkStateUri
-import ai.chronon.spark.JobSubmitterConstants.JarURI
-import ai.chronon.spark.JobSubmitterConstants.MainClass
+import ai.chronon.spark.submission.JobSubmitterConstants.FlinkMainJarURI
+import ai.chronon.spark.submission.JobSubmitterConstants.FlinkStateUri
+import ai.chronon.spark.submission.JobSubmitterConstants.JarURI
+import ai.chronon.spark.submission.JobSubmitterConstants.MainClass
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
@@ -43,7 +43,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       new DataprocSubmitter(mockJobControllerClient, SubmitterConf("test-project", "test-region", "test-cluster"))
 
     val submittedJobId =
-      submitter.submit(spark.SparkJob,
+      submitter.submit(spark.submission.SparkJob,
                        Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"),
                        Map.empty,
                        List.empty)
@@ -54,7 +54,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     val submitter = DataprocSubmitter()
     submitter.submit(
-      spark.FlinkJob,
+      spark.submission.FlinkJob,
       Map(
         MainClass -> "ai.chronon.flink.FlinkJob",
         FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
@@ -79,7 +79,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(
-        spark.FlinkJob,
+        spark.submission.FlinkJob,
         Map(
           MainClass -> "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
           FlinkMainJarURI -> "gs://zipline-jars/flink_kafka_ingest-assembly-0.1.0-SNAPSHOT.jar",
@@ -101,7 +101,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(
-        spark.SparkJob,
+        spark.submission.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
             JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         Map.empty,
@@ -121,7 +121,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val submitter = DataprocSubmitter()
     val submittedJobId =
       submitter.submit(
-        spark.SparkJob,
+        spark.submission.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
             JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
         Map.empty,
