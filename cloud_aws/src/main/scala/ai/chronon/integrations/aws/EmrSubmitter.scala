@@ -3,10 +3,10 @@ package ai.chronon.integrations.aws
 import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterIdleTimeout
 import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterInstanceCount
 import ai.chronon.integrations.aws.EmrSubmitter.DefaultClusterInstanceType
-import ai.chronon.spark.JobSubmitter
-import ai.chronon.spark.JobSubmitterConstants._
-import ai.chronon.spark.JobType
-import ai.chronon.spark.{SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.JobSubmitter
+import ai.chronon.spark.submission.JobSubmitterConstants._
+import ai.chronon.spark.submission.JobType
+import ai.chronon.spark.submission.{SparkJob => TypeSparkJob}
 import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.ActionOnFailure
 import software.amazon.awssdk.services.emr.model.AddJobFlowStepsRequest
