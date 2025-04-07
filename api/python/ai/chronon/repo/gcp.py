@@ -1,6 +1,5 @@
 import base64
 import json
-import logging
 import multiprocessing
 import os
 from typing import List
@@ -8,6 +7,7 @@ from typing import List
 import crcmod
 from google.cloud import storage
 
+from ai.chronon.logger import get_logger
 from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
@@ -20,6 +20,8 @@ from ai.chronon.repo.utils import (
     retry_decorator,
     split_date_range,
 )
+
+LOG = get_logger()
 
 # GCP DATAPROC SPECIFIC CONSTANTS
 DATAPROC_ENTRY = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter"
@@ -223,10 +225,6 @@ class GcpRunner(Runner):
 
         zipline_artifacts_bucket_prefix = "gs://zipline-artifacts"
 
-        gcs_files.append(
-            f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}/confs/additional-confs.yaml"
-        )
-
         gcs_file_args = ",".join(gcs_files)
 
         # include jar uri. should also already be in the bucket
@@ -407,7 +405,7 @@ class GcpRunner(Runner):
         if len(command_list) > 1:
             # parallel backfill mode
             with multiprocessing.Pool(processes=int(self.parallelism)) as pool:
-                logging.info(
+                LOG.info(
                     "Running args list {} with pool size {}".format(
                         command_list, self.parallelism
                     )

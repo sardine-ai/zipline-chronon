@@ -1,11 +1,11 @@
 import json
-import logging
 import multiprocessing
 import os
 from typing import List
 
 import boto3
 
+from ai.chronon.logger import get_logger
 from ai.chronon.repo.constants import ROUTES, ZIPLINE_DIRECTORY
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.utils import (
@@ -15,6 +15,8 @@ from ai.chronon.repo.utils import (
     get_customer_id,
     split_date_range,
 )
+
+LOG = get_logger()
 
 # AWS SPECIFIC CONSTANTS
 EMR_ENTRY = "ai.chronon.integrations.aws.EmrSubmitter"
@@ -285,7 +287,7 @@ class AwsRunner(Runner):
         if len(command_list) > 1:
             # parallel backfill mode
             with multiprocessing.Pool(processes=int(self.parallelism)) as pool:
-                logging.info(
+                LOG.info(
                     "Running args list {} with pool size {}".format(
                         command_list, self.parallelism
                     )

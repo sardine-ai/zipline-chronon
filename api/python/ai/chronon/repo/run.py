@@ -39,6 +39,7 @@ from ai.chronon.repo.constants import (
     ONLINE_MODES,
     RENDER_INFO_DEFAULT_SCRIPT,
     ZIPLINE_DIRECTORY,
+    RunMode,
 )
 from ai.chronon.repo.default_runner import Runner
 from ai.chronon.repo.gcp import (
@@ -49,13 +50,13 @@ from ai.chronon.repo.gcp import (
 from ai.chronon.repo.utils import get_environ_arg, set_runtime_env_v3
 
 
+# TODO: @davidhan - we should move these to all be in the defaults of the choice args
 def set_defaults(ctx):
     """Set default values based on environment."""
     chronon_repo_path = os.environ.get("CHRONON_REPO_PATH", ".")
     today = datetime.today().strftime("%Y-%m-%d")
 
     defaults = {
-        "mode": "backfill",
         "dataproc": False,
         "ds": today,  # TODO: this breaks if the partition column is not the same as yyyy-MM-dd.
         "app_name": os.environ.get("APP_NAME"),
@@ -104,7 +105,7 @@ def _set_package_version():
     default="dev",
     help="Running environment - default to be dev",
 )
-@click.option("--mode", type=click.Choice(MODE_ARGS.keys()))
+@click.option("--mode", type=click.Choice(MODE_ARGS.keys()), default=RunMode.BACKFILL)
 @click.option("--dataproc", is_flag=True, help="Run on Dataproc in GCP")
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
