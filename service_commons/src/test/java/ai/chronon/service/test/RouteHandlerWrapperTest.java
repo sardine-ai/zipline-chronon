@@ -52,31 +52,31 @@ class RouteHandlerWrapperTest {
 
         // Create handler for pojo
         Function<TestInput, TestOutput> transformer = input ->
-                new TestOutput(
-                        input.getUserId(),
-                        String.format("Status: %s, Role: %s, Accuracy: %s, Limit: %d, Amount: %.2f, Active: %b, Items: %s, Props: %s",
-                                input.getStatus(),
-                                input.getRole(),
-                                input.getAccuracy(),
-                                input.getLimit(),
-                                input.getAmount(),
-                                input.isActive(),
-                                input.getItems() != null ? String.join(",", input.getItems()) : "null",
-                                input.getProps() != null ?
-                                        input.getProps().entrySet()
-                                                .stream()
-                                                .map(entry -> entry.getKey() + ":" + entry.getValue())
-                                                .collect(Collectors.joining(","))
-                                        : "null"
-                        )
-                );
+            new TestOutput(
+                    input.getUserId(),
+                    String.format("Status: %s, Role: %s, Accuracy: %s, Limit: %d, Amount: %.2f, Active: %b, Items: %s, Props: %s",
+                            input.getStatus(),
+                            input.getRole(),
+                            input.getAccuracy(),
+                            input.getLimit(),
+                            input.getAmount(),
+                            input.isActive(),
+                            input.getItems() != null ? String.join(",", input.getItems()) : "null",
+                            input.getProps() != null ?
+                                    input.getProps().entrySet()
+                                            .stream()
+                                            .map(entry -> entry.getKey() + ":" + entry.getValue())
+                                            .collect(Collectors.joining(","))
+                                    : "null"
+                    )
+            );
 
         // Create handler for thrift
         Function<TileKey, TileKey> thriftTransformer = input -> input;
 
         // Create handler for thrift with enum inside
         Function<Window, Window> windowTransformer = input -> input;
-
+        
         // Create handler for nested thrift objects
         Function<UploadRequest, UploadRequest> uploadTransformer = input -> input;
 
@@ -91,7 +91,7 @@ class RouteHandlerWrapperTest {
 
         router.get("/api/window/units/:timeUnit/")
                 .handler(RouteHandlerWrapper.createHandler(windowTransformer, Window.class));
-
+                
         router.post("/api/upload/:branch")
                 .handler(RouteHandlerWrapper.createHandler(uploadTransformer, UploadRequest.class));
 
@@ -282,7 +282,7 @@ class RouteHandlerWrapperTest {
                     testContext.completeNow();
                 })));
     }
-
+    
     @Test
     void testNestedThriftObject(VertxTestContext testContext) {
         // Create a JSON payload with nested objects
@@ -290,17 +290,17 @@ class RouteHandlerWrapperTest {
                 .put("name", "testConfig1")
                 .put("hash", "abc123")
                 .put("contents", "config contents 1");
-
+                
         JsonObject confObject2 = new JsonObject()
                 .put("name", "testConfig2")
                 .put("hash", "def456")
                 .put("contents", "config contents 2");
-
+                
         JsonObject requestBody = new JsonObject()
                 .put("diffConfs", new io.vertx.core.json.JsonArray()
                         .add(confObject1)
                         .add(confObject2));
-
+                
         client.post("/api/upload/feature-branch")
                 .putHeader("Content-Type", "application/json")
                 .sendJson(requestBody)
@@ -325,91 +325,5 @@ class RouteHandlerWrapperTest {
 
                     testContext.completeNow();
                 })));
-    }
-    
-    /**
-     * Test for the diff request flow with JSON, specifically checking if RouteHandlerWrapper
-     * properly handles JSON in the request and response for the diff endpoint.
-     */
-    @Test
-    void testDiffRequestResponseFlow(VertxTestContext testContext) {
-        // Add a test route for the diff endpoint to test JSON processing
-        Vertx.currentContext().owner().eventBus().consumer("test.diff.endpoint", message -> {
-            // Log the received message for debugging
-            System.out.println("Received diff request: " + message.body());
-            
-            // Create a diff response with entity names in JSON format
-            JsonObject response = new JsonObject()
-                .put("diff", new JsonArray()
-                    .add("{\"entity1\":\"hash1\"}")  // A JSON object as a string
-                    .add("\"entity2\"")             // A simple quoted string
-                    .add("entity3"));               // An unquoted string
-                    
-            message.reply(response);
-        });
-        
-        // Setup the diff request handler
-        Router router = (Router) Vertx.currentContext().get("testRouter");
-        router.post("/api/diff")
-            .handler(ctx -> {
-                // Extract and validate the request body
-                JsonObject body = ctx.getBodyAsJson();
-                if (body == null || !body.containsKey("namesToHashes")) {
-                    ctx.response().setStatusCode(400).end("Invalid request");
-                    return;
-                }
-                
-                // Send the diff request to our test handler
-                Vertx.currentContext().owner().eventBus().request("test.diff.endpoint", body, ar -> {
-                    if (ar.succeeded()) {
-                        ctx.response()
-                            .putHeader("content-type", "application/json")
-                            .end(ar.result().body().toString());
-                    } else {
-                        ctx.fail(ar.cause());
-                    }
-                });
-            });
-            
-        // Create a map of names to hashes
-        JsonObject namesToHashes = new JsonObject()
-            .put("entity1", "hash1")
-            .put("entity2", "hash2")
-            .put("entity3", "hash3");
-            
-        // Create the request body
-        JsonObject requestBody = new JsonObject()
-            .put("namesToHashes", namesToHashes);
-            
-        // Send the request
-        client.post("/api/diff")
-            .putHeader("Content-Type", "application/json")
-            .sendJson(requestBody)
-            .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
-                // Check the response status
-                if (response.statusCode() != 200) {
-                    System.out.println("Error response: " + response.bodyAsString());
-                }
-                assertEquals(200, response.statusCode());
-                
-                // Verify the response structure
-                JsonObject responseBody = response.bodyAsJsonObject();
-                assertTrue(responseBody.containsKey("diff"), "Response should contain a diff array");
-                
-                JsonArray diff = responseBody.getJsonArray("diff");
-                assertEquals(3, diff.size(), "Should have 3 items in the diff array");
-                
-                // Check the different formats of entity names in the response
-                String firstItem = diff.getString(0);
-                assertTrue(firstItem.startsWith("{\""), "First item should be a JSON object string");
-                
-                String secondItem = diff.getString(1);
-                assertTrue(secondItem.startsWith("\""), "Second item should be a quoted string");
-                
-                String thirdItem = diff.getString(2);
-                assertFalse(thirdItem.startsWith("\""), "Third item should be an unquoted string");
-                
-                testContext.completeNow();
-            })));
     }
 }

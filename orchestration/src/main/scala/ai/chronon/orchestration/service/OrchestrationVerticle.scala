@@ -37,7 +37,6 @@ class OrchestrationVerticle extends AbstractVerticle {
 
   @throws[Exception]
   protected def startHttpServer(port: Int, configJsonString: String, startPromise: Promise[Void]): Unit = {
-    println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     val db = Database.forURL(
       url = "jdbc:postgresql://localhost:5432/postgres", // Default database name in PostgreSQL
       user = "postgres", // Default PostgreSQL user
@@ -45,7 +44,6 @@ class OrchestrationVerticle extends AbstractVerticle {
       driver = "org.postgresql.Driver"
     )
     this.db = db
-    println("db: " + db)
 
     val router = Router.router(vertx)
     wireUpCORSConfig(router)
