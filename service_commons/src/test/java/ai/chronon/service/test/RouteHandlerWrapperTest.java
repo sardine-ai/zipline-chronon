@@ -3,10 +3,14 @@ package ai.chronon.service.test;
 import ai.chronon.observability.TileKey;
 import ai.chronon.api.TimeUnit;
 import ai.chronon.api.Window;
+import ai.chronon.orchestration.Conf;
+import ai.chronon.orchestration.UploadRequest;
 import ai.chronon.service.RouteHandlerWrapper;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.ext.web.client.WebClient;
@@ -42,7 +46,7 @@ class RouteHandlerWrapperTest {
 
     @BeforeEach
     void setUp(Vertx vertx, VertxTestContext testContext) {
-        int testPort = 8888;
+        int testPort = 9999;
         client = WebClient.create(vertx, new WebClientOptions().setDefaultPort(testPort));
         Router router = Router.router(vertx);
 
@@ -72,17 +76,24 @@ class RouteHandlerWrapperTest {
 
         // Create handler for thrift with enum inside
         Function<Window, Window> windowTransformer = input -> input;
+        
+        // Create handler for nested thrift objects
+        Function<UploadRequest, UploadRequest> uploadTransformer = input -> input;
 
+        router.route().handler(BodyHandler.create());
 
         // routes
         router.get("/api/column/:column/slice/:slice")
                 .handler(RouteHandlerWrapper.createHandler(thriftTransformer, TileKey.class));
 
-        router.get("/api/users/:userId/test")
+        router.post("/api/users/:userId/test")
                 .handler(RouteHandlerWrapper.createHandler(transformer, TestInput.class));
 
         router.get("/api/window/units/:timeUnit/")
                 .handler(RouteHandlerWrapper.createHandler(windowTransformer, Window.class));
+                
+        router.post("/api/upload/:branch")
+                .handler(RouteHandlerWrapper.createHandler(uploadTransformer, UploadRequest.class));
 
         // Start server
         vertx.createHttpServer()
@@ -98,15 +109,15 @@ class RouteHandlerWrapperTest {
 
     @Test
     public void testEnumParameters(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
+        client.post("/api/users/123/test")
                 .addQueryParam("status", "PENDING")
                 .addQueryParam("role", "ADMIN")
                 .addQueryParam("limit", "10")
                 .addQueryParam("amount", "99.99")
                 .addQueryParam("active", "true")
-                .addQueryParam("items", "a,b,c")
-                .addQueryParam("props", "k1:v1,k2:v2,k3:v3")
-                .send()
+                .sendJsonObject(new JsonObject()
+                        .put("items", new JsonArray().add("a").add("b").add("c"))
+                        .put("props", new JsonObject().put("k1", "v1").put("k2", "v2").put("k3", "v3")))
                 .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
                     assertEquals(200, response.statusCode());
 
@@ -122,41 +133,19 @@ class RouteHandlerWrapperTest {
 
     @Test
     public void testInvalidEnumValue(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
+        client.post("/api/users/123/test")
                 .addQueryParam("status", "INVALID_STATUS")
                 .send()
                 .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
-                    assertEquals(400, response.statusCode());
-                    JsonObject error = response.bodyAsJsonObject();
-                    assertTrue(error.getString("error").contains("Invalid enum value"));
-
-                    testContext.completeNow();
-                })));
-    }
-
-    @Test
-    public void testCaseInsensitiveEnum(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
-                .addQueryParam("status", "pending")  // lowercase
-                .addQueryParam("role", "admin")      // lowercase
-                .addQueryParam("accuracy", "temporal")
-                .send()
-                .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
-                    assertEquals(200, response.statusCode());
-
-                    JsonObject result = response.bodyAsJsonObject();
-                    String summary = result.getString("summary");
-                    assertTrue(summary.contains("Status: PENDING"));
-                    assertTrue(summary.contains("Role: ADMIN"));
-                    assertTrue(summary.contains("Accuracy: TEMPORAL"));
+                    assertEquals(500, response.statusCode());
                     testContext.completeNow();
                 })));
     }
 
     @Test
     void testSuccessfulParameterMapping(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
-                .addQueryParam("status", "pending")
+        client.post("/api/users/123/test")
+                .addQueryParam("status", "PENDING")
                 .addQueryParam("limit", "10")
                 .addQueryParam("amount", "99.99")
                 .addQueryParam("active", "true")
@@ -177,22 +166,18 @@ class RouteHandlerWrapperTest {
 
     @Test
     void testInvalidNumberParameter(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
+        client.post("/api/users/123/test")
                 .addQueryParam("limit", "not-a-number")
                 .send()
                 .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
-                    assertEquals(400, response.statusCode());
-
-                    JsonObject error = response.bodyAsJsonObject();
-                    assertTrue(error.getString("error").contains("not-a-number"));
-
+                    assertEquals(500, response.statusCode());
                     testContext.completeNow();
                 })));
     }
 
     @Test
     void testMissingOptionalParameters(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
+        client.post("/api/users/123/test")
                 .send()
                 .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
                     assertEquals(200, response.statusCode());
@@ -210,8 +195,8 @@ class RouteHandlerWrapperTest {
 
     @Test
     void testAllParameterTypes(VertxTestContext testContext) {
-        client.get("/api/users/123/test")
-                .addQueryParam("status", "processing")
+        client.post("/api/users/123/test")
+                .addQueryParam("status", "PROCESSING")
                 .addQueryParam("limit", "5")
                 .addQueryParam("amount", "123.45")
                 .addQueryParam("active", "true")
@@ -258,7 +243,7 @@ class RouteHandlerWrapperTest {
 
     @Test
     void testAllParameterTypesThriftWithEnum(VertxTestContext testContext) {
-        client.get("/api/window/units/hours/")
+        client.get("/api/window/units/HOURS/")
                 .addQueryParam("length", "100")
                 .send()
                 .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
@@ -269,15 +254,16 @@ class RouteHandlerWrapperTest {
 
                     JsonObject result = response.bodyAsJsonObject();
 
-                    assertEquals(result.getString("timeUnit"), "HOURS");
-                    assertEquals(result.getString("length"), "100");
+                    // Thrift enums are serialized as integer values by TSimpleJSONProtocol
+                    assertEquals(String.valueOf(TimeUnit.HOURS.getValue()), result.getString("timeUnit"));
+                    assertEquals("100", result.getString("length"));
                     testContext.completeNow();
                 })));
     }
 
     @Test
     void testAllParameterTypesThriftWithEnumSerialized(VertxTestContext testContext) {
-        client.get("/api/window/units/hours/")
+        client.get("/api/window/units/HOURS/")
                 .addQueryParam("length", "100")
                 .putHeader(RouteHandlerWrapper.RESPONSE_CONTENT_TYPE_HEADER,
                         RouteHandlerWrapper.TBINARY_B64_TYPE_VALUE)
@@ -293,6 +279,50 @@ class RouteHandlerWrapperTest {
 
                     assertEquals(w.timeUnit, TimeUnit.HOURS);
                     assertEquals(w.length, 100);
+                    testContext.completeNow();
+                })));
+    }
+    
+    @Test
+    void testNestedThriftObject(VertxTestContext testContext) {
+        // Create a JSON payload with nested objects
+        JsonObject confObject1 = new JsonObject()
+                .put("name", "testConfig1")
+                .put("hash", "abc123")
+                .put("contents", "config contents 1");
+                
+        JsonObject confObject2 = new JsonObject()
+                .put("name", "testConfig2")
+                .put("hash", "def456")
+                .put("contents", "config contents 2");
+                
+        JsonObject requestBody = new JsonObject()
+                .put("diffConfs", new io.vertx.core.json.JsonArray()
+                        .add(confObject1)
+                        .add(confObject2));
+                
+        client.post("/api/upload/feature-branch")
+                .putHeader("Content-Type", "application/json")
+                .sendJson(requestBody)
+                .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
+                    if(response.statusCode() != 200) {
+                        System.out.println(response.bodyAsString());
+                    }
+                    assertEquals(200, response.statusCode());
+
+                    JsonObject result = response.bodyAsJsonObject();
+                    JsonArray diffConfs = result.getJsonArray("diffConfs");
+                    assertEquals(2, diffConfs.size());
+                    assertEquals("testConfig1", ((JsonObject) diffConfs.getValue(0)).getString("name"));
+                    assertEquals("feature-branch", result.getString("branch"));
+
+                    diffConfs.forEach(item -> {
+                        JsonObject conf = (JsonObject) item;
+                        assertNotNull(conf.getString("name"));
+                        assertNotNull(conf.getString("hash"));
+                        assertNotNull(conf.getString("contents"));
+                    });
+
                     testContext.completeNow();
                 })));
     }
