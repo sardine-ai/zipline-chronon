@@ -19,7 +19,7 @@ fi
 
 # Load up metadata into DynamoDB
 echo "Loading metadata.."
-if ! java -cp $SPARK_JAR:$CLASSPATH ai.chronon.spark.Driver metadata-upload --conf-path=/chronon_sample/production/ --online-jar=$CLOUD_AWS_JAR --online-class=$ONLINE_CLASS; then
+if ! java -cp $SPARK_JAR:$CLASSPATH ai.chronon.spark.Driver metadata-upload --conf-path=/chronon_sample/compiled/ --online-jar=$CLOUD_AWS_JAR --online-class=$ONLINE_CLASS; then
   echo "Error: Failed to load metadata into DynamoDB" >&2
   exit 1
 fi
