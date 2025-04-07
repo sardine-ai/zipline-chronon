@@ -24,6 +24,7 @@ import click
 import pytest
 
 from ai.chronon.repo import default_runner, run, utils
+from ai.chronon.repo.constants import RunMode
 
 DEFAULT_ENVIRONMENT = os.environ.copy()
 
@@ -50,7 +51,6 @@ def context():
 @pytest.fixture
 def test_conf_location():
     """Sample test conf for tests"""
-    # return "production/joins/sample_team/sample_online_join.v1"
     return "compiled/joins/sample_team/sample_online_join.v1"
 
 
@@ -91,6 +91,7 @@ def test_environment(teams_json, repo, test_conf_location):
     reset_env(default_environment)
     ctx = context()
     ctx.params["repo"] = repo
+    ctx.params['mode'] = RunMode.BACKFILL
     run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert os.environ["VERSION"] == "latest"
 
