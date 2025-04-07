@@ -35,7 +35,7 @@ from ai.chronon.group_by import get_output_col_names
 from ai.chronon.logger import get_logger
 from ai.chronon.repo.serializer import thrift_simple_json
 
-# Fields that indicate stutus of the entities.
+# Fields that indicate status of the entities.
 SKIPPED_FIELDS = frozenset(["metaData"])
 EXTERNAL_KEY = "onlineExternalParts"
 

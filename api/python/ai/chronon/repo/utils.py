@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 import subprocess
@@ -9,12 +8,14 @@ from datetime import datetime, timedelta
 from enum import Enum
 
 from ai.chronon.cli.compile.parse_teams import EnvOrConfigAttribute
+from ai.chronon.logger import get_logger
 from ai.chronon.repo.constants import (
     APP_NAME_TEMPLATE,
     SCALA_VERSION_FOR_SPARK,
     SUPPORTED_SPARK,
 )
 
+LOG = get_logger()
 
 class JobType(Enum):
     SPARK = "spark"
@@ -30,9 +31,9 @@ def retry_decorator(retries=3, backoff=20):
                     return func(*args, **kwargs)
                 except Exception as e:
                     attempt += 1
-                    logging.exception(e)
+                    LOG.exception(e)
                     sleep_time = attempt * backoff
-                    logging.info(
+                    LOG.info(
                         "[{}] Retry: {} out of {}/ Sleeping for {}".format(
                             func.__name__, attempt, retries, sleep_time
                         )
@@ -61,12 +62,12 @@ def extract_filename_from_path(path):
 
 
 def check_call(cmd):
-    logging.info("Running command: " + cmd)
+    LOG.info("Running command: " + cmd)
     return subprocess.check_call(cmd.split(), bufsize=0)
 
 
 def check_output(cmd):
-    logging.info("Running command: " + cmd)
+    LOG.info("Running command: " + cmd)
     return subprocess.check_output(cmd.split(), bufsize=0).strip()
 
 
@@ -79,7 +80,7 @@ def custom_json(conf):
 
 def download_only_once(url, path, skip_download=False):
     if skip_download:
-        logging.info("Skipping download of " + path)
+        LOG.info("Skipping download of " + path)
         return
     should_download = True
     path = path.strip()
@@ -88,7 +89,7 @@ def download_only_once(url, path, skip_download=False):
         content_length = re.search("(content-length:\\s)(\\d+)", content_output.lower())
         remote_size = int(content_length.group().split()[-1])
         local_size = int(check_output("wc -c " + path).split()[0])
-        logging.info(
+        LOG.info(
             """Files sizes of {url} vs. {path}
     Remote size: {remote_size}
     Local size : {local_size}""".format(
@@ -96,15 +97,15 @@ def download_only_once(url, path, skip_download=False):
             )
         )
         if local_size == remote_size:
-            logging.info("Sizes match. Assuming it's already downloaded.")
+            LOG.info("Sizes match. Assuming it's already downloaded.")
             should_download = False
         if should_download:
-            logging.info(
+            LOG.info(
                 "Different file from remote at local: " + path + ". Re-downloading.."
             )
             check_call("curl {} -o {} --connect-timeout 10".format(url, path))
     else:
-        logging.info("No file at: " + path + ". Downloading..")
+        LOG.info("No file at: " + path + ". Downloading..")
         check_call("curl {} -o {} --connect-timeout 10".format(url, path))
 
 
@@ -128,7 +129,7 @@ def download_jar(
     )
     url_prefix = maven_url_prefix if maven_url_prefix else default_url_prefix
     base_url = "{}/ai/chronon/spark_{}_{}".format(url_prefix, jar_type, scala_version)
-    logging.info("Downloading jar from url: " + base_url)
+    LOG.info("Downloading jar from url: " + base_url)
     jar_path = os.environ.get("CHRONON_DRIVER_JAR", None)
     if jar_path is None:
         if version == "latest":
@@ -184,7 +185,7 @@ def set_runtime_env_v3(params, conf):
                 try:
                     _, conf_type, team, _ = conf.split("/")[-4:]
                 except Exception as e:
-                    logging.error(
+                    LOG.error(
                         "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
                            conf
                         )
@@ -198,7 +199,7 @@ def set_runtime_env_v3(params, conf):
                     context = params["env"]
                 else:
                     context = "dev"
-                logging.info(f"Context: {context} -- conf_type: {conf_type} -- team: {team}")
+                LOG.info(f"Context: {context} -- conf_type: {conf_type} -- team: {team}")
 
                 runtime_env["APP_NAME"] = APP_NAME_TEMPLATE.format(
                     mode=effective_mode,
@@ -222,7 +223,8 @@ def set_runtime_env_v3(params, conf):
                 )
     for key, value in runtime_env.items():
         if key not in os.environ and value is not None:
-            logging.info(f"Setting to environment: {key}={value}")
+            LOG.info(f"Setting to environment: {key}={value}")
+            print(f"Setting to environment: {key}={value}")
             os.environ[key] = value
 
 # TODO: delete this when we cutover
@@ -306,14 +308,14 @@ def set_runtime_env(params):
             "common_env",
             "cli_args",
         ]
-        logging.info("Setting env variables:")
+        LOG.info("Setting env variables:")
         for key in os.environ:
             if any([key in (environment.get(set_key, {}) or {}) for set_key in order]):
-                logging.info(f"From <environment> found {key}={os.environ[key]}")
+                LOG.info(f"From <environment> found {key}={os.environ[key]}")
         for set_key in order:
             for key, value in (environment.get(set_key, {}) or {}).items():
                 if key not in os.environ and value is not None:
-                    logging.info(f"From <{set_key}> setting {key}={value}")
+                    LOG.info(f"From <{set_key}> setting {key}={value}")
                     os.environ[key] = value
 
 # TODO: delete this when we cutover
@@ -327,7 +329,7 @@ def set_runtime_env_teams_json(environment, params, effective_mode, teams_json_f
             try:
                 _, conf_type, team, _ = params["conf"].split("/")[-4:]
             except Exception as e:
-                logging.error(
+                LOG.error(
                     "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
                         params["conf"]
                     )
@@ -341,7 +343,7 @@ def set_runtime_env_teams_json(environment, params, effective_mode, teams_json_f
                 context = params["env"]
             else:
                 context = "dev"
-            logging.info(
+            LOG.info(
                 f"Context: {context} -- conf_type: {conf_type} -- team: {team}"
             )
             conf_path = os.path.join(params["repo"], params["conf"])
@@ -423,14 +425,14 @@ def set_runtime_env_teams_json(environment, params, effective_mode, teams_json_f
         "common_env",
         "cli_args",
     ]
-    logging.info("Setting env variables:")
+    LOG.info("Setting env variables:")
     for key in os.environ:
         if any([key in environment[set_key] for set_key in order]):
-            logging.info(f"From <environment> found {key}={os.environ[key]}")
+            LOG.info(f"From <environment> found {key}={os.environ[key]}")
     for set_key in order:
         for key, value in environment[set_key].items():
             if key not in os.environ and value is not None:
-                logging.info(f"From <{set_key}> setting {key}={value}")
+                LOG.info(f"From <{set_key}> setting {key}={value}")
                 os.environ[key] = value
 
 
