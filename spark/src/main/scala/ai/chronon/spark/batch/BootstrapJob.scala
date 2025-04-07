@@ -28,7 +28,7 @@ class BootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit tableUtil
 
   private val join = node.join
   private val dateRange = range.toPartitionRange
-  private val leftSourceTable = JoinUtils.computeLeftSourceTableName(join)
+  private val leftSourceTable = JoinUtils.computeFullLeftSourceTableName(join)
 
   // Use the node's metadata output table
   private val outputTable = node.metaData.outputTable

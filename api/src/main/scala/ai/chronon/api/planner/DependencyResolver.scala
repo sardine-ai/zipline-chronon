@@ -1,8 +1,8 @@
-package ai.chronon.api.dependency
+package ai.chronon.api.planner
 
 import ai.chronon.api
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.Extensions.WindowUtils._
+import ai.chronon.api.Extensions.WindowUtils.convertUnits
 import ai.chronon.api.{PartitionRange, PartitionSpec, TableDependency, TableInfo, Window}
 
 object DependencyResolver {

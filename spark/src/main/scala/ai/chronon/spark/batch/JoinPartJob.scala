@@ -1,5 +1,9 @@
 package ai.chronon.spark.batch
-import ai.chronon.api.DataModel.{Entities, Events}
+
+import ai.chronon.api
+import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
+import ai.chronon.api.DataModel
+import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.PartitionRange.toTimeRange
 import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange}
@@ -27,10 +31,6 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
   implicit val partitionSpec = tableUtils.partitionSpec
 
   private val leftTable = node.leftSourceTable
-  private val leftDataModel = node.leftDataModel match {
-    case "Entities" => Entities
-    case "Events"   => Events
-  }
   private val joinPart = node.joinPart
   private val dateRange = range.toPartitionRange
   private val skewKeys: Option[Map[String, Seq[String]]] = Option(node.skewKeys).map { skewKeys =>
@@ -44,9 +44,9 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     val jobContext = context.getOrElse {
       // LeftTable is already computed by SourceJob, no need to apply query/filters/etc
       val relevantLeftCols =
-        joinPart.rightToLeft.keys.toArray ++ Seq(tableUtils.partitionColumn) ++ (leftDataModel match {
-          case Entities => None
-          case Events   => Some(Constants.TimeColumn)
+        joinPart.rightToLeft.keys.toArray ++ Seq(tableUtils.partitionColumn) ++ (node.leftDataModel match {
+          case ENTITIES => None
+          case EVENTS   => Some(Constants.TimeColumn)
         })
 
       val query = Builders.Query(selects = relevantLeftCols.map(t => t -> t).toMap)
@@ -65,7 +65,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       val leftWithStats = cachedLeftDf.withStats
 
       val joinLevelBloomMapOpt =
-        JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, dateRange, None)
+        JoinUtils.genBloomFilterIfNeeded(joinPart, node.leftDataModel, dateRange, None)
 
       JoinPartJobContext(Option(leftWithStats),
                          joinLevelBloomMapOpt,
@@ -99,7 +99,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     // val partMetrics = Metrics.Context(metrics, joinPart) -- TODO is this metrics context sufficient, or should we pass thru for monolith join?
     val partMetrics = Metrics.Context(Metrics.Environment.JoinOffline, joinPart.groupBy)
 
-    val rightRange = JoinUtils.shiftDays(leftDataModel, joinPart, leftTimeRangeOpt, leftDfOpt, leftRange)
+    val rightRange = JoinUtils.shiftDays(node.leftDataModel, joinPart, leftTimeRangeOpt, leftDfOpt, leftRange)
 
     // Can kill the option after we deprecate monolith join job
     leftDfOpt.map { leftDf =>
@@ -150,7 +150,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     val rightBloomMap = if (skipBloom) {
       None
     } else {
-      JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, dateRange, joinLevelBloomMapOpt)
+      JoinUtils.genBloomFilterIfNeeded(joinPart, node.leftDataModel, dateRange, joinLevelBloomMapOpt)
     }
 
     val rightSkewFilter = JoinUtils.partSkewFilter(joinPart, skewKeys)
@@ -217,17 +217,18 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
         date_format(renamedLeftRawDf.col(c), tableUtils.partitionFormat).as(c)
       case c => renamedLeftRawDf.col(c)
     }.toList: _*)
-    val rightDf = (leftDataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {
-      case (Entities, Events, _)   => partitionRangeGroupBy.snapshotEvents(dateRange)
-      case (Entities, Entities, _) => partitionRangeGroupBy.snapshotEntities
-      case (Events, Events, Accuracy.SNAPSHOT) =>
+
+    val rightDf = (node.leftDataModel, joinPart.groupBy.dataModel, joinPart.groupBy.inferredAccuracy) match {
+      case (ENTITIES, EVENTS, _)   => partitionRangeGroupBy.snapshotEvents(dateRange)
+      case (ENTITIES, ENTITIES, _) => partitionRangeGroupBy.snapshotEntities
+      case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
         genGroupBy(shiftedPartitionRange).snapshotEvents(shiftedPartitionRange)
-      case (Events, Events, Accuracy.TEMPORAL) =>
+      case (EVENTS, EVENTS, Accuracy.TEMPORAL) =>
         genGroupBy(unfilledPartitionRange).temporalEvents(renamedLeftDf, Some(toTimeRange(unfilledPartitionRange)))
 
-      case (Events, Entities, Accuracy.SNAPSHOT) => genGroupBy(shiftedPartitionRange).snapshotEntities
+      case (EVENTS, ENTITIES, Accuracy.SNAPSHOT) => genGroupBy(shiftedPartitionRange).snapshotEntities
 
-      case (Events, Entities, Accuracy.TEMPORAL) =>
+      case (EVENTS, ENTITIES, Accuracy.TEMPORAL) =>
         // Snapshots and mutations are partitioned with ds holding data between <ds 00:00> and ds <23:59>.
         genGroupBy(shiftedPartitionRange).temporalEntities(renamedLeftDf)
     }

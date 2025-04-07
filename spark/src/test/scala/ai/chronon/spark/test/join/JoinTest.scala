@@ -18,19 +18,10 @@ package ai.chronon.spark.test.join
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{
-  Accuracy,
-  Builders,
-  Constants,
-  LongType,
-  Operation,
-  RelevantLeftForJoinPart,
-  StringType,
-  TimeUnit,
-  Window
-}
+import ai.chronon.api.{Accuracy, Builders, Constants, LongType, Operation, StringType, TimeUnit, Window}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}

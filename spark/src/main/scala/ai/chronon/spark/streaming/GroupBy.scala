@@ -53,12 +53,12 @@ class GroupBy(inputStream: DataFrame,
     val selects = Option(query.selects).map(_.asScala.toMap).orNull
     val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
     val fillIfAbsent = groupByConf.dataModel match {
-      case DataModel.Entities =>
+      case DataModel.ENTITIES =>
         Some(
           Map(Constants.TimeColumn -> timeColumn,
               Constants.ReversalColumn -> null,
               Constants.MutationTimeColumn -> null))
-      case chronon.api.DataModel.Events => Some(Map(Constants.TimeColumn -> timeColumn))
+      case chronon.api.DataModel.EVENTS => Some(Map(Constants.TimeColumn -> timeColumn))
     }
     val keys = groupByConf.getKeyColumns.asScala
 
@@ -70,8 +70,8 @@ class GroupBy(inputStream: DataFrame,
       }
       .mkString(" OR ")
     val timeWheres = groupByConf.dataModel match {
-      case chronon.api.DataModel.Entities => Seq(s"${Constants.MutationTimeColumn} is NOT NULL")
-      case chronon.api.DataModel.Events   => Seq(s"$timeColumn is NOT NULL")
+      case chronon.api.DataModel.ENTITIES => Seq(s"${Constants.MutationTimeColumn} is NOT NULL")
+      case chronon.api.DataModel.EVENTS   => Seq(s"$timeColumn is NOT NULL")
     }
     QueryUtils.build(
       selects,
@@ -145,14 +145,14 @@ class GroupBy(inputStream: DataFrame,
     val selectedDf = session.sql(streamingQuery)
     assert(selectedDf.schema.fieldNames.contains(Constants.TimeColumn),
            s"time column ${Constants.TimeColumn} must be included in the selects")
-    if (groupByConf.dataModel == api.DataModel.Entities) {
+    if (groupByConf.dataModel == api.DataModel.ENTITIES) {
       assert(selectedDf.schema.fieldNames.contains(Constants.MutationTimeColumn), "Required Mutation ts")
     }
     val keys = groupByConf.keyColumns.asScala.toArray
     val keyIndices = keys.map(selectedDf.schema.fieldIndex)
     val (additionalColumns, eventTimeColumn) = groupByConf.dataModel match {
-      case api.DataModel.Entities => Constants.MutationAvroColumns -> Constants.MutationTimeColumn
-      case api.DataModel.Events   => Seq.empty[String] -> Constants.TimeColumn
+      case api.DataModel.ENTITIES => Constants.MutationAvroColumns -> Constants.MutationTimeColumn
+      case api.DataModel.EVENTS   => Seq.empty[String] -> Constants.TimeColumn
     }
     val valueColumns = groupByConf.aggregationInputs ++ additionalColumns
     val valueIndices = valueColumns.map(selectedDf.schema.fieldIndex)
@@ -162,8 +162,8 @@ class GroupBy(inputStream: DataFrame,
 
     val keyZSchema: api.StructType = groupByServingInfo.keyChrononSchema
     val valueZSchema: api.StructType = groupByConf.dataModel match {
-      case api.DataModel.Events   => groupByServingInfo.valueChrononSchema
-      case api.DataModel.Entities => groupByServingInfo.mutationValueChrononSchema
+      case api.DataModel.EVENTS   => groupByServingInfo.valueChrononSchema
+      case api.DataModel.ENTITIES => groupByServingInfo.mutationValueChrononSchema
     }
 
     val keyToBytes = AvroConversions.encodeBytes(keyZSchema, GenericRowHandler.func)

@@ -135,8 +135,8 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
 
   def streamChrononSchema: StructType = {
     groupByOps.dataModel match {
-      case DataModel.Events   => inputChrononSchema
-      case DataModel.Entities => mutationChrononSchema
+      case DataModel.EVENTS   => inputChrononSchema
+      case DataModel.ENTITIES => mutationChrononSchema
     }
   }
 }

@@ -18,11 +18,12 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.DataModel.{DataModel, Entities, Events}
+import ai.chronon.api.DataModel
+import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType, PartitionRange}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.{SparkConversions}
+import ai.chronon.online.SparkConversions
 import ai.chronon.spark.Driver.parseConf
 import ai.chronon.spark.Extensions.QuerySparkOps
 import org.apache.datasketches.common.ArrayOfStringsSerDe
@@ -435,12 +436,12 @@ class Analyzer(tableUtils: TableUtils,
         case Some(window) =>
           val expectedStart = (leftDataModel, groupBy.dataModel, groupBy.inferredAccuracy) match {
             // based on the end of the day snapshot
-            case (Entities, Events, _)   => tableUtils.partitionSpec.minus(rightShiftedPartitionRangeStart, window)
-            case (Entities, Entities, _) => firstUnfilledPartition
-            case (Events, Entities, _)   => leftShiftedPartitionRangeStart
-            case (Events, Events, Accuracy.SNAPSHOT) =>
+            case (ENTITIES, EVENTS, _)   => tableUtils.partitionSpec.minus(rightShiftedPartitionRangeStart, window)
+            case (ENTITIES, ENTITIES, _) => firstUnfilledPartition
+            case (EVENTS, ENTITIES, _)   => leftShiftedPartitionRangeStart
+            case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
               tableUtils.partitionSpec.minus(leftShiftedPartitionRangeStart, window)
-            case (Events, Events, Accuracy.TEMPORAL) =>
+            case (EVENTS, EVENTS, Accuracy.TEMPORAL) =>
               tableUtils.partitionSpec.minus(firstUnfilledPartition, window)
           }
           logger.info(

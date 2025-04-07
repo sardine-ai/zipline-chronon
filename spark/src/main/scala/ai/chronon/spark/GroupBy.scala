@@ -31,8 +31,8 @@ import ai.chronon.api.{
   TsUtils,
   TimeRange
 }
-import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.DataModel.Events
+import ai.chronon.api.DataModel.ENTITIES
+import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.RowWrapper
@@ -432,7 +432,7 @@ object GroupBy {
         // materialize the table with the right end date. QueryRange.end could be shifted for temporal events
         val beforeDs = tableUtils.partitionSpec.before(queryRange.end)
         val isPreShifted = {
-          groupByConf.dataModel == DataModel.Events && groupByConf.inferredAccuracy == Accuracy.TEMPORAL
+          groupByConf.dataModel == DataModel.EVENTS && groupByConf.inferredAccuracy == Accuracy.TEMPORAL
         }
         val endDate = if (isPreShifted) beforeDs else queryRange.end
 
@@ -586,8 +586,8 @@ object GroupBy {
       .reduceLeftOption(Ordering[String].min)
       .orNull
     val dataProfile: SourceDataProfile = source.dataModel match {
-      case Entities => SourceDataProfile(queryStart, source.query.startPartition, effectiveEnd)
-      case Events =>
+      case ENTITIES => SourceDataProfile(queryStart, source.query.startPartition, effectiveEnd)
+      case EVENTS =>
         if (Option(source.getEvents.isCumulative).getOrElse(false)) {
           lazy val latestAvailable: Option[String] =
             tableUtils.lastAvailablePartition(source.table, source.subPartitionFilters)
@@ -638,7 +638,7 @@ object GroupBy {
         Constants.MutationTimeColumn -> source.query.mutationTimeColumn
       )
     }
-    val timeMapping = if (source.dataModel == Entities) {
+    val timeMapping = if (source.dataModel == ENTITIES) {
       Option(source.query.timeColumn).map(Constants.TimeColumn -> _)
     } else {
       if (accuracy == api.Accuracy.TEMPORAL) {
@@ -737,8 +737,8 @@ object GroupBy {
           val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)
           val outputDf = groupByConf.dataModel match {
             // group by backfills have to be snapshot only
-            case Entities => groupByBackfill.snapshotEntities
-            case Events   => groupByBackfill.snapshotEvents(range)
+            case ENTITIES => groupByBackfill.snapshotEntities
+            case EVENTS   => groupByBackfill.snapshotEvents(range)
           }
           if (!groupByConf.hasDerivations) {
             outputDf.save(outputTable, tableProps)

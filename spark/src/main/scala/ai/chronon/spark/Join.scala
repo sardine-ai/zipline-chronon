@@ -17,10 +17,10 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.DataModel.Entities
+import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api._
+import ai.chronon.api.{planner, _}
 import ai.chronon.online.SparkConversions
 import ai.chronon.orchestration.{JoinBootstrapNode, JoinPartNode}
 import ai.chronon.spark.Extensions._
@@ -198,7 +198,7 @@ class Join(joinConf: api.Join,
     joinConfCloned.joinParts.asScala.map { joinPart =>
       val partTable = joinConfCloned.partOutputTable(joinPart)
       val effectiveRange =
-        if (joinConfCloned.left.dataModel != Entities && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+        if (joinConfCloned.left.dataModel != ENTITIES && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
           leftRange.shift(-1)
         } else {
           leftRange
@@ -330,7 +330,7 @@ class Join(joinConf: api.Join,
               // Small mode changes the JoinPart definition, which creates a different part table hash suffix
               // We want to make sure output table is consistent based on original semantics, not small mode behavior
               // So partTable needs to be defined BEFORE the runSmallMode logic below
-              val partTable = RelevantLeftForJoinPart.partTableName(joinConfCloned, joinPart)
+              val partTable = planner.RelevantLeftForJoinPart.partTableName(joinConfCloned, joinPart)
 
               val bloomFilterOpt = if (runSmallMode) {
                 // If left DF is small, hardcode the key filter into the joinPart's GroupBy's where clause.
@@ -353,7 +353,7 @@ class Join(joinConf: api.Join,
               val leftTable = if (usingBootstrappedLeft) {
                 joinConfCloned.metaData.bootstrapTable
               } else {
-                JoinUtils.computeLeftSourceTableName(joinConfCloned)
+                JoinUtils.computeFullLeftSourceTableName(joinConfCloned)
               }
 
               val joinPartJobRange = new DateRange()
@@ -370,7 +370,7 @@ class Join(joinConf: api.Join,
               joinPartNodeMetadata.setName(partTable)
 
               val joinPartNode = new JoinPartNode()
-                .setLeftDataModel(joinConfCloned.getLeft.dataModel.toString)
+                .setLeftDataModel(joinConfCloned.getLeft.dataModel)
                 .setJoinPart(joinPart)
                 .setSkewKeys(skewKeysAsJava)
                 .setMetaData(joinPartNodeMetadata)

@@ -56,7 +56,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   ) => {
     val keyZSchema: ChrononStructType = groupByServingInfoParsed.keyChrononSchema
     val valueZSchema: ChrononStructType = groupByServingInfoParsed.groupBy.dataModel match {
-      case DataModel.Events => groupByServingInfoParsed.valueChrononSchema
+      case DataModel.EVENTS => groupByServingInfoParsed.valueChrononSchema
       case _ =>
         throw new IllegalArgumentException(
           s"Only the events based data model is supported at the moment - ${groupByServingInfoParsed.groupBy}"
@@ -72,7 +72,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   private lazy val getKVColumns: (Array[String], Array[String]) = {
     val keyColumns = groupByServingInfoParsed.groupBy.keyColumns.toScala.toArray
     val (additionalColumns, _) = groupByServingInfoParsed.groupBy.dataModel match {
-      case DataModel.Events =>
+      case DataModel.EVENTS =>
         Seq.empty[String] -> timeColumn
       case _ =>
         throw new IllegalArgumentException(
