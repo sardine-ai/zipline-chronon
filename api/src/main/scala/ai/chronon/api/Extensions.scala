@@ -16,6 +16,7 @@
 
 package ai.chronon.api
 
+import ai.chronon.api
 import ai.chronon.api.Constants._
 import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
@@ -88,6 +89,8 @@ object Extensions {
     private val SecondMillis: Long = 1000
     private val Minute: Long = 60 * SecondMillis
     val FiveMinutes: Long = 5 * Minute
+    private val defaultPartitionSize: api.TimeUnit = api.TimeUnit.DAYS
+    val onePartition: api.Window = new api.Window(1, defaultPartitionSize)
 
     def millisToString(millis: Long): String = {
       if (millis % Day.millis == 0) {
@@ -109,6 +112,17 @@ object Extensions {
     def windowStartMillis(timestampMs: Long, windowSizeMs: Long): Long = {
       timestampMs - (timestampMs % windowSizeMs)
     }
+
+    def convertUnits(window: Window, offsetUnit: api.TimeUnit): Window = {
+      if (window == null) return null
+      if (window.timeUnit == offsetUnit) return window
+
+      val offsetSpanMillis = new Window(1, offsetUnit).millis
+      val windowLength = math.ceil(window.millis.toDouble / offsetSpanMillis.toDouble).toInt
+      new Window(windowLength, offsetUnit)
+    }
+
+    def zero(timeUnits: api.TimeUnit = api.TimeUnit.DAYS): Window = new Window(0, timeUnits)
   }
 
   implicit class MetadataOps(metaData: MetaData) {
