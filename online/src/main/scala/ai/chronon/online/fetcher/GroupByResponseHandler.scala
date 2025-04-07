@@ -4,10 +4,11 @@ import ai.chronon.aggregator.windowing.{FinalBatchIr, SawtoothOnlineAggregator, 
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.ScalaJavaConversions.{IteratorOps, JMapOps}
 import ai.chronon.api.{DataModel, Row, Window}
-import ai.chronon.online.{AvroConversions, GroupByServingInfoParsed, Metrics}
+import ai.chronon.online.{AvroConversions, GroupByServingInfoParsed}
 import ai.chronon.online.KVStore.TimedValue
-import ai.chronon.online.Metrics.Name
+import ai.chronon.online.metrics.Metrics.Name
 import ai.chronon.online.fetcher.FetcherCache.{BatchResponses, CachedBatchResponse, KvStoreBatchResponse}
+import ai.chronon.online.metrics.Metrics
 import com.google.gson.Gson
 import org.slf4j.{Logger, LoggerFactory}
 

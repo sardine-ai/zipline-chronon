@@ -5,6 +5,7 @@ java_library(
     deps = _SCALA_DEPS + _VERTX_DEPS + [
         "//api:lib",
         "//online:lib",
+        "//online:metrics_lib",
         maven_artifact("ch.qos.logback:logback-classic"),
         maven_artifact("com.typesafe:config"),
         maven_artifact("io.netty:netty-all"),
@@ -35,7 +36,7 @@ java_library(
 java_test_suite(
     name = "tests",
     srcs = glob(["src/test/**/*.java"]),
-    visibility = ["//visibility:public"],
     runner = "junit5",
+    visibility = ["//visibility:public"],
     deps = test_deps + [":test_lib"],
 )

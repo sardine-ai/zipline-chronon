@@ -1,6 +1,6 @@
 package ai.chronon.service;
 
-import ai.chronon.online.Metrics;
+import ai.chronon.online.metrics.Metrics;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.statsd.StatsdConfig;

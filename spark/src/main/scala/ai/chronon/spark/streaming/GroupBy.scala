@@ -98,15 +98,16 @@ class GroupBy(inputStream: DataFrame,
 
     val streamingQuery = buildStreamingQuery(streamingTable)
 
-    val context = Metrics.Context(Metrics.Environment.GroupByStreaming, groupByConf)
+    val context = metrics.Metrics.Context(metrics.Metrics.Environment.GroupByStreaming, groupByConf)
     val ingressContext = context.withSuffix("ingress")
     import session.implicits._
     implicit val structTypeEncoder: Encoder[Mutation] = Encoders.kryo[Mutation]
     val deserialized: Dataset[Mutation] = inputStream
       .as[Array[Byte]]
       .map { arr =>
-        ingressContext.increment(Metrics.Name.RowCount)
-        ingressContext.count(Metrics.Name.Bytes, arr.length)
+        import ai.chronon.online.metrics
+        ingressContext.increment(metrics.Metrics.Name.RowCount)
+        ingressContext.count(metrics.Metrics.Name.Bytes, arr.length)
         try {
           streamDecoder.fromBytes(arr)
         } catch {

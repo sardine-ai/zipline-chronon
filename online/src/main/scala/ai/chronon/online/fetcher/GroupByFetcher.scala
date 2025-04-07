@@ -6,7 +6,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online.KVStore.{GetRequest, GetResponse, TimedValue}
 import ai.chronon.online.OnlineDerivationUtil.{applyDeriveFunc, buildRenameOnlyDerivationFunction}
-import ai.chronon.online._
+import ai.chronon.online.{metrics, _}
 import ai.chronon.online.fetcher.Fetcher.{ColumnSpec, PrefixedRequest, Request, Response}
 import ai.chronon.online.fetcher.FetcherCache.{BatchResponses, CachedBatchResponse}
 import org.slf4j.{Logger, LoggerFactory}
@@ -45,7 +45,8 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
     .getGroupByServingInfo(request.name)
     .map { groupByServingInfo =>
       val context =
-        request.context.getOrElse(Metrics.Context(Metrics.Environment.GroupByFetching, groupByServingInfo.groupBy))
+        request.context.getOrElse(
+          metrics.Metrics.Context(metrics.Metrics.Environment.GroupByFetching, groupByServingInfo.groupBy))
       context.increment("group_by_request.count")
       var batchKeyBytes: Array[Byte] = null
       var streamingKeyBytes: Array[Byte] = null
@@ -338,4 +339,4 @@ case class LambdaKvRequest(groupByServingInfoParsed: GroupByServingInfoParsed,
                            batchRequest: GetRequest,
                            streamingRequestOpt: Option[GetRequest],
                            endTs: Option[Long],
-                           context: Metrics.Context)
+                           context: metrics.Metrics.Context)

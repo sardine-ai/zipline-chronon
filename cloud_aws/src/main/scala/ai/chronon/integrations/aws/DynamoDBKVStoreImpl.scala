@@ -9,8 +9,8 @@ import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.ListResponse
 import ai.chronon.online.KVStore.ListValue
 import ai.chronon.online.KVStore.TimedValue
-import ai.chronon.online.Metrics
-import ai.chronon.online.Metrics.Context
+import ai.chronon.online.metrics.Metrics.Context
+import ai.chronon.online.metrics.Metrics
 import com.google.common.util.concurrent.RateLimiter
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient

@@ -14,10 +14,9 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.metrics
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean

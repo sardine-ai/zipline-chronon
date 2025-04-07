@@ -8,7 +8,7 @@ import ai.chronon.online.fetcher.FetcherCache.BatchIrCache
 import ai.chronon.online.fetcher.FetcherCache.BatchResponses
 import ai.chronon.online.fetcher.FetcherCache.CachedMapBatchResponse
 import ai.chronon.online.KVStore.TimedValue
-import ai.chronon.online.Metrics.Context
+import ai.chronon.online.metrics.Metrics.Context
 import ai.chronon.online.fetcher.LambdaKvRequest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -117,7 +117,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val eventTs = 1000L
     val dataset = "TEST_GROUPBY_BATCH"
     val mockGroupByServingInfoParsed = mock[GroupByServingInfoParsed]
-    val mockContext = mock[Metrics.Context]
+    val mockContext = mock[metrics.Metrics.Context]
     val request = Request("req_name", keys, Some(eventTs), Some(mock[Context]))
     val getRequest = KVStore.GetRequest("key".getBytes, dataset, Some(eventTs))
     val requestMeta =
@@ -152,7 +152,7 @@ class FetcherCacheTest extends AnyFlatSpec with MockitoHelper {
     val eventTs = 1000L
     val dataset = "TEST_GROUPBY_BATCH"
     val mockGroupByServingInfoParsed = mock[GroupByServingInfoParsed]
-    val mockContext = mock[Metrics.Context]
+    val mockContext = mock[metrics.Metrics.Context]
     val request = Request("req_name", keys, Some(eventTs))
     val getRequest = KVStore.GetRequest("key".getBytes, dataset, Some(eventTs))
     val requestMeta =

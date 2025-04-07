@@ -26,6 +26,7 @@ import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import ai.chronon.online._
 import ai.chronon.online.serde.AvroCodec
+import ai.chronon.online.metrics.{Metrics, TTLCache}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.nio.charset.StandardCharsets
@@ -121,7 +122,9 @@ class MetadataStore(fetchContext: FetchContext) {
             throw e
           }
       },
-      { team => Metrics.Context(environment = "group_by.list.fetch", groupBy = team) }
+      { team =>
+        Metrics.Context(environment = "group_by.list.fetch", groupBy = team)
+      }
     )
   }
 
@@ -135,12 +138,16 @@ class MetadataStore(fetchContext: FetchContext) {
             throw e
           }
       },
-      { team => Metrics.Context(environment = "join.list.fetch", groupBy = team) }
+      { team =>
+        import ai.chronon.online.metrics
+        metrics.Metrics.Context(environment = "join.list.fetch", groupBy = team)
+      }
     )
   }
 
   lazy val getJoinConf: TTLCache[String, Try[JoinOps]] = new TTLCache[String, Try[JoinOps]](
     { name =>
+      import ai.chronon.online.metrics
       val startTimeMs = System.currentTimeMillis()
       val result = getConf[Join](ConfPathOrName(confName = Some(name)))
         .recover { case e: java.util.NoSuchElementException =>
@@ -150,19 +157,23 @@ class MetadataStore(fetchContext: FetchContext) {
         }
         .map(new JoinOps(_))
       val context =
-        if (result.isSuccess) Metrics.Context(Metrics.Environment.MetaDataFetching, result.get.join)
-        else Metrics.Context(Metrics.Environment.MetaDataFetching, join = name)
+        if (result.isSuccess) metrics.Metrics.Context(metrics.Metrics.Environment.MetaDataFetching, result.get.join)
+        else metrics.Metrics.Context(metrics.Metrics.Environment.MetaDataFetching, join = name)
       // Throw exception after metrics. No join metadata is bound to be a critical failure.
       if (result.isFailure) {
-        context.withSuffix("join").increment(Metrics.Name.Exception)
+        import ai.chronon.online.metrics
+        context.withSuffix("join").increment(metrics.Metrics.Name.Exception)
         throw result.failed.get
       }
       context
         .withSuffix("join")
-        .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+        .distribution(metrics.Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
       result
     },
-    { join => Metrics.Context(environment = "join.meta.fetch", join = join) }
+    { join =>
+      import ai.chronon.online.metrics
+      metrics.Metrics.Context(environment = "join.meta.fetch", join = join)
+    }
   )
 
   def putJoinConf(join: Join): Unit = {
@@ -175,8 +186,9 @@ class MetadataStore(fetchContext: FetchContext) {
   }
 
   def listJoins(isOnline: Boolean = true): Future[Seq[String]] = {
+    import ai.chronon.online.metrics
 
-    val context = Metrics.Context(Metrics.Environment.MetaDataFetching)
+    val context = metrics.Metrics.Context(metrics.Metrics.Environment.MetaDataFetching)
     val startTimeMs = System.currentTimeMillis()
 
     def parseJoins(response: ListResponse): Seq[String] = {
@@ -190,8 +202,9 @@ class MetadataStore(fetchContext: FetchContext) {
 
         }
         .recover { case e: Exception =>
+          import ai.chronon.online.metrics
           logger.error("Failed to list & parse joins from list response", e)
-          context.withSuffix("join_list").increment(Metrics.Name.Exception)
+          context.withSuffix("join_list").increment(metrics.Metrics.Name.Exception)
           throw e
         }
 
@@ -214,9 +227,10 @@ class MetadataStore(fetchContext: FetchContext) {
         if (response.resultProps.contains(ContinuationKey)) {
           doRetrieveAllListConfs(newAcc, response.resultProps.get(ContinuationKey))
         } else {
+          import ai.chronon.online.metrics
           context
             .withSuffix("join_list")
-            .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+            .distribution(metrics.Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
           Future.successful(newAcc)
         }
       }
@@ -243,7 +257,10 @@ class MetadataStore(fetchContext: FetchContext) {
 
     new TTLCache[String, Try[JoinCodec]](
       codecBuilder,
-      { join: String => Metrics.Context(environment = "join.codec.fetch", join = join) },
+      { join: String =>
+        import ai.chronon.online.metrics
+        metrics.Metrics.Context(environment = "join.codec.fetch", join = join)
+      },
       onCreateFunc = onCreateFunc
     )
   }
@@ -354,16 +371,20 @@ class MetadataStore(fetchContext: FetchContext) {
                                    "please make sure a batch upload was successful",
                                  metaData.failed.get))
         } else {
+          import ai.chronon.online.metrics
           val groupByServingInfo = ThriftJsonCodec
             .fromJsonStr[GroupByServingInfo](metaData.get, check = true, classOf[GroupByServingInfo])
-          Metrics
-            .Context(Metrics.Environment.MetaDataFetching, groupByServingInfo.groupBy)
+          metrics.Metrics
+            .Context(metrics.Metrics.Environment.MetaDataFetching, groupByServingInfo.groupBy)
             .withSuffix("group_by")
-            .distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+            .distribution(metrics.Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
           Success(new GroupByServingInfoParsed(groupByServingInfo, partitionSpec))
         }
       },
-      { gb => Metrics.Context(environment = "group_by.serving_info.fetch", groupBy = gb) }
+      { gb =>
+        import ai.chronon.online.metrics
+        metrics.Metrics.Context(environment = "group_by.serving_info.fetch", groupBy = gb)
+      }
     )
 
   def put(
