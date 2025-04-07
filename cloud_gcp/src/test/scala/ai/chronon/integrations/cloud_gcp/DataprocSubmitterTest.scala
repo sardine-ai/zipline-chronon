@@ -43,7 +43,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       new DataprocSubmitter(mockJobControllerClient, SubmitterConf("test-project", "test-region", "test-cluster"))
 
     val submittedJobId =
-      submitter.submit(spark.SparkJob, Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"), List.empty)
+      submitter.submit(spark.SparkJob,
+                       Map(MainClass -> "test-main-class", JarURI -> "test-jar-uri"),
+                       Map.empty,
+                       List.empty)
     assertEquals(submittedJobId, jobId)
   }
 
@@ -61,6 +64,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         // This is where we write out checkpoints / persist state while the job is running
         FlinkStateUri -> "gs://zl-warehouse/flink-state"
       ),
+      Map.empty,
       List.empty,
       "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
       "--groupby-name=etsy.listing_canary.actions_v1",
@@ -83,6 +87,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
           // This is where we write out checkpoints / persist state while the job is running
           FlinkStateUri -> "gs://zl-warehouse/flink-state"
         ),
+        Map.empty,
         List.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
         "--kafka-topic=test-beacon-main",
@@ -99,6 +104,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         spark.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
             JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+        Map.empty,
         List("gs://zipline-jars/training_set.v1",
              "gs://zipline-jars/dataproc-submitter-conf.yaml",
              "gs://zipline-jars/additional-confs.yaml"),
@@ -118,6 +124,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         spark.SparkJob,
         Map(MainClass -> "ai.chronon.spark.Driver",
             JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
+        Map.empty,
         List.empty,
         "groupby-upload-bulk-load",
         "-ZGCP_PROJECT_ID=bigtable-project-id",
@@ -125,7 +132,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         "--online-jar=cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
         "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
         "--src-offline-table=data.test_gbu",
-        "--groupby-name=quickstart.purchases.v1",
+        "--group-by-name=quickstart.purchases.v1",
         "--partition-string=2024-01-01"
       )
     println(submittedJobId)

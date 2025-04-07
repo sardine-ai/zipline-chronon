@@ -12,6 +12,7 @@ from ai.chronon.repo.constants import (
     ROUTES,
     SPARK_MODES,
     UNIVERSAL_ROUTES,
+    RunMode,
 )
 
 
@@ -19,12 +20,15 @@ class Runner:
     def __init__(self, args, jar_path):
         self.repo = args["repo"]
         self.conf = args["conf"]
+        self.local_abs_conf_path = os.path.realpath(os.path.join(self.repo, self.conf))
         self.sub_help = args["sub_help"]
         self.mode = args["mode"]
         self.online_jar = args.get(ONLINE_JAR_ARG)
         self.online_class = args.get(ONLINE_CLASS_ARG)
 
-        self.conf_type = args.get("conf_type", "").replace("-", "_")  # in case user sets dash instead of underscore
+        self.conf_type = args.get("conf_type", "").replace(
+            "-", "_"
+        )  # in case user sets dash instead of underscore
 
         # streaming flink
         self.groupby_name = args.get("groupby_name")
@@ -37,19 +41,22 @@ class Runner:
         valid_jar = args["online_jar"] and os.path.exists(args["online_jar"])
 
         # fetch online jar if necessary
-        if (self.mode in ONLINE_MODES) and (not args["sub_help"]) and not valid_jar and (
-                args.get("online_jar_fetch")):
+        if (
+            (self.mode in ONLINE_MODES)
+            and (not args["sub_help"])
+            and not valid_jar
+            and (args.get("online_jar_fetch"))
+        ):
             print("Downloading online_jar")
-            self.online_jar = utils.check_output("{}".format(args["online_jar_fetch"])).decode(
-                "utf-8"
-            )
+            self.online_jar = utils.check_output(
+                "{}".format(args["online_jar_fetch"])
+            ).decode("utf-8")
             os.environ["CHRONON_ONLINE_JAR"] = self.online_jar
             print("Downloaded jar to {}".format(self.online_jar))
 
         if self.conf:
             try:
-                self.context, self.conf_type, self.team, _ = self.conf.split(
-                    "/")[-4:]
+                self.context, self.conf_type, self.team, _ = self.conf.split("/")[-4:]
             except Exception as e:
                 logging.error(
                     "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
@@ -57,12 +64,12 @@ class Runner:
                     )
                 )
                 raise e
-            possible_modes = list(
-                ROUTES[self.conf_type].keys()) + UNIVERSAL_ROUTES
+            possible_modes = list(ROUTES[self.conf_type].keys()) + UNIVERSAL_ROUTES
             assert (
-                    args["mode"] in possible_modes), ("Invalid mode:{} for conf:{} of type:{}, please choose from {}"
-                                                      .format(args["mode"], self.conf, self.conf_type, possible_modes
-                                                              ))
+                args["mode"] in possible_modes
+            ), "Invalid mode:{} for conf:{} of type:{}, please choose from {}".format(
+                args["mode"], self.conf, self.conf_type, possible_modes
+            )
 
         self.ds = args["end_ds"] if "end_ds" in args and args["end_ds"] else args["ds"]
         self.start_ds = (
@@ -124,7 +131,9 @@ class Runner:
                 )
             )
             if self.mode == "streaming":
-                assert (len(filtered_apps) == 1), "More than one found, please kill them all"
+                assert (
+                    len(filtered_apps) == 1
+                ), "More than one found, please kill them all"
                 print("All good. No need to start a new app.")
                 return
             elif self.mode == "streaming-client":
@@ -139,9 +148,7 @@ class Runner:
             jar=self.jar_path,
             subcommand=ROUTES[self.conf_type][self.mode],
             args=self._gen_final_args(),
-            additional_args=os.environ.get(
-                "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
-            ),
+            additional_args=os.environ.get("CHRONON_CONFIG_ADDITIONAL_ARGS", ""),
         )
         return command
 
@@ -182,14 +189,13 @@ class Runner:
                     )
                     for start_ds, end_ds in date_ranges:
                         command = (
-                                "bash {script} --class ai.chronon.spark.Driver " +
-                                "{jar} {subcommand} {args} {additional_args}"
+                            "bash {script} --class ai.chronon.spark.Driver "
+                            + "{jar} {subcommand} {args} {additional_args}"
                         ).format(
                             script=self.spark_submit,
                             jar=self.jar_path,
                             subcommand=ROUTES[self.conf_type][self.mode],
-                            args=self._gen_final_args(
-                                start_ds=start_ds, end_ds=end_ds),
+                            args=self._gen_final_args(start_ds=start_ds, end_ds=end_ds),
                             additional_args=os.environ.get(
                                 "CHRONON_CONFIG_ADDITIONAL_ARGS", ""
                             ),
@@ -197,8 +203,8 @@ class Runner:
                         command_list.append(command)
                 else:
                     command = (
-                            "bash {script} --class ai.chronon.spark.Driver "
-                            + "{jar} {subcommand} {args} {additional_args}"
+                        "bash {script} --class ai.chronon.spark.Driver "
+                        + "{jar} {subcommand} {args} {additional_args}"
                     ).format(
                         script=self.spark_submit,
                         jar=self.jar_path,
@@ -222,21 +228,39 @@ class Runner:
         elif len(command_list) == 1:
             utils.check_call(command_list[0])
 
-    def _gen_final_args(self, start_ds=None, end_ds=None, override_conf_path=None, **kwargs):
+    def _gen_final_args(
+        self, start_ds=None, end_ds=None, override_conf_path=None, **kwargs
+    ):
         base_args = MODE_ARGS[self.mode].format(
             conf_path=override_conf_path if override_conf_path else self.conf,
             ds=end_ds if end_ds else self.ds,
             online_jar=self.online_jar,
-            online_class=self.online_class
+            online_class=self.online_class,
         )
-        base_args = base_args + f" --conf-type={self.conf_type} " if self.conf_type else base_args
+
+        base_args = (
+            base_args + f" --conf-type={self.conf_type} "
+            if self.conf_type
+            else base_args
+        )
+
+        if self.mode != RunMode.FETCH:
+            base_args += " --local-conf-path={conf}".format(
+                conf=self.local_abs_conf_path
+            ) + " --original-mode={mode}".format(mode=self.mode)
 
         override_start_partition_arg = (
             "--start-partition-override=" + start_ds if start_ds else ""
         )
 
-        additional_args = " ".join(f"--{key.replace('_', '-')}={value}" for key, value in kwargs.items() if value)
+        additional_args = " ".join(
+            f"--{key.replace('_', '-')}={value}"
+            for key, value in kwargs.items()
+            if value
+        )
 
-        final_args = " ".join([base_args, str(self.args), override_start_partition_arg, additional_args])
+        final_args = " ".join(
+            [base_args, str(self.args), override_start_partition_arg, additional_args]
+        )
 
         return final_args

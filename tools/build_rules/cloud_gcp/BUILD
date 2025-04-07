@@ -10,6 +10,5 @@ java_binary(
         # higher than Flink's version (1.10.0) and this results in the Flink UI not loading
         maven_artifact("org.apache.commons:commons-text"),
         # pull out some slf4j-impl dependencies - these can be included at the application deploy target level if needed
-        maven_artifact("org.apache.logging.log4j:log4j-slf4j2-impl"),
     ],
 )

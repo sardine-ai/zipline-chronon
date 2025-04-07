@@ -158,20 +158,23 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
   }
 
   override def submit(jobType: JobType,
+                      submissionProperties: Map[String, String],
                       jobProperties: Map[String, String],
                       files: List[String],
                       args: String*): String = {
-    if (jobProperties.get(ShouldCreateCluster).exists(_.toBoolean)) {
+    if (submissionProperties.get(ShouldCreateCluster).exists(_.toBoolean)) {
       // create cluster
       val runJobFlowBuilder = createClusterRequestBuilder(
-        emrReleaseLabel = jobProperties.getOrElse(EmrReleaseLabel, DefaultEmrReleaseLabel),
-        clusterIdleTimeout = jobProperties.getOrElse(ClusterIdleTimeout, DefaultClusterIdleTimeout.toString).toInt,
-        masterInstanceType = jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
-        slaveInstanceType = jobProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
-        instanceCount = jobProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount.toString).toInt
+        emrReleaseLabel = submissionProperties.getOrElse(EmrReleaseLabel, DefaultEmrReleaseLabel),
+        clusterIdleTimeout =
+          submissionProperties.getOrElse(ClusterIdleTimeout, DefaultClusterIdleTimeout.toString).toInt,
+        masterInstanceType = submissionProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
+        slaveInstanceType = submissionProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
+        instanceCount = submissionProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount.toString).toInt
       )
 
-      runJobFlowBuilder.steps(createStepConfig(files, jobProperties(MainClass), jobProperties(JarURI), args: _*))
+      runJobFlowBuilder.steps(
+        createStepConfig(files, submissionProperties(MainClass), submissionProperties(JarURI), args: _*))
 
       val responseJobId = emrClient.runJobFlow(runJobFlowBuilder.build()).jobFlowId()
       println("EMR job id: " + responseJobId)
@@ -181,11 +184,11 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
 
     } else {
       // use existing cluster
-      val existingJobId = jobProperties.getOrElse(ClusterId, throw new RuntimeException("JobFlowId not found"))
+      val existingJobId = submissionProperties.getOrElse(ClusterId, throw new RuntimeException("JobFlowId not found"))
       val request = AddJobFlowStepsRequest
         .builder()
         .jobFlowId(existingJobId)
-        .steps(createStepConfig(files, jobProperties(MainClass), jobProperties(JarURI), args: _*))
+        .steps(createStepConfig(files, submissionProperties(MainClass), submissionProperties(JarURI), args: _*))
         .build()
 
       val responseStepId = emrClient.addJobFlowSteps(request).stepIds().get(0)
@@ -230,40 +233,35 @@ object EmrSubmitter {
   def main(args: Array[String]): Unit = {
     // List of args that are not application args
     val internalArgs = Set(
-      JarUriArgKeyword,
-      JobTypeArgKeyword,
-      MainClassKeyword,
-      FlinkMainJarUriArgKeyword,
-      FlinkSavepointUriArgKeyword,
       ClusterInstanceTypeArgKeyword,
       ClusterInstanceCountArgKeyword,
       ClusterIdleTimeoutArgKeyword,
-      FilesArgKeyword,
       CreateClusterArgKeyword
-    )
+    ) ++ SharedInternalArgs
 
     val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
 
-    val jarUri =
-      args.find(_.startsWith(JarUriArgKeyword)).map(_.split("=")(1)).getOrElse(throw new Exception("Jar URI not found"))
-    val mainClass = args
-      .find(_.startsWith(MainClassKeyword))
-      .map(_.split("=")(1))
-      .getOrElse(throw new Exception("Main class not found"))
-    val jobTypeValue = args
-      .find(_.startsWith(JobTypeArgKeyword))
-      .map(_.split("=")(1))
-      .getOrElse(throw new Exception("Job type not found"))
-    val clusterInstanceType =
-      args.find(_.startsWith(ClusterInstanceTypeArgKeyword)).map(_.split("=")(1)).getOrElse(DefaultClusterInstanceType)
-    val clusterInstanceCount = args
-      .find(_.startsWith(ClusterInstanceCountArgKeyword))
-      .map(_.split("=")(1))
+    val jarUri = JobSubmitter
+      .getArgValue(args, JarUriArgKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + JarUriArgKeyword))
+    val mainClass = JobSubmitter
+      .getArgValue(args, MainClassKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + MainClassKeyword))
+    val jobTypeValue =
+      JobSubmitter
+        .getArgValue(args, JobTypeArgKeyword)
+        .getOrElse(throw new Exception("Missing required argument: " + JobTypeArgKeyword))
+
+    val clusterInstanceType = JobSubmitter
+      .getArgValue(args, ClusterInstanceTypeArgKeyword)
+      .getOrElse(DefaultClusterInstanceType)
+    val clusterInstanceCount = JobSubmitter
+      .getArgValue(args, ClusterInstanceCountArgKeyword)
       .getOrElse(DefaultClusterInstanceCount.toString)
-    val clusterIdleTimeout = args
-      .find(_.startsWith(ClusterIdleTimeoutArgKeyword))
-      .map(_.split("=")(1))
+    val clusterIdleTimeout = JobSubmitter
+      .getArgValue(args, ClusterIdleTimeoutArgKeyword)
       .getOrElse(DefaultClusterIdleTimeout.toString)
+
     val createCluster = args.exists(_.startsWith(CreateClusterArgKeyword))
 
     val clusterId = sys.env.get("EMR_CLUSTER_ID")
@@ -278,7 +276,7 @@ object EmrSubmitter {
       filesArgs(0).split("=")(1).split(",")
     }
 
-    val (jobType, jobProps) = jobTypeValue.toLowerCase match {
+    val (jobType, submissionProps) = jobTypeValue.toLowerCase match {
       case "spark" => {
         val baseProps = Map(
           MainClass -> mainClass,
@@ -299,13 +297,15 @@ object EmrSubmitter {
       case _ => throw new Exception("Invalid job type")
     }
 
-    val finalArgs = userArgs
+    val finalArgs = userArgs.toSeq
+    val modeConfigProperties = JobSubmitter.getModeConfigProperties(args)
 
     val emrSubmitter = EmrSubmitter()
     emrSubmitter.submit(
-      jobType,
-      jobProps,
-      files.toList,
+      jobType = jobType,
+      submissionProperties = submissionProps,
+      jobProperties = modeConfigProperties.getOrElse(Map.empty),
+      files = files.toList,
       finalArgs: _*
     )
   }
