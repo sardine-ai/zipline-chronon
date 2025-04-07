@@ -181,15 +181,6 @@ function upload_to_gcp() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                OLD_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/jars/
-
-                gcloud storage cp "$CLOUD_GCP_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$CLOUD_GCP_EMBEDDED_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$SERVICE_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$FLINK_JAR" "$OLD_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-
                 NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/latest/jars/
                 NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/latest/wheels/
                 gcloud storage cp "$CLOUD_GCP_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
