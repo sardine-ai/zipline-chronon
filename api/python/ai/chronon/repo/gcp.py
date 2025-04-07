@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import multiprocessing
 import os
@@ -315,8 +316,12 @@ class GcpRunner(Runner):
             # for now only poking for a particular partition is supported.
             args = self._args.get("args")
             supported_subcommands = ["check-partitions"]
-            assert "check-partitions" in args, f"Must specify one of the following subcommands: {supported_subcommands}"
-            assert "--partition-names" in args, "Must specify a list of `--partition-names=schema.table/pk1=pv1/pk2=pv2"
+            assert (
+                "check-partitions" in args
+            ), f"Must specify one of the following subcommands: {supported_subcommands}"
+            assert (
+                "--partition-names" in args
+            ), "Must specify a list of `--partition-names=schema.table/pk1=pv1/pk2=pv2"
 
             dataproc_args = self.generate_dataproc_submitter_args(
                 # for now, self.conf is the only local file that requires uploading to gcs
@@ -419,11 +424,11 @@ class GcpRunner(Runner):
             ]
             if dataproc_submitter_logs:
                 log = dataproc_submitter_logs[0]
-                job_id = log[
+                job_id = (log[
                     log.index(dataproc_submitter_id_str)
                     + len(dataproc_submitter_id_str)
-                    + 1:
-                ]
+                    + 1 :
+                ]).strip()
                 print(
                     """
                 <-----------------------------------------------------------------------------------
@@ -436,4 +441,18 @@ class GcpRunner(Runner):
                 check_call(
                     f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()}"
                 )
+
+                # Fetch the final job state
+                jobs_info_str = check_output(f"gcloud dataproc jobs describe {job_id} --region=us-central1 --format=json").decode("utf-8")
+                job_info = json.loads(jobs_info_str)
+                job_state = job_info.get("status", {}).get("state", "")
+
+
+                print("<<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>")
+                if job_state != 'DONE':
+                    print(f"Job {job_id} is not in DONE state. Current state: {job_state}")
+                    raise RuntimeError(f"Job {job_id} failed.")
+                else:
+                    print(f"Job {job_id} is in DONE state.")
                 return job_id
+            raise RuntimeError("No job id found from dataproc submitter logs.")
