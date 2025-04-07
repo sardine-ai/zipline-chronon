@@ -178,7 +178,7 @@ def dopen(path):
 
 def test_get_related_table_names_for_group_bys():
     with dopen(
-        "test/sample/production/group_bys/sample_team/entity_sample_group_by_from_module.v1"
+        "test/sample/compiled/group_bys/sample_team/entity_sample_group_by_from_module.v1"
     ) as conf_file:
         json = conf_file.read()
         group_by = json2thrift(json, api.GroupBy)
@@ -195,7 +195,7 @@ def test_get_related_table_names_for_group_bys():
 
 
 def test_get_related_table_names_for_simple_joins():
-    with dopen("test/sample/production/joins/sample_team/sample_join.v1") as conf_file:
+    with dopen("test/sample/compiled/joins/sample_team/sample_join.v1") as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
         tables = utils.get_related_table_names(join)
@@ -214,7 +214,7 @@ def test_get_related_table_names_for_simple_joins():
 
 def test_get_related_table_names_for_label_joins():
     with dopen(
-        "test/sample/production/joins/sample_team/sample_label_join.v1"
+        "test/sample/compiled/joins/sample_team/sample_label_join.v1"
     ) as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
@@ -235,7 +235,7 @@ def test_get_related_table_names_for_label_joins():
 
 def test_get_related_table_names_for_consistency_joins():
     with dopen(
-        "test/sample/production/joins/sample_team/sample_join.consistency_check"
+        "test/sample/compiled/joins/sample_team/sample_join.consistency_check"
     ) as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
@@ -259,7 +259,7 @@ def test_get_related_table_names_for_bootstrap_joins():
 
     print("Current working directory:", os.getcwd())
     with dopen(
-        "test/sample/production/joins/sample_team/sample_join_bootstrap.v1"
+        "test/sample/compiled/joins/sample_team/sample_join_bootstrap.v1"
     ) as conf_file:
         json = conf_file.read()
         join = json2thrift(json, api.Join)
