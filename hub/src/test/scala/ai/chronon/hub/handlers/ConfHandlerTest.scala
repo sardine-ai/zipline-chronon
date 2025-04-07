@@ -10,7 +10,7 @@ import ai.chronon.hub.ConfRequest
 import ai.chronon.hub.ConfType
 import ai.chronon.hub.store.LoadedConfs
 import ai.chronon.hub.store.MonitoringModelStore
-import ai.chronon.online.TTLCache
+import ai.chronon.online.metrics.TTLCache
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import org.junit.Assert._
 import org.junit.Before

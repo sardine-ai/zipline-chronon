@@ -37,6 +37,7 @@ import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
+import ai.chronon.online.metrics.TTLCache
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext

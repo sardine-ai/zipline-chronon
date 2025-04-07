@@ -12,8 +12,8 @@ import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.ListResponse
 import ai.chronon.online.MetadataEndPoint
-import ai.chronon.online.Metrics
-import ai.chronon.online.TTLCache
+import ai.chronon.online.metrics.TTLCache
+import ai.chronon.online.metrics.Metrics
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 

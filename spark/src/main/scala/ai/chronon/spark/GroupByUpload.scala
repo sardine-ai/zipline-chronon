@@ -34,9 +34,9 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.ThriftJsonCodec
 import ai.chronon.online.Extensions.ChrononStructTypeOps
 import ai.chronon.online.GroupByServingInfoParsed
-import ai.chronon.online.Metrics
 import ai.chronon.api.PartitionRange
 import ai.chronon.online.SparkConversions
+import ai.chronon.online.metrics.Metrics
 import ai.chronon.spark.Extensions._
 import org.apache.spark.SparkEnv
 import org.apache.spark.rdd.RDD

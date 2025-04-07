@@ -22,6 +22,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
+import ai.chronon.online.metrics._
 import ai.chronon.spark.Extensions.StructTypeOps
 import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
@@ -58,6 +59,7 @@ class LogFlattenerJob(session: SparkSession,
                       schemaTable: String,
                       stepDays: Option[Int] = None)
     extends Serializable {
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tableUtils: TableUtils = TableUtils(session)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec

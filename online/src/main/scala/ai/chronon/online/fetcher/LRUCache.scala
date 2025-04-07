@@ -1,6 +1,6 @@
 package ai.chronon.online.fetcher
 
-import ai.chronon.online.Metrics
+import ai.chronon.online.metrics.Metrics
 import com.github.benmanes.caffeine.cache.{Caffeine, Cache => CaffeineCache}
 import org.slf4j.{Logger, LoggerFactory}
 

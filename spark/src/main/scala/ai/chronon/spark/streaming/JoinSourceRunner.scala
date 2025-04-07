@@ -30,6 +30,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSe
 import org.apache.spark.sql.streaming.{DataStreamWriter, Trigger}
 import org.apache.spark.sql.types.{BooleanType, LongType, StructField, StructType}
 import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.online.metrics
 
 import java.time.{Instant, ZoneId, ZoneOffset}
 import java.time.format.DateTimeFormatter
@@ -63,9 +64,11 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
     session: SparkSession,
     apiImpl: Api)
     extends Serializable {
+
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val context: Metrics.Context = Metrics.Context(Metrics.Environment.GroupByStreaming, groupByConf)
+  val context: metrics.Metrics.Context =
+    metrics.Metrics.Context(metrics.Metrics.Environment.GroupByStreaming, groupByConf)
 
   private case class Schemas(leftStreamSchema: StructType,
                              leftSourceSchema: StructType,
@@ -123,8 +126,8 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
       val keys = keyIndices.map(input.get)
       val values = valueIndices.map(input.get)
 
-      context.distribution(Metrics.Name.PutKeyNullPercent, (keys.count(_ == null) * 100) / keys.length)
-      context.distribution(Metrics.Name.PutValueNullPercent, (values.count(_ == null) * 100) / values.length)
+      context.distribution(metrics.Metrics.Name.PutKeyNullPercent, (keys.count(_ == null) * 100) / keys.length)
+      context.distribution(metrics.Metrics.Name.PutValueNullPercent, (values.count(_ == null) * 100) / values.length)
 
       val ts = input.get(tsIndex).asInstanceOf[Long]
       val keyBytes = keyToBytes(keys)
@@ -226,8 +229,8 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
     val deserialized: Dataset[Mutation] = df
       .as[Array[Byte]]
       .map { arr =>
-        ingressContext.increment(Metrics.Name.RowCount)
-        ingressContext.count(Metrics.Name.Bytes, arr.length)
+        ingressContext.increment(metrics.Metrics.Name.RowCount)
+        ingressContext.count(metrics.Metrics.Name.Bytes, arr.length)
         try {
           streamDecoder.fromBytes(arr)
         } catch {
@@ -353,7 +356,7 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
           val requests = rowsScala.map { row =>
             val keyMap = row.getValuesMap[AnyRef](leftColumns)
             val eventTs = row.get(leftTimeIndex).asInstanceOf[Long]
-            context.distribution(Metrics.Name.LagMillis, System.currentTimeMillis() - eventTs)
+            context.distribution(metrics.Metrics.Name.LagMillis, System.currentTimeMillis() - eventTs)
             val ts = if (useEventTimeForQuery) Some(eventTs) else None
             Fetcher.Request(joinRequestName, keyMap, atMillis = ts.map(_ + queryShiftMs))
           }
@@ -362,12 +365,12 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
             percentile(rowsScala.map(_.get(leftTimeIndex).asInstanceOf[Long]), timePercentile)
           if (microBatchTimestamp.isDefined) {
             val microBatchLag = System.currentTimeMillis() - microBatchTimestamp.get
-            context.distribution(Metrics.Name.BatchLagMillis, microBatchLag)
+            context.distribution(metrics.Metrics.Name.BatchLagMillis, microBatchLag)
 
             if (minimumQueryDelayMs > 0 && microBatchLag >= 0 && microBatchLag < minimumQueryDelayMs) {
               val sleepMillis = minimumQueryDelayMs - microBatchLag
               Thread.sleep(sleepMillis)
-              context.distribution(Metrics.Name.QueryDelaySleepMillis, sleepMillis)
+              context.distribution(metrics.Metrics.Name.QueryDelaySleepMillis, sleepMillis)
             }
           }
 
@@ -405,12 +408,12 @@ class JoinSourceRunner(groupByConf: api.GroupBy, conf: Map[String, String] = Map
     val writer = joinSourceDf.writeStream.outputMode("append").trigger(Trigger.ProcessingTime(microBatchIntervalMillis))
     val putRequestHelper = PutRequestHelper(joinSourceDf.schema)
 
-    def emitRequestMetric(request: PutRequest, context: Metrics.Context): Unit = {
+    def emitRequestMetric(request: PutRequest, context: metrics.Metrics.Context): Unit = {
       request.tsMillis.foreach { ts: Long =>
-        context.distribution(Metrics.Name.FreshnessMillis, System.currentTimeMillis() - ts)
-        context.increment(Metrics.Name.RowCount)
-        context.distribution(Metrics.Name.ValueBytes, request.valueBytes.length)
-        context.distribution(Metrics.Name.KeyBytes, request.keyBytes.length)
+        context.distribution(metrics.Metrics.Name.FreshnessMillis, System.currentTimeMillis() - ts)
+        context.increment(metrics.Metrics.Name.RowCount)
+        context.distribution(metrics.Metrics.Name.ValueBytes, request.valueBytes.length)
+        context.distribution(metrics.Metrics.Name.KeyBytes, request.keyBytes.length)
       }
     }
 

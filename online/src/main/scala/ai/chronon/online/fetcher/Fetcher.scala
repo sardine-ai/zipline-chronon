@@ -21,10 +21,10 @@ import ai.chronon.api
 import ai.chronon.api.Constants.UTF8
 import ai.chronon.api.Extensions.{ExternalPartOps, JoinOps, StringOps, ThrowableOps}
 import ai.chronon.api._
-import ai.chronon.online.Metrics.Environment
 import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
+import ai.chronon.online._
 import ai.chronon.online.fetcher.Fetcher.{JoinSchemaResponse, Request, Response, ResponseWithContext}
-import ai.chronon.online.{serde, _}
+import ai.chronon.online.metrics.{Metrics, TTLCache}
 import com.google.gson.Gson
 import com.timgroup.statsd.Event
 import com.timgroup.statsd.Event.AlertType
@@ -41,10 +41,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 object Fetcher {
+
+  import ai.chronon.online.metrics
+
   case class Request(name: String,
                      keys: Map[String, AnyRef],
                      atMillis: Option[Long] = None,
-                     context: Option[Metrics.Context] = None)
+                     context: Option[metrics.Metrics.Context] = None)
 
   case class PrefixedRequest(prefix: String, request: Request)
   case class Response(request: Request, values: Try[Map[String, AnyRef]])
@@ -59,7 +62,8 @@ object Fetcher {
                         prefix: Option[String],
                         keyMapping: Option[Map[String, AnyRef]])
 
-  def logResponseStats(response: Response, context: Metrics.Context): Unit = {
+  def logResponseStats(response: Response, context: metrics.Metrics.Context): Unit = {
+    import ai.chronon.online.metrics
     val responseMap = response.values.get
     var exceptions = 0
     var nulls = 0
@@ -67,9 +71,9 @@ object Fetcher {
       if (v == null) nulls += 1
       else if (v.isInstanceOf[Throwable]) exceptions += 1
     }
-    context.distribution(Metrics.Name.FetchNulls, nulls)
-    context.distribution(Metrics.Name.FetchExceptions, exceptions)
-    context.distribution(Metrics.Name.FetchCount, responseMap.size)
+    context.distribution(metrics.Metrics.Name.FetchNulls, nulls)
+    context.distribution(metrics.Metrics.Name.FetchExceptions, exceptions)
+    context.distribution(metrics.Metrics.Name.FetchCount, responseMap.size)
   }
 
   /** Response for a join schema request
@@ -107,7 +111,7 @@ class Fetcher(val kvStore: KVStore,
   private def reportCallerNameFetcherVersion(): Unit = {
     val message =
       s"CallerName: ${Option(callerName).getOrElse("N/A")}, FetcherVersion: ${BuildInfo.version}"
-    val ctx = Metrics.Context(Environment.Fetcher)
+    val ctx = Metrics.Context(Metrics.Environment.Fetcher)
     val event = Event
       .builder()
       .withTitle("FetcherInitialization")
@@ -141,6 +145,7 @@ class Fetcher(val kvStore: KVStore,
     val combinedResponsesF =
       internalResponsesF.zip(externalResponsesF).map { case (internalResponses, externalResponses) =>
         internalResponses.zip(externalResponses).map { case (internalResponse, externalResponse) =>
+          import ai.chronon.online.metrics
           if (debug) {
             logger.info(internalResponse.values.get.keys.toSeq.mkString(","))
             logger.info(externalResponse.values.get.keys.toSeq.mkString(","))
@@ -161,7 +166,7 @@ class Fetcher(val kvStore: KVStore,
             Map("external_part_fetch_exception" -> externalResponse.values.failed.get.traceString))
           val derivationStartTs = System.currentTimeMillis()
           val joinName = internalResponse.request.name
-          val ctx = Metrics.Context(Environment.JoinFetching, join = joinName)
+          val ctx = Metrics.Context(Metrics.Environment.JoinFetching, join = joinName)
           val joinCodecTry = joinCodecCache(internalResponse.request.name)
           joinCodecTry match {
             case Success(joinCodec) =>
@@ -323,6 +328,7 @@ class Fetcher(val kvStore: KVStore,
 
   // Pulling external features in a batched fashion across services in-parallel
   private def fetchExternal(joinRequests: Seq[Request]): Future[Seq[Response]] = {
+    import ai.chronon.online.metrics
     val startTime = System.currentTimeMillis()
     val resultMap = new mutable.LinkedHashMap[Request, Try[mutable.HashMap[String, Any]]]
     var invalidCount = 0
@@ -374,7 +380,7 @@ class Fetcher(val kvStore: KVStore,
       .toMap
 
     val context =
-      Metrics.Context(environment = Environment.JoinFetching,
+      Metrics.Context(environment = Metrics.Environment.JoinFetching,
                       join = validRequests.iterator.map(_.name.sanitize).toSeq.distinct.mkString(","))
     context.distribution("response.external_pre_processing.latency", System.currentTimeMillis() - startTime)
     context.count("response.external_invalid_joins.count", invalidCount)
@@ -417,7 +423,7 @@ class Fetcher(val kvStore: KVStore,
       // step-4 convert the resultMap into Responses
       joinRequests.map { req =>
         Metrics
-          .Context(Environment.JoinFetching, join = req.name)
+          .Context(Metrics.Environment.JoinFetching, join = req.name)
           .distribution("external.latency.millis", System.currentTimeMillis() - startTime)
         Response(req, resultMap(req).map(_.mapValues(_.asInstanceOf[AnyRef]).toMap))
       }
@@ -426,7 +432,7 @@ class Fetcher(val kvStore: KVStore,
 
   def fetchJoinSchema(joinName: String): Try[JoinSchemaResponse] = {
     val startTime = System.currentTimeMillis()
-    val ctx = Metrics.Context(Environment.JoinSchemaFetching, join = joinName)
+    val ctx = Metrics.Context(Metrics.Environment.JoinSchemaFetching, join = joinName)
 
     val joinCodecTry = joinCodecCache(joinName)
 
@@ -470,7 +476,8 @@ class Fetcher(val kvStore: KVStore,
   private case class ExternalToJoinRequest(externalRequest: Either[Request, KeyMissingException],
                                            joinRequest: Request,
                                            part: ExternalPart) {
+
     lazy val context: Metrics.Context =
-      Metrics.Context(Environment.JoinFetching, join = joinRequest.name, groupBy = part.fullName)
+      Metrics.Context(Metrics.Environment.JoinFetching, join = joinRequest.name, groupBy = part.fullName)
   }
 }

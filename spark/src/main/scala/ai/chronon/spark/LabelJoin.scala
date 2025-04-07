@@ -21,8 +21,8 @@ import ai.chronon.api.{Builders, Constants, JoinPart, PartitionSpec, TimeUnit, W
 import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
-import ai.chronon.online.Metrics
 import ai.chronon.api.PartitionRange
+import ai.chronon.online.metrics.Metrics
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.lit
