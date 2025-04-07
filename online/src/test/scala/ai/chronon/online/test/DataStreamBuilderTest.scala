@@ -57,7 +57,7 @@ class DataStreamBuilderTest extends AnyFlatSpec {
       endPartition = "2022-10-30",
       timeColumn = "ts"
     )
-    val dataStream = DataStream(df, 1, topicInfo).apply(query, Seq("listing_id", "host_id"), DataModel.Events)
+    val dataStream = DataStream(df, 1, topicInfo).apply(query, Seq("listing_id", "host_id"), DataModel.EVENTS)
     assertTrue(dataStream.topicInfo == topicInfo)
     assertTrue(dataStream.partitions == 1)
     assertTrue(dataStream.df.count() == 6)

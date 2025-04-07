@@ -23,7 +23,7 @@ class JoinDerivationJob(node: JoinDerivationNode, range: DateRange)(implicit tab
   private val derivations = join.derivations.toScala
 
   // The true left table is the source table for the join's left side
-  private val trueLeftTable = JoinUtils.computeLeftSourceTableName(join)
+  private val trueLeftTable = JoinUtils.computeFullLeftSourceTableName(join)
 
   // The base table is the output of the merge job
   private val baseTable = join.metaData.outputTable

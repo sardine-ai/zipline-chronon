@@ -2,7 +2,7 @@ package ai.chronon.api.test
 
 import ai.chronon.api
 import ai.chronon.api.Builders._
-import ai.chronon.api.RelevantLeftForJoinPart
+import ai.chronon.api.planner.RelevantLeftForJoinPart
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -233,10 +233,10 @@ object GroupByUpload {
          |""".stripMargin)
 
     val kvRdd = (groupByConf.inferredAccuracy, groupByConf.dataModel) match {
-      case (Accuracy.SNAPSHOT, DataModel.Events)   => groupByUpload.snapshotEvents
-      case (Accuracy.SNAPSHOT, DataModel.Entities) => groupByUpload.snapshotEntities
-      case (Accuracy.TEMPORAL, DataModel.Events)   => shiftedGroupByUpload.temporalEvents()
-      case (Accuracy.TEMPORAL, DataModel.Entities) => otherGroupByUpload.temporalEvents()
+      case (Accuracy.SNAPSHOT, DataModel.EVENTS)   => groupByUpload.snapshotEvents
+      case (Accuracy.SNAPSHOT, DataModel.ENTITIES) => groupByUpload.snapshotEntities
+      case (Accuracy.TEMPORAL, DataModel.EVENTS)   => shiftedGroupByUpload.temporalEvents()
+      case (Accuracy.TEMPORAL, DataModel.ENTITIES) => otherGroupByUpload.temporalEvents()
     }
 
     val kvDf = kvRdd.toAvroDf(jsonPercent = jsonPercent)
