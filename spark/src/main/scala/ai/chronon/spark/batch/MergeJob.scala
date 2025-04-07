@@ -35,8 +35,6 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
   private val dateRange = range.toPartitionRange
 
   def run(): Unit = {
-    val leftDfForSchema = tableUtils.scanDf(query = null, table = leftInputTable, range = Some(dateRange))
-    val leftSchema = leftDfForSchema.schema
 
     // This job benefits from a step day of 1 to avoid needing to shuffle on writing output (single partition)
     dateRange.steps(days = 1).foreach { dayStep =>
