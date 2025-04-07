@@ -50,6 +50,20 @@ scala_library(
 )
 
 scala_library(
+    name = "submission_lib",
+    srcs = glob(["src/main/scala/ai/chronon/spark/submission/*.scala"]),
+    format = select({
+        "//tools/config:scala_2_13": False,
+        "//conditions:default": True,
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api:lib",
+        "//api:thrift_java",
+    ],
+)
+
+scala_library(
     name = "batch_lib",
     srcs = glob(["src/main/scala/ai/chronon/spark/batch/*.scala"]),
     format = select({

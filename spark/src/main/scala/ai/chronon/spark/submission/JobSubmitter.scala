@@ -1,10 +1,13 @@
-package ai.chronon.spark
+package ai.chronon.spark.submission
 
 import ai.chronon.api
 import ai.chronon.api.ScalaJavaConversions.MapOps
-import ai.chronon.spark.JobSubmitterConstants.ConfTypeArgKeyword
-import ai.chronon.spark.JobSubmitterConstants.LocalConfPathArgKeyword
-import ai.chronon.spark.JobSubmitterConstants.OriginalModeArgKeyword
+import ai.chronon.spark.submission.JobSubmitterConstants.ConfTypeArgKeyword
+import ai.chronon.spark.submission.JobSubmitterConstants.LocalConfPathArgKeyword
+import ai.chronon.spark.submission.JobSubmitterConstants.OriginalModeArgKeyword
+import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.api.thrift.TBase
+import scala.reflect.ClassTag
 
 sealed trait JobType
 case object SparkJob extends JobType
@@ -24,6 +27,7 @@ trait JobSubmitter {
 }
 
 object JobSubmitter {
+
   def getArgValue(args: Array[String], argKeyword: String): Option[String] = {
     args
       .find(_.startsWith(argKeyword))
@@ -31,16 +35,19 @@ object JobSubmitter {
       .map(_(1))
   }
 
+  def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
+    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
+
   def getModeConfigProperties(args: Array[String]): Option[Map[String, String]] = {
     val localConfPathValue = getArgValue(args, LocalConfPathArgKeyword)
     val confTypeValue = getArgValue(args, ConfTypeArgKeyword)
 
     val modeConfigProperties = if (localConfPathValue.isDefined && confTypeValue.isDefined) {
       val executionInfo = confTypeValue.get match {
-        case "joins"           => Driver.parseConf[api.Join](localConfPathValue.get).metaData.executionInfo
-        case "group_bys"       => Driver.parseConf[api.GroupBy](localConfPathValue.get).metaData.executionInfo
-        case "staging_queries" => Driver.parseConf[api.StagingQuery](localConfPathValue.get).metaData.executionInfo
-        case "models"          => Driver.parseConf[api.Model](localConfPathValue.get).metaData.executionInfo
+        case "joins"           => parseConf[api.Join](localConfPathValue.get).metaData.executionInfo
+        case "group_bys"       => parseConf[api.GroupBy](localConfPathValue.get).metaData.executionInfo
+        case "staging_queries" => parseConf[api.StagingQuery](localConfPathValue.get).metaData.executionInfo
+        case "models"          => parseConf[api.Model](localConfPathValue.get).metaData.executionInfo
         case _                 => throw new Exception("Invalid conf type")
       }
 

@@ -1,10 +1,10 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.spark.SparkJob
+import ai.chronon.spark.submission.SparkJob
 import org.scalatest.flatspec.AnyFlatSpec
 import software.amazon.awssdk.services.emr.EmrClient
-import ai.chronon.spark.JobSubmitterConstants._
+import ai.chronon.spark.submission.JobSubmitterConstants._
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.mockito.Mockito.when
