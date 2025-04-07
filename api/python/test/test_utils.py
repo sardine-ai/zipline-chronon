@@ -298,7 +298,7 @@ def test_get_related_table_names_for_bootstrap_joins():
 )
 def test_group_by_table_names(repo, materialized_group_by, table_name):
     gb = file2thrift(
-        os.path.join(repo, "production/group_bys/sample_team", materialized_group_by),
+        os.path.join(repo, "compiled/group_bys/sample_team", materialized_group_by),
         api.GroupBy,
     )
     assert utils.group_by_output_table_name(gb, True) == table_name
@@ -319,7 +319,7 @@ def test_group_by_table_names(repo, materialized_group_by, table_name):
 )
 def test_join_part_table_names(repo, materialized_join, table_name):
     join = file2thrift(
-        os.path.join(repo, "production/joins/sample_team", materialized_join), api.Join
+        os.path.join(repo, "compiled/joins/sample_team", materialized_join), api.Join
     )
     assert (
         utils.join_part_output_table_name(join, join.joinParts[0], True) == table_name
