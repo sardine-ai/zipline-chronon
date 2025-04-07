@@ -7,7 +7,9 @@ import requests
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,
 )
-from ai.chronon.repo.serializer import json2binary
+
+from ai.chronon.cli.compile.serializer import thrift_simple_json
+from ai.chronon.orchestration.ttypes import DiffRequest, UploadRequest, Conf
 
 HUB_BASE_URL = "http://localhost:9000"
 DIFF_ENDPOINT = "/upload/v1/diff"
@@ -26,42 +28,24 @@ def _get_diffed_entities(root_dir: str, branch: str):
         Dictionary of entity names to (binary, hash) tuples for changed entities
     """
     local_repo_entities = _build_local_repo_hashmap(root_dir)
-    return local_repo_entities
+    # return local_repo_entities
     names_and_hashes = {
         name: hash_value for name, (_, hash_value) in local_repo_entities.items()
     }
 
     # Prepare DiffRequest to send to the Hub service
-    diff_request = {"namesToHashes": names_and_hashes}
+    diff_request = thrift_simple_json(DiffRequest(namesToHashes=names_and_hashes))
 
-    # Make a POST request to the diff endpoint with the branch in query parameters
+    # Make a GET request to the diff endpoint with the branch in query parameters
+    # Using data parameter with json.dumps to handle the serialization correctly
     response = requests.get(
         f"{HUB_BASE_URL}{DIFF_ENDPOINT}",
-        json=diff_request,
+        data=diff_request,
         headers={"Content-Type": "application/json"},
     )
 
-    # Get the list of changed entity names from the response
-    print("Names and hashes ")
-    print(names_and_hashes)
-    print("-----------")
-    diff_response = response.json()
-    print("DIFF RESPONSE ")
-    print(diff_response)
-    print("-----------")
-    raw_diff = diff_response.get("diff", [])
-    print("RAW DIFF ")
-    print(raw_diff)
-    print("-----------")
-    changed_entity_names = [
-        json.loads(e) if isinstance(e, str) and e.startswith('"') else e
-        for e in raw_diff
-    ]
-    print("CHANGED ENTITIES ")
-    print(changed_entity_names)
-    print("-----------")
+    changed_entity_names = response.json().get("diff")
     print(f"Found {len(changed_entity_names)} entities to upload")
-    print(local_repo_entities.keys())
     # print(local_repo_entities)
 
     # Return only the entities that need to be uploaded
@@ -140,34 +124,32 @@ def compute_and_upload_diffs(root_dir: str, branch: str):
     print(log_str)
 
     # Prepare the upload request
-    upload_request = {"diffConfs": [], "branch": branch}
+    diff_confs = []
 
     # Add each entity as a Conf object
     for name, (thrift_json, hash_value) in diffed_entities.items():
-        conf = {
-            "name": name,
-            "hash": hash_value,
-            "contents": thrift_json,  # Using the Thrift JSON directly
-        }
-        upload_request["diffConfs"].append(conf)
+        conf = Conf(name=name, hash=hash_value, contents=thrift_json)
+        diff_confs.append(conf)
 
-    print("------------- Upload Request")
-    print(upload_request)
+    upload_request = UploadRequest(branch=branch, diffConfs=diff_confs)
 
-    # Make a PUT request to the upload endpoint
+    # Make a POST request to the upload endpoint
+    # Using data parameter with json.dumps to handle the serialization correctly
     response = requests.post(
         f"{HUB_BASE_URL}{UPLOAD_ENDPOINT}",
-        json=upload_request,
+        data=thrift_simple_json(upload_request),
         headers={"Content-Type": "application/json"},
     )
-
-    print("--------------- REsponse")
-    print(response)
-
     # Return the response from the upload endpoint
-    return response.json().get("message", "Upload successful")
+    try:
+        return response.json().get("message", "Upload successful")
+    except json.JSONDecodeError:
+        # If the response is not valid JSON, return the response text or status code
+        return f"Upload completed with status {response.status_code}: {response.text}"
 
 
+"""
 compute_and_upload_diffs(
     "/Users/varantzanoyan/repos/chronon/api/python/test/sample/production", "test"
 )
+"""
