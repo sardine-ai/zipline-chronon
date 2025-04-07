@@ -1,0 +1,160 @@
+{
+  "metaData": {
+    "name": "quickstart.returns.v1",
+    "team": "quickstart",
+    "outputNamespace": "quickstart",
+    "online": 1,
+    "sourceFile": "/Users/thomaschow/zipline-ai/chronon/api/python/test/sample/group_bys/quickstart/returns.py",
+    "executionInfo": {
+      "env": {
+        "common": {
+          "VERSION": "latest",
+          "SERDE_CLASS": "your.serde.class",
+          "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+          "PARTITION_COLUMN": "ds",
+          "PARTITION_FORMAT": "yyyy-MM-dd",
+          "CUSTOMER_ID": "canary",
+          "GCP_PROJECT_ID": "canary-443022",
+          "GCP_REGION": "us-central1",
+          "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+          "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance"
+        },
+        "modeEnvironments": {
+          "backfill": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "EXECUTOR_CORES": "2",
+            "DRIVER_MEMORY": "15G",
+            "EXECUTOR_MEMORY": "4G",
+            "PARALLELISM": "4",
+            "MAX_EXECUTORS": "4"
+          },
+          "upload": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "PARALLELISM": "2",
+            "MAX_EXECUTORS": "4"
+          },
+          "streaming": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "EXECUTOR_CORES": "2",
+            "EXECUTOR_MEMORY": "4G",
+            "PARTITIONS_PER_EXECUTOR": "2"
+          }
+        }
+      },
+      "scheduleCron": "@daily",
+      "historicalBackfill": 0
+    },
+    "confType": 1
+  },
+  "sources": [
+    {
+      "events": {
+        "table": "data.returns",
+        "topic": "events.returns/fields=ts,return_id,user_id,product_id,refund_amt/host=kafka/port=9092",
+        "query": {
+          "selects": {
+            "user_id": "user_id",
+            "refund_amt": "refund_amt"
+          },
+          "timeColumn": "ts"
+        }
+      }
+    }
+  ],
+  "keyColumns": [
+    "user_id"
+  ],
+  "aggregations": [
+    {
+      "inputColumn": "refund_amt",
+      "operation": 7,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "refund_amt",
+      "operation": 6,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "refund_amt",
+      "operation": 8,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "refund_amt",
+      "operation": 13,
+      "argMap": {
+        "k": "2"
+      }
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "metaData": {
+    "name": "quickstart.schema.v1",
+    "team": "quickstart",
+    "outputNamespace": "quickstart",
+    "online": 0,
+    "sourceFile": "/Users/thomaschow/zipline-ai/chronon/api/python/test/sample/group_bys/quickstart/schema.py",
+    "executionInfo": {
+      "env": {
+        "common": {
+          "VERSION": "latest",
+          "SERDE_CLASS": "your.serde.class",
+          "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+          "PARTITION_COLUMN": "ds",
+          "PARTITION_FORMAT": "yyyy-MM-dd",
+          "CUSTOMER_ID": "canary",
+          "GCP_PROJECT_ID": "canary-443022",
+          "GCP_REGION": "us-central1",
+          "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+          "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance"
+        },
+        "modeEnvironments": {
+          "backfill": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "EXECUTOR_CORES": "2",
+            "DRIVER_MEMORY": "15G",
+            "EXECUTOR_MEMORY": "4G",
+            "PARALLELISM": "4",
+            "MAX_EXECUTORS": "4"
+          },
+          "upload": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "PARALLELISM": "2",
+            "MAX_EXECUTORS": "4"
+          },
+          "streaming": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "EXECUTOR_CORES": "2",
+            "EXECUTOR_MEMORY": "4G",
+            "PARTITIONS_PER_EXECUTOR": "2"
+          }
+        }
+      },
+      "scheduleCron": "@daily",
+      "historicalBackfill": 0
+    },
+    "confType": 1
+  },
+  "sources": [
+    {
+      "events": {
+        "table": "default.chronon_log_table",
+        "query": {
+          "selects": {
+            "schema_hash": "decode(unbase64(key_base64), 'utf-8')",
+            "schema_value": "decode(unbase64(value_base64), 'utf-8')"
+          },
+          "wheres": [
+            "name='SCHEMA_PUBLISH_EVENT'"
+          ],
+          "timeColumn": "ts_millis"
+        }
+      }
+    }
+  ],
+  "keyColumns": [
+    "schema_hash"
+  ],
+  "aggregations": [
+    {
+      "inputColumn": "schema_value",
+      "operation": 3,
+      "argMap": {}
+    }
+  ],
+  "backfillStartDate": "2023-04-09"
+}

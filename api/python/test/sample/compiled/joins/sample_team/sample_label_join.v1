@@ -1,0 +1,270 @@
+{
+  "metaData": {
+    "name": "sample_team.sample_label_join.v1",
+    "team": "sample_team",
+    "outputNamespace": "test",
+    "online": 0,
+    "production": 0,
+    "sourceFile": "/Users/thomaschow/zipline-ai/chronon/api/python/test/sample/joins/sample_team/sample_label_join.py",
+    "samplePercent": 100.0,
+    "executionInfo": {
+      "env": {
+        "common": {
+          "VERSION": "latest",
+          "SERDE_CLASS": "your.serde.class",
+          "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+          "PARTITION_COLUMN": "ds",
+          "PARTITION_FORMAT": "yyyy-MM-dd",
+          "CUSTOMER_ID": "canary",
+          "GCP_PROJECT_ID": "canary-443022",
+          "GCP_REGION": "us-central1",
+          "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+          "GCP_BIGTABLE_INSTANCE_ID": "test-instance"
+        },
+        "modeEnvironments": {
+          "backfill": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "test-instance",
+            "EXECUTOR_CORES": "2",
+            "DRIVER_MEMORY": "15G",
+            "EXECUTOR_MEMORY": "4G",
+            "PARALLELISM": "4",
+            "MAX_EXECUTORS": "4"
+          },
+          "upload": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "test-instance",
+            "PARALLELISM": "2",
+            "MAX_EXECUTORS": "4"
+          },
+          "streaming": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "test-instance",
+            "EXECUTOR_CORES": "2",
+            "EXECUTOR_MEMORY": "4G",
+            "PARTITIONS_PER_EXECUTOR": "2"
+          }
+        }
+      },
+      "scheduleCron": "@daily"
+    },
+    "confType": 0
+  },
+  "left": {
+    "events": {
+      "table": "sample_namespace.sample_table_group_by",
+      "query": {
+        "selects": {
+          "event": "event_expr",
+          "group_by_subject": "group_by_expr",
+          "ts": "ts"
+        },
+        "startPartition": "2021-04-09",
+        "timeColumn": "ts"
+      }
+    }
+  },
+  "joinParts": [
+    {
+      "groupBy": {
+        "metaData": {
+          "name": "sample_team.event_sample_group_by.v1",
+          "team": "sample_team",
+          "outputNamespace": "sample_namespace",
+          "online": 1,
+          "executionInfo": {
+            "scheduleCron": "@daily",
+            "historicalBackfill": 0
+          }
+        },
+        "sources": [
+          {
+            "events": {
+              "table": "sample_namespace.sample_table_group_by",
+              "query": {
+                "selects": {
+                  "event": "event_expr",
+                  "group_by_subject": "group_by_expr"
+                },
+                "startPartition": "2021-04-09",
+                "timeColumn": "ts"
+              }
+            }
+          }
+        ],
+        "keyColumns": [
+          "group_by_subject"
+        ],
+        "aggregations": [
+          {
+            "inputColumn": "event",
+            "operation": 7,
+            "argMap": {},
+            "windows": [
+              {
+                "length": 7,
+                "timeUnit": 1
+              }
+            ]
+          },
+          {
+            "inputColumn": "event",
+            "operation": 7,
+            "argMap": {}
+          },
+          {
+            "inputColumn": "event",
+            "operation": 12,
+            "argMap": {
+              "k": "200",
+              "percentiles": "[0.99, 0.95, 0.5]"
+            }
+          }
+        ]
+      },
+      "keyMapping": {
+        "subject": "group_by_subject"
+      }
+    },
+    {
+      "groupBy": {
+        "metaData": {
+          "name": "sample_team.group_by_with_kwargs.v1",
+          "team": "sample_team",
+          "online": 1,
+          "executionInfo": {
+            "scheduleCron": "@daily",
+            "historicalBackfill": 0
+          }
+        },
+        "sources": [
+          {
+            "events": {
+              "table": "sample_namespace.sample_table_group_by",
+              "query": {
+                "selects": {
+                  "group_by_subject": "group_by_subject_expr_old_version",
+                  "event": "event_expr_old_version"
+                },
+                "startPartition": "2021-03-01",
+                "endPartition": "2021-04-09",
+                "timeColumn": "UNIX_TIMESTAMP(ts) * 1000"
+              }
+            }
+          },
+          {
+            "events": {
+              "table": "sample_namespace.another_sample_table_group_by",
+              "query": {
+                "selects": {
+                  "group_by_subject": "possibly_different_group_by_subject_expr",
+                  "event": "possibly_different_event_expr"
+                },
+                "startPartition": "2021-03-01",
+                "timeColumn": "__timestamp"
+              }
+            }
+          }
+        ],
+        "keyColumns": [
+          "group_by_subject"
+        ],
+        "aggregations": [
+          {
+            "inputColumn": "event",
+            "operation": 7,
+            "argMap": {}
+          },
+          {
+            "inputColumn": "event",
+            "operation": 12,
+            "argMap": {
+              "k": "20",
+              "percentiles": "[0.5]"
+            }
+          },
+          {
+            "inputColumn": "event",
+            "operation": 7,
+            "argMap": {},
+            "windows": [
+              {
+                "length": 7,
+                "timeUnit": 1
+              }
+            ]
+          }
+        ]
+      },
+      "keyMapping": {
+        "subject": "group_by_subject"
+      }
+    }
+  ],
+  "labelParts": {
+    "labels": [
+      {
+        "groupBy": {
+          "metaData": {
+            "name": "sample_team.label_part_group_by.label_part_group_by_2",
+            "team": "sample_team",
+            "online": 0,
+            "executionInfo": {
+              "scheduleCron": "@daily",
+              "historicalBackfill": 0
+            }
+          },
+          "sources": [
+            {
+              "entities": {
+                "snapshotTable": "sample_table.sample_entity_snapshot",
+                "query": {
+                  "selects": {
+                    "group_by_subject": "group_by_subject_expr",
+                    "entity": "entity_expr"
+                  },
+                  "startPartition": "2021-03-01",
+                  "timeColumn": "ts"
+                }
+              }
+            }
+          ],
+          "keyColumns": [
+            "group_by_subject"
+          ]
+        }
+      }
+    ],
+    "leftStartOffset": 30,
+    "leftEndOffset": 10,
+    "metaData": {
+      "executionInfo": {
+        "scheduleCron": "@weekly"
+      }
+    }
+  }
+}
