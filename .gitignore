@@ -18,8 +18,7 @@
 **/__pycache__/
 **/.DS_Store
 api/python/test/canary/compiled/
-api/python/test/canary/production/
-api/python/test/sample/production/
+api/python/test/sample/compiled/
 api/python/ai/chronon/api/
 api/python/ai/chronon/observability/
 api/python/ai/chronon/fetcher/
