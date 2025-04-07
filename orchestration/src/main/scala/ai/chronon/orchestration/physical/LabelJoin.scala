@@ -10,10 +10,10 @@ import ai.chronon.orchestration.JoinNodeType
 import ai.chronon.orchestration.PhysicalNodeType
 import ai.chronon.orchestration.utils
 import ai.chronon.api.CollectionExtensions.JListExtension
-import ai.chronon.orchestration.utils.DependencyResolver.tableDependency
+import ai.chronon.api.dependency.DependencyResolver.tableDependency
 import ai.chronon.orchestration.utils.ShiftConstants.PartitionTimeUnit
 import ai.chronon.orchestration.utils.ShiftConstants.noShift
-import ai.chronon.orchestration.utils.WindowUtils
+import ai.chronon.api.Extensions.WindowUtils
 
 class LabelJoin(join: Join) extends TabularNode[Join](join) {
 

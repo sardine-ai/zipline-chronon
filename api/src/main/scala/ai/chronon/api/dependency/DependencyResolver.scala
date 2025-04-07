@@ -1,9 +1,9 @@
-package ai.chronon.orchestration.utils
+package ai.chronon.api.dependency
 
 import ai.chronon.api
 import ai.chronon.api.Extensions.SourceOps
-import ai.chronon.api.{PartitionRange, PartitionSpec, TableDependency, Window}
-import WindowUtils.convertUnits
+import ai.chronon.api.Extensions.WindowUtils._
+import ai.chronon.api.{PartitionRange, PartitionSpec, TableDependency, TableInfo, Window}
 
 object DependencyResolver {
 
@@ -59,20 +59,17 @@ object DependencyResolver {
     if (startCutOff != null) result.setStartCutOff(startCutOff)
     if (endCutOff != null) result.setEndCutOff(endCutOff)
 
-    result.tableInfo.setIsCumulative(source.isCumulative)
-    result.tableInfo.setTable(table)
+    val tableInfo = new TableInfo()
+      .setIsCumulative(source.isCumulative)
+      .setTable(table)
+
+    result.setTableInfo(tableInfo)
 
     result
   }
 
-  // return type for inputPartitionRange
-  sealed trait PartitionRangeNeeded
-  case class LatestPartitionInRange(start: String, end: String) extends PartitionRangeNeeded
-  case class AllPartitionsInRange(start: String, end: String) extends PartitionRangeNeeded
-  case object NoPartitions extends PartitionRangeNeeded
-
-  def inputPartitionRange(queryRange: PartitionRange, tableDep: TableDependency)(implicit
-      partitionSpec: PartitionSpec): PartitionRangeNeeded = {
+  def computeInputRange(queryRange: PartitionRange, tableDep: TableDependency)(implicit
+      partitionSpec: PartitionSpec): Option[PartitionRange] = {
 
     require(queryRange != null, "Query range cannot be null")
     require(queryRange.start != null, "Query range start cannot be null")
@@ -84,13 +81,31 @@ object DependencyResolver {
     val end = min(offsetEnd, tableDep.getEndCutOff)
 
     if (start != null && end != null && start > end) {
-      return NoPartitions
+      return None
     }
 
     if (tableDep.tableInfo.isCumulative) {
-      return LatestPartitionInRange(end, tableDep.getEndCutOff)
+
+      // we should always compute the latest possible partition when end_cutoff is not set
+      val latestValidInput = Option(tableDep.getEndCutOff).getOrElse(partitionSpec.now)
+      val latestValidInputWithOffset = minus(latestValidInput, tableDep.getEndOffset)
+
+      return Some(PartitionRange(latestValidInputWithOffset, latestValidInputWithOffset))
+
     }
 
-    AllPartitionsInRange(start, end)
+    Some(PartitionRange(start, end))
+  }
+
+  def getMissingSteps(requiredPartitionRange: PartitionRange,
+                      existingPartitions: Seq[String],
+                      stepDays: Int = 1): Seq[PartitionRange] = {
+    val requiredPartitions = requiredPartitionRange.partitions
+
+    val missingPartitions = requiredPartitions.filterNot(existingPartitions.contains)
+    val missingPartitionRanges = PartitionRange.collapseToRange(missingPartitions)(requiredPartitionRange.partitionSpec)
+
+    val missingSteps = missingPartitionRanges.flatMap(_.steps(stepDays))
+    missingSteps
   }
 }

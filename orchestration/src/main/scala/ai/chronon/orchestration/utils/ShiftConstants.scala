@@ -2,6 +2,7 @@ package ai.chronon.orchestration.utils
 
 import ai.chronon.api
 import ai.chronon.api.Window
+import ai.chronon.api.Extensions.WindowUtils
 
 object ShiftConstants {
   val noShift: Window = WindowUtils.zero()
