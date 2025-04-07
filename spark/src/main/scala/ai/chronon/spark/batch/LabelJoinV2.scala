@@ -1,6 +1,5 @@
 package ai.chronon.spark.batch
 import ai.chronon.api
-import ai.chronon.api.DataModel.Events
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
@@ -49,14 +48,14 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
   }
 
   private def runAssertions(): Unit = {
-    assert(joinConf.left.dataModel == Events,
+    assert(joinConf.left.dataModel == DataModel.EVENTS,
            s"join.left.dataMode needs to be Events for label join ${joinConf.metaData.name}")
 
     assert(Option(joinConf.metaData.team).nonEmpty,
            s"join.metaData.team needs to be set for join ${joinConf.metaData.name}")
 
     labelJoinConf.labels.asScala.foreach { jp =>
-      assert(jp.groupBy.dataModel == Events,
+      assert(jp.groupBy.dataModel == DataModel.EVENTS,
              s"groupBy.dataModel must be Events for label join with aggregations ${jp.groupBy.metaData.name}")
 
       assert(Option(jp.groupBy.aggregations).isDefined,

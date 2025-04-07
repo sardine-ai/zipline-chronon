@@ -491,3 +491,8 @@ struct Team {
     20: optional common.EnvironmentVariables env
     21: optional common.ConfigProperties conf
 }
+
+enum DataModel {
+    ENTITIES = 0
+    EVENTS = 1
+}

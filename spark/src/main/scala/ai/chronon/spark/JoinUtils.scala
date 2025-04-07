@@ -17,10 +17,10 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.DataModel.{DataModel, Events}
+import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions.{JoinOps, _}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Accuracy, Constants, JoinPart, PartitionRange, ThriftJsonCodec}
+import ai.chronon.api._
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
 import org.apache.spark.sql
@@ -70,7 +70,7 @@ object JoinUtils {
              tableUtils: TableUtils,
              allowEmpty: Boolean = false,
              limit: Option[Int] = None): Option[DataFrame] = {
-    val timeProjection = if (joinConf.left.dataModel == Events) {
+    val timeProjection = if (joinConf.left.dataModel == EVENTS) {
       Seq(Constants.TimeColumn -> Option(joinConf.left.query).map(_.timeColumn).orNull)
     } else {
       Seq()
@@ -100,7 +100,7 @@ object JoinUtils {
                        allowEmpty: Boolean = false,
                        limit: Option[Int] = None,
                        skewFilter: Option[String]): Option[DataFrame] = {
-    val timeProjection = if (left.dataModel == Events) {
+    val timeProjection = if (left.dataModel == EVENTS) {
       Seq(Constants.TimeColumn -> Option(left.query).map(_.timeColumn).orNull)
     } else {
       Seq()
@@ -566,7 +566,7 @@ object JoinUtils {
                 leftDf: Option[DfWithStats],
                 leftRange: PartitionRange) = {
     val shiftDays =
-      if (leftDataModel == Events && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+      if (leftDataModel == EVENTS && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
         -1
       } else {
         0
@@ -578,7 +578,7 @@ object JoinUtils {
     // events | entities | snapshot => right part tables are not aligned - so scan by leftTimeRange
     // events | entities | temporal => right part tables are aligned - so scan by leftRange
     // entities | entities | snapshot => right part tables are aligned - so scan by leftRange
-    val rightRange = if (leftDataModel == Events && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+    val rightRange = if (leftDataModel == EVENTS && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
       val leftTimeRange = leftTimeRangeOpt.getOrElse(leftDf.get.timeRange.toPartitionRange)
       leftTimeRange.shift(shiftDays)
     } else {
@@ -597,10 +597,6 @@ object JoinUtils {
     }
   }
 
-  /** Computes the name of the source table for a join's left side
-    * This is the output table of the SourceWithFilterNode job that runs for the join
-    * Format: {join_output_namespace}.{join_left_source_table_with_namespace_replaced}_{source_hash}[_{skew_keys_hash}]
-    */
   def computeLeftSourceTableName(join: api.Join): String = {
     val source = join.left
     val namespace = join.metaData.outputNamespace
@@ -613,6 +609,14 @@ object JoinUtils {
     // Calculate skewKeys hash if present, using Option
     val skewKeysHashSuffix = Option(join.skewKeys) // TODO -- hash this or something?
 
-    s"${namespace}.${sourceTable}_${sourceHash}"
+    s"${sourceTable}_${sourceHash}"
+  }
+
+  /** Computes the name of the source table for a join's left side
+    * This is the output table of the SourceWithFilterNode job that runs for the join
+    * Format: {join_output_namespace}.{join_left_source_table_with_namespace_replaced}_{source_hash}[_{skew_keys_hash}]
+    */
+  def computeFullLeftSourceTableName(join: api.Join): String = {
+    s"${join.metaData.outputNamespace}.${computeLeftSourceTableName(join)}"
   }
 }

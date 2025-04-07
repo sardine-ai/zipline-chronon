@@ -1,9 +1,10 @@
-package ai.chronon.api
+package ai.chronon.api.planner
 
+import ai.chronon.api.CollectionExtensions.JMapExtension
+import ai.chronon.api.ColumnExpression.getTimeExpression
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, SourceOps, StringOps}
 import ai.chronon.api.ScalaJavaConversions._
-import CollectionExtensions.JMapExtension
-import ai.chronon.api.ColumnExpression.getTimeExpression
+import ai.chronon.api.{JoinPart, _}
 
 // TODO(phase-2): This is not wired into the planner yet
 // computes subset of the left source that is relevant for a join part
@@ -32,7 +33,7 @@ object RelevantLeftForJoinPart {
     metadata.name.split('.').tail.mkString(".")
   }
 
-  def partTableName(join: Join, joinPart: JoinPart): String = {
+  def partTableName(join: Join, joinPart: ai.chronon.api.JoinPart): String = {
     val relevantLeft = relevantLeftCompute(join.left, joinPart)
     val rightMetadata = joinPart.groupBy.metaData
     val prefix = Option(joinPart.prefix).map(_.sanitize + "__").getOrElse("")
@@ -76,7 +77,7 @@ object RelevantLeftForJoinPart {
 
     // time is only relevant if left is events
     val leftTimeExpression = left.dataModel match {
-      case DataModel.Events => Some(getTimeExpression(leftQuery))
+      case DataModel.EVENTS => Some(getTimeExpression(leftQuery))
       case _                => None
     }
 

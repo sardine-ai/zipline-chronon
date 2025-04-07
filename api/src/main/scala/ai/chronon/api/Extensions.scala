@@ -331,8 +331,8 @@ object Extensions {
   implicit class SourceOps(source: Source) {
     def dataModel: DataModel = {
       assert(source.isSetEntities || source.isSetEvents || source.isSetJoinSource, "Source type is not specified")
-      if (source.isSetEntities) Entities
-      else if (source.isSetEvents) Events
+      if (source.isSetEntities) ENTITIES
+      else if (source.isSetEvents) EVENTS
       else source.getJoinSource.getJoin.left.dataModel
     }
 
@@ -574,10 +574,10 @@ object Extensions {
       val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
 
       val fillIfAbsent = (groupBy.dataModel match {
-        case DataModel.Entities =>
+        case DataModel.ENTITIES =>
           Map(Constants.ReversalColumn -> Constants.ReversalColumn,
               Constants.MutationTimeColumn -> Constants.MutationTimeColumn)
-        case DataModel.Events => Map(Constants.TimeColumn -> timeColumn)
+        case DataModel.EVENTS => Map(Constants.TimeColumn -> timeColumn)
       })
 
       val baseWheres = Option(query.wheres).map(_.toScala).getOrElse(Seq.empty[String])
@@ -624,12 +624,12 @@ object Extensions {
         val selects = query.getQuerySelects
         val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
         val fillIfAbsent = groupBy.dataModel match {
-          case DataModel.Entities =>
+          case DataModel.ENTITIES =>
             Some(
               Map(Constants.TimeColumn -> timeColumn,
                   Constants.ReversalColumn -> null,
                   Constants.MutationTimeColumn -> null))
-          case DataModel.Events => Some(Map(Constants.TimeColumn -> timeColumn))
+          case DataModel.EVENTS => Some(Map(Constants.TimeColumn -> timeColumn))
         }
         val keys = groupBy.getKeyColumns.toScala
 
@@ -657,8 +657,8 @@ object Extensions {
 
     private def timeWheres(timeColumn: String) = {
       groupBy.dataModel match {
-        case DataModel.Entities => Seq(s"${Constants.MutationTimeColumn} is NOT NULL")
-        case DataModel.Events   => Seq(s"$timeColumn is NOT NULL")
+        case DataModel.ENTITIES => Seq(s"${Constants.MutationTimeColumn} is NOT NULL")
+        case DataModel.EVENTS   => Seq(s"$timeColumn is NOT NULL")
       }
     }
   }
@@ -1071,11 +1071,11 @@ object Extensions {
       query.setEndPartition(join.left.query.getEndPartition)
 
       join.left.dataModel match {
-        case Entities =>
+        case ENTITIES =>
           val src = new EntitySource()
           src.setSnapshotTable(join.metaData.outputTable)
           src.setQuery(query)
-        case Events =>
+        case EVENTS =>
           val src = new EventSource()
           src.setTable(join.metaData.outputTable)
           src.setQuery(query)
@@ -1220,17 +1220,17 @@ object Extensions {
 
   implicit class JoinSourceOps(joinSource: JoinSource) {
     // convert chained joinSource into event or entity sources
-    def toDirectSource: Source = {
+    def toDirectSource(joinOutputTable: String): Source = {
       val joinTable = joinSource.getJoin.getMetaData.outputTable
       val result = new Source()
       joinSource.join.left.dataModel match {
-        case Entities =>
+        case ENTITIES =>
           val inner = new EntitySource()
           inner.setSnapshotTable(joinTable)
           inner.setQuery(joinSource.getQuery)
           result.setEntities(inner)
 
-        case Events =>
+        case EVENTS =>
           val inner = new EventSource()
           inner.setTable(joinTable)
           inner.setQuery(joinSource.getQuery)

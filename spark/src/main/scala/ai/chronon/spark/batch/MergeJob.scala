@@ -1,8 +1,33 @@
 package ai.chronon.spark.batch
-import ai.chronon.api.DataModel.Entities
-import ai.chronon.api.Extensions.{DateRangeOps, GroupByOps, JoinPartOps, MetadataOps, SourceOps}
-import ai.chronon.api._
+
+import ai.chronon.spark.JoinUtils.{coalescedJoin, padFields}
 import ai.chronon.orchestration.JoinMergeNode
+import ai.chronon.api.{
+  Accuracy,
+  Constants,
+  DateRange,
+  JoinPart,
+  PartitionSpec,
+  PartitionRange,
+  QueryUtils,
+  StructField,
+  StructType
+}
+import ai.chronon.api.DataModel.ENTITIES
+import ai.chronon.api.Extensions.{
+  DateRangeOps,
+  DerivationOps,
+  ExternalPartOps,
+  GroupByOps,
+  JoinPartOps,
+  MetadataOps,
+  SourceOps
+}
+import ai.chronon.api.ScalaJavaConversions.ListOps
+import ai.chronon.api.planner.RelevantLeftForJoinPart
+import ai.chronon.online.SparkConversions
+import org.apache.spark.sql.DataFrame
+import org.slf4j.{Logger, LoggerFactory}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.coalescedJoin
 import ai.chronon.spark.{JoinUtils, TableUtils}
@@ -65,7 +90,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
       // Use the RelevantLeftForJoinPart utility to get the part table name
       val partTable = RelevantLeftForJoinPart.fullPartTableName(join, joinPart)
       val effectiveRange =
-        if (join.left.dataModel != Entities && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+        if (join.left.dataModel != ENTITIES && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
           dayStep.shift(-1)
         } else {
           dayStep
@@ -82,7 +107,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
 
     // compute join keys, besides the groupBy keys -  like ds, ts etc.,
     val additionalKeys: Seq[String] = {
-      if (join.left.dataModel == Entities) {
+      if (join.left.dataModel == ENTITIES) {
         Seq(tableUtils.partitionColumn)
       } else if (joinPart.groupBy.inferredAccuracy == Accuracy.TEMPORAL) {
         Seq(Constants.TimeColumn, tableUtils.partitionColumn)

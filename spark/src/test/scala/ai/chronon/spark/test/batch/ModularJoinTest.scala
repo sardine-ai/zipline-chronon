@@ -3,15 +3,14 @@ package ai.chronon.spark.test.batch
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Extensions._
-import ai.chronon.api._
-import ai.chronon.orchestration.{
-  JoinBootstrapNode,
-  JoinDerivationNode,
-  JoinMergeNode,
-  JoinPartNode,
-  SourceWithFilterNode
-}
+
 import ai.chronon.spark.batch._
+import ai.chronon.api.{planner, _}
+import ai.chronon.orchestration.JoinBootstrapNode
+import ai.chronon.orchestration.JoinDerivationNode
+import ai.chronon.orchestration.JoinPartNode
+import ai.chronon.orchestration.JoinMergeNode
+import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
@@ -198,7 +197,7 @@ class ModularJoinTest extends AnyFlatSpec {
 
     // First run the SourceJob associated with the left
     // Compute source table name using utility function
-    val sourceOutputTable = JoinUtils.computeLeftSourceTableName(joinConf)
+    val sourceOutputTable = JoinUtils.computeFullLeftSourceTableName(joinConf)
 
     println(s"Source output table: $sourceOutputTable")
 
@@ -277,9 +276,9 @@ class ModularJoinTest extends AnyFlatSpec {
 
     // Now run the join part job that *does not* have a bootstrap
     // Use RelevantLeftForJoinPart to get the full table name (including namespace)
-    val joinPart1TableName = RelevantLeftForJoinPart.partTableName(joinConf, jp1)
+    val joinPart1TableName = planner.RelevantLeftForJoinPart.partTableName(joinConf, jp1)
     val outputNamespace = joinConf.metaData.outputNamespace
-    val joinPart1FullTableName = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp1)
+    val joinPart1FullTableName = planner.RelevantLeftForJoinPart.fullPartTableName(joinConf, jp1)
 
     val joinPartJobRange = new DateRange()
       .setStartDate(start)
@@ -292,7 +291,7 @@ class ModularJoinTest extends AnyFlatSpec {
 
     val joinPartNode = new JoinPartNode()
       .setLeftSourceTable(sourceOutputTable)
-      .setLeftDataModel(joinConf.getLeft.dataModel.toString)
+      .setLeftDataModel(joinConf.getLeft.dataModel)
       .setJoinPart(jp1)
       .setMetaData(metaData)
 
@@ -302,8 +301,8 @@ class ModularJoinTest extends AnyFlatSpec {
 
     // Now run the join part job that *does not* have a bootstrap
     // Use RelevantLeftForJoinPart to get the appropriate output table name
-    val joinPart2TableName = RelevantLeftForJoinPart.partTableName(joinConf, jp2)
-    val joinPart2FullTableName = RelevantLeftForJoinPart.fullPartTableName(joinConf, jp2)
+    val joinPart2TableName = planner.RelevantLeftForJoinPart.partTableName(joinConf, jp2)
+    val joinPart2FullTableName = planner.RelevantLeftForJoinPart.fullPartTableName(joinConf, jp2)
 
     val metaData2 = new api.MetaData()
       .setName(joinPart2TableName)
@@ -311,7 +310,7 @@ class ModularJoinTest extends AnyFlatSpec {
 
     val joinPartNode2 = new JoinPartNode()
       .setLeftSourceTable(sourceOutputTable)
-      .setLeftDataModel(joinConf.getLeft.dataModel.toString)
+      .setLeftDataModel(joinConf.getLeft.dataModel)
       .setJoinPart(jp2)
       .setMetaData(metaData2)
 
