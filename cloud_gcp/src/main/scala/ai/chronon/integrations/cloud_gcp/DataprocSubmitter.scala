@@ -11,9 +11,8 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
 
+import scala.collection.JavaConverters._
 import scala.io.Source
-
-import collection.JavaConverters._
 
 case class SubmitterConf(
     projectId: String,
@@ -52,21 +51,23 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
   }
 
   override def submit(jobType: JobType,
+                      submissionProperties: Map[String, String],
                       jobProperties: Map[String, String],
                       files: List[String],
                       args: String*): String = {
-    val mainClass = jobProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
-    val jarUri = jobProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
+    val mainClass = submissionProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
+    val jarUri = submissionProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
 
     val jobBuilder = jobType match {
-      case TypeSparkJob => buildSparkJob(mainClass, jarUri, files, args: _*)
+      case TypeSparkJob => buildSparkJob(mainClass, jarUri, files, jobProperties, args: _*)
       case TypeFlinkJob =>
         val mainJarUri =
-          jobProperties.getOrElse(FlinkMainJarURI, throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
+          submissionProperties.getOrElse(FlinkMainJarURI,
+                                         throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
         val flinkStateUri =
-          jobProperties.getOrElse(FlinkStateUri, throw new RuntimeException(s"Missing expected $FlinkStateUri"))
-        val maybeSavepointUri = jobProperties.get(SavepointUri)
-        buildFlinkJob(mainClass, mainJarUri, jarUri, flinkStateUri, maybeSavepointUri, args: _*)
+          submissionProperties.getOrElse(FlinkStateUri, throw new RuntimeException(s"Missing expected $FlinkStateUri"))
+        val maybeSavepointUri = submissionProperties.get(SavepointUri)
+        buildFlinkJob(mainClass, mainJarUri, jarUri, flinkStateUri, maybeSavepointUri, jobProperties, args: _*)
     }
 
     val jobPlacement = JobPlacement
@@ -89,9 +90,14 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     }
   }
 
-  private def buildSparkJob(mainClass: String, jarUri: String, files: List[String], args: String*): Job.Builder = {
+  private def buildSparkJob(mainClass: String,
+                            jarUri: String,
+                            files: List[String],
+                            jobProperties: Map[String, String],
+                            args: String*): Job.Builder = {
     val sparkJob = SparkJob
       .newBuilder()
+      .putAllProperties(jobProperties.asJava)
       .setMainClass(mainClass)
       .addJarFileUris(jarUri)
       .addAllFileUris(files.asJava)
@@ -105,6 +111,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
                             jarUri: String,
                             flinkStateUri: String,
                             maybeSavePointUri: Option[String],
+                            jobProperties: Map[String, String],
                             args: String*): Job.Builder = {
 
     // JobManager is primarily responsible for coordinating the job (task slots, checkpoint triggering) and not much else
@@ -146,7 +153,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       .newBuilder()
       .setMainClass(mainClass)
       .setMainJarFileUri(mainJarUri)
-      .putAllProperties(envProps.asJava)
+      .putAllProperties((envProps ++ jobProperties).asJava)
       .addJarFileUris(jarUri)
       .addAllArgs(args.toIterable.asJava)
 
@@ -201,8 +208,7 @@ object DataprocSubmitter {
 
   def main(args: Array[String]): Unit = {
 
-    // search args array for prefix `--gcs_files`
-    val gcsFilesArgs = args.filter(_.startsWith(GCSFilesArgKeyword))
+    val gcsFilesArgs = args.filter(_.startsWith(FilesArgKeyword))
     assert(gcsFilesArgs.length == 0 || gcsFilesArgs.length == 1)
 
     val gcsFiles = if (gcsFilesArgs.isEmpty) {
@@ -212,12 +218,10 @@ object DataprocSubmitter {
     }
 
     // List of args that are not application args
-    val internalArgs = Set(JarUriArgKeyword,
-                           JobTypeArgKeyword,
-                           MainClassKeyword,
-                           FlinkMainJarUriArgKeyword,
-                           FlinkSavepointUriArgKeyword,
-                           GCSFilesArgKeyword)
+    val internalArgs = Set(
+      GCSFilesArgKeyword
+    ) ++ SharedInternalArgs
+
     val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
 
     val required_vars = List.apply(
@@ -241,22 +245,32 @@ object DataprocSubmitter {
     )
     val submitter = DataprocSubmitter(submitterConf)
 
-    val jarUri = args.filter(_.startsWith(JarUriArgKeyword))(0).split("=")(1)
-    val mainClass = args.filter(_.startsWith(MainClassKeyword))(0).split("=")(1)
-    val jobTypeValue = args.filter(_.startsWith(JobTypeArgKeyword))(0).split("=")(1)
+    val jarUri = JobSubmitter
+      .getArgValue(args, JarUriArgKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + JarUriArgKeyword))
+    val mainClass = JobSubmitter
+      .getArgValue(args, MainClassKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + MainClassKeyword))
+    val jobTypeValue = JobSubmitter
+      .getArgValue(args, JobTypeArgKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + JobTypeArgKeyword))
 
-    val (jobType, jobProps) = jobTypeValue.toLowerCase match {
+    val modeConfigProperties = JobSubmitter.getModeConfigProperties(args)
+
+    val (jobType, submissionProps) = jobTypeValue.toLowerCase match {
       case "spark" => (TypeSparkJob, Map(MainClass -> mainClass, JarURI -> jarUri))
       case "flink" => {
         val flinkStateUri = sys.env.getOrElse("FLINK_STATE_URI", throw new Exception("FLINK_STATE_URI not set"))
 
-        val flinkMainJarUri = args.filter(_.startsWith(FlinkMainJarUriArgKeyword))(0).split("=")(1)
+        val flinkMainJarUri = JobSubmitter
+          .getArgValue(args, FlinkMainJarUriArgKeyword)
+          .getOrElse(throw new Exception("Missing required argument: " + FlinkMainJarUriArgKeyword))
         val baseJobProps = Map(MainClass -> mainClass,
                                JarURI -> jarUri,
                                FlinkMainJarURI -> flinkMainJarUri,
                                FlinkStateUri -> flinkStateUri)
         if (args.exists(_.startsWith(FlinkSavepointUriArgKeyword))) {
-          val savepointUri = args.filter(_.startsWith(FlinkSavepointUriArgKeyword))(0).split("=")(1)
+          val savepointUri = JobSubmitter.getArgValue(args, FlinkSavepointUriArgKeyword).get
           (TypeFlinkJob, baseJobProps + (SavepointUri -> savepointUri))
         } else (TypeFlinkJob, baseJobProps)
       }
@@ -279,9 +293,10 @@ object DataprocSubmitter {
     println(finalArgs.mkString("Array(", ", ", ")"))
 
     val jobId = submitter.submit(
-      jobType,
-      jobProps,
-      gcsFiles.toList,
+      jobType = jobType,
+      submissionProperties = submissionProps,
+      jobProperties = modeConfigProperties.getOrElse(Map.empty),
+      files = gcsFiles.toList,
       finalArgs: _*
     )
     println("Dataproc submitter job id: " + jobId)

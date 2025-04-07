@@ -4,6 +4,8 @@ import importlib
 import os
 from typing import List
 
+from ai.chronon.api.common.ttypes import ConfType
+from ai.chronon.api.ttypes import GroupBy, Join, Model, StagingQuery
 from ai.chronon.cli.compile import parse_teams, serializer
 from ai.chronon.cli.compile.compile_context import CompileContext
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
@@ -24,6 +26,16 @@ def from_folder(
 
     results = []
 
+    conf_type = None
+    if cls == GroupBy:
+        conf_type = ConfType.GROUP_BYS
+    elif cls == Join:
+        conf_type = ConfType.JOINS
+    elif cls == Model:
+        conf_type = ConfType.MODELS
+    elif cls == StagingQuery:
+        conf_type = ConfType.STAGING_QUERIES
+
     for f in python_files:
 
         try:
@@ -32,6 +44,7 @@ def from_folder(
             for name, obj in results_dict.items():
                 parse_teams.update_metadata(obj, compile_context.teams_dict)
                 obj.metaData.sourceFile = f
+                obj.metaData.confType = conf_type
 
                 tjson = serializer.thrift_simple_json(obj)
 

@@ -62,7 +62,6 @@ import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.io.Source
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
 
@@ -160,16 +159,6 @@ object Driver {
     protected def buildSparkSession(): SparkSession = {
       implicit val formats: Formats = DefaultFormats
       val yamlLoader = new Yaml()
-      val additionalConfs = additionalConfPath.toOption
-        .map(Source.fromFile)
-        .map((src) =>
-          try { src.mkString }
-          finally { src.close })
-        .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
-        .map((map) => Extraction.decompose(map.asScala.toMap))
-        .map((v) => render(v))
-        .map(compact)
-        .map((str) => parse(str).extract[Map[String, String]])
 
       // We use the KryoSerializer for group bys and joins since we serialize the IRs.
       // But since staging query is fairly freeform, it's better to stick to the java serializer.
@@ -178,8 +167,7 @@ object Driver {
           subcommandName(),
           local = isLocal,
           localWarehouseLocation = localWarehouseLocation.toOption,
-          enforceKryoSerializer = !subcommandName().contains("staging_query"),
-          additionalConfig = additionalConfs
+          enforceKryoSerializer = !subcommandName().contains("staging_query")
         )
       if (localTableMapping.nonEmpty) {
         localTableMapping.foreach { case (table, filePath) =>

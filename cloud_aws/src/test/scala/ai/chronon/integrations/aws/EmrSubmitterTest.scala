@@ -37,8 +37,8 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     val submitter = new EmrSubmitter(expectedCustomerId, mockEmrClient)
     val submittedJobId = submitter.submit(
-      SparkJob,
-      Map(
+      jobType = SparkJob,
+      submissionProperties = Map(
         MainClass -> expectedMainClass,
         JarURI -> expectedJarURI,
         ClusterIdleTimeout -> expectedIdleTimeout.toString,
@@ -46,7 +46,8 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
         ClusterInstanceCount -> expectedClusterInstanceCount.toString,
         ShouldCreateCluster -> true.toString
       ),
-      expectedFiles,
+      jobProperties = Map.empty,
+      files = expectedFiles,
       expectedApplicationArgs: _*
     )
     assertEquals(submittedJobId, jobId)
@@ -104,13 +105,14 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
                                           .builder()
                                           .build())
     val jobId = emrSubmitter.submit(
-      SparkJob,
-      Map(
+      jobType = SparkJob,
+      submissionProperties = Map(
         MainClass -> "ai.chronon.spark.Driver",
         JarURI -> "s3://zipline-artifacts-canary/jars/cloud_aws_lib_deploy.jar",
         ClusterId -> "j-13BASWFP15TLR"
       ),
-      List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
+      jobProperties = Map.empty,
+      files = List("s3://zipline-artifacts-canary/additional-confs.yaml", "s3://zipline-warehouse-canary/purchases.v1"),
       "group-by-backfill",
       "--conf-path",
       "/mnt/zipline/purchases.v1",

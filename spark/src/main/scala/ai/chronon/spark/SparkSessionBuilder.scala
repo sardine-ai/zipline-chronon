@@ -21,6 +21,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.spark.SPARK_VERSION
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.SQLConf
 import org.slf4j.LoggerFactory
@@ -121,7 +122,7 @@ object SparkSessionBuilder {
 
     baseBuilder = baseBuilder
       .config("spark.sql.session.timeZone", "UTC")
-      //otherwise overwrite will delete ALL partitions, not just the ones it touches
+      // otherwise overwrite will delete ALL partitions, not just the ones it touches
       .config("spark.sql.sources.partitionOverwriteMode",
               "DYNAMIC"
       ) // needs to be uppercase until https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1313 is available
@@ -134,11 +135,15 @@ object SparkSessionBuilder {
 
     // Staging queries don't benefit from the KryoSerializer and in fact may fail with buffer underflow in some cases.
     if (enforceKryoSerializer) {
-      baseBuilder
-        .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .config("spark.kryo.registrator", kryoRegistrator)
-        .config("spark.kryoserializer.buffer.max", "2000m")
-        .config("spark.kryo.referenceTracking", "false")
+      val sparkConf = new SparkConf()
+      val kryoSerializerConfMap = Map(
+        "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+        "spark.kryo.registrator" -> kryoRegistrator,
+        "spark.kryoserializer.buffer.max" -> "2000m",
+        "spark.kryo.referenceTracking" -> "false"
+      ).filter { case (k, _) => !sparkConf.contains(k) }
+
+      baseBuilder.config(kryoSerializerConfMap)
     }
 
     if (SPARK_VERSION.startsWith("2")) {
