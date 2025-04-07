@@ -13,7 +13,7 @@ import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.ListResponse
 import ai.chronon.online.KVStore.ListValue
-import ai.chronon.online.Metrics
+import ai.chronon.online.metrics.Metrics
 import com.google.cloud.RetryOption
 import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.BigQueryErrorMessages

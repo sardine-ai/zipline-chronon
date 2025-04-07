@@ -21,7 +21,7 @@ import ai.chronon.api.DataModel.Entities
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
-import ai.chronon.online.Metrics
+import ai.chronon.online.metrics.Metrics
 import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, leftDf, shouldRecomputeLeft, tablesToRecompute}

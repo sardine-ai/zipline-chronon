@@ -17,10 +17,10 @@
 package ai.chronon.online.test
 
 import ai.chronon.api.Builders
-import ai.chronon.online.Metrics
-import ai.chronon.online.Metrics.Context
-import ai.chronon.online.Metrics.Environment
-import ai.chronon.online.TTLCache
+import ai.chronon.online.metrics.Metrics.Context
+import ai.chronon.online.metrics.Metrics.Environment
+import ai.chronon.online.metrics.TTLCache
+import ai.chronon.online.metrics.Metrics
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 

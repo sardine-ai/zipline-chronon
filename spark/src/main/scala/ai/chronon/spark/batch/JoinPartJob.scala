@@ -3,9 +3,9 @@ import ai.chronon.api.DataModel.{Entities, Events}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.PartitionRange.toTimeRange
 import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange}
-import ai.chronon.online.Metrics
+import ai.chronon.online.metrics.Metrics
 import ai.chronon.orchestration.JoinPartNode
-import ai.chronon.spark.Extensions.{DfWithStats, _}
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.{GroupBy, JoinUtils, TableUtils}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_format}
