@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.integrations.cloud_gcp.GcpApiImpl.executorProvider
 import ai.chronon.online.Api
 import ai.chronon.online.ExternalSourceRegistry
 import ai.chronon.online.FlagStore
@@ -9,7 +10,7 @@ import ai.chronon.online.KVStore
 import ai.chronon.online.LoggableResponse
 import ai.chronon.online.Serde
 import ai.chronon.online.serde.AvroSerde
-import com.google.api.gax.core.NoCredentialsProvider
+import com.google.api.gax.core.{InstantiatingExecutorProvider, NoCredentialsProvider}
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings
@@ -18,6 +19,8 @@ import com.google.cloud.bigtable.data.v2.BigtableDataSettings
 import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 
 import java.util
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.atomic.AtomicInteger
 
 class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
@@ -74,20 +77,56 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
       case None =>
         val dataSettingsBuilder = BigtableDataSettings.newBuilder()
+        val dataSettingsBuilderWithProfileId =
+          maybeAppProfileId
+            .map(profileId => dataSettingsBuilder.setAppProfileId(profileId))
+            .getOrElse(dataSettingsBuilder)
         val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
         val bigQueryClient = Some(BigQueryOptions.getDefaultInstance.getService)
-        (dataSettingsBuilder, adminSettingsBuilder, bigQueryClient)
+        (dataSettingsBuilderWithProfileId, adminSettingsBuilder, bigQueryClient)
     }
 
-    val dataSettingsBuilderWithProfileId =
-      maybeAppProfileId.map(profileId => dataSettingsBuilder.setAppProfileId(profileId)).getOrElse(dataSettingsBuilder)
-    val dataSettings = dataSettingsBuilderWithProfileId.setProjectId(projectId).setInstanceId(instanceId).build()
+    // override the bulk read batch settings
+    setBigTableBulkReadRowsSettings(dataSettingsBuilder)
+
+    // override thread pools
+    setClientThreadPools(dataSettingsBuilder, adminSettingsBuilder)
+
+    val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val dataClient = BigtableDataClient.create(dataSettings)
 
     val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val adminClient = BigtableTableAdminClient.create(adminSettings)
 
     new BigTableKVStoreImpl(dataClient, adminClient, maybeBQClient)
+  }
+
+  // BigTable's bulk read rows by default will batch calls and wait for a delay before sending them. This is not
+  // ideal from a latency perspective, so we set the batching settings to be 1 element and no delay.
+  private def setBigTableBulkReadRowsSettings(dataSettingsBuilderWithProfileId: BigtableDataSettings.Builder): Unit = {
+    // Get the bulkReadRowsSettings builder
+    val bulkReadRowsSettingsBuilder = dataSettingsBuilderWithProfileId
+      .stubSettings()
+      .bulkReadRowsSettings()
+
+    // Update the batching settings directly on the builder
+    bulkReadRowsSettingsBuilder
+      .setBatchingSettings(
+        bulkReadRowsSettingsBuilder.getBatchingSettings.toBuilder
+          .setElementCountThreshold(1)
+          .setDelayThresholdDuration(null)
+          .build()
+      )
+  }
+
+  // BigTable's client creates a thread pool with a size of cores * 4. This ends up being a lot larger than we'd like
+  // so we scale these down and we also use the same in both clients
+  private def setClientThreadPools(
+      dataSettingsBuilderWithProfileId: BigtableDataSettings.Builder,
+      adminSettingsBuilder: BigtableTableAdminSettings.Builder
+  ): Unit = {
+    dataSettingsBuilderWithProfileId.stubSettings().setBackgroundExecutorProvider(executorProvider)
+    adminSettingsBuilder.stubSettings().setBackgroundExecutorProvider(executorProvider)
   }
 
   // TODO: Load from user jar.
@@ -97,4 +136,23 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   //TODO - Implement this
   override def logResponse(resp: LoggableResponse): Unit = {}
+}
+
+object GcpApiImpl {
+  // Create a thread factory so that we can name the threads for easier debugging
+  val threadFactory: ThreadFactory = new ThreadFactory {
+    private val counter = new AtomicInteger(0)
+    override def newThread(r: Runnable): Thread = {
+      val t = new Thread(r)
+      t.setName(s"chronon-bt-gax-${counter.incrementAndGet()}")
+      t
+    }
+  }
+
+  // create one of these as BT creates very large threadpools (cores * 4) and does them once per admin and data client
+  lazy val executorProvider: InstantiatingExecutorProvider = InstantiatingExecutorProvider
+    .newBuilder()
+    .setExecutorThreadCount(Runtime.getRuntime.availableProcessors())
+    .setThreadFactory(threadFactory)
+    .build()
 }
