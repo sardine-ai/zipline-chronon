@@ -141,19 +141,21 @@ class Fetcher(val kvStore: KVStore,
   def fetchJoin(requests: Seq[Request], joinConf: Option[api.Join] = None): Future[Seq[Response]] = {
     val ts = System.currentTimeMillis()
 
-    val internalResponsesF = joinPartFetcher.fetchJoins(requests, joinConf).build()
-    val externalResponsesF = fetchExternal(requests).build()
+    val internalResponsesF = joinPartFetcher.fetchJoins(requests, joinConf)
+    val externalResponsesF = fetchExternal(requests)
 
-    internalResponsesF.zip(externalResponsesF).map { case (internalResponses, externalResponses) =>
-      val derived = handleInternalAndExternalResponses(internalResponses, externalResponses, ts)
-      derived.iterator.map(logResponse(_, ts)).toSeq
+    val combiner: PartialFunction[(Seq[Response], Seq[Response]), Seq[Response]] = {
+      case (internalResponses, externalResponses) =>
+        combineAndDerive(internalResponses, externalResponses, ts).iterator.map(logResponse(_, ts)).toSeq
     }
+
+    internalResponsesF.zipMap(externalResponsesF, combiner).build()
 
   }
 
-  private def handleInternalAndExternalResponses(internalResponses: Seq[Response],
-                                                 externalResponses: Seq[Response],
-                                                 startTsMillis: Long) = {
+  private def combineAndDerive(internalResponses: Seq[Response],
+                               externalResponses: Seq[Response],
+                               startTsMillis: Long): Seq[ResponseWithContext] = {
 
     internalResponses.zip(externalResponses).map { case (internalResponse, externalResponse) =>
       if (debug) {
