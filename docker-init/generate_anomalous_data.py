@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timedelta
 import numpy as np
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, DoubleType, IntegerType, StringType, TimestampType, BooleanType
+from pyspark.sql.types import StructType, StructField, DoubleType, IntegerType, StringType, BooleanType
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("FraudClassificationSchema").config("spark.log.level", "WARN").getOrCreate()
