@@ -19,6 +19,7 @@ package ai.chronon.online.fetcher
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online._
+import ai.chronon.online.fetcher.ChainedFuture.KvResponseToFetcherResponse
 import ai.chronon.online.fetcher.Fetcher.{ColumnSpec, PrefixedRequest, Request, Response}
 import ai.chronon.online.fetcher.FetcherCache.BatchResponses
 import org.slf4j.{Logger, LoggerFactory}
@@ -34,7 +35,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
   private[online] val groupByFetcher = new GroupByFetcher(fetchContext, metadataStore)
   private implicit val executionContext: ExecutionContext = fetchContext.getOrCreateExecutionContext
 
-  def fetchGroupBys(requests: Seq[Request]): Future[Seq[Response]] = {
+  def fetchGroupBys(requests: Seq[Request]): KvResponseToFetcherResponse = {
     groupByFetcher.fetchGroupBys(requests)
   }
 
@@ -55,7 +56,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
 
   // prioritize passed in joinOverrides over the ones in metadata store
   // used in stream-enrichment and in staging testing
-  def fetchJoins(requests: Seq[Request], joinConf: Option[Join] = None): Future[Seq[Response]] = {
+  def fetchJoins(requests: Seq[Request], joinConf: Option[Join] = None): KvResponseToFetcherResponse = {
     val startTimeMs = System.currentTimeMillis()
     // convert join requests to groupBy requests
     val joinDecomposed: Seq[(Request, Try[Seq[Either[PrefixedRequest, KeyMissingException]]])] =
@@ -104,7 +105,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
 
     // re-attach groupBy responses to join
     groupByResponsesFuture
-      .map { groupByResponses =>
+      .chain { groupByResponses =>
         val responseMap = groupByResponses.iterator.map { response => response.request -> response.values }.toMap
         val responses = joinDecomposed.iterator.map { case (joinRequest, decomposedRequestsTry) =>
           val joinValuesTry = decomposedRequestsTry.map { groupByRequestsWithPrefix =>
@@ -116,8 +117,8 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
               case Left(PrefixedRequest(prefix, groupByRequest)) =>
                 parseGroupByResponse(prefix, groupByRequest, responseMap)
             }.toMap
-
           }
+
           joinValuesTry match {
             case Failure(ex) => joinRequest.context.foreach(_.incrementException(ex))
             case Success(responseMap) =>
@@ -125,12 +126,15 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
                 ctx.distribution("response.keys.count", responseMap.size)
               }
           }
+
           joinRequest.context.foreach { ctx =>
             ctx.distribution("internal.latency.millis", System.currentTimeMillis() - startTimeMs)
             ctx.increment("internal.request.count")
           }
+
           Response(joinRequest, joinValuesTry)
         }.toSeq
+
         responses
       }
   }

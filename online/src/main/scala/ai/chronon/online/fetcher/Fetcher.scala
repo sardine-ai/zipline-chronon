@@ -135,89 +135,107 @@ class Fetcher(val kvStore: KVStore,
   }
 
   def fetchGroupBys(requests: Seq[Request]): Future[Seq[Response]] = {
-    joinPartFetcher.fetchGroupBys(requests)
+    joinPartFetcher.fetchGroupBys(requests).build()
   }
 
   def fetchJoin(requests: Seq[Request], joinConf: Option[api.Join] = None): Future[Seq[Response]] = {
     val ts = System.currentTimeMillis()
-    val internalResponsesF = joinPartFetcher.fetchJoins(requests, joinConf)
-    val externalResponsesF = fetchExternal(requests)
-    val combinedResponsesF =
-      internalResponsesF.zip(externalResponsesF).map { case (internalResponses, externalResponses) =>
-        internalResponses.zip(externalResponses).map { case (internalResponse, externalResponse) =>
-          import ai.chronon.online.metrics
-          if (debug) {
-            logger.info(internalResponse.values.get.keys.toSeq.mkString(","))
-            logger.info(externalResponse.values.get.keys.toSeq.mkString(","))
-          }
-          val cleanInternalRequest = internalResponse.request.copy(context = None)
-          assert(
-            cleanInternalRequest == externalResponse.request,
-            s"""
-                 |Logic error. Responses are not aligned to requests
-                 |mismatching requests:  $cleanInternalRequest, ${externalResponse.request}
-                 |  requests:            ${requests.map(_.name)}
-                 |  internalResponses:   ${internalResponses.map(_.request.name)}
-                 |  externalResponses:   ${externalResponses.map(_.request.name)}""".stripMargin
-          )
-          val internalMap = internalResponse.values.getOrElse(
-            Map("join_part_fetch_exception" -> internalResponse.values.failed.get.traceString))
-          val externalMap = externalResponse.values.getOrElse(
-            Map("external_part_fetch_exception" -> externalResponse.values.failed.get.traceString))
-          val derivationStartTs = System.currentTimeMillis()
-          val joinName = internalResponse.request.name
-          val ctx = Metrics.Context(Metrics.Environment.JoinFetching, join = joinName)
-          val joinCodecTry = joinCodecCache(internalResponse.request.name)
-          joinCodecTry match {
-            case Success(joinCodec) =>
-              ctx.distribution("derivation_codec.latency.millis", System.currentTimeMillis() - derivationStartTs)
-              val baseMap = internalMap ++ externalMap
-              val derivedMapTry: Try[Map[String, AnyRef]] = Try {
-                applyDeriveFunc(joinCodec.deriveFunc, internalResponse.request, baseMap)
-              }
-              val derivedMap: Map[String, AnyRef] = derivedMapTry match {
-                case Success(derivedMap) => derivedMap
-                case Failure(exception) =>
-                  ctx.incrementException(exception)
-                  val renameOnlyDerivedMapTry: Try[Map[String, AnyRef]] = Try {
-                    joinCodec
-                      .renameOnlyDeriveFunc(internalResponse.request.keys, baseMap)
-                      .mapValues(_.asInstanceOf[AnyRef])
-                      .toMap
-                  }
-                  val renameOnlyDerivedMap: Map[String, AnyRef] =
-                    renameOnlyDerivedMapTry match {
-                      case Success(renameOnlyDerivedMap) =>
-                        renameOnlyDerivedMap
-                      case Failure(exception) =>
-                        ctx.incrementException(exception)
-                        Map("derivation_rename_exception" -> exception.traceString
-                          .asInstanceOf[AnyRef])
-                    }
-                  val derivedExceptionMap: Map[String, AnyRef] =
-                    Map("derivation_fetch_exception" -> exception.traceString
-                      .asInstanceOf[AnyRef])
-                  renameOnlyDerivedMap ++ derivedExceptionMap
-              }
-              // Preserve exceptions from baseMap
-              val baseMapExceptions = baseMap.filter(_._1.endsWith("_exception"))
-              val finalizedDerivedMap = derivedMap ++ baseMapExceptions
-              val requestEndTs = System.currentTimeMillis()
-              ctx.distribution("derivation.latency.millis", requestEndTs - derivationStartTs)
-              ctx.distribution("overall.latency.millis", requestEndTs - ts)
-              ResponseWithContext(internalResponse.request, finalizedDerivedMap, baseMap)
-            case Failure(exception) =>
-              // more validation logic will be covered in compile.py to avoid this case
-              ctx.incrementException(exception)
-              ResponseWithContext(internalResponse.request,
-                                  Map("join_codec_fetch_exception" -> exception.traceString),
-                                  Map.empty)
-          }
-        }
+
+    val internalResponsesF = joinPartFetcher.fetchJoins(requests, joinConf).build()
+    val externalResponsesF = fetchExternal(requests).build()
+
+    internalResponsesF.zip(externalResponsesF).map { case (internalResponses, externalResponses) =>
+      val derived = handleInternalAndExternalResponses(internalResponses, externalResponses, ts)
+      derived.iterator.map(logResponse(_, ts)).toSeq
+    }
+
+  }
+
+  private def handleInternalAndExternalResponses(internalResponses: Seq[Response],
+                                                 externalResponses: Seq[Response],
+                                                 startTsMillis: Long) = {
+
+    internalResponses.zip(externalResponses).map { case (internalResponse, externalResponse) =>
+      if (debug) {
+        logger.info(internalResponse.values.get.keys.toSeq.mkString(","))
+        logger.info(externalResponse.values.get.keys.toSeq.mkString(","))
       }
 
-    combinedResponsesF
-      .map(_.iterator.map(logResponse(_, ts)).toSeq)
+      val cleanInternalRequest = internalResponse.request.copy(context = None)
+
+      assert(
+        cleanInternalRequest == externalResponse.request,
+        s"""
+           |Logic error. Responses are not aligned to requests
+           |mismatching requests:  $cleanInternalRequest, ${externalResponse.request}
+           |  internalResponses:   ${internalResponses.map(_.request.name)}
+           |  externalResponses:   ${externalResponses.map(_.request.name)}""".stripMargin
+      )
+
+      val internalMap = internalResponse.values.getOrElse(
+        Map("join_part_fetch_exception" -> internalResponse.values.failed.get.traceString))
+      val externalMap = externalResponse.values.getOrElse(
+        Map("external_part_fetch_exception" -> externalResponse.values.failed.get.traceString))
+
+      val derivationStartTs = System.currentTimeMillis()
+      val joinName = internalResponse.request.name
+      val ctx = Metrics.Context(Metrics.Environment.JoinFetching, join = joinName)
+      val joinCodecTry = joinCodecCache(internalResponse.request.name)
+
+      joinCodecTry match {
+        case Success(joinCodec) =>
+          ctx.distribution("derivation_codec.latency.millis", System.currentTimeMillis() - derivationStartTs)
+
+          val baseMap = internalMap ++ externalMap
+          val derivedMapTry: Try[Map[String, AnyRef]] = Try {
+            applyDeriveFunc(joinCodec.deriveFunc, internalResponse.request, baseMap)
+          }
+
+          val derivedMap: Map[String, AnyRef] = derivedMapTry match {
+            case Success(derivedMap) => derivedMap
+            case Failure(exception) =>
+              ctx.incrementException(exception)
+              val renameOnlyDerivedMapTry: Try[Map[String, AnyRef]] = Try {
+                joinCodec
+                  .renameOnlyDeriveFunc(internalResponse.request.keys, baseMap)
+                  .mapValues(_.asInstanceOf[AnyRef])
+                  .toMap
+              }
+              val renameOnlyDerivedMap: Map[String, AnyRef] =
+                renameOnlyDerivedMapTry match {
+                  case Success(renameOnlyDerivedMap) =>
+                    renameOnlyDerivedMap
+                  case Failure(exception) =>
+                    ctx.incrementException(exception)
+                    Map(
+                      "derivation_rename_exception" -> exception.traceString
+                        .asInstanceOf[AnyRef])
+                }
+              val derivedExceptionMap: Map[String, AnyRef] =
+                Map(
+                  "derivation_fetch_exception" -> exception.traceString
+                    .asInstanceOf[AnyRef])
+              renameOnlyDerivedMap ++ derivedExceptionMap
+          }
+
+          // Preserve exceptions from baseMap
+          val baseMapExceptions = baseMap.filter(_._1.endsWith("_exception"))
+          val finalizedDerivedMap = derivedMap ++ baseMapExceptions
+
+          val requestEndTs = System.currentTimeMillis()
+          ctx.distribution("derivation.latency.millis", requestEndTs - derivationStartTs)
+          ctx.distribution("overall.latency.millis", requestEndTs - startTsMillis)
+
+          ResponseWithContext(internalResponse.request, finalizedDerivedMap, baseMap)
+
+        case Failure(exception) =>
+          // more validation logic will be covered in compile.py to avoid this case
+          ctx.incrementException(exception)
+          ResponseWithContext(internalResponse.request,
+                              Map("join_codec_fetch_exception" -> exception.traceString),
+                              Map.empty)
+      }
+    }
   }
 
   private def encode(schema: StructType,
@@ -327,7 +345,7 @@ class Fetcher(val kvStore: KVStore,
   }
 
   // Pulling external features in a batched fashion across services in-parallel
-  private def fetchExternal(joinRequests: Seq[Request]): Future[Seq[Response]] = {
+  private def fetchExternal(joinRequests: Seq[Request]): ChainedFuture[Seq[Response], Seq[Response]] = {
     import ai.chronon.online.metrics
     val startTime = System.currentTimeMillis()
     val resultMap = new mutable.LinkedHashMap[Request, Try[mutable.HashMap[String, Any]]]
@@ -373,6 +391,7 @@ class Fetcher(val kvStore: KVStore,
           ExternalToJoinRequest(externalRequest, joinRequest, part)
         }
       }
+
     val validExternalRequestToJoinRequestMap = externalToJoinRequests
       .filter(_.externalRequest.isLeft)
       .groupBy(_.externalRequest.left.get)
@@ -384,11 +403,12 @@ class Fetcher(val kvStore: KVStore,
                       join = validRequests.iterator.map(_.name.sanitize).toSeq.distinct.mkString(","))
     context.distribution("response.external_pre_processing.latency", System.currentTimeMillis() - startTime)
     context.count("response.external_invalid_joins.count", invalidCount)
+
     val responseFutures =
       externalSourceRegistry.fetchRequests(validExternalRequestToJoinRequestMap.keys.toSeq, context)
 
     // step-3 walk the response, find all the joins to update and the result map
-    responseFutures.map { responses =>
+    ChainedFuture(responseFutures).chain { responses =>
       responses.foreach { response =>
         val responseTry: Try[Map[String, Any]] = response.values
         val joinsToUpdate: Seq[ExternalToJoinRequest] =
@@ -427,6 +447,7 @@ class Fetcher(val kvStore: KVStore,
           .distribution("external.latency.millis", System.currentTimeMillis() - startTime)
         Response(req, resultMap(req).map(_.mapValues(_.asInstanceOf[AnyRef]).toMap))
       }
+
     }
   }
 

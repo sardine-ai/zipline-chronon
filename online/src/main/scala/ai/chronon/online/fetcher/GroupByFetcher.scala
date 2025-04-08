@@ -4,8 +4,10 @@ import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.windowing.ResolutionUtils
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
+import ai.chronon.online
 import ai.chronon.online.KVStore.{GetRequest, GetResponse, TimedValue}
 import ai.chronon.online.OnlineDerivationUtil.{applyDeriveFunc, buildRenameOnlyDerivationFunction}
+import ai.chronon.online.fetcher.ChainedFuture.KvResponseToFetcherResponse
 import ai.chronon.online.{metrics, _}
 import ai.chronon.online.fetcher.Fetcher.{ColumnSpec, PrefixedRequest, Request, Response}
 import ai.chronon.online.fetcher.FetcherCache.{BatchResponses, CachedBatchResponse}
@@ -156,7 +158,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
   // 2. encodes keys as keyAvroSchema
   // 3. Based on accuracy, fetches streaming + batch data and aggregates further.
   // 4. Finally converted to outputSchema
-  def fetchGroupBys(requests: Seq[Fetcher.Request]): Future[Seq[Fetcher.Response]] = {
+  def fetchGroupBys(requests: Seq[Fetcher.Request]): KvResponseToFetcherResponse = {
 
     // split a groupBy level request into its kvStore level requests
     val groupByRequestToKvRequest: Seq[(Fetcher.Request, Try[LambdaKvRequest])] = requests.iterator
@@ -193,8 +195,8 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
       Future(Seq.empty[GetResponse])
     }
 
-    kvResponseFuture
-      .map { kvResponses: Seq[GetResponse] =>
+    ChainedFuture(kvResponseFuture)
+      .chain { kvResponses: Seq[GetResponse] =>
         val multiGetMillis = System.currentTimeMillis() - startTimeMs
 
         val responsesMap: Map[GetRequest, Try[Seq[TimedValue]]] = kvResponses.map { response =>
@@ -300,37 +302,39 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
 
     // Start I/O and generate a mapping from query --> GroupBy response
     val groupByResponsesFuture = fetchGroupBys(groupByRequestsByQuery.values.toList)
-    groupByResponsesFuture.map { groupByResponses =>
-      val resultsByRequest = groupByResponses.iterator.map { response => response.request -> response.values }.toMap
-      val responseByQuery = groupByRequestsByQuery.map { case (query, request) =>
-        val results = resultsByRequest
-          .getOrElse(
-            request,
-            Failure(new IllegalStateException(s"Couldn't find a groupBy response for $request in response map"))
-          )
-          .map { valueMap =>
-            if (valueMap != null) {
-              valueMap.map { case (aggName, aggValue) =>
-                val resultKey = query.prefix.map(p => s"${p}_${aggName}").getOrElse(aggName)
-                resultKey -> aggValue
+    groupByResponsesFuture
+      .chain { groupByResponses =>
+        val resultsByRequest = groupByResponses.iterator.map { response => response.request -> response.values }.toMap
+        val responseByQuery = groupByRequestsByQuery.map { case (query, request) =>
+          val results = resultsByRequest
+            .getOrElse(
+              request,
+              Failure(new IllegalStateException(s"Couldn't find a groupBy response for $request in response map"))
+            )
+            .map { valueMap =>
+              if (valueMap != null) {
+                valueMap.map { case (aggName, aggValue) =>
+                  val resultKey = query.prefix.map(p => s"${p}_${aggName}").getOrElse(aggName)
+                  resultKey -> aggValue
+                }
+              } else {
+                Map.empty[String, AnyRef]
               }
-            } else {
-              Map.empty[String, AnyRef]
             }
-          }
-          .recoverWith { // capture exception as a key
-            case ex: Throwable =>
-              if (fetchContext.debug || Math.random() < 0.001) {
-                logger.error(s"Failed to fetch $request", ex)
-              }
-              Failure(ex)
-          }
-        val response = Response(request, results)
-        query -> response
-      }
+            .recoverWith { // capture exception as a key
+              case ex: Throwable =>
+                if (fetchContext.debug || Math.random() < 0.001) {
+                  logger.error(s"Failed to fetch $request", ex)
+                }
+                Failure(ex)
+            }
+          val response = Response(request, results)
+          query -> response
+        }
 
-      responseByQuery
-    }
+        responseByQuery
+      }
+      .build()
   }
 
 }
