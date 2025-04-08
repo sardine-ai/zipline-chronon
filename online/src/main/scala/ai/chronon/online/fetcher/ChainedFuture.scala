@@ -1,7 +1,7 @@
 package ai.chronon.online.fetcher
 
 import ai.chronon.online.KVStore
-
+import scala.collection.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Scala context switches on every invocation of `.map` on a future.
