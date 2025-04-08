@@ -24,7 +24,7 @@ import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.fetcher.Fetcher.Response
 import ai.chronon.online.fetcher.FetcherCache.BatchResponses
 import ai.chronon.online.KVStore.TimedValue
-import ai.chronon.online.fetcher.{FetchContext, GroupByFetcher, MetadataStore}
+import ai.chronon.online.fetcher.{ChainedFuture, FetchContext, GroupByFetcher, MetadataStore}
 import ai.chronon.online.{fetcher, _}
 import org.junit.Assert.assertEquals
 import org.mockito.Answers
@@ -76,12 +76,14 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     // Fetch a single query
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
-    doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
-      def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
+
+    doAnswer(new Answer[ChainedFuture.KvResponseToFetcherResponse] {
+      def answer(invocation: InvocationOnMock): ChainedFuture.KvResponseToFetcherResponse = {
         val requests = invocation.getArgument(0).asInstanceOf[Seq[Request]]
         val request = requests.head
         val response = Response(request, Success(Map(request.name -> "100")))
-        Future.successful(Seq(response))
+
+        ChainedFuture.mockGetResponses(Seq(response))(kvStore.executionContext)
       }
     }).when(groupByFetcher).fetchGroupBys(any())
 
@@ -106,11 +108,11 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val hostKeyMap = Map(HostKey -> HostId)
     val hostQuery = ColumnSpec(GroupBy, Column, Some(HostKey), Some(hostKeyMap))
 
-    doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
-      def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
+    doAnswer(new Answer[ChainedFuture.KvResponseToFetcherResponse] {
+      def answer(invocation: InvocationOnMock): ChainedFuture.KvResponseToFetcherResponse = {
         val requests = invocation.getArgument(0).asInstanceOf[Seq[Request]]
         val responses = requests.map(r => Response(r, Success(Map(r.name -> "100"))))
-        Future.successful(responses)
+        ChainedFuture.mockGetResponses(responses)(kvStore.executionContext)
       }
     }).when(groupByFetcher).fetchGroupBys(any())
 
@@ -137,9 +139,9 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     val keyMap = Map(GuestKey -> GuestId)
     val query = ColumnSpec(GroupBy, Column, None, Some(keyMap))
 
-    doAnswer(new Answer[Future[Seq[fetcher.Fetcher.Response]]] {
-      def answer(invocation: InvocationOnMock): Future[Seq[Response]] = {
-        Future.successful(Seq())
+    doAnswer(new Answer[ChainedFuture.KvResponseToFetcherResponse] {
+      def answer(invocation: InvocationOnMock): ChainedFuture.KvResponseToFetcherResponse = {
+        ChainedFuture.mockGetResponses(Seq())(kvStore.executionContext)
       }
     }).when(groupByFetcher).fetchGroupBys(any())
 

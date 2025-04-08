@@ -37,4 +37,10 @@ object ChainedFuture {
 
   type KvResponseToFetcherResponse = ChainedFuture[Seq[KVStore.GetResponse], Seq[Fetcher.Response]]
 
+  // used for testing only
+  def mockGetResponses(responses: Seq[Fetcher.Response])(implicit ec: ExecutionContext): KvResponseToFetcherResponse = {
+    val input: Seq[KVStore.GetResponse] = null
+    val func: Seq[KVStore.GetResponse] => Seq[Fetcher.Response] = _ => responses
+    new ChainedFuture(Future(input), func)
+  }
 }
