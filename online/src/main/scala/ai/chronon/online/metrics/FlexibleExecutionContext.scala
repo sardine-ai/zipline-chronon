@@ -16,15 +16,33 @@
 
 package ai.chronon.online.metrics
 
-import java.util.concurrent.{ArrayBlockingQueue, ThreadPoolExecutor, TimeUnit}
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{ArrayBlockingQueue, ThreadFactory, ThreadPoolExecutor, TimeUnit}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContextExecutor
 
 object FlexibleExecutionContext {
-  def buildExecutor: ThreadPoolExecutor =
-    new ThreadPoolExecutor(20, // corePoolSize
-                           1000, // maxPoolSize
+  private val instanceId = java.util.UUID.randomUUID().toString.take(8)
+
+  // Create a thread factory so that we can name the threads for easier debugging
+  val threadFactory: ThreadFactory = new ThreadFactory {
+    private val counter = new AtomicInteger(0)
+    override def newThread(r: Runnable): Thread = {
+      val t = new Thread(r)
+      t.setName(s"chronon-fetcher-$instanceId-${counter.incrementAndGet()}")
+      t
+    }
+  }
+
+  lazy val buildExecutor: ThreadPoolExecutor = {
+    val cores = Runtime.getRuntime.availableProcessors();
+    new ThreadPoolExecutor(cores, // corePoolSize
+                           cores * 2, // maxPoolSize
                            600, // keepAliveTime
                            TimeUnit.SECONDS, // keep alive time units
-                           new ArrayBlockingQueue[Runnable](1000))
+                           new ArrayBlockingQueue[Runnable](1000),
+                           threadFactory)
+  }
+
   def buildExecutionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(buildExecutor)
 }

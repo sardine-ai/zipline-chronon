@@ -7,27 +7,23 @@ import ai.chronon.online.KVStore.GetResponse
 import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.PutRequest
 import com.google.api.core.ApiFutures
+import com.google.api.gax.batching.Batcher
 import com.google.api.gax.core.NoCredentialsProvider
-import com.google.api.gax.rpc.ServerStreamingCallable
-import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings
 import com.google.cloud.bigtable.data.v2.BigtableDataClient
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings
-import com.google.cloud.bigtable.data.v2.models.Query
-import com.google.cloud.bigtable.data.v2.models.Row
-import com.google.cloud.bigtable.data.v2.models.RowMutation
+import com.google.cloud.bigtable.data.v2.models.{Row, RowMutation, TargetId}
 import com.google.cloud.bigtable.emulator.v2.Emulator
+import com.google.protobuf.ByteString
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
-import org.mockito.Mockito.withSettings
+import org.mockito.Mockito.{doNothing, when, withSettings}
 import org.scalatest.BeforeAndAfter
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.scalatestplus.mockito.MockitoSugar.mock
 
 import java.nio.charset.StandardCharsets
-import java.util
 import scala.collection.immutable.NumericRange
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
@@ -276,8 +272,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val mockDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
     val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
-    val serverStreamingCallable = mock[ServerStreamingCallable[Query, Row]]
-    val unaryCallable = mock[UnaryCallable[Query, util.List[Row]]]
+    val mockBatcher = mock[Batcher[ByteString, Row]]
 
     val dataset = "models"
     val key1 = "alice"
@@ -285,11 +280,12 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val getReq1 = GetRequest(key1.getBytes, dataset, None, None)
     val getReq2 = GetRequest(key2.getBytes, dataset, None, None)
 
-    when(mockDataClient.readRowsCallable()).thenReturn(serverStreamingCallable)
-    when(serverStreamingCallable.all()).thenReturn(unaryCallable)
     val failedFuture =
-      ApiFutures.immediateFailedFuture[util.List[Row]](new RuntimeException("some BT exception on read"))
-    when(unaryCallable.futureCall(any[Query])).thenReturn(failedFuture)
+      ApiFutures.immediateFailedFuture[Row](new RuntimeException("some BT exception on read"))
+
+    when(mockDataClient.newBulkReadRowsBatcher(any(classOf[TargetId]), any())).thenReturn(mockBatcher)
+    when(mockBatcher.add(any())).thenReturn(failedFuture, failedFuture)
+    doNothing().when(mockBatcher).close()
 
     val getResult = Await.result(kvStoreWithMocks.multiGet(Seq(getReq1, getReq2)), 1.second)
 
