@@ -14,6 +14,7 @@ import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.ListResponse
 import ai.chronon.online.KVStore.ListValue
 import ai.chronon.online.metrics.Metrics
+import com.google.api.core.{ApiFuture, ApiFutures}
 import com.google.cloud.RetryOption
 import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.BigQueryErrorMessages
@@ -26,18 +27,16 @@ import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest
 import com.google.cloud.bigtable.admin.v2.models.GCRules
 import com.google.cloud.bigtable.data.v2.BigtableDataClient
-import com.google.cloud.bigtable.data.v2.models.Filters
-import com.google.cloud.bigtable.data.v2.models.Query
+import com.google.cloud.bigtable.data.v2.models.{Filters, Query, Row, RowMutation, TableId => BTTableId}
 import com.google.cloud.bigtable.data.v2.models.Range.ByteStringRange
 import com.google.cloud.bigtable.data.v2.models.Range.TimestampRange
-import com.google.cloud.bigtable.data.v2.models.RowMutation
-import com.google.cloud.bigtable.data.v2.models.{TableId => BTTableId}
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.threeten.bp.Duration
 
 import java.nio.charset.Charset
+import java.util
 import scala.compat.java8.FutureConverters
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -127,11 +126,12 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
     // For each dataset, make a single query with all relevant row keys
     val datasetFutures = requestsByDataset.map { case (dataset, datasetRequests) =>
-      // Create a single query for all requests in this dataset
-      val query = Query
-        .create(mapDatasetToTable(dataset))
-        .filter(Filters.FILTERS.family().exactMatch(ColumnFamilyString))
-        .filter(Filters.FILTERS.qualifier().exactMatch(ColumnFamilyQualifierString))
+      val targetId = mapDatasetToTable(dataset)
+      val filter =
+        Filters.FILTERS
+          .chain()
+          .filter(Filters.FILTERS.family().exactMatch(ColumnFamilyString))
+          .filter(Filters.FILTERS.qualifier().exactMatch(ColumnFamilyQualifierString))
 
       // Track which request corresponds to which row key(s)
       val requestsWithRowKeys = datasetRequests.map { request =>
@@ -143,7 +143,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
           case (Some(startTs), TileSummaries) =>
             val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
             // Use existing method to add row keys
-            val (_, addedRowKeys) = setQueryTimeSeriesFilters(query, startTs, endTime, request.keyBytes, dataset)
+            val addedRowKeys = buildRowKeysForTimeranges(filter, startTs, endTime, request.keyBytes, dataset)
             rowKeys ++= addedRowKeys
 
           case (Some(startTs), StreamingTable) =>
@@ -153,15 +153,14 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
             val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
 
             // Use existing method to add row keys
-            val (_, addedRowKeys) =
-              setQueryTimeSeriesFilters(query, startTs, endTime, baseKeyBytes, dataset, Some(tileSizeMs))
+            val addedRowKeys =
+              buildRowKeysForTimeranges(filter, startTs, endTime, baseKeyBytes, dataset, Some(tileSizeMs))
             rowKeys ++= addedRowKeys
 
           case _ =>
             // For non-timeseries data, just add the single row key
             val baseRowKey = buildRowKey(request.keyBytes, dataset)
-            query.rowKey(ByteString.copyFrom(baseRowKey))
-            query.filter(Filters.FILTERS.limit().cellsPerRow(1))
+            filter.filter(Filters.FILTERS.limit().cellsPerRow(1))
             rowKeys.append(ByteString.copyFrom(baseRowKey))
         }
 
@@ -171,9 +170,16 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       val startTs = System.currentTimeMillis()
 
       // Make a single BigTable call for all rows in this dataset
-      val apiFuture = dataClient.readRowsCallable().all().futureCall(query)
-      val completableFuture = ApiFutureUtils.toCompletableFuture(apiFuture)
+      val batcher = dataClient.newBulkReadRowsBatcher(targetId, filter)
+      val rowApiFutures: Seq[ApiFuture[Row]] =
+        requestsWithRowKeys.map(_._2).flatMap(rowKeys => rowKeys.map(batcher.add))
+
+      val apiFutureList: ApiFuture[util.List[Row]] = ApiFutures.allAsList(rowApiFutures.asJava)
+      val completableFuture = ApiFutureUtils.toCompletableFuture(apiFutureList)
       val scalaResultFuture = FutureConverters.toScala(completableFuture)
+
+      // close batcher to prevent new work from being added + flush any pending calls
+      batcher.close()
 
       // Process all results at once
       scalaResultFuture
@@ -182,16 +188,19 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
           metricsContext.increment("multiGet.successes", s"dataset:$dataset")
 
           // Create a map for quick lookup by row key
-          val rowKeyToRowMap = rows.asScala.map(row => row.getKey() -> row).toMap
+          val rowKeyToRowMap = rows.asScala.filter(_ != null).map(row => row.getKey() -> row).toMap
 
           // Map back to original requests
           requestsWithRowKeys.map { case (request, rowKeys) =>
             // Get all cells from all row keys for this request
             val timedValues = rowKeys.flatMap { rowKey =>
               rowKeyToRowMap.get(rowKey).toSeq.flatMap { row =>
-                row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
-                  KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
-                }
+                row
+                  .getCells(ColumnFamilyString, ColumnFamilyQualifier)
+                  .asScala
+                  .map { cell =>
+                    KVStore.TimedValue(cell.getValue.toByteArray, cell.getTimestamp / 1000)
+                  }
               }
             }
 
@@ -213,12 +222,12 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     Future.sequence(datasetFutures).map(_.flatten)
   }
 
-  private def setQueryTimeSeriesFilters(query: Query,
+  private def buildRowKeysForTimeranges(chainFilter: Filters.ChainFilter,
                                         startTs: Long,
                                         endTs: Long,
                                         keyBytes: Seq[Byte],
                                         dataset: String,
-                                        maybeTileSize: Option[Long] = None): (Query, Iterable[ByteString]) = {
+                                        maybeTileSize: Option[Long] = None): Iterable[ByteString] = {
     // we need to generate a rowkey corresponding to each day from the startTs to now
     val millisPerDay = 1.day.toMillis
 
@@ -233,13 +242,13 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
             .map(tileSize => buildTiledRowKey(keyBytes, dataset, dayTs, tileSize))
             .getOrElse(buildRowKey(keyBytes, dataset, Some(dayTs)))
         val rowKeyByteString = ByteString.copyFrom(rowKey)
-        query.rowKey(rowKeyByteString)
         rowKeyByteString
       })
 
     // Bigtable uses microseconds, and we need to scan from startTs (millis) to endTs (millis)
-    (query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000)),
-     rowKeyByteStrings)
+    chainFilter.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000))
+
+    rowKeyByteStrings
   }
 
   override def list(request: ListRequest): Future[ListResponse] = {
