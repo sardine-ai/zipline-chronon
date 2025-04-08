@@ -4,8 +4,8 @@ import ai.chronon.online.KVStore
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/** Scala context switches between chains of futures. This fuses all operations into the same thread
-  * by fusing the passed in functions.
+/** Scala context switches on every invocation of `.map` on a future.
+  * This class maintains a chained function across `.chain` methods and runs the map on `.build()`.
   */
 class ChainedFuture[Input, Output](val fut: Future[Input], val func: Input => Output)(implicit ec: ExecutionContext) {
 
