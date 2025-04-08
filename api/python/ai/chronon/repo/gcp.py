@@ -453,4 +453,3 @@ class GcpRunner(Runner):
                 else:
                     print(f"Job {job_id} is in DONE state.")
                 return job_id
-            raise RuntimeError("No job id found from dataproc submitter logs.")
