@@ -56,8 +56,15 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       .get("GCP_BIGTABLE_APP_PROFILE_ID")
       .orElse(conf.get("GCP_BIGTABLE_APP_PROFILE_ID"))
 
+    // We skip upload clients (e.g. admin client, bq client) in non-upload contexts (e.g. streaming & fetching)
+    // This flag allows us to enable them in the upload contexts
+    val enableUploadClients = sys.env
+      .get("ENABLE_UPLOAD_CLIENTS")
+      .orElse(conf.get("ENABLE_UPLOAD_CLIENTS"))
+      .exists(_.toBoolean)
+
     // Create settings builder based on whether we're in emulator mode (e.g. docker) or not
-    val (dataSettingsBuilder, adminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
+    val (dataSettingsBuilder, maybeAdminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
 
       case Some(emulatorHostPort) =>
         val (emulatorHost, emulatorPort) = (emulatorHostPort.split(":")(0), emulatorHostPort.split(":")(1).toInt)
@@ -73,7 +80,7 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
             .newBuilderForEmulator(emulatorHost, emulatorPort)
             .setCredentialsProvider(NoCredentialsProvider.create())
 
-        (dataSettingsBuilder, adminSettingsBuilder, None)
+        (dataSettingsBuilder, Some(adminSettingsBuilder), None)
 
       case None =>
         val dataSettingsBuilder = BigtableDataSettings.newBuilder()
@@ -81,24 +88,30 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
           maybeAppProfileId
             .map(profileId => dataSettingsBuilder.setAppProfileId(profileId))
             .getOrElse(dataSettingsBuilder)
-        val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
-        val bigQueryClient = Some(BigQueryOptions.getDefaultInstance.getService)
-        (dataSettingsBuilderWithProfileId, adminSettingsBuilder, bigQueryClient)
+        if (enableUploadClients) {
+          val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
+          val bigQueryClient = BigQueryOptions.getDefaultInstance.getService
+          (dataSettingsBuilderWithProfileId, Some(adminSettingsBuilder), Some(bigQueryClient))
+        } else {
+          (dataSettingsBuilderWithProfileId, None, None)
+        }
     }
 
     // override the bulk read batch settings
     setBigTableBulkReadRowsSettings(dataSettingsBuilder)
 
     // override thread pools
-    setClientThreadPools(dataSettingsBuilder, adminSettingsBuilder)
+    setClientThreadPools(dataSettingsBuilder, maybeAdminSettingsBuilder)
 
     val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val dataClient = BigtableDataClient.create(dataSettings)
 
-    val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
-    val adminClient = BigtableTableAdminClient.create(adminSettings)
+    val maybeAdminClient = maybeAdminSettingsBuilder.map { adminSettingsBuilder =>
+      val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
+      BigtableTableAdminClient.create(adminSettings)
+    }
 
-    new BigTableKVStoreImpl(dataClient, adminClient, maybeBQClient)
+    new BigTableKVStoreImpl(dataClient, maybeAdminClient, maybeBQClient)
   }
 
   // BigTable's bulk read rows by default will batch calls and wait for a delay before sending them. This is not
@@ -123,10 +136,11 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
   // so we scale these down and we also use the same in both clients
   private def setClientThreadPools(
       dataSettingsBuilderWithProfileId: BigtableDataSettings.Builder,
-      adminSettingsBuilder: BigtableTableAdminSettings.Builder
+      maybeAdminSettingsBuilder: Option[BigtableTableAdminSettings.Builder]
   ): Unit = {
     dataSettingsBuilderWithProfileId.stubSettings().setBackgroundExecutorProvider(executorProvider)
-    adminSettingsBuilder.stubSettings().setBackgroundExecutorProvider(executorProvider)
+    maybeAdminSettingsBuilder.foreach(adminSettingsBuilder =>
+      adminSettingsBuilder.stubSettings().setBackgroundExecutorProvider(executorProvider))
   }
 
   // TODO: Load from user jar.

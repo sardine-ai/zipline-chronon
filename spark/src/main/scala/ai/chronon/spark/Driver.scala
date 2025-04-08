@@ -75,6 +75,8 @@ object Driver {
       opt[String](required = false, descr = "GCP project id")
     val gcpBigtableInstanceId: ScallopOption[String] =
       opt[String](required = false, descr = "GCP BigTable instance id")
+    val enableUploadClients: ScallopOption[String] =
+      opt[String](required = false, descr = "Enable creation of BigTable Admin and Bigquery clients for upload jobs")
 
     val confType: ScallopOption[String] =
       opt[String](required = false, descr = "Type of the conf to run. ex: joins, group_bys, models, staging_queries")
@@ -580,7 +582,8 @@ object Driver {
 
     lazy private val gcpMap = Map(
       "GCP_PROJECT_ID" -> gcpProjectId.toOption.getOrElse(""),
-      "GCP_BIGTABLE_INSTANCE_ID" -> gcpBigtableInstanceId.toOption.getOrElse("")
+      "GCP_BIGTABLE_INSTANCE_ID" -> gcpBigtableInstanceId.toOption.getOrElse(""),
+      "ENABLE_UPLOAD_CLIENTS" -> enableUploadClients.toOption.getOrElse("true")
     )
 
     lazy val api: Api = isGcp.toOption match {
