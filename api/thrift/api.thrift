@@ -290,8 +290,6 @@ struct MetaData {
 
     # information that needs to be present on every physical node
     204: optional common.ExecutionInfo executionInfo
-
-    205: optional common.ConfType confType
 }
 
 // Equivalent to a FeatureSet in chronon terms
