@@ -133,10 +133,3 @@ struct ExecutionInfo {
     # in which case we will be polling
     # in the future we will add other types of dependencies
 }
-
-enum ConfType {
-    JOINS = 0
-    GROUP_BYS = 1
-    MODELS = 2
-    STAGING_QUERIES = 3
-}
