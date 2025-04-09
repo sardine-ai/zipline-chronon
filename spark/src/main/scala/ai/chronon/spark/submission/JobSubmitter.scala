@@ -43,33 +43,36 @@ object JobSubmitter {
     val confTypeValue = getArgValue(args, ConfTypeArgKeyword)
 
     val modeConfigProperties = if (localConfPathValue.isDefined && confTypeValue.isDefined) {
-      val executionInfo = confTypeValue.get match {
-        case "joins"           => parseConf[api.Join](localConfPathValue.get).metaData.executionInfo
-        case "group_bys"       => parseConf[api.GroupBy](localConfPathValue.get).metaData.executionInfo
-        case "staging_queries" => parseConf[api.StagingQuery](localConfPathValue.get).metaData.executionInfo
-        case "models"          => parseConf[api.Model](localConfPathValue.get).metaData.executionInfo
+      val metadata = confTypeValue.get match {
+        case "joins"           => parseConf[api.Join](localConfPathValue.get).metaData
+        case "group_bys"       => parseConf[api.GroupBy](localConfPathValue.get).metaData
+        case "staging_queries" => parseConf[api.StagingQuery](localConfPathValue.get).metaData
+        case "models"          => parseConf[api.Model](localConfPathValue.get).metaData
         case _                 => throw new Exception("Invalid conf type")
       }
 
-      val originalMode = getArgValue(args, OriginalModeArgKeyword)
+      val executionInfo = Option(metadata.getExecutionInfo)
 
-      (Option(executionInfo.conf), originalMode) match {
-        case (Some(conf), Some(mode)) =>
-          Option(conf.getModeConfigs).map(modeConfigs => {
-            if (modeConfigs.containsKey(mode)) {
-              modeConfigs.get(mode).toScala
+      if (executionInfo.isEmpty) {
+        None
+      } else {
+        val originalMode = getArgValue(args, OriginalModeArgKeyword)
+
+        (Option(executionInfo.get.conf), originalMode) match {
+          case (Some(conf), Some(mode)) =>
+            val modeConfs = if (conf.isSetModeConfigs && conf.getModeConfigs.containsKey(mode)) {
+              conf.getModeConfigs.get(mode).toScala
+            } else if (conf.isSetCommon) {
+              conf.getCommon.toScala
             } else {
-              // check common
-              if (conf.isSetCommon) {
-                conf.getCommon.toScala
-              } else {
-                Map[String, String]()
-              }
+              Map[String, String]()
             }
-          })
-        case _ => None
+            Option(modeConfs)
+          case _ => None
+        }
       }
     } else None
+
     modeConfigProperties
   }
 }
