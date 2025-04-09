@@ -407,10 +407,18 @@ object Driver {
 
     def run(args: Args): Unit = {
       val tableUtils = args.buildTableUtils()
+
+      // Use startPartitionOverride if provided, otherwise use endDate for both (single day)
+      val startDate = args.startPartitionOverride.toOption.getOrElse(args.endDate())
+      val endDate = args.endDate()
+
+      // Create a DateRange with start and end dates
+      val dateRange = new api.DateRange(startDate, endDate)
+
       val labelJoin = new LabelJoinV2(
         args.joinConf,
         tableUtils,
-        args.endDate()
+        dateRange
       )
       labelJoin.compute()
 
