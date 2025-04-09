@@ -11,7 +11,6 @@ from ai.chronon.cli.logger import get_logger
 
 logger = get_logger()
 
-
 def from_folder(
     cls: type, input_dir: str, compile_context: CompileContext
 ) -> List[CompiledObj]:
