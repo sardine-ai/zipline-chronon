@@ -21,7 +21,7 @@ import scala.collection.Seq
 case class LabelPartOutputInfo(labelPart: JoinPart, outputColumnNames: Seq[String])
 case class AllLabelOutputInfo(joinDsAsRange: PartitionRange, labelPartOutputInfos: Seq[LabelPartOutputInfo])
 
-class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
+class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: api.DateRange) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   assert(Option(joinConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
@@ -33,7 +33,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
     .map(_.asScala.toMap)
     .getOrElse(Map.empty[String, String])
   private val labelColumnPrefix = "label_"
-  private val labelDsAsRange = PartitionRange(labelDs, labelDs)
+  private val labelDsAsPartitionRange = labelDateRange.toPartitionRange
 
   private def getLabelColSchema(labelOutputs: Seq[AllLabelOutputInfo]): Seq[(String, DataType)] = {
     val labelPartToOutputCols = labelOutputs
@@ -93,13 +93,21 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
       .mapValues(_.map(_._2)) // Drop the duplicate window
       .map { case (window, labelPartOutputInfos) =>
         // The labelDs is a lookback from the labelSnapshot partition back to the join output table
-        val joinPartitionDsAsRange = labelDsAsRange.shift(window * -1)
+        val joinPartitionDsAsRange = labelDsAsPartitionRange.shift(window * -1)
         window -> AllLabelOutputInfo(joinPartitionDsAsRange, labelPartOutputInfos)
       }
       .toMap
   }
 
   def compute(): DataFrame = {
+    val resultDfsPerDay = labelDsAsPartitionRange.steps(days = 1).map { dayStep =>
+      computeDay(dayStep.start)
+    }
+
+    resultDfsPerDay.tail.foldLeft(resultDfsPerDay.head)((acc, df) => acc.union(df))
+  }
+
+  def computeDay(labelDs: String): DataFrame = {
     logger.info(s"Running LabelJoinV2 for $labelDs")
 
     runAssertions()
@@ -119,26 +127,39 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
     }
 
     if (missingWindowToOutputs.nonEmpty) {
-      logger.info(
-        s"""Missing following partitions from $joinTable: ${missingWindowToOutputs.values
-          .map(_.joinDsAsRange.start)
-          .mkString(", ")}
+
+      // Always log this no matter what.
+      val baseLogString = s"""Missing following partitions from $joinTable: ${missingWindowToOutputs.values
+        .map(_.joinDsAsRange.start)
+        .mkString(", ")}
            |
-           |Found existing partitions: ${existingJoinPartitions.mkString(", ")}
+           |Found existing partitions of join output: ${existingJoinPartitions.mkString(", ")}
            |
-           |Therefore unable to compute the labels for ${missingWindowToOutputs.keys.mkString(", ")}
+           |Required dates are computed based on label date (the run date) - window for distinct windows that are used in label parts.
            |
-           |For requested ds: $labelDs
+           |In this case, the run date is: $labelDs, and given the existing partitions we are unable to compute the labels for the following windows: ${missingWindowToOutputs.keys
+        .mkString(", ")} (days).
+           |
+           |""".stripMargin
+
+      // If there are no dates to run, also throw that error
+      require(
+        computableWindowToOutputs.nonEmpty,
+        s"""$baseLogString
+           |
+           |There are no partitions that we can run the label join for. At least one window must be computable.
+           |
+           |Exiting.
+           |""".stripMargin
+      )
+
+      // Else log what we are running, but warn about missing windows
+      logger.warn(
+        s"""$baseLogString
            |
            |Proceeding with valid windows: ${computableWindowToOutputs.keys.mkString(", ")}
            |
            |""".stripMargin
-      )
-
-      require(
-        computableWindowToOutputs.isEmpty,
-        "No valid windows to compute labels for given the existing join output range." +
-          s"Consider backfilling the join output table for the following days: ${missingWindowToOutputs.values.map(_.joinDsAsRange.start)}."
       )
     }
 
@@ -150,7 +171,11 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
     // Each unique window is an output partition in the joined table
     // Each window may contain a subset of the joinParts and their columns
     computableWindowToOutputs.foreach { case (windowLength, joinOutputInfo) =>
-      computeOutputForWindow(windowLength, joinOutputInfo, existingLabelTableOutputPartitions, windowToLabelOutputInfos)
+      computeOutputForWindow(windowLength,
+                             joinOutputInfo,
+                             existingLabelTableOutputPartitions,
+                             windowToLabelOutputInfos,
+                             labelDsAsPartitionRange)
     }
 
     val allOutputDfs = computableWindowToOutputs.values
@@ -171,16 +196,17 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
   private def computeOutputForWindow(windowLength: Int,
                                      joinOutputInfo: AllLabelOutputInfo,
                                      existingLabelTableOutputPartitions: Seq[String],
-                                     windowToLabelOutputInfos: Map[Int, AllLabelOutputInfo]): Unit = {
+                                     windowToLabelOutputInfos: Map[Int, AllLabelOutputInfo],
+                                     labelDsAsPartitionRange: PartitionRange): Unit = {
     logger.info(
-      s"Computing labels for window: $windowLength days on labelDs: $labelDs \n" +
+      s"Computing labels for window: $windowLength days on labelDs: ${labelDsAsPartitionRange.start} \n" +
         s"Includes the following joinParts and output cols: ${joinOutputInfo.labelPartOutputInfos
           .map(x => s"${x.labelPart.groupBy.metaData.name} -> ${x.outputColumnNames.mkString(", ")}")
           .mkString("\n")}")
 
     val startMillis = System.currentTimeMillis()
     // This is the join output ds that we're working with
-    val joinDsAsRange = labelDsAsRange.shift(windowLength * -1)
+    val joinDsAsRange = labelDsAsPartitionRange.shift(windowLength * -1)
 
     val joinBaseDf = if (existingLabelTableOutputPartitions.contains(joinDsAsRange.start)) {
       // If the existing join table has the partition, then we should use it, because another label column
@@ -208,7 +234,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDs: String) {
 
       val snapshotQuery = Builders.Query(selects = selectCols)
       val snapshotTable = labelJoinPart.groupBy.metaData.outputTable
-      val snapshotDf = tableUtils.scanDf(snapshotQuery, snapshotTable, range = Some(labelDsAsRange))
+      val snapshotDf = tableUtils.scanDf(snapshotQuery, snapshotTable, range = Some(labelDsAsPartitionRange))
 
       (labelJoinPart, snapshotDf)
     }
