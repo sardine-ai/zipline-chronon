@@ -102,7 +102,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
     tableUtils.sql(s"SELECT * FROM $labelGbOutputTable").show()
 
     // Now compute the label join for thirty three days ago (label ds)
-    val labelJoin = new LabelJoinV2(joinConf, tableUtils, thirtyThreeDaysAgo)
+    val labelDateRange = new api.DateRange(thirtyThreeDaysAgo, thirtyThreeDaysAgo)
+    val labelJoin = new LabelJoinV2(joinConf, tableUtils, labelDateRange)
     val labelComputed = labelJoin.compute()
     println("Label computed::")
     labelComputed.show()
@@ -219,7 +220,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
     tableUtils.sql(s"SELECT * FROM $labelGbOutputTable2").show()
 
     // Now compute the label join for thirty three days ago (label ds)
-    val labelJoin = new LabelJoinV2(joinConf, tableUtils, thirtyThreeDaysAgo)
+    val labelDateRange = new api.DateRange(thirtyThreeDaysAgo, thirtyThreeDaysAgo)
+    val labelJoin = new LabelJoinV2(joinConf, tableUtils, labelDateRange)
     val labelComputed = labelJoin.compute()
     println("Label computed::")
     labelComputed.show()
@@ -296,7 +298,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
     // Should get appended (i.e. the 10d column goes from all null to having values without losing the 7d values)
 
     // compute the label join for thirty days ago (label ds)
-    val labelJoin2 = new LabelJoinV2(joinConf, tableUtils, monthAgo)
+    val labelDateRange2 = new api.DateRange(monthAgo, monthAgo)
+    val labelJoin2 = new LabelJoinV2(joinConf, tableUtils, labelDateRange2)
     val labelComputed2 = labelJoin2.compute()
     println("Label computed (second run)::")
     labelComputed2.show()
