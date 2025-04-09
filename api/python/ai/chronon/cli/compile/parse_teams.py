@@ -11,7 +11,7 @@ from ai.chronon.api.common.ttypes import (
     EnvironmentVariables,
     ExecutionInfo,
 )
-from ai.chronon.api.ttypes import Team
+from ai.chronon.api.ttypes import Join, MetaData, Team
 from ai.chronon.cli.logger import get_logger
 
 logger = get_logger()
@@ -87,6 +87,25 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
     ), f"'{_DEFAULT_CONF_TEAM}' team not found in teams.py, please add an entry 🙏."
 
     metadata.outputNamespace = team_dict[team].outputNamespace
+
+    if isinstance(obj, Join):
+        join_namespace = obj.metaData.outputNamespace
+        # set the metadata for each join part and labelParts
+        def set_join_part_metadata(jp, output_namespace):
+            if jp.groupBy is not None:
+                if jp.groupBy.metaData and not jp.groupBy.metaData.outputNamespace:
+                    jp.groupBy.metaData.outputNamespace = output_namespace
+                else:
+                    jp.groupBy.metaData = MetaData()
+                    jp.groupBy.metaData.outputNamespace = output_namespace
+
+        if obj.joinParts:
+            for jp in (obj.joinParts or []):
+                set_join_part_metadata(jp, join_namespace)
+
+        if obj.labelParts:
+            for lb in (obj.labelParts.labels or []):
+                set_join_part_metadata(lb, join_namespace)
 
     if metadata.executionInfo is None:
         metadata.executionInfo = ExecutionInfo()
