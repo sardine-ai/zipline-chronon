@@ -100,7 +100,7 @@ if [[ $EXPECTED_MINIMUM_MINOR_PYTHON_VERSION -gt $MINOR_PYTHON_VERSION ]] ; then
     exit 1
 fi
 
-WHEEL_VERSION="0.1.0"
+WHEEL_VERSION="0.1.0+dev"
 
 bash scripts/distribution/build_wheel.sh $WHEEL_VERSION
 
@@ -181,8 +181,8 @@ function upload_to_gcp() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/latest/jars/
-                NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/latest/wheels/
+                NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/$WHEEL_VERSION/jars/
+                NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/$WHEEL_VERSION/wheels/
                 gcloud storage cp "$CLOUD_GCP_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$CLOUD_GCP_EMBEDDED_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
@@ -210,8 +210,8 @@ function upload_to_aws() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                NEW_ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/latest/jars/
-                NEW_ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/latest/wheels/
+                NEW_ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/$WHEEL_VERSION/jars/
+                NEW_ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/$WHEEL_VERSION/wheels/
                 aws s3 cp "$CLOUD_AWS_JAR" "$NEW_ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
@@ -249,3 +249,5 @@ fi
 
 # Cleanup wheel stuff
 rm ./*.whl
+
+echo "Built and uploaded $WHEEL_VERSION"

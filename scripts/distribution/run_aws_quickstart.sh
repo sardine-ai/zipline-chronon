@@ -1,5 +1,4 @@
 #!/bin/bash
-set -xo pipefail
 
 # default option is to not create a new cluster for testing but use existing cluster
 create_cluster=false
@@ -7,18 +6,71 @@ create_cluster=false
 # otherwise use the canary cluster id
 CANARY_CLUSTER_ID="j-13BASWFP15TLR"
 
-ENVIRONMENT="dev"
+GREEN='\033[0;32m'
+RED='\033[0;31m'
 
-# Loop through all arguments
-for arg in "$@"; do
-  if [ "$arg" = "--create-cluster" ]; then
-    create_cluster=true
-  fi
-  if [[ "$arg" == "--canary" ]]; then
-    ENVIRONMENT="canary"
-  fi
+function print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  --canary | --dev          Must specify the environment (canary or dev)"
+    echo "  --version <version>       Must specify the version you want to run"
+    echo "  -h, --help  Show this help message"
+}
+
+if [ $# -ne 3 ]; then
+    print_usage
+    exit 1
+fi
+
+USE_DEV=false
+USE_CANARY=false
+VERSION=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --canary)
+            USE_CANARY=true
+            shift
+            ;;
+        --dev)
+            USE_DEV=true
+            shift
+            ;;
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        --version)
+            if [[ -z $2 ]]; then
+                echo "Error: --version requires a value"
+                print_usage
+                exit 1
+            fi
+            VERSION="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            print_usage
+            exit 1
+            ;;
+    esac
 done
 
+# Set ENVIRONMENT based on flags
+if [[ "$USE_CANARY" == true ]]; then
+    ENVIRONMENT="canary"
+elif [[ "$USE_DEV" == true ]]; then
+    ENVIRONMENT="dev"
+else
+    echo "Error: You must specify either --canary or --dev."
+    print_usage
+    exit 1
+fi
+
+echo "Running with environment $ENVIRONMENT and version $VERSION"
+
+set -xo pipefail
 # Delete glue tables
 # hardcoding the s3 path here because that's where the underlying location of the data is for this glue database `data`
 # Faster to just aws s3 rm than to aws glue delete-table-version + delete-partition and then finally delete-table
@@ -52,13 +104,9 @@ python3 -m venv $VENV_DIR
 source $VENV_DIR/bin/activate
 
 # Download the wheel
-if [[ "$ENVIRONMENT" == "canary" ]]; then
-  WHEEL_FILE=$(aws s3 ls s3://zipline-artifacts-canary/release/candidate/wheels/ | grep zipline_ai | sort | tail -n 1 | awk '{print $4}')
-  aws s3 cp s3://zipline-artifacts-canary/release/candidate/wheels/$WHEEL_FILE .
-else
-  WHEEL_FILE=$(aws s3 ls s3://zipline-artifacts-dev/release/latest/wheels/ | grep zipline_ai | sort | tail -n 1 | awk '{print $4}')
-  aws s3 cp s3://zipline-artifacts-dev/release/latest/wheels/$WHEEL_FILE .
-fi
+WHEEL_FILE="zipline_ai-$VERSION-py3-none-any.whl"
+aws s3 cp s3://zipline-artifacts-$ENVIRONMENT/release/$VERSION/wheels/$WHEEL_FILE .
+
 
 # Install the wheel (force)
 pip uninstall zipline-ai
@@ -137,9 +185,9 @@ touch tmp_backfill.out
 if [ "$create_cluster" = true ]; then
   echo "Creating a new EMR cluster"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    CUSTOMER_ID=canary zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=$ENVIRONMENT zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
   else
-    CUSTOMER_ID=dev zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=$ENVIRONMENT zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
   fi
   EMR_SUBMITTER_ID_CLUSTER_STR="EMR job id"
   CLUSTER_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITTER_ID_CLUSTER_STR"  | cut -d " " -f4) # expecting the cluster id to be the 4th field
@@ -151,9 +199,9 @@ else
   CLUSTER_ID=$CANARY_CLUSTER_ID
   echo "Using existing EMR cluster $CLUSTER_ID"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    CUSTOMER_ID=canary EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=$ENVIRONMENT EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
   else
-    CUSTOMER_ID=dev EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 2>&1 | tee tmp_backfill.out
+    CUSTOMER_ID=$ENVIRONMENT EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 2>&1 | tee tmp_backfill.out
   fi
 
   EMR_SUBMITER_ID_STEP_STR="EMR step id"
