@@ -9,7 +9,7 @@ import scala.util.Try
 
 /** Default format provider implementation based on default Chronon supported open source library versions.
   */
-case class DefaultFormatProvider(sparkSession: SparkSession) extends FormatProvider {
+class DefaultFormatProvider(val sparkSession: SparkSession) extends FormatProvider {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
