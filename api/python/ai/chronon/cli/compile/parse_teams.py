@@ -86,22 +86,27 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
         _DEFAULT_CONF_TEAM in team_dict
     ), f"'{_DEFAULT_CONF_TEAM}' team not found in teams.py, please add an entry 🙏."
 
-    metadata.outputNamespace = team_dict[team].outputNamespace
+    # Only set the outputNamespace if it hasn't been set already
+    if not metadata.outputNamespace:
+        metadata.outputNamespace = team_dict[team].outputNamespace
 
     if isinstance(obj, Join):
         join_namespace = obj.metaData.outputNamespace
         # set the metadata for each join part and labelParts
-        def set_join_part_metadata(jp, output_namespace):
-            if jp.groupBy is not None:
-                if jp.groupBy.metaData and not jp.groupBy.metaData.outputNamespace:
-                    jp.groupBy.metaData.outputNamespace = output_namespace
+        def set_join_part_metadata(join_part_gb, output_namespace):
+            if join_part_gb is not None:
+                if join_part_gb.metaData:
+                    # Only set the outputNamespace if it hasn't been set already
+                    if not join_part_gb.metaData.outputNamespace:
+                        join_part_gb.metaData.outputNamespace = output_namespace
                 else:
-                    jp.groupBy.metaData = MetaData()
-                    jp.groupBy.metaData.outputNamespace = output_namespace
+                    # If there's no metaData at all, create it and set outputNamespace
+                    join_part_gb.metaData = MetaData()
+                    join_part_gb.metaData.outputNamespace = output_namespace
 
         if obj.joinParts:
             for jp in (obj.joinParts or []):
-                set_join_part_metadata(jp, join_namespace)
+                set_join_part_metadata(jp.groupBy, join_namespace)
 
         if obj.labelParts:
             for lb in (obj.labelParts.labels or []):
