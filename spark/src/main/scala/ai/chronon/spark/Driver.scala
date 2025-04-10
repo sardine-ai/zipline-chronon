@@ -101,7 +101,7 @@ object Driver {
 
     val runFirstHole: ScallopOption[Boolean] =
       opt[Boolean](required = false,
-                   default = Some(false),
+                   default = Some(true),
                    descr = "Skip the first unfilled partition range if some future partitions have been populated.")
 
     val stepDays: ScallopOption[Int] =
