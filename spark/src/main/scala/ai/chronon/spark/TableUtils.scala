@@ -239,9 +239,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     // partitions to the last
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
 
-    val dfRearranged: DataFrame = df.select(colOrder.map { case c =>
-      df.col(c)
-    }: _*)
+    val dfRearranged: DataFrame = df.select(colOrder.map(colName => df.col(colName).as(colName)): _*)
 
     createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat)
 
@@ -259,7 +257,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val tableSchema = getSchemaFromTable(tableName)
       val finalColumns = tableSchema.fieldNames.map(fieldName => {
         if (dfRearranged.schema.fieldNames.contains(fieldName)) {
-          col(fieldName)
+          col(fieldName).as(fieldName)
         } else {
           lit(null).as(fieldName)
         }
