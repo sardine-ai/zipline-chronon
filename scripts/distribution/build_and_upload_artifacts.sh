@@ -100,7 +100,7 @@ if [[ $EXPECTED_MINIMUM_MINOR_PYTHON_VERSION -gt $MINOR_PYTHON_VERSION ]] ; then
     exit 1
 fi
 
-WHEEL_VERSION="0.1.0+dev"
+WHEEL_VERSION="0.1.0+dev_$USER"
 
 bash scripts/distribution/build_wheel.sh $WHEEL_VERSION
 
