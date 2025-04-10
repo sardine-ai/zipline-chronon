@@ -19,13 +19,14 @@ package ai.chronon.spark.test.fetcher
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Extensions.{GroupByOps, JoinOps, MetadataOps}
+import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online._
 import ai.chronon.online.fetcher.FetchContext
 import ai.chronon.online.fetcher.Fetcher.Request
+import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.stats.ConsistencyJob
 import ai.chronon.spark.test.{DataFrameGen, OnlineUtils, SchemaEvolutionUtils}
@@ -37,7 +38,6 @@ import org.apache.spark.sql.functions.{avg, col, lit}
 import org.apache.spark.sql.{Row, SparkSession}
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.TimeZone

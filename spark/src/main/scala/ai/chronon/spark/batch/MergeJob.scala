@@ -1,33 +1,10 @@
 package ai.chronon.spark.batch
 
-import ai.chronon.spark.JoinUtils.{coalescedJoin, padFields}
-import ai.chronon.orchestration.JoinMergeNode
-import ai.chronon.api.{
-  Accuracy,
-  Constants,
-  DateRange,
-  JoinPart,
-  PartitionSpec,
-  PartitionRange,
-  QueryUtils,
-  StructField,
-  StructType
-}
 import ai.chronon.api.DataModel.ENTITIES
-import ai.chronon.api.Extensions.{
-  DateRangeOps,
-  DerivationOps,
-  ExternalPartOps,
-  GroupByOps,
-  JoinPartOps,
-  MetadataOps,
-  SourceOps
-}
-import ai.chronon.api.ScalaJavaConversions.ListOps
+import ai.chronon.api.Extensions.{DateRangeOps, GroupByOps, JoinPartOps, MetadataOps, SourceOps}
 import ai.chronon.api.planner.RelevantLeftForJoinPart
-import ai.chronon.online.SparkConversions
-import org.apache.spark.sql.DataFrame
-import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec, QueryUtils}
+import ai.chronon.orchestration.JoinMergeNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.coalescedJoin
 import ai.chronon.spark.{JoinUtils, TableUtils}

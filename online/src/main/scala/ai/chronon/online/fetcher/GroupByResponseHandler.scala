@@ -4,7 +4,8 @@ import ai.chronon.aggregator.windowing.{FinalBatchIr, SawtoothOnlineAggregator, 
 import ai.chronon.api.Extensions.WindowOps
 import ai.chronon.api.ScalaJavaConversions.{IteratorOps, JMapOps}
 import ai.chronon.api.{DataModel, Row, Window}
-import ai.chronon.online.{AvroConversions, GroupByServingInfoParsed}
+import ai.chronon.online.serde.AvroConversions
+import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.metrics.Metrics.Name
 import ai.chronon.online.fetcher.FetcherCache.{BatchResponses, CachedBatchResponse, KvStoreBatchResponse}

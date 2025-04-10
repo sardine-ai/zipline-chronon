@@ -20,8 +20,8 @@ import ai.chronon.api
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{planner, _}
-import ai.chronon.online.SparkConversions
+import ai.chronon.api._
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.orchestration.{JoinBootstrapNode, JoinPartNode}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils._

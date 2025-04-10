@@ -17,22 +17,17 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Constants, ExternalPart, JoinPart, PartitionRange, PartitionSpec, StructField}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.PartitionRange
-import ai.chronon.online.SparkConversions
+import ai.chronon.api.{Constants, ExternalPart, JoinPart, PartitionRange, PartitionSpec, StructField}
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.expr
-import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.types.StructType
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.apache.spark.sql.types.{StringType, StructType}
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.Seq
-import scala.collection.immutable
-import scala.collection.mutable
+import scala.collection.{Seq, immutable, mutable}
 import scala.util.Try
 
 case class JoinPartMetadata(

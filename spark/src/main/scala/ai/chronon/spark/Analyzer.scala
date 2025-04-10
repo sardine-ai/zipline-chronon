@@ -23,7 +23,7 @@ import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType, PartitionRange}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Driver.parseConf
 import ai.chronon.spark.Extensions.QuerySparkOps
 import org.apache.datasketches.common.ArrayOfStringsSerDe

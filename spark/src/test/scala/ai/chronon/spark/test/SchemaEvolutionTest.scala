@@ -24,6 +24,7 @@ import ai.chronon.online
 import ai.chronon.online.fetcher.{FetchContext, Fetcher}
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online._
+import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.LogFlattenerJob
 import ai.chronon.spark.LoggingSchema

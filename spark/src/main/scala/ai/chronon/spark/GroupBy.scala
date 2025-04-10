@@ -35,8 +35,8 @@ import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.RowWrapper
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.RowWrapper
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
