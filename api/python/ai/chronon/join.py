@@ -258,14 +258,7 @@ def LabelParts(
     """
     Used to describe labels in join. Label part can be viewed as regular join part but represent
     label data instead of regular feature data. Once labels are mature, label join job would join
-    labels with features in the training window user specified using `leftStartOffset` and
-    `leftEndOffset`.
-
-    The offsets are relative days compared to given label landing date `label_ds`. This parameter is required to be
-    passed in for each label join job. For example, given `label_ds = 2023-04-30`, `left_start_offset = 30`, and
-    `left_end_offset = 10`, the left size start date will be computed as 30 days before `label_ds` (inclusive),
-    which is 2023-04-01. Similarly, the left end date will be 2023-04-21. Labels will be refreshed within this window
-    [2023-04-01, 2023-04-21] in this specific label job run.
+    labels with features in the training window user specified within the label GroupBy-s.
 
     Since label join job will run continuously based on the schedule, multiple labels could be generated but with
     different label_ds or label version. Label join job would have all computed label versions available, as well as
@@ -279,13 +272,6 @@ def LabelParts(
     and the param input will be ignored.
 
     :param labels: List of labels
-    :param left_start_offset: Relative integer to define the earliest date label should be refreshed
-                            compared to label_ds date specified. For labels with aggregations,
-                            this param has to be same as aggregation window size.
-    :param left_end_offset: Relative integer to define the most recent date(inclusive) label should be refreshed.
-                          e.g. left_end_offset = 3 most recent label available will be 3 days
-                          prior to 'label_ds' (including `label_ds`). For labels with aggregations, this param
-                          has to be same as aggregation window size.
     :param label_offline_schedule: Cron expression for Airflow to schedule a DAG for offline
                                    label join compute tasks
     """
@@ -312,19 +298,9 @@ def LabelParts(
                 == common.TimeUnit.DAYS
             )
             assert valid_time_unit, "Label aggregation window unit must be DAYS"
-            window_size = label.groupBy.aggregations[0].windows[0].length
-            if left_start_offset != window_size or left_start_offset != left_end_offset:
-                assert (
-                    left_start_offset == window_size and left_end_offset == window_size
-                ), (
-                    "left_start_offset and left_end_offset will be inferred to be same as aggregation"
-                    "window {window_size} and the incorrect values will be ignored. "
-                )
 
     return api.LabelParts(
         labels=labels,
-        leftStartOffset=left_start_offset,
-        leftEndOffset=left_end_offset,
         metaData=label_metadata,
     )
 

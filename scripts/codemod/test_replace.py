@@ -20,7 +20,8 @@ NOTE: CWD needs to be the root of the repo.
 
 USAGE: python3 scripts/codemod/test_replace.py
 """
-zz
+
+
 def get_test_class_name(path):
     # Get the file name from the path
     filename = path.split("/")[-1]

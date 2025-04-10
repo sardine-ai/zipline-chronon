@@ -183,6 +183,9 @@ def get_join_output_columns(join: Join) -> List[str]:
     output_columns = set(
         get_pre_derived_join_features(join) + get_pre_derived_source_keys(join.left)
     )
+    # sort the output columns
+    output_columns = sorted(list(output_columns))
+
     if join.derivations:
         return build_derived_columns(output_columns, join.derivations)
     else:

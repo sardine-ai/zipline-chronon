@@ -1,4 +1,15 @@
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, BooleanType, FloatType, DoubleType, LongType, TimestampType
+from pyspark.sql.types import (
+    StructType,
+    StructField,
+    StringType,
+    IntegerType,
+    BooleanType,
+    FloatType,
+    DoubleType,
+    LongType,
+    TimestampType,
+)
+from pyspark.sql import SparkSession
 import random
 import datetime
 
@@ -138,7 +149,6 @@ schema_type_map = {
 }
 
 
-
 values_map = {
     "int": random.randint(100000, 999999),
     "boolean": random.choice([True, False]),
@@ -146,19 +156,34 @@ values_map = {
     "double": random.choice([1.5, 2.0, 3.0]),
     "float": random.uniform(0, 100),
     "bigint": random.randint(10**12, 10**15),
-    "timestamp": datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 30)),
+    "timestamp": datetime.datetime.now()
+    - datetime.timedelta(days=random.randint(1, 30)),
 }
 
+
 def rand_row(spark_schema):
-    vals = [values_map[f.dataType.simpleString()] if f.name != "dt" else random.choice(partition_dates) for f in spark_schema.fields]
+    vals = [
+        (
+            values_map[f.dataType.simpleString()]
+            if f.name != "dt"
+            else random.choice(partition_dates)
+        )
+        for f in spark_schema.fields
+    ]
     return tuple(vals)
 
 
-spark_schema = StructType([StructField(k, schema_type_map[v[0]], True) for k, v in table_schema.items()])
-partition_dates = [(datetime.datetime.today() - datetime.timedelta(days=i)).strftime("%Y%m%d") for i in range(5)]
+spark_schema = StructType(
+    [StructField(k, schema_type_map[v[0]], True) for k, v in table_schema.items()]
+)
+partition_dates = [
+    (datetime.datetime.today() - datetime.timedelta(days=i)).strftime("%Y%m%d")
+    for i in range(5)
+]
 
 data = [rand_row(spark_schema) for _ in range(100)]
 
+spark = SparkSession.builder.appName("plaid_dataset").getOrCreate()
 df = spark.createDataFrame(data, schema=spark_schema)
 
 
@@ -170,7 +195,7 @@ hudi_options = {
     "hoodie.table.name": "plaid_raw",
     "hoodie.datasource.write.partitionpath.field": "dt",
     "hoodie.datasource.write.operation": "upsert",
-    "hoodie.database.name":  "data",
+    "hoodie.database.name": "data",
     "hoodie.datasource.write.storage.type": "COPY_ON_WRITE",
     "hoodie.datasource.write.hive_style_partitioning": "true",
     "hoodie.datasource.hive_sync.enable": "true",
@@ -182,11 +207,9 @@ hudi_options = {
     "hoodie.datasource.hive_sync.mode": "hms",
 }
 
-df.write.format("org.apache.hudi") \
-    .options(**hudi_options) \
-    .mode("overwrite") \
-    .partitionBy("dt") \
-    .save("s3://zipline-warehouse-canary/data/plaid_raw")
+df.write.format("org.apache.hudi").options(**hudi_options).mode(
+    "overwrite"
+).partitionBy("dt").save("s3://zipline-warehouse-canary/data/plaid_raw")
 
 
 # Optionally run this to refresh the catalog partition information.g
@@ -196,4 +219,3 @@ df.write.format("org.apache.hudi") \
 # spark.read \
 #     .format("hudi") \
 #     .load("s3://zipline-warehouse-canary/data/plaid_raw")
-

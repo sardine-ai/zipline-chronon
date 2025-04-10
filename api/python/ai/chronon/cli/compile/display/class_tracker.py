@@ -65,7 +65,6 @@ class ClassTracker:
             if not compiled.errors:
                 self.diff_result.added.append(compiled.name)
 
-
     def close(self) -> None:
         self.closed = True
         self.recent_file = None

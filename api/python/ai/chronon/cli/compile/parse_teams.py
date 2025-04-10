@@ -12,6 +12,7 @@ from ai.chronon.api.common.ttypes import (
     ExecutionInfo,
 )
 from ai.chronon.api.ttypes import Join, MetaData, Team
+from ai.chronon.cli.compile.display.console import console
 from ai.chronon.cli.logger import get_logger
 
 logger = get_logger()
@@ -38,7 +39,7 @@ def import_module_from_file(file_path):
     return module
 
 
-def load_teams(conf_root: str) -> Dict[str, Team]:
+def load_teams(conf_root: str, print: bool = True) -> Dict[str, Team]:
 
     teams_file = os.path.join(conf_root, "teams.py")
 
@@ -54,7 +55,12 @@ def load_teams(conf_root: str) -> Dict[str, Team]:
     )
 
     team_dict = {}
-    logger.info(f"Processing teams from path {teams_file}")
+
+    if print:
+        console.print(
+            f"Pulling configuration from [cyan italic]{teams_file}[/cyan italic]"
+        )
+
     for name, obj in team_module.__dict__.items():
         if isinstance(obj, Team):
             obj.name = name
