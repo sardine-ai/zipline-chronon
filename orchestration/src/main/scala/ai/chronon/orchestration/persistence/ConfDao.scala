@@ -89,8 +89,6 @@ class ConfDao(db: Database) {
   // Method to get all confs by company, branch
   def getConfs(): Future[Seq[Conf]] = {
     val query = confTable
-    println("Query: " + query)
-    println("Db: " + db)
     db.run(query.result)
   }
 

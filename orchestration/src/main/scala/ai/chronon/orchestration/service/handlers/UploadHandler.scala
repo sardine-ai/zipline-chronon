@@ -36,23 +36,17 @@ class UploadHandler(confDao: ConfDao) {
   def upload(req: UploadRequest): UploadResponse = {
     logger.info(s"Uploading with request: ${req}")
 
-    try {
-      val daoConfs = req.diffConfs.toScala.map { conf =>
-        Conf(
-          conf.getContents,
-          conf.getName,
-          conf.getHash
-        )
-      }
-
-      Await.result(confDao.insertConfs(daoConfs.toSeq), 10.seconds)
-
-      new UploadResponse().setMessage("Upload completed successfully")
-    } catch {
-      case e: Exception =>
-        logger.error(s"Error uploading confs: ${e.getMessage}", e)
-        new UploadResponse().setMessage(s"Upload failed: ${e.getMessage}")
+    val daoConfs = req.diffConfs.toScala.map { conf =>
+      Conf(
+        conf.getContents,
+        conf.getName,
+        conf.getHash
+      )
     }
+
+    Await.result(confDao.insertConfs(daoConfs.toSeq), 10.seconds)
+
+    new UploadResponse().setMessage("Upload completed successfully")
   }
 
 }
