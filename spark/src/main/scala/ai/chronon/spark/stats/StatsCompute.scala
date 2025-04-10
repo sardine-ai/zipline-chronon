@@ -20,7 +20,7 @@ import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.row.StatsGenerator
 import ai.chronon.api
 import ai.chronon.api.Extensions._
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import ai.chronon.spark.TimedKvRdd

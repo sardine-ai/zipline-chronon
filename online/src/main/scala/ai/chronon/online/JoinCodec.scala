@@ -27,7 +27,7 @@ import ai.chronon.online.OnlineDerivationUtil.DerivationFunc
 import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
 import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import ai.chronon.online.OnlineDerivationUtil.buildRenameOnlyDerivationFunction
-import ai.chronon.online.serde.AvroCodec
+import ai.chronon.online.serde._
 
 import com.google.gson.Gson
 

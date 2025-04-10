@@ -24,7 +24,7 @@ import ai.chronon.api.StringType
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
 import ai.chronon.online.DataStream
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online.TopicInfo
 import ai.chronon.online.TopicInfo.parse
 import org.apache.spark.sql.DataFrame

@@ -17,8 +17,8 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.online.AvroConversions
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.AvroConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame

@@ -17,14 +17,13 @@
 package ai.chronon.spark.stats
 
 import ai.chronon.api._
-import ai.chronon.online.{SparkConversions, fetcher, _}
+import ai.chronon.online.serde.SparkConversions
+import ai.chronon.online._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
-import ai.chronon.spark.TimedKvRdd
+import ai.chronon.spark.{TableUtils, TimedKvRdd}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.DataType
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable.ListBuffer
 

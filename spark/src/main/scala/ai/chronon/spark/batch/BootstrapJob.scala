@@ -3,7 +3,7 @@ package ai.chronon.spark.batch
 import ai.chronon.api.Extensions.{BootstrapPartOps, DateRangeOps, ExternalPartOps, MetadataOps, SourceOps, StringsOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api.{Constants, DateRange, PartitionRange, PartitionSpec, StructField, StructType}
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, set_add}
