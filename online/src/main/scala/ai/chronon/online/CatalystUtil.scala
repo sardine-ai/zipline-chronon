@@ -16,19 +16,16 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.DataType
-import ai.chronon.api.StructType
-import ai.chronon.online.CatalystUtil.PoolKey
-import ai.chronon.online.CatalystUtil.poolMap
+import ai.chronon.api.{DataType, StructType}
+import ai.chronon.online.CatalystUtil.{PoolKey, poolMap}
 import ai.chronon.online.Extensions.StructTypeOps
-import org.apache.spark.sql.SparkSession
+import ai.chronon.online.serde._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.FunctionAlreadyExistsException
-import org.apache.spark.sql.types
+import org.apache.spark.sql.{SparkSession, types}
 import org.slf4j.LoggerFactory
 
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ArrayBlockingQueue, ConcurrentHashMap}
 import java.util.function
 import scala.collection.Seq
 

@@ -22,6 +22,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.{Row => _, _}
 import ai.chronon.online.Extensions.ChrononStructTypeOps
 import ai.chronon.online._
+import ai.chronon.online.serde._
 import ai.chronon.spark.GenericRowHandler
 import com.google.gson.Gson
 import org.apache.spark.sql._

@@ -14,22 +14,19 @@
  *    limitations under the License.
  */
 
-package ai.chronon.online
+package ai.chronon.online.serde
 
 import ai.chronon.api._
-import org.apache.avro.LogicalTypes
-import org.apache.avro.Schema
+import org.apache.avro.{LogicalTypes, Schema}
 import org.apache.avro.Schema.Field
-import org.apache.avro.generic.GenericData
-import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.avro.util.Utf8
 
 import java.nio.ByteBuffer
 import java.util
 import scala.annotation.tailrec
-import scala.collection.AbstractIterator
 import scala.collection.JavaConverters._
-import scala.collection.mutable
+import scala.collection.{AbstractIterator, mutable}
 
 object AvroConversions {
 
@@ -183,7 +180,7 @@ object AvroConversions {
   }
 
   def encodeBytes(schema: StructType, extraneousRecord: Any => Array[Any] = null): Any => Array[Byte] = {
-    val codec: serde.AvroCodec = new serde.AvroCodec(fromChrononSchema(schema).toString(true));
+    val codec: AvroCodec = new AvroCodec(fromChrononSchema(schema).toString(true));
     { data: Any =>
       val record =
         fromChrononRow(data, codec.chrononSchema, codec.schema, extraneousRecord).asInstanceOf[GenericData.Record]
@@ -193,7 +190,7 @@ object AvroConversions {
   }
 
   def encodeJson(schema: StructType, extraneousRecord: Any => Array[Any] = null): Any => String = {
-    val codec: serde.AvroCodec = new serde.AvroCodec(fromChrononSchema(schema).toString(true));
+    val codec: AvroCodec = new AvroCodec(fromChrononSchema(schema).toString(true));
     { data: Any =>
       val record =
         fromChrononRow(data, codec.chrononSchema, codec.schema, extraneousRecord).asInstanceOf[GenericData.Record]

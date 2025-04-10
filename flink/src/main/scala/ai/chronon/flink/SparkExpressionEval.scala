@@ -8,7 +8,7 @@ import ai.chronon.api.Query
 import ai.chronon.api.{StructType => ChrononStructType}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.CatalystUtil
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
 import org.apache.flink.metrics.{Counter, Histogram, MetricGroup}

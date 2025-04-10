@@ -6,7 +6,8 @@ import ai.chronon.flink.{FlinkJob, SparkExpressionEval, SparkExpressionEvalFn}
 import ai.chronon.flink.types.TimestampedIR
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
-import ai.chronon.online.{Api, GroupByServingInfoParsed, SparkConversions}
+import ai.chronon.online.{Api, GroupByServingInfoParsed}
+import ai.chronon.online.serde.SparkConversions
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource

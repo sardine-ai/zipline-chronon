@@ -2,7 +2,7 @@ package org.apache.spark.sql.avro
 
 import ai.chronon.api.{DataType, GroupBy}
 import ai.chronon.flink.{ChrononDeserializationSchema, SourceProjection, SparkExpressionEval}
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.metrics.Counter
 import org.apache.flink.util.Collector

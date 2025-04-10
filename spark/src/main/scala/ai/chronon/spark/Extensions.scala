@@ -20,7 +20,7 @@ import ai.chronon.api
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange}
-import ai.chronon.online.{AvroConversions, SparkConversions}
+import ai.chronon.online.serde.{AvroConversions, SparkConversions}
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction

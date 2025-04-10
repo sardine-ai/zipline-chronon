@@ -18,7 +18,6 @@ package ai.chronon.online.serde
 
 import ai.chronon.api.{DataType, Row}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.AvroConversions
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Field
 import org.apache.avro.file.SeekableByteArrayInput

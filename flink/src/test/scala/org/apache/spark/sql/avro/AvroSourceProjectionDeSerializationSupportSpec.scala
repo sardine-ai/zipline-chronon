@@ -2,7 +2,7 @@ package org.apache.spark.sql.avro
 
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.flink.test.UserAvroSchema
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import org.scalatest.flatspec.AnyFlatSpec
 import org.apache.flink.api.common.functions.util.ListCollector
 

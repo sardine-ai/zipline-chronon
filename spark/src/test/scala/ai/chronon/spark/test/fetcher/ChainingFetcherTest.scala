@@ -22,8 +22,8 @@ import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.online.SparkConversions
 import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.{OnlineUtils, TestUtils}
 import ai.chronon.spark.utils.MockApi
@@ -35,7 +35,6 @@ import org.junit.Assert.{assertEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.lang
 import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.collection.Seq

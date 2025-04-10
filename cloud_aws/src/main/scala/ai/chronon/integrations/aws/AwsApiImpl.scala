@@ -3,6 +3,7 @@ package ai.chronon.integrations.aws
 import ai.chronon.online._
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import ai.chronon.online.serde._
 
 import java.net.URI
 

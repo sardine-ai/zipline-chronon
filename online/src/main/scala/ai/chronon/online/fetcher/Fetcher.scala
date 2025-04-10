@@ -25,6 +25,7 @@ import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
 import ai.chronon.online._
 import ai.chronon.online.fetcher.Fetcher.{JoinSchemaResponse, Request, Response, ResponseWithContext}
 import ai.chronon.online.metrics.{Metrics, TTLCache}
+import ai.chronon.online.serde._
 import com.google.gson.Gson
 import com.timgroup.statsd.Event
 import com.timgroup.statsd.Event.AlertType
@@ -221,12 +222,12 @@ class Fetcher(val kvStore: KVStore,
   }
 
   private def encode(schema: StructType,
-                     codec: serde.AvroCodec,
+                     codec: AvroCodec,
                      dataMap: Map[String, AnyRef],
                      cast: Boolean = false,
                      tries: Int = 3): Array[Byte] = {
     def encodeOnce(schema: StructType,
-                   codec: serde.AvroCodec,
+                   codec: AvroCodec,
                    dataMap: Map[String, AnyRef],
                    cast: Boolean = false): Array[Byte] = {
       val data = schema.fields.map { case StructField(name, typ) =>

@@ -8,7 +8,7 @@ import ai.chronon.online.FlagStoreConstants
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import ai.chronon.online.LoggableResponse
-import ai.chronon.online.Serde
+import ai.chronon.online.serde.Serde
 import ai.chronon.online.serde.AvroSerde
 import com.google.api.gax.core.{InstantiatingExecutorProvider, NoCredentialsProvider}
 import com.google.cloud.bigquery.BigQueryOptions

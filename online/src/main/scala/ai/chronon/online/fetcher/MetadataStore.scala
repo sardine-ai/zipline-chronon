@@ -25,7 +25,7 @@ import ai.chronon.online.KVStore.{ListRequest, ListResponse, PutRequest}
 import ai.chronon.online.MetadataEndPoint.NameByTeamEndPointName
 import ai.chronon.online.OnlineDerivationUtil.buildDerivedFields
 import ai.chronon.online._
-import ai.chronon.online.serde.AvroCodec
+import ai.chronon.online.serde._
 import ai.chronon.online.metrics.{Metrics, TTLCache}
 import org.slf4j.{Logger, LoggerFactory}
 

@@ -17,25 +17,19 @@
 package ai.chronon.online
 
 import ai.chronon.api.Constants
-import ai.chronon.api.StructType
 import ai.chronon.online.KVStore._
 import ai.chronon.online.fetcher.Fetcher
 import org.apache.spark.sql.SparkSession
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.online.serde._
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.function.Consumer
 import scala.collection.Seq
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.MILLISECONDS
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.concurrent.duration.{Duration, MILLISECONDS}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 object KVStore {
   // a scan request essentially for the keyBytes
@@ -145,40 +139,6 @@ object StringArrayConverter {
     encodedString.split(",").map(s => new String(Base64.getDecoder.decode(s), StandardCharsets.UTF_8))
   }
 }
-
-/** ==== MUTATION vs. EVENT ====
-  * Mutation is the general case of an Event
-  * Imagine a user impression/view stream - impressions/views are immutable events
-  * Imagine a stream of changes to a credit card transaction stream.
-  *    - transactions can be "corrected"/updated & deleted, besides being "inserted"
-  *    - This is one of the core difference between entity and event sources. Events are insert-only.
-  *    - (The other difference is Entites are stored in the warehouse typically as snapshots of the table as of midnight)
-  *      In case of an update - one must produce both before and after values
-  *      In case of a delete - only before is populated & after is left as null
-  *      In case of a insert - only after is populated & before is left as null
-  *
-  *       ==== TIME ASSUMPTIONS ====
-  *      The schema needs to contain a `ts`(milliseconds as a java Long)
-  *      For the entities case, `mutation_ts` when absent will use `ts` as a replacement
-  *
-  *       ==== TYPE CONVERSIONS ====
-  *      Java types corresponding to the schema types. [[Serde]] should produce mutations that comply.
-  *      NOTE: everything is nullable (hence boxed)
-  *      IntType        java.lang.Integer
-  *      LongType       java.lang.Long
-  *      DoubleType     java.lang.Double
-  *      FloatType      java.lang.Float
-  *      ShortType      java.lang.Short
-  *      BooleanType    java.lang.Boolean
-  *      ByteType       java.lang.Byte
-  *      StringType     java.lang.String
-  *      BinaryType     Array[Byte]
-  *      ListType       java.util.List[Byte]
-  *      MapType        java.util.Map[Byte]
-  *      StructType     Array[Any]
-  */
-case class Mutation(schema: StructType = null, before: Array[Any] = null, after: Array[Any] = null)
-
 case class LoggableResponse(keyBytes: Array[Byte],
                             valueBytes: Array[Byte],
                             joinName: String,
@@ -190,15 +150,6 @@ case class LoggableResponseBase64(keyBase64: String,
                                   name: String,
                                   tsMillis: Long,
                                   schemaHash: String)
-
-abstract class Serde extends Serializable {
-  def fromBytes(bytes: Array[Byte]): Mutation
-  def schema: StructType
-  def toBytes(mutation: Mutation): Array[Byte] = {
-    // not implemented
-    throw new UnsupportedOperationException("toBytes not implemented")
-  }
-}
 
 trait StreamBuilder {
   def from(topicInfo: TopicInfo)(implicit session: SparkSession, props: Map[String, String]): DataStream

@@ -23,7 +23,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.PartitionRange
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.Analyzer
 import ai.chronon.spark.Extensions._
