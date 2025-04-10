@@ -18,7 +18,7 @@ class GcpFormatProviderTest extends AnyFlatSpec with MockitoSugar {
 
   it should "check getFormat works for URI's that have a wildcard in between" ignore {
     // todo(tchow): Remove this test, getting rid of this abstraction eventually.
-    val gcpFormatProvider = GcpFormatProvider(spark)
+    val gcpFormatProvider = new GcpFormatProvider(spark)
     val sourceUris = "gs://bucket-name/path/to/data/*.parquet"
     val tableName = "gs://bucket-name/path/to/data"
 

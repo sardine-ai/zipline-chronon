@@ -1,5 +1,5 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.format.{Format, FormatProvider, Iceberg}
+import ai.chronon.spark.format.{DefaultFormatProvider, Format, Iceberg}
 import com.google.cloud.bigquery._
 import com.google.cloud.iceberg.bigquery.relocated.com.google.api.services.bigquery.model.TableReference
 import org.apache.iceberg.exceptions.NoSuchIcebergTableException
@@ -9,7 +9,7 @@ import org.apache.spark.sql.SparkSession
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider {
+class GcpFormatProvider(override val sparkSession: SparkSession) extends DefaultFormatProvider(sparkSession) {
 
   /** Order of Precedence for Default Project:
     * - Explicitly configured project in code (e.g., setProjectId()).
@@ -23,8 +23,16 @@ case class GcpFormatProvider(sparkSession: SparkSession) extends FormatProvider 
   private lazy val icebergClient: BigQueryClient = new BigQueryClientImpl()
 
   override def readFormat(tableName: String): scala.Option[Format] = {
-    val btTableIdentifier = SparkBQUtils.toTableId(tableName)(sparkSession)
-    scala.Option(bigQueryClient.getTable(btTableIdentifier)).map(getFormat)
+    super.readFormat(tableName) match {
+      case existing @ Some(_) => existing
+      case None => {
+        val btTableIdentifier = SparkBQUtils.toTableId(tableName)(sparkSession)
+        Try {
+          logger.info(s"Retrieving format for table: ${tableName}")
+          bigQueryClient.getTable(btTableIdentifier)
+        }.toOption.flatMap((t) => scala.Option(t)).map((t) => getFormat(t))
+      }
+    }
   }
 
   private[cloud_gcp] def getFormat(table: Table): Format = {
