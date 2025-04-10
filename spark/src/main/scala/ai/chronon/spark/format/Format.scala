@@ -4,7 +4,7 @@ import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
 
 trait Format {
-  @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+  @transient protected lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
