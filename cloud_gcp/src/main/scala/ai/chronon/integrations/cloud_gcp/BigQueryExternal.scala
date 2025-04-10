@@ -6,13 +6,10 @@ import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.execution.FileSourceScanExec
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
 import org.apache.spark.sql.{Encoders, Row, SparkSession}
-import org.slf4j.LoggerFactory
-import com.google.cloud.bigquery.FormatOptions
+
 import scala.jdk.CollectionConverters._
 
 case object BigQueryExternal extends Format {
-
-  private lazy val logger = LoggerFactory.getLogger(this.getClass.getName)
 
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
   lazy val bigQueryClient: BigQuery = bqOptions.getService
