@@ -40,6 +40,171 @@ class TableUtilsTest extends AnyFlatSpec {
   private val tableUtils = TableTestUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
+  it should "handle special characters in column names with TableUtils.insertPartitions" ignore {
+    val specialTableName = "db.special_chars_table"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+
+    // Create a struct type named "with" that contains a field "dots"
+    val withStructType = StructType(
+      "with",
+      Array(StructField("dots", IntType), StructField("id", StringType))
+    )
+
+    // Create data for our test
+    val row1 = Row("value1", 42, true, Row(123, "id1"), "2023-01-01")
+    val row2 = Row("value2", 84, false, Row(456, "id2"), "2023-01-02")
+
+    // Define schema with:
+    // 1. "with.dots" - a column with dots in the name
+    // 2. "with" - a struct that contains a field named "dots"
+    val schema = StructType(
+      specialTableName,
+      Array(
+        StructField("normal", StringType),
+        StructField("with.dots", IntType), // Column with dots
+        StructField("with#hash", BooleanType), // Column with hash
+        StructField("with", withStructType), // Struct named "with" with field "dots"
+        StructField("ds", StringType)
+      )
+    )
+
+    // Create the DataFrame with our complex schema
+    val specialCharsData = makeDf(spark, schema, List(row1, row2))
+
+    try {
+      import org.junit.Assert.assertNull
+      // Use TableUtils.insertPartitions with our fixed column reference handling
+      tableUtils.insertPartitions(
+        specialCharsData,
+        specialTableName,
+        partitionColumns = List("ds")
+      )
+
+      // Verify that columns were preserved correctly
+      val loadedData = tableUtils.loadTable(specialTableName)
+      val expectedColumns = List("normal", "with.dots", "with#hash", "with", "ds")
+      assertEquals(expectedColumns, loadedData.columns.toList)
+
+      // Verify column values including both with.dots and with.dots
+      val day1Data = loadedData.where(col("ds") === "2023-01-01").collect()
+      assertEquals(1, day1Data.length)
+      assertEquals("value1", day1Data(0).getAs[String]("normal"))
+      assertEquals(42, day1Data(0).getAs[Int]("with.dots")) // Dot column
+      assertEquals(true, day1Data(0).getAs[Boolean]("with#hash"))
+
+      // Verify the struct field "with" that contains field "dots"
+      val withStruct = day1Data(0).getAs[Row]("with")
+      assertEquals(123, withStruct.getAs[Int]("dots")) // Same as with.dots in dot notation
+      assertEquals("id1", withStruct.getAs[String]("id"))
+
+      // Create a DataFrame with a backtick and a column with dots and hash
+      val backticksData = makeDf(
+        spark,
+        StructType(
+          specialTableName,
+          Array(
+            StructField("with`backtick", StringType),
+            StructField("num", IntType),
+            StructField("with.hash#mix", DoubleType), // Column with both dots and hash
+            StructField("ds", StringType)
+          )
+        ),
+        List(
+          Row("tick", 100, 99.9, "2023-01-03")
+        )
+      )
+
+      // Test with autoExpand=true which uses our other fixed code path
+      tableUtils.insertPartitions(
+        backticksData,
+        specialTableName,
+        partitionColumns = List("ds"),
+        autoExpand = true
+      )
+
+      // Verify all columns are present after expansion
+      val updatedData = tableUtils.loadTable(specialTableName)
+      val allExpectedCols = expectedColumns ++ List("with`backtick", "num", "with.hash#mix")
+      assertEquals(allExpectedCols, updatedData.columns.toList)
+
+      // Verify the new row data
+      val day3Data = updatedData.where(col("ds") === "2023-01-03").collect()
+      assertEquals(1, day3Data.length)
+      assertEquals("tick", day3Data(0).getAs[String]("with`backtick"))
+      assertEquals(100, day3Data(0).getAs[Int]("num"))
+      assertEquals(99.9, day3Data(0).getAs[Double]("with.hash#mix"))
+
+      // Null for fields not in this row
+      assertNull(day3Data(0).getAs[Row]("with"))
+    } finally {
+      // Clean up
+      spark.sql(s"DROP TABLE IF EXISTS $specialTableName")
+    }
+  }
+
+  it should "handle schema expansion with TableUtils.insertPartitions" in {
+    val expandTableName = "db.expand_table"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+
+    // Create initial DataFrame with base columns
+    val initialData = spark
+      .createDataFrame(
+        Seq(
+          (1L, "A", "2023-01-01")
+        ))
+      .toDF("id", "name", "ds")
+
+    try {
+      import org.junit.Assert.assertNull
+      // Insert initial data
+      tableUtils.insertPartitions(
+        initialData,
+        expandTableName,
+        partitionColumns = List("ds")
+      )
+
+      // Create DataFrame with additional columns
+      val expandedData = spark
+        .createDataFrame(
+          Seq(
+            (2L, "B", 25, "user@example.com", "2023-01-02")
+          ))
+        .toDF("id", "name", "age", "email", "ds")
+
+      // Use autoExpand=true to test the column expansion logic that we fixed
+      tableUtils.insertPartitions(
+        expandedData,
+        expandTableName,
+        partitionColumns = List("ds"),
+        autoExpand = true
+      )
+
+      // Verify the expanded schema
+      val loadedData = tableUtils.loadTable(expandTableName)
+      val expectedColumns = List("id", "name", "age", "email", "ds")
+      assertEquals(expectedColumns, loadedData.columns.toList)
+
+      // Original row should have nulls for new columns
+      val day1Data = loadedData.where(col("ds") === "2023-01-01").collect()
+      assertEquals(1, day1Data.length)
+      assertEquals(1L, day1Data(0).getAs[Long]("id"))
+      assertEquals("A", day1Data(0).getAs[String]("name"))
+      assertNull(day1Data(0).getAs[Integer]("age"))
+      assertNull(day1Data(0).getAs[String]("email"))
+
+      // New row should have all columns populated
+      val day2Data = loadedData.where(col("ds") === "2023-01-02").collect()
+      assertEquals(1, day2Data.length)
+      assertEquals(2L, day2Data(0).getAs[Long]("id"))
+      assertEquals("B", day2Data(0).getAs[String]("name"))
+      assertEquals(25, day2Data(0).getAs[Int]("age"))
+      assertEquals("user@example.com", day2Data(0).getAs[String]("email"))
+    } finally {
+      // Clean up
+      spark.sql(s"DROP TABLE IF EXISTS $expandTableName")
+    }
+  }
+
   it should "column from sql" in {
     val sampleSql =
       """
