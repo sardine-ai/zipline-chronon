@@ -30,7 +30,7 @@ def from_folder(
 
             for name, obj in results_dict.items():
                 parse_teams.update_metadata(obj, compile_context.teams_dict)
-                obj.metaData.sourceFile = f
+                obj.metaData.sourceFile = os.path.relpath(f, compile_context.chronon_root)
 
                 tjson = serializer.thrift_simple_json(obj)
 
