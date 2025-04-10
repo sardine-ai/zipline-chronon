@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
 from ai.chronon.orchestration.ttypes import (
-    BranchMappingRequest,
     DiffResponse,
     NodeInfo,
 )
@@ -22,8 +21,6 @@ class ControllerIface(ABC):
 
     @abstractmethod
     def upload_branch_mappsing(self, node_info: List[NodeInfo], branch: str):
-        # TODO
-        BranchMappingRequest()
         pass
 
     @abstractmethod

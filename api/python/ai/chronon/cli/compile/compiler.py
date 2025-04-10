@@ -10,6 +10,7 @@ import ai.chronon.cli.logger as logger
 from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.cli.compile.compile_context import CompileContext, ConfigInfo
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
+from ai.chronon.cli.compile.display.console import console
 
 logger = logger.get_logger()
 
@@ -26,18 +27,14 @@ class Compiler:
     def __init__(self, compile_context: CompileContext):
         self.compile_context = compile_context
 
-    def compile(
-        self
-    ) -> Dict[ConfigType, CompileResult]:
+    def compile(self) -> Dict[ConfigType, CompileResult]:
 
         config_infos = self.compile_context.config_infos
 
         compile_results = {}
 
         for config_info in config_infos:
-            configs = self._compile_class_configs(
-                config_info
-            )
+            configs = self._compile_class_configs(config_info)
 
             compile_results[config_info.config_type] = configs
 
@@ -57,7 +54,7 @@ class Compiler:
 
         # TODO: temporarily just print out the final results of the compile until live fix is implemented:
         #  https://github.com/Textualize/rich/pull/3637
-        print(self.compile_context.compile_status.generate_update_display_text())
+        console.print(self.compile_context.compile_status.render())
 
         return compile_results
 
@@ -101,9 +98,12 @@ class Compiler:
                     error_dict[co.name] = co.errors
 
                     for error in co.errors:
-                        self.compile_context.compile_status.print_live_console(f"Error processing conf {co.name}: {error}")
+                        self.compile_context.compile_status.print_live_console(
+                            f"Error processing conf {co.name}: {error}"
+                        )
                         traceback.print_exception(
-                            type(error), error, error.__traceback__)
+                            type(error), error, error.__traceback__
+                        )
 
                 else:
                     self._write_object(co)
@@ -111,10 +111,11 @@ class Compiler:
             else:
                 error_dict[co.file] = co.errors
 
-                self.compile_context.compile_status.print_live_console(f"Error processing file {co.file}: {co.errors}")
+                self.compile_context.compile_status.print_live_console(
+                    f"Error processing file {co.file}: {co.errors}"
+                )
                 for error in co.errors:
-                    traceback.print_exception(
-                        type(error), error, error.__traceback__)
+                    traceback.print_exception(type(error), error, error.__traceback__)
 
         return object_dict, error_dict
 

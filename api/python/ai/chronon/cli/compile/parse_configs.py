@@ -53,12 +53,19 @@ def from_folder(
 
         except Exception as e:
             result = CompiledObj(
-                name=None, obj=None, file=f, errors=[e], obj_type=cls.__name__, tjson=None
+                name=None,
+                obj=None,
+                file=f,
+                errors=[e],
+                obj_type=cls.__name__,
+                tjson=None,
             )
 
             results.append(result)
 
-            compile_context.compile_status.add_object_update_display(result, cls.__name__)
+            compile_context.compile_status.add_object_update_display(
+                result, cls.__name__
+            )
 
     return results
 
@@ -74,7 +81,7 @@ def from_file(file_path: str, cls: type, input_dir: str):
     module_name = rel_path_without_extension.replace("/", ".")
 
     conf_type, team_name_with_path = module_name.split(".", 1)
-    mod_path  = team_name_with_path.replace("/", ".")
+    mod_path = team_name_with_path.replace("/", ".")
 
     module = importlib.import_module(module_name)
 
