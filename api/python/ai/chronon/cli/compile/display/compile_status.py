@@ -18,7 +18,7 @@ class CompileStatus:
         self.use_live = use_live
         # we need vertical_overflow to be visible as the output gets cufoff when our output goes past the termianal window
         # but then we start seeing duplicates: https://github.com/Textualize/rich/issues/3263
-        self.live = Live(refresh_per_second=50, vertical_overflow='visible')
+        self.live = Live(refresh_per_second=50, vertical_overflow="visible")
         self.live.start()
 
     def print_live_console(self, msg: str):
@@ -62,7 +62,7 @@ class CompileStatus:
         if self.use_live:
             self.live.stop()
 
-    def generate_update_display_text(self) -> Text:
+    def render(self) -> Text:
         text = Text(overflow="fold", no_wrap=False)
 
         for obj_type, tracker in self.cls_to_tracker.items():
@@ -86,9 +86,9 @@ class CompileStatus:
     def _update_display(self):
         # self.live.clear()
 
-        text = self.generate_update_display_text()
-        if self.use_live:
-            self.live.update(text, refresh=True)
-        return text
-
-
+        # TODO: add this after live_crop is implemented
+        # text = self.display_text()
+        # if self.use_live:
+        #     self.live.update(text, refresh=True)
+        # return text
+        pass
