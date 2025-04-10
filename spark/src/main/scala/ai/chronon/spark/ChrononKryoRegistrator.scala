@@ -83,7 +83,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
       "ai.chronon.api.Row",
       "ai.chronon.online.LoggableResponse",
       "ai.chronon.online.LoggableResponseBase64",
-      "ai.chronon.online.RowWrapper",
+      "ai.chronon.online.serde.RowWrapper",
       "ai.chronon.online.fetcher.Fetcher$Request",
       "ai.chronon.spark.KeyWithHash",
       "java.time.LocalDate",

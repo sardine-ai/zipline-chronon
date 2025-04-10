@@ -32,8 +32,8 @@ import ai.chronon.api.StringType
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
 import ai.chronon.api.PartitionRange
-import ai.chronon.online.RowWrapper
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.RowWrapper
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.test.{DataFrameGen, TestUtils}

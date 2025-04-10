@@ -1,7 +1,8 @@
 package ai.chronon.online.test
 
 import ai.chronon.api.{StructType => ChrononStructType}
-import ai.chronon.online.{AvroConversions, CatalystUtil}
+import ai.chronon.online.CatalystUtil
+import ai.chronon.online.serde.AvroConversions
 import org.apache.avro.Schema
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.avro.io.{BinaryEncoder, EncoderFactory}

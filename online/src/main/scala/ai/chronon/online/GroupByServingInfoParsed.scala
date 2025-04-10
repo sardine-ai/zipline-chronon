@@ -17,19 +17,14 @@
 package ai.chronon.online
 
 import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
-import ai.chronon.api.Constants.ReversalField
-import ai.chronon.api.Constants.TimeField
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.Extensions.MetadataOps
+import ai.chronon.api.Constants.{ReversalField, TimeField}
+import ai.chronon.api.Extensions.{GroupByOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api._
-import ai.chronon.online.OnlineDerivationUtil.DerivationFunc
-import ai.chronon.online.OnlineDerivationUtil.buildDerivationFunction
-import ai.chronon.online.serde.AvroCodec
-
+import ai.chronon.online.OnlineDerivationUtil.{DerivationFunc, buildDerivationFunction}
+import ai.chronon.online.serde._
 import org.apache.avro.Schema
 
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.Seq
 
 // mixin class - with schema

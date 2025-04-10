@@ -22,7 +22,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.online.fetcher.Fetcher.Response
 import ai.chronon.online._
-import ai.chronon.online.serde.AvroSerde
+import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.DataFrame

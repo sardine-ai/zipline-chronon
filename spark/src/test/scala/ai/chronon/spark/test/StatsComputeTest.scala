@@ -18,7 +18,7 @@ package ai.chronon.spark.test
 import ai.chronon.aggregator.row.StatsGenerator
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api._
-import ai.chronon.online.SparkConversions.toChrononSchema
+import ai.chronon.online.serde.SparkConversions.toChrononSchema
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.TableUtils

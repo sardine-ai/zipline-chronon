@@ -19,8 +19,8 @@ package ai.chronon.spark.utils
 import ai.chronon.api.Constants
 import ai.chronon.api.GroupBy
 import ai.chronon.api.StructType
-import ai.chronon.online.AvroConversions
-import ai.chronon.online.SparkConversions
+import ai.chronon.online.serde.AvroConversions
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online.TileCodec
 import ai.chronon.spark.GenericRowHandler
 import ai.chronon.spark.TableUtils

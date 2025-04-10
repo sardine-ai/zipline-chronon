@@ -25,7 +25,7 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.TilingUtils
-import ai.chronon.online.AvroConversions
+import ai.chronon.online.serde.AvroConversions
 import ai.chronon.online.KVStore
 import ai.chronon.spark.GenericRowHandler
 import ai.chronon.spark.GroupByUpload

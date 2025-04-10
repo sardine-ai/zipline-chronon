@@ -10,7 +10,7 @@ import ai.chronon.api.TilingUtils
 import ai.chronon.api.{StructType => ChrononStructType}
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
-import ai.chronon.online.AvroConversions
+import ai.chronon.online.serde.AvroConversions
 import ai.chronon.online.GroupByServingInfoParsed
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration

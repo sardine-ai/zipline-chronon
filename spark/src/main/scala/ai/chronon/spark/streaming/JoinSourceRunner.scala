@@ -22,6 +22,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online._
+import ai.chronon.online.serde._
 import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.spark.{GenericRowHandler, TableUtils}
 import com.google.gson.Gson
