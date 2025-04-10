@@ -257,7 +257,7 @@ class Join(joinConf: api.Join,
         .setJoin(joinConfCloned)
         .setMetaData(bootstrapMetadata)
 
-      val bootstrapJob = new BootstrapJob(bootstrapNode, bootstrapJobRange)
+      val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapJobRange)
       bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
     }
 

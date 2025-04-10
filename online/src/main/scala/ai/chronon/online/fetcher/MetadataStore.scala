@@ -78,10 +78,10 @@ class MetadataStore(fetchContext: FetchContext) {
     val clazz = implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
 
     val confTypeKeyword = clazz match {
-      case j if j == classOf[Join]           => JoinKeyword
-      case g if g == classOf[GroupBy]        => GroupByKeyword
-      case sq if sq == classOf[StagingQuery] => StagingQueryKeyword
-      case m if m == classOf[Model]          => ModelKeyword
+      case j if j == classOf[Join]           => JoinFolder
+      case g if g == classOf[GroupBy]        => GroupByFolder
+      case sq if sq == classOf[StagingQuery] => StagingQueryFolder
+      case m if m == classOf[Model]          => ModelFolder
       case _                                 => throw new IllegalArgumentException(s"Unsupported conf type: $clazz")
     }
 
@@ -215,8 +215,8 @@ class MetadataStore(fetchContext: FetchContext) {
                                paginationKey: Option[Any] = None): Future[Seq[String]] = {
       val propsMap = {
         paginationKey match {
-          case Some(key) => Map(ListEntityType -> JoinKeyword, ContinuationKey -> key)
-          case None      => Map(ListEntityType -> JoinKeyword)
+          case Some(key) => Map(ListEntityType -> JoinFolder, ContinuationKey -> key)
+          case None      => Map(ListEntityType -> JoinFolder)
         }
       }
 

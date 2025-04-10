@@ -84,16 +84,16 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
       val (optConf, confKeyName) =
         try {
           relativePath match {
-            case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
+            case value if value.contains(s"$JoinFolder/") || maybeConfType.contains(JoinFolder) =>
               val conf = loadJsonToConf[api.Join](filePath)
               (conf, conf.map(_.keyNameForKvStore))
-            case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
+            case value if value.contains(s"$GroupByFolder/") || maybeConfType.contains(GroupByFolder) =>
               val conf = loadJsonToConf[api.GroupBy](filePath)
               (conf, conf.map(a => a.keyNameForKvStore))
-            case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
+            case value if value.contains(s"$StagingQueryFolder/") || maybeConfType.contains(StagingQueryFolder) =>
               val conf = loadJsonToConf[api.StagingQuery](filePath)
               (conf, conf.map(_.keyNameForKvStore))
-            case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
+            case value if value.contains(s"$ModelFolder/") || maybeConfType.contains(ModelFolder) =>
               val conf = loadJsonToConf[api.Model](filePath)
               (conf, conf.map(_.keyNameForKvStore))
           }
@@ -109,22 +109,22 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
             val conf = optConf.get
 
             val kVPair = filePath match {
-              case value if value.contains(s"$JoinKeyword/") || maybeConfType.contains(JoinKeyword) =>
+              case value if value.contains(s"$JoinFolder/") || maybeConfType.contains(JoinFolder) =>
                 MetadataEndPoint
                   .getEndPoint[api.Join](endPointName)
                   .extractFn(confKeyName.get, conf.asInstanceOf[api.Join])
 
-              case value if value.contains(s"$GroupByKeyword/") || maybeConfType.contains(GroupByKeyword) =>
+              case value if value.contains(s"$GroupByFolder/") || maybeConfType.contains(GroupByFolder) =>
                 MetadataEndPoint
                   .getEndPoint[api.GroupBy](endPointName)
                   .extractFn(confKeyName.get, conf.asInstanceOf[api.GroupBy])
 
-              case value if value.contains(s"$StagingQueryKeyword/") || maybeConfType.contains(StagingQueryKeyword) =>
+              case value if value.contains(s"$StagingQueryFolder/") || maybeConfType.contains(StagingQueryFolder) =>
                 MetadataEndPoint
                   .getEndPoint[api.StagingQuery](endPointName)
                   .extractFn(confKeyName.get, conf.asInstanceOf[api.StagingQuery])
 
-              case value if value.contains(s"$ModelKeyword/") || maybeConfType.contains(ModelKeyword) =>
+              case value if value.contains(s"$ModelFolder/") || maybeConfType.contains(ModelFolder) =>
                 MetadataEndPoint
                   .getEndPoint[api.Model](endPointName)
                   .extractFn(confKeyName.get, conf.asInstanceOf[api.Model])

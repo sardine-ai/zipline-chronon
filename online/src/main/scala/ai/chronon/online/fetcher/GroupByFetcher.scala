@@ -175,6 +175,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
 
         request -> groupByRequestMetaTry
       }
+      .toMap // dedup
       .toSeq
 
     // If caching is enabled, we check if any of the GetRequests are already cached. If so, we store them in a Map

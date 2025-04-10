@@ -80,17 +80,28 @@ object Extensions {
       if (unbounded) "" else s"_${window.length}${window.timeUnit.str}"
 
     def millis: Long = window.length.toLong * window.timeUnit.millis
+
+    def inverse: Window = {
+      if (window == null) return null
+      window.deepCopy().setLength(0 - window.getLength)
+    }
+
   }
 
   object WindowUtils {
     val Unbounded: Window = new Window(Int.MaxValue, TimeUnit.DAYS)
+
     val Hour: Window = new Window(1, TimeUnit.HOURS)
     val Day: Window = new Window(1, TimeUnit.DAYS)
+    val Null: Window = null
+
     private val SecondMillis: Long = 1000
     private val Minute: Long = 60 * SecondMillis
     val FiveMinutes: Long = 5 * Minute
     private val defaultPartitionSize: api.TimeUnit = api.TimeUnit.DAYS
     val onePartition: api.Window = new api.Window(1, defaultPartitionSize)
+
+    def hours(millis: Long): Window = new Window((millis / Hour.millis).toInt, TimeUnit.HOURS)
 
     def millisToString(millis: Long): String = {
       if (millis % Day.millis == 0) {
@@ -113,13 +124,32 @@ object Extensions {
       timestampMs - (timestampMs % windowSizeMs)
     }
 
-    def convertUnits(window: Window, offsetUnit: api.TimeUnit): Window = {
+    def convertUnits(window: Window, outputUnit: api.TimeUnit): Window = {
       if (window == null) return null
-      if (window.timeUnit == offsetUnit) return window
+      if (window.timeUnit == outputUnit) return window
 
-      val offsetSpanMillis = new Window(1, offsetUnit).millis
+      val offsetSpanMillis = new Window(1, outputUnit).millis
       val windowLength = math.ceil(window.millis.toDouble / offsetSpanMillis.toDouble).toInt
-      new Window(windowLength, offsetUnit)
+      new Window(windowLength, outputUnit)
+    }
+
+    def plus(a: Window, b: Window): Window = {
+      if (a == null) return b
+      if (b == null) return a
+
+      require(a.timeUnit == b.timeUnit, s"Cannot add windows with different time units ${a.timeUnit} vs. ${b.timeUnit}")
+
+      new Window(a.length + b.length, a.timeUnit)
+    }
+
+    def minus(a: Window, b: Window): Window = {
+      if (a == null) return null
+      if (b == null) return a
+
+      require(a.timeUnit == b.timeUnit,
+              s"Cannot subtract windows with different time units ${a.timeUnit} vs. ${b.timeUnit}")
+
+      new Window(a.length - b.length, a.timeUnit)
     }
 
     def zero(timeUnits: api.TimeUnit = api.TimeUnit.DAYS): Window = new Window(0, timeUnits)
@@ -129,8 +159,12 @@ object Extensions {
     def cleanName: String = metaData.name.sanitize
 
     def outputTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}"
+
+    // legacy way of generating label info - we might end-up doing views again, but probably with better names
     def outputLabelTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labels"
     def outputFinalView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled"
+    def outputLatestLabelView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled_latest"
+
     def outputLabelTableV2: String =
       s"${metaData.outputNamespace}.${metaData.cleanName}_with_labels" // Used for the LabelJoinV2 flow
     def loggedTable: String = s"${outputTable}_logged"
@@ -372,6 +406,13 @@ object Extensions {
       else { source.getJoinSource.getJoin.metaData.outputTable }
     }
 
+    def mutationsTable: Option[String] = for (
+      entities <- Option(source.getEntities);
+      mutationsTable <- Option(entities.getMutationTable)
+    ) yield {
+      mutationsTable
+    }
+
     def overwriteTable(table: String): Unit = {
       if (source.isSetEntities) { source.getEntities.setSnapshotTable(table) }
       else if (source.isSetEvents) { source.getEvents.setTable(table) }
@@ -441,12 +482,26 @@ object Extensions {
       */
     def cleanTopic: String = source.topic.cleanSpec
 
+    def partitionInterval: Window = Option(source.query.partitionInterval).getOrElse(WindowUtils.onePartition)
   }
 
   implicit class GroupByOps(groupBy: GroupBy) extends GroupBy(groupBy) {
 
     def keyNameForKvStore: String = {
-      _keyNameForKvStore(groupBy.metaData, GroupByKeyword)
+      _keyNameForKvStore(groupBy.metaData, GroupByFolder)
+    }
+
+    def allWindows: Array[Window] = {
+      groupBy.aggregations
+        .iterator()
+        .toScala
+        .flatMap { agg =>
+          Option(agg.windows)
+            .map(_.iterator().toScala)
+            .getOrElse(Array(WindowUtils.Null).iterator)
+        }
+        .toArray
+        .distinct
     }
 
     def maxWindow: Option[Window] = {
@@ -841,7 +896,7 @@ object Extensions {
 
   implicit class JoinOps(val join: Join) extends Serializable {
     def keyNameForKvStore: String = {
-      _keyNameForKvStore(join.metaData, JoinKeyword)
+      _keyNameForKvStore(join.metaData, JoinFolder)
     }
 
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -1242,13 +1297,13 @@ object Extensions {
 
   implicit class StagingQueryOps(stagingQuery: StagingQuery) {
     def keyNameForKvStore: String = {
-      _keyNameForKvStore(stagingQuery.metaData, StagingQueryKeyword)
+      _keyNameForKvStore(stagingQuery.metaData, StagingQueryFolder)
     }
   }
 
   implicit class ModelOps(model: Model) {
     def keyNameForKvStore: String = {
-      _keyNameForKvStore(model.metaData, ModelKeyword)
+      _keyNameForKvStore(model.metaData, ModelFolder)
     }
   }
 

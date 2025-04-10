@@ -81,10 +81,10 @@ object Constants {
   val magicNullLong: java.lang.Long = -1234567890L
   val magicNullDouble: java.lang.Double = -1234567890.0
 
-  val JoinKeyword = "joins"
-  val GroupByKeyword = "group_bys"
-  val StagingQueryKeyword = "staging_queries"
-  val ModelKeyword = "models"
+  val JoinFolder = "joins"
+  val GroupByFolder = "group_bys"
+  val StagingQueryFolder = "staging_queries"
+  val ModelFolder = "models"
 
   // KV store related constants
   // continuation key to help with list pagination

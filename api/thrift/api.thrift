@@ -16,8 +16,32 @@ struct Query {
     6: optional list<string> setups
     7: optional string mutationTimeColumn
     8: optional string reversalColumn
-    9: optional string partitionColumn
-}
+
+    /**
+    * Chronon expects all its batch input data to be date/time partitioned.
+    * We in-turn produce partitioned outputs.
+    **/
+    20: optional string partitionColumn
+
+    /**
+    * Partition format in the java DateFormatter spec:
+    * see: https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html
+    **/
+    21: optional string partitionFormat
+
+    /**
+    * Indicates the timespan of a given interval of the source
+    **/
+    22: optional common.Window partitionInterval
+
+    /**
+    * Indicates how often this source is typically delayed by.
+    * Should be a multiple of partitionInterval
+    **/
+    23: optional common.Window partitionLag
+
+
+ }
 
 /**
     Staging Query encapsulates arbitrary spark computation. One key feature is that the computation follows a

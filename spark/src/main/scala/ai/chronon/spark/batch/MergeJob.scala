@@ -2,8 +2,8 @@ package ai.chronon.spark.batch
 
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions.{DateRangeOps, GroupByOps, JoinPartOps, MetadataOps, SourceOps}
-import ai.chronon.api.planner.RelevantLeftForJoinPart
-import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec, QueryUtils}
+import ai.chronon.api.planner.{PartitionSpecWithColumn, RelevantLeftForJoinPart}
+import ai.chronon.api.{Accuracy, Constants, DataModel, DateRange, JoinPart, PartitionRange, PartitionSpec, QueryUtils}
 import ai.chronon.orchestration.JoinMergeNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.coalescedJoin
@@ -24,7 +24,9 @@ due to bootstrap can be omitted from this map.
  */
 
 class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(implicit tableUtils: TableUtils) {
+
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val join = node.join
@@ -68,7 +70,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
       // Use the RelevantLeftForJoinPart utility to get the part table name
       val partTable = RelevantLeftForJoinPart.fullPartTableName(join, joinPart)
       val effectiveRange =
-        if (join.left.dataModel != ENTITIES && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
+        if (join.left.dataModel == DataModel.EVENTS && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
           dayStep.shift(-1)
         } else {
           dayStep
