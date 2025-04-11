@@ -1,11 +1,9 @@
 package ai.chronon.spark.format
 
 import org.apache.spark.sql.SparkSession
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.util.Success
-import scala.util.Try
+import scala.util.{Success, Try}
 
 /** Default format provider implementation based on default Chronon supported open source library versions.
   */
