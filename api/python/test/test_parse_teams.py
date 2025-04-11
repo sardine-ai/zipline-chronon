@@ -81,7 +81,7 @@ def test_update_metadata_preserves_join_part_namespace():
     
     # Create a join with label parts that have existing outputNamespace
     label_part_gb = GroupBy(metaData=MetaData(outputNamespace="existing_label_namespace"))
-    label_parts = LabelParts(labels=[label_part_gb])
+    label_parts = LabelParts(labels=[JoinPart(groupBy=label_part_gb)])
     
     # Create the join object
     join = Join(
@@ -100,7 +100,7 @@ def test_update_metadata_preserves_join_part_namespace():
     # Verify outputNamespace values were preserved
     assert join.metaData.outputNamespace == "join_namespace"
     assert join.joinParts[0].groupBy.metaData.outputNamespace == "existing_jp_namespace"
-    assert join.labelParts.labels[0].metaData.outputNamespace == "existing_label_namespace"
+    assert join.labelParts.labels[0].groupBy.metaData.outputNamespace == "existing_label_namespace"
 
 
 def test_update_metadata_sets_missing_join_part_namespace():
@@ -118,7 +118,7 @@ def test_update_metadata_sets_missing_join_part_namespace():
     
     # Create a join with label parts that don't have outputNamespace
     label_part_gb = GroupBy(metaData=MetaData())
-    label_parts = LabelParts(labels=[label_part_gb])
+    label_parts = LabelParts(labels=[JoinPart(groupBy=label_part_gb)])
     
     # Create the join object
     join = Join(
@@ -137,4 +137,4 @@ def test_update_metadata_sets_missing_join_part_namespace():
     # Verify outputNamespace values were set correctly
     assert join.metaData.outputNamespace == "join_namespace"
     assert join.joinParts[0].groupBy.metaData.outputNamespace == "join_namespace"
-    assert join.labelParts.labels[0].metaData.outputNamespace == "join_namespace"
+    assert join.labelParts.labels[0].groupBy.metaData.outputNamespace == "join_namespace"
