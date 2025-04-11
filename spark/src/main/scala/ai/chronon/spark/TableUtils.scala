@@ -239,7 +239,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     // partitions to the last
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
 
-    val dfRearranged: DataFrame = df.select(colOrder.map(colName => df.col(colName).as(colName)): _*)
+    val dfRearranged = df.select(colOrder.map(colName => df.col(f"`${colName}`")): _*)
 
     createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat)
 
@@ -256,10 +256,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // reselect the columns so that a deprecated columns will be selected as NULL before write
       val tableSchema = getSchemaFromTable(tableName)
       val finalColumns = tableSchema.fieldNames.map(fieldName => {
+        val escapedName = f"`${fieldName}`"
         if (dfRearranged.schema.fieldNames.contains(fieldName)) {
-          col(fieldName).as(fieldName)
+          col(escapedName)
         } else {
-          lit(null).as(fieldName)
+          lit(null).as(escapedName)
         }
       })
       dfRearranged.select(finalColumns: _*)
