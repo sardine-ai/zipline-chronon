@@ -7,7 +7,7 @@ import org.apache.iceberg.gcp.bigquery.{BigQueryClient, BigQueryClientImpl}
 import org.apache.spark.sql.SparkSession
 
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 class GcpFormatProvider(override val sparkSession: SparkSession) extends DefaultFormatProvider(sparkSession) {
 
@@ -23,15 +23,18 @@ class GcpFormatProvider(override val sparkSession: SparkSession) extends Default
   private lazy val icebergClient: BigQueryClient = new BigQueryClientImpl()
 
   override def readFormat(tableName: String): scala.Option[Format] = {
-    super.readFormat(tableName) match {
-      case existing @ Some(_) => existing
-      case None => {
-        val btTableIdentifier = SparkBQUtils.toTableId(tableName)(sparkSession)
-        Try {
-          logger.info(s"Retrieving format for table: ${tableName}")
-          bigQueryClient.getTable(btTableIdentifier)
-        }.toOption.flatMap((t) => scala.Option(t)).map((t) => getFormat(t))
-      }
+    logger.info(s"Retrieving read format for table: ${tableName}")
+
+    // order is important here. we want the Hive case where we just check for table in catalog to be last
+    Try {
+      val btTableIdentifier = SparkBQUtils.toTableId(tableName)(sparkSession)
+      val bqTable = bigQueryClient.getTable(btTableIdentifier)
+      getFormat(bqTable)
+    } match {
+      case Success(format) => scala.Option(format)
+      case Failure(e) =>
+        logger.info(s"${tableName} is not a BigQuery table")
+        super.readFormat(tableName)
     }
   }
 
