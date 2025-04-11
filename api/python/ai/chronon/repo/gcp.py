@@ -437,11 +437,15 @@ class GcpRunner(Runner):
                 """
                 )
                 check_call(
-                    f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()}"
+                    f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()} "
+                    f"--project={GcpRunner.get_gcp_project_id()}"
                 )
 
                 # Fetch the final job state
-                jobs_info_str = check_output(f"gcloud dataproc jobs describe {job_id} --region=us-central1 --format=json").decode("utf-8")
+                jobs_info_str = (check_output(
+                    f"gcloud dataproc jobs describe {job_id} --region={GcpRunner.get_gcp_region_id()} "
+                    f"--project={GcpRunner.get_gcp_project_id()} --format=json")
+                                 .decode("utf-8"))
                 job_info = json.loads(jobs_info_str)
                 job_state = job_info.get("status", {}).get("state", "")
 
