@@ -21,6 +21,7 @@ import org.apache.spark.sql.execution.datasources.v2.parquet.ParquetTable
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
+import org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog
 
 import java.util
 import scala.jdk.CollectionConverters._
@@ -89,6 +90,8 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
   private var catalogName: String =
     null // This corresponds to `spark_catalog in `spark.sql.catalog.spark_catalog`. This is necessary for spark to correctly choose which implementation to use.
 
+  private var catalogProps: Map[String, String] = Map.empty[String, String]
+
   override def listNamespaces: Array[Array[String]] = icebergCatalog.listNamespaces()
 
   override def listNamespaces(namespace: Array[String]): Array[Array[String]] = icebergCatalog.listNamespaces(namespace)
@@ -114,13 +117,27 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
   override def listTables(namespace: Array[String]): Array[Identifier] = icebergCatalog.listTables(namespace)
 
   override def loadTable(rawIdent: Identifier): Table = {
-    val ident = Identifier.of(rawIdent.namespace.flatMap(_.split("\\.")), rawIdent.name)
-    Try { icebergCatalog.loadTable(ident) }
+    // Remove the catalog segment. We've already consumed it, now it's time to figure out the namespace.
+    val identNoCatalog = Identifier.of(
+      rawIdent.namespace.flatMap(_.split("\\.")).toList match {
+        case catalog :: namespace :: Nil => Array(namespace)
+        case namespace :: Nil            => Array(namespace)
+      },
+      rawIdent.name
+    )
+    Try {
+      val icebergSparkTable = icebergCatalog.loadTable(identNoCatalog)
+      DelegatingTable(icebergSparkTable,
+                      additionalProperties =
+                        Map(TableCatalog.PROP_EXTERNAL -> "false", TableCatalog.PROP_PROVIDER -> "ICEBERG"))
+    }
       .recover {
         case _ => {
-          val tId = ident.namespace().toList match {
-            case database :: Nil            => TableId.of(database, ident.name())
-            case project :: database :: Nil => TableId.of(project, database, ident.name())
+          val project =
+            catalogProps.getOrElse(BigQueryMetastoreCatalog.PROPERTIES_KEY_GCP_PROJECT, bqOptions.getProjectId)
+          val tId = identNoCatalog.namespace().toList match {
+            case database :: Nil            => TableId.of(project, database, identNoCatalog.name())
+            case catalog :: database :: Nil => TableId.of(project, database, identNoCatalog.name())
             case Nil =>
               throw new IllegalArgumentException(s"Table identifier namespace ${rawIdent} must have at least one part.")
           }
@@ -143,7 +160,9 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
                                                 None,
                                                 classOf[ParquetFileFormat])
               DelegatingTable(fileBasedTable,
-                              Map(TableCatalog.PROP_EXTERNAL -> "true", TableCatalog.PROP_LOCATION -> uri))
+                              Map(TableCatalog.PROP_EXTERNAL -> "true",
+                                  TableCatalog.PROP_LOCATION -> uri,
+                                  TableCatalog.PROP_PROVIDER -> "PARQUET"))
             }
             case _: StandardTableDefinition => {
               //todo(tchow): Support partitioning
@@ -153,13 +172,14 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
               val connectorTable = connectorCatalog.loadTable(Identifier.of(Array(tId.getDataset), tId.getTable))
               // ideally it should be the below:
               // val connectorTable = connectorCatalog.loadTable(ident)
-              DelegatingTable(connectorTable, Map(TableCatalog.PROP_EXTERNAL -> "false"))
+              DelegatingTable(connectorTable,
+                              Map(TableCatalog.PROP_EXTERNAL -> "false", TableCatalog.PROP_PROVIDER -> "BIGQUERY"))
             }
             case _ => throw new IllegalStateException(s"Cannot support table of type: ${table.getFriendlyName}")
           }
         }
       }
-      .getOrElse(throw new NoSuchTableException(f"Tgable: ${ident} not found in bigquery catalog."))
+      .getOrElse(throw new NoSuchTableException(f"Table: ${identNoCatalog} not found in bigquery catalog."))
   }
 
   override def createTable(ident: Identifier,
@@ -187,6 +207,7 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
     icebergCatalog.initialize(name, options)
     connectorCatalog.initialize(name, options)
     catalogName = name
+    catalogProps = options.asCaseSensitiveMap.asScala.toMap
   }
 
   override def name(): String = catalogName
