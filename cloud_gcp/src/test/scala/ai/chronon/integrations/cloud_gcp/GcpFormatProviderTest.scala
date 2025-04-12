@@ -33,6 +33,6 @@ class GcpFormatProviderTest extends AnyFlatSpec with MockitoSugar {
         .build())
     when(mockTable.getTableId).thenReturn(TableId.of("project", "dataset", "table"))
 
-    val gcsFormat = gcpFormatProvider.getFormat(mockTable)
+    val gcsFormat = gcpFormatProvider.readFormat(tableName)
   }
 }
