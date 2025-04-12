@@ -10,6 +10,8 @@ import com.google.cloud.hadoop.fs.gcs.{
   GoogleHadoopFileSystemConfiguration,
   HadoopConfigurationProperty
 }
+import ai.chronon.spark.format.Iceberg
+
 import com.google.cloud.spark.bigquery.SparkBigQueryUtil
 import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
 import org.apache.iceberg.gcp.gcs.GCSFileIO
@@ -112,6 +114,37 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val allParts = tableUtils.allPartitions(externalTable)
     println(allParts)
   }
+
+  it should "integration testing formats" ignore {
+    val externalTable = "default_iceberg.data.checkouts_parquet"
+    val externalFormat = FormatProvider.from(spark).readFormat(externalTable)
+    assertEquals(Some(BigQueryExternal), externalFormat)
+
+    val externalTableNoCat = "data.checkouts_parquet"
+    val externalFormatNoCat = FormatProvider.from(spark).readFormat(externalTableNoCat)
+    assertEquals(Some(BigQueryExternal), externalFormatNoCat)
+
+    val nativeTable = "default_iceberg.data.checkouts_native"
+    val nativeFormat = FormatProvider.from(spark).readFormat(nativeTable)
+    assertEquals(Some(BigQueryNative), nativeFormat)
+
+    val nativeTableNoCat = "data.checkouts_native"
+    val nativeFormatNoCat = FormatProvider.from(spark).readFormat(nativeTableNoCat)
+    assertEquals(Some(BigQueryNative), nativeFormatNoCat)
+
+    val icebergTable = "default_iceberg.data.quickstart_purchases_davidhan_v1_dev_davidhan"
+    val icebergFormat = FormatProvider.from(spark).readFormat(icebergTable)
+    assertEquals(Some(Iceberg), icebergFormat)
+
+    val icebergTableNoCat = "data.quickstart_purchases_davidhan_v1_dev_davidhan"
+    val icebergFormatNoCat = FormatProvider.from(spark).readFormat(icebergTableNoCat)
+    assertEquals(Some(Iceberg), icebergFormatNoCat)
+
+    val dneTable = "default_iceberg.data.dne"
+    val dneFormat = FormatProvider.from(spark).readFormat(dneTable)
+    assertTrue(dneFormat.isEmpty)
+  }
+
 
   it should "integration testing bigquery partitions" ignore {
     // TODO(tchow): This test is ignored because it requires a running instance of the bigquery. Need to figure out stubbing locally.
