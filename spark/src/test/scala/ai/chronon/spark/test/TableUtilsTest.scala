@@ -25,6 +25,10 @@ import org.apache.spark.sql.functions.col
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 
+import ai.chronon.spark.format.FormatProvider
+import ai.chronon.spark.format.DefaultFormatProvider
+import org.apache.spark.sql.catalyst.parser.ParseException
+
 import scala.util.Try
 
 case class TestRecord(ds: String, id: String)
@@ -36,6 +40,7 @@ class SimpleAddUDF extends UDF {
 }
 
 class TableUtilsTest extends AnyFlatSpec {
+
   lazy val spark: SparkSession = SparkSessionBuilder.build("TableUtilsTest", local = true)
   private val tableUtils = TableTestUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
@@ -637,6 +642,17 @@ class TableUtilsTest extends AnyFlatSpec {
     } finally {
       spark.sql(s"DROP TABLE IF EXISTS $tableName")
     }
+  }
+
+  it should "test catalog detection" in {
+    val fp = FormatProvider.from(spark).asInstanceOf[DefaultFormatProvider]
+    assertEquals("catalogA", fp.getCatalog("catalogA.foo.bar"))
+    assertEquals("catalogA", fp.getCatalog("`catalogA`.foo.bar"))
+    assertEquals("spark_catalog", fp.getCatalog("`catalogA.foo`.bar"))
+    assertEquals("spark_catalog", fp.getCatalog("`catalogA.foo.bar`"))
+    assertEquals("spark_catalog", fp.getCatalog("foo.bar"))
+    assertEquals("spark_catalog", fp.getCatalog("bar"))
+    assertThrows[ParseException](fp.getCatalog(""))
   }
 
 }
