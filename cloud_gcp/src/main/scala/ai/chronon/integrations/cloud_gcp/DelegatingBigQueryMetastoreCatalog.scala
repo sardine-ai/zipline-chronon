@@ -116,15 +116,7 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
 
   override def listTables(namespace: Array[String]): Array[Identifier] = icebergCatalog.listTables(namespace)
 
-  override def loadTable(rawIdent: Identifier): Table = {
-    // Remove the catalog segment. We've already consumed it, now it's time to figure out the namespace.
-    val identNoCatalog = Identifier.of(
-      rawIdent.namespace.flatMap(_.split("\\.")).toList match {
-        case catalog :: namespace :: Nil => Array(namespace)
-        case namespace :: Nil            => Array(namespace)
-      },
-      rawIdent.name
-    )
+  override def loadTable(identNoCatalog: Identifier): Table = {
     Try {
       val icebergSparkTable = icebergCatalog.loadTable(identNoCatalog)
       DelegatingTable(icebergSparkTable,
@@ -139,7 +131,8 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
             case database :: Nil            => TableId.of(project, database, identNoCatalog.name())
             case catalog :: database :: Nil => TableId.of(project, database, identNoCatalog.name())
             case Nil =>
-              throw new IllegalArgumentException(s"Table identifier namespace ${rawIdent} must have at least one part.")
+              throw new IllegalArgumentException(
+                s"Table identifier namespace ${identNoCatalog} must have at least one part.")
           }
           val table = bigQueryClient.getTable(tId)
           table.getDefinition.asInstanceOf[TableDefinition] match {
