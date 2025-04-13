@@ -1,6 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.format.FormatProvider
+import ai.chronon.spark.format.{FormatProvider, Iceberg}
 import ai.chronon.spark.{SparkSessionBuilder, TableUtils}
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
@@ -10,8 +10,6 @@ import com.google.cloud.hadoop.fs.gcs.{
   GoogleHadoopFileSystemConfiguration,
   HadoopConfigurationProperty
 }
-import ai.chronon.spark.format.Iceberg
-
 import com.google.cloud.spark.bigquery.SparkBigQueryUtil
 import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
 import org.apache.iceberg.gcp.gcs.GCSFileIO
@@ -42,6 +40,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> classOf[GoogleHadoopFS].getName,
         "spark.sql.catalogImplementation" -> "in-memory",
 
+//        Uncomment to test
 //        "spark.sql.defaultCatalog" -> "default_iceberg",
 //        "spark.sql.catalog.default_iceberg" -> classOf[DelegatingBigQueryMetastoreCatalog].getName,
 //        "spark.sql.catalog.default_iceberg.catalog-impl" -> classOf[BQMSCatalog].getName,
@@ -139,6 +138,10 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val icebergTableNoCat = "data.quickstart_purchases_davidhan_v1_dev_davidhan"
     val icebergFormatNoCat = FormatProvider.from(spark).readFormat(icebergTableNoCat)
     assertEquals(Some(Iceberg), icebergFormatNoCat)
+
+    val parts = icebergFormat.get.primaryPartitions(icebergTable, "ds")(spark)
+    val partsNoCat = icebergFormat.get.primaryPartitions(icebergTableNoCat, "ds")(spark)
+    assertEquals(parts, partsNoCat)
 
     val dneTable = "default_iceberg.data.dne"
     val dneFormat = FormatProvider.from(spark).readFormat(dneTable)
