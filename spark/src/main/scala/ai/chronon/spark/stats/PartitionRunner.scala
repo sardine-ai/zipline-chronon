@@ -1,12 +1,8 @@
-package ai.chronon.spark.utils
+package ai.chronon.spark.stats
 
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.Window
-import ai.chronon.api.PartitionRange
-import ai.chronon.api.PartitionRange.collapseToRange
-import ai.chronon.api.PartitionRange.collapsedPrint
-import ai.chronon.api.PartitionRange.rangesToString
+import ai.chronon.api.PartitionRange.{collapseToRange, collapsedPrint, rangesToString}
+import ai.chronon.api.{PartitionRange, PartitionSpec, Window}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.DataFrame
