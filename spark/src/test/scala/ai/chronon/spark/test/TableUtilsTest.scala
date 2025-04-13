@@ -24,6 +24,7 @@ import org.apache.spark.sql.{Row, _}
 import org.apache.spark.sql.functions.col
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
+import org.junit.Assert.assertNull
 
 import ai.chronon.spark.format.FormatProvider
 import ai.chronon.spark.format.DefaultFormatProvider
@@ -45,7 +46,7 @@ class TableUtilsTest extends AnyFlatSpec {
   private val tableUtils = TableTestUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
-  it should "handle special characters in column names with TableUtils.insertPartitions" ignore {
+  it should "handle special characters in column names with TableUtils.insertPartitions" in {
     val specialTableName = "db.special_chars_table"
     spark.sql("CREATE DATABASE IF NOT EXISTS db")
 
@@ -77,7 +78,6 @@ class TableUtilsTest extends AnyFlatSpec {
     val specialCharsData = makeDf(spark, schema, List(row1, row2))
 
     try {
-      import org.junit.Assert.assertNull
       // Use TableUtils.insertPartitions with our fixed column reference handling
       tableUtils.insertPartitions(
         specialCharsData,
@@ -129,7 +129,8 @@ class TableUtilsTest extends AnyFlatSpec {
 
       // Verify all columns are present after expansion
       val updatedData = tableUtils.loadTable(specialTableName)
-      val allExpectedCols = expectedColumns ++ List("with`backtick", "num", "with.hash#mix")
+      val allExpectedCols =
+        expectedColumns.reverse.tail.reverse ++ List("with`backtick", "num", "with.hash#mix") :+ "ds"
       assertEquals(allExpectedCols, updatedData.columns.toList)
 
       // Verify the new row data
@@ -137,7 +138,7 @@ class TableUtilsTest extends AnyFlatSpec {
       assertEquals(1, day3Data.length)
       assertEquals("tick", day3Data(0).getAs[String]("with`backtick"))
       assertEquals(100, day3Data(0).getAs[Int]("num"))
-      assertEquals(99.9, day3Data(0).getAs[Double]("with.hash#mix"))
+      assertEquals(99.9, day3Data(0).getAs[Double]("with.hash#mix"), 0.0)
 
       // Null for fields not in this row
       assertNull(day3Data(0).getAs[Row]("with"))
@@ -172,7 +173,7 @@ class TableUtilsTest extends AnyFlatSpec {
       val expandedData = spark
         .createDataFrame(
           Seq(
-            (2L, "B", 25, "user@example.com", "2023-01-02")
+            (2L, "B", Some(25), Some("user@example.com"), "2023-01-02")
           ))
         .toDF("id", "name", "age", "email", "ds")
 
