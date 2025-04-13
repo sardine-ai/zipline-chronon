@@ -37,6 +37,7 @@ import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import scala.collection.{Seq, mutable}
 import scala.util.{Failure, Success, Try}
+import org.apache.spark.sql.catalyst.util.QuotingUtils
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
@@ -239,7 +240,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     // partitions to the last
     val colOrder = df.columns.diff(partitionColumns) ++ partitionColumns
 
-    val dfRearranged = df.select(colOrder.map(colName => df.col(f"`${colName}`")): _*)
+    val dfRearranged = df.select(colOrder.map(colName => df.col(QuotingUtils.quoteIdentifier(colName))): _*)
 
     createTable(dfRearranged, tableName, partitionColumns, tableProperties, fileFormat)
 
@@ -256,9 +257,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // reselect the columns so that a deprecated columns will be selected as NULL before write
       val tableSchema = getSchemaFromTable(tableName)
       val finalColumns = tableSchema.fieldNames.map(fieldName => {
-        val escapedName = f"`${fieldName}`"
+        val escapedName = QuotingUtils.quoteIdentifier(fieldName)
         if (dfRearranged.schema.fieldNames.contains(fieldName)) {
-          col(escapedName)
+          df(escapedName)
         } else {
           lit(null).as(escapedName)
         }
@@ -505,7 +506,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       throw IncompatibleSchemaException(inconsistentFields)
     }
 
-    val newFieldDefinitions = newFields.map(newField => s"${newField.name} ${newField.dataType.catalogString}")
+    val newFieldDefinitions = newFields.map(newField => newField.toDDL)
     val expandTableQueryOpt = if (newFieldDefinitions.nonEmpty) {
       val tableLevelAlterSql =
         s"""ALTER TABLE $tableName
