@@ -11,13 +11,13 @@ import ai.chronon.online.Api
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.spark.TableUtils
+import ai.chronon.spark.stats.PartitionRunner
 import ai.chronon.spark.stats.drift.Expressions.CardinalityExpression
 import ai.chronon.spark.stats.drift.Expressions.SummaryExpression
 import ai.chronon.spark.stats.drift.Expressions.TileRow
 import ai.chronon.spark.udafs.ArrayApproxDistinct
 import ai.chronon.spark.udafs.ArrayStringHistogramAggregator
 import ai.chronon.spark.udafs.HistogramAggregator
-import ai.chronon.spark.utils.PartitionRunner
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
