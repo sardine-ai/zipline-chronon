@@ -1,6 +1,5 @@
 package ai.chronon.orchestration.test.pubsub
 
-import ai.chronon.orchestration.DummyNode
 import ai.chronon.orchestration.pubsub._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -125,28 +124,6 @@ class GcpPubSubIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     val pubsubMsg = receivedMessage.get
     pubsubMsg.getAttributes.getOrElse("nodeName", "") should be("integration-test")
     pubsubMsg.getAttributes.getOrElse("test", "") should be("true")
-  }
-
-  "JobSubmissionMessage" should "work with DummyNode conversion in real environment" in {
-    // Create a DummyNode
-    val dummyNode = new DummyNode().setName("dummy-node-test")
-
-    // Convert to message
-    val message = JobSubmissionMessage.fromDummyNode(dummyNode)
-    message.nodeName should be("dummy-node-test")
-
-    // Publish the message
-    val messageId = publisher.publish(message).get(5, TimeUnit.SECONDS)
-    messageId should not be null
-
-    // Pull and verify
-    val messages = subscriber.pullMessages(10)
-    val receivedMessage = findMessageByNodeName(messages, "dummy-node-test")
-    receivedMessage should be(defined)
-
-    // Verify content
-    val pubsubMsg = receivedMessage.get
-    pubsubMsg.getAttributes.getOrElse("nodeName", "") should be("dummy-node-test")
   }
 
   "PubSubManager" should "properly handle multiple publishers and subscribers" in {

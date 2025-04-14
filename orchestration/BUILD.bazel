@@ -18,6 +18,7 @@ scala_library(
         maven_artifact("io.temporal:temporal-sdk"),
         maven_artifact("io.temporal:temporal-serviceclient"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact_with_suffix("com.fasterxml.jackson.module:jackson-module-scala"),
         maven_artifact("com.google.protobuf:protobuf-java"),
         maven_artifact("com.google.code.findbugs:jsr305"),
         maven_artifact("io.grpc:grpc-api"),
@@ -50,6 +51,7 @@ test_deps = _VERTX_DEPS + _SCALA_TEST_DEPS + [
     maven_artifact("io.temporal:temporal-serviceclient"),
     maven_artifact("com.fasterxml.jackson.core:jackson-core"),
     maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+    maven_artifact_with_suffix("com.fasterxml.jackson.module:jackson-module-scala"),
     maven_artifact("io.grpc:grpc-api"),
     maven_artifact("io.grpc:grpc-core"),
     maven_artifact("io.grpc:grpc-stub"),
@@ -84,7 +86,7 @@ scala_test_suite(
         ["src/test/**/*.scala"],
         # Excluding integration tests
         exclude = [
-            "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
+            "src/test/**/NodeWorkflowIntegrationSpec.scala",
             "src/test/**/GcpPubSubIntegrationSpec.scala",
         ],
     ),
@@ -96,7 +98,7 @@ scala_test_suite(
     name = "integration_tests",
     srcs = glob(
         [
-            "src/test/**/NodeExecutionWorkflowIntegrationSpec.scala",
+            "src/test/**/NodeWorkflowIntegrationSpec.scala",
             "src/test/**/GcpPubSubIntegrationSpec.scala",
         ],
     ),

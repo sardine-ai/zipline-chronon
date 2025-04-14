@@ -1,7 +1,7 @@
 package ai.chronon.orchestration.test.temporal.converter
 
 import ai.chronon.api.thrift.TBase
-import ai.chronon.orchestration.DummyNode
+import ai.chronon.orchestration.Conf
 import ai.chronon.orchestration.temporal.converter.ThriftPayloadConverter
 import io.temporal.api.common.v1.Payload
 import io.temporal.common.converter.DataConverterException
@@ -13,15 +13,15 @@ class ThriftPayloadConverterTest extends AnyFlatSpec with Matchers {
 
   "ThriftPayloadConverter" should "serialize and deserialize Thrift objects" in {
     val converter = new ThriftPayloadConverter
-    val node = new DummyNode().setName("node")
+    val node = new Conf().setName("node")
 
     // Test serialization
     val payload = converter.toData(node)
     payload.isPresent shouldBe true
 
     // Test deserialization
-    val deserializedObject = converter.fromData(payload.get(), classOf[DummyNode], classOf[DummyNode])
-    deserializedObject shouldBe a[DummyNode]
+    val deserializedObject = converter.fromData(payload.get(), classOf[Conf], classOf[Conf])
+    deserializedObject shouldBe a[Conf]
     deserializedObject.name shouldBe "node"
   }
 
@@ -60,7 +60,7 @@ class ThriftPayloadConverterTest extends AnyFlatSpec with Matchers {
       Payload.newBuilder().setData(com.google.protobuf.ByteString.copyFromUtf8("invalid data")).build()
 
     an[DataConverterException] should be thrownBy {
-      converter.fromData(invalidPayload, classOf[DummyNode], classOf[DummyNode])
+      converter.fromData(invalidPayload, classOf[Conf], classOf[Conf])
     }
   }
 

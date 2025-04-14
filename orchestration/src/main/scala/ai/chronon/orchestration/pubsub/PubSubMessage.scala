@@ -1,6 +1,6 @@
 package ai.chronon.orchestration.pubsub
 
-import ai.chronon.orchestration.DummyNode
+import ai.chronon.orchestration.temporal.NodeName
 import com.google.protobuf.ByteString
 import com.google.pubsub.v1.PubsubMessage
 
@@ -134,14 +134,13 @@ object JobSubmissionMessage {
     *
     * This is a temporary method for backward compatibility.
     *
-    * @param node The DummyNode to create a message for
+    * @param nodeName The name of the node to create a message for
     * @return A JobSubmissionMessage for the node
-    * @deprecated Use fromNodeName instead
     */
-  def fromDummyNode(node: DummyNode): JobSubmissionMessage = {
+  def fromNodeName(nodeName: NodeName): JobSubmissionMessage = {
     JobSubmissionMessage(
-      nodeName = node.name,
-      data = Some(s"Job submission for node: ${node.name}")
+      nodeName = nodeName.name,
+      data = Some(s"Job submission for node: $nodeName")
     )
   }
 }

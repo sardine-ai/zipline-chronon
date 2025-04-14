@@ -1,10 +1,8 @@
 package ai.chronon.orchestration.test.pubsub
 
-import ai.chronon.orchestration.DummyNode
 import ai.chronon.orchestration.pubsub._
 import com.google.api.core.ApiFuture
 import com.google.api.gax.core.NoCredentialsProvider
-import com.google.api.gax.rpc.{NotFoundException, StatusCode}
 import com.google.cloud.pubsub.v1.{Publisher, SubscriptionAdminClient, TopicAdminClient}
 import com.google.pubsub.v1.{
   PubsubMessage,
@@ -25,8 +23,6 @@ import java.util
 
 /** Unit tests for PubSub components using mocks */
 class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
-
-  private val notFoundException = new NotFoundException("Not found", null, mock[StatusCode], false)
 
   "GcpPubSubConfig" should "create production configuration" in {
     val config = GcpPubSubConfig.forProduction("test-project")
@@ -57,18 +53,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
     pubsubMessage.getAttributesMap.get("nodeName") shouldBe "test-node"
     pubsubMessage.getAttributesMap.get("customKey") shouldBe "customValue"
     pubsubMessage.getData.toStringUtf8 shouldBe "Test data"
-  }
-
-  "JobSubmissionMessage" should "create from DummyNode correctly" in {
-    val node = new DummyNode().setName("test-node")
-    val message = JobSubmissionMessage.fromDummyNode(node)
-
-    message.nodeName shouldBe "test-node"
-    message.data shouldBe defined
-    message.data.get should include("test-node")
-
-    val pubsubMessage = message.toPubsubMessage
-    pubsubMessage.getAttributesMap.get("nodeName") shouldBe "test-node"
   }
 
   "GcpPubSubPublisher" should "publish messages successfully" in {
@@ -107,7 +91,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
     // Create a mock admin that uses our mock
     val admin = new GcpPubSubAdmin(GcpPubSubConfig.forEmulator("test-project")) {
       override protected lazy val topicAdminClient: TopicAdminClient = mockTopicAdmin
-      override protected lazy val subscriptionAdminClient: SubscriptionAdminClient = mock[SubscriptionAdminClient]
     }
 
     // Mock the creation response for a new topic
@@ -130,7 +113,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
     // Create a mock admin that uses our mock
     val admin = new GcpPubSubAdmin(GcpPubSubConfig.forEmulator("test-project")) {
       override protected lazy val topicAdminClient: TopicAdminClient = mockTopicAdmin
-      override protected lazy val subscriptionAdminClient: SubscriptionAdminClient = mock[SubscriptionAdminClient]
     }
 
     // Mock the creation response to throw ALREADY_EXISTS exception
@@ -154,7 +136,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
     // Create a mock admin that uses our mock
     val admin = new GcpPubSubAdmin(GcpPubSubConfig.forEmulator("test-project")) {
       override protected lazy val topicAdminClient: TopicAdminClient = mockTopicAdmin
-      override protected lazy val subscriptionAdminClient: SubscriptionAdminClient = mock[SubscriptionAdminClient]
     }
 
     // Mock the create response to throw a different type of exception
@@ -179,7 +160,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
     // Create a mock admin that uses our mock
     val admin = new GcpPubSubAdmin(GcpPubSubConfig.forEmulator("test-project")) {
-      override protected lazy val topicAdminClient: TopicAdminClient = mock[TopicAdminClient]
       override protected lazy val subscriptionAdminClient: SubscriptionAdminClient = mockSubscriptionAdmin
     }
 
@@ -213,7 +193,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
     // Create a mock admin that uses our mock
     val admin = new GcpPubSubAdmin(GcpPubSubConfig.forEmulator("test-project")) {
-      override protected lazy val topicAdminClient: TopicAdminClient = mock[TopicAdminClient]
       override protected lazy val subscriptionAdminClient: SubscriptionAdminClient = mockSubscriptionAdmin
     }
 
@@ -248,7 +227,6 @@ class GcpPubSubSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
     // Create a mock admin that uses our mock
     val admin = new GcpPubSubAdmin(GcpPubSubConfig.forEmulator("test-project")) {
-      override protected lazy val topicAdminClient: TopicAdminClient = mock[TopicAdminClient]
       override protected lazy val subscriptionAdminClient: SubscriptionAdminClient = mockSubscriptionAdmin
     }
 
