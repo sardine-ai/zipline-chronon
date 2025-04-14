@@ -515,6 +515,73 @@ import $cp.spark.target.`scala-2.12`.`spark-assembly-0.0.63-SNAPSHOT.jar`
 Now you can import the chronon classes and use them directly from repl for testing.
 
 
+# Debugging Unit Tests with Spark SQL
+
+When running Spark unit tests, data is written to a temporary warehouse directory. You can use a Spark SQL shell to inspect this data directly, which is helpful for debugging test failures or understanding what's happening in your tests.
+
+## Finding the Warehouse Directory
+
+First, locate the warehouse directory in your test logs:
+
+1. Look for "warehouse" in your test output:
+   ```bash
+   # When running a test
+   sbt "testOnly my.test.Class" | grep -i warehouse
+   
+   # Or check the logs in IntelliJ test output window
+   ```
+
+2. You should see a log line similar to:
+   ```
+   Setting default warehouse directory: file:/tmp/chronon/spark-warehouse_f33f00
+   ```
+
+3. The path after `file:` is your warehouse directory (e.g., `/tmp/chronon/spark-warehouse_f33f00`)
+
+## Installing and Running Spark SQL Shell
+
+Install Apache Spark using Homebrew (macOS):
+
+```bash
+brew install apache-spark
+```
+
+Run the Spark SQL shell pointing to your warehouse directory:
+
+```bash
+spark-sql --conf spark.sql.warehouse.dir=/tmp/chronon/spark-warehouse_f33f00
+```
+
+## Exploring Data in the Spark SQL Shell
+
+Once in the Spark SQL shell, you can explore the data:
+
+```sql
+-- List all databases
+SHOW DATABASES;
+
+-- Use a specific database
+USE your_database_name;
+
+-- List all tables
+SHOW TABLES;
+
+-- Query a table
+SELECT * FROM your_table LIMIT 10;
+
+-- Check table schema
+DESCRIBE your_table;
+
+-- Look at specific partition
+SELECT * FROM your_table WHERE ds = '2023-01-01';
+```
+
+This approach is useful for various test debugging scenarios, such as:
+- Examining actual vs. expected data in failed assertions
+- Checking if data was written correctly by your test
+- Understanding join and aggregation results
+- Verifying partitioning is correct
+
 # Working with the Python API on Pycharm
 1. Download Pycharm
 2. Open up Pycharm at `chronon/api` directory. Limiting the IDE with just this directory will help the IDE not get confused when resolving imports like `ai.chronon...` as IDE may attempt to go to the `java` or `scala` modules instead. Also helpful tip: `Invalidated Caches / Restart` from the `File` menu can help resolve some of the import issues.
