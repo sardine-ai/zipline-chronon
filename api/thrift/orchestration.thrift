@@ -221,6 +221,14 @@ union NodeUnion {
     // TODO: add other types of nodes
 }
 
+enum NodeRunStatus {
+    UNKNOWN = 0,
+    WAITING = 1,
+    RUNNING = 2,
+    SUCCEEDED = 3,
+    FAILED = 4
+}
+
 // ====================== End of Modular Join Spark Job Args ===================
 
 // ====================== Orchestration Service API Types ======================
@@ -249,15 +257,6 @@ struct UploadResponse {
 }
 
 // ====================== End of Orchestration Service API Types ======================
-
-/**
-* Below are dummy thrift objects for execution layer skeleton code using temporal
-* TODO: Need to update these to fill in all the above relevant fields
-**/
-struct DummyNode {
-    1: optional string name
-    2: optional list<DummyNode> dependencies
-}
 
 /**
 * -- Phase 0 plan -- (same as chronon oss)

@@ -68,8 +68,9 @@ object DependencyResolver {
     result
   }
 
-  def computeInputRange(queryRange: PartitionRange, tableDep: TableDependency)(implicit
-      partitionSpec: PartitionSpec): Option[PartitionRange] = {
+  def computeInputRange(queryRange: PartitionRange, tableDep: TableDependency): Option[PartitionRange] = {
+
+    implicit val partitionSpec: PartitionSpec = queryRange.partitionSpec
 
     require(queryRange != null, "Query range cannot be null")
     require(queryRange.start != null, "Query range start cannot be null")
