@@ -1,13 +1,17 @@
 package ai.chronon.spark.batch
 import ai.chronon.api
+import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
+import ai.chronon.api.PartitionRange.toTimeRange
 import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
+import ai.chronon.online.serde.SparkConversions
+import ai.chronon.spark.Analyzer
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.{GroupBy, JoinUtils, TableUtils}
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.functions.{col, lit}
+import org.apache.spark.sql.types.{DataType, StructType}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
@@ -18,7 +22,9 @@ import scala.collection.Seq
 //
 // so we create a struct to map which partitions of join output table to modify for each window size (AllLabelOutputInfo)
 // and for each label join part which columns have that particular window size. (LabelPartOutputInfo)
-case class LabelPartOutputInfo(labelPart: JoinPart, outputColumnNames: Seq[String])
+//
+// We keep a Seq of Windows on the LabelPartOutputInfo to help limit actual computation needed in the TemporalEvents case.
+case class LabelPartOutputInfo(labelPart: JoinPart, outputColumnNames: Seq[String], windows: Seq[api.Window])
 case class AllLabelOutputInfo(joinDsAsRange: PartitionRange, labelPartOutputInfos: Seq[LabelPartOutputInfo])
 
 class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: api.DateRange) {
@@ -42,8 +48,11 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
       .mapValues(_.flatMap(_.outputColumnNames))
 
     labelPartToOutputCols.flatMap { case (labelPart, outputCols) =>
-      val labelPartSchema = tableUtils.scanDf(null, labelPart.groupBy.metaData.outputTable).schema
-      outputCols.map(col => (col, labelPartSchema(col).dataType))
+      val gb = GroupBy.from(labelPart.groupBy, labelDsAsPartitionRange, tableUtils, computeDependency = false, None)
+      val gbSchema = StructType(SparkConversions.fromChrononSchema(gb.outputSchema).fields)
+
+      // The GroupBy Schema will not contain the labelPart prefix
+      outputCols.map(col => (col, gbSchema(col.replace(s"${labelPart.fullPrefix}_", "")).dataType))
     }.toSeq
   }
 
@@ -77,16 +86,30 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
       .flatMap { labelJoinPart =>
         labelJoinPart.groupBy.aggregations.asScala
           .flatMap { agg =>
-            agg.windows.asScala.filter(_.timeUnit == TimeUnit.DAYS).map { w =>
+            agg.windows.asScala.map { w =>
               // TODO -- support buckets
+
               assert(Option(agg.buckets).isEmpty, "Buckets as labels are not yet supported in LabelJoinV2")
               val aggPart = Builders.AggregationPart(agg.operation, agg.inputColumn, w)
-              (w.length, aggPart.outputColumnName)
+
+              // Sub day windows get bucketed into their day bucket, because that's what matters for calculating
+              // The "backwards" looking window to find the join output to join against for a given day of label data
+              // We cannot compute labelJoin for the same day as label data. For example, even for a 2-hour window,
+              // events between 22:00-23:59 will not have complete values. So the minimum offset is 1 day.
+              val effectiveLength = w.timeUnit match {
+                case TimeUnit.DAYS    => w.length
+                case TimeUnit.HOURS   => math.ceil(w.length / 24.0).toInt
+                case TimeUnit.MINUTES => math.ceil(w.length / (24.0 * 60)).toInt
+              }
+
+              val fullColName = s"${labelJoinPart.fullPrefix}_${aggPart.outputColumnName}"
+
+              (effectiveLength, fullColName, w)
             }
           }
           .groupBy(_._1)
           .map { case (window, windowAndOutputCols) =>
-            (window, LabelPartOutputInfo(labelJoinPart, windowAndOutputCols.map(_._2)))
+            (window, LabelPartOutputInfo(labelJoinPart, windowAndOutputCols.map(_._2), windowAndOutputCols.map(_._3)))
           }
       }
       .groupBy(_._1) // Flatten map and combine into one map with window as key
@@ -225,22 +248,48 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
       }
     }
 
-    val joinPartsAndDfs = joinOutputInfo.labelPartOutputInfos.map { labelOutputInfo =>
-      val labelJoinPart = labelOutputInfo.labelPart
-
-      val outputColumnNames = labelOutputInfo.outputColumnNames
-      val selectCols: Map[String, String] =
-        (labelJoinPart.rightToLeft.keys ++ outputColumnNames).map(x => x -> x).toMap
-
-      val snapshotQuery = Builders.Query(selects = selectCols)
-      val snapshotTable = labelJoinPart.groupBy.metaData.outputTable
-      val snapshotDf = tableUtils.scanDf(snapshotQuery, snapshotTable, range = Some(labelDsAsPartitionRange))
-
-      (labelJoinPart, snapshotDf)
+    // Cache the left DF because it's used multiple times in offsetting in the case that there are Temporal Events
+    if (joinOutputInfo.labelPartOutputInfos.exists(_.labelPart.groupBy.dataModel == Accuracy.TEMPORAL)) {
+      joinBaseDf.cache()
     }
 
-    val joined = joinPartsAndDfs.foldLeft(joinBaseDf) { case (left, (joinPart, rightDf)) =>
-      joinWithLeft(left, rightDf, joinPart)
+    val joinPartsAndDfs = joinOutputInfo.labelPartOutputInfos.map { labelOutputInfo =>
+      val labelJoinPart = labelOutputInfo.labelPart
+      val groupByConf = labelJoinPart.groupBy
+      // In the case of multiple sub-day windows within the day offset (i.e. 6hr, 12hr, 1day), we get multiple output dfs
+      // Snapshot accuracy never has sub-day windows
+      // Temporal accuracy may also only have one, if there are not multiple sub-day windows
+      val rightDfs: Seq[DataFrame] =
+        (joinConf.left.dataModel, groupByConf.dataModel, groupByConf.inferredAccuracy) match {
+          case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
+            // In the snapshot Accuracy case we join against the snapshot table
+            val outputColumnNames =
+              labelOutputInfo.outputColumnNames.map(_.replace(s"${labelJoinPart.fullPrefix}_", ""))
+            // Rename the value columns from the SnapshotTable to include prefix
+            val selectCols: Map[String, String] =
+              (labelJoinPart.rightToLeft.keys ++ outputColumnNames).map(x => x -> x).toMap
+
+            val snapshotQuery = Builders.Query(selects = selectCols)
+            val snapshotTable = groupByConf.metaData.outputTable
+
+            Seq(tableUtils.scanDf(snapshotQuery, snapshotTable, range = Some(labelDsAsPartitionRange)))
+
+          case (EVENTS, EVENTS, Accuracy.TEMPORAL) =>
+            // We shift the left timestamps by window length and call `GroupBy.temporalEvents` to compute a PITC join. We do this once per window length within the GroupBy, and join all the returned data-frames back.
+            computeTemporalLabelJoinPart(joinBaseDf, joinDsAsRange, groupByConf, labelOutputInfo)
+
+          case (_, _, _) =>
+            throw new NotImplementedError(
+              "LabelJoin is currently only supported with Events on the Left of the Join, and as the GroupBy source for labels")
+        }
+
+      (labelJoinPart, rightDfs)
+    }
+
+    val joined = joinPartsAndDfs.foldLeft(joinBaseDf) { case (left, (joinPart, rightDfs)) =>
+      rightDfs.foldLeft(left) { (currentLeft, rightDf) =>
+        joinWithLeft(currentLeft, rightDf, joinPart)
+      }
     }
 
     val elapsedMins = (System.currentTimeMillis() - startMillis) / (60 * 1000)
@@ -252,8 +301,74 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     logger.info(s"Wrote to table $outputLabelTable, into partitions: ${joinDsAsRange.start} in $elapsedMins mins")
   }
 
+  def computeTemporalLabelJoinPart(joinBaseDf: DataFrame,
+                                   joinDsAsRange: PartitionRange,
+                                   groupByConf: api.GroupBy,
+                                   labelOutputInfo: LabelPartOutputInfo): Seq[DataFrame] = {
+
+    // 1-day and sub-day windows get processed to the same output partition, however, we need to handle the offset
+    // differently for each one. So here we compute a dataframe for each window in the 1-day offset and join
+    // Them together into a single dataframe
+    labelOutputInfo.windows.map { w =>
+      val minutesOffset = w.timeUnit match {
+        case TimeUnit.DAYS    => w.length * 60 * 24
+        case TimeUnit.HOURS   => w.length * 60
+        case TimeUnit.MINUTES => w.length
+      }
+
+      val millisOffset = minutesOffset * 60 * 1000L
+
+      // Shift the left timestamp forward so that backwards looking temporal computation results in forward looking window
+      val shiftedLeftDf = joinBaseDf.withColumn(Constants.TimeColumn, col(Constants.TimeColumn) + lit(millisOffset))
+
+      // Use the shifted partition range to ensure correct scan on the right side data for temporal compute
+      // OffsetWindowLength is the rounded-up day window (corresponds to delta between labels and join output)
+      // In the case of sub-day windows, the shifted range will now span an extra day.
+      val shiftedLeftPartitionRange = joinDsAsRange.shiftMillis(millisOffset)
+
+      logger.info(
+        s"Computing temporal label join for ${labelOutputInfo.labelPart.groupBy.metaData.name} with shifted range: $shiftedLeftPartitionRange and ")
+
+      val gb = genGroupBy(groupByConf, shiftedLeftPartitionRange, w)
+
+      val temporalDf = gb.temporalEvents(shiftedLeftDf, Some(toTimeRange(shiftedLeftPartitionRange)))
+
+      // Now shift time back so it lines up with left (unfortunately, preserving both columns could require a change
+      // to temporalEvents engine -- best avoided)
+      temporalDf.withColumn(Constants.TimeColumn, col(Constants.TimeColumn) - lit(millisOffset))
+    }
+  }
+
+  def genGroupBy(groupByConf: api.GroupBy, partitionRange: PartitionRange, window: api.Window): GroupBy = {
+
+    // Remove other windows to not over-compute
+    val filteredGroupByConf = filterGroupByWindows(groupByConf, window)
+
+    // TODO: Implement bloom filter if needed
+    // val bloomFilter = JoinUtils.genBloomFilterIfNeeded(joinPart, leftDataModel, partitionRange, None)
+
+    GroupBy.from(filteredGroupByConf, partitionRange, tableUtils, computeDependency = true, None)
+  }
+
+  def filterGroupByWindows(groupBy: api.GroupBy, keepWindow: api.Window): api.GroupBy = {
+    // Modifies a GroupBy to only keep the windows that are in the keepWindows list
+    val gb = groupBy.deepCopy()
+
+    if (gb.aggregations == null) return gb
+
+    val filteredAggs = gb.aggregations.asScala
+      .filter { agg => agg.windows != null && agg.windows.asScala.contains(keepWindow) }
+      .map { agg => agg.setWindows(Seq(keepWindow).asJava) }
+
+    gb.setAggregations(filteredAggs.asJava)
+  }
+
   def joinWithLeft(leftDf: DataFrame, rightDf: DataFrame, joinPart: JoinPart): DataFrame = {
-    val partLeftKeys = joinPart.rightToLeft.values.toArray
+    // compute join keys, besides the groupBy keys -  like ds, ts etc.,
+    val isTemporal = joinPart.groupBy.inferredAccuracy == Accuracy.TEMPORAL
+    val partLeftKeys =
+      joinPart.rightToLeft.values.toArray ++ (if (isTemporal) Seq(Constants.TimeColumn, tableUtils.partitionColumn)
+                                              else Seq.empty)
 
     // apply key-renaming to key columns
     val keyRenamedRight = joinPart.rightToLeft.foldLeft(rightDf) { case (updatedRight, (rightKey, leftKey)) =>
@@ -266,11 +381,13 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
                                                                      Constants.LabelPartitionColumn)
     val valueColumns = rightDf.schema.names.filterNot(nonValueColumns.contains)
 
+    val fullPrefix = s"${labelColumnPrefix}_${joinPart.fullPrefix}"
+
     // In this case, since we're joining with the full-schema dataframe,
     // we need to drop the columns that we're attempting to overwrite
-    val cleanLeftDf = valueColumns.foldLeft(leftDf)((df, colName) => df.drop(s"${labelColumnPrefix}_$colName"))
+    val cleanLeftDf = valueColumns.foldLeft(leftDf)((df, colName) => df.drop(s"${fullPrefix}_$colName"))
 
-    val prefixedRight = keyRenamedRight.prefixColumnNames(labelColumnPrefix, valueColumns)
+    val prefixedRight = keyRenamedRight.prefixColumnNames(fullPrefix, valueColumns)
 
     val partName = joinPart.groupBy.metaData.name
 

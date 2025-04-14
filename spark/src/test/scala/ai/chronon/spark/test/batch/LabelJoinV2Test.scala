@@ -18,10 +18,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
 
   val spark: SparkSession = SparkSessionBuilder.build("LabelJoinV2Test", local = true)
 
-  private val namespace = "label_join_v2"
   private val tableUtils = TableTestUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
+  private val thirtyOneDaysAgo = tableUtils.partitionSpec.minus(today, new Window(31, TimeUnit.DAYS))
   private val fortyDaysAgo = tableUtils.partitionSpec.minus(today, new Window(40, TimeUnit.DAYS))
   private val thirtyThreeDaysAgo = tableUtils.partitionSpec.minus(today, new Window(33, TimeUnit.DAYS))
   private val thirtySevenDaysAgo = tableUtils.partitionSpec.minus(today, new Window(37, TimeUnit.DAYS))
@@ -29,11 +29,12 @@ class LabelJoinV2Test extends AnyFlatSpec {
   private val fortyFourDaysAgo = tableUtils.partitionSpec.minus(today, new Window(44, TimeUnit.DAYS))
   private val fortySevenDaysAgo = tableUtils.partitionSpec.minus(today, new Window(47, TimeUnit.DAYS))
   private val fiftyDaysAgo = tableUtils.partitionSpec.minus(today, new Window(50, TimeUnit.DAYS))
+  private val sixtyDaysAgo = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
   private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
-  tableUtils.createDatabase(namespace)
-
   it should "test single label part and window" in {
+    val namespace = "label_joinv2_single"
+    tableUtils.createDatabase(namespace)
 
     val viewsSchema = List(
       Column("user", api.StringType, 10000),
@@ -112,7 +113,7 @@ class LabelJoinV2Test extends AnyFlatSpec {
 
     val expected =
       s"""
-         | SELECT j.*, gb.time_spent_ms_sum_7d as label__time_spent_ms_sum_7d FROM
+         | SELECT j.*, gb.time_spent_ms_sum_7d as label__unit_test_item_views_time_spent_ms_sum_7d FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortyDaysAgo") as j
          | LEFT OUTER JOIN
          | (SELECT * FROM $labelGbOutputTable WHERE ds = "$thirtyThreeDaysAgo") as gb
@@ -135,6 +136,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
   }
 
   it should "test multiple label parts and windows" in {
+    val namespace = "label_joinv2_multiple"
+    tableUtils.createDatabase(namespace)
 
     val viewsSchema = List(
       Column("user", api.StringType, 10000),
@@ -236,10 +239,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
       s"""
          | SELECT
          |    j.*,
-         |    gb.time_spent_ms_sum_7d as label__time_spent_ms_sum_7d,
-         |    null as label__time_spent_ms_sum_10d,
-         |    gb2.time_spent_ms_max_7d as label__time_spent_ms_max_7d,
-         |    null as label__time_spent_ms_max_14d
+         |    gb.time_spent_ms_sum_7d as label__unit_test_item_views_test2_time_spent_ms_sum_7d,
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_10d,
+         |    gb2.time_spent_ms_max_7d as label__unit_test_item_views_2_test2_time_spent_ms_max_7d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_14d
          | FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortyDaysAgo") as j
          | LEFT OUTER JOIN
@@ -253,10 +256,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
          |
          | SELECT
          |    j.*,
-         |    null as label__time_spent_ms_sum_7d,
-         |    gb.time_spent_ms_sum_10d as label__time_spent_ms_sum_10d,
-         |    null as label__time_spent_ms_max_7d,
-         |    null as label__time_spent_ms_max_14d
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_7d,
+         |    gb.time_spent_ms_sum_10d as label__unit_test_item_views_test2_time_spent_ms_sum_10d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_7d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_14d
          | FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortyThreeDaysAgo") as j
          | LEFT OUTER JOIN
@@ -267,10 +270,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
          |
          | SELECT
          |    j.*,
-         |    null as label__time_spent_ms_sum_7d,
-         |    null as label__time_spent_ms_sum_10d,
-         |    null as label__time_spent_ms_max_7d,
-         |    gb2.time_spent_ms_max_14d as label__time_spent_ms_max_14d
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_7d,
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_10d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_7d,
+         |    gb2.time_spent_ms_max_14d as label__unit_test_item_views_2_test2_time_spent_ms_max_14d
          | FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortySevenDaysAgo") as j
          | LEFT OUTER JOIN
@@ -308,10 +311,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
       s"""
          | SELECT
          |    j.*,
-         |    gb.time_spent_ms_sum_7d as label__time_spent_ms_sum_7d,
-         |    null as label__time_spent_ms_sum_10d,
-         |    gb2.time_spent_ms_max_7d as label__time_spent_ms_max_7d,
-         |    null as label__time_spent_ms_max_14d
+         |    gb.time_spent_ms_sum_7d as label__unit_test_item_views_test2_time_spent_ms_sum_7d,
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_10d,
+         |    gb2.time_spent_ms_max_7d as label__unit_test_item_views_2_test2_time_spent_ms_max_7d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_14d
          | FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$thirtySevenDaysAgo") as j
          | LEFT OUTER JOIN
@@ -325,10 +328,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
          |
          | SELECT
          |    j.*,
-         |    gb_old.time_spent_ms_sum_7d as label__time_spent_ms_sum_7d,
-         |    gb.time_spent_ms_sum_10d as label__time_spent_ms_sum_10d,
-         |    gb2_old.time_spent_ms_max_7d as label__time_spent_ms_max_7d,
-         |    null as label__time_spent_ms_max_14d
+         |    gb_old.time_spent_ms_sum_7d as label__unit_test_item_views_test2_time_spent_ms_sum_7d,
+         |    gb.time_spent_ms_sum_10d as label__unit_test_item_views_test2_time_spent_ms_sum_10d,
+         |    gb2_old.time_spent_ms_max_7d as label__unit_test_item_views_2_test2_time_spent_ms_max_7d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_14d
          | FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortyDaysAgo") as j
          | LEFT OUTER JOIN
@@ -345,10 +348,10 @@ class LabelJoinV2Test extends AnyFlatSpec {
          |
          | SELECT
          |    j.*,
-         |    null as label__time_spent_ms_sum_7d,
-         |    null as label__time_spent_ms_sum_10d,
-         |    null as label__time_spent_ms_max_7d,
-         |    gb2.time_spent_ms_max_14d as label__time_spent_ms_max_14d
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_7d,
+         |    null as label__unit_test_item_views_test2_time_spent_ms_sum_10d,
+         |    null as label__unit_test_item_views_2_test2_time_spent_ms_max_7d,
+         |    gb2.time_spent_ms_max_14d as label__unit_test_item_views_2_test2_time_spent_ms_max_14d
          | FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortyFourDaysAgo") as j
          | LEFT OUTER JOIN
@@ -371,6 +374,156 @@ class LabelJoinV2Test extends AnyFlatSpec {
     }
 
     assertEquals(0, diff2.count())
+  }
+
+  it should "test temporal label parts" in {
+    val namespace = "label_joinv2_temporal"
+    tableUtils.createDatabase(namespace)
+
+    val viewsSchema = List(
+      Column("user", api.StringType, 10000),
+      Column("item", api.StringType, 100),
+      Column("time_spent_ms", api.LongType, 5000)
+    )
+
+    val viewsTable = s"$namespace.view_events_temporal"
+    DataFrameGen.events(spark, viewsSchema, count = 5000, partitions = 60).save(viewsTable)
+
+    val viewsSource = Builders.Source.events(
+      query = Builders.Query(selects = Builders.Selects("time_spent_ms"), startPartition = sixtyDaysAgo),
+      table = viewsTable
+    )
+
+    val viewsGroupBy = Builders.GroupBy(
+      sources = Seq(viewsSource),
+      keyColumns = Seq("item"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.AVERAGE, inputColumn = "time_spent_ms")
+      ),
+      metaData = Builders.MetaData(name = "unit_test.item_views_temporal_features", namespace = namespace),
+      accuracy = Accuracy.SNAPSHOT
+    )
+
+    val labelsGroupBy = Builders.GroupBy(
+      sources = Seq(viewsSource),
+      keyColumns = Seq("item"),
+      aggregations = Seq(
+        Builders.Aggregation(operation = Operation.SUM,
+                             inputColumn = "time_spent_ms",
+                             windows = Seq(new Window(2, TimeUnit.HOURS), new Window(1, TimeUnit.DAYS)))
+      ),
+      metaData = Builders.MetaData(name = "unit_test.item_views_temporal_labels", namespace = namespace),
+      accuracy = Accuracy.TEMPORAL,
+      backfillStartDate = fiftyDaysAgo
+    )
+
+    logger.info(s"Labels group by: ${labelsGroupBy.accuracy} ${labelsGroupBy.inferredAccuracy}")
+
+    val labelParts = Builders.LabelPart(
+      labels = Seq(Builders.JoinPart(groupBy = labelsGroupBy))
+    )
+
+    // left side
+    val itemQueries = List(Column("item", api.StringType, 100))
+    val itemQueriesTable = s"$namespace.item_queries"
+    DataFrameGen
+      .events(spark, itemQueries, 2000, partitions = 100)
+      .save(itemQueriesTable)
+
+    val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
+
+    val joinConf = Builders.Join(
+      left = Builders.Source.events(Builders.Query(startPartition = start), table = itemQueriesTable),
+      joinParts = Seq(Builders.JoinPart(groupBy = viewsGroupBy, prefix = "user")),
+      labelParts = labelParts,
+      metaData = Builders.MetaData(name = "test.item_snapshot_features_2", namespace = namespace, team = "chronon")
+    )
+
+    val join = new Join(joinConf = joinConf, endPartition = monthAgo, tableUtils)
+    val computed = join.computeJoin()
+    println("Join computed::")
+    computed.show()
+
+    val joinOutputTable = joinConf.metaData.outputTable
+
+    val expectedJO =
+      s"""SELECT * from $joinOutputTable where ds = '$thirtyOneDaysAgo'""".stripMargin
+
+    val expectedDfX = tableUtils.sql(expectedJO)
+    println("Expected JO SQL::")
+    expectedDfX.show()
+
+    // Now compute the label join for thirty three days ago (label ds)
+    val labelDateRange = new api.DateRange(monthAgo, monthAgo)
+    val labelJoin = new LabelJoinV2(joinConf, tableUtils, labelDateRange)
+    val labelComputed = labelJoin.compute()
+    println(s"Label computed for labelDs: ${monthAgo}")
+    labelComputed.show()
+    val oneDay = 24 * 60 * 60 * 1000
+    val twoHours = 2 * 60 * 60 * 1000
+    val fiveMinutes = 5 * 60 * 1000
+    val oneHour = 60 * 60 * 1000
+
+    val expected =
+      s"""
+         |WITH
+         |   join_output AS (SELECT item, ts, ds, user_unit_test_item_views_temporal_features_time_spent_ms_average from $joinOutputTable where ds = '$thirtyOneDaysAgo')
+         |
+         |SELECT join_output.item,
+         |        join_output.ts,
+         |        join_output.ds,
+         |        join_output.user_unit_test_item_views_temporal_features_time_spent_ms_average,
+         |        SUM(
+         |          CASE
+         |            WHEN views.ts >= ((CAST(join_output.ts/$fiveMinutes AS LONG) * $fiveMinutes)) AND views.ts < (join_output.ts + 2 * 60 * 60 * 1000)
+         |            THEN views.time_spent_ms
+         |            ELSE NULL
+         |          END
+         |        ) as label__unit_test_item_views_temporal_labels_time_spent_ms_sum_2h,
+         |        SUM(
+         |          CASE
+         |            WHEN views.ts >= ((CAST(join_output.ts/$oneHour AS LONG) * $oneHour)) AND views.ts < (join_output.ts + 24 * 60 * 60 * 1000)
+         |            THEN views.time_spent_ms
+         |            ELSE NULL
+         |          END
+         |        ) as label__unit_test_item_views_temporal_labels_time_spent_ms_sum_1d
+         |     FROM join_output left outer join (SELECT * FROM $viewsTable WHERE $viewsTable.item IS NOT NULL AND $viewsTable.ds BETWEEN '$thirtyOneDaysAgo' and '$monthAgo') as views
+         |     ON join_output.item = views.item
+         |     GROUP BY join_output.item, join_output.ts, join_output.ds, join_output.user_unit_test_item_views_temporal_features_time_spent_ms_average
+         |""".stripMargin
+
+    val expectedDf = tableUtils.sql(expected)
+    println("Expected::")
+    expectedDf.show()
+
+    labelComputed.cache()
+    expectedDf.cache()
+
+    val diff = Comparison.sideBySide(labelComputed, expectedDf, List("item", "ts", "ds"))
+    diff.cache()
+    val diffCount = diff.count()
+
+    val joinOutputDf = tableUtils.sql(s"SELECT * FROM $joinOutputTable")
+    val viewsDf = tableUtils.sql(s"SELECT * FROM $viewsTable")
+
+    if (diffCount > 0) {
+      logger.info(s"Actual count: ${labelComputed.count()}")
+      logger.info(s"Expected count: ${expectedDf.count()}")
+      logger.info(s"Diff count: ${diff.count()}")
+
+      val firstItem = diff.select(diff("item")).limit(1).collect()(0).getString(0)
+      logger.info(s"First diff item: $firstItem")
+
+      logger.info(s"First diff item in join output")
+      joinOutputDf.filter(joinOutputDf("item") === firstItem).show()
+
+      logger.info(s"First diff item in views")
+      viewsDf.filter(viewsDf("item") === firstItem).show()
+
+      diff.show()
+    }
+
+    assertEquals(0, diffCount)
   }
 
 }
