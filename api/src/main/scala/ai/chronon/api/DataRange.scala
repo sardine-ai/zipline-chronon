@@ -104,6 +104,32 @@ case class PartitionRange(start: String, end: String)(implicit val partitionSpec
     }
   }
 
+  def shiftMillis(millis: Long): PartitionRange = {
+    if (millis == 0) {
+      this
+    } else {
+      // Handle start date (00:00:00.000)
+      val newStart = if (start == null) {
+        null
+      } else {
+        val startTimeMillis = partitionSpec.epochMillis(start) // Already represents 00:00:00.000
+        partitionSpec.at(startTimeMillis + millis)
+      }
+
+      // Handle end date (23:59:59.999)
+      val newEnd = if (end == null) {
+        null
+      } else {
+        val endTimeMillis = partitionSpec.epochMillis(end) + (24 * 60 * 60 * 1000 - 1) // End of day (23:59:59.999)
+        val shiftedEndTimeMillis = endTimeMillis + millis
+        // Get the date part (without time)
+        partitionSpec.at(shiftedEndTimeMillis)
+      }
+
+      PartitionRange(newStart, newEnd)
+    }
+  }
+
   override def compare(that: PartitionRange): Int = {
     def compareDate(left: String, right: String): Int = {
       if (left == right) {
