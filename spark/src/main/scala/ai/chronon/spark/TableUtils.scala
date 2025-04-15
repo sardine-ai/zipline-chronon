@@ -22,7 +22,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.{CreationUtils, FormatProvider}
+import ai.chronon.spark.format.{CreationUtils, FormatProvider, Iceberg}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
@@ -132,6 +132,24 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         logger.error(s"Failed to create database $database", e)
         throw e
     }
+  }
+
+  def containsPartitions(tableName: String, partitionSpec: Map[String, String]): Boolean = {
+    if (!tableReachable(tableName)) return false
+
+    val format = tableFormatProvider
+      .readFormat(tableName)
+      .getOrElse(
+        throw new IllegalStateException(
+          s"Could not determine read format of table ${tableName}. It is no longer reachable."))
+
+    format match {
+      case Iceberg => {
+        partitionSpec.values.toSet.subsetOf(this.partitions(tableName).toSet)
+      }
+      case _ => this.allPartitions(tableName).contains(partitionSpec)
+    }
+
   }
 
   // return all specified partition columns in a table in format of Map[partitionName, PartitionValue]

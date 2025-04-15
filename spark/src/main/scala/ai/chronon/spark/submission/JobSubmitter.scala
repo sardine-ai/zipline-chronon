@@ -39,16 +39,28 @@ object JobSubmitter {
     ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
 
   def getModeConfigProperties(args: Array[String]): Option[Map[String, String]] = {
+    println(s"args: ${args.mkString(",")}")
     val localConfPathValue = getArgValue(args, LocalConfPathArgKeyword)
     val confTypeValue = getArgValue(args, ConfTypeArgKeyword)
 
-    val modeConfigProperties = if (localConfPathValue.isDefined && confTypeValue.isDefined) {
-      val metadata = confTypeValue.get match {
-        case "joins"           => parseConf[api.Join](localConfPathValue.get).metaData
-        case "group_bys"       => parseConf[api.GroupBy](localConfPathValue.get).metaData
-        case "staging_queries" => parseConf[api.StagingQuery](localConfPathValue.get).metaData
-        case "models"          => parseConf[api.Model](localConfPathValue.get).metaData
-        case _                 => throw new Exception("Invalid conf type")
+    val modeConfigProperties = if (localConfPathValue.isDefined) {
+      val originalMode = getArgValue(args, OriginalModeArgKeyword)
+      val metadata = if (confTypeValue.isDefined) {
+        confTypeValue.get match {
+          case "joins"           => parseConf[api.Join](localConfPathValue.get).metaData
+          case "group_bys"       => parseConf[api.GroupBy](localConfPathValue.get).metaData
+          case "staging_queries" => parseConf[api.StagingQuery](localConfPathValue.get).metaData
+          case "models"          => parseConf[api.Model](localConfPathValue.get).metaData
+          case _ =>
+            throw new IllegalArgumentException(
+              s"Unable to retrieve object metadata due to invalid confType $confTypeValue"
+            )
+        }
+      } else if (originalMode.isDefined && originalMode.get == "metastore") {
+        // attempt to parse as a generic MetaData object
+        parseConf[api.MetaData](localConfPathValue.get)
+      } else {
+        throw new IllegalArgumentException("Unable to retrieve object metadata")
       }
 
       val executionInfo = Option(metadata.getExecutionInfo)
@@ -72,6 +84,8 @@ object JobSubmitter {
         }
       }
     } else None
+
+    println(s"Setting job properties: $modeConfigProperties")
 
     modeConfigProperties
   }

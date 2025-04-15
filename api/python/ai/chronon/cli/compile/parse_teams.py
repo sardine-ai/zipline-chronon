@@ -69,6 +69,7 @@ def load_teams(conf_root: str, print: bool = True) -> Dict[str, Team]:
     return team_dict
 
 
+
 def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
     assert obj is not None, "Cannot update metadata None object"
@@ -121,16 +122,23 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
     if metadata.executionInfo is None:
         metadata.executionInfo = ExecutionInfo()
 
+    merge_team_execution_info(metadata, team_dict, team)
+
+def merge_team_execution_info(metadata: MetaData, team_dict: Dict[str, Team], team_name: str):
+    default_team = team_dict.get(_DEFAULT_CONF_TEAM)
+    if not metadata.executionInfo:
+        metadata.executionInfo = ExecutionInfo()
+
     metadata.executionInfo.env = _merge_mode_maps(
-        team_dict[_DEFAULT_CONF_TEAM].env,
-        team_dict[team].env,
+        default_team.env if default_team else {},
+        team_dict[team_name].env,
         metadata.executionInfo.env,
         env_or_config_attribute=EnvOrConfigAttribute.ENV,
     )
 
     metadata.executionInfo.conf = _merge_mode_maps(
-        team_dict[_DEFAULT_CONF_TEAM].conf,
-        team_dict[team].conf,
+        default_team.conf if default_team else {},
+        team_dict[team_name].conf,
         metadata.executionInfo.conf,
         env_or_config_attribute=EnvOrConfigAttribute.CONFIG,
     )
