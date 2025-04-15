@@ -1,0 +1,57 @@
+name: Test service module on scala 2.13
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'service/**'
+      - 'service_commons/**'
+      - '.github/workflows/test_scala_2_13_service.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'service/**'
+      - 'service_commons/**'
+      - '.github/workflows/test_scala_2_13_service.yaml'
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  non_spark_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Run service tests
+        run: |
+          bazel test \
+            --config=scala_2.13 \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //service:tests
+
+      - name: Run service_commons tests
+        run: |
+          bazel test \
+            --config=scala_2.13 \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //service_commons:tests
