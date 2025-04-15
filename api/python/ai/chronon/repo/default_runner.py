@@ -26,7 +26,7 @@ class Runner:
         self.online_jar = args.get(ONLINE_JAR_ARG)
         self.online_class = args.get(ONLINE_CLASS_ARG)
 
-        self.conf_type = args.get("conf_type", "").replace(
+        self.conf_type = (args.get("conf_type") or "").replace(
             "-", "_"
         )  # in case user sets dash instead of underscore
 
@@ -54,7 +54,8 @@ class Runner:
             os.environ["CHRONON_ONLINE_JAR"] = self.online_jar
             print("Downloaded jar to {}".format(self.online_jar))
 
-        if self.conf:
+        if (self.conf
+                and (self.mode != "metastore")): # TODO: don't check for metastore
             try:
                 self.context, self.conf_type, self.team, _ = self.conf.split("/")[-4:]
             except Exception as e:
@@ -231,23 +232,23 @@ class Runner:
     def _gen_final_args(
         self, start_ds=None, end_ds=None, override_conf_path=None, **kwargs
     ):
-        base_args = MODE_ARGS[self.mode].format(
+        base_args = MODE_ARGS.get(self.mode).format(
             conf_path=override_conf_path if override_conf_path else self.conf,
             ds=end_ds if end_ds else self.ds,
             online_jar=self.online_jar,
             online_class=self.online_class,
         )
 
-        base_args = (
-            base_args + f" --conf-type={self.conf_type} "
-            if self.conf_type
-            else base_args
-        )
+        submitter_args = []
+
+        if self.conf_type:
+            submitter_args.append(f"--conf-type={self.conf_type}")
 
         if self.mode != RunMode.FETCH:
-            base_args += " --local-conf-path={conf}".format(
+            submitter_args.append(" --local-conf-path={conf}".format(
                 conf=self.local_abs_conf_path
-            ) + " --original-mode={mode}".format(mode=self.mode)
+            ))
+            submitter_args.append(" --original-mode={mode}".format(mode=self.mode))
 
         override_start_partition_arg = (
             "--start-partition-override=" + start_ds if start_ds else ""
@@ -260,7 +261,7 @@ class Runner:
         )
 
         final_args = " ".join(
-            [base_args, str(self.args), override_start_partition_arg, additional_args]
+            [base_args, str(self.args), override_start_partition_arg, ' '.join(submitter_args), additional_args]
         )
 
         return final_args

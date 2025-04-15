@@ -235,6 +235,8 @@ class GcpRunner(Runner):
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
+
+
         if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
             flink_jar_uri = (
@@ -259,7 +261,7 @@ class GcpRunner(Runner):
                     jar_uri=jar_uri,
                     job_type=job_type.value,
                     main_class=main_class,
-                ) + f" --files={gcs_file_args}"
+                ) + (f" --files={gcs_file_args}" if gcs_file_args else "")
 
             )
         else:
@@ -321,9 +323,13 @@ class GcpRunner(Runner):
                 "--partition-names" in args
             ), "Must specify a list of `--partition-names=schema.table/pk1=pv1/pk2=pv2"
 
+            local_files_to_upload_to_gcs = (
+                [os.path.join(self.repo, self.conf)] if self.conf else []
+            )
             dataproc_args = self.generate_dataproc_submitter_args(
                 # for now, self.conf is the only local file that requires uploading to gcs
-                user_args=args,
+                local_files_to_upload=local_files_to_upload_to_gcs,
+                user_args=self._gen_final_args(),
                 version=self._args["version"],
             )
             command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
