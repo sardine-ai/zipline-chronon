@@ -1,26 +1,18 @@
-name: Test cloud_aws module on scala 2.13
+name: Test service_commons module
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'api/**'
-      - 'aggregator/**'
-      - 'online/**'
-      - 'spark/**'
-      - 'cloud_aws/**'
-      - '.github/workflows/test_scala_2_13_cloud_aws.yaml'
+      - 'service_commons/**'
+      - '.github/workflows/test_java_service_commons.yaml'
   pull_request:
     branches:
       - main
     paths:
-      - 'api/**'
-      - 'aggregator/**'
-      - 'online/**'
-      - 'spark/**'
-      - 'cloud_aws/**'
-      - '.github/workflows/test_scala_2_13_cloud_aws.yaml'
+      - 'service_commons/**'
+      - '.github/workflows/test_java_service_commons.yaml'
 
 
 concurrency:
@@ -46,12 +38,9 @@ jobs:
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
-      - name: Run cloud aws tests
+      - name: Run service_commons tests
         run: |
           bazel test \
-            --config=scala_2.13 \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
-            --java_language_version=17 \
-            --java_runtime_version=17 \
-            //cloud_aws:tests
+            //service_commons:tests

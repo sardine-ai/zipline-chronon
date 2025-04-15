@@ -5,12 +5,20 @@ on:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
+      - 'spark/**'
       - 'cloud_aws/**'
       - '.github/workflows/test_scala_2_12_cloud_aws.yaml'
   pull_request:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
+      - 'spark/**'
       - 'cloud_aws/**'
       - '.github/workflows/test_scala_2_12_cloud_aws.yaml'
 

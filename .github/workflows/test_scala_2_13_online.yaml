@@ -5,12 +5,16 @@ on:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
       - 'online/**'
       - '.github/workflows/test_scala_2_13_online.yaml'
   pull_request:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
       - 'online/**'
       - '.github/workflows/test_scala_2_13_online.yaml'
 

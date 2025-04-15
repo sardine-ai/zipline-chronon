@@ -5,6 +5,9 @@ on:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
       - 'service/**'
       - 'service_commons/**'
       - '.github/workflows/test_scala_2_12_service.yaml'
@@ -12,6 +15,9 @@ on:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
       - 'service/**'
       - 'service_commons/**'
       - '.github/workflows/test_scala_2_12_service.yaml'
@@ -46,10 +52,3 @@ jobs:
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //service:tests
-
-      - name: Run service_commons tests
-        run: |
-          bazel test \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json \
-            //service_commons:tests

@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - 'aggregator/**'
+      - 'api/**'
       - '.github/workflows/test_scala_2_13_aggregator.yaml'
   pull_request:
     branches:
       - main
     paths:
       - 'aggregator/**'
+      - 'api/**'
       - '.github/workflows/test_scala_2_13_aggregator.yaml'
 
 

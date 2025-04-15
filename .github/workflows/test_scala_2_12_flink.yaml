@@ -5,12 +5,18 @@ on:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
       - 'flink/**'
       - '.github/workflows/test_scala_2_12_flink.yaml'
   pull_request:
     branches:
       - main
     paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
       - 'flink/**'
       - '.github/workflows/test_scala_2_12_flink.yaml'
 
