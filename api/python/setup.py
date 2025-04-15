@@ -64,9 +64,9 @@ setup(
     description="Zipline python API library",
     install_requires=basic_requirements,
     name="zipline-ai",
-    packages=find_packages(include=["ai*"]),
+    packages=find_packages(),
     include_package_data=True,
-    package_data={"": resources},
+    package_data={"ai.chronon": ["resources/**/*"]},
     extras_require={
         # Extra requirement to have access to cli commands in python2 environments.
         "pip2compat": ["click<8"]

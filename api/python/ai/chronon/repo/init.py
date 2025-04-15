@@ -9,17 +9,23 @@ from importlib_resources import files
 
 @click.command(name="init")
 @click.option(
+    "--cloud_provider",
+    envvar="CLOUD_PROVIDER",
+    help="Cloud provider to use.",
+    required=True,
+    type=click.Choice(['aws', 'gcp'], case_sensitive=False)
+)
+@click.option(
     "--chronon_root",
     envvar="CHRONON_ROOT",
-    help="Path to the root chronon folder",
+    help="Path to the root chronon folder.",
     default=os.path.join(os.getcwd(), "zipline"),
     type=click.Path(file_okay=False, writable=True),
 )
 @click.pass_context
-def main(ctx, chronon_root):
+def main(ctx, chronon_root, cloud_provider):
     try:
-        template_path = files("ai.chronon").joinpath("../../test/sample")
-        print(template_path)
+        template_path = files("ai.chronon").joinpath("resources", cloud_provider.lower())
     except AttributeError:
         click.echo("Error: Template directory not found in package.", err=True)
         return
