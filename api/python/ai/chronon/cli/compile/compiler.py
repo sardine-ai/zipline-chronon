@@ -8,9 +8,12 @@ import ai.chronon.cli.compile.display.compiled_obj
 import ai.chronon.cli.compile.parse_configs as parser
 import ai.chronon.cli.logger as logger
 from ai.chronon.api.common.ttypes import ConfigType
+from ai.chronon.cli.compile import serializer
 from ai.chronon.cli.compile.compile_context import CompileContext, ConfigInfo
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 from ai.chronon.cli.compile.display.console import console
+from ai.chronon.cli.compile.parse_teams import merge_team_execution_info
+from ai.chronon.types import MetaData
 
 logger = logger.get_logger()
 
@@ -37,6 +40,7 @@ class Compiler:
             configs = self._compile_class_configs(config_info)
 
             compile_results[config_info.config_type] = configs
+        self._compile_team_metadata()
 
         # check if staging_output_dir exists
         staging_dir = self.compile_context.staging_output_dir()
@@ -57,6 +61,31 @@ class Compiler:
         console.print(self.compile_context.compile_status.render())
 
         return compile_results
+
+    def _compile_team_metadata(self):
+        """
+        Compile the team metadata and return the compiled object.
+        """
+        teams_dict = self.compile_context.teams_dict
+        for team in teams_dict:
+            m = MetaData()
+            merge_team_execution_info(m, teams_dict, team)
+
+            tjson = serializer.thrift_simple_json(m)
+            name = f"{team}.{team}_team_metadata"
+            result = CompiledObj(
+                name=name,
+                obj=m,
+                file=name,
+                errors=None,
+                obj_type=MetaData.__name__,
+                tjson=tjson,
+            )
+            self._write_object(result)
+            self.compile_context.compile_status.add_object_update_display(result, MetaData.__name__)
+
+        # Done writing team metadata, close the class
+        self.compile_context.compile_status.close_cls(MetaData.__name__)
 
     def _compile_class_configs(self, config_info: ConfigInfo) -> CompileResult:
 
@@ -120,10 +149,7 @@ class Compiler:
         return object_dict, error_dict
 
     def _write_object(self, compiled_obj: CompiledObj) -> Optional[List[BaseException]]:
-
-        obj = compiled_obj.obj
-
-        output_path = self.compile_context.staging_output_path(obj)
+        output_path = self.compile_context.staging_output_path(compiled_obj)
 
         folder = os.path.dirname(output_path)
 

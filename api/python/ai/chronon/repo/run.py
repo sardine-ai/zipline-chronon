@@ -72,7 +72,6 @@ def set_defaults(ctx):
         # NOTE: We don't want to ever call the fetch_online_jar.py script since we're working
         # on our internal zipline fork of the chronon repo
         # "online_jar_fetch": os.path.join(chronon_repo_path, "scripts/fetch_online_jar.py"),
-        "conf_type": "group_bys",
         "online_args": os.environ.get("CHRONON_ONLINE_ARGS", ""),
         "chronon_jar": os.environ.get("CHRONON_DRIVER_JAR"),
         "list_apps": "python3 "

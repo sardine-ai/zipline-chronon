@@ -99,7 +99,7 @@ MODE_ARGS = {
     RunMode.SOURCE_JOB: OFFLINE_ARGS,
     RunMode.JOIN_PART_JOB: OFFLINE_ARGS,
     RunMode.MERGE_JOB: OFFLINE_ARGS,
-    RunMode.METASTORE: "--partition-names={partition_names}",
+    RunMode.METASTORE: "", # purposely left blank. we'll handle this specifically
     RunMode.INFO: "",
 }
 

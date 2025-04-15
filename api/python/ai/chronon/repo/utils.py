@@ -179,34 +179,35 @@ def set_runtime_env_v3(params, conf):
         if os.path.isfile(conf_path):
             with open(conf_path, "r") as infile:
                 conf_json = json.load(infile)
-                env = conf_json.get("metaData", {}).get("executionInfo", {}).get("env", {})
+                metadata = conf_json.get("metaData", {}) or conf_json # user may just pass metadata as the entire json
+                env = metadata.get("executionInfo", {}).get("env", {})
                 runtime_env.update(env.get(EnvOrConfigAttribute.ENV,{}).get(effective_mode,{}) or env.get("common", {}))
                 # Also set APP_NAME
                 try:
                     _, conf_type, team, _ = conf.split("/")[-4:]
-                except Exception as e:
-                    LOG.error(
-                        "Invalid conf path: {}, please ensure to supply the relative path to zipline/ folder".format(
+                    if not team:
+                        team = "default"
+                    # context is the environment in which the job is running, which is provided from the args,
+                    # default to be dev.
+                    if params["env"]:
+                        context = params["env"]
+                    else:
+                        context = "dev"
+                    LOG.info(f"Context: {context} -- conf_type: {conf_type} -- team: {team}")
+
+                    runtime_env["APP_NAME"] = APP_NAME_TEMPLATE.format(
+                        mode=effective_mode,
+                        conf_type=conf_type,
+                        context=context,
+                        name=conf_json["metaData"]["name"],
+                    )
+                except Exception:
+                    LOG.warn(
+                        "Failed to set APP_NAME due to invalid conf path: {}, please ensure to supply the "
+                        "relative path to zipline/ folder".format(
                            conf
                         )
                     )
-                    raise e
-                if not team:
-                    team = "default"
-                # context is the environment in which the job is running, which is provided from the args,
-                # default to be dev.
-                if params["env"]:
-                    context = params["env"]
-                else:
-                    context = "dev"
-                LOG.info(f"Context: {context} -- conf_type: {conf_type} -- team: {team}")
-
-                runtime_env["APP_NAME"] = APP_NAME_TEMPLATE.format(
-                    mode=effective_mode,
-                    conf_type=conf_type,
-                    context=context,
-                    name=conf_json["metaData"]["name"],
-                )
         else:
             if not params.get("app_name") and not os.environ.get("APP_NAME"):
                 # Provide basic app_name when no conf is defined.
