@@ -147,6 +147,18 @@ bazel build //hub:hub_assembly_deploy.jar
 > transitive dependencies, otherwise `bazel build //{module}:{target}` will only include
 > dependencies specified in the target definition
 
+### Generate SBOM file for security review
+
+We created `zipline_packages` target in root directory BUILD.bazel file including all runtime deps 
+used across our deployed uber jars so we include all the necessary packages
+
+> Note: Do not use `zipline_packages` target for other purposes
+
+```shell
+# This will generate SBOM file at bazel-bin/tools/compliance/zipline_sbom.json
+bazel build //tools/compliance:zipline_sbom
+```
+
 ### All tests for a specific module
 
 Also it's lot easier to just run from IntelliJ
