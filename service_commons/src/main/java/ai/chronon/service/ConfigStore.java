@@ -25,6 +25,14 @@ public class ConfigStore {
     private static final String ONLINE_JAR = "online.jar";
     private static final String ONLINE_CLASS = "online.class";
     private static final String ONLINE_API_PROPS = "online.api.props";
+    
+    // Database configuration
+    private static final String JDBC_URL = "db.url";
+    private static final String JDBC_USERNAME = "db.username";
+    private static final String JDBC_PASSWORD = "db.password";
+    
+    // GCP configuration
+    private static final String GCP_PROJECT_ID = "gcp.projectId";
 
     private volatile JsonObject jsonConfig;
     private final Object lock = new Object();
@@ -80,6 +88,83 @@ public class ConfigStore {
                 Map.Entry::getKey,
                 e -> String.valueOf(e.getValue())
         ));
+    }
+
+    /**
+     * Gets the JDBC URL for database connection.
+     * 
+     * @return the JDBC URL
+     */
+    public String getJdbcUrl() {
+        return jsonConfig.getString(JDBC_URL);
+    }
+    
+    /**
+     * Gets the JDBC username for database connection.
+     * 
+     * @return the JDBC username
+     */
+    public String getJdbcUsername() {
+        return jsonConfig.getString(JDBC_USERNAME);
+    }
+    
+    /**
+     * Gets the JDBC password for database connection.
+     * 
+     * @return the JDBC password
+     */
+    public String getJdbcPassword() {
+        return jsonConfig.getString(JDBC_PASSWORD);
+    }
+    
+    /**
+     * Gets the GCP project ID.
+     * 
+     * @return the GCP project ID
+     */
+    public String getGcpProjectId() {
+        return jsonConfig.getString(GCP_PROJECT_ID);
+    }
+    
+    /**
+     * Validates database configuration.
+     * Ensures all required database properties are set.
+     * 
+     * @throws IllegalArgumentException if any required property is missing
+     */
+    public void validateDatabaseConfig() {
+        if (getJdbcUrl() == null || getJdbcUrl().trim().isEmpty()) {
+            throw new IllegalArgumentException("Database URL is required. Please set 'db.url'.");
+        }
+        if (getJdbcUsername() == null || getJdbcUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Database username is required. Please set 'db.username'.");
+        }
+        if (getJdbcPassword() == null || getJdbcPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Database password is required. Please set 'db.password'.");
+        }
+    }
+    
+    /**
+     * Validates GCP configuration.
+     * Ensures all required GCP properties are set.
+     * 
+     * @throws IllegalArgumentException if any required property is missing
+     */
+    public void validateGcpConfig() {
+        if (getGcpProjectId() == null || getGcpProjectId().trim().isEmpty()) {
+            throw new IllegalArgumentException("GCP project ID is required. Please set 'gcp.projectId'.");
+        }
+    }
+    
+    /**
+     * Validates all required configuration.
+     * This includes database and GCP configurations.
+     * 
+     * @throws IllegalArgumentException if any required configuration is invalid
+     */
+    public void validateAllConfig() {
+        validateDatabaseConfig();
+        validateGcpConfig();
     }
 
     public String encodeConfig() {
