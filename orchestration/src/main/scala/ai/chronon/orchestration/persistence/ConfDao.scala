@@ -2,40 +2,12 @@ package ai.chronon.orchestration.persistence
 
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.JdbcBackend.Database
-import slick.jdbc.PostgresProfile.api._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import slick.jdbc.PostgresProfile.api._
-import slick.lifted.{ProvenShape, Rep}
 import scala.concurrent.Future
 
-/** Data model classes for Dag execution
+/** Data model classes for Conf Repo
   */
 case class Conf(confContents: String, confName: String, confHash: String)
 
-/** Slick table definitions
-  *
-  * Node Table: ((NodeName, Branch), NodeContents, ContentHash, StepDays)
-  *
-  * NodeRun Table: ((RunID), NodeName, Branch, Start, End, Status)
-  *
-  * NodeDependency Table: (ParentNodeName, ChildNodeName)
-  *
-  * Orchestrator populates NodeRunDependencyTable based on NodeDependency:
-  *
-  * NodeRunDependency Table: (ParentRunID, ChildRunID)
-  *
-  * NodeRunAttempt: (RunID, Details TBD)
-  *
-  * (Run_123, NodeA, Main, 2023-01-01, 2023-01-31, QUEUED)
-  * Deps are not met, goes into waiting -- with the list of deps that we're waiting for
-  * (Run_123, NodeA, Main, 2023-01-01, 2023-01-31, WAITING)
-  * A few heartbeats later, we're ready
-  * * Agent picks it up, submits, acks back to orchestrator with a EMR job ID
-  * (Run_123, NodeA, Main, 2023-01-01, 2023-01-31, RUNNING)
-  * Either success or failure
-  * (Run_123, NodeA, Main, 2023-01-01, 2023-01-31, SUCCESS)
-  */
 class ConfTable(tag: Tag) extends Table[Conf](tag, "Conf") {
 
   val confHash = column[String]("conf_hash")
@@ -56,7 +28,7 @@ class BranchToConfTable(tag: Tag) extends Table[BranchToConf](tag, "BranchToConf
   def * = (branch, confName, confHash).mapTo[BranchToConf]
 }
 
-class ConfRepoDao(db: Database) {
+class ConfDao(db: Database) {
   private val confTable = TableQuery[ConfTable]
 
   // Method to create the `Conf` table if it doesn't exist
@@ -87,7 +59,7 @@ class ConfRepoDao(db: Database) {
   }
 
   // Method to get all confs by company, branch
-  def getConfs(): Future[Seq[Conf]] = {
+  def getConfs: Future[Seq[Conf]] = {
     val query = confTable
     db.run(query.result)
   }
