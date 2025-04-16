@@ -1,11 +1,16 @@
 from ai.chronon.api.ttypes import Team
 from ai.chronon.repo.constants import RunMode
-from ai.chronon.types import EnvironmentVariables
+from ai.chronon.types import ConfigProperties, EnvironmentVariables
 
 default = Team(
     description="Default team",
     email="ml-infra@<customer>.com",  # TODO: Infra team email
     outputNamespace="default",
+    conf=ConfigProperties(
+      common={
+          "spark.chronon.partition.column": "_DATE",
+      }
+    ),
     env=EnvironmentVariables(
         common={
             "VERSION": "latest",
@@ -43,6 +48,11 @@ default = Team(
 
 test = Team(
     outputNamespace="test",
+    conf=ConfigProperties(
+        common={
+            "spark.chronon.partition.column": "_test_column",
+        }
+    ),
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance
@@ -66,6 +76,11 @@ test = Team(
 
 sample_team = Team(
     outputNamespace="test",
+    conf=ConfigProperties(
+        common={
+            "spark.chronon.partition.column": "_test_column_sample",
+        }
+    ),
     env=EnvironmentVariables(
         common={
             "GCP_BIGTABLE_INSTANCE_ID": "test-instance"  # example, custom bigtable instance

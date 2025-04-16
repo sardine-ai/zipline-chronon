@@ -13,9 +13,10 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import MetaData, StagingQuery
+from ai.chronon.staging_query import StagingQuery, TableDependency
 
 base_table = StagingQuery(
+    name='outbrain_left',
     query="""
         SELECT
             clicks_train.display_id,
@@ -35,8 +36,9 @@ base_table = StagingQuery(
         AND ABS(HASH(clicks_train.display_id)) % 100  < 5
         AND ABS(HASH(events.display_id)) % 100  < 5
     """,
-    metaData=MetaData(
-        name='outbrain_left',
-        outputNamespace="default",
-    )
+    output_namespace="default",
+    dependencies=[
+        TableDependency(table="kaggle_outbrain.clicks_train", partition_column="ds"),
+        TableDependency(table="kaggle_outbrain.events", partition_column="ds")
+    ],
 )

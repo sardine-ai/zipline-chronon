@@ -4,6 +4,7 @@ import importlib
 import os
 from typing import List
 
+from ai.chronon import airflow_helpers
 from ai.chronon.cli.compile import parse_teams, serializer
 from ai.chronon.cli.compile.compile_context import CompileContext
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
@@ -30,6 +31,9 @@ def from_folder(
 
             for name, obj in results_dict.items():
                 parse_teams.update_metadata(obj, compile_context.teams_dict)
+                # Airflow deps must be set AFTER updating metadata
+                airflow_helpers.set_airflow_deps(obj)
+
                 obj.metaData.sourceFile = os.path.relpath(f, compile_context.chronon_root)
 
                 tjson = serializer.thrift_simple_json(obj)
