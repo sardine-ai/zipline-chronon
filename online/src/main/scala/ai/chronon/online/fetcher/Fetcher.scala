@@ -145,8 +145,7 @@ class Fetcher(val kvStore: KVStore,
     val externalResponsesF = fetchExternal(requests)
     val combinedResponsesF =
       internalResponsesF.zip(externalResponsesF).map { case (internalResponses, externalResponses) =>
-        internalResponses.zip(externalResponses).map { case (internalResponse, externalResponse) =>
-          import ai.chronon.online.metrics
+        val mergedResults = internalResponses.zip(externalResponses).map { case (internalResponse, externalResponse) =>
           if (debug) {
             logger.info(internalResponse.values.get.keys.toSeq.mkString(","))
             logger.info(externalResponse.values.get.keys.toSeq.mkString(","))
@@ -205,7 +204,7 @@ class Fetcher(val kvStore: KVStore,
               val finalizedDerivedMap = derivedMap ++ baseMapExceptions
               val requestEndTs = System.currentTimeMillis()
               ctx.distribution("derivation.latency.millis", requestEndTs - derivationStartTs)
-              ctx.distribution("overall.latency.millis", requestEndTs - ts)
+              ctx.distribution("request.latency.millis", requestEndTs - ts)
               ResponseWithContext(internalResponse.request, finalizedDerivedMap, baseMap)
             case Failure(exception) =>
               // more validation logic will be covered in compile.py to avoid this case
@@ -215,6 +214,9 @@ class Fetcher(val kvStore: KVStore,
                                   Map.empty)
           }
         }
+        val ctx = Metrics.Context(Metrics.Environment.JoinFetching)
+        ctx.distribution("overall.latency.millis", System.currentTimeMillis() - ts)
+        mergedResults
       }
 
     combinedResponsesF
