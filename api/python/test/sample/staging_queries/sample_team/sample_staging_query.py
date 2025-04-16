@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.types import MetaData, StagingQuery
+from ai.chronon.staging_query import StagingQuery, TableDependency
 
 query = """
 SELECT
@@ -28,15 +28,14 @@ WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 
 v1 = StagingQuery(
     query=query,
-    startPartition="2020-03-01",
+    start_partition="2020-03-01",
     setups=[
         "CREATE TEMPORARY FUNCTION S2_CELL AS 'com.sample.hive.udf.S2CellId'",
     ],
-    metaData=MetaData(
-        name="sample_staging_query",
-        outputNamespace="sample_namespace",
-        tableProperties={
-            "sample_config_json": """{"sample_key": "sample value}""",
-        },
-    ),
-)
+    name="sample_staging_query",
+    output_namespace="sample_namespace",
+    table_properties={"sample_config_json": """{"sample_key": "sample value}"""},
+    dependencies=[
+        TableDependency(table="sample_namespace.sample_table", partition_column="ds")
+    ],
+    )
