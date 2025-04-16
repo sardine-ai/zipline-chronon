@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.api.ttypes import MetaData, StagingQuery
+from ai.chronon.staging_query import StagingQuery, TableDependency
 
 query = """
     SELECT
@@ -30,11 +30,13 @@ query = """
     WHERE purchases.ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
 
-staging_query = StagingQuery(
+checkouts_query = StagingQuery(
     query=query,
-    startPartition="2023-10-31",
-    metaData=MetaData(
-        name='checkouts_staging_query',
-        outputNamespace="data"
-    ),
+    start_partition="2023-10-31",
+    name='checkouts_staging_query',
+    output_namespace="data",
+    dependencies=[
+        TableDependency(table="data.purchases", partition_column="ds"),
+        TableDependency(table="data.checkouts_external", partition_column="ds")
+    ],
 )
