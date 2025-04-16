@@ -26,6 +26,7 @@ def Query(
     setups: List[str] = None,
     mutation_time_column: str = None,
     reversal_column: str = None,
+    partition_column: str = None,
 ) -> api.Query:
     """
     Create a query object that is used to scan data from various data sources.
@@ -63,13 +64,16 @@ def Query(
         represents mutation time. Time should be milliseconds since epoch.
         This is not necessary for event sources, defaults to "mutation_ts"
     :type mutation_time_column: str, optional
-    :param reversal_column: str, optional
+    :param reversal_column: (defaults to "is_before")
         For entities with realtime accuracy, we divide updates into two additions & reversal.
         updates have two rows - one with is_before = True (the old value) & is_before = False (the new value)
         inserts only have is_before = false (just the new value).
         deletes only have is_before = true (just the old value).
         This is not necessary for event sources.
-    :param reversal_column: str, optional (defaults to "is_before")
+    :type reversal_column: str, optional
+    :param partition_column:
+        Specify this to override spark.chronon.partition.column set in teams.py for this particular query.
+    :type partition_column: str, optional
     :return: A Query object that Chronon can use to scan just the necessary data efficiently.
     """
     return api.Query(
@@ -81,6 +85,7 @@ def Query(
         setups,
         mutation_time_column,
         reversal_column,
+        partition_column,
     )
 
 
