@@ -73,8 +73,11 @@ def _get_airflow_deps_from_source(source, partition_column=None):
 
 
 def extract_default_partition_column(obj):
-    return obj.metaData.executionInfo.conf.common.get("spark.chronon.partition.column")
-
+    try:
+        return obj.metaData.executionInfo.conf.common.get("spark.chronon.partition.column")
+    except Exception:
+        # Error handling occurs in `create_airflow_dependency`
+        return None
 
 def _set_join_deps(join):
     default_partition_col = extract_default_partition_column(join)
