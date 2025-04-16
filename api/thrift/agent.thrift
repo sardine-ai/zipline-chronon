@@ -1,4 +1,5 @@
 namespace java ai.chronon.api
+include "common.thrift"
 
 // TODO: Need to brainstorm and make necessary changes. just a starting point to unblock other work.
 struct YarnAutoScalingSpec {
@@ -33,7 +34,7 @@ struct YarnJob {
     1: optional string appName
     2: optional YarnJobType jobType
 
-    10: optional list<string> args
+    10: optional list<string> argsList
     11: optional map<string, string> env
     12: optional map<string, string> conf
     // creates local file with this name and contents - relative to cwd
@@ -121,13 +122,9 @@ struct JobInfo {
     10: optional YarnIncrementalJobStatus yarnIncrementalStatus
 }
 
-struct DatePartitionRange {
-    1: optional string start
-    2: optional string end
-}
 
 struct PartitionListingPutRequest {
-    1: optional map<PartitionListingJob, list<DatePartitionRange>> partitions
+    1: optional map<PartitionListingJob, list<common.DateRange>> partitions
     2: optional map<PartitionListingJob, string> errors
 }
 

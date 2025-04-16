@@ -6,6 +6,11 @@ default = Team(
     description="Default team",
     email="ml-infra@<customer>.com",  # TODO: Infra team email
     outputNamespace="default",
+    conf=ConfigProperties(
+        common={
+            "spark.chronon.partition.column": "ds",
+        }
+    ),
     env=EnvironmentVariables(
         common={
             "VERSION": "latest",
