@@ -1,6 +1,5 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.integrations.cloud_gcp.GcpApiImpl.executorProvider
 import ai.chronon.online.Api
 import ai.chronon.online.ExternalSourceRegistry
 import ai.chronon.online.FlagStore
@@ -11,6 +10,7 @@ import ai.chronon.online.LoggableResponse
 import ai.chronon.online.serde.Serde
 import ai.chronon.online.serde.AvroSerde
 import com.google.api.gax.core.{InstantiatingExecutorProvider, NoCredentialsProvider}
+import com.google.api.gax.retrying.RetrySettings
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings
@@ -18,11 +18,14 @@ import com.google.cloud.bigtable.data.v2.BigtableDataClient
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings
 import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 
+import java.time.Duration
 import java.util
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicInteger
 
 class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
+
+  import GcpApiImpl._
 
   // For now we have a flag store that relies on some hardcoded values. Over time we can replace this with something
   // more sophisticated (e.g. service / teams.json based flags)
@@ -42,29 +45,16 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   override def genKvStore: KVStore = {
 
-    val projectId = sys.env
-      .get("GCP_PROJECT_ID")
-      .orElse(conf.get("GCP_PROJECT_ID"))
-      .getOrElse(throw new IllegalArgumentException("GCP_PROJECT_ID environment variable not set"))
-
-    val instanceId = sys.env
-      .get("GCP_BIGTABLE_INSTANCE_ID")
-      .orElse(conf.get("GCP_BIGTABLE_INSTANCE_ID"))
-      .getOrElse(throw new IllegalArgumentException("GCP_BIGTABLE_INSTANCE_ID environment variable not set"))
-
-    val maybeAppProfileId = sys.env
-      .get("GCP_BIGTABLE_APP_PROFILE_ID")
-      .orElse(conf.get("GCP_BIGTABLE_APP_PROFILE_ID"))
+    val projectId = getOrElseThrow(GcpProjectId, conf)
+    val instanceId = getOrElseThrow(GcpBigTableInstanceId, conf)
+    val maybeAppProfileId = getOptional(GcpBigTableAppProfileId, conf)
 
     // We skip upload clients (e.g. admin client, bq client) in non-upload contexts (e.g. streaming & fetching)
     // This flag allows us to enable them in the upload contexts
-    val enableUploadClients = sys.env
-      .get("ENABLE_UPLOAD_CLIENTS")
-      .orElse(conf.get("ENABLE_UPLOAD_CLIENTS"))
-      .exists(_.toBoolean)
+    val enableUploadClients = getOptional(EnableUploadClients, conf).exists(_.toBoolean)
 
     // Create settings builder based on whether we're in emulator mode (e.g. docker) or not
-    val (dataSettingsBuilder, maybeAdminSettingsBuilder, maybeBQClient) = sys.env.get("BIGTABLE_EMULATOR_HOST") match {
+    val (dataSettingsBuilder, maybeAdminSettingsBuilder, maybeBQClient) = sys.env.get(BigTableEmulatorHost) match {
 
       case Some(emulatorHostPort) =>
         val (emulatorHost, emulatorPort) = (emulatorHostPort.split(":")(0), emulatorHostPort.split(":")(1).toInt)
@@ -103,6 +93,9 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
     // override thread pools
     setClientThreadPools(dataSettingsBuilder, maybeAdminSettingsBuilder)
 
+    // override retry & timeout settings
+    setClientRetrySettings(dataSettingsBuilder, conf)
+
     val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val dataClient = BigtableDataClient.create(dataSettings)
 
@@ -111,7 +104,7 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       BigtableTableAdminClient.create(adminSettings)
     }
 
-    new BigTableKVStoreImpl(dataClient, maybeAdminClient, maybeBQClient)
+    new BigTableKVStoreImpl(dataClient, maybeAdminClient, maybeBQClient, conf)
   }
 
   // BigTable's bulk read rows by default will batch calls and wait for a delay before sending them. This is not
@@ -130,6 +123,55 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
           .setDelayThresholdDuration(null)
           .build()
       )
+  }
+
+  private def setClientRetrySettings(dataSettingsBuilder: BigtableDataSettings.Builder,
+                                     conf: Map[String, String]): Unit = {
+    // pull retry settings from env vars
+    val initialRpcTimeoutDuration =
+      getOptional(BigTableInitialRpcTimeoutDuration, conf)
+        .map(Duration.parse)
+        .getOrElse(GcpApiImpl.DefaultInitialRpcTimeoutDuration)
+
+    val rpcTimeoutMultiplier =
+      getOptional(BigTableRpcTimeoutMultiplier, conf)
+        .map(_.toDouble)
+        .getOrElse(GcpApiImpl.DefaultRpcTimeoutMultiplier)
+
+    val maxRpcTimeoutDuration =
+      getOptional(BigTableMaxRpcTimeoutDuration, conf)
+        .map(Duration.parse)
+        .getOrElse(GcpApiImpl.DefaultMaxRpcTimeoutDuration)
+
+    val totalTimeoutDuration =
+      getOptional(BigTableTotalTimeoutDuration, conf)
+        .map(Duration.parse)
+        .getOrElse(GcpApiImpl.DefaultTotalTimeoutDuration)
+    val maxAttempts =
+      getOptional(BigTableMaxAttempts, conf)
+        .map(_.toInt)
+        .getOrElse(GcpApiImpl.DefaultMaxAttempts)
+
+    val retrySettings =
+      RetrySettings
+        .newBuilder()
+        // retry immediately
+        .setInitialRetryDelayDuration(Duration.ZERO)
+        // time we wait for the first attempt before we time out
+        .setInitialRpcTimeoutDuration(initialRpcTimeoutDuration)
+        // allow rpc timeouts to grow a bit more lenient
+        .setRpcTimeoutMultiplier(rpcTimeoutMultiplier)
+        // set a cap on how long we wait for a single rpc call
+        .setMaxRpcTimeoutDuration(maxRpcTimeoutDuration)
+        // absolute limit on how long to keep trying until giving up
+        .setTotalTimeoutDuration(totalTimeoutDuration)
+        .setMaxAttempts(maxAttempts) // we retry maxAttempt times (for a total of maxAttempt + 1 tries)
+        .build()
+
+    // Update the retry settings directly on the builder
+    dataSettingsBuilder.stubSettings().readRowsSettings().setRetrySettings(retrySettings)
+    dataSettingsBuilder.stubSettings().bulkReadRowsSettings().setRetrySettings(retrySettings)
+    dataSettingsBuilder.stubSettings().mutateRowSettings().setRetrySettings(retrySettings)
   }
 
   // BigTable's client creates a thread pool with a size of cores * 4. This ends up being a lot larger than we'd like
@@ -153,6 +195,38 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 }
 
 object GcpApiImpl {
+
+  private[cloud_gcp] val GcpProjectId = "GCP_PROJECT_ID"
+  private[cloud_gcp] val GcpBigTableInstanceId = "GCP_BIGTABLE_INSTANCE_ID"
+  private[cloud_gcp] val GcpBigTableAppProfileId = "GCP_BIGTABLE_APP_PROFILE_ID"
+  private[cloud_gcp] val EnableUploadClients = "ENABLE_UPLOAD_CLIENTS"
+  private[cloud_gcp] val BigTableEmulatorHost = "BIGTABLE_EMULATOR_HOST"
+
+  private[cloud_gcp] val BigTableInitialRpcTimeoutDuration = "BIGTABLE_INITIAL_RPC_TIMEOUT_DURATION"
+  private[cloud_gcp] val BigTableMaxRpcTimeoutDuration = "BIGTABLE_MAX_RPC_TIMEOUT_DURATION"
+  private[cloud_gcp] val BigTableTotalTimeoutDuration = "BIGTABLE_TOTAL_TIMEOUT_DURATION"
+  private[cloud_gcp] val BigTableMaxAttempts = "BIGTABLE_MAX_ATTEMPTS"
+  private[cloud_gcp] val BigTableRpcTimeoutMultiplier = "BIGTABLE_RPC_TIMEOUT_MULTIPLIER"
+
+  private[cloud_gcp] val UseBulkReadRows = "USE_BULK_READ_ROWS"
+
+  private val DefaultInitialRpcTimeoutDuration = Duration.ofMillis(100L)
+  private val DefaultRpcTimeoutMultiplier = 1.25
+  private val DefaultMaxRpcTimeoutDuration = Duration.ofMillis(200L)
+  private val DefaultTotalTimeoutDuration = Duration.ofMillis(500L)
+  private val DefaultMaxAttempts = 2
+
+  private[cloud_gcp] def getOptional(key: String, conf: Map[String, String]): Option[String] =
+    sys.env
+      .get(key)
+      .orElse(conf.get(key))
+
+  private[cloud_gcp] def getOrElseThrow(key: String, conf: Map[String, String]): String =
+    sys.env
+      .get(key)
+      .orElse(conf.get(key))
+      .getOrElse(throw new IllegalArgumentException(s"$key environment variable not set"))
+
   // Create a thread factory so that we can name the threads for easier debugging
   val threadFactory: ThreadFactory = new ThreadFactory {
     private val counter = new AtomicInteger(0)
