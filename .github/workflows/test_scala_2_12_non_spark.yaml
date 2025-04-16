@@ -1,4 +1,4 @@
-name: Test non-spark Scala modules on 2.12
+name: Test non-spark modules on scala 2.12
 
 on:
   push:
@@ -10,7 +10,6 @@ on:
       - 'online/**'
       - 'api/**'
       - 'hub/**'
-      - 'orchestration/**'
       - 'service/**'
       - 'service_commons/**'
       - 'cloud_aws/**'
@@ -25,20 +24,18 @@ on:
       - 'online/**'
       - 'api/**'
       - 'hub/**'
-      - 'orchestration/**'
       - 'service/**'
       - 'service_commons/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
       - '.github/workflows/test_scala_2_12_non_spark.yaml'
 
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  non_spark_tests:
+  flink_tests:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -48,7 +45,6 @@ jobs:
     defaults:
       run:
         working-directory: ${{ github.workspace }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -63,12 +59,46 @@ jobs:
             --google_credentials=bazel-cache-key.json \
             //flink:tests
 
+  aggregator_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
       - name: Run Aggregator tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //aggregator:tests
+
+  online_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Run Online tests
         run: |
@@ -77,12 +107,46 @@ jobs:
             --google_credentials=bazel-cache-key.json \
             //online:tests
 
+  api_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
       - name: Run api tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //api:tests
+
+  hub_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Run hub tests
         run: |
@@ -91,12 +155,46 @@ jobs:
             --google_credentials=bazel-cache-key.json \
             //hub:tests
 
+  service_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
       - name: Run service tests
         run: |
           bazel test \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //service:tests
+
+  service_commons_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Run service_commons tests
         run: |
@@ -105,12 +203,22 @@ jobs:
             --google_credentials=bazel-cache-key.json \
             //service_commons:tests
 
-      - name: Run orchestrator tests
+  cloud_gcp_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
         run: |
-          bazel test \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json \
-            //orchestration:tests
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Run cloud gcp tests
         run: |
@@ -118,6 +226,23 @@ jobs:
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json \
             //cloud_gcp:tests
+
+  cloud_aws_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
       - name: Run cloud aws tests
         run: |
