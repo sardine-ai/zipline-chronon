@@ -1,0 +1,53 @@
+name: Test orchestration module on scala 2.12
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
+      - 'orchestration/**'
+      - 'service_commons/**'
+      - '.github/workflows/test_scala_2_12_orchestration.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+      - 'aggregator/**'
+      - 'online/**'
+      - 'orchestration/**'
+      - 'service_commons/**'
+      - '.github/workflows/test_scala_2_12_orchestration.yaml'
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  orchestration_tests:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+      - name: Run orchestration tests
+        run: |
+          bazel test \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            //orchestration:tests
