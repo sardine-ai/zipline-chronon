@@ -299,10 +299,7 @@ class GroupByResponseHandler(fetchContext: FetchContext, metadataStore: Metadata
 
   private def toBatchIr(bytes: Array[Byte], gbInfo: GroupByServingInfoParsed): FinalBatchIr = {
     if (bytes == null) return null
-    val batchRecord =
-      AvroConversions
-        .toChrononRow(gbInfo.irCodec.decode(bytes), gbInfo.irChrononSchema)
-        .asInstanceOf[Array[Any]]
+    val batchRecord = gbInfo.irAvroToChrononRowConverter(gbInfo.irCodec.decode(bytes))
     val collapsed = gbInfo.aggregator.windowedAggregator.denormalize(batchRecord(0).asInstanceOf[Array[Any]])
     val tailHops = batchRecord(1)
       .asInstanceOf[util.ArrayList[Any]]

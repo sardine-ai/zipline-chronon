@@ -256,7 +256,7 @@ object Extensions {
     }
   }
 
-  case class WindowMapping(aggregationPart: AggregationPart, baseIrIndex: Int)
+  case class WindowMapping(aggregationPart: AggregationPart, baseIrIndex: Int, millis: Long)
 
   case class UnpackedAggregations(perBucket: Array[AggregationPart], perWindow: Array[WindowMapping])
 
@@ -295,7 +295,8 @@ object Extensions {
                                          )
                                          .orNull,
                                        bucket),
-              counter
+              counter,
+              if (window != null) window.millis else -1
             )
           }
           counter += 1

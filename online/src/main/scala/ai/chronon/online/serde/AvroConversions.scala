@@ -27,6 +27,7 @@ import java.util
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.{AbstractIterator, mutable}
+import com.linkedin.avro.fastserde.{primitive => fastavro}
 
 object AvroConversions {
 
@@ -151,11 +152,29 @@ object AvroConversions {
     )
   }
 
-  def toChrononRow(value: Any, dataType: DataType): Any = {
-    Row.from[GenericRecord, ByteBuffer, GenericData.Array[Any], Utf8](
-      value,
+  def genericRecordToChrononRowConverter(schema: StructType): Any => Array[Any] = {
+    val cachedFunc = toChrononRowCached(schema)
+
+    { value: Any =>
+      if (value == null) null
+      else {
+        cachedFunc(value).asInstanceOf[Array[Any]]
+      }
+    }
+  }
+
+  def buildArray(size: Int, iterator: util.Iterator[Any]): util.ArrayList[Any] = {
+    val arr = new util.ArrayList[Any](size)
+    while (iterator.hasNext) {
+      arr.add(iterator.next())
+    }
+    arr
+  }
+
+  private def toChrononRowCached(dataType: DataType): Any => Any = {
+    Row.fromCached[GenericRecord, ByteBuffer, Any, Utf8](
       dataType,
-      { (record: GenericRecord, fields: Seq[StructField]) =>
+      { (record: GenericRecord, recordLength: Int) =>
         new AbstractIterator[Any]() {
           var idx = 0
           override def next(): Any = {
@@ -163,17 +182,62 @@ object AvroConversions {
             idx += 1
             res
           }
-          override def hasNext: Boolean = idx < fields.size
+          override def hasNext: Boolean = idx < recordLength
         }
       },
       { (byteBuffer: ByteBuffer) => byteBuffer.array() },
-      { (garr: GenericData.Array[Any]) =>
-        val arr = new util.ArrayList[Any](garr.size)
-        val it = garr.iterator()
-        while (it.hasNext) {
-          arr.add(it.next())
-        }
-        arr
+      { // cases are ordered by most frequent use
+        // TODO: Leverage type info if this case match proves to be expensive
+        case doubles: fastavro.PrimitiveDoubleArrayList =>
+          val arr = new util.ArrayList[Any](doubles.size)
+          val iterator = doubles.iterator()
+          while (iterator.hasNext) {
+            arr.add(iterator.next())
+          }
+          arr
+
+        case longs: fastavro.PrimitiveLongArrayList =>
+          val arr = new util.ArrayList[Any](longs.size)
+          val iterator = longs.iterator()
+          while (iterator.hasNext) {
+            arr.add(iterator.next())
+          }
+          arr
+
+        case genericArray: GenericData.Array[Any] =>
+          val arr = new util.ArrayList[Any](genericArray.size)
+          val iterator = genericArray.iterator()
+          while (iterator.hasNext) {
+            arr.add(iterator.next())
+          }
+          arr
+
+        case ints: fastavro.PrimitiveIntArrayList =>
+          val arr = new util.ArrayList[Any](ints.size)
+          val iterator = ints.iterator()
+          while (iterator.hasNext) {
+            arr.add(iterator.next())
+          }
+          arr
+
+        case floats: fastavro.PrimitiveFloatArrayList =>
+          val arr = new util.ArrayList[Any](floats.size)
+          val iterator = floats.iterator()
+          while (iterator.hasNext) {
+            arr.add(iterator.next())
+          }
+          arr
+
+        case bools: fastavro.PrimitiveBooleanArrayList =>
+          val arr = new util.ArrayList[Any](bools.size)
+          val iterator = bools.iterator()
+          while (iterator.hasNext) {
+            arr.add(iterator.next())
+          }
+          arr
+
+        case valueOfUnknownType =>
+          throw new RuntimeException(s"Found unknown list type in avro record: ${valueOfUnknownType.getClass.getName}")
       },
       { (avString: Utf8) => avString.toString }
     )

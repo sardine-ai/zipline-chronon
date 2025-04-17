@@ -113,6 +113,7 @@ maven_repository = repository(
 
         # Avro
         "org.apache.avro:avro:1.11.3",
+        "com.linkedin.avroutil1:avro-fastserde:0.4.25",
 
         # Hive
         "org.apache.hive:hive-metastore:2.3.9",

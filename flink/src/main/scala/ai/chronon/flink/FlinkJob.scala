@@ -96,7 +96,7 @@ class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
         "Tiling is enabled.")
 
     val tilingWindowSizeInMillis: Long =
-      ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfoParsed.groupBy)
+      ResolutionUtils.getSmallestTailHopMillis(groupByServingInfoParsed.groupBy)
 
     // we expect parallelism on the source stream to be set by the source provider
     val sourceSparkProjectedStream: DataStream[Map[String, Any]] =
