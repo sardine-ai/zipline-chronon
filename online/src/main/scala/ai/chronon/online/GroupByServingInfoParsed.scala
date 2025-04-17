@@ -16,7 +16,7 @@
 
 package ai.chronon.online
 
-import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
+import ai.chronon.aggregator.windowing.{ResolutionUtils, SawtoothOnlineAggregator}
 import ai.chronon.api.Constants.{ReversalField, TimeField}
 import ai.chronon.api.Extensions.{GroupByOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions.ListOps
@@ -61,6 +61,8 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
     buildDerivationFunction(groupBy.derivationsScala, keySchema, baseValueSchema)
   }
 
+  val smallestTailHopMillis: Long = ResolutionUtils.getSmallestTailHopMillis(groupByServingInfo.groupBy)
+
   def keyCodec: AvroCodec = AvroCodec.of(keyAvroSchema)
   @transient lazy val keyChrononSchema: StructType =
     AvroConversions.toChrononSchema(keyCodec.schema).asInstanceOf[StructType]
@@ -77,7 +79,11 @@ class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, parti
 
   def valueAvroCodec: serde.AvroCodec = serde.AvroCodec.of(valueAvroSchema)
   def selectedCodec: serde.AvroCodec = serde.AvroCodec.of(selectedAvroSchema)
+
+  @transient lazy val irAvroToChrononRowConverter: Any => Array[Any] =
+    AvroConversions.genericRecordToChrononRowConverter(irChrononSchema)
   lazy val irAvroSchema: String = AvroConversions.fromChrononSchema(irChrononSchema).toString()
+
   def irCodec: serde.AvroCodec = serde.AvroCodec.of(irAvroSchema)
   def outputCodec: serde.AvroCodec = serde.AvroCodec.of(outputAvroSchema)
 

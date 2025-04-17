@@ -67,12 +67,20 @@ object ResolutionUtils {
   /** Find the smallest tail window resolution in a GroupBy. Returns 1D if the GroupBy does not define any windows (all-time aggregates).
     * The window resolutions are: 5 min for a GroupBy a window < 12 hrs, 1 hr for < 12 days, 1 day for > 12 days.
     */
-  def getSmallestWindowResolutionInMillis(groupBy: GroupBy): Long =
-    Option(
-      groupBy.aggregations.toScala.toArray
-        .flatMap(aggregation =>
-          if (aggregation.windows != null) aggregation.windows.toScala
-          else None)
-        .map(FiveMinuteResolution.calculateTailHop)
-    ).filter(_.nonEmpty).map(_.min).getOrElse(WindowUtils.Day.millis)
+  def getSmallestTailHopMillis(groupBy: GroupBy): Long = {
+
+    val tailHops =
+      for (
+        aggs <- Option(groupBy.aggregations).toSeq;
+        agg <- aggs.iterator().toScala;
+        windows <- Option(agg.windows).toSeq;
+        window <- windows.iterator().toScala
+      ) yield {
+        FiveMinuteResolution.calculateTailHop(window)
+      }
+
+    if (tailHops.isEmpty) WindowUtils.Day.millis
+    else tailHops.min
+
+  }
 }

@@ -92,7 +92,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
             val tileKey = TilingUtils.buildTileKey(
               groupByServingInfo.groupByOps.streamingDataset,
               streamingKeyBytes,
-              Some(ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfo.groupBy)),
+              Some(groupByServingInfo.smallestTailHopMillis),
               None
             )
 
