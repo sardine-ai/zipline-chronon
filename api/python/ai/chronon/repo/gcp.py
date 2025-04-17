@@ -3,6 +3,7 @@ import json
 import multiprocessing
 import os
 from typing import List
+from urllib.parse import urlparse
 
 import crcmod
 from google.cloud import storage
@@ -33,16 +34,18 @@ ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 
 class GcpRunner(Runner):
     def __init__(self, args):
+        remote_artifact_prefix = args.get("artifact_prefix")
+        self._version = args.get("version")
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
+            remote_artifact_prefix,
             ZIPLINE_DIRECTORY,
-            get_customer_id(),
-            args["version"],
+            self._version,
             ZIPLINE_GCP_JAR_DEFAULT,
         )
         service_jar_path = GcpRunner.download_zipline_dataproc_jar(
+            remote_artifact_prefix,
             ZIPLINE_DIRECTORY,
-            get_customer_id(),
-            args["version"],
+            self._version,
             ZIPLINE_GCP_SERVICE_JAR,
         )
         jar_path = (
@@ -51,7 +54,6 @@ class GcpRunner(Runner):
             else gcp_jar_path
         )
 
-        self._args = args
         super().__init__(args, os.path.expanduser(jar_path))
 
     @staticmethod
@@ -68,8 +70,11 @@ class GcpRunner(Runner):
 
     @staticmethod
     @retry_decorator(retries=2, backoff=5)
-    def download_gcs_blob(bucket_name, source_blob_name, destination_file_name):
+    def download_gcs_blob(remote_file_name, destination_file_name):
         """Downloads a blob from the bucket."""
+        parsed = urlparse(remote_file_name)
+        bucket_name = parsed.netloc
+        source_blob_name = parsed.path.lstrip("/")
         try:
             storage_client = storage.Client(project=GcpRunner.get_gcp_project_id())
             bucket = storage_client.bucket(bucket_name)
@@ -104,11 +109,14 @@ class GcpRunner(Runner):
             raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}") from e
 
     @staticmethod
-    def get_gcs_file_hash(bucket_name: str, blob_name: str) -> str:
+    def get_gcs_file_hash(remote_file_path: str) -> str:
         """
         Get the hash of a file stored in Google Cloud Storage.
         """
+        parsed = urlparse(remote_file_path)
         storage_client = storage.Client(project=GcpRunner.get_gcp_project_id())
+        bucket_name = parsed.netloc
+        blob_name = parsed.path.lstrip("/")
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.get_blob(blob_name)
 
@@ -142,25 +150,24 @@ class GcpRunner(Runner):
 
     @staticmethod
     def compare_gcs_and_local_file_hashes(
-        bucket_name: str, blob_name: str, local_file_path: str
+        remote_file_path: str, local_file_path: str
     ) -> bool:
         """
         Compare hashes of a GCS file and a local file to check if they're identical.
 
         Args:
-            bucket_name: Name of the GCS bucket
-            blob_name: Name/path of the blob in the bucket
-            local_file_path: Path to the local file
+            remote_file_path: URI of the remote object in GCS
+            local_file_path: Path to the local file to compare
 
         Returns:
             True if files are identical, False otherwise
         """
         try:
-            gcs_hash = GcpRunner.get_gcs_file_hash(bucket_name, blob_name)
+            gcs_hash = GcpRunner.get_gcs_file_hash(remote_file_path)
             local_hash = GcpRunner.get_local_file_hash(local_file_path)
 
             print(
-                f"Local hash of {local_file_path}: {local_hash}. GCS file {blob_name} hash: {gcs_hash}"
+                f"Local hash of {local_file_path}: {local_hash}. GCS file {remote_file_path} hash: {gcs_hash}"
             )
 
             return gcs_hash == local_hash
@@ -170,32 +177,29 @@ class GcpRunner(Runner):
             return False
 
     @staticmethod
-    def download_zipline_dataproc_jar(
-        destination_dir: str, customer_id: str, version: str, jar_name: str
+    def download_zipline_dataproc_jar(remote_file_path: str, local_file_path: str, version: str, jar_name: str
     ):
-        bucket_name = f"zipline-artifacts-{customer_id}"
-
-        source_blob_name = f"release/{version}/jars/{jar_name}"
-        destination_path = f"{destination_dir}/{jar_name}"
+        source_path = os.path.join(remote_file_path, "release", version, "jars", jar_name)
+        dest_path = os.path.join(local_file_path, jar_name)
 
         are_identical = (
             GcpRunner.compare_gcs_and_local_file_hashes(
-                bucket_name, source_blob_name, destination_path
+                source_path, dest_path
             )
-            if os.path.exists(destination_path)
+            if os.path.exists(dest_path)
             else False
         )
 
         if are_identical:
-            print(f"{destination_path} matches GCS {bucket_name}/{source_blob_name}")
+            print(f"{dest_path} matches GCS {source_path}")
         else:
             print(
-                f"{destination_path} does NOT match GCS {bucket_name}/{source_blob_name}"
+                f"{dest_path} does NOT match GCS {source_path}"
             )
             print(f"Downloading {jar_name} from GCS...")
 
-            GcpRunner.download_gcs_blob(bucket_name, source_blob_name, destination_path)
-        return destination_path
+            GcpRunner.download_gcs_blob(source_path, dest_path)
+        return dest_path
 
     def generate_dataproc_submitter_args(
         self,
@@ -287,7 +291,7 @@ class GcpRunner(Runner):
 
         dataproc_args = self.generate_dataproc_submitter_args(
             job_type=JobType.FLINK,
-            version=self._args["version"],
+            version=self._version,
             user_args=" ".join([user_args_str, flag_args_str]),
         )
         command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
@@ -330,7 +334,7 @@ class GcpRunner(Runner):
                 # for now, self.conf is the only local file that requires uploading to gcs
                 local_files_to_upload=local_files_to_upload_to_gcs,
                 user_args=self._gen_final_args(),
-                version=self._args["version"],
+                version=self._version,
             )
             command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
             command_list.append(command)
@@ -375,7 +379,7 @@ class GcpRunner(Runner):
                         local_files_to_upload=local_files_to_upload_to_gcs,
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
-                        version=self._args["version"],
+                        version=self._version,
                     )
                     command = (
                         f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
@@ -403,7 +407,7 @@ class GcpRunner(Runner):
                     # for now, self.conf is the only local file that requires uploading to gcs
                     local_files_to_upload=local_files_to_upload_to_gcs,
                     user_args=user_args,
-                    version=self._args["version"],
+                    version=self._version,
                 )
                 command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
                 command_list.append(command)
