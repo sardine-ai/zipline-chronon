@@ -70,18 +70,6 @@ jobs:
             echo "IS_LATEST=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Retrieve Previous Tag
-        id: get_previous_tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PREVIOUS_TAG=$(gh api repos/:owner/:repo/tags --jq '.[1].name')
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "No previous tag found"
-            exit 1
-          fi
-          echo "previous_tag=${PREVIOUS_TAG#v}" >> $GITHUB_OUTPUT
-
       - name: Convert to Draft
         if: ${{ failure() }}
         env:
@@ -93,7 +81,6 @@ jobs:
 
     outputs:
         is_latest: ${{ steps.check_latest.outputs.IS_LATEST }}
-        previous_version: "${{ steps.get_previous_tag.outputs.previous_tag }}+${{ steps.get_sha.outputs.latest_sha }}"
 
   # We need to rebuild the wheel to bake in the new version number
   build_python_wheel:
@@ -179,9 +166,9 @@ jobs:
         run: |
           set -eo pipefail
           # Download Jars from Canary for attaching to the release
-          gcloud storage cp gs://zipline-artifacts-canary/release/${{ needs.check_ci_status.outputs.previous_version }}/jars/flink_assembly_deploy.jar .
-          gcloud storage cp gs://zipline-artifacts-canary/release/${{ needs.check_ci_status.outputs.previous_version }}/jars/cloud_gcp_lib_deploy.jar .
-          gcloud storage cp gs://zipline-artifacts-canary/release/${{ needs.check_ci_status.outputs.previous_version }}/jars/service_assembly_deploy.jar .
+          gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar .
+          gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar .
+          gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar .
 
           for customer_id in "canary" "etsy" "base" "dev"; do
             echo "Uploading wheel to GCS for customer_id: $customer_id"
@@ -193,24 +180,24 @@ jobs:
               gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/latest/wheels/${{ needs.build_python_wheel.outputs.wheel_file }} --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
             echo "Uploading jars to GCS for customer_id: $customer_id"
-            gcloud storage cp ./flink_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/flink_assembly_deploy.jar
+            gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/flink_assembly_deploy.jar
             gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              gcloud storage cp ./flink_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/flink_assembly_deploy.jar
+              gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/flink_assembly_deploy.jar
               gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/latest/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
 
-            gcloud storage cp ./cloud_gcp_lib_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/cloud_gcp_lib_deploy.jar
+            gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/cloud_gcp_lib_deploy.jar
             gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              gcloud storage cp ./cloud_gcp_lib_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/cloud_gcp_lib_deploy.jar
+              gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/cloud_gcp_lib_deploy.jar
               gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/latest/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
 
-            gcloud storage cp ./service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar
+            gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar 
             gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              gcloud storage cp ./service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar
+              gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar 
               gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
           done
@@ -297,9 +284,7 @@ jobs:
         run: |
           set -eo pipefail
           # Download Jars from Canary for attaching to the release
-          aws s3 cp s3://zipline-artifacts-canary/release/${{ needs.check_ci_status.outputs.previous_version }}/jars/cloud_aws_lib_deploy.jar .
-          aws s3 cp s3://zipline-artifacts-canary/release/${{ needs.check_ci_status.outputs.previous_version }}/jars/flink_assembly_deploy.jar .
-          aws s3 cp s3://zipline-artifacts-canary/release/${{ needs.check_ci_status.outputs.previous_version }}/jars/service_assembly_deploy.jar .
+          aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/cloud_aws_lib_deploy.jar .
 
           for customer_id in "canary" "base" "dev" "plaid"; do
             echo "Uploading wheel to S3 for customer_id: $customer_id"
@@ -309,17 +294,17 @@ jobs:
               aws s3 cp ${{ needs.build_python_wheel.outputs.wheel_file }} s3://zipline-artifacts-${customer_id}/release/latest/wheels/${{ needs.build_python_wheel.outputs.wheel_file }} --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
             echo "Uploading jars to S3 for customer_id: $customer_id"
-            aws s3 cp ./flink_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/flink_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+            aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/flink_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              aws s3 cp ./flink_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/latest/jars/flink_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+              aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/latest/jars/flink_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
-            aws s3 cp ./cloud_aws_lib_deploy.jar s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/cloud_aws_lib_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+            aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/cloud_aws_lib_deploy.jar s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/cloud_aws_lib_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              aws s3 cp ./cloud_aws_lib_deploy.jar s3://zipline-artifacts-${customer_id}/release/latest/jars/cloud_aws_lib_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+              aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/cloud_aws_lib_deploy.jar s3://zipline-artifacts-${customer_id}/release/latest/jars/cloud_aws_lib_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
-            aws s3 cp ./service_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+            aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              aws s3 cp ./service_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+              aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar s3://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
           done
 
