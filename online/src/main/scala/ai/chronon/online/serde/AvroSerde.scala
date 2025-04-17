@@ -54,6 +54,8 @@ class AvroSerde(inputSchema: StructType) extends Serde {
 
   private val avroSchema = AvroConversions.fromChrononSchema(inputSchema)
 
+  @transient lazy val avroToRowConverter = AvroConversions.genericRecordToChrononRowConverter(inputSchema)
+
   private def byteArrayToAvro(avro: Array[Byte], schema: Schema): GenericRecord = {
     val reader = new SpecificDatumReader[GenericRecord](schema)
     val input: InputStream = new ByteArrayInputStream(avro)
@@ -64,9 +66,7 @@ class AvroSerde(inputSchema: StructType) extends Serde {
   override def fromBytes(bytes: Array[Byte]): Mutation = {
     val avroRecord = byteArrayToAvro(bytes, avroSchema)
 
-    val row: Array[Any] = schema.fields.map { f =>
-      AvroConversions.toChrononRow(avroRecord.get(f.name), f.fieldType).asInstanceOf[AnyRef]
-    }
+    val row: Array[Any] = avroToRowConverter(avroRecord)
 
     val reversalIndex = schema.indexWhere(_.name == Constants.ReversalColumn)
     if (reversalIndex >= 0 && row(reversalIndex).asInstanceOf[Boolean]) {

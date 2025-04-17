@@ -29,7 +29,7 @@ import ai.chronon.online.serde._
 import org.apache.avro.generic.GenericData
 
 import scala.collection.JavaConverters._
-import scala.collection.Seq
+import scala.collection.{Seq, mutable}
 
 object TileCodec {
   def buildRowAggregator(groupBy: GroupBy, inputSchema: Seq[(String, DataType)]): RowAggregator = {
@@ -79,6 +79,8 @@ class TileCodec(groupBy: GroupBy, inputSchema: Seq[(String, DataType)]) {
     irToBytesFn(tileIr)
   }
 
+  @transient private lazy val rowConverter = AvroConversions.genericRecordToChrononRowConverter(windowedIrSchema)
+
   def decodeTileIr(tileIr: Array[Byte]): (Array[Any], Boolean) = {
     val tileAvroCodec: AvroCodec = AvroCodec.of(tileAvroSchema)
     val decodedTileIr = tileAvroCodec.decode(tileIr)
@@ -86,19 +88,18 @@ class TileCodec(groupBy: GroupBy, inputSchema: Seq[(String, DataType)]) {
       .get("collapsedIr")
       .asInstanceOf[GenericData.Record]
 
-    val ir = AvroConversions
-      .toChrononRow(collapsedIr, windowedIrSchema)
-      .asInstanceOf[Array[Any]]
+    val ir = rowConverter(collapsedIr)
     val denormalizedIr = rowAggregator.denormalize(ir)
     val expandedWindowedIr = expandWindowedTileIr(denormalizedIr)
     val isComplete = decodedTileIr.get("isComplete").asInstanceOf[Boolean]
     (expandedWindowedIr, isComplete)
   }
 
-  // method that takes a tile IR in the unwindowed form and expands it to the windowed form
-  // as an example: [myfield_sum, myfield_average] -> [myfield_sum_1d, myfield_sum_7d, myfield_average_1d, myfield_average_7d]
-  def expandWindowedTileIr(baseIr: Array[Any]): Array[Any] = {
-    val flattenedIr = windowedRowAggregator.init
+  // cache these mapping out of hot-path
+  private case class ExpanderMapping(irPos: Int, bucketPos: Int)
+
+  private val expanderMappings: Array[ExpanderMapping] = {
+    val mappingsBuffer = mutable.ArrayBuffer.empty[ExpanderMapping]
     var irPos = 0
     var bucketPos = 0
     groupBy.aggregations.asScala.foreach { aggr =>
@@ -113,12 +114,24 @@ class TileCodec(groupBy: GroupBy, inputSchema: Seq[(String, DataType)]) {
       // n is the number of windows for that counter
       for (_ <- buckets) {
         for (_ <- windows) {
-          flattenedIr(irPos) = rowAggregator.columnAggregators(bucketPos).clone(baseIr(bucketPos))
+          mappingsBuffer.append(ExpanderMapping(irPos, bucketPos))
           irPos += 1
         }
         bucketPos += 1
       }
     }
+    mappingsBuffer.toArray
+  }
+
+  // method that takes a tile IR in the unwindowed form and expands it to the windowed form
+  // as an example: [myfield_sum, myfield_average] -> [myfield_sum_1d, myfield_sum_7d, myfield_average_1d, myfield_average_7d]
+  def expandWindowedTileIr(baseIr: Array[Any]): Array[Any] = {
+    val flattenedIr = windowedRowAggregator.init
+
+    expanderMappings.foreach { case ExpanderMapping(irPos, bucketPos) =>
+      flattenedIr(irPos) = rowAggregator.columnAggregators(bucketPos).clone(baseIr(bucketPos))
+    }
+
     flattenedIr
   }
 }

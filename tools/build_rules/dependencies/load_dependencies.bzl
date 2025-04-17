@@ -5,6 +5,7 @@ load(":all_repositories.bzl", "all_repositories")
 _repository_urls = [
     "https://repo1.maven.org/maven2/",
     "https://packages.confluent.io/maven/",
+    "https://linkedin.jfrog.io/artifactory/avro-util/",
 ]
 
 def load_all_dependencies():

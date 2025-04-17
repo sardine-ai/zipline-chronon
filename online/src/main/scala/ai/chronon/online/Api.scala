@@ -103,10 +103,17 @@ trait KVStore {
   }
 
   private def getResponse(key: String, dataset: String, timeoutMillis: Long): GetResponse = {
-    val fetchRequest = KVStore.GetRequest(key.getBytes(Constants.UTF8), dataset)
-    val responseFutureOpt = get(fetchRequest)
-    Await.result(responseFutureOpt, Duration(timeoutMillis, MILLISECONDS))
+    try {
+      val fetchRequest = KVStore.GetRequest(key.getBytes(Constants.UTF8), dataset)
+      val responseFutureOpt = get(fetchRequest)
+      Await.result(responseFutureOpt, Duration(timeoutMillis, MILLISECONDS))
+    } catch {
+      case ex: Exception =>
+        ex.printStackTrace()
+        throw ex
+    }
   }
+
   def get(request: GetRequest): Future[GetResponse] = {
     multiGet(Seq(request))
       .map(_.head)

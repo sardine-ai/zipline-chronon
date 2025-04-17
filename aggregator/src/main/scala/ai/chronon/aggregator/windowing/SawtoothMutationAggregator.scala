@@ -31,7 +31,7 @@ case class FinalBatchIr(collapsed: Array[Any], tailHops: HopsAggregator.OutputAr
   *
   * update/merge/finalize are related to snapshot data. As such they follow the snapshot Schema
   * and aggregators.
-  * However mutations come into play later in the group by and a finalized version of the snapshot
+  * However, mutations come into play later in the group by and a finalized version of the snapshot
   * data is created to be processed with the mutations rows.
   * Since the dataframe inputs are aligned between mutations and snapshot (input) no additional schema is needed.
   */
@@ -109,9 +109,10 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
   def updateIr(ir: Array[Any], row: Row, queryTs: Long, hasReversal: Boolean = false): Unit = {
     var i: Int = 0
     while (i < windowedAggregator.length) {
+      val windowMillis = windowMappings(i).millis
       val window = windowMappings(i).aggregationPart.window
       val hopIndex = tailHopIndices(i)
-      val rowInWindow = (row.ts >= TsUtils.round(queryTs - window.millis, hopSizes(hopIndex)) && row.ts < queryTs)
+      val rowInWindow = (row.ts >= TsUtils.round(queryTs - windowMillis, hopSizes(hopIndex)) && row.ts < queryTs)
       if (window == null || rowInWindow) {
         if (hasReversal && row.isBefore) {
           windowedAggregator(i).delete(ir, row)
@@ -127,10 +128,11 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
     val otherIrTs = otherIr.ts
     var i: Int = 0
     while (i < windowedAggregator.length) {
+      val windowMillis = windowMappings(i).millis
       val window = windowMappings(i).aggregationPart.window
       val hopIndex = tailHopIndices(i)
-      val irInWindow =
-        (otherIrTs >= TsUtils.round(queryTs - window.millis, hopSizes(hopIndex)) && otherIrTs < queryTs)
+      lazy val irInWindow =
+        (otherIrTs >= TsUtils.round(queryTs - windowMillis, hopSizes(hopIndex)) && otherIrTs < queryTs)
       if (window == null || irInWindow) {
         ir(i) = windowedAggregator(i).merge(ir(i), otherIr.ir(i))
       }
@@ -143,17 +145,18 @@ class SawtoothMutationAggregator(aggregations: Seq[Aggregation],
   def mergeTailHops(ir: Array[Any], queryTs: Long, batchEndTs: Long, batchIr: FinalBatchIr): Array[Any] = {
     var i: Int = 0
     while (i < windowedAggregator.length) {
+      val windowMillis = windowMappings(i).millis
       val window = windowMappings(i).aggregationPart.window
       if (window != null) { // no hops for unwindowed
         val hopIndex = tailHopIndices(i)
-        val queryTail = TsUtils.round(queryTs - window.millis, hopSizes(hopIndex))
+        val queryTail = TsUtils.round(queryTs - windowMillis, hopSizes(hopIndex))
         val hopIrs = batchIr.tailHops(hopIndex)
         val relevantHops = mutable.ArrayBuffer[Any](ir(i))
         var idx: Int = 0
         while (idx < hopIrs.length) {
           val hopIr = hopIrs(idx)
           val hopStart = hopIr.last.asInstanceOf[Long]
-          if ((batchEndTs - window.millis) + tailBufferMillis > hopStart && hopStart >= queryTail) {
+          if ((batchEndTs - windowMillis) + tailBufferMillis > hopStart && hopStart >= queryTail) {
             relevantHops += hopIr(baseIrIndices(i))
           }
           idx += 1
