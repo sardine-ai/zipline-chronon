@@ -18,6 +18,7 @@ case class FetchContext(kvStore: KVStore,
     Option(executionContextOverride).getOrElse(FlexibleExecutionContext.buildExecutionContext)
   }
 
+  // TODO: delete this flagStore plz
   def isTilingEnabled: Boolean = {
     Option(flagStore)
       .map(_.isSet(FlagStoreConstants.TILING_ENABLED, Map.empty[String, String].toJava))

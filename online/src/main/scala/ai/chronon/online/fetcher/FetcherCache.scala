@@ -192,12 +192,26 @@ object FetcherCache {
 
   /** Encapsulates batch response values received from a KV Store request. */
   case class KvStoreBatchResponse(response: Try[Seq[TimedValue]]) extends BatchResponses {
-    def getBatchBytes(batchEndTsMillis: Long): Array[Byte] =
-      response
-        .map(_.maxBy(_.millis))
-        .filter(_.millis >= batchEndTsMillis)
-        .map(_.bytes)
-        .getOrElse(null)
+    def getBatchBytes(batchEndTsMillis: Long): Array[Byte] = response match {
+      case Success(timedValues) =>
+        if (timedValues == null) return null
+
+        var resultBytes: Array[Byte] = null
+        var maxTs = 0L
+
+        val iter = timedValues.iterator
+        while (iter.hasNext) {
+          val tv = iter.next()
+          if (tv.millis >= batchEndTsMillis && tv.millis > maxTs) {
+            resultBytes = tv.bytes
+            maxTs = tv.millis
+          }
+        }
+
+        resultBytes
+
+      case _ => null
+    }
   }
 
   /** Encapsulates a batch response that was found in the Fetcher's internal IR cache. */

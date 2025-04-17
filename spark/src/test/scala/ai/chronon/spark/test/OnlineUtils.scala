@@ -95,11 +95,11 @@ object OnlineUtils {
         val tileBytes = entry._3
 
         val keyBytes = keyToBytes(keys)
-        val tileKey = TilingUtils.buildTileKey(
-          groupByConf.streamingDataset,
-          keyBytes,
-          Some(ResolutionUtils.getSmallestWindowResolutionInMillis(groupByServingInfo.groupBy)),
-          None)
+        val tileKey =
+          TilingUtils.buildTileKey(groupByConf.streamingDataset,
+                                   keyBytes,
+                                   Some(ResolutionUtils.getSmallestTailHopMillis(groupByServingInfo.groupBy)),
+                                   None)
         KVStore.PutRequest(TilingUtils.serializeTileKey(tileKey),
                            tileBytes,
                            groupByConf.streamingDataset,
