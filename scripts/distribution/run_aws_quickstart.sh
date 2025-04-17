@@ -173,11 +173,12 @@ function check_emr_cluster_state() {
 
 
 CHRONON_ROOT=`pwd`/api/python/test/canary
-export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT"
+export PYTHONPATH="${PYTHONPATH}:$CHRONON_ROOT" ARTIFACT_PREFIX="s3://zipline-artifacts-$ENVIRONMENT" CUSTOMER_ID=$ENVIRONMENT
+
 
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
 
-zipline compile --chronon_root=$CHRONON_ROOT
+zipline compile --chronon-root=$CHRONON_ROOT
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
 touch tmp_backfill.out
@@ -185,9 +186,9 @@ touch tmp_backfill.out
 if [ "$create_cluster" = true ]; then
   echo "Creating a new EMR cluster"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    CUSTOMER_ID=$ENVIRONMENT zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
+    zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
   else
-    CUSTOMER_ID=$ENVIRONMENT zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
+    zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
   fi
   EMR_SUBMITTER_ID_CLUSTER_STR="EMR job id"
   CLUSTER_ID=$(cat tmp_backfill.out | grep "$EMR_SUBMITTER_ID_CLUSTER_STR"  | cut -d " " -f4) # expecting the cluster id to be the 4th field
@@ -199,9 +200,9 @@ else
   CLUSTER_ID=$CANARY_CLUSTER_ID
   echo "Using existing EMR cluster $CLUSTER_ID"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    CUSTOMER_ID=$ENVIRONMENT EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
+    EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
   else
-    CUSTOMER_ID=$ENVIRONMENT EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 2>&1 | tee tmp_backfill.out
+    EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 2>&1 | tee tmp_backfill.out
   fi
 
   EMR_SUBMITER_ID_STEP_STR="EMR step id"
