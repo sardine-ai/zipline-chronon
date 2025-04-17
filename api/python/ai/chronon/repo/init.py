@@ -5,52 +5,48 @@ import shutil
 
 import click
 from importlib_resources import files
+from rich.prompt import Prompt
+from rich.syntax import Syntax
+
+from ai.chronon.cli.compile.display.console import console
 
 
 @click.command(name="init")
 @click.option(
-    "--cloud_provider",
+    "--cloud-provider",
     envvar="CLOUD_PROVIDER",
     help="Cloud provider to use.",
     required=True,
     type=click.Choice(['aws', 'gcp'], case_sensitive=False)
 )
 @click.option(
-    "--chronon_root",
-    envvar="CHRONON_ROOT",
+    "--chronon-root",
     help="Path to the root chronon folder.",
     default=os.path.join(os.getcwd(), "zipline"),
     type=click.Path(file_okay=False, writable=True),
 )
 @click.pass_context
 def main(ctx, chronon_root, cloud_provider):
-    try:
-        template_path = files("ai.chronon").joinpath("resources", cloud_provider.lower())
-    except AttributeError:
-        click.echo("Error: Template directory not found in package.", err=True)
-        return
-
-    if not template_path.exists():
-        click.echo("Error: Template directory not found in package.", err=True)
-        return
-
+    template_path = files("ai.chronon").joinpath("resources", cloud_provider.lower())
     target_path = os.path.abspath(chronon_root)
 
-    # Prevent accidental overwrites
     if os.path.exists(target_path) and os.listdir(target_path):
-        click.confirm(f"Warning: {target_path} is not empty. Proceed?", abort=True)
+        choice = Prompt.ask(f"[bold yellow] Warning: [/]{target_path} is not empty. Proceed?",
+                   choices=["y", "n"],
+                   default="y")
+        if choice == "n":
+            return
 
-    click.echo(f"Generating scaffolding at {target_path}...")
+    console.print(f"Generating scaffolding at {target_path} ...")
 
     try:
         shutil.copytree(template_path, target_path, dirs_exist_ok=True)
-        click.echo("Project scaffolding created successfully! 🎉")
-        click.echo(
-            f""""Please copy the following command to your shell config:
-    `export PYTHONPATH={target_path}:$PYTHONPATH`"""
-        )
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
+        console.print("[bold green] Project scaffolding created successfully! 🎉\n")
+        export_cmd = Syntax(f"`export PYTHONPATH={target_path}:$PYTHONPATH`", "bash", theme="github-dark", line_numbers=False)
+        console.print("Please copy the following command to your shell config:")
+        console.print(export_cmd)
+    except Exception:
+        console.print_exception()
 
 
 if __name__ == "__main__":
