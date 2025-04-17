@@ -9,6 +9,6 @@ java_binary(
         # Remove commons text as without this exclusion, Flink's JM isn't able to load the execution graph as our repo version (1.11.0) is
         # higher than Flink's version (1.10.0) and this results in the Flink UI not loading
         maven_artifact("org.apache.commons:commons-text"),
-        # pull out some slf4j-impl dependencies - these can be included at the application deploy target level if needed
     ],
 )
+
