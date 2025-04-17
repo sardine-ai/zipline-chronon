@@ -19,8 +19,6 @@ run.py needs to only depend in python standard library to simplify execution req
 
 import os
 from datetime import datetime
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as ver
 
 import click
 
@@ -56,6 +54,8 @@ def set_defaults(ctx):
     chronon_repo_path = os.environ.get("CHRONON_REPO_PATH", ".")
     today = datetime.today().strftime("%Y-%m-%d")
 
+    obj = ctx.obj if ctx.obj is not None else dict()
+
     defaults = {
         "dataproc": False,
         "ds": today,  # TODO: this breaks if the partition column is not the same as yyyy-MM-dd.
@@ -63,7 +63,7 @@ def set_defaults(ctx):
         "online_jar": os.environ.get("CHRONON_ONLINE_JAR"),
         "repo": chronon_repo_path,
         "online_class": os.environ.get("CHRONON_ONLINE_CLASS"),
-        "version": os.environ.get("VERSION"),
+        "version": os.environ.get("VERSION") or obj.get("version"),
         "spark_version": os.environ.get("SPARK_VERSION", "2.4.0"),
         "spark_submit_path": os.path.join(chronon_repo_path, "scripts/spark_submit.sh"),
         "spark_streaming_submit_path": os.path.join(
@@ -77,19 +77,12 @@ def set_defaults(ctx):
         "list_apps": "python3 "
         + os.path.join(chronon_repo_path, "scripts/yarn_list.py"),
         "render_info": os.path.join(chronon_repo_path, RENDER_INFO_DEFAULT_SCRIPT),
+        "project_conf": obj.get("project_conf"),
     }
     for key, value in defaults.items():
         if ctx.params.get(key) is None and value is not None:
             ctx.params[key] = value
 
-
-def _set_package_version():
-    try:
-        package_version = ver("zipline-ai")
-    except PackageNotFoundError:
-        print("No package found. Continuing with the latest version.")
-        package_version = "latest"
-    return package_version
 
 @click.command(
     name="run",
@@ -130,7 +123,7 @@ def _set_package_version():
     "--online-class",
     help="Class name of Online Impl. Used for streaming and metadata-upload mode.",
 )
-@click.option("--version", default=_set_package_version, help="Chronon version to use.")
+@click.option("--version", required=False, help="Chronon version to use.")
 @click.option(
     "--spark-version", default="2.4.0", help="Spark version to use for downloading jar."
 )
@@ -180,6 +173,12 @@ def _set_package_version():
     "--validate-rows", default="10000", help="Number of rows to  run the validation on"
 )
 @click.option("--join-part-name", help="Name of the join part to use for join-part-job")
+@click.option(
+    "--artifact-prefix",
+    envvar="ARTIFACT_PREFIX",
+    help="Remote artifact URI to install zipline client artifacts necessary for interacting with Zipline infrastructure.",
+    required=True,
+)
 @click.pass_context
 def main(
     ctx,
@@ -214,6 +213,7 @@ def main(
     validate,
     validate_rows,
     join_part_name,
+    artifact_prefix,
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))

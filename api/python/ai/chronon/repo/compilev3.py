@@ -10,7 +10,7 @@ from ai.chronon.cli.compile.display.console import console
 
 @click.command(name="compile")
 @click.option(
-    "--chronon_root",
+    "--chronon-root",
     envvar="CHRONON_ROOT",
     help="Path to the root chronon folder",
     default=os.getcwd(),
