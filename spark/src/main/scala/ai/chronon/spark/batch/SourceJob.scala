@@ -7,6 +7,8 @@ import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.parseSkewKeys
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.{Validator}
+import org.apache.spark.sql.DataFrame
 
 import scala.collection.{Map, Seq}
 import scala.jdk.CollectionConverters._
@@ -49,18 +51,25 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
                                  Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
                                  range = Some(dayStep))
 
-      if (df.isEmpty) {
-        throw new RuntimeException(s"Query produced 0 rows in range $dayStep.")
-      }
-
       val dfWithTimeCol = if (source.dataModel == EVENTS) {
         df.withTimeBasedColumn(Constants.TimePartitionColumn)
       } else {
         df
       }
 
+      // Run validations
+      runValidations(dfWithTimeCol, dayStep.start)
+
       // Save using the provided outputTable or compute one if not provided
       dfWithTimeCol.save(outputTable, tableProperties = sourceWithFilter.metaData.tableProps)
+    }
+  }
+
+  private def runValidations(df: DataFrame, dayStep: String): Unit = {
+    assert(!df.isEmpty, s"Query produced 0 rows in range $dayStep.")
+    if (sourceWithFilter.source.dataModel == EVENTS) {
+      val timeStampCheck = Validator.runTimestampChecks(df)
+      Validator.validateTimestampChecks(timeStampCheck, "Source", sourceWithFilter.source.table)
     }
   }
 
