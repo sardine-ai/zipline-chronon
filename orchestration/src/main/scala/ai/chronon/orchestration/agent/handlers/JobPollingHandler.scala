@@ -1,7 +1,7 @@
 package ai.chronon.orchestration.agent.handlers
 
-import ai.chronon.api.{Job, JobInfo}
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, KVStore}
+import ai.chronon.api.{Job, JobInfo, JobStatusType}
+import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, JobStore}
 import io.vertx.core.{AsyncResult, Handler}
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.{JsonArray, JsonObject}
@@ -13,7 +13,7 @@ import scala.util.{Failure, Success, Try}
 /** Handler for job polling operations. */
 class JobPollingHandler(
     webClient: WebClient,
-    kvStore: KVStore,
+    jobStore: JobStore,
     jobExecutionService: JobExecutionService
 ) extends Handler[java.lang.Long] {
   private val logger: Logger = LoggerFactory.getLogger(classOf[JobPollingHandler])
@@ -90,10 +90,17 @@ class JobPollingHandler(
 
       // Process each job
       jobsToStart.foreach { job =>
-        // TODO: To handle all other cases
-        if (kvStore.getJob(job.jobInfo.getJobId).isEmpty) {
-          // Store job in KV store
-          kvStore.storeJob(job.jobInfo.getJobId, job)
+        val storedJob = jobStore.getJob(job.jobInfo.getJobId)
+        if (storedJob.isEmpty) {
+          // Store the job in KVStore
+          job.jobInfo.setCurrentStatus(JobStatusType.PENDING)
+          jobStore.storeJob(job.jobInfo.getJobId, job)
+
+          // Submit job to cluster
+          jobExecutionService.submitJob(job)
+        } else if (storedJob.get.getJobInfo.currentStatus == JobStatusType.FAILED) {
+          // Update the job status
+          jobStore.updateJobStatus(job.jobInfo.getJobId, JobStatusType.PENDING)
 
           // Submit job to cluster
           jobExecutionService.submitJob(job)

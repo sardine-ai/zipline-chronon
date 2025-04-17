@@ -1,7 +1,9 @@
 package ai.chronon.orchestration.agent.verticle
 
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, KVStore}
+import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, JobStore}
 import ai.chronon.orchestration.agent.handlers.StatusReportingHandler
+import com.google.cloud.bigtable.admin.v2.{BigtableTableAdminClient, BigtableTableAdminSettings}
+import com.google.cloud.bigtable.data.v2.{BigtableDataClient, BigtableDataSettings}
 import io.vertx.core.{AbstractVerticle, Promise}
 import io.vertx.ext.web.client.WebClient
 import org.slf4j.{Logger, LoggerFactory}
@@ -12,16 +14,18 @@ import java.util.concurrent.atomic.AtomicBoolean
   *
   * This verticle:
   * 1. Periodically polls the JobExecutionService for the status of active jobs
-  * 2. Updates the KVStore with the latest status information
+  * 2. Updates the JobStore with the latest status information
   * 3. Reports status changes to the orchestration service
   */
 class StatusReportingVerticle extends AbstractVerticle {
   private val logger: Logger = LoggerFactory.getLogger(classOf[StatusReportingVerticle])
 
   private var webClient: WebClient = _
-  private var kvStore: KVStore = _
+  private var jobStore: JobStore = _
   private var jobExecutionService: JobExecutionService = _
   private var statusReportingHandler: StatusReportingHandler = _
+  private var bigtableDataClient: BigtableDataClient = _
+  private var bigtableAdminClient: BigtableTableAdminClient = _
 
   private val isReporting = new AtomicBoolean(false)
   private var reportingTimerId: Long = -1
@@ -46,9 +50,9 @@ class StatusReportingVerticle extends AbstractVerticle {
     // Create web client for HTTP requests
     webClient = WebClient.create(vertx)
 
-    // Initialize KV store if not already set
-    if (kvStore == null) {
-      kvStore = createKVStore()
+    // Initialize job store if not already set
+    if (jobStore == null) {
+      jobStore = createJobStore()
     }
 
     // Initialize job service if not already set
@@ -59,7 +63,7 @@ class StatusReportingVerticle extends AbstractVerticle {
     // Initialize status reporting handler
     statusReportingHandler = new StatusReportingHandler(
       webClient,
-      kvStore,
+      jobStore,
       jobExecutionService
     )
 
@@ -67,10 +71,25 @@ class StatusReportingVerticle extends AbstractVerticle {
       s"Initialized StatusReportingVerticle with reportingIntervalMs=${AgentConfig.statusReportingIntervalMs}")
   }
 
-  private def createKVStore(): KVStore = {
-    // For now, use the in-memory implementation
-    // In production, this would be replaced with a real implementation
-    KVStore.createInMemory()
+  private def createJobStore(): JobStore = {
+    // Create BigTable client
+    val dataSettings = BigtableDataSettings
+      .newBuilder()
+      .setProjectId(AgentConfig.gcpProjectId)
+      .setInstanceId(AgentConfig.bigTableInstanceId)
+      .build()
+
+    val adminSettings = BigtableTableAdminSettings
+      .newBuilder()
+      .setProjectId(AgentConfig.gcpProjectId)
+      .setInstanceId(AgentConfig.bigTableInstanceId)
+      .build()
+
+    bigtableDataClient = BigtableDataClient.create(dataSettings)
+    bigtableAdminClient = BigtableTableAdminClient.create(adminSettings)
+
+    // Create JobStore with BigTable implementation
+    JobStore.createWithBigTableKVStore(bigtableDataClient, Some(bigtableAdminClient))
   }
 
   private def createJobExecutionService(): JobExecutionService = {
@@ -101,9 +120,25 @@ class StatusReportingVerticle extends AbstractVerticle {
       vertx.cancelTimer(reportingTimerId)
     }
 
-    // Close web client
+    // Close resources
     if (webClient != null) {
       webClient.close()
+    }
+
+    if (bigtableDataClient != null) {
+      try {
+        bigtableDataClient.close()
+      } catch {
+        case e: Exception => logger.error("Error closing BigTable data client", e)
+      }
+    }
+
+    if (bigtableAdminClient != null) {
+      try {
+        bigtableAdminClient.close()
+      } catch {
+        case e: Exception => logger.error("Error closing BigTable admin client", e)
+      }
     }
 
     stopPromise.complete()
@@ -116,11 +151,11 @@ object StatusReportingVerticle {
     * This method is primarily used for testing to inject mock dependencies.
     */
   def createWithDependencies(
-      kvStore: KVStore,
+      jobStore: JobStore,
       jobExecutionService: JobExecutionService
   ): StatusReportingVerticle = {
     val verticle = new StatusReportingVerticle()
-    verticle.kvStore = kvStore
+    verticle.jobStore = jobStore
     verticle.jobExecutionService = jobExecutionService
     verticle
   }

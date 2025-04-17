@@ -1,7 +1,9 @@
 package ai.chronon.orchestration.agent.verticle
 
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, KVStore}
+import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, JobStore}
 import ai.chronon.orchestration.agent.handlers.JobPollingHandler
+import com.google.cloud.bigtable.admin.v2.{BigtableTableAdminClient, BigtableTableAdminSettings}
+import com.google.cloud.bigtable.data.v2.{BigtableDataClient, BigtableDataSettings}
 import io.vertx.core.{AbstractVerticle, Promise}
 import io.vertx.ext.web.client.WebClient
 import org.slf4j.{Logger, LoggerFactory}
@@ -20,9 +22,11 @@ class JobPollingVerticle extends AbstractVerticle {
   private val logger: Logger = LoggerFactory.getLogger(classOf[JobPollingVerticle])
 
   private var webClient: WebClient = _
-  private var kvStore: KVStore = _
+  private var jobStore: JobStore = _
   private var jobExecutionService: JobExecutionService = _
   private var jobPollingHandler: JobPollingHandler = _
+  private var bigtableDataClient: BigtableDataClient = _
+  private var bigtableAdminClient: BigtableTableAdminClient = _
 
   private val isPolling = new AtomicBoolean(false)
   private var pollingTimerId: Long = -1
@@ -47,9 +51,9 @@ class JobPollingVerticle extends AbstractVerticle {
     // Create web client for HTTP requests
     webClient = WebClient.create(vertx)
 
-    // Initialize KV store if not already set
-    if (kvStore == null) {
-      kvStore = createKVStore()
+    // Initialize job store if not already set
+    if (jobStore == null) {
+      jobStore = createJobStore()
     }
 
     // Initialize job service if not already set
@@ -60,15 +64,32 @@ class JobPollingVerticle extends AbstractVerticle {
     // Initialize polling handler
     jobPollingHandler = new JobPollingHandler(
       webClient,
-      kvStore,
+      jobStore,
       jobExecutionService
     )
 
     logger.info(s"Initialized JobPollingVerticle with pollingIntervalMs=${AgentConfig.pollingIntervalMs}")
   }
 
-  private def createKVStore(): KVStore = {
-    KVStore.createInMemory()
+  private def createJobStore(): JobStore = {
+    // Create BigTable client
+    val dataSettings = BigtableDataSettings
+      .newBuilder()
+      .setProjectId(AgentConfig.gcpProjectId)
+      .setInstanceId(AgentConfig.bigTableInstanceId)
+      .build()
+
+    val adminSettings = BigtableTableAdminSettings
+      .newBuilder()
+      .setProjectId(AgentConfig.gcpProjectId)
+      .setInstanceId(AgentConfig.bigTableInstanceId)
+      .build()
+
+    bigtableDataClient = BigtableDataClient.create(dataSettings)
+    bigtableAdminClient = BigtableTableAdminClient.create(adminSettings)
+
+    // Create JobStore with BigTable implementation
+    JobStore.createWithBigTableKVStore(bigtableDataClient, Some(bigtableAdminClient))
   }
 
   private def createJobExecutionService(): JobExecutionService = {
@@ -97,9 +118,25 @@ class JobPollingVerticle extends AbstractVerticle {
       vertx.cancelTimer(pollingTimerId)
     }
 
-    // Close web client
+    // Close resources
     if (webClient != null) {
       webClient.close()
+    }
+
+    if (bigtableDataClient != null) {
+      try {
+        bigtableDataClient.close()
+      } catch {
+        case e: Exception => logger.error("Error closing BigTable data client", e)
+      }
+    }
+
+    if (bigtableAdminClient != null) {
+      try {
+        bigtableAdminClient.close()
+      } catch {
+        case e: Exception => logger.error("Error closing BigTable admin client", e)
+      }
     }
 
     stopPromise.complete()
@@ -112,11 +149,11 @@ object JobPollingVerticle {
     * This method is primarily used for testing to inject mock dependencies.
     */
   def createWithDependencies(
-      kvStore: KVStore,
+      jobStore: JobStore,
       jobExecutionService: JobExecutionService
   ): JobPollingVerticle = {
     val verticle = new JobPollingVerticle()
-    verticle.kvStore = kvStore
+    verticle.jobStore = jobStore
     verticle.jobExecutionService = jobExecutionService
     verticle
   }
