@@ -180,7 +180,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def partitions(tableName: String,
                  subPartitionsFilter: Map[String, String] = Map.empty,
                  partitionColumnName: String = partitionColumn): List[String] = {
-
+    if (!tableReachable(tableName)) return List.empty[String]
     tableFormatProvider
       .readFormat(tableName)
       .map((format) => {
