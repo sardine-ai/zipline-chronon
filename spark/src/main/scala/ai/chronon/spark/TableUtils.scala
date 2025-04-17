@@ -184,6 +184,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     tableFormatProvider
       .readFormat(tableName)
       .map((format) => {
+        logger.info(
+          s"Getting partitions for ${tableName} with partitionColumnName ${partitionColumnName} and subpartitions: ${subPartitionsFilter}")
         val partitions =
           format.primaryPartitions(tableName, partitionColumnName, subPartitionsFilter)(sparkSession)
 
@@ -383,7 +385,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                      inputTableToSubPartitionFiltersMap: Map[String, Map[String, String]] = Map.empty,
                      inputToOutputShift: Int = 0,
                      skipFirstHole: Boolean = true,
-                     inputPartitionColumnName: String = partitionColumn): Option[Seq[PartitionRange]] = {
+                     inputPartitionColumnNames: Seq[String] = Seq(partitionColumn)): Option[Seq[PartitionRange]] = {
 
     val validPartitionRange = if (outputPartitionRange.start == null) { // determine partition range automatically
       val inputStart = inputTables.flatMap(_.map(table =>
@@ -421,6 +423,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val existingInputPartitions =
       for (
         inputTables <- inputTables.toSeq;
+        inputPartitionColumnName <- inputPartitionColumnNames;
         table <- inputTables;
         subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty);
         partitionStr <- partitions(table, subPartitionFilters, inputPartitionColumnName)

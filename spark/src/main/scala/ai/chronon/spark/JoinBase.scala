@@ -18,9 +18,6 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.DataModel.ENTITIES
-import ai.chronon.api.Accuracy
-import ai.chronon.api.Constants
-import ai.chronon.api.DateRange
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
@@ -147,7 +144,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
          rangeToFill,
          Some(Seq(joinConfCloned.left.table)),
          skipFirstHole = skipFirstHole,
-         inputPartitionColumnName = joinConfCloned.left.query.effectivePartitionColumn
+         inputPartitionColumnNames = Seq(joinConfCloned.left.query.effectivePartitionColumn)
        )
        .getOrElse(Seq.empty))
   }
@@ -293,7 +290,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
         rangeToFill,
         Some(Seq(joinConfCloned.left.table)),
         skipFirstHole = skipFirstHole,
-        inputPartitionColumnName = joinConfCloned.left.query.effectivePartitionColumn
+        inputPartitionColumnNames = Seq(joinConfCloned.left.query.effectivePartitionColumn)
       )
       .getOrElse(Seq.empty)
 
