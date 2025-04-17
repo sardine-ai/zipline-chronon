@@ -713,7 +713,8 @@ object GroupBy {
         outputTable,
         PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
         if (isAnySourceCumulative) None else Some(inputTables),
-        skipFirstHole = skipFirstHole
+        skipFirstHole = skipFirstHole,
+        inputPartitionColumnNames = groupByConf.getSources.toScala.map(_.partitionColumn(tableUtils))
       )
 
     if (groupByUnfilledRangesOpt.isEmpty) {

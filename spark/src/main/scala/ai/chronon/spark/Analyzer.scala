@@ -298,7 +298,7 @@ class Analyzer(tableUtils: TableUtils,
       .unfilledRanges(joinConf.metaData.outputTable,
                       rangeToFill,
                       Some(Seq(joinConf.left.table)),
-                      inputPartitionColumnName = joinConf.left.query.effectivePartitionColumn)
+                      inputPartitionColumnNames = Seq(joinConf.left.query.effectivePartitionColumn))
       .getOrElse(Seq.empty)
 
     joinConf.joinParts.toScala.foreach { part =>
