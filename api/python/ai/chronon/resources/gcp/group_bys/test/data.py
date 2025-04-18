@@ -1,5 +1,5 @@
 
-from sources.data import source_v1
+from sources.test.data import source_v1
 
 from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
 

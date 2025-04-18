@@ -57,7 +57,6 @@ def set_defaults(ctx):
     obj = ctx.obj if ctx.obj is not None else dict()
 
     defaults = {
-        "dataproc": False,
         "ds": today,  # TODO: this breaks if the partition column is not the same as yyyy-MM-dd.
         "app_name": os.environ.get("APP_NAME"),
         "online_jar": os.environ.get("CHRONON_ONLINE_JAR"),
@@ -98,7 +97,6 @@ def set_defaults(ctx):
     help="Running environment - default to be dev",
 )
 @click.option("--mode", type=click.Choice(MODE_ARGS.keys()), default=RunMode.BACKFILL)
-@click.option("--dataproc", is_flag=True, help="Run on Dataproc in GCP")
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
 @click.option(
@@ -185,7 +183,6 @@ def main(
     conf,
     env,
     mode,
-    dataproc,
     ds,
     app_name,
     start_ds,
