@@ -65,8 +65,8 @@ class JobsHandlerSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
     // Verify job content
     val jobs = response.getJobsToStart.asScala.toSeq
-    jobs.map(_.getJobId).toSet should contain allElementsOf Set("node-1", "node-2").map(name =>
-      jobs.find(_.getJobId.startsWith(s"$name-")).get.getJobId)
+    jobs.map(_.jobInfo.getJobId).toSet should contain allElementsOf Set("node-1", "node-2").map(name =>
+      jobs.find(_.jobInfo.getJobId.startsWith(s"$name-")).get.jobInfo.getJobId)
   }
 
   it should "skip messages without nodeName attribute" in {
@@ -93,7 +93,7 @@ class JobsHandlerSpec extends AnyFlatSpec with Matchers with MockitoSugar {
 
     // Verify only one job was created (from the valid message)
     response.getJobsToStart.size() shouldBe 1
-    response.getJobsToStart.get(0).getJobId should startWith("valid-node-")
+    response.getJobsToStart.get(0).jobInfo.getJobId should startWith("valid-node-")
   }
 
   it should "throw exceptions when pulling messages fails" in {

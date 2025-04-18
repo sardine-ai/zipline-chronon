@@ -1,7 +1,7 @@
 package ai.chronon.orchestration.service.handlers
 
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Job, JobListGetRequest, JobListResponse}
+import ai.chronon.api.{Job, JobInfo, JobListGetRequest, JobListResponse}
 import ai.chronon.orchestration.pubsub.PubSubManager
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -42,8 +42,10 @@ class JobsHandler(pubSubManager: PubSubManager) {
         val jobId = s"$nodeName-${System.currentTimeMillis()}"
 
         // Convert message attributes to a Job instance
-        val job = new Job()
+        val jobInfo = new JobInfo()
           .setJobId(jobId)
+        val job = new Job()
+          .setJobInfo(jobInfo)
         // TODO: Add more job properties as needed
 
         Some(job)

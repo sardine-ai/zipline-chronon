@@ -112,5 +112,6 @@ scala_test_suite(
 jvm_binary(
     name = "orchestration_assembly",
     main_class = "ai.chronon.service.ChrononServiceLauncher",
+    resources = glob(["src/main/resources/**/*"]),
     runtime_deps = [":lib"],
 )
