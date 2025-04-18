@@ -320,7 +320,7 @@ class Analyzer(tableUtils: TableUtils,
           |left columns: ${leftDf.columns.mkString(", ")}
           |gb columns: ${gbKeySchema.keys.mkString(", ")}
           |""".stripMargin)
-      keysWithError ++= runSchemaValidation(leftSchema, gbKeySchema, part.rightToLeft)
+      keysWithError ++= Validator.runSchemaValidation(leftSchema, gbKeySchema, part.rightToLeft)
       gbTables ++= part.groupBy.sources.toScala.map(_.table)
       dataAvailabilityErrors ++= runDataAvailabilityCheck(joinConf.left.dataModel, part.groupBy, unfilledRanges)
       // list any startPartition dates for conflict checks
@@ -393,28 +393,6 @@ class Analyzer(tableUtils: TableUtils,
     (leftSchema ++ rightSchema, aggregationsMetadata)
   }
 
-  // validate the schema of the left and right side of the join and make sure the types match
-  // return a map of keys and corresponding error message that failed validation
-  private def runSchemaValidation(left: Map[String, DataType],
-                                  right: Map[String, DataType],
-                                  keyMapping: Map[String, String]): Map[String, String] = {
-    keyMapping.flatMap {
-      case (_, leftKey) if !left.contains(leftKey) =>
-        Some(leftKey ->
-          s"[ERROR]: Left side of the join doesn't contain the key $leftKey. Available keys are [${left.keys.mkString(",")}]")
-      case (rightKey, _) if !right.contains(rightKey) =>
-        Some(
-          rightKey ->
-            s"[ERROR]: Right side of the join doesn't contain the key $rightKey. Available keys are [${right.keys
-              .mkString(",")}]")
-      case (rightKey, leftKey) if left(leftKey) != right(rightKey) =>
-        Some(
-          leftKey ->
-            s"[ERROR]: Join key, '$leftKey', has mismatched data types - left type: ${left(
-              leftKey)} vs. right type ${right(rightKey)}")
-      case _ => None
-    }
-  }
 
   // validate that data is available for the group by
   // - For aggregation case, gb table earliest partition should go back to (first_unfilled_partition - max_window) date
@@ -483,19 +461,6 @@ class Analyzer(tableUtils: TableUtils,
     }
   }
 
-  
-  private def dataframeToMap(inputDf: DataFrame): Map[String, String] = {
-    val row: Row = inputDf.head()
-    val schema = inputDf.schema
-    val columns = schema.fieldNames
-    val values = row.toSeq
-    columns
-      .zip(values)
-      .map { case (column, value) =>
-        (column, value.toString)
-      }
-      .toMap
-  }
 
   def run(): Unit = {
 

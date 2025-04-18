@@ -8,9 +8,10 @@ import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinP
 import ai.chronon.api.PartitionRange.toTimeRange
 import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange}
 import ai.chronon.online.metrics.Metrics
+import ai.chronon.online.serde.SparkConversions
 import ai.chronon.orchestration.JoinPartNode
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{GroupBy, JoinUtils, TableUtils}
+import ai.chronon.spark.{GroupBy, JoinUtils, TableUtils, Validator}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_format}
 import org.apache.spark.util.sketch.BloomFilter
@@ -133,6 +134,28 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     }
   }
 
+  private def runValidations(statsDf: DfWithStats, partitionRangeGroupBy: GroupBy) = {
+    val schemaValidations = Validator.runSchemaValidation(
+      SparkConversions.toChrononSchema(statsDf.df.schema).toMap,
+      partitionRangeGroupBy.outputSchema.fields.map { f =>
+        f.name -> f.fieldType
+      }.toMap,
+      joinPart.rightToLeft
+    ).mkString("\n")
+
+    val timestampChecks = joinPart.groupBy.inferredAccuracy match {
+        case Accuracy.SNAPSHOT => ""
+        case Accuracy.TEMPORAL => Validator.formatTimestampCheckString(
+          Validator.runTimestampChecks(partitionRangeGroupBy.inputDf), "JoinPart")
+    }
+
+    assert(schemaValidations.isEmpty && timestampChecks.isEmpty,
+           s"""[ERROR]: ${joinPart.groupBy.metaData.name} validation failed.
+              | $schemaValidations
+              | $timestampChecks
+              | """.stripMargin)
+  }
+
   private def computeJoinPart(leftDfWithStats: Option[DfWithStats],
                               joinPart: JoinPart,
                               joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]],
@@ -166,6 +189,8 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
 
     // all lazy vals - so evaluated only when needed by each case.
     lazy val partitionRangeGroupBy = genGroupBy(dateRange)
+
+    runValidations(statsDf, partitionRangeGroupBy)
 
     lazy val unfilledPartitionRange = if (tableUtils.checkLeftTimeRange) {
       val timeRange = statsDf.timeRange

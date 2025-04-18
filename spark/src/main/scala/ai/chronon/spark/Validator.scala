@@ -1,6 +1,6 @@
 package ai.chronon.spark
 
-import ai.chronon.api.Constants
+import ai.chronon.api.{Constants, DataType}
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions.{col, lit, sum, when}
 import org.apache.spark.sql.types.StringType
@@ -41,6 +41,21 @@ object Validator {
   }
 
 
+  def formatTimestampCheckString(timestampCheckMap: Map[String, String], configType: String): String = {
+    if (timestampCheckMap("notNullCount") != "0") {
+      s"""[ERROR]: $configType validation failed.
+         | Please check that source has non-null timestamps.
+         | check notNullCount: ${timestampCheckMap("notNullCount")}
+         | """.stripMargin
+    } else if (timestampCheckMap("badRangeCount") != "0") {
+      s"""[ERROR]: $configType validation failed.
+         | Please check that source has valid epoch millisecond timestamps.
+         | badRangeCount: ${timestampCheckMap("badRangeCount")}
+         | """.stripMargin
+    } else ""
+  }
+
+
   /** This method can be used to trigger the assertion checks
    * or print the summary stats once the timestamp checks have been run
    * @param timestampCheckMap
@@ -52,18 +67,8 @@ object Validator {
     if (!timestampCheckMap.contains("noTsColumn")) {
       // do timestamp checks
       assert(
-        timestampCheckMap("notNullCount") != "0",
-        s"""[ERROR]: $configType validation failed.
-           | Please check that source has non-null timestamps.
-           | check notNullCount: ${timestampCheckMap("notNullCount")}
-           | """.stripMargin
-      )
-      assert(
-        timestampCheckMap("badRangeCount") == "0",
-        s"""[ERROR]: $configType validation failed.
-           | Please check that source has valid epoch millisecond timestamps.
-           | badRangeCount: ${timestampCheckMap("badRangeCount")}
-           | """.stripMargin
+        timestampCheckMap("notNullCount") != "0" && timestampCheckMap("badRangeCount") != "0",
+        formatTimestampCheckString(timestampCheckMap, configType)
       )
 
       logger.info(s"""ANALYSIS TIMESTAMP completed for ${configName}.
@@ -91,4 +96,29 @@ object Validator {
       }
       .toMap
   }
+
+  // validate the schema of the left and right side of the join and make sure the types match
+  // return a map of keys and corresponding error message that failed validation
+  def runSchemaValidation(left: Map[String, DataType],
+                                  right: Map[String, DataType],
+                                  keyMapping: Map[String, String]): Map[String, String] = {
+    keyMapping.flatMap {
+      case (_, leftKey) if !left.contains(leftKey) =>
+        Some(leftKey ->
+          s"[ERROR]: Left side of the join doesn't contain the key $leftKey. Available keys are [${left.keys.mkString(",")}]")
+      case (rightKey, _) if !right.contains(rightKey) =>
+        Some(
+          rightKey ->
+            s"[ERROR]: Right side of the join doesn't contain the key $rightKey. Available keys are [${right.keys
+              .mkString(",")}]")
+      case (rightKey, leftKey) if left(leftKey) != right(rightKey) =>
+        Some(
+          leftKey ->
+            s"[ERROR]: Join key, '$leftKey', has mismatched data types - left type: ${left(
+              leftKey)} vs. right type ${right(rightKey)}")
+      case _ => None
+    }
+  }
+
+
 }
