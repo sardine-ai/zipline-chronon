@@ -49,8 +49,8 @@ done
 
 gcloud storage cp "${ARTIFACT_PREFIX%/}/release/$VERSION/wheels/zipline_ai-$VERSION-py3-none-any.whl" .
 
+trap 'rm -f ./zipline_ai-$VERSION-py3-none-any.whl' EXIT
+
 pip3 uninstall zipline-ai
 
 pip3 install ./zipline_ai-$VERSION-py3-none-any.whl
-
-trap 'rm -f ./zipline_ai-$VERSION-py3-none-any.whl' EXIT

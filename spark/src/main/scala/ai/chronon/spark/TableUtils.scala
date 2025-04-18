@@ -115,8 +115,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def loadTable(tableName: String): DataFrame = {
-    sparkSession.read.table(tableName)
+  def loadTable(tableName: String, rangeWheres: Seq[String] = List.empty[String]): DataFrame = {
+    tableFormatProvider
+      .readFormat(tableName)
+      .map(_.table(tableName, andPredicates(rangeWheres))(sparkSession))
+      .getOrElse(
+        throw new RuntimeException(s"Could not load table: ${tableName} with partition filter: ${rangeWheres}"))
   }
 
   def createDatabase(database: String): Boolean = {
@@ -564,6 +568,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
+  private def andPredicates(predicates: Seq[String]): String = {
+    val whereStr = predicates.map(p => s"($p)").mkString(" AND ")
+    logger.info(s"""Where str: $whereStr""")
+    whereStr
+  }
+
   def scanDfBase(selectMap: Map[String, String],
                  table: String,
                  wheres: Seq[String],
@@ -582,14 +592,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                    |    ${rangeWheres.mkString(",\n    ").green}
                    |""".stripMargin)
 
-    var df = loadTable(table)
+    var df = loadTable(table, rangeWheres)
 
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
 
-    val allWheres = wheres ++ rangeWheres
-    if (allWheres.nonEmpty) {
-      val whereStr = allWheres.map(w => s"($w)").mkString(" AND ")
-      logger.info(s"""Where str: $whereStr""")
+    if (wheres.nonEmpty) {
+      val whereStr = andPredicates(wheres)
       df = df.where(whereStr)
     }
 
