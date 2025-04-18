@@ -135,25 +135,29 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
   }
 
   private def runValidations(statsDf: DfWithStats, partitionRangeGroupBy: GroupBy) = {
-    val schemaValidations = Validator.runSchemaValidation(
-      SparkConversions.toChrononSchema(statsDf.df.schema).toMap,
-      partitionRangeGroupBy.outputSchema.fields.map { f =>
-        f.name -> f.fieldType
-      }.toMap,
-      joinPart.rightToLeft
-    ).mkString("\n")
+    val schemaValidations = Validator
+      .runSchemaValidation(
+        SparkConversions.toChrononSchema(statsDf.df.schema).toMap,
+        partitionRangeGroupBy.outputSchema.fields.map { f =>
+          f.name -> f.fieldType
+        }.toMap,
+        joinPart.rightToLeft
+      )
+      .mkString("\n")
 
     val timestampChecks = joinPart.groupBy.inferredAccuracy match {
-        case Accuracy.SNAPSHOT => ""
-        case Accuracy.TEMPORAL => Validator.formatTimestampCheckString(
-          Validator.runTimestampChecks(partitionRangeGroupBy.inputDf), "JoinPart")
+      case Accuracy.SNAPSHOT => ""
+      case Accuracy.TEMPORAL =>
+        Validator.formatTimestampCheckString(Validator.runTimestampChecks(partitionRangeGroupBy.inputDf), "JoinPart")
     }
 
-    assert(schemaValidations.isEmpty && timestampChecks.isEmpty,
-           s"""[ERROR]: ${joinPart.groupBy.metaData.name} validation failed.
+    assert(
+      schemaValidations.isEmpty && timestampChecks.isEmpty,
+      s"""[ERROR]: ${joinPart.groupBy.metaData.name} validation failed.
               | $schemaValidations
               | $timestampChecks
-              | """.stripMargin)
+              | """.stripMargin
+    )
   }
 
   private def computeJoinPart(leftDfWithStats: Option[DfWithStats],

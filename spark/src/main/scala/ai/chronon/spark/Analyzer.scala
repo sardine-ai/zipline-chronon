@@ -393,7 +393,6 @@ class Analyzer(tableUtils: TableUtils,
     (leftSchema ++ rightSchema, aggregationsMetadata)
   }
 
-
   // validate that data is available for the group by
   // - For aggregation case, gb table earliest partition should go back to (first_unfilled_partition - max_window) date
   // - For none aggregation case or unbounded window, no earliest partition is required
@@ -460,7 +459,6 @@ class Analyzer(tableUtils: TableUtils,
       }
     }
   }
-
 
   def run(): Unit = {
 

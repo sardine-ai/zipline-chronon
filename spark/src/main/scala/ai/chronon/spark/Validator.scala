@@ -40,7 +40,6 @@ object Validator {
     mapTimestampChecks
   }
 
-
   def formatTimestampCheckString(timestampCheckMap: Map[String, String], configType: String): String = {
     if (timestampCheckMap("notNullCount") != "0") {
       s"""[ERROR]: $configType validation failed.
@@ -55,13 +54,12 @@ object Validator {
     } else ""
   }
 
-
   /** This method can be used to trigger the assertion checks
-   * or print the summary stats once the timestamp checks have been run
-   * @param timestampCheckMap
-   * @param configType
-   * @param configName
-   */
+    * or print the summary stats once the timestamp checks have been run
+    * @param timestampCheckMap
+    * @param configType
+    * @param configName
+    */
   def validateTimestampChecks(timestampCheckMap: Map[String, String], configType: String, configName: String): Unit = {
 
     if (!timestampCheckMap.contains("noTsColumn")) {
@@ -100,8 +98,8 @@ object Validator {
   // validate the schema of the left and right side of the join and make sure the types match
   // return a map of keys and corresponding error message that failed validation
   def runSchemaValidation(left: Map[String, DataType],
-                                  right: Map[String, DataType],
-                                  keyMapping: Map[String, String]): Map[String, String] = {
+                          right: Map[String, DataType],
+                          keyMapping: Map[String, String]): Map[String, String] = {
     keyMapping.flatMap {
       case (_, leftKey) if !left.contains(leftKey) =>
         Some(leftKey ->
@@ -119,6 +117,5 @@ object Validator {
       case _ => None
     }
   }
-
 
 }
