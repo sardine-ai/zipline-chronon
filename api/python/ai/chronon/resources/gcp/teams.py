@@ -25,7 +25,7 @@ default = Team(
             "spark.sql.shuffle.partitions": "10",
 
             # TODO: Please fill in the following values
-            "spark.sql.catalog.bigquery_catalog.warehouse": "<gcs-prefix>",
+            "spark.sql.catalog.bigquery_catalog.warehouse": "gs://zipline-warehouse-<customer_id>/data/tables/",
             "spark.sql.catalog.bigquery_catalog.gcp_location": "<region>",
             "spark.sql.catalog.bigquery_catalog.gcp_project": "<project-id>",
             "spark.chronon.partition.format": "<date-format>", # ex: "yyyy-MM-dd",
@@ -38,12 +38,14 @@ default = Team(
             "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
             "CHRONON_ONLINE_ARGS": "[ONLINE-TODO]args prefixed with -Z become constructor map for your implementation of ai.chronon.online.Api, -Zkv-host=<YOUR_HOST> -Zkv-port=<YOUR_PORT>",
 
-            # TODO: Fill in please
+            # TODO: Please fill in the following values
             "CUSTOMER_ID": "<customer_id>",
             "GCP_PROJECT_ID": "<project-id>",
             "GCP_REGION": "<region>",
             "GCP_DATAPROC_CLUSTER_NAME": "<dataproc-cluster-name>",
             "GCP_BIGTABLE_INSTANCE_ID": "<bigtable-instance-id>",
+            "ARTIFACT_PREFIX": "<customer-artifact-bucket>",
+            "CLOUD_PROVIDER": "<gcp | aws>"
         },
     ),
 )
