@@ -1,4 +1,4 @@
-from group_bys.data import group_by_v1
+from group_bys.test.data import group_by_v1
 
 from ai.chronon.api.ttypes import EventSource, Source
 from ai.chronon.join import Join, JoinPart
