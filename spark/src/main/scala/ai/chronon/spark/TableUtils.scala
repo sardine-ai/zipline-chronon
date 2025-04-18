@@ -570,8 +570,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  rangeWheres: Seq[String],
                  fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
 
-    var df = loadTable(table)
-
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
 
     logger.info(s""" Scanning data:
@@ -583,6 +581,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                    |  partition filters:
                    |    ${rangeWheres.mkString(",\n    ").green}
                    |""".stripMargin)
+
+    var df = loadTable(table)
 
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
 
