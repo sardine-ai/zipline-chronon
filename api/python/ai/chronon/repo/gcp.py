@@ -35,6 +35,11 @@ ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 class GcpRunner(Runner):
     def __init__(self, args):
         remote_artifact_prefix = args.get("artifact_prefix")
+        if not remote_artifact_prefix:
+            raise ValueError(
+                "GCP artifact prefix not set."
+            )
+
         self._version = args.get("version")
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
             remote_artifact_prefix,
