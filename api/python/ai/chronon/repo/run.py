@@ -29,6 +29,7 @@ from ai.chronon.repo.aws import (
 )
 from ai.chronon.repo.constants import (
     APP_NAME_TEMPLATE,
+    AWS,
     CLOUD_PROVIDER_KEYWORD,
     GCP,
     MODE_ARGS,
@@ -175,7 +176,6 @@ def set_defaults(ctx):
     "--artifact-prefix",
     envvar="ARTIFACT_PREFIX",
     help="Remote artifact URI to install zipline client artifacts necessary for interacting with Zipline infrastructure.",
-    required=True,
 )
 @click.pass_context
 def main(
@@ -214,6 +214,11 @@ def main(
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
+
+    conf_path = os.path.join(repo, conf)
+    if not os.path.isfile(conf_path):
+        raise ValueError(f"Conf file {conf_path} does not exist.")
+
     set_runtime_env_v3(ctx.params, conf)
     set_defaults(ctx)
     extra_args = (" " + online_args) if mode in ONLINE_MODES and online_args else ""
@@ -235,7 +240,7 @@ def main(
         ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_GCP_ONLINE_CLASS_DEFAULT
         ctx.params[CLOUD_PROVIDER_KEYWORD] = cloud_provider
         GcpRunner(ctx.params).run()
-    elif cloud_provider.upper() == "AWS":
+    elif cloud_provider.upper() == AWS:
         ctx.params[ONLINE_JAR_ARG] = ZIPLINE_AWS_JAR_DEFAULT
         ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_AWS_ONLINE_CLASS_DEFAULT
         ctx.params[CLOUD_PROVIDER_KEYWORD] = cloud_provider
