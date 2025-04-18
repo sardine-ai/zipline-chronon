@@ -75,7 +75,7 @@ union JobBase {
 }
 
 struct Job {
-    1: optional string jobId
+    1: optional JobInfo jobInfo
     2: optional JobBase jobUnion
     3: optional i32 statusReportInterval
     4: optional i32 maxRetries
@@ -93,11 +93,12 @@ struct JobListResponse {
 }
 
 enum JobStatusType {
-    PENDING = 0,
-    RUNNING = 1,
-    SUCCEEDED = 2,
-    FAILED = 3,
-    STOPPED = 4
+    UNKNOWN = 0,
+    PENDING = 1,
+    RUNNING = 2,
+    SUCCEEDED = 3,
+    FAILED = 4,
+    STOPPED = 5
 }
 
 struct ResourceUsage {

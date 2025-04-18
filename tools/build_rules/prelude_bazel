@@ -89,6 +89,7 @@ _VERTX_DEPS = [
     maven_artifact("io.vertx:vertx-core"),
     maven_artifact("io.vertx:vertx-web"),
     maven_artifact("io.vertx:vertx-web-client"),
+    maven_artifact("io.vertx:vertx-uri-template"),
     maven_artifact("io.vertx:vertx-config"),
     maven_artifact("io.vertx:vertx-micrometer-metrics"),
 ]
@@ -98,6 +99,7 @@ _VERTX_TEST_DEPS = [
     maven_artifact("io.vertx:vertx-core"),
     maven_artifact("io.vertx:vertx-web"),
     maven_artifact("io.vertx:vertx-web-client"),
+    maven_artifact("io.vertx:vertx-uri-template"),
     # Testing
     maven_artifact("io.vertx:vertx-junit5"),
     maven_artifact("io.vertx:vertx-unit"),
