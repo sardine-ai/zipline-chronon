@@ -4,13 +4,29 @@ import ai.chronon.spark.TableUtils
 import ai.chronon.spark.format.Format
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{col, date_format, to_date}
 
 case object BigQueryNative extends Format {
 
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
+
+  override def table(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
+    val bqTableId = SparkBQUtils.toTableId(tableName)
+    val bqFriendlyName = scala.Option(bqTableId.getProject) match {
+      case Some(project) => f"${project}.${bqTableId.getDataset}.${bqTableId.getTable}"
+      case None          => f"${bqTableId.getDataset}.${bqTableId.getTable}"
+    }
+    val dfw = sparkSession.read.format(bqFormat)
+    if (partitionFilters.isEmpty) {
+      dfw.load(bqFriendlyName)
+    } else {
+      dfw
+        .option("filter", partitionFilters.trim.stripPrefix("(").stripSuffix(")"))
+        .load(bqFriendlyName)
+    }
+  }
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] =

@@ -2,9 +2,20 @@ package ai.chronon.spark.format
 
 import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
+import org.apache.spark.sql.DataFrame
 
 trait Format {
+
   @transient protected lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+
+  def table(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
+    val df = sparkSession.read.table(tableName)
+    if (partitionFilters.isEmpty) {
+      df
+    } else {
+      df.where(partitionFilters)
+    }
+  }
 
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
