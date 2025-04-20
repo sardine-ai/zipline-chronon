@@ -1,0 +1,102 @@
+{
+  "metaData": {
+    "name": "risk.user_data.user_group_by",
+    "team": "risk",
+    "outputNamespace": "risk",
+    "sourceFile": "group_bys/risk/user_data.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_users\", \"spec\": \"data.users/_DATE={{ ds }}\"}]}",
+    "executionInfo": {
+      "env": {
+        "common": {
+          "VERSION": "latest",
+          "SERDE_CLASS": "your.serde.class",
+          "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+          "PARTITION_COLUMN": "ds",
+          "PARTITION_FORMAT": "yyyy-MM-dd",
+          "CUSTOMER_ID": "canary",
+          "GCP_PROJECT_ID": "canary-443022",
+          "GCP_REGION": "us-central1",
+          "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+          "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance"
+        },
+        "modeEnvironments": {
+          "backfill": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "EXECUTOR_CORES": "2",
+            "DRIVER_MEMORY": "15G",
+            "EXECUTOR_MEMORY": "4G",
+            "PARALLELISM": "4",
+            "MAX_EXECUTORS": "4"
+          },
+          "upload": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "PARALLELISM": "2",
+            "MAX_EXECUTORS": "4"
+          },
+          "streaming": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "EXECUTOR_CORES": "2",
+            "EXECUTOR_MEMORY": "4G",
+            "PARTITIONS_PER_EXECUTOR": "2"
+          }
+        }
+      },
+      "conf": {
+        "common": {
+          "spark.chronon.partition.column": "_DATE"
+        }
+      },
+      "scheduleCron": "@daily",
+      "historicalBackfill": 0
+    }
+  },
+  "sources": [
+    {
+      "entities": {
+        "snapshotTable": "data.users",
+        "query": {
+          "selects": {
+            "user_id": "user_id",
+            "account_age": "account_age",
+            "account_balance": "account_balance",
+            "credit_score": "credit_score",
+            "number_of_devices": "number_of_devices",
+            "country": "country",
+            "account_type": "account_type",
+            "preferred_language": "preferred_language"
+          }
+        }
+      }
+    }
+  ],
+  "keyColumns": [
+    "user_id"
+  ]
+}

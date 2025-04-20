@@ -366,6 +366,8 @@ struct Join {
     * columns.
     **/
     9: optional list<Derivation> derivations
+    // If useLongNames is true, then we include the groupby team and name in the column names, prefixes are always included
+    50: optional bool useLongNames
 }
 
 struct BootstrapPart {

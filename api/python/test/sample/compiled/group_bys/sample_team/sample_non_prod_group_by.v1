@@ -1,0 +1,118 @@
+{
+  "metaData": {
+    "name": "sample_team.sample_non_prod_group_by.v1",
+    "team": "sample_team",
+    "outputNamespace": "sample_namespace",
+    "online": 0,
+    "production": 0,
+    "sourceFile": "group_bys/sample_team/sample_non_prod_group_by.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_sample_namespace_sample_table_group_by\", \"spec\": \"sample_namespace.sample_table_group_by/_test_column_sample={{ ds }}\"}]}",
+    "executionInfo": {
+      "env": {
+        "common": {
+          "VERSION": "latest",
+          "SERDE_CLASS": "your.serde.class",
+          "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+          "PARTITION_COLUMN": "ds",
+          "PARTITION_FORMAT": "yyyy-MM-dd",
+          "CUSTOMER_ID": "canary",
+          "GCP_PROJECT_ID": "canary-443022",
+          "GCP_REGION": "us-central1",
+          "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+          "GCP_BIGTABLE_INSTANCE_ID": "test-instance"
+        },
+        "modeEnvironments": {
+          "backfill": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "test-instance",
+            "EXECUTOR_CORES": "2",
+            "DRIVER_MEMORY": "15G",
+            "EXECUTOR_MEMORY": "4G",
+            "PARALLELISM": "4",
+            "MAX_EXECUTORS": "4"
+          },
+          "upload": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "test-instance",
+            "PARALLELISM": "2",
+            "MAX_EXECUTORS": "4"
+          },
+          "streaming": {
+            "VERSION": "latest",
+            "SERDE_CLASS": "your.serde.class",
+            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
+            "CUSTOMER_ID": "canary",
+            "GCP_PROJECT_ID": "canary-443022",
+            "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "canary-2",
+            "GCP_BIGTABLE_INSTANCE_ID": "test-instance",
+            "EXECUTOR_CORES": "2",
+            "EXECUTOR_MEMORY": "4G",
+            "PARTITIONS_PER_EXECUTOR": "2"
+          }
+        }
+      },
+      "conf": {
+        "common": {
+          "spark.chronon.partition.column": "_test_column_sample"
+        }
+      },
+      "scheduleCron": "@daily",
+      "historicalBackfill": 0
+    }
+  },
+  "sources": [
+    {
+      "events": {
+        "table": "sample_namespace.sample_table_group_by",
+        "query": {
+          "selects": {
+            "event": "event_expr",
+            "group_by_subject": "group_by_expr"
+          },
+          "startPartition": "2021-04-09",
+          "timeColumn": "ts"
+        }
+      }
+    }
+  ],
+  "keyColumns": [
+    "group_by_subject"
+  ],
+  "aggregations": [
+    {
+      "inputColumn": "event",
+      "operation": 7,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 7,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "event",
+      "operation": 7,
+      "argMap": {}
+    }
+  ]
+}

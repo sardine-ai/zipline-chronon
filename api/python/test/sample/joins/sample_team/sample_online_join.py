@@ -49,4 +49,5 @@ v1 = Join(
     ),
     online=True,
     check_consistency=True,
+    use_long_names=True,
 )

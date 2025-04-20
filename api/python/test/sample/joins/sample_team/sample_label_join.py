@@ -47,4 +47,5 @@ v1 = Join(
         label_offline_schedule="@weekly",
     ),
     online=False,
+    use_long_names=True,
 )
