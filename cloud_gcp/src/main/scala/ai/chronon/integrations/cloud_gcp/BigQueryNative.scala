@@ -23,7 +23,7 @@ case object BigQueryNative extends Format {
       dfw.load(bqFriendlyName)
     } else {
       dfw
-        .option("filter", partitionFilters.trim.stripPrefix("(").stripSuffix(")"))
+        .option("filter", partitionFilters)
         .load(bqFriendlyName)
     }
   }
