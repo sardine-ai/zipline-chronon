@@ -30,7 +30,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
   private val leftInputTable = if (join.bootstrapParts != null || join.onlineExternalParts != null) {
     join.metaData.bootstrapTable
   } else {
-    JoinUtils.computeLeftSourceTableName(join)
+    JoinUtils.computeFullLeftSourceTableName(join)
   }
   // Use the node's Join's metadata for output table
   private val outputTable = node.metaData.outputTable

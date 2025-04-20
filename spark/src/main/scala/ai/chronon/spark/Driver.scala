@@ -901,7 +901,7 @@ object Driver {
       // Create a JoinPartNode from the join part
       val joinPartNode = new JoinPartNode()
         .setJoinPart(joinPart)
-        .setLeftSourceTable(JoinUtils.computeLeftSourceTableName(join))
+        .setLeftSourceTable(JoinUtils.computeFullLeftSourceTableName(join))
         .setLeftDataModel(join.left.dataModel)
         .setSkewKeys(join.skewKeys)
 
