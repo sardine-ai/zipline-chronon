@@ -114,6 +114,17 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     println(allParts)
   }
 
+  it should "integration testing bigquery partition pushdown" ignore {
+    import spark.implicits._
+    val iceberg = "data.checkouts_native"
+
+    val singleFilter = tableUtils.loadTable(iceberg, List("ds = '2023-11-30'"))
+    val multiFilter = tableUtils.loadTable(iceberg, List("ds = '2023-11-30'", "ds = '2023-11-30'"))
+    assertEquals(
+      singleFilter.select("user_id", "ds").as[(String, String)].collect.toList,
+      multiFilter.select("user_id", "ds").as[(String, String)].collect.toList)
+  }
+
   it should "integration testing formats" ignore {
     val externalTable = "default_iceberg.data.checkouts_parquet"
     val externalFormat = FormatProvider.from(spark).readFormat(externalTable)
