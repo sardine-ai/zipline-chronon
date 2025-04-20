@@ -78,6 +78,7 @@ def set_defaults(ctx):
         + os.path.join(chronon_repo_path, "scripts/yarn_list.py"),
         "render_info": os.path.join(chronon_repo_path, RENDER_INFO_DEFAULT_SCRIPT),
         "project_conf": obj.get("project_conf"),
+        "artifact_prefix": os.environ.get("ARTIFACT_PREFIX"),
     }
     for key, value in defaults.items():
         if ctx.params.get(key) is None and value is not None:
@@ -174,7 +175,6 @@ def set_defaults(ctx):
 @click.option("--join-part-name", help="Name of the join part to use for join-part-job")
 @click.option(
     "--artifact-prefix",
-    envvar="ARTIFACT_PREFIX",
     help="Remote artifact URI to install zipline client artifacts necessary for interacting with Zipline infrastructure.",
 )
 @click.pass_context
