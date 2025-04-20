@@ -369,6 +369,7 @@ def Join(
     sample_percent: float = 100.0,
     check_consistency: bool = None,
     consistency_sample_percent: float = 5.0,
+    use_long_names: bool = False,
     # execution params
     offline_schedule: str = "@daily",
     historical_backfill: bool = None,
@@ -549,6 +550,7 @@ def Join(
         rowIds=row_ids,
         labelParts=label_part,
         derivations=derivations,
+        useLongNames=use_long_names,
     )
 
     return join

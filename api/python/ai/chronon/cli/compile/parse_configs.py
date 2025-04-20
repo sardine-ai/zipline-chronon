@@ -31,6 +31,7 @@ def from_folder(
 
             for name, obj in results_dict.items():
                 parse_teams.update_metadata(obj, compile_context.teams_dict)
+
                 # Airflow deps must be set AFTER updating metadata
                 airflow_helpers.set_airflow_deps(obj)
 

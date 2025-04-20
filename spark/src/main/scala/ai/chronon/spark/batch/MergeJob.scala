@@ -100,7 +100,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
                                                                      tableUtils.partitionColumn,
                                                                      Constants.TimePartitionColumn)
     val valueColumns = rightDf.schema.names.filterNot(nonValueColumns.contains)
-    val prefixedRightDf = rightDf.prefixColumnNames(joinPart.fullPrefix, valueColumns)
+    val prefixedRightDf = rightDf.prefixColumnNames(joinPart.columnPrefix, valueColumns)
 
     // apply key-renaming to key columns
     val newColumns = prefixedRightDf.columns.map { column =>

@@ -176,10 +176,12 @@ object Builders {
               bootstrapParts: Seq[BootstrapPart] = null,
               rowIds: Seq[String] = null,
               derivations: Seq[Derivation] = null,
-              skewKeys: Map[String, Seq[String]] = null): Join = {
+              skewKeys: Map[String, Seq[String]] = null,
+              useLongNames: Boolean = true): Join = {
       val result = new Join()
       result.setMetaData(metaData)
       result.setLeft(left)
+      result.setUseLongNames(useLongNames)
       if (joinParts != null)
         result.setJoinParts(joinParts.toJava)
       if (externalParts != null)
@@ -247,10 +249,12 @@ object Builders {
     def apply(
         groupBy: GroupBy = null,
         keyMapping: Map[String, String] = null,
-        prefix: String = null
+        prefix: String = null,
+        useLongNames: Boolean = true
     ): JoinPart = {
       val result = new JoinPart()
       result.setGroupBy(groupBy)
+      result.setUseLongNames(useLongNames)
       if (keyMapping != null)
         result.setKeyMapping(keyMapping.toJava)
       result.setPrefix(prefix)
