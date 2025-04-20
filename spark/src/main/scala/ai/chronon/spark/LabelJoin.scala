@@ -270,7 +270,7 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
                                                                      Constants.TimePartitionColumn,
                                                                      Constants.LabelPartitionColumn)
     val valueColumns = rightDf.schema.names.filterNot(nonValueColumns.contains)
-    val prefixedRight = keyRenamedRight.prefixColumnNames(joinPart.fullPrefix, valueColumns)
+    val prefixedRight = keyRenamedRight.prefixColumnNames(joinPart.columnPrefix, valueColumns)
 
     val partName = joinPart.groupBy.metaData.name
 

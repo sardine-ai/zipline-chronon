@@ -20,7 +20,8 @@ import logging
 import re
 import textwrap
 from collections import defaultdict
-from typing import Dict, List, Set
+from itertools import combinations
+from typing import Dict, List, Set, Tuple
 
 import ai.chronon.api.common.ttypes as common
 from ai.chronon.api.ttypes import (
@@ -82,11 +83,15 @@ def get_pre_derived_group_by_columns(group_by: GroupBy) -> List[str]:
     return output_columns
 
 
-def get_group_by_output_columns(group_by: GroupBy) -> List[str]:
+def get_group_by_output_columns(group_by: GroupBy, exclude_keys: bool = False) -> List[str]:
     """
     From the group_by object, get the final output columns after derivations.
     """
-    output_columns = set(get_pre_derived_group_by_columns(group_by))
+    all_output_columns = set(get_pre_derived_group_by_columns(group_by))
+    if exclude_keys:
+        output_columns = all_output_columns - set(group_by.keyColumns)
+    else:
+        output_columns = all_output_columns
     if group_by.derivations:
         return build_derived_columns(output_columns, group_by.derivations)
     else:
@@ -211,6 +216,46 @@ def _group_by_has_hourly_windows(groupBy: GroupBy) -> bool:
                 return True
 
     return False
+
+
+def detect_feature_name_collisions(
+        group_bys: List[Tuple[GroupBy, str]],
+        entity_set_type: str,
+        name: str
+) -> BaseException | None:
+    # Build a map: group_by.metaData.name -> set of its (possibly-prefixed) output columns
+    outputs: Dict[str, Set[str]] = {}
+    for gb, prefix in group_bys:
+        prefix_str = f"{prefix}_" if prefix else ""
+        cols = {
+            f"{prefix_str}{base_col}"
+            for base_col in get_group_by_output_columns(gb, exclude_keys=True)
+        }
+        outputs[gb.metaData.name] = cols
+
+    # Detect collisions between every pair of GroupBys
+    collision_groups: Dict[frozenset, Set[str]] = defaultdict(set)
+    for (name_a, out_a), (name_b, out_b) in combinations(outputs.items(), 2):
+        shared = out_a & out_b
+        if shared:
+            collision_groups[frozenset(shared)].update([name_a, name_b])
+
+    if not collision_groups:
+        return None  # no collisions
+
+    # Assemble an error message listing the conflicting GroupBys by name
+    lines = [
+        f"{entity_set_type} for Join: {name} has the following output name collisions:\n"
+    ]
+    for shared_cols, gb_names in collision_groups.items():
+        names_str = ", ".join(sorted(gb_names))
+        cols_str = ", ".join(sorted(shared_cols))
+        lines.append(f"  - [{names_str}] collide on: [{cols_str}]")
+
+    lines.append(
+        "\nConsider assigning distinct `prefix` values to the conflicting parts to avoid collisions."
+    )
+    return ValueError("\n".join(lines))
 
 
 class ConfValidator(object):
@@ -462,7 +507,10 @@ class ConfValidator(object):
         Returns:
           list of validation errors.
         """
-        included_group_bys = [rp.groupBy for rp in join.joinParts]
+        included_group_bys_and_prefixes = [(rp.groupBy, rp.prefix) for rp in join.joinParts]
+        included_label_parts_and_prefixes = [(lp.groupBy, lp.prefix) for lp in join.labelParts.labels] if join.labelParts else []
+        included_group_bys = [tup[0] for tup in included_group_bys_and_prefixes]
+
         offline_included_group_bys = [
             gb.metaData.name
             for gb in included_group_bys
@@ -515,9 +563,21 @@ class ConfValidator(object):
                 columns = features + keys
             errors.extend(self._validate_derivations(columns, join.derivations))
 
+
         errors.extend(self._validate_keys(join))
 
+        # If the join is using "short" names, ensure that there are no collisions
+        if not join.useLongNames:
+            right_part_collisions = detect_feature_name_collisions(included_group_bys_and_prefixes, "right parts", join.metaData.name)
+            if right_part_collisions:
+                errors.append(right_part_collisions)
+
+            label_part_collisions = detect_feature_name_collisions(included_label_parts_and_prefixes, "label parts", join.metaData.name)
+            if label_part_collisions:
+                errors.append(label_part_collisions)
+
         return errors
+
 
     def _validate_group_by(self, group_by: GroupBy) -> List[BaseException]:
         """

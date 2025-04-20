@@ -77,4 +77,5 @@ v2 = Join(
             query=Query(end_partition="2023-01-01"),
         )
     ],
+    use_long_names=True,
 )
