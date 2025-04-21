@@ -58,6 +58,8 @@ class GcpRunner(Runner):
             if args["mode"] == "fetch"
             else gcp_jar_path
         )
+        
+        self._args = args
 
         super().__init__(args, os.path.expanduser(jar_path))
 
