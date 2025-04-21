@@ -23,6 +23,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
 import com.google.gson.Gson
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction

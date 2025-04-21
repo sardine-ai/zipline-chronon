@@ -7,11 +7,12 @@ import ai.chronon.online.serde.SparkConversions
 import ai.chronon.orchestration.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, set_add}
-import ai.chronon.spark.{BootstrapInfo, JoinUtils, TableUtils}
+import ai.chronon.spark.{BootstrapInfo, JoinUtils}
 import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{coalesce, col, lit, typedLit}
 import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.Seq
 

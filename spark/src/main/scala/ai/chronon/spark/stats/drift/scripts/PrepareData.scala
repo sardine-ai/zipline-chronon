@@ -12,7 +12,7 @@ import ai.chronon.api.Window
 import ai.chronon.observability.DriftMetric
 import ai.chronon.observability.DriftSpec
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import org.apache.spark.rdd.RDD

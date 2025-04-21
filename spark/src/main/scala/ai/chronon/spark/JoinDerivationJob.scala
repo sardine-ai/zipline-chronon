@@ -3,6 +3,7 @@ package ai.chronon.spark
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api.DateRange
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.orchestration.JoinDerivationNode
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.functions.{coalesce, col, expr}

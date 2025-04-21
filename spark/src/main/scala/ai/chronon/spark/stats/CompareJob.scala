@@ -28,7 +28,7 @@ import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.Analyzer
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.batch.StagingQuery
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.TimedKvRdd
 import ai.chronon.spark.stats.CompareJob.getJoinKeys
 import org.apache.spark.sql.DataFrame

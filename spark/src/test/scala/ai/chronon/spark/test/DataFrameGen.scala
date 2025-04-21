@@ -23,7 +23,7 @@ import ai.chronon.api.Constants
 import ai.chronon.api.LongType
 import ai.chronon.api.StringType
 import ai.chronon.online.serde.SparkConversions
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row

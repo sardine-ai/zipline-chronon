@@ -24,7 +24,7 @@ import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.LogFlattenerJob
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.test.OnlineUtils
 import ai.chronon.spark.test.SchemaEvolutionUtils
 import ai.chronon.spark.utils.MockApi

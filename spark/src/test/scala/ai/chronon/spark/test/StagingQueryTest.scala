@@ -20,7 +20,8 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{Comparison, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.{Comparison, SparkSessionBuilder}
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.batch.StagingQuery
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals

@@ -22,7 +22,8 @@ import ai.chronon.api.{Builders, Constants, PartitionSpec}
 import ai.chronon.api.PartitionRange
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{contains_any, set_add}
-import ai.chronon.spark.{JoinUtils, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.{JoinUtils, SparkSessionBuilder}
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.test.{DataFrameGen, TestUtils}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
