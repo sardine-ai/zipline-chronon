@@ -315,6 +315,8 @@ struct JoinPart {
     1: optional GroupBy groupBy
     2: optional map<string, string> keyMapping
     3: optional string prefix
+    // useLongName on joinPart is inherited from the join, but needs to be set at the JoinPart level for the spark engine
+    10: optional bool useLongNames
 }
 
 struct ExternalPart {

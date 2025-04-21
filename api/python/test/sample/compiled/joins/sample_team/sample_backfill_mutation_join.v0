@@ -133,7 +133,8 @@
           }
         ],
         "accuracy": 0
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

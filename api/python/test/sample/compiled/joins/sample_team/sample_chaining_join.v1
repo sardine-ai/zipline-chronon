@@ -287,7 +287,8 @@
       },
       "keyMapping": {
         "subject": "user_id"
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

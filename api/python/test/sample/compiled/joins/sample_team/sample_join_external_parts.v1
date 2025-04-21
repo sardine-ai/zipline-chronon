@@ -146,7 +146,8 @@
             "argMap": {}
           }
         ]
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "onlineExternalParts": [

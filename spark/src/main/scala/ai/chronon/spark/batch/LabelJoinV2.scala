@@ -52,7 +52,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
       val gbSchema = StructType(SparkConversions.fromChrononSchema(gb.outputSchema).fields)
 
       // The GroupBy Schema will not contain the labelPart prefix
-      outputCols.map(col => (col, gbSchema(col.replace(s"${labelPart.fullPrefix}_", "")).dataType))
+      outputCols.map(col => (col, gbSchema(col.replace(labelPart.columnPrefix, "")).dataType))
     }.toSeq
   }
 
@@ -102,7 +102,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
                 case TimeUnit.MINUTES => math.ceil(w.length / (24.0 * 60)).toInt
               }
 
-              val fullColName = s"${labelJoinPart.fullPrefix}_${aggPart.outputColumnName}"
+              val fullColName = s"${labelJoinPart.columnPrefix}${aggPart.outputColumnName}"
 
               (effectiveLength, fullColName, w)
             }
@@ -262,9 +262,9 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
       val rightDfs: Seq[DataFrame] =
         (joinConf.left.dataModel, groupByConf.dataModel, groupByConf.inferredAccuracy) match {
           case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
-            // In the snapshot Accuracy case we join against the snapshot table
+            // In the snapshot Accuracy case we join against the snapshot table so un-prefix the output columns
             val outputColumnNames =
-              labelOutputInfo.outputColumnNames.map(_.replace(s"${labelJoinPart.fullPrefix}_", ""))
+              labelOutputInfo.outputColumnNames.map(_.replace(labelJoinPart.columnPrefix, ""))
             // Rename the value columns from the SnapshotTable to include prefix
             val selectCols: Map[String, String] =
               (labelJoinPart.rightToLeft.keys ++ outputColumnNames).map(x => x -> x).toMap
@@ -381,7 +381,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
                                                                      Constants.LabelPartitionColumn)
     val valueColumns = rightDf.schema.names.filterNot(nonValueColumns.contains)
 
-    val fullPrefix = s"${labelColumnPrefix}_${joinPart.fullPrefix}"
+    val fullPrefix = s"${labelColumnPrefix}_${joinPart.columnPrefix}"
 
     // In this case, since we're joining with the full-schema dataframe,
     // we need to drop the columns that we're attempting to overwrite

@@ -140,7 +140,8 @@
           }
         ],
         "accuracy": 1
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

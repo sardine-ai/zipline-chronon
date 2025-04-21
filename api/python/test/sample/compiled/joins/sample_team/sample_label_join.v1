@@ -153,7 +153,8 @@
       },
       "keyMapping": {
         "subject": "group_by_subject"
-      }
+      },
+      "useLongNames": 1
     },
     {
       "groupBy": {
@@ -228,7 +229,8 @@
       },
       "keyMapping": {
         "subject": "group_by_subject"
-      }
+      },
+      "useLongNames": 1
     }
   ],
   "labelParts": {
@@ -263,7 +265,8 @@
           "keyColumns": [
             "group_by_subject"
           ]
-        }
+        },
+        "useLongNames": 1
       }
     ],
     "metaData": {

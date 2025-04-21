@@ -145,7 +145,8 @@
             "argMap": {}
           }
         ]
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

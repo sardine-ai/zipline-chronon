@@ -140,7 +140,8 @@
           }
         ],
         "backfillStartDate": "2022-01-01"
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

@@ -309,7 +309,7 @@ class Analyzer(tableUtils: TableUtils,
                        includeOutputTableName = true,
                        skewDetection = skewDetection)
       aggregationsMetadata ++= aggMetadata.map { aggMeta =>
-        AggregationMetadata(part.fullPrefix + "_" + aggMeta.name,
+        AggregationMetadata(part.columnPrefix + aggMeta.name,
                             aggMeta.columnType,
                             aggMeta.operation,
                             aggMeta.window,

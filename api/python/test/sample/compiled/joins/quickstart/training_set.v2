@@ -198,7 +198,8 @@
             ]
           }
         ]
-      }
+      },
+      "useLongNames": 0
     },
     {
       "groupBy": {
@@ -296,7 +297,8 @@
             }
           }
         ]
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

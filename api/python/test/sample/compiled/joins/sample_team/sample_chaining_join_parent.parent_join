@@ -156,7 +156,8 @@
       },
       "keyMapping": {
         "subject": "group_by_subject"
-      }
+      },
+      "useLongNames": 0
     },
     {
       "groupBy": {
@@ -211,7 +212,8 @@
       },
       "keyMapping": {
         "subject": "group_by_subject"
-      }
+      },
+      "useLongNames": 0
     }
   ],
   "useLongNames": 0

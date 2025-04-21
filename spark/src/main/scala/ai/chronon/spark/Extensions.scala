@@ -152,7 +152,7 @@ object Extensions {
 
     def prefixColumnNames(prefix: String, columns: Seq[String]): DataFrame = {
       columns.foldLeft(df) { (renamedDf, key) =>
-        renamedDf.withColumnRenamed(key, s"${prefix}_$key")
+        renamedDf.withColumnRenamed(key, s"$prefix$key")
       }
     }
 
