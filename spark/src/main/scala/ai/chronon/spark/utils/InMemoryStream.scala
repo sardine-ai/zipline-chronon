@@ -23,7 +23,7 @@ import ai.chronon.online.serde.AvroConversions
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online.TileCodec
 import ai.chronon.spark.GenericRowHandler
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericRecord

@@ -5,13 +5,13 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.batch._
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
 import ai.chronon.spark.{GroupBy, Join, _}
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory
-import ai.chronon.spark.batch._
 
 class LabelJoinV2Test extends AnyFlatSpec {
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)

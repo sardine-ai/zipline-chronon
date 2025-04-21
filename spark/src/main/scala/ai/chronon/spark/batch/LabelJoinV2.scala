@@ -6,9 +6,9 @@ import ai.chronon.api.PartitionRange.toTimeRange
 import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.online.serde.SparkConversions
-import ai.chronon.spark.Analyzer
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{GroupBy, JoinUtils, TableUtils}
+import ai.chronon.spark.GroupBy
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.types.{DataType, StructType}

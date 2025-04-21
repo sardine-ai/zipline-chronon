@@ -4,7 +4,7 @@ import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.PartitionRange.{collapseToRange, collapsedPrint, rangesToString}
 import ai.chronon.api.{PartitionRange, PartitionSpec, Window}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.DataFrame
 
 import scala.collection.mutable

@@ -22,6 +22,8 @@ import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
+import ai.chronon.spark.catalog.TableUtils
+
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online._
 import ai.chronon.online.fetcher.FetchContext

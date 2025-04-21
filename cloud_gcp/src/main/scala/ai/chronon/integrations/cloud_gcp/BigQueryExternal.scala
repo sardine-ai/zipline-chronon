@@ -1,6 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.format.Format
+import ai.chronon.spark.catalog.Format
 import com.google.cloud.bigquery._
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.execution.FileSourceScanExec

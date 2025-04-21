@@ -21,6 +21,7 @@ import ai.chronon.aggregator.windowing.FiveMinuteResolution
 import ai.chronon.aggregator.windowing.Resolution
 import ai.chronon.aggregator.windowing.SawtoothOnlineAggregator
 import ai.chronon.api
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.Accuracy
 import ai.chronon.api.Constants
 import ai.chronon.api.DataModel

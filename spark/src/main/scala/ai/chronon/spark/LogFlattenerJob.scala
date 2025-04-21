@@ -25,6 +25,7 @@ import ai.chronon.online._
 import ai.chronon.online.metrics._
 import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions.{StructTypeOps, _}
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.col

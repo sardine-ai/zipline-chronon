@@ -50,6 +50,27 @@ scala_library(
 )
 
 scala_library(
+    name = "catalog_lib",
+    srcs = glob(["src/main/scala/ai/chronon/spark/catalog/*.scala"]),
+    format = select({
+        "//tools/config:scala_2_13": False,
+        "//conditions:default": True,
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lib",
+        "//api:lib",
+        "//api:thrift_java",
+        "//tools/build_rules/spark:spark-exec",
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.thrift:libthrift"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
+        maven_artifact_with_suffix("io.delta:delta-spark"),
+    ],
+)
+
+scala_library(
     name = "submission_lib",
     srcs = glob(["src/main/scala/ai/chronon/spark/submission/*.scala"]),
     format = select({

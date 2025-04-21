@@ -2,7 +2,7 @@ package ai.chronon.integrations.aws
 
 import ai.chronon.spark.ChrononHudiKryoRegistrator
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

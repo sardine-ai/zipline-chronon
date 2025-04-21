@@ -18,6 +18,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.catalog.TableUtils
 
 class ModularJoinTest extends AnyFlatSpec {
 

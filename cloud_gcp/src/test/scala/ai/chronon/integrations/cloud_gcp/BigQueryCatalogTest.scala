@@ -1,7 +1,7 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.format.{FormatProvider, Iceberg}
-import ai.chronon.spark.{SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.catalog.{FormatProvider, Iceberg, TableUtils}
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.google.cloud.hadoop.fs.gcs.{

@@ -7,7 +7,8 @@ import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange,
 import ai.chronon.orchestration.JoinMergeNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.coalescedJoin
-import ai.chronon.spark.{JoinUtils, TableUtils}
+import ai.chronon.spark.JoinUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_add, date_format, to_date}
 import org.slf4j.{Logger, LoggerFactory}
