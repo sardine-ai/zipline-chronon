@@ -135,6 +135,17 @@ fail_if_bash_failed $?
 
 BACKFILL_JOB_ID=$(cat tmp_backfill.out | grep "$DATAPROC_SUBMITTER_ID_STR"  | cut -d " " -f5)
 
+
+echo -e "${GREEN}<<<<<.....................................CHECK-PARTITIONS.....................................>>>>>\033[0m"
+touch tmp_check_partitions.out
+EXPECTED_PARTITION="2023-11-30"
+if [[ "$ENVIRONMENT" == "canary" ]]; then
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_test/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata 2>&1 | tee tmp_check_partitions.out
+else
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_dev/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata 2>&1 | tee tmp_check_partitions.out
+fi
+fail_if_bash_failed $?
+
 echo -e "${GREEN}<<<<<.....................................GROUP-BY-UPLOAD.....................................>>>>>\033[0m"
 touch tmp_gbu.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
