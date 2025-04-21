@@ -281,24 +281,6 @@ def LabelParts(
     )
     label_metadata = api.MetaData(executionInfo=exec_info)
 
-    for label in labels:
-        if label.groupBy.aggregations is not None:
-            assert len(labels) == 1, "Multiple label joinPart is not supported yet"
-            valid_agg = (
-                len(label.groupBy.aggregations) == 1
-                and label.groupBy.aggregations[0].windows is not None
-                and len(label.groupBy.aggregations[0].windows) == 1
-            )
-            assert valid_agg, (
-                "Too many aggregations or invalid windows found. "
-                "Single aggregation with one window allowed."
-            )
-            valid_time_unit = (
-                label.groupBy.aggregations[0].windows[0].timeUnit
-                == common.TimeUnit.DAYS
-            )
-            assert valid_time_unit, "Label aggregation window unit must be DAYS"
-
     return api.LabelParts(
         labels=labels,
         metaData=label_metadata,
