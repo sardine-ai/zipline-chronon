@@ -43,6 +43,7 @@ import org.apache.spark.sql.{Encoders, Row, SparkSession}
 import org.apache.spark.sql.types.{StructField, StructType, LongType => SparkLongType, StringType => SparkStringType}
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.mutable
 

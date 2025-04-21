@@ -14,30 +14,28 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark
+package ai.chronon.spark.catalog
 
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.format.CreationUtils.alterTablePropertiesSql
-import ai.chronon.spark.format.{CreationUtils, FormatProvider, Iceberg}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
+import org.apache.spark.sql.catalyst.util.QuotingUtils
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.{PrintWriter, StringWriter}
-import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId}
 import scala.collection.{Seq, mutable}
 import scala.util.{Failure, Success, Try}
-import org.apache.spark.sql.catalyst.util.QuotingUtils
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
   * retrieve metadata / configure it appropriately at creation time
@@ -274,7 +272,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     // Run tableProperties
     Option(tableProperties).filter(_.nonEmpty).foreach { props =>
-      sql(alterTablePropertiesSql(tableName, props))
+      sql(CreationUtils.alterTablePropertiesSql(tableName, props))
     }
 
     val finalizedDf = if (autoExpand) {
@@ -564,7 +562,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       sql(expandTableQueryOpt.get)
 
       // set a flag in table props to indicate that this is a dynamic table
-      sql(alterTablePropertiesSql(tableName, Map(Constants.ChrononDynamicTable -> true.toString)))
+      sql(CreationUtils.alterTablePropertiesSql(tableName, Map(Constants.ChrononDynamicTable -> true.toString)))
     }
   }
 

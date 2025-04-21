@@ -23,6 +23,7 @@ import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.test.bootstrap.BootstrapUtils
 import ai.chronon.spark.test.{OnlineUtils, SchemaEvolutionUtils}
 import ai.chronon.spark.utils.MockApi

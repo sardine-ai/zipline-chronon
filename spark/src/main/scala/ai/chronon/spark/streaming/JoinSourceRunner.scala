@@ -24,7 +24,8 @@ import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online._
 import ai.chronon.online.serde._
 import ai.chronon.online.fetcher.Fetcher
-import ai.chronon.spark.{GenericRowHandler, TableUtils}
+import ai.chronon.spark.GenericRowHandler
+import ai.chronon.spark.catalog.TableUtils
 import com.google.gson.Gson
 import org.apache.spark.api.java.function.{MapPartitionsFunction, VoidFunction2}
 import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Encoders, Row, SparkSession}

@@ -4,7 +4,7 @@ import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions.StringOps
 import ai.chronon.online.CatalystUtil
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory

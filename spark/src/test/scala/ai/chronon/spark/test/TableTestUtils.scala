@@ -1,6 +1,6 @@
 package ai.chronon.spark.test
 
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.SparkSession
 
 case class TableTestUtils(override val sparkSession: SparkSession) extends TableUtils(sparkSession: SparkSession) {

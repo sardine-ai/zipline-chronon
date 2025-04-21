@@ -22,7 +22,7 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.TimedKvRdd
 import org.apache.datasketches.kll.KllFloatsSketch
 import org.apache.datasketches.memory.Memory

@@ -20,7 +20,8 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.{Analyzer, Join, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.{Analyzer, Join, SparkSessionBuilder}
 import ai.chronon.spark.test.DataFrameGen
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, lit}
