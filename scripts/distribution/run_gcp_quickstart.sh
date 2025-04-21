@@ -124,58 +124,47 @@ echo -e "${GREEN}<<<<<.....................................COMPILE..............
 zipline compile --chronon-root=$CHRONON_ROOT
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
-touch tmp_backfill.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test 2>&1 | tee tmp_backfill.out
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev 2>&1 | tee tmp_backfill.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev
 fi
 
 fail_if_bash_failed $?
 
-BACKFILL_JOB_ID=$(cat tmp_backfill.out | grep "$DATAPROC_SUBMITTER_ID_STR"  | cut -d " " -f5)
-
-
 echo -e "${GREEN}<<<<<.....................................CHECK-PARTITIONS.....................................>>>>>\033[0m"
-touch tmp_check_partitions.out
 EXPECTED_PARTITION="2023-11-30"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_test/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata 2>&1 | tee tmp_check_partitions.out
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_test/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_dev/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata 2>&1 | tee tmp_check_partitions.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_dev/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata
 fi
 fail_if_bash_failed $?
 
 echo -e "${GREEN}<<<<<.....................................GROUP-BY-UPLOAD.....................................>>>>>\033[0m"
-touch tmp_gbu.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_test --ds  2023-12-01 2>&1 | tee tmp_gbu.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_test --ds  2023-12-01
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev --ds  2023-12-01 2>&1 | tee tmp_gbu.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev --ds  2023-12-01
 fi
 fail_if_bash_failed
-GBU_JOB_ID=$(cat tmp_gbu.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
 
 # Need to wait for upload to finish
 echo -e "${GREEN}<<<<<.....................................UPLOAD-TO-KV.....................................>>>>>\033[0m"
-touch tmp_upload_to_kv.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_test --partition-string=2023-12-01 2>&1 | tee tmp_upload_to_kv.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_test --partition-string=2023-12-01
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_dev --partition-string=2023-12-01 2>&1 | tee tmp_upload_to_kv.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_dev --partition-string=2023-12-01
 fi
 fail_if_bash_failed
-UPLOAD_TO_KV_JOB_ID=$(cat tmp_upload_to_kv.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
 
 echo -e "${GREEN}<<<<< .....................................METADATA-UPLOAD.....................................>>>>>\033[0m"
-touch tmp_metadata_upload.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_test 2>&1 | tee tmp_metadata_upload.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_test
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_dev 2>&1 | tee tmp_metadata_upload.out
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode metadata-upload --conf compiled/group_bys/gcp/purchases.v1_dev
 fi
 fail_if_bash_failed
-METADATA_UPLOAD_JOB_ID=$(cat tmp_metadata_upload.out | grep "$DATAPROC_SUBMITTER_ID_STR" | cut -d " " -f5)
 
 # Need to wait for upload-to-kv to finish
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
