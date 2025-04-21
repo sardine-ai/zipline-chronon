@@ -108,7 +108,7 @@ def _set_join_deps(join):
                     deps.extend(_get_airflow_deps_from_source(source, source_partition_column))
 
     # Update the metadata customJson with dependencies
-    _set_airflow_deps_json(join, deps)
+    _dedupe_and_set_airflow_deps_json(join, deps)
 
 
 def _set_group_by_deps(group_by):
@@ -126,14 +126,16 @@ def _set_group_by_deps(group_by):
         deps.extend(_get_airflow_deps_from_source(source, source_partition_column))
     
     # Update the metadata customJson with dependencies
-    _set_airflow_deps_json(group_by, deps)
+    _dedupe_and_set_airflow_deps_json(group_by, deps)
 
 
-def _set_airflow_deps_json(obj, deps):
+def _dedupe_and_set_airflow_deps_json(obj, deps):
+    unique = [dict(t) for t in {tuple(sorted(d.items())) for d in deps}]
     existing_json = obj.metaData.customJson or "{}"
     json_map = json.loads(existing_json)
-    json_map["airflowDependencies"] = deps
+    json_map["airflowDependencies"] = unique
     obj.metaData.customJson = json.dumps(json_map)
+
 
 def set_airflow_deps(obj):
     """
