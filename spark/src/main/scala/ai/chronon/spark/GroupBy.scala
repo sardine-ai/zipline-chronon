@@ -31,6 +31,7 @@ import ai.chronon.api.{
   TsUtils,
   TimeRange
 }
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._

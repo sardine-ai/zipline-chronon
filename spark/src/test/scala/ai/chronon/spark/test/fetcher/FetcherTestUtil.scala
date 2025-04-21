@@ -1,8 +1,9 @@
 package ai.chronon.spark.test.fetcher
 
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.fetcher.Fetcher.{Request, Response}
 import ai.chronon.online._
+import ai.chronon.online.fetcher.Fetcher.{Request, Response}
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.utils.MockApi
 import ai.chronon.spark.{Join => _, _}
 import org.apache.spark.sql.{DataFrame, SparkSession}

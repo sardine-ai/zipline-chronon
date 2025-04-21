@@ -6,7 +6,7 @@ import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.online.HTTPKVStore
 import ai.chronon.online.KVStore
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.stats.drift.scripts.PrepareData

@@ -21,7 +21,8 @@ import ai.chronon.api
 import ai.chronon.api.{Builders, Operation, TimeUnit, TsUtils, Window}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.DataFrameGen
-import ai.chronon.spark.{Comparison, Join, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.{Comparison, Join, SparkSessionBuilder}
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalatest.flatspec.AnyFlatSpec

@@ -12,7 +12,7 @@ import ai.chronon.observability.{DriftMetric, TileSummary, TileSummarySeries}
 import ai.chronon.online.KVStore
 import ai.chronon.online.stats.DriftStore
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.stats.drift.scripts.PrepareData

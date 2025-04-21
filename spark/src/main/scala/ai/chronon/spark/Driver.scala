@@ -26,7 +26,7 @@ import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, Met
 import ai.chronon.online.{Api, MetadataDirWalker, MetadataEndPoint, TopicChecker}
 import ai.chronon.orchestration.{JoinMergeNode, JoinPartNode}
 import ai.chronon.spark.batch._
-import ai.chronon.spark.format.Format
+import ai.chronon.spark.catalog.{Format, TableUtils}
 import ai.chronon.spark.stats.drift.{Summarizer, SummaryPacker, SummaryUploader}
 import ai.chronon.spark.stats.{CompareBaseJob, CompareJob, ConsistencyJob}
 import ai.chronon.spark.streaming.JoinSourceRunner

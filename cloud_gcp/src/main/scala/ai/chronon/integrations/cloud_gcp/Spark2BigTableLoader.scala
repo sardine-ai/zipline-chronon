@@ -6,7 +6,7 @@ import ai.chronon.api.MetaData
 import ai.chronon.integrations.cloud_gcp.BigTableKVStore.ColumnFamilyQualifierString
 import ai.chronon.integrations.cloud_gcp.BigTableKVStore.ColumnFamilyString
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.udf
 import org.rogach.scallop.ScallopConf

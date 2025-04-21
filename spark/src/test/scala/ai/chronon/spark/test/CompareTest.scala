@@ -19,7 +19,7 @@ package ai.chronon.spark.test
 import ai.chronon.api.TsUtils
 import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.TimedKvRdd
 import ai.chronon.spark.stats.CompareBaseJob
 import org.apache.spark.sql.DataFrame

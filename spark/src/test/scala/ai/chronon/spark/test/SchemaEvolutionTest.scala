@@ -29,7 +29,7 @@ import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.LogFlattenerJob
 import ai.chronon.spark.LoggingSchema
 import ai.chronon.spark.SparkSessionBuilder
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.utils.MockApi
 import org.apache.spark.sql.DataFrame

@@ -1,6 +1,5 @@
-package ai.chronon.spark.format
+package ai.chronon.spark.catalog
 
-import ai.chronon.spark.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, date_format}
 import org.apache.spark.sql.types.StructType

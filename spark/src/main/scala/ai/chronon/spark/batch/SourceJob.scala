@@ -6,7 +6,7 @@ import ai.chronon.api.ScalaJavaConversions.JListOps
 import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.parseSkewKeys
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.{Map, Seq}
 import scala.jdk.CollectionConverters._

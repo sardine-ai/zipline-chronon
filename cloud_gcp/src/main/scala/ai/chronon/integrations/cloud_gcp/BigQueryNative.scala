@@ -1,7 +1,7 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.TableUtils
-import ai.chronon.spark.format.Format
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.catalog.Format
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
 import org.apache.spark.sql.{DataFrame, SparkSession}

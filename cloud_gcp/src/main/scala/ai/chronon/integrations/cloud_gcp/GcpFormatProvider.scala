@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.format.{DefaultFormatProvider, Format, Iceberg}
+
+import ai.chronon.spark.catalog.{DefaultFormatProvider, Format, Iceberg}
 import com.google.cloud.bigquery._
 import com.google.cloud.spark.bigquery.v2.Spark31BigQueryTable
 import org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog

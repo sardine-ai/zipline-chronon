@@ -25,6 +25,7 @@ import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._

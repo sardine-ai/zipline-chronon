@@ -26,6 +26,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions.expr
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.{Seq, immutable, mutable}
 import scala.util.Try

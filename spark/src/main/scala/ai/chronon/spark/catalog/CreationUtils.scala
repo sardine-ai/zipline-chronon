@@ -1,4 +1,4 @@
-package ai.chronon.spark.format
+package ai.chronon.spark.catalog
 
 import org.apache.spark.sql.types.StructType
 

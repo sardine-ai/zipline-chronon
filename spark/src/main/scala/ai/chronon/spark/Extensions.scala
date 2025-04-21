@@ -28,6 +28,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.spark.catalog.TableUtils
 
 import java.util
 import scala.collection.Seq

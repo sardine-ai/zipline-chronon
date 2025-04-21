@@ -22,7 +22,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession

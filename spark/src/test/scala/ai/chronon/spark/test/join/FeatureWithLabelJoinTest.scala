@@ -18,7 +18,8 @@ package ai.chronon.spark.test.join
 
 import ai.chronon.api.Extensions.{LabelPartsOps, MetadataOps}
 import ai.chronon.api._
-import ai.chronon.spark.{Comparison, LabelJoin, SparkSessionBuilder, TableUtils}
+import ai.chronon.spark.{Comparison, LabelJoin, SparkSessionBuilder}
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.test.TestUtils
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions.{max, min}

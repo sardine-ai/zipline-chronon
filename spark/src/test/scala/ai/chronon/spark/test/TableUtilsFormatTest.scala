@@ -6,11 +6,11 @@ import ai.chronon.api.LongType
 import ai.chronon.api.StringType
 import ai.chronon.api.StructField
 import ai.chronon.api.StructType
-import ai.chronon.spark.IncompatibleSchemaException
+import ai.chronon.spark.catalog.IncompatibleSchemaException
 import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.SparkSessionBuilder.FormatTestEnvVar
-import ai.chronon.spark.TableUtils
-import ai.chronon.spark.format.{DefaultFormatProvider, FormatProvider}
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.catalog.{DefaultFormatProvider, FormatProvider}
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.DataFrame

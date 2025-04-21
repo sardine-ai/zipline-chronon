@@ -20,6 +20,7 @@ import ai.chronon.api
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.orchestration.JoinBootstrapNode

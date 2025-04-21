@@ -25,7 +25,7 @@ import ai.chronon.api._
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online.fetcher.DataMetrics
 import ai.chronon.spark.Comparison
-import ai.chronon.spark.TableUtils
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.TimedKvRdd
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame

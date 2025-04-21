@@ -18,18 +18,14 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.ThriftJsonCodec
+import ai.chronon.spark.catalog.TableUtils
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.apache.commons.lang.exception.ExceptionUtils
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.BufferedWriter
-import java.io.File
-import java.io.FileWriter
-import java.nio.file.Files
-import java.nio.file.Paths
-import scala.collection.immutable.Map
+import java.io.{BufferedWriter, File, FileWriter}
+import java.nio.file.{Files, Paths}
 
 object MetadataExporter {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
