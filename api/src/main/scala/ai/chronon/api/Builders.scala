@@ -250,7 +250,7 @@ object Builders {
         groupBy: GroupBy = null,
         keyMapping: Map[String, String] = null,
         prefix: String = null,
-        useLongNames: Boolean = true,
+        useLongNames: Boolean = true
     ): JoinPart = {
       val result = new JoinPart()
       result.setGroupBy(groupBy)

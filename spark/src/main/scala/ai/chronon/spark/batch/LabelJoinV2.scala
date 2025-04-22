@@ -385,7 +385,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
 
     // In this case, since we're joining with the full-schema dataframe,
     // we need to drop the columns that we're attempting to overwrite
-    val cleanLeftDf = valueColumns.foldLeft(leftDf)((df, colName) => df.drop(s"${fullPrefix}_$colName"))
+    val cleanLeftDf = valueColumns.foldLeft(leftDf)((df, colName) => df.drop(s"$fullPrefix$colName"))
 
     val prefixedRight = keyRenamedRight.prefixColumnNames(fullPrefix, valueColumns)
 

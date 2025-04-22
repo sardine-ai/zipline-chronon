@@ -753,7 +753,7 @@ object Extensions {
     lazy val fullPrefix: String = (Option(prefix) ++ Some(groupBy.getMetaData.cleanName)).mkString("_")
 
     // columnPrefix is the "effective" prefix used for output column name generation
-    lazy val gbPrefix: Option[String] = if(joinPart.useLongNames) Some(groupBy.getMetaData.cleanName) else None
+    lazy val gbPrefix: Option[String] = if (joinPart.useLongNames) Some(groupBy.getMetaData.cleanName) else None
     lazy val columnPrefix: String = {
       val raw = (Option(prefix) ++ gbPrefix).mkString("_")
       if (raw.isEmpty) "" else raw + "_"
