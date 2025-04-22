@@ -1,8 +1,8 @@
 package ai.chronon.orchestration.agent.handlers
 
-import ai.chronon.agent.JobStore
+import ai.chronon.agent.{JobExecutor, JobStore}
 import ai.chronon.api.{Job, JobInfo, JobStatusType}
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService}
+import ai.chronon.orchestration.agent.AgentConfig
 import io.vertx.core.{AsyncResult, Handler}
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.{JsonArray, JsonObject}
@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 class JobPollingHandler(
     webClient: WebClient,
     jobStore: JobStore,
-    jobExecutionService: JobExecutionService
+    jobExecutor: JobExecutor
 ) extends Handler[java.lang.Long] {
   private val logger: Logger = LoggerFactory.getLogger(classOf[JobPollingHandler])
 
@@ -98,13 +98,13 @@ class JobPollingHandler(
           jobStore.storeJob(job.jobInfo.getJobId, job)
 
           // Submit job to cluster
-          jobExecutionService.submitJob(job)
+          jobExecutor.submitJob(job)
         } else if (storedJob.get.getJobInfo.currentStatus == JobStatusType.FAILED) {
           // Update the job status
           jobStore.updateJobStatus(job.jobInfo.getJobId, JobStatusType.PENDING)
 
           // Submit job to cluster
-          jobExecutionService.submitJob(job)
+          jobExecutor.submitJob(job)
         }
       }
     } match {

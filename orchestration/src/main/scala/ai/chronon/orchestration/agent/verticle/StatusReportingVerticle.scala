@@ -1,127 +1,50 @@
 package ai.chronon.orchestration.agent.verticle
 
-import ai.chronon.agent.JobStore
-import ai.chronon.agent.cloud_gcp.BigTableKVJobStore
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService}
+import ai.chronon.agent.{JobExecutor, JobStore}
+import ai.chronon.orchestration.agent.AgentConfig
 import ai.chronon.orchestration.agent.handlers.StatusReportingHandler
-import io.vertx.core.{AbstractVerticle, Promise}
-import io.vertx.ext.web.client.WebClient
-import org.slf4j.{Logger, LoggerFactory}
-
-import java.util.concurrent.atomic.AtomicBoolean
+import io.vertx.core.Handler
 
 /** Verticle responsible for reporting job status to the orchestration service.
   *
   * This verticle:
-  * 1. Periodically polls the JobExecutionService for the status of active jobs
+  * 1. Periodically polls the JobExecutor for the status of active jobs
   * 2. Updates the JobStore with the latest status information
   * 3. Reports status changes to the orchestration service
   */
-class StatusReportingVerticle extends AbstractVerticle {
-  private val logger: Logger = LoggerFactory.getLogger(classOf[StatusReportingVerticle])
+class StatusReportingVerticle extends BaseAgentVerticle {
 
-  private var webClient: WebClient = _
-  private var jobStore: JobStore = _
-  private var jobExecutionService: JobExecutionService = _
   private var statusReportingHandler: StatusReportingHandler = _
 
-  private val isReporting = new AtomicBoolean(false)
-  private var reportingTimerId: Long = -1
-
-  override def start(startPromise: Promise[Void]): Unit = {
-    try {
-      logger.info("Starting StatusReportingVerticle")
-
-      // Initialize dependencies
-      initDependencies()
-
-      // Start status reporting
-      startStatusReporting(startPromise)
-    } catch {
-      case e: Exception =>
-        logger.error("Failed to start StatusReportingVerticle", e)
-        startPromise.fail(e)
-    }
-  }
-
-  private def initDependencies(): Unit = {
-    // Create web client for HTTP requests
-    webClient = WebClient.create(vertx)
-
-    // Initialize job store if not already set
-    if (jobStore == null) {
-      jobStore = createJobStore()
-    }
-
-    // Initialize job service if not already set
-    if (jobExecutionService == null) {
-      jobExecutionService = createJobExecutionService()
-    }
-
+  override protected def getVerticleName: String = "StatusReportingVerticle"
+  
+  override protected def getIntervalMs: Long = AgentConfig.statusReportingIntervalMs
+  
+  override protected def initDependencies(): Unit = {
+    super.initDependencies()
+    
     // Initialize status reporting handler
     statusReportingHandler = new StatusReportingHandler(
       webClient,
       jobStore,
-      jobExecutionService
+      jobExecutor
     )
-
-    logger.info(
-      s"Initialized StatusReportingVerticle with reportingIntervalMs=${AgentConfig.statusReportingIntervalMs}")
   }
-
-  private def createJobStore(): JobStore = {
-    BigTableKVJobStore(AgentConfig.gcpProjectId, AgentConfig.bigTableInstanceId)
-  }
-
-  private def createJobExecutionService(): JobExecutionService = {
-    // For now, use the in-memory implementation
-    // In production, this would be replaced with a real implementation
-    JobExecutionService.createInMemory()
-  }
-
-  private def startStatusReporting(startPromise: Promise[Void]): Unit = {
-    if (isReporting.compareAndSet(false, true)) {
-      logger.info("Starting status reporting")
-
-      // Set up periodic status reporting with handler
-      reportingTimerId = vertx.setPeriodic(AgentConfig.statusReportingIntervalMs, statusReportingHandler)
-
-      startPromise.complete()
-    } else {
-      startPromise.complete()
-    }
-  }
-
-  override def stop(stopPromise: Promise[Void]): Unit = {
-    logger.info("Stopping StatusReportingVerticle")
-    isReporting.set(false)
-
-    // Cancel the periodic timer if active
-    if (reportingTimerId != -1) {
-      vertx.cancelTimer(reportingTimerId)
-    }
-
-    // Close resources
-    if (webClient != null) {
-      webClient.close()
-    }
-
-    stopPromise.complete()
-  }
+  
+  override protected def createHandler(): Handler[java.lang.Long] = statusReportingHandler
 }
 
 object StatusReportingVerticle {
-
   /** Creates a new StatusReportingVerticle with custom dependencies.
-    * This method is primarily used for testing to inject mock dependencies.
-    */
+   * This method is primarily used for testing to inject mock dependencies.
+   */
   def createWithDependencies(
       jobStore: JobStore,
-      jobExecutionService: JobExecutionService
+      jobExecutor: JobExecutor
   ): StatusReportingVerticle = {
     val verticle = new StatusReportingVerticle()
     verticle.jobStore = jobStore
-    verticle.jobExecutionService = jobExecutionService
+    verticle.jobExecutor = jobExecutor
     verticle
   }
 }

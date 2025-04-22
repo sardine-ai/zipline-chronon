@@ -161,6 +161,7 @@ maven_repository = repository(
         "com.google.api:gax:2.60.0",
         "com.google.api:gax-grpc:2.60.0",
         "com.google.api.grpc:proto-google-cloud-pubsub-v1:1.120.0",
+        "com.google.api.grpc:proto-google-longrunning-v1:0.1.24",
 
         # Flink
         "org.apache.flink:flink-metrics-dropwizard:1.17.0",

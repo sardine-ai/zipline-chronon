@@ -18,5 +18,9 @@ object AgentConfig {
 
   val gcpProjectId: String = "chronon-dev"
 
+  val gcpRegion: String = "test-region"
+
+  val gcpCustomerId: String = "test-customer"
+
   val bigTableInstanceId: String = "chronon-dev-bigtable"
 }

@@ -1,21 +1,19 @@
 package ai.chronon.orchestration.agent.handlers
 
-import ai.chronon.agent.JobStore
+import ai.chronon.agent.{JobExecutor, JobStore}
 import ai.chronon.api.JobStatusType
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService}
+import ai.chronon.orchestration.agent.AgentConfig
 import io.vertx.core.{AsyncResult, Handler}
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.{HttpResponse, WebClient}
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.util.{Failure, Success, Try}
-
 /** Handler for status reporting operations. */
 class StatusReportingHandler(
     webClient: WebClient,
     jobStore: JobStore,
-    jobExecutionService: JobExecutionService
+    jobExecutor: JobExecutor
 ) extends Handler[java.lang.Long] {
   private val logger: Logger = LoggerFactory.getLogger(classOf[StatusReportingHandler])
 
@@ -39,7 +37,7 @@ class StatusReportingHandler(
       jobs.foreach { job =>
         val jobId = job.jobInfo.getJobId
         val currentStatus = job.jobInfo.getCurrentStatus
-        val latestStatus = jobExecutionService.getJobStatus(jobId)
+        val latestStatus = jobExecutor.getJobStatus(jobId)
 
         if (currentStatus != latestStatus) {
           logger.info(s"Job $jobId status changed from $currentStatus to $latestStatus")
