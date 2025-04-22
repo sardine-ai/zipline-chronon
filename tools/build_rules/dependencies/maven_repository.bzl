@@ -164,6 +164,7 @@ maven_repository = repository(
 
         # Flink
         "org.apache.flink:flink-metrics-dropwizard:1.17.0",
+        "org.apache.flink:flink-metrics-prometheus:1.17.0",
         "org.apache.flink:flink-clients:1.17.0",
         "org.apache.flink:flink-yarn:1.17.0",
         "org.apache.flink:flink-runtime:1.17.0",
