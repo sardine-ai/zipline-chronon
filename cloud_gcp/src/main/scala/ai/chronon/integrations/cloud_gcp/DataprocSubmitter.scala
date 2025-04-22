@@ -145,7 +145,14 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         // override the local dir for rocksdb as the default ends up being too large file name size wise
         "state.backend.rocksdb.localdir" -> "/tmp/flink-state",
         "state.checkpoint-storage" -> "filesystem",
-        "rest.flamegraph.enabled" -> "true"
+        "rest.flamegraph.enabled" -> "true",
+        // wire up prometheus reporter - prom reporter plays well with Google ops agent that can be installed in DataProc
+        // as we can have a couple of containers on a given node, we use a port range
+        "metrics.reporters" -> "prom",
+        "metrics.reporter.prom.factory.class" -> "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
+        "metrics.reporter.prom.host" -> "localhost",
+        "metrics.reporter.prom.port" -> "9250-9260",
+        "metrics.reporter.statsd.interval" -> "60 SECONDS"
       )
 
     val flinkJobBuilder = FlinkJob
