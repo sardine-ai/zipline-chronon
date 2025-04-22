@@ -237,10 +237,10 @@ object GcpApiImpl {
     }
   }
 
-  // create one of these as BT creates very large threadpools (cores * 4) and does them once per admin and data client
+  // override the executor provider to use a custom named thread factory
   lazy val executorProvider: InstantiatingExecutorProvider = InstantiatingExecutorProvider
     .newBuilder()
-    .setExecutorThreadCount(Runtime.getRuntime.availableProcessors())
+    .setExecutorThreadCount(Runtime.getRuntime.availableProcessors() * 4)
     .setThreadFactory(threadFactory)
     .build()
 }
