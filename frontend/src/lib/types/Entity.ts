@@ -141,3 +141,17 @@ export function getEntityConfigFromPath(path: string) {
 	const config = Object.values(entityConfig).find((c) => c.path != null && path.startsWith(c.path));
 	return config;
 }
+
+export function getEntityLabel(name: string = '') {
+	const parts = name.split('.') ?? [];
+
+	// If ends with version, use last 2 parts, else use last
+	const primaryStartIndex = parts[parts.length - 1].startsWith('v')
+		? parts.length - 2
+		: parts.length - 1;
+
+	return {
+		primary: parts.slice(primaryStartIndex).join('.'),
+		secondary: parts.slice(0, primaryStartIndex).join('.')
+	};
+}

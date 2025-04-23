@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { ToggleGroup, ToggleOption } from 'svelte-ux';
 	import { queryParameters } from 'sveltekit-search-params';
 
-	import { Button } from '$lib/components/ui/button';
-	import { DRIFT_METRIC_LABELS, getDriftMetricParamsConfig } from '$lib/util/drift-metric';
+	import { DRIFT_METRIC_LABELS, getDriftMetricParamsConfig } from '$lib/params/drift-metric';
 	import { enumValues, sortFunc } from '@layerstack/utils';
 	import { DriftMetric } from '$lib/types/codegen';
 
@@ -18,15 +18,21 @@
 	);
 </script>
 
-<div class="flex space-x-[1px]">
+<ToggleGroup
+	value={params.metric}
+	on:change={(e) => (params.metric = e.detail.value)}
+	variant="default"
+	gap="px"
+	classes={{
+		options: 'h-8',
+		label:
+			'bg-secondary text-secondary-foreground [&.selected]:text-primary-foreground hover:text-secondary-foreground hover:bg-secondary/80',
+		indicator: 'bg-primary'
+	}}
+>
 	{#each metrics as value}
-		<Button
-			variant={params.metric === value ? 'default' : 'secondary'}
-			size="sm"
-			on:click={() => (params.metric = value)}
-			class="first:rounded-r-none last:rounded-l-none [&:not(:first-child):not(:last-child)]:rounded-none"
-		>
+		<ToggleOption {value}>
 			{DRIFT_METRIC_LABELS[value as DriftMetric]}
-		</Button>
+		</ToggleOption>
 	{/each}
-</div>
+</ToggleGroup>

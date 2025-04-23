@@ -1,13 +1,12 @@
 <script lang="ts">
-	import '../app.css';
 	import { type Snippet } from 'svelte';
-	import { page } from '$app/stores';
+	import { settings, ThemeInit, ThemeSelect } from 'svelte-ux';
+
 	import NavigationSlider from '$lib/components/NavigationSlider.svelte';
-	import NavigationBar from '$lib/components/NavigationBar.svelte';
+	import NavigationMenu from '$lib/components/NavigationMenu.svelte';
 	import BreadcrumbNav from '$lib/components/BreadcrumbNav.svelte';
-	import { entityConfig } from '$lib/types/Entity';
-	import { ModeWatcher } from 'mode-watcher';
-	import ModeSwitcher from '$src/lib/components/ModeSwitcher.svelte';
+
+	import '../app.css';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -17,17 +16,14 @@
 		avatar: ''
 	};
 
-	const breadcrumbs = $derived($page.url.pathname.split('/').filter(Boolean));
+	settings();
 </script>
 
-<ModeWatcher />
+<ThemeInit />
 
 <div class="flex h-screen">
 	<NavigationSlider />
-
-	<!-- Left navigation -->
-	<NavigationBar navItems={Object.values(entityConfig).filter((c) => c.confType != null)} {user} />
-	<!-- Main content -->
+	<NavigationMenu {user} />
 	<main
 		class="flex-1 flex flex-col overflow-y-auto bg-neutral-50 dark:bg-neutral-100 relative rounded-tl-xl"
 		data-testid="app-main"
@@ -39,8 +35,8 @@
 		<div class="px-8 flex-1 flex flex-col">
 			<div class="flex-1 flex flex-col py-5">
 				<div class="flex justify-between items-start mb-3">
-					<BreadcrumbNav {breadcrumbs} />
-					<ModeSwitcher />
+					<BreadcrumbNav />
+					<ThemeSelect />
 				</div>
 				{@render children()}
 			</div>

@@ -28,9 +28,7 @@ export async function load({ fetch, url }) {
 		const items = response[responseKey] ?? [];
 
 		return {
-			items: items,
-			basePath: path,
-			title: entityConfig.label
+			items
 		};
 	} catch (error) {
 		console.error(`Failed to load ${entityConfig.label.toLowerCase()}:`, error);

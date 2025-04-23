@@ -1,4 +1,6 @@
 import { error } from '@sveltejs/kit';
+import { parseISO } from 'date-fns';
+
 import {
 	type IConfListResponseArgs,
 	type IJoinArgs,
@@ -16,9 +18,13 @@ import {
 	type INodeKeyArgs,
 	ConfType,
 	DriftMetric,
-	Status
+	type IJobTrackerRequestArgs
 } from '$lib/types/codegen';
 import { confToLineage } from './utils';
+import { generateLineageTaskInfoData } from '../util/test-data/task-info';
+
+import lineageTasks from '$lib/util/test-data/generated/task-info-lineage.json';
+import { DEFAULT_OFFSET } from '../params/offset';
 
 export type ApiOptions = {
 	base?: string;
@@ -104,7 +110,7 @@ export class Api {
 		name,
 		startTs,
 		endTs,
-		offset = '10h',
+		offset = DEFAULT_OFFSET + 'd',
 		algorithm = DriftMetric.PSI
 	}: IJoinDriftRequestArgs) {
 		const params = new URLSearchParams({
@@ -121,7 +127,7 @@ export class Api {
 		columnName,
 		startTs,
 		endTs,
-		offset = '10h',
+		offset = DEFAULT_OFFSET + 'd',
 		algorithm = DriftMetric.PSI
 	}: IJoinDriftRequestArgs) {
 		const params = new URLSearchParams({
@@ -168,9 +174,15 @@ export class Api {
 		// return this.#send<ILineageResponseArgs>(`join/${name}/lineage?${params.toString()}`);
 
 		// TODO: Remove this once we have the API endpoint
-		return this.getJoin(name!).then((join) => {
-			return confToLineage(join);
-		});
+		const join = await this.getJoin(name!);
+
+		// TODO: Replacing source temporarily for demo purposes
+		if (join.metaData?.name === 'risk.user_transactions.txn_join') {
+			// @ts-expect-error Ignore
+			join.left.events.table = 'data.txn_events';
+		}
+
+		return confToLineage(join);
 	}
 
 	async getGroupByLineage({
@@ -180,9 +192,8 @@ export class Api {
 		// direction
 	}: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// TODO: Remove this once we have the API endpoint
-		return this.getGroupBy(name!).then((groupBy) => {
-			return confToLineage(groupBy);
-		});
+		const groupBy = await this.getGroupBy(name!);
+		return confToLineage(groupBy);
 	}
 
 	async getModelLineage({
@@ -192,79 +203,73 @@ export class Api {
 		// direction
 	}: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// TODO: Remove this once we have the API endpoint
-		return this.getModel(name!).then((model) => {
-			return confToLineage(model);
-		});
+		const model = await this.getModel(name!);
+		return confToLineage(model);
 	}
 
 	async getStagingQueryLineage({ name }: ILineageRequestArgs): Promise<ILineageResponseArgs> {
 		// TODO: Remove this once we have the API endpoint
-		return this.getStagingQuery(name!).then((stagingQuery) => {
-			return confToLineage(stagingQuery);
-		});
+		const stagingQuery = await this.getStagingQuery(name!);
+		return confToLineage(stagingQuery);
 	}
 
-	async getJobTrackerData(
-		node: INodeKeyArgs,
-		daysToGenerate: number = 60
-	): Promise<IJobTrackerResponseArgs> {
-		const startDate = new Date('2024-01-01');
-		const endDateLimit = new Date(startDate);
-		endDateLimit.setDate(startDate.getDate() + daysToGenerate - 1);
-		const tasks: IJobTrackerResponseArgs['tasks'] = [];
+	async getJobTrackerData({
+		name,
+		dateRange
+	}: IJobTrackerRequestArgs): Promise<IJobTrackerResponseArgs> {
+		// const startDate = new Date(dateRange?.startDate ?? '2024-01-01');
+		// const endDate = new Date(dateRange?.endDate ?? '2024-02-28');
 
-		let currentDate = new Date(startDate);
-		while (currentDate <= endDateLimit) {
-			const taskDuration = 2 + Math.floor(Math.random() * 3);
-			const endDate = new Date(currentDate);
-			endDate.setDate(endDate.getDate() + taskDuration);
+		// TODO: Remove generated task data once we have the API endpoint
+		const node: INodeKeyArgs = {
+			name: name
+			// TODO: way to determine this just based on the name?
+			// logicalType: LogicalType.JOIN,
+			// physicalType: PhysicalType.JOIN
+		};
+		// const tasks: ITaskInfoArgs[] = generateTaskInfoData({
+		// 	startDate,
+		// 	endDate
+		// });
 
-			// If this task would go beyond our limit, adjust it to end at the limit
-			if (endDate > endDateLimit) {
-				endDate.setTime(endDateLimit.getTime());
-			}
-
-			const statusValues = Object.values(Status).filter((v): v is number => typeof v === 'number');
-
-			tasks.push({
-				status: statusValues[Math.floor(Math.random() * statusValues.length)],
-				submittedTs: currentDate.getTime(),
-				dateRange: {
-					startDate: currentDate.toISOString().split('T')[0],
-					endDate: endDate.toISOString().split('T')[0]
-				}
-			});
-
-			// Add overlapping task with 30% chance, but only if we're not at the end
-			if (Math.random() < 0.3 && endDate < endDateLimit) {
-				const overlapStart = new Date(currentDate);
-				overlapStart.setDate(overlapStart.getDate() + 1);
-				const overlapEnd = new Date(endDate);
-				overlapEnd.setDate(overlapEnd.getDate() + 1);
-
-				// Ensure overlap end date doesn't exceed limit
-				if (overlapEnd > endDateLimit) {
-					overlapEnd.setTime(endDateLimit.getTime());
-				}
-
-				tasks.push({
-					status: statusValues[Math.floor(Math.random() * statusValues.length)],
-					submittedTs: overlapStart.getTime(),
-					dateRange: {
-						startDate: overlapStart.toISOString().split('T')[0],
-						endDate: overlapEnd.toISOString().split('T')[0]
-					}
-				});
-			}
-
-			currentDate = new Date(endDate);
-			currentDate.setDate(currentDate.getDate() + 1);
-		}
+		// @ts-expect-error Ignore
+		const tasks = lineageTasks[name ?? 'Unknown'] ?? [];
 
 		return {
-			tasks,
-			mainNode: node
+			mainNode: node,
+			tasks
 		};
+	}
+
+	// TODO: Temporary until we have orchestrator with API endpoint
+	async getLineageJobTrackerData({
+		name,
+		dateRange
+	}: IJobTrackerRequestArgs): Promise<ReturnType<typeof generateLineageTaskInfoData>> {
+		const startDate = parseISO(dateRange?.startDate ?? '2024-01-01');
+		const endDate = parseISO(dateRange?.endDate ?? '2024-02-28');
+
+		// Get lineage based on node name
+		let lineage: ILineageResponseArgs | null = null;
+		try {
+			if (name?.includes('join')) {
+				lineage = await this.getJoinLineage({ name });
+			} else if (name?.includes('group')) {
+				lineage = await this.getGroupByLineage({ name });
+			}
+		} catch (e) {
+			// Unable to get lineage unable (common for group by)
+			// console.error(`Unable to get lineage for ${name}: ${e}`);
+		}
+
+		const lineageTasks = generateLineageTaskInfoData({
+			node: lineage?.mainNode ?? { name },
+			lineage,
+			startDate,
+			endDate
+		});
+
+		return lineageTasks;
 	}
 
 	async #send<Data = unknown>(resource: string, options?: ApiRequestOptions) {

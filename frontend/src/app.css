@@ -24,8 +24,9 @@
 	--color-border: var(--color-neutral-300);
 	--color-input: hsl(0 0% 89.8%);
 
-	--color-primary: var(--color-primary-300);
-	--color-primary-foreground: var(--color-primary-800);
+	/* Defined below */
+	/* --color-primary: var(--color-primary-300);
+	--color-primary-foreground: var(--color-primary-800); */
 
 	--color-secondary: hsl(0 0% 96.1%);
 	--color-secondary-foreground: hsl(0 0% 9%);

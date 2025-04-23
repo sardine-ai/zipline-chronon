@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { SvelteHTMLElements } from 'svelte/elements';
-	import { transformContext } from 'layerchart';
+	import { getTransformContext } from 'layerchart';
+	import { Tooltip } from 'svelte-ux';
 
 	import IconArrowUturnLeft from '~icons/heroicons/arrow-uturn-left';
 	import IconMagnifyingGlassPlus from '~icons/heroicons/magnifying-glass-plus';
 	import IconMagnifyingGlassMinus from '~icons/heroicons/magnifying-glass-minus';
 
 	import { Button } from '$lib/components/ui/button';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import { cls } from '@layerstack/tailwind';
 
 	type Placement =
@@ -38,7 +38,7 @@
 		...restProps
 	}: Props = $props();
 
-	const transform = transformContext();
+	const transform = getTransformContext();
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -65,45 +65,26 @@
 	}}
 >
 	{#if show.includes('zoomIn')}
-		<Tooltip>
-			<TooltipTrigger>
-				<Button
-					on:click={() => transform.zoomIn()}
-					size="icon"
-					variant="ghost"
-					class="rounded-full"
-				>
-					<IconMagnifyingGlassPlus width={size} height={size} />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent side="left">Zoom in</TooltipContent>
+		<Tooltip title="Zoom in" placement="left" offset={2}>
+			<Button on:click={() => transform.zoomIn()} size="icon" variant="ghost" class="rounded-full">
+				<IconMagnifyingGlassPlus width={size} height={size} />
+			</Button>
 		</Tooltip>
 	{/if}
 
 	{#if show.includes('zoomOut')}
-		<Tooltip>
-			<TooltipTrigger>
-				<Button
-					on:click={() => transform.zoomOut()}
-					size="icon"
-					variant="ghost"
-					class="rounded-full"
-				>
-					<IconMagnifyingGlassMinus width={size} height={size} />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent side="left">Zoom out</TooltipContent>
+		<Tooltip title="Zoom out" placement="left" offset={2}>
+			<Button on:click={() => transform.zoomOut()} size="icon" variant="ghost" class="rounded-full">
+				<IconMagnifyingGlassMinus width={size} height={size} />
+			</Button>
 		</Tooltip>
 	{/if}
 
 	{#if show.includes('reset')}
-		<Tooltip>
-			<TooltipTrigger>
-				<Button on:click={() => transform.reset()} size="icon" variant="ghost" class="rounded-full">
-					<IconArrowUturnLeft width={size} height={size} />
-				</Button>
-			</TooltipTrigger>
-			<TooltipContent side="left">Reset</TooltipContent>
+		<Tooltip title="Reset" placement="left" offset={2}>
+			<Button on:click={() => transform.reset()} size="icon" variant="ghost" class="rounded-full">
+				<IconArrowUturnLeft width={size} height={size} />
+			</Button>
 		</Tooltip>
 	{/if}
 </div>

@@ -5,7 +5,7 @@
 
 	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
 
-	import { getSortParamKey, type SortContext, getSortParamsConfig } from '$lib/util/sort';
+	import { getSortParamKey, type SortContext, getSortParamsConfig } from '$lib/params/sort';
 
 	let {
 		context = 'drift',

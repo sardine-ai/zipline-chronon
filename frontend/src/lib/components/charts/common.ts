@@ -22,6 +22,9 @@ export const colors = [
 	'#BF50D3',
 	'#CB5587'
 ];
+export const successColor = colors[1];
+export const dangerColor = colors[6];
+
 export const textClass = 'text-xs text-neutral-700';
 export const svgTextClass = 'text-xs fill-neutral-700';
 
@@ -44,7 +47,7 @@ export const tooltipProps = {
 	root: {
 		variant: 'none',
 		class: 'text-sm/4 bg-neutral-200 border border-neutral-400 rounded-md shadow-lg',
-		motion: false
+		motion: { type: 'none' }
 	},
 	header: {
 		class: 'text-neutral-700 bg-neutral-300 px-3 py-1'
@@ -57,11 +60,12 @@ export const tooltipProps = {
 		classes: {
 			label: 'text-neutral-800'
 		}
-	}
+	},
+	hideTotal: true
 } satisfies NonNullable<ComponentProps<typeof LineChart>['props']>['tooltip'];
 
 export const highlightProps = {
-	motion: false,
+	motion: { type: 'none' },
 	points: {
 		r: 8,
 		strokeWidth: 4

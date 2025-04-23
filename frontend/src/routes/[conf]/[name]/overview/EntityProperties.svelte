@@ -1,27 +1,20 @@
 <script lang="ts">
-	import { ExpansionPanel } from 'svelte-ux';
+	import { ExpansionPanel, Table } from 'svelte-ux';
+	import { keys } from '@layerstack/utils';
+	import { tableCell } from '@layerstack/svelte-table';
 
 	import {
-		Table,
-		TableBody,
-		TableCell,
-		TableHead,
-		TableHeader,
-		TableRow
-	} from '$src/lib/components/ui/table/index.js';
-	import {
 		TimeUnit,
-		type IAggregationArgs,
 		type ISourceArgs,
 		type IMetaDataArgs,
 		Operation,
 		ModelType,
 		DataKind
 	} from '$src/lib/types/codegen';
-	import { keys } from '@layerstack/utils';
+
 	import Self from './EntityProperties.svelte';
-	import TrueFalseBadge from '$src/lib/components/TrueFalseBadge.svelte';
 	import { getEntityConfig, type EntityData } from '$src/lib/types/Entity';
+	import PropertyList from '$src/lib/components/PropertyList.svelte';
 
 	const {
 		entity,
@@ -42,13 +35,6 @@
 		'production'
 	] satisfies (keyof IMetaDataArgs)[];
 
-	const AGGREGATION_PROPERTIES = [
-		'inputColumn',
-		'operation',
-		'argMap',
-		'windows'
-	] satisfies (keyof IAggregationArgs)[];
-
 	type SourceProperties = keyof NonNullable<
 		ISourceArgs['entities'] & ISourceArgs['events'] & ISourceArgs['joinSource']
 	>;
@@ -66,84 +52,35 @@
 			{#if metaDataLabel}
 				<div class="font-semibold py-2">{metaDataLabel}</div>
 			{/if}
-			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableBody>
-						{#each METADATA_PROPERTIES as prop}
-							{#if prop in entity.metaData}
-								<TableRow class="border-neutral-400">
-									<TableCell width="200px">
-										<span class="text-muted-foreground">{prop}</span>
-									</TableCell>
-									<TableCell>
-										{#if prop === 'online' || prop === 'production'}
-											<TrueFalseBadge isTrue={entity.metaData[prop] ?? false} />
-										{:else if prop === 'executionInfo'}
-											{entity.metaData[prop]?.['scheduleCron']}
-										{:else}
-											{entity.metaData[prop]}
-										{/if}
-									</TableCell>
-								</TableRow>
-							{/if}
-						{/each}
-					</TableBody>
-				</Table>
-			</div>
+
+			<PropertyList
+				items={METADATA_PROPERTIES.filter((p) => p in (entity.metaData ?? {})).map((p) => ({
+					label: p,
+					value:
+						p === 'executionInfo' ? entity.metaData?.[p]?.['scheduleCron'] : entity.metaData?.[p],
+					type: ['online', 'production'].includes(p) ? 'boolean' : 'string'
+				}))}
+			/>
 		</div>
 	{/if}
 
 	{#if 'modelType' in entity}
 		<div>
 			<div class="font-semibold py-2">Model</div>
-			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableBody>
-						<TableRow class="border-neutral-400">
-							<TableCell width="200px">
-								<span class="text-muted-foreground">modelType</span>
-							</TableCell>
-							<TableCell>
-								{ModelType[entity.modelType ?? 0]}
-							</TableCell>
-						</TableRow>
-
-						<TableRow class="border-neutral-400">
-							<TableCell width="200px">
-								<span class="text-muted-foreground">modelParams</span>
-							</TableCell>
-							<TableCell>
-								{#each Object.entries(entity.modelParams ?? {}) as [key, value]}
-									<div>
-										<span class="text-muted-foreground">{key}:</span>
-										{value}
-									</div>
-								{/each}
-							</TableCell>
-						</TableRow>
-
-						<TableRow class="border-neutral-400">
-							<TableCell width="200px">
-								<span class="text-muted-foreground">outputSchema</span>
-							</TableCell>
-							<TableCell>
-								<div>
-									<span class="text-muted-foreground">name:</span>
-									{entity.outputSchema?.name}
-								</div>
-								<div>
-									<span class="text-muted-foreground">kind:</span>
-									{DataKind[entity.outputSchema?.kind ?? 0]}
-								</div>
-								<div>
-									<span class="text-muted-foreground">params:</span>
-									{entity.outputSchema?.params?.map((p) => `${p.name}: ${p.dataType}`).join(', ')}
-								</div>
-							</TableCell>
-						</TableRow>
-					</TableBody>
-				</Table>
-			</div>
+			<PropertyList
+				items={[
+					{ label: 'modelType', value: ModelType[entity.modelType ?? 0] },
+					{ label: 'modelParams', value: entity.modelParams },
+					{
+						label: 'outputSchema',
+						value: {
+							name: entity.outputSchema?.name,
+							kind: DataKind[entity.outputSchema?.kind ?? 0],
+							params: entity.outputSchema?.params?.map((p) => `${p.name}: ${p.dataType}`)
+						}
+					}
+				]}
+			/>
 		</div>
 	{/if}
 
@@ -193,80 +130,83 @@
 	{#if entity?.rowIds}
 		<div>
 			<div class="font-semibold py-2">Row IDs</div>
-			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableBody>
-						{#each entity?.rowIds as rowId}
-							<TableRow class="border-neutral-400">
-								<TableCell>
-									{rowId}
-								</TableCell>
-							</TableRow>
-						{/each}
-					</TableBody>
-				</Table>
-			</div>
+			<PropertyList
+				items={entity?.rowIds?.map((column) => ({
+					value: column
+				}))}
+			/>
 		</div>
 	{/if}
 
 	{#if entity?.keyColumns}
 		<div>
 			<div class="font-semibold py-2">Key Columns</div>
-			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableBody>
-						{#each entity?.keyColumns as keyColumn}
-							<TableRow class="border-neutral-400">
-								<TableCell>
-									{keyColumn}
-								</TableCell>
-							</TableRow>
-						{/each}
-					</TableBody>
-				</Table>
-			</div>
+			<PropertyList
+				items={entity?.keyColumns?.map((column) => ({
+					value: column
+				}))}
+			/>
 		</div>
 	{/if}
 
 	{#if entity?.aggregations}
 		<div>
 			<div class="font-semibold py-2">Aggregations</div>
+
 			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableHeader>
-						<TableRow>
-							<TableHead>Input Column</TableHead>
-							<TableHead>Operation</TableHead>
-							<TableHead>Arg Map</TableHead>
-							<TableHead>Windows</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{#each entity.aggregations as agg}
-							<TableRow class="border-neutral-400">
-								{#each AGGREGATION_PROPERTIES as prop}
-									<TableCell>
-										{#if prop === 'operation'}
-											{Operation[agg.operation ?? 0]}
-										{:else if prop === 'windows'}
-											{agg.windows
-												?.map((w) => `${w.length} ${TimeUnit[w.timeUnit ?? 0].toLowerCase()}`)
-												.join(', ')}
-										{:else if prop === 'argMap'}
-											{#each Object.entries(agg?.[prop] ?? {}) as [key, value]}
+				<Table
+					data={entity.aggregations}
+					columns={[
+						{
+							name: 'inputColumn',
+							header: 'Input Column'
+						},
+						{
+							name: 'operation',
+							header: 'Operation',
+							value: (d) => Operation[d.operation ?? 0]
+						},
+						{
+							name: 'argMap',
+							header: 'Arg Map'
+						},
+						{
+							name: 'windows',
+							header: 'Windows',
+							value: (d) =>
+								d.windows
+									?.map((w) => `${w.length} ${TimeUnit[w.timeUnit ?? 0].toLowerCase()}`)
+									.join(', ')
+						}
+					]}
+					classes={{
+						table: 'text-sm',
+						th: 'border-r border-b px-3 py-2 text-muted-foreground'
+					}}
+				>
+					<tbody slot="data" let:columns let:data let:getCellValue let:getCellContent>
+						{#each data ?? [] as rowData, rowIndex}
+							<tr class="border-b last:border-b-0">
+								{#each columns as column (column.name)}
+									{@const value = getCellValue(column, rowData, rowIndex)}
+									<td
+										use:tableCell={{ column, rowData, rowIndex, tableData: data }}
+										class="border-r px-3 py-1"
+									>
+										{#if column.name === 'argMap'}
+											{#each Object.entries(value) as [key, v]}
 												<div>
 													<span class="text-muted-foreground">{key}:</span>
-													{value}
+													{v}
 												</div>
 											{/each}
 										{:else}
-											{agg[prop]}
+											{getCellContent(column, rowData, rowIndex)}
 										{/if}
-									</TableCell>
-								{/each}
-							</TableRow>
+									</td>{/each}
+							</tr>
 						{/each}
-					</TableBody>
+					</tbody>
 				</Table>
 			</div>
 		</div>
@@ -285,59 +225,35 @@
 	})}
 		<div>
 			<div class="font-semibold py-2">Tables & Events</div>
-			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableBody>
-						{#each SOURCE_PROPERTIES as prop}
-							{#if prop in entity}
-								<TableRow class="border-neutral-400">
-									<TableCell width="200px">
-										<span class="text-muted-foreground">{prop}</span>
-									</TableCell>
-									<TableCell>
-										{entity[prop]}
-									</TableCell>
-								</TableRow>
-							{/if}
-						{/each}
-					</TableBody>
-				</Table>
-			</div>
+			<PropertyList
+				items={SOURCE_PROPERTIES.filter((p) => p in entity).map((p) => ({
+					label: p,
+					value: entity[p]
+				}))}
+			/>
 		</div>
 	{/if}
 
 	{#if entity?.query}
 		<div>
 			<div class="font-semibold py-2">Query</div>
-			<div class="border border-neutral-400 rounded-md">
-				<Table density="compact">
-					<TableBody>
-						{#each ['selects', 'wheres', 'startPartition', 'endPartition', 'timeColumn', 'setup', 'mutationTimeColumn', 'reversalColumn'] as prop}
-							{#if prop in entity.query}
-								<TableRow class="border-neutral-400">
-									<TableCell width="200px" class="text-muted-foreground">
-										{prop}
-									</TableCell>
-									<TableCell>
-										{#if prop === 'selects'}
-											{#each Object.entries(entity.query.selects ?? {}) as [key, value]}
-												<div>
-													<span class="text-muted-foreground">{key}:</span>
-													{value}
-												</div>
-											{/each}
-										{:else if typeof entity.query === 'object'}
-											{entity.query[prop]}
-										{:else}
-											{entity.query}
-										{/if}
-									</TableCell>
-								</TableRow>
-							{/if}
-						{/each}
-					</TableBody>
-				</Table>
-			</div>
+			<PropertyList
+				items={[
+					'selects',
+					'wheres',
+					'startPartition',
+					'endPartition',
+					'timeColumn',
+					'setup',
+					'mutationTimeColumn',
+					'reversalColumn'
+				]
+					.filter((p) => p in (entity.query ?? {}))
+					.map((p) => ({
+						label: p,
+						value: typeof entity.query === 'object' ? entity.query[p] : null
+					}))}
+			/>
 		</div>
 	{/if}
 

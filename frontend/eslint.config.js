@@ -17,10 +17,14 @@ export default [
 				...globals.browser,
 				...globals.node
 			}
+		},
+		rules: {
+			'@typescript-eslint/no-unused-vars': 'warn',
+			'@typescript-eslint/no-explicit-any': 'warn'
 		}
 	},
 	{
-		files: ['**/*.svelte'],
+		files: ['**/*.svelte', '**/*.svelte.ts'],
 		languageOptions: {
 			parserOptions: {
 				parser: ts.parser
@@ -28,12 +32,13 @@ export default [
 		},
 		rules: {
 			'@typescript-eslint/no-unused-vars': [
-				'error',
+				'warn',
 				{
 					argsIgnorePattern: '^_',
 					varsIgnorePattern: '^\\$\\$(Props|Events|Slots|Generic)$'
 				}
-			]
+			],
+			'svelte/require-each-key': 'off'
 		}
 	},
 	{

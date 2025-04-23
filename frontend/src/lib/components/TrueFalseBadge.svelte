@@ -1,15 +1,18 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
+	import { cls } from '@layerstack/tailwind';
 
 	let {
-		isTrue
+		value
 	}: {
-		isTrue: boolean;
+		value: boolean | null | undefined;
 	} = $props();
 </script>
 
-{#if isTrue}
-	<Badge variant="success">True</Badge>
-{:else}
-	<Badge variant="outline">False</Badge>
-{/if}
+<span
+	class={cls(
+		'inline-block w-12 text-xs text-center font-medium py-0.5 border rounded-md',
+		value ? 'bg-success-50 text-success-500 border-transparent' : 'border-neutral-500'
+	)}
+>
+	{value ? 'True' : 'False'}
+</span>

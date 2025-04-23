@@ -34,17 +34,17 @@ export function confToLineage(conf: EntityData, excludeLeft = false): ILineageRe
 		conf: conf as ILogicalNodeArgs
 	});
 	const confParents: INodeKeyArgs[] = [];
-	connections.set(confNodeKey, { parents: confParents });
+	connections.set(confNodeKey, { parents: confParents, children: [] });
 
 	/*
 	 * Join
 	 */
 	if ('left' in conf && conf.left && !excludeLeft) {
-		processSource(conf.left, infoMap, connections, confParents);
+		processSource(conf.left, infoMap, connections, confParents, confNodeKey);
 	}
 
 	if ('joinParts' in conf && conf.joinParts) {
-		processJoinParts(conf.joinParts, infoMap, connections, confParents);
+		processJoinParts(conf.joinParts, infoMap, connections, confParents, confNodeKey);
 	}
 
 	/*
@@ -52,7 +52,7 @@ export function confToLineage(conf: EntityData, excludeLeft = false): ILineageRe
 	 */
 	if ('sources' in conf && conf.sources) {
 		for (const source of conf.sources ?? []) {
-			processSource(source, infoMap, connections, confParents);
+			processSource(source, infoMap, connections, confParents, confNodeKey);
 		}
 	}
 
@@ -60,7 +60,7 @@ export function confToLineage(conf: EntityData, excludeLeft = false): ILineageRe
 	 * Model
 	 */
 	if ('source' in conf && conf.source) {
-		processSource(conf.source, infoMap, connections, confParents);
+		processSource(conf.source, infoMap, connections, confParents, confNodeKey);
 	}
 
 	return {
@@ -76,7 +76,8 @@ function processJoinParts(
 	joinParts: IJoinPartArgs[],
 	infoMap: NonNullable<INodeGraphArgs['infoMap']>,
 	connections: NonNullable<INodeGraphArgs['connections']>,
-	parents: INodeKeyArgs[]
+	parents: INodeKeyArgs[],
+	parentNode: INodeKeyArgs
 ) {
 	for (const jp of joinParts ?? []) {
 		if (jp.groupBy) {
@@ -90,10 +91,10 @@ function processJoinParts(
 			parents.push(groupByNodeKey);
 
 			const groupByParents: INodeKeyArgs[] = [];
-			connections.set(groupByNodeKey, { parents: groupByParents });
+			connections.set(groupByNodeKey, { parents: groupByParents, children: [parentNode] });
 
 			for (const source of jp.groupBy?.sources ?? []) {
-				processSource(source, infoMap, connections, groupByParents);
+				processSource(source, infoMap, connections, groupByParents, groupByNodeKey);
 			}
 		}
 	}
@@ -103,7 +104,8 @@ function processSource(
 	source: ISourceArgs,
 	infoMap: NonNullable<INodeGraphArgs['infoMap']>,
 	connections: NonNullable<INodeGraphArgs['connections']>,
-	parents: INodeKeyArgs[]
+	parents: INodeKeyArgs[],
+	parentNode: INodeKeyArgs
 ) {
 	if (source.entities) {
 		const entityNodeKey: INodeKeyArgs = {
@@ -114,6 +116,7 @@ function processSource(
 			conf: source.entities as ILogicalNodeArgs
 		});
 		parents.push(entityNodeKey);
+		connections.set(entityNodeKey, { parents: [], children: [parentNode] });
 	}
 
 	if (source.events) {
@@ -125,6 +128,7 @@ function processSource(
 			conf: source.events as ILogicalNodeArgs
 		});
 		parents.push(eventNodeKey);
+		connections.set(eventNodeKey, { parents: [], children: [parentNode] });
 	}
 
 	if (source.joinSource) {
@@ -136,12 +140,18 @@ function processSource(
 			conf: source.joinSource as ILogicalNodeArgs
 		});
 		parents.push(joinNodeKey);
+		connections.set(joinNodeKey, { parents: [], children: [parentNode] });
 
 		// Transfer connections and infoMap from joinSource join to root join graph
 		const joinSourceLineage = confToLineage(source.joinSource.join as IJoinArgs);
 
 		for (const [key, nodeConnections] of joinSourceLineage.nodeGraph?.connections ?? []) {
-			connections.set(key === joinSourceLineage.mainNode ? joinNodeKey : key, nodeConnections);
+			const newKey = key === joinSourceLineage.mainNode ? joinNodeKey : key;
+			const existingConnections = connections.get(newKey) || { parents: [], children: [] };
+			connections.set(newKey, {
+				parents: [...(existingConnections.parents ?? []), ...(nodeConnections.parents || [])],
+				children: [...(existingConnections.children ?? []), ...(nodeConnections.children || [])]
+			});
 		}
 
 		for (const [key, info] of joinSourceLineage.nodeGraph?.infoMap ?? []) {
