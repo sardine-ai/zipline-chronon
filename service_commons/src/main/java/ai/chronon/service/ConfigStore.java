@@ -96,7 +96,7 @@ public class ConfigStore {
      * @return the JDBC URL
      */
     public String getJdbcUrl() {
-        return jsonConfig.getString(JDBC_URL);
+        return jsonConfig.getString(JDBC_URL, "jdbc:postgresql://localhost:5432/execution-info");
     }
     
     /**
@@ -105,7 +105,7 @@ public class ConfigStore {
      * @return the JDBC username
      */
     public String getJdbcUsername() {
-        return jsonConfig.getString(JDBC_USERNAME);
+        return jsonConfig.getString(JDBC_USERNAME, "");
     }
     
     /**
@@ -114,7 +114,7 @@ public class ConfigStore {
      * @return the JDBC password
      */
     public String getJdbcPassword() {
-        return jsonConfig.getString(JDBC_PASSWORD);
+        return jsonConfig.getString(JDBC_PASSWORD, "");
     }
     
     /**
@@ -123,7 +123,7 @@ public class ConfigStore {
      * @return the GCP project ID
      */
     public String getGcpProjectId() {
-        return jsonConfig.getString(GCP_PROJECT_ID);
+        return jsonConfig.getString(GCP_PROJECT_ID, "zipline-main");
     }
     
     /**

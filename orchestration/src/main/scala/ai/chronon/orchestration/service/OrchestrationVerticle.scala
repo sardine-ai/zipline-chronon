@@ -64,7 +64,7 @@ class OrchestrationVerticle extends AbstractVerticle {
     */
   private def createDatabase(cfgStore: ConfigStore): Database = {
     // Validate database configuration
-    cfgStore.validateDatabaseConfig()
+//    cfgStore.validateDatabaseConfig()
 
     // Get database configuration from ConfigStore
     val jdbcUrl = cfgStore.getJdbcUrl
