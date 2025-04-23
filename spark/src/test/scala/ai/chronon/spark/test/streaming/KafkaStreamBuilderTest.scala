@@ -17,8 +17,8 @@
 package ai.chronon.spark.test.streaming
 
 import ai.chronon.online.TopicInfo
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.streaming.KafkaStreamBuilder
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 

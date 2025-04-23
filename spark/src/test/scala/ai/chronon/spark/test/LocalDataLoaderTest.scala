@@ -15,7 +15,8 @@
  */
 
 package ai.chronon.spark.test
-import ai.chronon.spark.SparkSessionBuilder
+
+import ai.chronon.spark.submission.SparkSessionBuilder
 import com.google.common.io.Files
 import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
