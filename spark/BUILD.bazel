@@ -79,8 +79,15 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
+        "//aggregator:lib",
         "//api:lib",
         "//api:thrift_java",
+        "//tools/build_rules/spark:spark-exec",
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
+        maven_artifact("org.apache.datasketches:datasketches-memory"),
+        maven_artifact("org.apache.datasketches:datasketches-java"),
     ],
 )
 

@@ -1,6 +1,6 @@
 package ai.chronon.spark.test.udafs
 
-import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.udafs.ApproxDistinct
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row

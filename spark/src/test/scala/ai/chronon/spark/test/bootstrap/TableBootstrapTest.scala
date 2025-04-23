@@ -21,8 +21,8 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._

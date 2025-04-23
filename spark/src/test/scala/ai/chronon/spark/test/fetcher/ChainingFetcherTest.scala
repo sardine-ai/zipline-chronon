@@ -43,9 +43,12 @@ import scala.collection.Seq
 import scala.concurrent.ExecutionContext
 
 class ChainingFetcherTest extends AnyFlatSpec {
+
+  import ai.chronon.spark.submission
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "ChainingFetcherTest"
-  val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
+  val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())

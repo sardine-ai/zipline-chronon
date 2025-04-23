@@ -18,8 +18,8 @@ package ai.chronon.spark.test
 
 import ai.chronon.api.PartitionSpec
 import ai.chronon.api.PartitionRange
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec

@@ -1,6 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.SparkSession

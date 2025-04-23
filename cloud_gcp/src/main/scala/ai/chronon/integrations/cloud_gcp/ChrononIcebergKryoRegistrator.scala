@@ -1,5 +1,5 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.ChrononKryoRegistrator
+import ai.chronon.spark.submission.ChrononKryoRegistrator
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.serializers.JavaSerializer
 import org.apache.iceberg.gcp.gcs.GCSFileIO
