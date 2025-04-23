@@ -40,9 +40,12 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class DerivationTest extends AnyFlatSpec {
+
+  import ai.chronon.spark.submission
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = SparkSessionBuilder.build("DerivationTest", local = true)
+  val spark: SparkSession = submission.SparkSessionBuilder.build("DerivationTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 

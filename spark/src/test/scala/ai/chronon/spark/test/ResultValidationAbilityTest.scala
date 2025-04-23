@@ -21,8 +21,8 @@ import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.PartitionSpec
 import ai.chronon.spark.Driver.OfflineSubcommand
 import ai.chronon.spark.Driver.ResultValidationAbility
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

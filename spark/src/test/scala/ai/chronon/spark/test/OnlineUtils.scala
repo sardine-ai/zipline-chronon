@@ -29,10 +29,10 @@ import ai.chronon.online.serde.AvroConversions
 import ai.chronon.online.KVStore
 import ai.chronon.spark.GenericRowHandler
 import ai.chronon.spark.GroupByUpload
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.streaming.GroupBy
 import ai.chronon.spark.streaming.JoinSourceRunner
+import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.utils.InMemoryStream
 import ai.chronon.spark.utils.MockApi

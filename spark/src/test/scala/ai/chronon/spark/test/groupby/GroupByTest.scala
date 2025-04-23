@@ -49,7 +49,9 @@ import scala.collection.mutable
 
 class GroupByTest extends AnyFlatSpec {
 
-  lazy val spark: SparkSession = SparkSessionBuilder.build("GroupByTest", local = true)
+  import ai.chronon.spark.submission
+
+  lazy val spark: SparkSession = submission.SparkSessionBuilder.build("GroupByTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 

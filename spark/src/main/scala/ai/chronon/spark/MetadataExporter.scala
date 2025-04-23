@@ -28,6 +28,9 @@ import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Files, Paths}
 
 object MetadataExporter {
+
+  import ai.chronon.spark.submission.SparkSessionBuilder
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   val GROUPBY_PATH_SUFFIX = "/group_bys"

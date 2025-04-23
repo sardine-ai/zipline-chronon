@@ -48,7 +48,9 @@ object TestRow {
 
 class JoinTest extends AnyFlatSpec {
 
-  val spark: SparkSession = SparkSessionBuilder.build("JoinTest", local = true)
+  import ai.chronon.spark.submission
+
+  val spark: SparkSession = submission.SparkSessionBuilder.build("JoinTest", local = true)
   private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -1096,10 +1098,12 @@ class JoinTest extends AnyFlatSpec {
   }
 
   it should "test skip bloom filter join backfill" in {
+    import ai.chronon.spark.submission
     val testSpark: SparkSession =
-      SparkSessionBuilder.build("JoinTest",
-                                local = true,
-                                additionalConfig = Some(Map("spark.chronon.backfill.bloomfilter.threshold" -> "100")))
+      submission.SparkSessionBuilder.build("JoinTest",
+                                           local = true,
+                                           additionalConfig =
+                                             Some(Map("spark.chronon.backfill.bloomfilter.threshold" -> "100")))
     val testTableUtils = TableUtils(testSpark)
     val viewsSchema = List(
       Column("user", api.StringType, 10000),

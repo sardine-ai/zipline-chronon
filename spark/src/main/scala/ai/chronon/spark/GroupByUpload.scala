@@ -199,6 +199,7 @@ object GroupByUpload {
           tableUtilsOpt: Option[TableUtils] = None,
           showDf: Boolean = false,
           jsonPercent: Int = 1): Unit = {
+    import ai.chronon.spark.submission.SparkSessionBuilder
     val context = Metrics.Context(Metrics.Environment.GroupByUpload, groupByConf)
     val startTs = System.currentTimeMillis()
     val tableUtils: TableUtils =

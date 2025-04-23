@@ -14,9 +14,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory
 
 class LabelJoinV2Test extends AnyFlatSpec {
+
+  import ai.chronon.spark.submission
+
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = SparkSessionBuilder.build("LabelJoinV2Test", local = true)
+  val spark: SparkSession = submission.SparkSessionBuilder.build("LabelJoinV2Test", local = true)
 
   private val tableUtils = TableTestUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())

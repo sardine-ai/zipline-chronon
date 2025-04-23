@@ -25,9 +25,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.LoggerFactory
 
 class LabelJoinTest extends AnyFlatSpec {
+
+  import ai.chronon.spark.submission
+
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = SparkSessionBuilder.build("LabelJoinTest", local = true)
+  val spark: SparkSession = submission.SparkSessionBuilder.build("LabelJoinTest", local = true)
 
   private val namespace = "label_join"
   private val tableName = "test_label_join"

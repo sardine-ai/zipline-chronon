@@ -39,7 +39,9 @@ class SimpleAddUDF extends UDF {
 
 class TableUtilsTest extends AnyFlatSpec {
 
-  lazy val spark: SparkSession = SparkSessionBuilder.build("TableUtilsTest", local = true)
+  import ai.chronon.spark.submission
+
+  lazy val spark: SparkSession = submission.SparkSessionBuilder.build("TableUtilsTest", local = true)
   private val tableUtils = TableTestUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 

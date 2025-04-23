@@ -5,10 +5,10 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.{EngineType, ParametricMacro, PartitionRange, ThriftJsonCodec}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.SparkSessionBuilder
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
-import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
