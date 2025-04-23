@@ -154,7 +154,7 @@ object Driver {
       // We use the KryoSerializer for group bys and joins since we serialize the IRs.
       // But since staging query is fairly freeform, it's better to stick to the java serializer.
       val session =
-        SparkSessionBuilder.build(
+        submission.SparkSessionBuilder.build(
           subcommandName(),
           local = isLocal,
           localWarehouseLocation = localWarehouseLocation.toOption,
@@ -776,7 +776,7 @@ object Driver {
 
     def run(args: Args): Unit = {
       // session needs to be initialized before we can call find file.
-      implicit val session: SparkSession = SparkSessionBuilder.buildStreaming(args.debug())
+      implicit val session: SparkSession = submission.SparkSessionBuilder.buildStreaming(args.debug())
 
       val confFile = findFile(args.confPath())
       val groupByConf = confFile

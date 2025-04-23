@@ -18,52 +18,23 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.DataModel
 import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
-import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataType, PartitionRange}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataModel, DataType, PartitionRange}
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Driver.parseConf
 import ai.chronon.spark.Extensions.QuerySparkOps
-import org.apache.datasketches.common.ArrayOfStringsSerDe
-import org.apache.datasketches.frequencies.{ErrorType, ItemsSketch}
-import org.apache.datasketches.memory.Memory
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, Row, types}
-import org.apache.spark.sql.types.{StringType, StructType}
-import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.spark.submission.ItemSketchSerializable
+import org.apache.datasketches.frequencies.ErrorType
 import ai.chronon.spark.catalog.TableUtils
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{StringType, StructType}
+import org.apache.spark.sql.{DataFrame, Row, types}
+import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.{Seq, immutable, mutable}
 import scala.collection.mutable.ListBuffer
-
-//@SerialVersionUID(3457890987L)
-//class ItemSketchSerializable(var mapSize: Int) extends ItemsSketch[String](mapSize) with Serializable {}
-
-class ItemSketchSerializable extends Serializable {
-  var sketch: ItemsSketch[String] = null
-  def init(mapSize: Int): ItemSketchSerializable = {
-    sketch = new ItemsSketch[String](mapSize)
-    this
-  }
-
-  // necessary for serialization
-  private def writeObject(out: java.io.ObjectOutputStream): Unit = {
-    val serDe = new ArrayOfStringsSerDe
-    val bytes = sketch.toByteArray(serDe)
-    out.writeInt(bytes.size)
-    out.writeBytes(new String(bytes))
-  }
-
-  private def readObject(input: java.io.ObjectInputStream): Unit = {
-    val size = input.readInt()
-    val bytes = new Array[Byte](size)
-    input.read(bytes)
-    val serDe = new ArrayOfStringsSerDe
-    sketch = ItemsSketch.getInstance[String](Memory.wrap(bytes), serDe)
-  }
-}
+import scala.collection.{Seq, immutable, mutable}
 
 class Analyzer(tableUtils: TableUtils,
                conf: Any,

@@ -5,11 +5,11 @@ import ai.chronon.api.Constants
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.online.HTTPKVStore
 import ai.chronon.online.KVStore
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.stats.drift.scripts.PrepareData
+import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.utils.MockApi
 import org.rogach.scallop.ScallopConf

@@ -23,8 +23,8 @@ import ai.chronon.api.IntType
 import ai.chronon.api.LongType
 import ai.chronon.api.StringType
 import ai.chronon.spark.LocalTableExporter
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.test.LocalTableExporterTest.spark
 import ai.chronon.spark.test.LocalTableExporterTest.tmpDir
 import com.google.common.io.Files

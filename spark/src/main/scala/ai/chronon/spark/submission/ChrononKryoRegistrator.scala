@@ -13,15 +13,15 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package ai.chronon.spark
+package ai.chronon.spark.submission
 
 import ai.chronon.aggregator.base.FrequentItemType.{DoubleItemType, LongItemType, StringItemType}
 import ai.chronon.aggregator.base.FrequentItemsFriendly._
 import ai.chronon.aggregator.base.{FrequentItemType, FrequentItemsFriendly, ItemsSketchIR}
-import com.esotericsoftware.kryo.{Kryo, Serializer}
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.esotericsoftware.kryo.serializers.ClosureSerializer
-import org.apache.datasketches.common.ArrayOfItemsSerDe
+import com.esotericsoftware.kryo.{Kryo, Serializer}
+import org.apache.datasketches.common.{ArrayOfItemsSerDe, ArrayOfStringsSerDe}
 import org.apache.datasketches.cpc.CpcSketch
 import org.apache.datasketches.frequencies.ItemsSketch
 import org.apache.datasketches.memory.Memory
@@ -42,6 +42,34 @@ class CpcSketchKryoSerializer extends Serializer[CpcSketch] {
     CpcSketch.heapify(bytes)
   }
 }
+
+//@SerialVersionUID(3457890987L)
+//class ItemSketchSerializable(var mapSize: Int) extends ItemsSketch[String](mapSize) with Serializable {}
+
+class ItemSketchSerializable extends Serializable {
+  var sketch: ItemsSketch[String] = null
+  def init(mapSize: Int): ItemSketchSerializable = {
+    sketch = new ItemsSketch[String](mapSize)
+    this
+  }
+
+  // necessary for serialization
+  private def writeObject(out: java.io.ObjectOutputStream): Unit = {
+    val serDe = new ArrayOfStringsSerDe
+    val bytes = sketch.toByteArray(serDe)
+    out.writeInt(bytes.size)
+    out.writeBytes(new String(bytes))
+  }
+
+  private def readObject(input: java.io.ObjectInputStream): Unit = {
+    val size = input.readInt()
+    val bytes = new Array[Byte](size)
+    input.read(bytes)
+    val serDe = new ArrayOfStringsSerDe
+    sketch = ItemsSketch.getInstance[String](Memory.wrap(bytes), serDe)
+  }
+}
+
 class ItemsSketchKryoSerializer[T] extends Serializer[ItemsSketchIR[T]] {
   def getSerializer(sketchType: FrequentItemType.Value): ArrayOfItemsSerDe[T] = {
     val serializer = sketchType match {

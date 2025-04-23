@@ -1,8 +1,8 @@
 package ai.chronon.integrations.aws
 
-import ai.chronon.spark.ChrononHudiKryoRegistrator
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.ChrononHudiKryoRegistrator
+import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals

@@ -22,7 +22,8 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
-import ai.chronon.spark.{GroupByUpload, SparkSessionBuilder}
+import ai.chronon.spark.submission.SparkSessionBuilder
+import ai.chronon.spark.GroupByUpload
 import ai.chronon.spark.test.{DataFrameGen, OnlineUtils}
 import ai.chronon.spark.utils.MockApi
 import com.google.gson.Gson
