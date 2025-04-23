@@ -14,14 +14,12 @@
  *    limitations under the License.
  */
 
-package ai.chronon.spark
+package ai.chronon.spark.submission
 
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.{Level, LogManager}
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
-import org.apache.spark.SPARK_VERSION
-import org.apache.spark.SparkConf
+import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.SQLConf
 import org.slf4j.LoggerFactory
@@ -104,7 +102,7 @@ object SparkSessionBuilder {
           "spark.chronon.table_write.format" -> "delta"
         )
         (configMap, "ai.chronon.spark.ChrononDeltaLakeKryoRegistrator")
-      case _ => (Map.empty, "ai.chronon.spark.ChrononKryoRegistrator")
+      case _ => (Map.empty, "ai.chronon.spark.submission.ChrononKryoRegistrator")
     }
 
     // tack on format configs with additional configs
@@ -184,7 +182,7 @@ object SparkSessionBuilder {
       .builder()
       .config("spark.sql.session.timeZone", "UTC")
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-      .config("spark.kryo.registrator", "ai.chronon.spark.ChrononKryoRegistrator")
+      .config("spark.kryo.registrator", "ai.chronon.spark.submission.ChrononKryoRegistrator")
       .config("spark.kryoserializer.buffer.max", "2000m")
       .config("spark.kryo.referenceTracking", "false")
       .config("spark.sql.legacy.timeParserPolicy", "LEGACY")

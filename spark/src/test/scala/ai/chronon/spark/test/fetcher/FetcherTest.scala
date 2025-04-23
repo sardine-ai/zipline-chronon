@@ -52,9 +52,11 @@ import scala.io.Source
 
 class FetcherTest extends AnyFlatSpec {
 
+  import ai.chronon.spark.submission
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val sessionName = "FetcherTest"
-  val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
+  val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
   private val topic = "test_topic"
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))

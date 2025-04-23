@@ -35,13 +35,18 @@ import scala.collection.JavaConverters.asScalaBufferConverter
 object StreamingTest {
   def buildInMemoryKvStore(): InMemoryKvStore = {
     InMemoryKvStore.build("StreamingTest",
-                          { () => TableUtils(SparkSessionBuilder.build("StreamingTest", local = true)) })
+                          { () =>
+                            import ai.chronon.spark.submission
+                            TableUtils(submission.SparkSessionBuilder.build("StreamingTest", local = true))
+                          })
   }
 }
 
 class StreamingTest extends AnyFlatSpec {
 
-  val spark: SparkSession = SparkSessionBuilder.build("StreamingTest", local = true)
+  import ai.chronon.spark.submission
+
+  val spark: SparkSession = submission.SparkSessionBuilder.build("StreamingTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
   val namespace = "streaming_test"
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))

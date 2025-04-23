@@ -22,7 +22,9 @@ import ai.chronon.spark.catalog.TableUtils
 
 class ModularJoinTest extends AnyFlatSpec {
 
-  val spark: SparkSession = SparkSessionBuilder.build("ModularJoinTest", local = true)
+  import ai.chronon.spark.submission
+
+  val spark: SparkSession = submission.SparkSessionBuilder.build("ModularJoinTest", local = true)
   private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())

@@ -13,11 +13,11 @@ import ai.chronon.observability.TileDriftSeries
 import ai.chronon.observability.TileSummarySeries
 import ai.chronon.online.KVStore
 import ai.chronon.online.stats.DriftStore
-import ai.chronon.spark.SparkSessionBuilder
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.stats.drift.scripts.PrepareData
+import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.utils.InMemoryKvStore
 import ai.chronon.spark.utils.MockApi
 import org.rogach.scallop.ScallopConf
