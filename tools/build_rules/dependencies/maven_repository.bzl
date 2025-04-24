@@ -26,7 +26,7 @@ maven_repository = repository(
         "com.novocode:junit-interface:0.11",
         "org.mockito:mockito-core:5.12.0",
         "org.objenesis:objenesis:3.4",
-        "org.eclipse.jetty:jetty-util:9.4.57.v20241219",  # latest version that is still built on jdk 11 and not 17.
+        "org.eclipse.jetty:jetty-util:12.0.16",
 
         # Unit testing - for scala 2.12
         "org.scalatestplus:mockito-3-4_2.12:3.2.10.0",
