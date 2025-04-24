@@ -32,9 +32,9 @@ test_deps = _CIRCE_DEPS + _SCALA_TEST_DEPS + [
     maven_artifact("com.amazonaws:DynamoDBLocal"),
     maven_artifact("software.amazon.awssdk:auth"),
     maven_artifact("software.amazon.awssdk:identity-spi"),
-    maven_artifact("software.amazon.awssdk:url-connection-client"),
-    maven_artifact_with_suffix("com.chuusai:shapeless"),
-    maven_artifact_with_suffix("org.typelevel:cats-core"),
+    scala_artifact_with_suffix("com.chuusai:shapeless"),
+    scala_artifact_with_suffix("org.typelevel:cats-core"),
+    scala_artifact_with_suffix("org.mockito:mockito-scala"),
 ]
 
 scala_test_suite(

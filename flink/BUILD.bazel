@@ -29,6 +29,7 @@ scala_library(
         maven_artifact("org.apache.hadoop:hadoop-yarn-api"),
         maven_artifact("org.apache.commons:commons-lang3"),
         maven_artifact("org.apache.flink:flink-metrics-prometheus"),
+        maven_artifact("org.eclipse.jetty:jetty-util"),
     ],
 )
 
