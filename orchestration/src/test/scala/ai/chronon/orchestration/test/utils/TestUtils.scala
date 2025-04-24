@@ -1,12 +1,10 @@
 package ai.chronon.orchestration.test.utils
 
-import ai.chronon.api.{TableDependency, TableInfo, TimeUnit, Window}
+import ai.chronon.api.{Job, JobInfo, JobStatusType, TableDependency, TableInfo, TimeUnit, Window}
 import ai.chronon.orchestration.persistence.NodeTableDependency
-import ai.chronon.orchestration.temporal.{Branch, NodeName}
+import ai.chronon.orchestration.temporal.NodeName
 
 object TestUtils {
-
-  private val testBranch = Branch("test")
 
   // Helper method to create a TableDependency for testing
   def createTestTableDependency(

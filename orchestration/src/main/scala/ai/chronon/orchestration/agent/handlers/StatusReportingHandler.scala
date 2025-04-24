@@ -1,7 +1,8 @@
 package ai.chronon.orchestration.agent.handlers
 
+import ai.chronon.agent.JobStore
 import ai.chronon.api.JobStatusType
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, KVStore}
+import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService}
 import io.vertx.core.{AsyncResult, Handler}
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
@@ -13,7 +14,7 @@ import scala.util.{Failure, Success, Try}
 /** Handler for status reporting operations. */
 class StatusReportingHandler(
     webClient: WebClient,
-    kvStore: KVStore,
+    jobStore: JobStore,
     jobExecutionService: JobExecutionService
 ) extends Handler[java.lang.Long] {
   private val logger: Logger = LoggerFactory.getLogger(classOf[StatusReportingHandler])
@@ -31,8 +32,8 @@ class StatusReportingHandler(
     logger.debug("Checking for job status updates")
 
     try {
-      // Get all jobs from KV store
-      val jobs = kvStore.getAllJobs
+      // Get all active jobs from job store
+      val jobs = jobStore.getAllActiveJobs
 
       // For each job, check current status and report if changed
       jobs.foreach { job =>
@@ -43,8 +44,8 @@ class StatusReportingHandler(
         if (currentStatus != latestStatus) {
           logger.info(s"Job $jobId status changed from $currentStatus to $latestStatus")
 
-          // Update status in KV store
-          kvStore.updateJobStatus(jobId, latestStatus)
+          // Update status in job store
+          jobStore.updateJobStatus(jobId, latestStatus)
 
           // Report status change to orchestration service
           reportStatusToOrchestration(jobId, latestStatus)

@@ -7,6 +7,7 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = _VERTX_DEPS + [
+        "//agent:lib",
         "//api:lib",
         "//api:thrift_java",
         "//online:lib",
@@ -42,6 +43,7 @@ test_deps = _VERTX_DEPS + _SCALA_TEST_DEPS + [
     "//api:lib",
     "//online:lib",
     "//service_commons:lib",
+    "//agent:lib",
     maven_artifact_with_suffix("org.apache.logging.log4j:log4j-api-scala"),
     maven_artifact("org.apache.logging.log4j:log4j-core"),
     maven_artifact("org.apache.logging.log4j:log4j-api"),

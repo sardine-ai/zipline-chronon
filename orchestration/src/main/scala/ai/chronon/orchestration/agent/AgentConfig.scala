@@ -15,4 +15,8 @@ object AgentConfig {
   val statusReportingIntervalMs: Long = 5 * 60 * 1000
 
   val topicId: String = "test-topic"
+
+  val gcpProjectId: String = "chronon-dev"
+
+  val bigTableInstanceId: String = "chronon-dev-bigtable"
 }

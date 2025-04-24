@@ -1,6 +1,8 @@
 package ai.chronon.orchestration.agent.verticle
 
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, KVStore}
+import ai.chronon.agent.JobStore
+import ai.chronon.agent.cloud_gcp.BigTableKVJobStore
+import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService}
 import ai.chronon.orchestration.agent.handlers.JobPollingHandler
 import io.vertx.core.{AbstractVerticle, Promise}
 import io.vertx.ext.web.client.WebClient
@@ -20,7 +22,7 @@ class JobPollingVerticle extends AbstractVerticle {
   private val logger: Logger = LoggerFactory.getLogger(classOf[JobPollingVerticle])
 
   private var webClient: WebClient = _
-  private var kvStore: KVStore = _
+  private var jobStore: JobStore = _
   private var jobExecutionService: JobExecutionService = _
   private var jobPollingHandler: JobPollingHandler = _
 
@@ -47,9 +49,9 @@ class JobPollingVerticle extends AbstractVerticle {
     // Create web client for HTTP requests
     webClient = WebClient.create(vertx)
 
-    // Initialize KV store if not already set
-    if (kvStore == null) {
-      kvStore = createKVStore()
+    // Initialize job store if not already set
+    if (jobStore == null) {
+      jobStore = createJobStore()
     }
 
     // Initialize job service if not already set
@@ -60,15 +62,15 @@ class JobPollingVerticle extends AbstractVerticle {
     // Initialize polling handler
     jobPollingHandler = new JobPollingHandler(
       webClient,
-      kvStore,
+      jobStore,
       jobExecutionService
     )
 
     logger.info(s"Initialized JobPollingVerticle with pollingIntervalMs=${AgentConfig.pollingIntervalMs}")
   }
 
-  private def createKVStore(): KVStore = {
-    KVStore.createInMemory()
+  private def createJobStore(): JobStore = {
+    BigTableKVJobStore(AgentConfig.gcpProjectId, AgentConfig.bigTableInstanceId)
   }
 
   private def createJobExecutionService(): JobExecutionService = {
@@ -97,7 +99,7 @@ class JobPollingVerticle extends AbstractVerticle {
       vertx.cancelTimer(pollingTimerId)
     }
 
-    // Close web client
+    // Close resources
     if (webClient != null) {
       webClient.close()
     }
@@ -112,11 +114,11 @@ object JobPollingVerticle {
     * This method is primarily used for testing to inject mock dependencies.
     */
   def createWithDependencies(
-      kvStore: KVStore,
+      jobStore: JobStore,
       jobExecutionService: JobExecutionService
   ): JobPollingVerticle = {
     val verticle = new JobPollingVerticle()
-    verticle.kvStore = kvStore
+    verticle.jobStore = jobStore
     verticle.jobExecutionService = jobExecutionService
     verticle
   }

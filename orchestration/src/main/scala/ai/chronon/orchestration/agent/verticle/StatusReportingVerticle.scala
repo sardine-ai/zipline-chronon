@@ -1,6 +1,8 @@
 package ai.chronon.orchestration.agent.verticle
 
-import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService, KVStore}
+import ai.chronon.agent.JobStore
+import ai.chronon.agent.cloud_gcp.BigTableKVJobStore
+import ai.chronon.orchestration.agent.{AgentConfig, JobExecutionService}
 import ai.chronon.orchestration.agent.handlers.StatusReportingHandler
 import io.vertx.core.{AbstractVerticle, Promise}
 import io.vertx.ext.web.client.WebClient
@@ -12,14 +14,14 @@ import java.util.concurrent.atomic.AtomicBoolean
   *
   * This verticle:
   * 1. Periodically polls the JobExecutionService for the status of active jobs
-  * 2. Updates the KVStore with the latest status information
+  * 2. Updates the JobStore with the latest status information
   * 3. Reports status changes to the orchestration service
   */
 class StatusReportingVerticle extends AbstractVerticle {
   private val logger: Logger = LoggerFactory.getLogger(classOf[StatusReportingVerticle])
 
   private var webClient: WebClient = _
-  private var kvStore: KVStore = _
+  private var jobStore: JobStore = _
   private var jobExecutionService: JobExecutionService = _
   private var statusReportingHandler: StatusReportingHandler = _
 
@@ -46,9 +48,9 @@ class StatusReportingVerticle extends AbstractVerticle {
     // Create web client for HTTP requests
     webClient = WebClient.create(vertx)
 
-    // Initialize KV store if not already set
-    if (kvStore == null) {
-      kvStore = createKVStore()
+    // Initialize job store if not already set
+    if (jobStore == null) {
+      jobStore = createJobStore()
     }
 
     // Initialize job service if not already set
@@ -59,7 +61,7 @@ class StatusReportingVerticle extends AbstractVerticle {
     // Initialize status reporting handler
     statusReportingHandler = new StatusReportingHandler(
       webClient,
-      kvStore,
+      jobStore,
       jobExecutionService
     )
 
@@ -67,10 +69,8 @@ class StatusReportingVerticle extends AbstractVerticle {
       s"Initialized StatusReportingVerticle with reportingIntervalMs=${AgentConfig.statusReportingIntervalMs}")
   }
 
-  private def createKVStore(): KVStore = {
-    // For now, use the in-memory implementation
-    // In production, this would be replaced with a real implementation
-    KVStore.createInMemory()
+  private def createJobStore(): JobStore = {
+    BigTableKVJobStore(AgentConfig.gcpProjectId, AgentConfig.bigTableInstanceId)
   }
 
   private def createJobExecutionService(): JobExecutionService = {
@@ -101,7 +101,7 @@ class StatusReportingVerticle extends AbstractVerticle {
       vertx.cancelTimer(reportingTimerId)
     }
 
-    // Close web client
+    // Close resources
     if (webClient != null) {
       webClient.close()
     }
@@ -116,11 +116,11 @@ object StatusReportingVerticle {
     * This method is primarily used for testing to inject mock dependencies.
     */
   def createWithDependencies(
-      kvStore: KVStore,
+      jobStore: JobStore,
       jobExecutionService: JobExecutionService
   ): StatusReportingVerticle = {
     val verticle = new StatusReportingVerticle()
-    verticle.kvStore = kvStore
+    verticle.jobStore = jobStore
     verticle.jobExecutionService = jobExecutionService
     verticle
   }
