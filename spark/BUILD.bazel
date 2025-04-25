@@ -58,7 +58,6 @@ scala_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        ":lib",
         "//api:lib",
         "//api:thrift_java",
         "//tools/build_rules/spark:spark-exec",
@@ -67,6 +66,7 @@ scala_library(
         maven_artifact("org.apache.logging.log4j:log4j-api"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact_with_suffix("io.delta:delta-spark"),
+        maven_artifact("org.apache.hadoop:hadoop-client-api"),
     ],
 )
 
