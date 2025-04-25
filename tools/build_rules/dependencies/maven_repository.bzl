@@ -217,10 +217,6 @@ maven_repository = repository(
 
         # Slick - for scala 2.13
         "com.typesafe.slick:slick_2.13:3.4.1",
-
-        # Temporal
-        "io.temporal:temporal-sdk:1.28.0",
-        "io.temporal:temporal-testing:1.28.0",
     ],
     excluded_artifacts = [
         "org.apache.beam:beam-sdks-java-io-hadoop-common",
