@@ -211,12 +211,6 @@ maven_repository = repository(
         "io.circe:circe-generic_2.13:0.14.9",
         "io.circe:circe-parser_2.13:0.14.9",
         "com.chuusai:shapeless_2.13:2.3.12",
-
-        # Slick - for scala 2.12
-        "com.typesafe.slick:slick_2.12:3.3.3",
-
-        # Slick - for scala 2.13
-        "com.typesafe.slick:slick_2.13:3.4.1",
     ],
     excluded_artifacts = [
         "org.apache.beam:beam-sdks-java-io-hadoop-common",
