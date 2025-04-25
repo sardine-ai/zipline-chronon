@@ -1,13 +1,12 @@
 <script lang="ts">
 	import type { SvelteHTMLElements } from 'svelte/elements';
 	import { getTransformContext } from 'layerchart';
-	import { Tooltip } from 'svelte-ux';
+	import { Button, Tooltip } from 'svelte-ux';
 
 	import IconArrowUturnLeft from '~icons/heroicons/arrow-uturn-left';
 	import IconMagnifyingGlassPlus from '~icons/heroicons/magnifying-glass-plus';
 	import IconMagnifyingGlassMinus from '~icons/heroicons/magnifying-glass-minus';
 
-	import { Button } from '$lib/components/ui/button';
 	import { cls } from '@layerstack/tailwind';
 
 	type Placement =
@@ -66,7 +65,7 @@
 >
 	{#if show.includes('zoomIn')}
 		<Tooltip title="Zoom in" placement="left" offset={2}>
-			<Button on:click={() => transform.zoomIn()} size="icon" variant="ghost" class="rounded-full">
+			<Button on:click={() => transform.zoomIn()} iconOnly>
 				<IconMagnifyingGlassPlus width={size} height={size} />
 			</Button>
 		</Tooltip>
@@ -74,7 +73,7 @@
 
 	{#if show.includes('zoomOut')}
 		<Tooltip title="Zoom out" placement="left" offset={2}>
-			<Button on:click={() => transform.zoomOut()} size="icon" variant="ghost" class="rounded-full">
+			<Button on:click={() => transform.zoomOut()} iconOnly>
 				<IconMagnifyingGlassMinus width={size} height={size} />
 			</Button>
 		</Tooltip>
@@ -82,7 +81,7 @@
 
 	{#if show.includes('reset')}
 		<Tooltip title="Reset" placement="left" offset={2}>
-			<Button on:click={() => transform.reset()} size="icon" variant="ghost" class="rounded-full">
+			<Button on:click={() => transform.reset()} iconOnly>
 				<IconArrowUturnLeft width={size} height={size} />
 			</Button>
 		</Tooltip>

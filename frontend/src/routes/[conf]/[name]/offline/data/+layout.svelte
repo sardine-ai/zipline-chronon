@@ -8,7 +8,7 @@
 	import { page } from '$app/state';
 
 	import CollapsibleSection from '$lib/components/CollapsibleSection.svelte';
-	import { Separator } from '$lib/components/ui/separator';
+	import Separator from '$lib/components/Separator.svelte';
 	import PropertyList from '$lib/components/PropertyList.svelte';
 
 	import JobsStatusLegend from './JobsStatusLegend.svelte';

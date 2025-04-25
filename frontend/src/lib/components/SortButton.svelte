@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { type ComponentProps } from 'svelte';
 	import { queryParameters } from 'sveltekit-search-params';
-
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from 'svelte-ux';
 
 	import IconArrowsUpDown from '~icons/heroicons/arrows-up-down-16-solid';
 
@@ -12,7 +12,7 @@
 		...restProps
 	}: {
 		context?: SortContext;
-	} = $props();
+	} & ComponentProps<Button> = $props();
 
 	const sortKey = $derived(getSortParamKey(context));
 	const params = $derived(
@@ -24,7 +24,7 @@
 	}
 </script>
 
-<Button variant="secondary" size="sm" icon="leading" on:click={toggleSort} {...restProps}>
+<Button on:click={toggleSort} {...restProps}>
 	<IconArrowsUpDown />
 	Sort {params[sortKey] === 'asc' ? 'A-Z' : 'Z-A'}
 </Button>

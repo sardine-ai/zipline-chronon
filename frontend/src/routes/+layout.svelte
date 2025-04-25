@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { type Snippet } from 'svelte';
 	import { settings, ThemeInit, ThemeSelect } from 'svelte-ux';
+	import { cls } from '@layerstack/tailwind';
 
 	import NavigationSlider from '$lib/components/NavigationSlider.svelte';
 	import NavigationMenu from '$lib/components/NavigationMenu.svelte';
@@ -16,7 +17,23 @@
 		avatar: ''
 	};
 
-	settings();
+	settings({
+		components: {
+			NavItem: {
+				classes: {
+					root: cls(
+						'text-sm font-medium gap-2 hover:bg-neutral-300 px-2 py-0.5 rounded-md my-px',
+						'focus-visible:outline-hidden focus-visible:ring-1',
+						'[&>svg]:text-surface-content/40'
+					),
+					active: cls(
+						'text-primary-800 bg-primary-300 hover:bg-primary-400',
+						'[&>svg]:text-primary-800'
+					)
+				}
+			}
+		}
+	});
 </script>
 
 <ThemeInit />

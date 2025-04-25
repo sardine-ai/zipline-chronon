@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
+	import { Button } from 'svelte-ux';
 	import IconBookOpen from '~icons/heroicons/book-open-16-solid';
 
 	let { title, learnHref, children }: { title: string; learnHref?: string; children?: Snippet } =
@@ -15,9 +15,13 @@
 		{/if}
 
 		{#if learnHref}
-			<Button variant="outline" href={learnHref} target="_blank" icon="leading" size="sm">
-				<IconBookOpen class="text-neutral-800" />
-				<span class="text-neutral-800">Learn</span>
+			<Button
+				href={learnHref}
+				target="_blank"
+				class="border border-surface-content/10 rounded-md text-xs text-surface-content/70"
+			>
+				<IconBookOpen class="text-surface-content/70" />
+				Learn
 			</Button>
 		{/if}
 	</div>

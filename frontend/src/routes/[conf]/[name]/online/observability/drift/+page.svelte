@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Drawer } from 'svelte-ux';
+	import { Button, Drawer } from 'svelte-ux';
 	import { BarChart, PieChart, type SeriesData } from 'layerchart';
 	import type { DomainType } from 'layerchart/utils/scales.svelte';
 	import { entries, sort } from '@layerstack/utils';
@@ -29,7 +29,6 @@
 	import { page } from '$app/state';
 	import { pushState } from '$app/navigation';
 	import { transformSeries } from '$src/lib/components/charts/utils';
-	import { Button } from '$src/lib/components/ui/button';
 	import IconXMark from '~icons/heroicons/x-mark';
 	import { generateTileSummarySeriesData } from '$src/lib/util/test-data/tile-series.js';
 	import DriftMetricToggle from '$src/lib/components/DriftMetricToggle.svelte';
@@ -386,11 +385,9 @@
 				{#if isZoomed()}
 					<ResetZoomButton onClick={resetZoom} />
 				{/if}
-
-				<!-- <DateRangeSelector /> -->
 			</div>
 
-			<Button class="absolute top-2 right-2 w-8 h-8 p-0" variant="ghost" on:click={() => close()}>
+			<Button class="absolute top-2 right-2 w-8 h-8 p-0" on:click={() => close()}>
 				<IconXMark />
 				<span class="sr-only">Close</span>
 			</Button>

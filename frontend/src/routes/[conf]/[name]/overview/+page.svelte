@@ -17,7 +17,7 @@
 	} from 'layerchart';
 	import { curveBumpX, index } from 'd3';
 	import { type Node } from '@dagrejs/dagre';
-	import { Drawer, Kbd, ToggleGroup, ToggleOption } from 'svelte-ux';
+	import { Button, Drawer, Kbd, ToggleGroup, ToggleOption } from 'svelte-ux';
 	import { cls } from '@layerstack/tailwind';
 	import { Inspect } from 'svelte-inspect-value';
 
@@ -37,8 +37,7 @@
 	import { isMacOS } from '$src/lib/util/browser.js';
 	import EntityProperties from './EntityProperties.svelte';
 	import CollapsibleSection from '$src/lib/components/CollapsibleSection.svelte';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Button } from '$src/lib/components/ui/button';
+	import Separator from '$lib/components/Separator.svelte';
 	import { type EntityData, getEntityConfig, getEntityLabel } from '$src/lib/types/Entity';
 
 	import IconArrowRight from '~icons/heroicons/arrow-right';
@@ -470,21 +469,17 @@
 					{#if config.path && selectedNode.id !== data.lineage.mainNode?.name}
 						<div class="mr-10">
 							<Button
-								variant="outline"
 								href="{config.path}/{selectedNode.id}"
 								on:click={() => (selectedNode = null)}
+								class="border border-surface-content/10 rounded-md text-xs gap-2"
 							>
 								Open
-								<IconArrowRight class="ml-2" />
+								<IconArrowRight />
 							</Button>
 						</div>
 					{/if}
 
-					<Button
-						class="absolute top-2 -right-4 w-8 h-8 p-0"
-						variant="ghost"
-						on:click={() => close()}
-					>
+					<Button class="absolute top-2 -right-4 w-8 h-8 p-0" on:click={() => close()}>
 						<IconXMark />
 						<span class="sr-only">Close</span>
 					</Button>

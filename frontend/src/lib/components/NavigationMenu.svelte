@@ -1,16 +1,25 @@
 <script lang="ts">
-	import { Dialog, Kbd, Menu, MenuItem, SelectField, Toggle, type MenuOption } from 'svelte-ux';
+	import {
+		Button,
+		Dialog,
+		Kbd,
+		Menu,
+		MenuItem,
+		NavItem,
+		SelectField,
+		Toggle,
+		type MenuOption
+	} from 'svelte-ux';
 	import { flatRollup } from 'd3';
 	import { autoFocus } from '@layerstack/svelte-actions';
 	import { cls } from '@layerstack/tailwind';
 
-	import { Button } from '$lib/components/ui/button';
 	import { page } from '$app/state';
 	import { Api } from '$lib/api/api';
 	import { goto } from '$app/navigation';
 	import { isMacOS } from '$lib/util/browser';
 	import { entityConfig, getEntityConfig } from '$lib/types/Entity';
-	import { Separator } from '$lib/components/ui/separator';
+	import Separator from '$lib/components/Separator.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 
 	import IconChevronDown from '~icons/heroicons/chevron-down';
@@ -68,30 +77,25 @@
 			return [];
 		}
 	};
-
-	function isActiveRoute(searchString: string): boolean {
-		return page.url.pathname.startsWith(searchString);
-	}
 </script>
 
 <nav class="w-60 p-3 grid grid-rows-[auto_1fr_auto]">
 	<div>
 		<div class="ml-2 mt-1 mb-10 flex items-center justify-between">
-			<Button variant="link" href="/" class="p-0 h-6 w-6">
-				<Logo class="text-foreground" />
-			</Button>
+			<a href="/">
+				<Logo class="h-6 w-6" />
+			</a>
 		</div>
 
 		<Button
-			variant="outline"
 			size="sm"
-			class="mb-[22px] w-full flex justify-start pl-2"
+			class="mb-[22px] pl-2 border border-neutral-400"
+			fullWidth
 			onclick={() => (open = true)}
-			icon="leading"
 		>
 			<IconMagnifyingGlass class="text-foreground" />
-			<span class="text-muted-foreground">Search</span>
-			<span class="ml-auto text-xs text-muted-foreground">
+			<span class="text-surface-content/50">Search</span>
+			<span class="ml-auto">
 				<Kbd
 					command={isMacOS()}
 					control={!isMacOS()}
@@ -103,97 +107,63 @@
 	</div>
 
 	<div>
-		<Button variant="ghost" class="text-sm" size="nav" href="/" icon="leading">
-			<IconSquaresSolid class="text-muted-icon-neutral h-4 w-4" />
-			<span>Home</span>
-		</Button>
+		<NavItem path="/" currentUrl={page.url}>
+			<IconSquaresSolid />
+			Home
+		</NavItem>
 
 		<Separator class="my-4" />
 
-		<span class="mb-[10px] px-2 text-xs font-medium text-muted-icon-neutral">Datasets</span>
+		<div class="mb-2 px-2 text-xs font-medium text-surface-content/40">Datasets</div>
 
-		<ul>
-			{#each navItems.filter((item) => item.path != null) as item}
-				<li>
-					<Button
-						variant={isActiveRoute(item.path) ? 'default' : 'ghost'}
-						size="nav"
-						href={item.path}
-						icon="leading"
-						class="text-sm"
-					>
-						<item.icon
-							class={`h-4 w-4 ${isActiveRoute(item.path) ? 'text-muted-icon-primary' : 'text-muted-icon-neutral'}`}
-						/>
-						{item.label}
-					</Button>
-				</li>
-			{/each}
-		</ul>
+		{#each navItems.filter((item) => item.path != null) as item}
+			<NavItem path={item.path} currentUrl={page.url}>
+				<item.icon />
+				{item.label}
+			</NavItem>
+		{/each}
 	</div>
 
 	<div>
 		<Separator class="mb-6" />
 
-		<span class="mb-[7px] px-2 text-xs font-medium text-muted-icon-neutral">Resources</span>
+		<div class="mb-2 px-2 text-xs font-medium text-surface-content/40">Resources</div>
 
-		<Button
-			variant="ghost"
-			class="w-full text-sm my-[2px]"
-			size="nav"
-			href="https://docs.chronon.ai"
+		<NavItem path="https://docs.chronon.ai" currentUrl={page.url} target="_blank">
+			<IconDocumentText />
+			<span class="text-surface-content/60">Chronon docs</span>
+		</NavItem>
+
+		<NavItem
+			path="https://join.slack.com/t/chrononworkspace/shared_invite/zt-1no5t3lxd-mFUo644T6tPJOeTeZRTggw"
+			currentUrl={page.url}
 			target="_blank"
-			rel="noopener noreferrer"
-			icon="leading"
 		>
-			<IconDocumentText class="text-muted-icon-neutral" />
-			<span class="text-muted-foreground">Chronon docs</span>
-		</Button>
+			<IconQuestionMarkCircle16Solid />
+			<span class="text-surface-content/60">Support</span>
+		</NavItem>
 
-		<Button
-			variant="ghost"
-			class="w-full text-sm my-[2px]"
-			size="nav"
-			href="https://join.slack.com/t/chrononworkspace/shared_invite/zt-1no5t3lxd-mFUo644T6tPJOeTeZRTggw"
-			target="_blank"
-			rel="noopener noreferrer"
-			icon="leading"
-		>
-			<IconQuestionMarkCircle16Solid class="text-muted-icon-neutral" />
-			<span class="text-muted-foreground">Support</span>
+		<Button href="mailto:hello@zipline.ai" class="border border-neutral-400 px-3 ml-2 mt-5">
+			<IconChatBubbleOvalLeft16Solid class="text-surface-content/40" />
+			<span class="text-surface-content/50">Got feedback?</span>
 		</Button>
-
-		<div class="flex justify-start">
-			<Button
-				variant="outline"
-				size="sm"
-				class="text-[13px] mb-1 mt-5 ml-2"
-				href="mailto:hello@zipline.ai"
-				icon="leading"
-			>
-				<IconChatBubbleOvalLeft16Solid class="text-muted-icon-neutral" />
-				<span class="text-muted-foreground">Got feedback?</span>
-			</Button>
-		</div>
 
 		<Separator class="mt-[19px] mb-3" />
 
-		<div class="flex items-center">
-			<Toggle let:on={open} let:toggle let:toggleOff>
-				<Button variant="ghost" on:click={toggle}>
-					<IconUser class="text-muted-foreground" />
-					<span class="ml-3 text-muted-foreground text-sm">{user.name}</span>
-					<IconChevronDown
-						class={cls('ml-3 text-muted-foreground transition-transform', open && '-rotate-180')}
-					/>
+		<Toggle let:on={open} let:toggle let:toggleOff>
+			<Button on:click={toggle}>
+				<IconUser class="text-surface-content/50" />
+				<span class="ml-3 text-sm text-surface-content/70">{user.name}</span>
+				<IconChevronDown
+					class={cls('ml-3 text-surface-content/50 transition-transform', open && '-rotate-180')}
+				/>
 
-					<Menu {open} on:close={toggleOff} matchWidth class="p-1">
-						<MenuItem on:click={() => alert('Settings clicked')}>Settings</MenuItem>
-						<MenuItem on:click={() => alert('Sign out clicked')}>Sign out</MenuItem>
-					</Menu>
-				</Button>
-			</Toggle>
-		</div>
+				<Menu {open} on:close={toggleOff} matchWidth class="p-1">
+					<MenuItem on:click={() => alert('Settings clicked')}>Settings</MenuItem>
+					<MenuItem on:click={() => alert('Sign out clicked')}>Sign out</MenuItem>
+				</Menu>
+			</Button>
+		</Toggle>
 	</div>
 </nav>
 

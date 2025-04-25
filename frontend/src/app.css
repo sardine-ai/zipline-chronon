@@ -12,17 +12,11 @@
 
 	--color-muted: hsl(0 0% 96.1%);
 	--color-muted-foreground: var(--color-neutral-800);
-	--color-muted-icon-neutral: var(--color-neutral-700);
-	--color-muted-icon-primary: var(--color-primary-700);
-
-	--color-popover: hsl(0 0% 100%);
-	--color-popover-foreground: hsl(0 0% 3.9%);
 
 	--color-card: hsl(0 0% 100%);
 	--color-card-foreground: hsl(0 0% 3.9%);
 
 	--color-border: var(--color-neutral-300);
-	--color-input: hsl(0 0% 89.8%);
 
 	/* Defined below */
 	/* --color-primary: var(--color-primary-300);
@@ -36,10 +30,6 @@
 
 	--color-destructive: hsl(0 72.2% 50.6%);
 	--color-destructive-foreground: hsl(0 0% 98%);
-
-	--color-ring: hsl(0 0% 3.9%);
-
-	--color-radius: 0.5rem;
 
 	--color-neutral-50: hsl(0 0% 98%);
 	--color-neutral-100: hsl(0 0% 95%);
@@ -170,17 +160,11 @@
 
 		--color-muted: hsl(0 0% 14.9%);
 		--color-muted-foreground: var(--color-neutral-800);
-		--color-muted-icon-neutral: var(--color-neutral-700);
-		--color-muted-icon-primary: var(--color-primary-700);
-
-		--color-popover: hsl(0 0% 3.9%);
-		--color-popover-foreground: hsl(0 0% 98%);
 
 		--color-card: hsl(0 0% 3.9%);
 		--color-card-foreground: hsl(0 0% 98%);
 
 		--color-border: var(--color-neutral-300);
-		--color-input: hsl(0 0% 14.9%);
 
 		--color-neutral-50: hsl(0 0% 5%);
 		--color-neutral-100: hsl(0 0% 8%);
@@ -226,8 +210,6 @@
 
 		--color-destructive: hsl(0 62.8% 30.6%);
 		--color-destructive-foreground: hsl(0 0% 98%);
-
-		--color-ring: hsl(0 0% 83.1%);
 
 		/* Scrollbar colors */
 		--color-scroll-thumb: hsla(0, 0%, 13%, 1);

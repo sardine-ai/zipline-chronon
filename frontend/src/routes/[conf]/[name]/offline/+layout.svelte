@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 
-	import { Separator } from '$src/lib/components/ui/separator';
+	import Separator from '$lib/components/Separator.svelte';
 
 	import IconChartLine from '~icons/zipline-ai/chart-line';
 	import IconTableCells from '~icons/heroicons/table-cells-16-solid';

@@ -8,7 +8,7 @@
 	import { page } from '$app/state';
 
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import Separator from '$lib/components/Separator.svelte';
 	import { getEntityConfigFromPath } from '$lib/types/Entity';
 	import TrueFalseBadge from '$src/lib/components/TrueFalseBadge.svelte';
 
