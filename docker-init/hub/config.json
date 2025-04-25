@@ -1,5 +1,0 @@
-{
-  "online.jar": "/app/cli/cloud_aws.jar",
-  "online.class": "ai.chronon.integrations.aws.AwsApiImpl",
-  "online.api.props": {}
-}
