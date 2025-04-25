@@ -20,7 +20,6 @@ import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
-import ai.chronon.spark.Extensions._
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
@@ -622,13 +621,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
              fallbackSelects: Option[Map[String, String]] = None,
              range: Option[PartitionRange] = None): DataFrame = {
 
-    val queryPartitionColumn = query.effectivePartitionColumn(this)
-
+    val maybeQuery = Option(query)
+    val queryPartitionColumn = maybeQuery.flatMap(q => Option(q.partitionColumn)).getOrElse(partitionColumn)
     val rangeWheres = range.map(whereClauses(_, queryPartitionColumn)).getOrElse(Seq.empty)
-    val queryWheres = Option(query).flatMap(q => Option(q.wheres)).map(_.toScala).getOrElse(Seq.empty)
+    val queryWheres = maybeQuery.flatMap(q => Option(q.wheres)).map(_.toScala).getOrElse(Seq.empty)
     val wheres: Seq[String] = rangeWheres ++ queryWheres
-
-    val selects = Option(query).flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
+    val selects = maybeQuery.flatMap(q => Option(q.selects)).map(_.toScala).getOrElse(Map.empty)
 
     val scanDf = scanDfBase(selects, table, wheres, rangeWheres, fallbackSelects)
 
