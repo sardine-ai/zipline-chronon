@@ -12,19 +12,59 @@ case object BigQueryNative extends Format {
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
 
+  private val internalBQCol = "__chronon_internal_bq_col__"
+
   override def table(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
+    import sparkSession.implicits._
     val bqTableId = SparkBQUtils.toTableId(tableName)
-    val bqFriendlyName = scala.Option(bqTableId.getProject) match {
-      case Some(project) => f"${project}.${bqTableId.getDataset}.${bqTableId.getTable}"
-      case None          => f"${bqTableId.getDataset}.${bqTableId.getTable}"
+    val providedProject = scala.Option(bqTableId.getProject).getOrElse(bqOptions.getProjectId)
+    val bqFriendlyName = f"${providedProject}.${bqTableId.getDataset}.${bqTableId.getTable}"
+
+    val partColsSql =
+      s"""
+         |SELECT column_name, IS_SYSTEM_DEFINED FROM `${providedProject}.${bqTableId.getDataset}.INFORMATION_SCHEMA.COLUMNS`
+         |WHERE table_name = '${bqTableId.getTable}' AND is_partitioning_column = 'YES'
+         |
+         |""".stripMargin
+
+    val (partColName, systemDefined) = sparkSession.read
+      .format(bqFormat)
+      .option("project", providedProject)
+      // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+      // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+      .option("viewsEnabled", true)
+      .option("materializationDataset", bqTableId.getDataset)
+      .load(partColsSql)
+      .as[(String, String)]
+      .collect
+      .headOption
+      .getOrElse(throw new UnsupportedOperationException(s"No partition column for table ${tableName} found."))
+
+    val isPseudoColumn = systemDefined match {
+      case "YES" => true
+      case "NO"  => false
+      case _     => throw new IllegalArgumentException(s"Unknown partition column system definition: ${systemDefined}")
     }
-    val dfw = sparkSession.read.format(bqFormat)
-    if (partitionFilters.isEmpty) {
-      dfw.load(bqFriendlyName)
+
+    logger.info(
+      s"Found bigquery partition column: ${partColName} with system defined status: ${systemDefined} for table: ${tableName}")
+
+    val partitionWheres = if (partitionFilters.nonEmpty) s"WHERE ${partitionFilters}" else partitionFilters
+    val partitionFormat = TableUtils(sparkSession).partitionFormat
+    val dfw = sparkSession.read
+      .format(bqFormat)
+      .option("viewsEnabled", true)
+      .option("materializationDataset", bqTableId.getDataset)
+    if (isPseudoColumn) {
+      val select = s"SELECT ${partColName} AS ${internalBQCol}, * FROM ${bqFriendlyName} ${partitionWheres}"
+      logger.info(s"BQ select: ${select}")
+      dfw
+        .load(select)
+        .withColumn(partColName, date_format(col(internalBQCol), partitionFormat))
+        .drop(internalBQCol)
     } else {
       dfw
-        .option("filter", partitionFilters)
-        .load(bqFriendlyName)
+        .load(s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}")
     }
   }
 
