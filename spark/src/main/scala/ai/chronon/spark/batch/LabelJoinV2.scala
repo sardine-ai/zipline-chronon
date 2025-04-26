@@ -39,7 +39,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     .map(_.asScala.toMap)
     .getOrElse(Map.empty[String, String])
   private val labelColumnPrefix = "label_"
-  private val labelDsAsPartitionRange = labelDateRange.toPartitionRange
+  private val labelRangeAsPartitionRange = labelDateRange.toPartitionRange
 
   private def getLabelColSchema(labelOutputs: Seq[AllLabelOutputInfo]): Seq[(String, DataType)] = {
     val labelPartToOutputCols = labelOutputs
@@ -48,7 +48,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
       .mapValues(_.flatMap(_.outputColumnNames))
 
     labelPartToOutputCols.flatMap { case (labelPart, outputCols) =>
-      val gb = GroupBy.from(labelPart.groupBy, labelDsAsPartitionRange, tableUtils, computeDependency = false, None)
+      val gb = GroupBy.from(labelPart.groupBy, labelRangeAsPartitionRange, tableUtils, computeDependency = false, None)
       val gbSchema = StructType(SparkConversions.fromChrononSchema(gb.outputSchema).fields)
 
       // The GroupBy Schema will not contain the labelPart prefix
@@ -77,7 +77,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     }
   }
 
-  private def getWindowToLabelOutputInfos: Map[Int, AllLabelOutputInfo] = {
+  private def getWindowToLabelOutputInfos(labelDsAsPartitionRange: PartitionRange): Map[Int, AllLabelOutputInfo] = {
     // Create a map of window to LabelOutputInfo
     // Each window could be shared across multiple labelJoinParts
     val labelJoinParts = labelJoinConf.labels.asScala
@@ -123,7 +123,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
   }
 
   def compute(): DataFrame = {
-    val resultDfsPerDay = labelDsAsPartitionRange.steps(days = 1).map { dayStep =>
+    val resultDfsPerDay = labelRangeAsPartitionRange.steps(days = 1).map { dayStep =>
       computeDay(dayStep.start)
     }
 
@@ -133,10 +133,12 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
   def computeDay(labelDs: String): DataFrame = {
     logger.info(s"Running LabelJoinV2 for $labelDs")
 
+    val labelDsAsPartitionRange = PartitionRange(labelDs, labelDs)
+
     runAssertions()
 
     // First get a map of window to LabelOutputInfo
-    val windowToLabelOutputInfos = getWindowToLabelOutputInfos
+    val windowToLabelOutputInfos = getWindowToLabelOutputInfos(labelDsAsPartitionRange)
 
     // Find existing partition in the join table
     val joinTable = joinConf.metaData.outputTable
