@@ -3,6 +3,7 @@ shared_deps = [
     "//api:lib",
     "//api:thrift_java",
     "//online:lib",
+    "//spark:lib",
     "//spark:catalog_lib",
     "//spark:submission_lib",
     "//tools/build_rules/spark:spark-exec",
