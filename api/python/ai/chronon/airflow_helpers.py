@@ -1,5 +1,5 @@
-
 import json
+from typing import OrderedDict
 
 import ai.chronon.utils as utils
 from ai.chronon.api.ttypes import GroupBy, Join
@@ -8,15 +8,17 @@ from ai.chronon.api.ttypes import GroupBy, Join
 def create_airflow_dependency(table, partition_column):
     """
     Create an Airflow dependency object for a table.
-    
+
     Args:
         table: The table name (with namespace)
         partition_column: The partition column to use (defaults to 'ds')
-        
+
     Returns:
         A dictionary with name and spec for the Airflow dependency
     """
-    assert partition_column is not None, """Partition column must be provided via the spark.chronon.partition.column 
+    assert (
+        partition_column is not None
+    ), """Partition column must be provided via the spark.chronon.partition.column 
         config. This can be set as a default in teams.py, or at the individual config level. For example:
         ``` 
         Team(
@@ -33,20 +35,22 @@ def create_airflow_dependency(table, partition_column):
         "spec": f"{table}/{partition_column}={{{{ ds }}}}",
     }
 
+
 def _get_partition_col_from_query(query):
     """Gets partition column from query if available"""
     if query:
         return query.partitionColumn
     return None
 
+
 def _get_airflow_deps_from_source(source, partition_column=None):
     """
     Given a source, return a list of Airflow dependencies.
-    
+
     Args:
         source: The source object (events, entities, or joinSource)
         partition_column: The partition column to use
-        
+
     Returns:
         A list of Airflow dependency objects
     """
@@ -55,13 +59,17 @@ def _get_airflow_deps_from_source(source, partition_column=None):
     if source.events:
         tables = [source.events.table]
         # Use partition column from query if available, otherwise use the provided one
-        source_partition_column = _get_partition_col_from_query(source.events.query) or partition_column
+        source_partition_column = (
+            _get_partition_col_from_query(source.events.query) or partition_column
+        )
     elif source.entities:
         # Given the setup of Query, we currently mandate the same partition column for snapshot and mutations tables
         tables = [source.entities.snapshotTable]
         if source.entities.mutationTable:
             tables.append(source.entities.mutationTable)
-        source_partition_column = _get_partition_col_from_query(source.entities.query) or partition_column
+        source_partition_column = (
+            _get_partition_col_from_query(source.entities.query) or partition_column
+        )
     elif source.joinSource:
         # TODO: Handle joinSource -- it doesn't work right now because the metadata isn't set on joinSource at this point
         return []
@@ -69,15 +77,20 @@ def _get_airflow_deps_from_source(source, partition_column=None):
         # Unknown source type
         return []
 
-    return [create_airflow_dependency(table, source_partition_column) for table in tables]
+    return [
+        create_airflow_dependency(table, source_partition_column) for table in tables
+    ]
 
 
 def extract_default_partition_column(obj):
     try:
-        return obj.metaData.executionInfo.conf.common.get("spark.chronon.partition.column")
+        return obj.metaData.executionInfo.conf.common.get(
+            "spark.chronon.partition.column"
+        )
     except Exception:
         # Error handling occurs in `create_airflow_dependency`
         return None
+
 
 def _set_join_deps(join):
     default_partition_col = extract_default_partition_column(join)
@@ -86,7 +99,9 @@ def _set_join_deps(join):
 
     # Handle left source
     left_query = utils.get_query(join.left)
-    left_partition_column = _get_partition_col_from_query(left_query) or default_partition_col
+    left_partition_column = (
+        _get_partition_col_from_query(left_query) or default_partition_col
+    )
     deps.extend(_get_airflow_deps_from_source(join.left, left_partition_column))
 
     # Handle right parts (join parts)
@@ -95,8 +110,13 @@ def _set_join_deps(join):
             if join_part.groupBy and join_part.groupBy.sources:
                 for source in join_part.groupBy.sources:
                     source_query = utils.get_query(source)
-                    source_partition_column = _get_partition_col_from_query(source_query) or default_partition_col
-                    deps.extend(_get_airflow_deps_from_source(source, source_partition_column))
+                    source_partition_column = (
+                        _get_partition_col_from_query(source_query)
+                        or default_partition_col
+                    )
+                    deps.extend(
+                        _get_airflow_deps_from_source(source, source_partition_column)
+                    )
 
     # Handle label parts
     if join.labelParts and join.labelParts.labels:
@@ -104,8 +124,13 @@ def _set_join_deps(join):
             if label_part.groupBy and label_part.groupBy.sources:
                 for source in label_part.groupBy.sources:
                     source_query = utils.get_query(source)
-                    source_partition_column = _get_partition_col_from_query(source_query) or default_partition_col
-                    deps.extend(_get_airflow_deps_from_source(source, source_partition_column))
+                    source_partition_column = (
+                        _get_partition_col_from_query(source_query)
+                        or default_partition_col
+                    )
+                    deps.extend(
+                        _get_airflow_deps_from_source(source, source_partition_column)
+                    )
 
     # Update the metadata customJson with dependencies
     _dedupe_and_set_airflow_deps_json(join, deps)
@@ -114,23 +139,27 @@ def _set_join_deps(join):
 def _set_group_by_deps(group_by):
     if not group_by.sources:
         return
-    
+
     default_partition_col = extract_default_partition_column(group_by)
-    
+
     deps = []
-    
+
     # Process each source in the group_by
     for source in group_by.sources:
         source_query = utils.get_query(source)
-        source_partition_column = _get_partition_col_from_query(source_query) or default_partition_col
+        source_partition_column = (
+            _get_partition_col_from_query(source_query) or default_partition_col
+        )
         deps.extend(_get_airflow_deps_from_source(source, source_partition_column))
-    
+
     # Update the metadata customJson with dependencies
     _dedupe_and_set_airflow_deps_json(group_by, deps)
 
 
 def _dedupe_and_set_airflow_deps_json(obj, deps):
-    unique = [dict(t) for t in {tuple(sorted(d.items())) for d in deps}]
+    sorted_items = [tuple(sorted(d.items())) for d in deps]
+    # Use OrderedDict for re-producible ordering of dependencies
+    unique = [OrderedDict(t) for t in sorted_items]
     existing_json = obj.metaData.customJson or "{}"
     json_map = json.loads(existing_json)
     json_map["airflowDependencies"] = unique
@@ -140,7 +169,7 @@ def _dedupe_and_set_airflow_deps_json(obj, deps):
 def set_airflow_deps(obj):
     """
     Set Airflow dependencies for a Chronon object.
-    
+
     Args:
         obj: A Join, GroupBy
     """

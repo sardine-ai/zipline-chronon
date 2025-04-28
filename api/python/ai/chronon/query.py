@@ -12,6 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+from collections import OrderedDict
 from typing import Dict, List
 
 import ai.chronon.api.ttypes as api
@@ -107,5 +108,9 @@ def selects(*args, **kwargs):
             "user_id": "user_id"
         }
     """
-    args = {x: x for x in args}
-    return {**args, **kwargs}
+    result = OrderedDict()
+    for x in args:
+        result[x] = x
+    for k, v in kwargs.items():
+        result[k] = v
+    return result
