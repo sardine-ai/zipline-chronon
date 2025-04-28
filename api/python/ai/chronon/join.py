@@ -85,7 +85,6 @@ def JoinPart(
             )
         )
         group_by_module = importlib.import_module(group_by_module_name)
-
         __builtins__["__import__"] = eo.import_module_set_name(
             group_by_module, api.GroupBy
         )
@@ -96,6 +95,7 @@ def JoinPart(
                 "[GroupBy] Must specify a group_by name if group_by is not defined in separate file. "
                 "You may pass it in via GroupBy.name. \n"
             )
+
     if key_mapping:
         utils.check_contains(
             key_mapping.values(), group_by.keyColumns, "key", group_by.metaData.name
