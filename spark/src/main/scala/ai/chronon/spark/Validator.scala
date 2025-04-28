@@ -10,6 +10,9 @@ object Validator {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
+  private val errorStartMarker: String = "[ERROR]" // Start and end markers used for extracting relevant info from logs for prominent display
+  private val errorEndMarker: String = "[/ERROR]"
+
   def runTimestampChecks(df: DataFrame, sampleNumber: Int = 100): Map[String, String] = {
     val hasTimestamp = df.schema.fieldNames.contains(Constants.TimeColumn)
     val mapTimestampChecks = if (hasTimestamp) {
@@ -42,14 +45,18 @@ object Validator {
 
   def formatTimestampCheckString(timestampCheckMap: Map[String, String], configType: String): String = {
     if (timestampCheckMap("notNullCount") != "0") {
-      s"""[ERROR]: $configType validation failed.
+      s""" $errorStartMarker
+         | $configType validation failed.
          | Please check that source has non-null timestamps.
          | check notNullCount: ${timestampCheckMap("notNullCount")}
+         | $errorEndMarker
          | """.stripMargin
     } else if (timestampCheckMap("badRangeCount") != "0") {
-      s"""[ERROR]: $configType validation failed.
+      s""" $errorStartMarker
+         | $configType validation failed.
          | Please check that source has valid epoch millisecond timestamps.
          | badRangeCount: ${timestampCheckMap("badRangeCount")}
+         | $errorEndMarker
          | """.stripMargin
     } else ""
   }
@@ -103,19 +110,18 @@ object Validator {
     keyMapping.flatMap {
       case (_, leftKey) if !left.contains(leftKey) =>
         Some(leftKey ->
-          s"[ERROR]: Left side of the join doesn't contain the key $leftKey. Available keys are [${left.keys.mkString(",")}]")
+          s"$errorStartMarker Left side of the join doesn't contain the key $leftKey. Available keys are [${left.keys.mkString(",")}] $errorEndMarker")
       case (rightKey, _) if !right.contains(rightKey) =>
         Some(
           rightKey ->
-            s"[ERROR]: Right side of the join doesn't contain the key $rightKey. Available keys are [${right.keys
-              .mkString(",")}]")
+            s"$errorStartMarker Right side of the join doesn't contain the key $rightKey. Available keys are [${right.keys
+              .mkString(",")}] $errorEndMarker")
       case (rightKey, leftKey) if left(leftKey) != right(rightKey) =>
         Some(
           leftKey ->
-            s"[ERROR]: Join key, '$leftKey', has mismatched data types - left type: ${left(
-              leftKey)} vs. right type ${right(rightKey)}")
+            s"$errorStartMarker Join key, '$leftKey', has mismatched data types - left type: ${left(
+              leftKey)} vs. right type ${right(rightKey)} $errorEndMarker")
       case _ => None
     }
   }
-
 }
