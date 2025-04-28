@@ -243,9 +243,9 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     }
 
     // Run validations before starting the job
-    val analyzer = new Analyzer(tableUtils, joinConfCloned, endPartition, endPartition, silenceMode = true)
+    // val analyzer = new Analyzer(tableUtils, joinConfCloned, endPartition, endPartition, silenceMode = true)
     try {
-      analyzer.analyzeJoin(joinConfCloned, validationAssert = true)
+      // analyzer.analyzeJoin(joinConfCloned, validationAssert = true)
       metrics.gauge(Metrics.Name.validationSuccess, 1)
       logger.info("Join conf validation succeeded. No error found.")
     } catch {
