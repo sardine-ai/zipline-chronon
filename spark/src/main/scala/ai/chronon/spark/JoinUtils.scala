@@ -580,8 +580,9 @@ object JoinUtils {
     // events | entities | temporal => right part tables are aligned - so scan by leftRange
     // entities | entities | snapshot => right part tables are aligned - so scan by leftRange
     val rightRange = if (leftDataModel == EVENTS && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
-      val leftTimeRange = leftTimeRangeOpt.getOrElse(leftDf.get.timeRange.toPartitionRange)
-      leftTimeRange.shift(shiftDays)
+      // Diabling for now
+      // val leftTimeRange = leftTimeRangeOpt.getOrElse(leftDf.get.timeRange.toPartitionRange)
+      leftRange.shift(shiftDays)
     } else {
       leftRange
     }
