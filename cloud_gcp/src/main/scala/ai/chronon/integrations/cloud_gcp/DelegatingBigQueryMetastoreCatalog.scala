@@ -5,6 +5,7 @@ import com.google.cloud.bigquery.{
   BigQueryOptions,
   ExternalTableDefinition,
   StandardTableDefinition,
+  ViewDefinition,
   TableDefinition,
   TableId
 }
@@ -95,6 +96,9 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
             .Option(bigQueryClient.getTable(tId))
             .getOrElse(throw new NoSuchTableException(s"BigQuery table $identNoCatalog not found."))
           table.getDefinition.asInstanceOf[TableDefinition] match {
+            case view: ViewDefinition => {
+              connectorCatalog.loadTable(Identifier.of(Array(tId.getDataset), tId.getTable))
+            }
             case externalTable: ExternalTableDefinition => {
               val uris = externalTable.getSourceUris.asScala
               val uri = scala
