@@ -28,7 +28,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.{Logger, LoggerFactory}
-import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.catalog.{TableCache, TableUtils}
 
 import java.util
 import scala.collection.Seq
@@ -76,7 +76,6 @@ object Extensions {
       if (intersectedCounts.isEmpty) return None
       Some(DfWithStats(df.prunePartition(range), intersectedCounts))
     }
-    def stats: DfStats = DfStats(count, partitionRange)
   }
 
   object DfWithStats {
@@ -143,6 +142,7 @@ object Extensions {
              tableProperties: Map[String, String] = null,
              partitionColumns: Seq[String] = List(tableUtils.partitionColumn),
              autoExpand: Boolean = false): Unit = {
+
       TableUtils(df.sparkSession).insertPartitions(df,
                                                    tableName,
                                                    tableProperties,
