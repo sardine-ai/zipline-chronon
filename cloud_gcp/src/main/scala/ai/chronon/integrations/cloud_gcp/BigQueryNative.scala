@@ -12,7 +12,7 @@ case object BigQueryNative extends Format {
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
 
-  private val internalBQCol = "__chronon_internal_bq_col__"
+  private val internalBQPartitionCol = "__chronon_internal_bq_partition_col__"
 
   // TODO(tchow): use the cache flag
   override def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
@@ -50,13 +50,14 @@ case object BigQueryNative extends Format {
     // Next, we query the BQ table using the requested partitionFilter to grab all the distinct partition values that match the filter.
     val partitionWheres = if (partitionFilters.nonEmpty) s"WHERE ${partitionFilters}" else partitionFilters
     val partitionFormat = TableUtils(sparkSession).partitionFormat
-    val select = s"SELECT distinct(${partColName}) AS ${internalBQCol} FROM ${bqFriendlyName} ${partitionWheres}"
+    val select =
+      s"SELECT distinct(${partColName}) AS ${internalBQPartitionCol} FROM ${bqFriendlyName} ${partitionWheres}"
     val selectedParts = sparkSession.read
       .format(bqFormat)
       .option("viewsEnabled", true)
       .option("materializationDataset", bqTableId.getDataset)
       .load(select)
-      .select(date_format(col(internalBQCol), partitionFormat))
+      .select(date_format(col(internalBQPartitionCol), partitionFormat))
       .as[String]
       .collect
       .toList
