@@ -4,18 +4,18 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
-import java.util.function
 
 object TableCache {
+
   private val dfMap: ConcurrentMap[String, DataFrame] = new ConcurrentHashMap[String, DataFrame]()
 
-  def get(tableName: String)(implicit sparkSession: SparkSession): DataFrame = {
+  def get(tableName: String, partitionFilters: String, fn: (String, String) => DataFrame)(implicit
+      sparkSession: SparkSession): DataFrame = {
+
     dfMap.computeIfAbsent(tableName,
-                          new function.Function[String, DataFrame] {
-                            override def apply(t: String): DataFrame = {
-                              sparkSession.read.table(t)
-                            }
-                          })
+      (t: String) => {
+        fn(t, partitionFilters)
+      })
   }
 
   def remove(tableName: String): Unit = {
@@ -30,18 +30,20 @@ trait Format {
   def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
       sparkSession: SparkSession): DataFrame = {
 
-    val df = if (cacheDf) {
-      TableCache.get(tableName)
+    if (cacheDf) {
+      TableCache.get(tableName, partitionFilters, internalTable)
     } else {
-      sparkSession.read.table(tableName)
+      internalTable(tableName, partitionFilters)
     }
+  }
 
+  def internalTable(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
+    val df = sparkSession.read.table(tableName)
     if (partitionFilters.isEmpty) {
       df
     } else {
       df.where(partitionFilters)
     }
-
   }
 
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided

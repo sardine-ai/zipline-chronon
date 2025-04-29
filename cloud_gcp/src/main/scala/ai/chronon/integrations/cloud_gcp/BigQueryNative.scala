@@ -1,11 +1,10 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.catalog.Format
+import ai.chronon.spark.catalog.{Format, TableUtils}
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
+import org.apache.spark.sql.functions.{col, date_format, lit, to_date}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.{col, date_format, to_date, lit}
 
 case object BigQueryNative extends Format {
 
@@ -14,9 +13,9 @@ case object BigQueryNative extends Format {
 
   private val internalBQPartitionCol = "__chronon_internal_bq_partition_col__"
 
-  // TODO(tchow): use the cache flag
-  override def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
+  override def internalTable(tableName: String, partitionFilters: String)(implicit
       sparkSession: SparkSession): DataFrame = {
+
     import sparkSession.implicits._
 
     // First, need to clean the spark-based table name for the bigquery queries below.
