@@ -14,7 +14,9 @@ case object BigQueryNative extends Format {
 
   private val internalBQCol = "__chronon_internal_bq_col__"
 
-  override def table(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
+  // TODO(tchow): use the cache flag
+  override def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
+      sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
     // First, need to clean the spark-based table name for the bigquery queries below.

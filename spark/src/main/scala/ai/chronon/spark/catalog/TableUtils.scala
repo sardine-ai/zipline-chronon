@@ -112,10 +112,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def loadTable(tableName: String, rangeWheres: Seq[String] = List.empty[String]): DataFrame = {
+  def loadTable(tableName: String,
+                rangeWheres: Seq[String] = List.empty[String],
+                cacheDf: Boolean = false): DataFrame = {
     tableFormatProvider
       .readFormat(tableName)
-      .map(_.table(tableName, andPredicates(rangeWheres))(sparkSession))
+      .map(_.table(tableName, andPredicates(rangeWheres), cacheDf)(sparkSession))
       .getOrElse(
         throw new RuntimeException(s"Could not load table: ${tableName} with partition filter: ${rangeWheres}"))
   }
@@ -292,7 +294,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       dfRearranged
     }
 
+    TableCache.remove(tableName)
+
     logger.info(s"Writing to $tableName ...")
+
     finalizedDf.write
       .mode(saveMode)
       // Requires table to exist before inserting.
@@ -300,6 +305,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // Does NOT overwrite the schema.
       // Handles dynamic partition overwrite.
       .insertInto(tableName)
+
     logger.info(s"Finished writing to $tableName")
   }
 
@@ -575,7 +581,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                  table: String,
                  wheres: Seq[String],
                  rangeWheres: Seq[String],
-                 fallbackSelects: Option[Map[String, String]] = None): DataFrame = {
+                 fallbackSelects: Option[Map[String, String]] = None,
+                 cacheDf: Boolean = false): DataFrame = {
 
     val selects = QueryUtils.buildSelects(selectMap, fallbackSelects)
 
@@ -589,7 +596,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                    |    ${rangeWheres.mkString(",\n    ").green}
                    |""".stripMargin)
 
-    var df = loadTable(table, rangeWheres)
+    var df = loadTable(table, rangeWheres, cacheDf)
 
     if (selects.nonEmpty) df = df.selectExpr(selects: _*)
 
