@@ -16,7 +16,6 @@ from ai.chronon.repo.utils import (
     check_call,
     check_output,
     extract_filename_from_path,
-    get_customer_id,
     get_environ_arg,
     retry_decorator,
     split_date_range,
@@ -34,21 +33,21 @@ ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 
 class GcpRunner(Runner):
     def __init__(self, args):
-        remote_artifact_prefix = args.get("artifact_prefix")
-        if not remote_artifact_prefix:
+        self._remote_artifact_prefix = args.get("artifact_prefix")
+        if not self._remote_artifact_prefix:
             raise ValueError(
                 "GCP artifact prefix not set."
             )
 
         self._version = args.get("version")
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            remote_artifact_prefix,
+            self._remote_artifact_prefix,
             ZIPLINE_DIRECTORY,
             self._version,
             ZIPLINE_GCP_JAR_DEFAULT,
         )
         service_jar_path = GcpRunner.download_zipline_dataproc_jar(
-            remote_artifact_prefix,
+            self._remote_artifact_prefix,
             ZIPLINE_DIRECTORY,
             self._version,
             ZIPLINE_GCP_SERVICE_JAR,
@@ -212,10 +211,14 @@ class GcpRunner(Runner):
         self,
         user_args: str,
         version: str,
+        customer_artifact_prefix: str,
         job_type: JobType = JobType.SPARK,
         local_files_to_upload: List[str] = None,
     ):
-        customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
+
+        parsed = urlparse(customer_artifact_prefix)
+        customer_bucket_name = parsed.netloc
+        source_blob_name = parsed.path.lstrip("/")
 
         if local_files_to_upload is None:
             local_files_to_upload = []
@@ -223,26 +226,21 @@ class GcpRunner(Runner):
         gcs_files = []
         for source_file in local_files_to_upload:
             # upload to `metadata` folder
-            destination_file_path = (
-                f"metadata/{extract_filename_from_path(source_file)}"
+            destination_file_path = os.path.join(
+                source_blob_name,
+                "metadata",
+                f"{extract_filename_from_path(source_file)}"
             )
             gcs_files.append(
                 GcpRunner.upload_gcs_blob(
-                    customer_warehouse_bucket_name, source_file, destination_file_path
+                    customer_bucket_name, source_file, destination_file_path
                 )
             )
-
-        # we also want the additional-confs included here. it should already be in the bucket
-
-        zipline_artifacts_bucket_prefix = "gs://zipline-artifacts"
-
         gcs_file_args = ",".join(gcs_files)
+        release_prefix = os.path.join(customer_artifact_prefix, "release", version, "jars")
 
         # include jar uri. should also already be in the bucket
-        jar_uri = (
-            f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
-            + f"/release/{version}/jars/{ZIPLINE_GCP_JAR_DEFAULT}"
-        )
+        jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_JAR_DEFAULT}")
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
@@ -250,10 +248,7 @@ class GcpRunner(Runner):
 
         if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
-            flink_jar_uri = (
-                f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
-                + f"/release/{version}/jars/{ZIPLINE_GCP_FLINK_JAR_DEFAULT}"
-            )
+            flink_jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_FLINK_JAR_DEFAULT}")
             return (
                 final_args.format(
                     user_args=user_args,
@@ -299,6 +294,7 @@ class GcpRunner(Runner):
         dataproc_args = self.generate_dataproc_submitter_args(
             job_type=JobType.FLINK,
             version=self._version,
+            customer_artifact_prefix=self._remote_artifact_prefix,
             user_args=" ".join([user_args_str, flag_args_str]),
         )
         command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
@@ -342,6 +338,7 @@ class GcpRunner(Runner):
                 local_files_to_upload=local_files_to_upload_to_gcs,
                 user_args=self._gen_final_args(),
                 version=self._version,
+                customer_artifact_prefix=self._remote_artifact_prefix,
             )
             command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
             command_list.append(command)
@@ -387,6 +384,7 @@ class GcpRunner(Runner):
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
                         version=self._version,
+                        customer_artifact_prefix=self._remote_artifact_prefix
                     )
                     command = (
                         f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
@@ -415,6 +413,7 @@ class GcpRunner(Runner):
                     local_files_to_upload=local_files_to_upload_to_gcs,
                     user_args=user_args,
                     version=self._version,
+                    customer_artifact_prefix=self._remote_artifact_prefix
                 )
                 command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
                 command_list.append(command)
