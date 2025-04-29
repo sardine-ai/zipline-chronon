@@ -1,0 +1,50 @@
+name: Scala Fmt
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.scala'
+      - '.github/workflows/test_scala_fmt.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.scala'
+      - '.github/workflows/test_scala_fmt.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scala_compile_fmt_fix:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up locale
+        run: |
+          export LANG=en_US.UTF-8
+          export LC_ALL=en_US.UTF-8
+
+      - name: Setup Bazel cache credentials
+        run: |
+          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+
+      - name: Check Scalafmt
+        run: |
+          bazel query 'kind("scala_library.*", //...)' | xargs -I {} bazel run \
+            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
+            --google_credentials=bazel-cache-key.json \
+            {}.format-test
