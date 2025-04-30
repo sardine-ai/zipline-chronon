@@ -21,7 +21,7 @@ trait JobSubmitter {
              files: List[String],
              args: String*): String
 
-  def status(jobId: String): Unit
+  def status(jobId: String): String
 
   def kill(jobId: String): Unit
 }
@@ -109,6 +109,7 @@ object JobSubmitterConstants {
   val EmrReleaseLabel = "emrReleaseLabel"
   val ShouldCreateCluster = "shouldCreateCluster"
   val ClusterId = "jobFlowId"
+  val ClusterName = "clusterName"
 
   val JarUriArgKeyword = "--jar-uri"
   val JobTypeArgKeyword = "--job-type"

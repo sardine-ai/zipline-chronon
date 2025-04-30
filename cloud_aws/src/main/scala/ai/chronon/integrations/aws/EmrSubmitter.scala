@@ -56,10 +56,17 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
                                           clusterIdleTimeout: Int = DefaultClusterIdleTimeout,
                                           masterInstanceType: String = DefaultClusterInstanceType,
                                           slaveInstanceType: String = DefaultClusterInstanceType,
-                                          instanceCount: Int = DefaultClusterInstanceCount) = {
-    val runJobFlowRequestBuilder = RunJobFlowRequest
-      .builder()
-      .name(s"job-${java.util.UUID.randomUUID.toString}")
+                                          instanceCount: Int = DefaultClusterInstanceCount,
+                                          clusterName: Option[String] = None) = {
+    val runJobFlowRequestBuilder = if (clusterName.isDefined) {
+      RunJobFlowRequest
+        .builder()
+        .name(clusterName.get)
+    } else {
+      RunJobFlowRequest
+        .builder()
+        .name(s"job-${java.util.UUID.randomUUID.toString}")
+    }
 
     // Cluster infra configurations:
     val customerSecurityGroupId = CustomerToSecurityGroupIdMap.getOrElse(
@@ -170,7 +177,9 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
           submissionProperties.getOrElse(ClusterIdleTimeout, DefaultClusterIdleTimeout.toString).toInt,
         masterInstanceType = submissionProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
         slaveInstanceType = submissionProperties.getOrElse(ClusterInstanceType, DefaultClusterInstanceType),
-        instanceCount = submissionProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount.toString).toInt
+        instanceCount =
+          submissionProperties.getOrElse(ClusterInstanceCount, DefaultClusterInstanceCount.toString).toInt,
+        clusterName = submissionProperties.get(ClusterName)
       )
 
       runJobFlowBuilder.steps(
@@ -200,10 +209,11 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient) extends JobSubmitte
     }
   }
 
-  override def status(jobId: String): Unit = {
+  override def status(jobId: String): String = {
     val describeStepResponse = emrClient.describeStep(DescribeStepRequest.builder().stepId(jobId).build())
     val status = describeStepResponse.step().status()
     println(status)
+    status.toString
   }
 
   override def kill(stepId: String): Unit = {
