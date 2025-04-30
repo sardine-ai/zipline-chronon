@@ -256,6 +256,20 @@ struct UploadResponse {
     1: optional string message
 }
 
+// ====================== Workflow API Types ======================
+
+struct WorkflowStartRequest {
+    1: optional string nodeName
+    2: optional string branch
+    3: optional string startDate
+    4: optional string endDate
+}
+
+struct WorkflowStartResponse {
+    1: optional string requestId
+    2: optional string message
+}
+
 // ====================== End of Orchestration Service API Types ======================
 
 /**
