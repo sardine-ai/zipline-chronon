@@ -217,34 +217,43 @@ def _group_by_has_hourly_windows(groupBy: GroupBy) -> bool:
     return False
 
 
-def detect_feature_name_collisions(group_bys: List[Tuple[GroupBy, str]], entity_set_type: str, name: str) -> BaseException:
-    # Compute full outputs (with prefix) for each group_by
-    outputs = []
+def detect_feature_name_collisions(
+        group_bys: List[Tuple[GroupBy, str]],
+        entity_set_type: str,
+        name: str
+) -> BaseException | None:
+    # Build a map: group_by.metaData.name -> set of its (possibly-prefixed) output columns
+    outputs: Dict[str, Set[str]] = {}
     for gb, prefix in group_bys:
-        prefix_str = f"_{prefix}" if prefix else ""
-        gb_outputs = [f"{base_col}{prefix_str}" for base_col in get_group_by_output_columns(gb, exclude_keys=True)]
-        outputs.append(set(gb_outputs))
+        prefix_str = f"{prefix}_" if prefix else ""
+        cols = {
+            f"{prefix_str}{base_col}"
+            for base_col in get_group_by_output_columns(gb, exclude_keys=True)
+        }
+        outputs[gb.metaData.name] = cols
 
-    # Map each unique set of shared output names to the indices that share them
-    collision_groups: Dict[frozenset, Set[int]] = defaultdict(set)
-
-    for (i, out1), (j, out2) in combinations(enumerate(outputs), 2):
-        shared = out1 & out2
+    # Detect collisions between every pair of GroupBys
+    collision_groups: Dict[frozenset, Set[str]] = defaultdict(set)
+    for (name_a, out_a), (name_b, out_b) in combinations(outputs.items(), 2):
+        shared = out_a & out_b
         if shared:
-            collision_groups[frozenset(shared)].update([i, j])
+            collision_groups[frozenset(shared)].update([name_a, name_b])
 
     if not collision_groups:
-        return None
+        return None  # no collisions
 
-    # Format one error message summarizing all collisions
-    lines = [f"{entity_set_type} for Join: {name} has the following output name collisions:\n"]
-    for shared_columns, indices in collision_groups.items():
-        idx_str = ", ".join(map(str, sorted(indices)))
-        col_str = ", ".join(sorted(shared_columns))
-        lines.append(f"  - {entity_set_type} at indices [{idx_str}] collide on: [{col_str}]")
+    # Assemble an error message listing the conflicting GroupBys by name
+    lines = [
+        f"{entity_set_type} for Join: {name} has the following output name collisions:\n"
+    ]
+    for shared_cols, gb_names in collision_groups.items():
+        names_str = ", ".join(sorted(gb_names))
+        cols_str = ", ".join(sorted(shared_cols))
+        lines.append(f"  - [{names_str}] collide on: [{cols_str}]")
 
-    lines.append("\nConsider setting a `prefix` on the conflicting parts to avoid collisions.")
-
+    lines.append(
+        "\nConsider assigning distinct `prefix` values to the conflicting parts to avoid collisions."
+    )
     return ValueError("\n".join(lines))
 
 
