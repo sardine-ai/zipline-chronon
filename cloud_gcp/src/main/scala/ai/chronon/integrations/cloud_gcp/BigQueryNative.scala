@@ -77,8 +77,32 @@ case object BigQueryNative extends Format {
   }
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): List[String] =
-    super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
+      implicit sparkSession: SparkSession): List[String] = {
+    if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
+      throw new NotImplementedError("subPartitionsFilter is not supported on this format")
+    }
+    import sparkSession.implicits._
+
+    val tableIdentifier = SparkBQUtils.toTableId(tableName)
+    val providedProject = Option(tableIdentifier.getProject).getOrElse(bqOptions.getProjectId)
+
+    val bqPartSQL =
+      s"""
+         |select distinct ${partitionColumn} FROM ${tableName}
+         |""".stripMargin
+
+    val partVals = sparkSession.read
+      .format(bqFormat)
+      .option("project", providedProject)
+      // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+      // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+      .option("viewsEnabled", true)
+      .option("materializationDataset", tableIdentifier.getDataset)
+      .load(bqPartSQL)
+
+    partVals.as[String].collect().toList
+
+  }
 
   override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
     import sparkSession.implicits._
@@ -151,5 +175,5 @@ case object BigQueryNative extends Format {
 
   }
 
-  override def supportSubPartitionsFilter: Boolean = true
+  override def supportSubPartitionsFilter: Boolean = false
 }
