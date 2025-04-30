@@ -61,10 +61,16 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
     val joinDecomposed: Seq[(Request, Try[Seq[Either[PrefixedRequest, KeyMissingException]]])] =
       requests.map { request =>
         // use passed-in join or fetch one
-        import ai.chronon.online.metrics
-        val joinTry: Try[JoinOps] = joinConf
-          .map(conf => Success(JoinOps(conf)))
-          .getOrElse(metadataStore.getJoinConf(request.name))
+        val joinTry: Try[JoinOps] = if (joinConf.isEmpty) {
+          val joinConfTry = metadataStore.getJoinConf(request.name)
+          if (joinConfTry.isFailure) {
+            metadataStore.getJoinConf.refresh(request.name)
+          }
+          joinConfTry
+        } else {
+          logger.debug(s"Using passed in join configuration: ${joinConf.get.metaData.getName}")
+          Success(JoinOps(joinConf.get))
+        }
 
         var joinContext: Option[metrics.Metrics.Context] = None
 
@@ -163,7 +169,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
           if (fetchContext.debug || Math.random() < 0.001) {
             println(s"Failed to fetch $groupByRequest with \n${ex.traceString}")
           }
-          Map(groupByRequest.name + "_exception" -> ex.traceString)
+          Map(prefix + "_exception" -> ex.traceString)
       }
       .get
   }

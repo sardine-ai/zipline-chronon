@@ -244,7 +244,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
     )
 
     val result = baseFetcher.parseGroupByResponse("prefix", request, response)
-    result.keySet shouldBe Set("name_exception")
+    result.keySet shouldBe Set("prefix_exception")
   }
 
   it should "check late batch data is handled correctly" in {
