@@ -208,8 +208,6 @@ object GcpApiImpl {
   private[cloud_gcp] val BigTableMaxAttempts = "BIGTABLE_MAX_ATTEMPTS"
   private[cloud_gcp] val BigTableRpcTimeoutMultiplier = "BIGTABLE_RPC_TIMEOUT_MULTIPLIER"
 
-  private[cloud_gcp] val UseBulkReadRows = "USE_BULK_READ_ROWS"
-
   private val DefaultInitialRpcTimeoutDuration = Duration.ofMillis(100L)
   private val DefaultRpcTimeoutMultiplier = 1.25
   private val DefaultMaxRpcTimeoutDuration = Duration.ofMillis(200L)

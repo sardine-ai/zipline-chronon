@@ -56,6 +56,12 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
 
+  it should "check views" ignore {
+    val viewName = "data.purchases_native_view"
+    val allParts = tableUtils.partitions(viewName, partitionColumnName = "ds")
+    assertEquals(30, allParts.size)
+  }
+
   it should "google runtime classes are available" in {
     assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[_]])
     assertCompiles("classOf[GoogleHadoopFileSystem]")

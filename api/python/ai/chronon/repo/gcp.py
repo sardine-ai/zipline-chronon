@@ -223,7 +223,6 @@ class GcpRunner(Runner):
     ):
 
         parsed = urlparse(customer_artifact_prefix)
-        customer_bucket_name = parsed.netloc
         source_blob_name = parsed.path.lstrip("/")
 
         if local_files_to_upload is None:
@@ -240,7 +239,7 @@ class GcpRunner(Runner):
             )
             gcs_files.append(
                 GcpRunner.upload_gcs_blob(
-                    customer_warehouse_bucket, source_file, destination_file_path
+                    get_customer_warehouse_bucket(), source_file, destination_file_path
                 )
             )
         gcs_file_args = ",".join(gcs_files)

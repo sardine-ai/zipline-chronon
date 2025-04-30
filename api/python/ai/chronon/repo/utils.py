@@ -54,6 +54,8 @@ def get_environ_arg(env_name, ignoreError=False) -> str:
         raise ValueError(f"Please set {env_name} environment variable")
     return value
 
+def get_customer_warehouse_bucket() -> str:
+    return f"zipline-warehouse-{get_customer_id()}"
 
 def get_customer_warehouse_bucket() -> str:
     bucket = os.environ.get(
