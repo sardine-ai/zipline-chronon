@@ -10,12 +10,12 @@ object TableCache {
   private val dfMap: ConcurrentMap[String, DataFrame] = new ConcurrentHashMap[String, DataFrame]()
 
   def get(tableName: String, partitionFilters: String, tableLoader: (String, String) => DataFrame)(implicit
-                                                                                                   sparkSession: SparkSession): DataFrame = {
+      sparkSession: SparkSession): DataFrame = {
 
     dfMap.computeIfAbsent(tableName,
-      (t: String) => {
-        tableLoader(t, partitionFilters)
-      })
+                          (t: String) => {
+                            tableLoader(t, partitionFilters)
+                          })
   }
 
   def remove(tableName: String): Unit = {
