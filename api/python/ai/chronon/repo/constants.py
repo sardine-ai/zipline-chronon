@@ -28,6 +28,7 @@ class RunMode(str, Enum):
     MERGE_JOB = "merge-job"
     METASTORE = "metastore"
     INFO = "info"
+    QUERY = "query"
 
 
 ONLINE_ARGS = "--online-jar={online_jar} --online-class={online_class} "
@@ -99,8 +100,9 @@ MODE_ARGS = {
     RunMode.SOURCE_JOB: OFFLINE_ARGS,
     RunMode.JOIN_PART_JOB: OFFLINE_ARGS,
     RunMode.MERGE_JOB: OFFLINE_ARGS,
-    RunMode.METASTORE: "", # purposely left blank. we'll handle this specifically
+    RunMode.METASTORE: "",  # purposely left blank. we'll handle this specifically
     RunMode.INFO: "",
+    RunMode.QUERY: "",
 }
 
 ROUTES = {

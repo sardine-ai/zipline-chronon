@@ -18,7 +18,7 @@ package ai.chronon.spark
 
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
-import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
+import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps, StringOps}
 import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.{Constants, DateRange, ThriftJsonCodec}
@@ -39,18 +39,16 @@ import org.apache.spark.sql.streaming.StreamingQueryListener.{
   QueryTerminatedEvent
 }
 import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
 import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
 import org.slf4j.{Logger, LoggerFactory}
-import org.yaml.snakeyaml.Yaml
 
-import java.io.File
+import java.io.{File, FileNotFoundException}
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
+import scala.io.Source
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
 
@@ -148,9 +146,6 @@ object Driver {
     protected def isLocal: Boolean = localTableMapping.nonEmpty || localDataPath.isDefined
 
     protected def buildSparkSession(): SparkSession = {
-      implicit val formats: Formats = DefaultFormats
-      val yamlLoader = new Yaml()
-
       // We use the KryoSerializer for group bys and joins since we serialize the IRs.
       // But since staging query is fairly freeform, it's better to stick to the java serializer.
       val session =
@@ -1087,6 +1082,52 @@ object Driver {
     }
   }
 
+  object QueryRunner {
+    @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
+    class Args extends Subcommand("query") {
+      val path: ScallopOption[String] =
+        opt[String](required = true, descr = "Path to a query file")
+    }
+
+    def readFileContents(path: String): String = {
+      val file = new File(path)
+
+      if (!file.exists()) {
+        throw new FileNotFoundException(s"File not found at path: $path")
+      }
+
+      if (!file.isFile) {
+        throw new IllegalArgumentException(s"Path exists but is not a file: $path")
+      }
+
+      try {
+        val source = Source.fromFile(file)
+        try {
+          source.mkString
+        } finally {
+          source.close()
+        }
+      } catch {
+        case e: Exception =>
+          throw new RuntimeException(s"Error reading file at $path: ${e.getMessage}", e)
+      }
+    }
+
+    def run(args: Args): Unit = {
+      val session = submission.SparkSessionBuilder.build(
+        s"query_${args.path().sanitize}",
+        enforceKryoSerializer = false
+      )
+
+      val query = readFileContents(args.path())
+
+      logger.info(s"Loaded sql query from path: ${args.path}\n$query\n")
+
+      val df = session.sql(query)
+      df.show()
+    }
+  }
+
   class Args(args: Array[String]) extends ScallopConf(args) {
     object JoinBackFillArgs extends JoinBackfill.Args
     addSubcommand(JoinBackFillArgs)
@@ -1132,6 +1173,9 @@ object Driver {
     addSubcommand(MergeJobRunArgs)
     object CheckPartitionArgs extends CheckPartitions.Args
     addSubcommand(CheckPartitionArgs)
+    object QueryArgs extends QueryRunner.Args
+    addSubcommand(QueryArgs)
+
     requireSubcommand()
     verify()
   }
@@ -1177,6 +1221,7 @@ object Driver {
           case args.JoinPartJobRunArgs     => JoinPartJobRun.run(args.JoinPartJobRunArgs)
           case args.MergeJobRunArgs        => MergeJobRun.run(args.MergeJobRunArgs)
           case args.CheckPartitionArgs     => CheckPartitions.run(args.CheckPartitionArgs)
+          case args.QueryArgs              => QueryRunner.run(args.QueryArgs)
           case _                           => logger.info(s"Unknown subcommand: $x")
         }
       case None => logger.info("specify a subcommand please")

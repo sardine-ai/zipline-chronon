@@ -213,13 +213,17 @@ def main(
     artifact_prefix,
 ):
     unknown_args = ctx.args
-    click.echo("Running with args: {}".format(ctx.params))
+
+    # TODO use logger.debug - don't expose this to users
+    # click.echo("Running with args: {}".format(ctx.params))
 
     conf_path = os.path.join(repo, conf)
     if not os.path.isfile(conf_path):
         raise ValueError(f"Conf file {conf_path} does not exist.")
 
-    set_runtime_env_v3(ctx.params, conf)
+    if mode != RunMode.QUERY:
+        set_runtime_env_v3(ctx.params, conf)
+
     set_defaults(ctx)
     extra_args = (" " + online_args) if mode in ONLINE_MODES and online_args else ""
     ctx.params["args"] = " ".join(unknown_args) + extra_args
@@ -227,7 +231,8 @@ def main(
 
     cloud_provider = get_environ_arg(CLOUD_PROVIDER_KEYWORD, ignoreError=True)
 
-    print(f"Cloud provider: {cloud_provider}")
+    # TODO use logger.debug - don't expose this to users
+    # print(f"Cloud provider: {cloud_provider}")
 
     if not cloud_provider:
         # Support open source chronon runs

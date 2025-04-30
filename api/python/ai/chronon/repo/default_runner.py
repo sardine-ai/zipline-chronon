@@ -54,8 +54,11 @@ class Runner:
             os.environ["CHRONON_ONLINE_JAR"] = self.online_jar
             print("Downloaded jar to {}".format(self.online_jar))
 
-        if (self.conf
-                and (self.mode != "metastore")): # TODO: don't check for metastore
+        if (
+            self.conf
+            and (self.mode != RunMode.METASTORE)
+            and (self.mode != RunMode.QUERY)
+        ):
             try:
                 self.context, self.conf_type, self.team, _ = self.conf.split("/")[-4:]
             except Exception as e:
@@ -244,10 +247,14 @@ class Runner:
         if self.conf_type:
             submitter_args.append(f"--conf-type={self.conf_type}")
 
-        if self.mode != RunMode.FETCH:
-            submitter_args.append(" --local-conf-path={conf}".format(
-                conf=self.local_abs_conf_path
-            ))
+        if self.mode == RunMode.QUERY:
+            submitter_args.append(
+                " --path={conf}".format(conf=self.local_abs_conf_path)
+            )
+        elif self.mode != RunMode.FETCH:
+            submitter_args.append(
+                " --local-conf-path={conf}".format(conf=self.local_abs_conf_path)
+            )
             submitter_args.append(" --original-mode={mode}".format(mode=self.mode))
 
         override_start_partition_arg = (
@@ -261,7 +268,13 @@ class Runner:
         )
 
         final_args = " ".join(
-            [base_args, str(self.args), override_start_partition_arg, ' '.join(submitter_args), additional_args]
+            [
+                base_args,
+                str(self.args),
+                override_start_partition_arg,
+                " ".join(submitter_args),
+                additional_args,
+            ]
         )
 
         return final_args

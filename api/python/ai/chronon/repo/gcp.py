@@ -16,6 +16,7 @@ from ai.chronon.repo.utils import (
     check_call,
     check_output,
     extract_filename_from_path,
+    get_customer_warehouse_bucket,
     get_environ_arg,
     retry_decorator,
     split_date_range,
@@ -35,9 +36,7 @@ class GcpRunner(Runner):
     def __init__(self, args):
         self._remote_artifact_prefix = args.get("artifact_prefix")
         if not self._remote_artifact_prefix:
-            raise ValueError(
-                "GCP artifact prefix not set."
-            )
+            raise ValueError("GCP artifact prefix not set.")
 
         self._version = args.get("version")
         gcp_jar_path = GcpRunner.download_zipline_dataproc_jar(
@@ -57,7 +56,7 @@ class GcpRunner(Runner):
             if args["mode"] == "fetch"
             else gcp_jar_path
         )
-        
+
         self._args = args
 
         super().__init__(args, os.path.expanduser(jar_path))
@@ -107,10 +106,9 @@ class GcpRunner(Runner):
             blob = bucket.blob(destination_blob_name)
             blob.upload_from_filename(source_file_name)
 
-            print(
-                f"File {source_file_name} uploaded to {destination_blob_name} in bucket {bucket_name}."
-            )
-            return f"gs://{bucket_name}/{destination_blob_name}"
+            destination_uri = f"gs://{bucket_name}/{destination_blob_name}"
+            print(f"File {source_file_name} uploaded to {destination_uri}.")
+            return destination_uri
         except Exception as e:
             raise RuntimeError(f"Failed to upload {source_file_name}: {str(e)}") from e
 
@@ -172,7 +170,7 @@ class GcpRunner(Runner):
             gcs_hash = GcpRunner.get_gcs_file_hash(remote_file_path)
             local_hash = GcpRunner.get_local_file_hash(local_file_path)
 
-            print(
+            LOG.debug(
                 f"Local hash of {local_file_path}: {local_hash}. GCS file {remote_file_path} hash: {gcs_hash}"
             )
 
@@ -183,15 +181,24 @@ class GcpRunner(Runner):
             return False
 
     @staticmethod
-    def download_zipline_dataproc_jar(remote_file_path: str, local_file_path: str, version: str, jar_name: str
+    def download_zipline_dataproc_jar(
+        remote_file_path: str, local_file_path: str, version: str, jar_name: str
     ):
-        source_path = os.path.join(remote_file_path, "release", version, "jars", jar_name)
+        print(
+            f"Downloading {jar_name} from GCS...",
+            remote_file_path,
+            local_file_path,
+            version,
+            jar_name,
+        )
+
+        source_path = os.path.join(
+            remote_file_path, "release", version, "jars", jar_name
+        )
         dest_path = os.path.join(local_file_path, jar_name)
 
         are_identical = (
-            GcpRunner.compare_gcs_and_local_file_hashes(
-                source_path, dest_path
-            )
+            GcpRunner.compare_gcs_and_local_file_hashes(source_path, dest_path)
             if os.path.exists(dest_path)
             else False
         )
@@ -199,9 +206,7 @@ class GcpRunner(Runner):
         if are_identical:
             print(f"{dest_path} matches GCS {source_path}")
         else:
-            print(
-                f"{dest_path} does NOT match GCS {source_path}"
-            )
+            print(f"{dest_path} does NOT match GCS {source_path}")
             print(f"Downloading {jar_name} from GCS...")
 
             GcpRunner.download_gcs_blob(source_path, dest_path)
@@ -214,6 +219,7 @@ class GcpRunner(Runner):
         customer_artifact_prefix: str,
         job_type: JobType = JobType.SPARK,
         local_files_to_upload: List[str] = None,
+        folder: str = "metadata",
     ):
 
         parsed = urlparse(customer_artifact_prefix)
@@ -225,30 +231,33 @@ class GcpRunner(Runner):
 
         gcs_files = []
         for source_file in local_files_to_upload:
+            customer_warehouse_bucket = get_customer_warehouse_bucket()
             # upload to `metadata` folder
             destination_file_path = os.path.join(
                 source_blob_name,
-                "metadata",
-                f"{extract_filename_from_path(source_file)}"
+                folder,
+                f"{extract_filename_from_path(source_file)}",
             )
             gcs_files.append(
                 GcpRunner.upload_gcs_blob(
-                    customer_bucket_name, source_file, destination_file_path
+                    customer_warehouse_bucket, source_file, destination_file_path
                 )
             )
         gcs_file_args = ",".join(gcs_files)
-        release_prefix = os.path.join(customer_artifact_prefix, "release", version, "jars")
+        release_prefix = os.path.join(
+            customer_artifact_prefix, "release", version, "jars"
+        )
 
         # include jar uri. should also already be in the bucket
         jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_JAR_DEFAULT}")
 
         final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
 
-
-
         if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
-            flink_jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_FLINK_JAR_DEFAULT}")
+            flink_jar_uri = os.path.join(
+                release_prefix, f"{ZIPLINE_GCP_FLINK_JAR_DEFAULT}"
+            )
             return (
                 final_args.format(
                     user_args=user_args,
@@ -261,15 +270,12 @@ class GcpRunner(Runner):
 
         elif job_type == JobType.SPARK:
             main_class = "ai.chronon.spark.Driver"
-            return (
-                final_args.format(
-                    user_args=user_args,
-                    jar_uri=jar_uri,
-                    job_type=job_type.value,
-                    main_class=main_class,
-                ) + (f" --files={gcs_file_args}" if gcs_file_args else "")
-
-            )
+            return final_args.format(
+                user_args=user_args,
+                jar_uri=jar_uri,
+                job_type=job_type.value,
+                main_class=main_class,
+            ) + (f" --files={gcs_file_args}" if gcs_file_args else "")
         else:
             raise ValueError(f"Invalid job type: {job_type}")
 
@@ -318,6 +324,23 @@ class GcpRunner(Runner):
                     subcommand=ROUTES[self.conf_type][self.mode],
                 )
             )
+        elif self.mode == "query":
+            # We could presumably support other metastore options but
+            # for now only poking for a particular partition is supported.
+            local_files_to_upload_to_gcs = (
+                [os.path.join(self.repo, self.conf)] if self.conf else []
+            )
+            dataproc_args = self.generate_dataproc_submitter_args(
+                # for now, self.conf is the only local file that requires uploading to gcs
+                local_files_to_upload=local_files_to_upload_to_gcs,
+                user_args=self._gen_final_args(),
+                version=self._version,
+                customer_artifact_prefix=self._remote_artifact_prefix,
+                folder="queries",
+            )
+            command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} query {dataproc_args}"
+            print("Running query command:", command)
+            command_list.append(command)
         elif self.mode == "metastore":
             # We could presumably support other metastore options but
             # for now only poking for a particular partition is supported.
@@ -384,7 +407,7 @@ class GcpRunner(Runner):
                         # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
                         version=self._version,
-                        customer_artifact_prefix=self._remote_artifact_prefix
+                        customer_artifact_prefix=self._remote_artifact_prefix,
                     )
                     command = (
                         f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
@@ -413,7 +436,7 @@ class GcpRunner(Runner):
                     local_files_to_upload=local_files_to_upload_to_gcs,
                     user_args=user_args,
                     version=self._version,
-                    customer_artifact_prefix=self._remote_artifact_prefix
+                    customer_artifact_prefix=self._remote_artifact_prefix,
                 )
                 command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
                 command_list.append(command)
@@ -438,11 +461,13 @@ class GcpRunner(Runner):
             ]
             if dataproc_submitter_logs:
                 log = dataproc_submitter_logs[0]
-                job_id = (log[
-                    log.index(dataproc_submitter_id_str)
-                    + len(dataproc_submitter_id_str)
-                    + 1 :
-                ]).strip()
+                job_id = (
+                    log[
+                        log.index(dataproc_submitter_id_str)
+                        + len(dataproc_submitter_id_str)
+                        + 1 :
+                    ]
+                ).strip()
                 print(
                     """
                 <-----------------------------------------------------------------------------------
@@ -458,17 +483,20 @@ class GcpRunner(Runner):
                 )
 
                 # Fetch the final job state
-                jobs_info_str = (check_output(
+                jobs_info_str = check_output(
                     f"gcloud dataproc jobs describe {job_id} --region={GcpRunner.get_gcp_region_id()} "
-                    f"--project={GcpRunner.get_gcp_project_id()} --format=json")
-                                 .decode("utf-8"))
+                    f"--project={GcpRunner.get_gcp_project_id()} --format=json"
+                ).decode("utf-8")
                 job_info = json.loads(jobs_info_str)
                 job_state = job_info.get("status", {}).get("state", "")
 
-
-                print("<<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>")
-                if job_state != 'DONE':
-                    print(f"Job {job_id} is not in DONE state. Current state: {job_state}")
+                print(
+                    "<<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>"
+                )
+                if job_state != "DONE":
+                    print(
+                        f"Job {job_id} is not in DONE state. Current state: {job_state}"
+                    )
                     raise RuntimeError(f"Job {job_id} failed.")
                 else:
                     print(f"Job {job_id} is in DONE state.")
