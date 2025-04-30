@@ -43,6 +43,12 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
     */
   private def toLambdaKvRequest(request: Fetcher.Request): Try[LambdaKvRequest] = metadataStore
     .getGroupByServingInfo(request.name)
+    .recover { case ex: Throwable =>
+      metadataStore.getGroupByServingInfo.refresh(request.name)
+      logger.error(s"Couldn't fetch GroupByServingInfo for ${request.name}", ex)
+      request.context.foreach(_.incrementException(ex))
+      throw ex
+    }
     .map { groupByServingInfo =>
       val context =
         request.context.getOrElse(

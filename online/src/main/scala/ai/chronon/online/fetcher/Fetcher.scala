@@ -241,10 +241,16 @@ class Fetcher(val kvStore: KVStore,
         ctx.distribution("derivation.latency.millis", requestEndTs - derivationStartTs)
         ctx.distribution("request.latency.millis", requestEndTs - ts)
 
-        ResponseWithContext(request, finalizedDerivedMap, baseMap)
+        val response = ResponseWithContext(request, finalizedDerivedMap, baseMap)
+        // Refresh joinCodec if it has partial failure
+        if (joinCodec.hasPartialFailure) {
+          joinCodecCache.refresh(joinName)
+        }
+        response
 
       case Failure(exception) =>
         // more validation logic will be covered in compile.py to avoid this case
+        joinCodecCache.refresh(joinName)
         ctx.incrementException(exception)
         ResponseWithContext(request, Map("join_codec_fetch_exception" -> exception.traceString), Map.empty)
 
@@ -293,14 +299,15 @@ class Fetcher(val kvStore: KVStore,
 
     val joinCodecTry = joinCodecCache(resp.request.name)
 
-    val loggingTry: Try[Unit] = joinCodecTry.map(codec => {
-      val metaData = codec.conf.join.metaData
-      val samplePercent = if (metaData.isSetSamplePercent) metaData.getSamplePercent else 0
+    val loggingTry: Try[Unit] = joinCodecTry
+      .map(codec => {
+        val metaData = codec.conf.join.metaData
+        val samplePercent = if (metaData.isSetSamplePercent) metaData.getSamplePercent else 0
 
-      if (samplePercent > 0)
-        encodeAndPublishLog(resp, ts, codec, samplePercent)
+        if (samplePercent > 0)
+          encodeAndPublishLog(resp, ts, codec, samplePercent)
 
-    })
+      })
 
     loggingTry.failed.map { exception =>
       // to handle GroupByServingInfo staleness that results in encoding failure
@@ -308,6 +315,10 @@ class Fetcher(val kvStore: KVStore,
 
       resp.request.context.foreach(
         _.incrementException(new RuntimeException(s"Logging failed due to: ${exception.traceString}", exception)))
+    }
+
+    if (joinCodecTry.isSuccess && joinCodecTry.get.hasPartialFailure) {
+      joinCodecCache.refresh(resp.request.name)
     }
 
     Response(resp.request, Success(resp.derivedValues))
@@ -390,6 +401,7 @@ class Fetcher(val kvStore: KVStore,
       val joinName = request.name
       val joinConfTry: Try[JoinOps] = metadataStore.getJoinConf(request.name)
       if (joinConfTry.isFailure) {
+        metadataStore.getJoinConf.refresh(request.name)
         resultMap.update(
           request,
           Failure(
@@ -412,6 +424,10 @@ class Fetcher(val kvStore: KVStore,
     // step-2 dedup external requests across joins
     val externalToJoinRequests: Seq[ExternalToJoinRequest] = validRequests
       .flatMap { joinRequest =>
+        val joinConf = metadataStore.getJoinConf(joinRequest.name)
+        if (joinConf.isFailure) {
+          metadataStore.getJoinConf.refresh(joinRequest.name)
+        }
         val parts =
           metadataStore
             .getJoinConf(joinRequest.name)
@@ -498,18 +514,22 @@ class Fetcher(val kvStore: KVStore,
 
     val joinSchemaResponse = joinCodecTry
       .map { joinCodec =>
-        JoinSchemaResponse(joinName,
-                           joinCodec.keyCodec.schemaStr,
-                           joinCodec.valueCodec.schemaStr,
-                           joinCodec.loggingSchemaHash)
+        val response = JoinSchemaResponse(joinName,
+                                          joinCodec.keyCodec.schemaStr,
+                                          joinCodec.valueCodec.schemaStr,
+                                          joinCodec.loggingSchemaHash)
+        if (joinCodec.hasPartialFailure) {
+          joinCodecCache.refresh(joinName)
+        }
+        ctx.distribution("response.latency.millis", System.currentTimeMillis() - startTime)
+        response
       }
-      .recover { case exception: Throwable =>
+      .recover { case exception =>
         logger.error(s"Failed to fetch join schema for $joinName", exception)
         ctx.incrementException(exception)
         throw exception
       }
 
-    joinSchemaResponse.foreach(_ => ctx.distribution("response.latency.millis", System.currentTimeMillis() - startTime))
     joinSchemaResponse
   }
 

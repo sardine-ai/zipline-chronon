@@ -23,10 +23,9 @@ import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.spark.catalog.TableUtils
-
 import ai.chronon.online.KVStore.GetRequest
-import ai.chronon.online._
-import ai.chronon.online.fetcher.FetchContext
+import ai.chronon.online.{fetcher, _}
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions._
@@ -763,5 +762,31 @@ class FetcherTest extends AnyFlatSpec {
     val derivationExceptionTypes = Seq("derivation_fetch_exception", "derivation_rename_exception")
     assertEquals(joinConf.joinParts.size() + derivationExceptionTypes.size, responseMap.size)
     assertTrue(responseMap.keys.forall(_.endsWith("_exception")))
+  }
+
+  it should "test KVStore partial failure" in {
+    val namespace = "test_kv_store_partial_failure"
+    val joinConf = generateRandomData(namespace, 5, 5)
+    implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
+    val kvStoreFunc = () =>
+      OnlineUtils.buildInMemoryKVStore("FetcherTest#test_kv_store_partial_failure", hardFailureOnInvalidDataset = true)
+    val inMemoryKvStore = kvStoreFunc()
+    val mockApi = new MockApi(kvStoreFunc, namespace)
+
+    val metadataStore = new MetadataStore(FetchContext(inMemoryKvStore))
+    inMemoryKvStore.create(MetadataDataset)
+    metadataStore.putJoinConf(joinConf)
+
+    val keys = joinConf.leftKeyCols
+    val keyData = spark.table(s"$namespace.queries_table").select(keys.map(col): _*).head
+    val keyMap = keys.indices.map { idx =>
+      keys(idx) -> keyData.get(idx).asInstanceOf[AnyRef]
+    }.toMap
+
+    val request = Request(joinConf.metaData.name, keyMap)
+    val (responses, _) = FetcherTestUtil.joinResponses(spark, Array(request), mockApi)
+    val responseMap = responses.head.values.get
+    val exceptionKeys = joinConf.joinPartOps.map(jp => jp.fullPrefix + "_exception")
+    exceptionKeys.foreach(k => assertTrue(responseMap.contains(k)))
   }
 }

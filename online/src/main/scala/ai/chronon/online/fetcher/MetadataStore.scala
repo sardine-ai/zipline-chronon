@@ -160,9 +160,9 @@ class MetadataStore(fetchContext: FetchContext) {
         if (result.isSuccess) metrics.Metrics.Context(metrics.Metrics.Environment.MetaDataFetching, result.get.join)
         else metrics.Metrics.Context(metrics.Metrics.Environment.MetaDataFetching, join = name)
       // Throw exception after metrics. No join metadata is bound to be a critical failure.
+      // This will ensure that a Failure is never cached in the getJoinConf TTLCache
       if (result.isFailure) {
-        import ai.chronon.online.metrics
-        context.withSuffix("join").increment(metrics.Metrics.Name.Exception)
+        context.withSuffix("join").incrementException(result.failed.get)
         throw result.failed.get
       }
       context
@@ -239,20 +239,56 @@ class MetadataStore(fetchContext: FetchContext) {
     doRetrieveAllListConfs(new mutable.ArrayBuffer[String]())
   }
 
+  private def buildJoinPartCodec(
+      joinPart: JoinPartOps,
+      servingInfo: GroupByServingInfoParsed): (Iterable[StructField], Iterable[StructField]) = {
+    val keySchema = servingInfo.keyCodec.chrononSchema.asInstanceOf[StructType]
+    val joinKeyFields = joinPart.leftToRight
+      .map { case (leftKey, rightKey) =>
+        StructField(leftKey, keySchema.fields.find(_.name == rightKey).get.fieldType)
+      }
+
+    val baseValueSchema: StructType = if (servingInfo.groupBy.aggregations == null) {
+      servingInfo.selectedChrononSchema
+    } else {
+      servingInfo.outputChrononSchema
+    }
+    val valueFields = if (!servingInfo.groupBy.hasDerivations) {
+      baseValueSchema.fields
+    } else {
+      buildDerivedFields(servingInfo.groupBy.derivationsScala, keySchema, baseValueSchema).toArray
+    }
+    val joinValueFields = valueFields.map(joinPart.constructJoinPartSchema)
+
+    (joinKeyFields, joinValueFields)
+  }
+
   // key and value schemas
   def buildJoinCodecCache(onCreateFunc: Option[Try[JoinCodec] => Unit]): TTLCache[String, Try[JoinCodec]] = {
 
     val codecBuilder = { joinName: String =>
-      getJoinConf(joinName)
-        .map(_.join)
-        .map(buildJoinCodec)
-        .recoverWith { case th: Throwable =>
-          Failure(
-            new RuntimeException(
-              s"Couldn't fetch joinName = ${joinName} or build join codec due to ${th.traceString}",
-              th
-            ))
+      val startTimeMs = System.currentTimeMillis()
+      val result: Try[JoinCodec] =
+        try {
+          getJoinConf(joinName)
+            .map(_.join)
+            .map(join => buildJoinCodec(join, refreshOnFail = true))
+        } catch {
+          case th: Throwable =>
+            getJoinConf.refresh(joinName)
+            Failure(
+              new RuntimeException(
+                s"Couldn't fetch joinName = ${joinName} or build join codec due to ${th.traceString}",
+                th
+              ))
         }
+      val context = Metrics.Context(Metrics.Environment.MetaDataFetching, join = joinName).withSuffix("join_codec")
+      if (result.isFailure) {
+        context.incrementException(result.failed.get)
+      } else {
+        context.distribution(Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
+      }
+      result
     }
 
     new TTLCache[String, Try[JoinCodec]](
@@ -265,38 +301,32 @@ class MetadataStore(fetchContext: FetchContext) {
     )
   }
 
-  def buildJoinCodec(joinConf: Join): JoinCodec = {
+  def buildJoinCodec(joinConf: Join, refreshOnFail: Boolean): JoinCodec = {
     val keyFields = new mutable.LinkedHashSet[StructField]
     val valueFields = new mutable.ListBuffer[StructField]
+    var hasPartialFailure = false
     // collect keyFields and valueFields from joinParts/GroupBys
     joinConf.joinPartOps.foreach { joinPart =>
-      val servingInfoTry = getGroupByServingInfo(joinPart.groupBy.metaData.getName)
-      servingInfoTry
+      getGroupByServingInfo(joinPart.groupBy.metaData.getName)
         .map { servingInfo =>
-          val keySchema = servingInfo.keyCodec.chrononSchema.asInstanceOf[StructType]
-          joinPart.leftToRight
-            .mapValues(right => keySchema.fields.find(_.name == right).get.fieldType)
-            .foreach { case (name, dType) =>
-              val keyField = StructField(name, dType)
-              keyFields.add(keyField)
-            }
-          val groupBySchemaBeforeDerivation: StructType =
-            if (servingInfo.groupBy.aggregations == null) {
-              servingInfo.selectedChrononSchema
+          val (keys, values) = buildJoinPartCodec(joinPart, servingInfo)
+          keys.foreach(k => keyFields.add(k))
+          values.foreach(v => valueFields.append(v))
+        }
+        .recoverWith {
+          case exception: Throwable => {
+            if (refreshOnFail) {
+              getGroupByServingInfo.refresh(joinPart.groupBy.metaData.getName)
+              hasPartialFailure = true
+              Success(())
             } else {
-              servingInfo.outputChrononSchema
+              Failure(new Exception(
+                s"Failure to build join codec for join ${joinConf.metaData.name} due to bad groupBy serving info for ${joinPart.groupBy.metaData.name}",
+                exception))
             }
-          val baseValueSchema: StructType = if (!servingInfo.groupBy.hasDerivations) {
-            groupBySchemaBeforeDerivation
-          } else {
-            val fields =
-              buildDerivedFields(servingInfo.groupBy.derivationsScala, keySchema, groupBySchemaBeforeDerivation)
-            StructType(s"groupby_derived_${servingInfo.groupBy.metaData.cleanName}", fields.toArray)
-          }
-          baseValueSchema.fields.foreach { sf =>
-            valueFields.append(joinPart.constructJoinPartSchema(sf))
           }
         }
+        .get
     }
 
     // gather key schema and value schema from external sources.
@@ -325,8 +355,7 @@ class MetadataStore(fetchContext: FetchContext) {
     val keyCodec = AvroCodec.of(AvroConversions.fromChrononSchema(keySchema).toString)
     val baseValueSchema = StructType(s"${joinName.sanitize}_value", valueFields.toArray)
     val baseValueCodec = serde.AvroCodec.of(AvroConversions.fromChrononSchema(baseValueSchema).toString)
-    val joinCodec = JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec)
-    joinCodec
+    JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec, hasPartialFailure)
   }
 
   def getSchemaFromKVStore(dataset: String, key: String): serde.AvroCodec = {
@@ -366,6 +395,10 @@ class MetadataStore(fetchContext: FetchContext) {
             }
         logger.info(s"Fetched ${Constants.GroupByServingInfoKey} from : $batchDataset")
         if (metaData.isFailure) {
+          Metrics
+            .Context(Metrics.Environment.MetaDataFetching, groupBy = name)
+            .withSuffix("group_by")
+            .incrementException(metaData.failed.get)
           Failure(
             new RuntimeException(s"Couldn't fetch group by serving info for $batchDataset, " +
                                    "please make sure a batch upload was successful",

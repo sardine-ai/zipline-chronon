@@ -67,7 +67,7 @@ public class HubVerticle extends AbstractVerticle {
         router.get("/api/v1/:name/job/type/:type").handler(RouteHandlerWrapper.createHandler(JobTracker::handle, JobTrackerRequest.class));
 
         // hacked up in mem kv store bulkPut
-        KVStore inMemoryKVStore = InMemoryKvStore.build("hub", () -> null);
+        KVStore inMemoryKVStore = InMemoryKvStore.build("hub", () -> null, false);
         // create relevant datasets in kv store
         inMemoryKVStore.create(Constants.MetadataDataset());
         inMemoryKVStore.create(Constants.TiledSummaryDataset());
