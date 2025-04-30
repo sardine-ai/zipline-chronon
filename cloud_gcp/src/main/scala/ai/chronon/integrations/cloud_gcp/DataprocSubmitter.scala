@@ -30,17 +30,17 @@ case class GeneralJob(
 
 class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: SubmitterConf) extends JobSubmitter {
 
-  override def status(jobId: String): Unit = {
+  override def status(jobId: String): String = {
     try {
 
       val currentJob: Job = jobControllerClient.getJob(conf.projectId, conf.region, jobId)
-      currentJob.getStatus.getState
+      currentJob.getStatus.getState.toString
 
     } catch {
 
       case e: ApiException =>
         println(s"Error monitoring job: ${e.getMessage}")
-
+        "UNKNOWN" // If there's an error, we return UNKNOWN status
     }
   }
 
