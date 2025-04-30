@@ -5,8 +5,8 @@ include "common.thrift"
 struct YarnAutoScalingSpec {
     1: optional i32 minInstances
     2: optional i32 maxInstances
-    3: optional i32 scaleUpFactor // 1.5x, 2x etc
-    4: optional i32 scaleDownFactor
+    3: optional double scaleUpFactor // 1.5x, 2x etc
+    4: optional double scaleDownFactor
     5: optional string cooldownPeriod
 }
 
