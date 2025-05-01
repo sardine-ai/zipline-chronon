@@ -178,7 +178,7 @@ case object BigQueryNative extends Format {
       .option("materializationDataset", database)
       .load(partValsSql)
 
-    val partitionVals = partitionInfoDf
+    val unfilteredDf = partitionInfoDf
       .select(
         date_format(
           to_date(
@@ -187,9 +187,14 @@ case object BigQueryNative extends Format {
           ),
           partitionFormat)
           .as(partitionCol))
-      .where(partitionFilters)
       .na // Should filter out '__NULL__' and '__UNPARTITIONED__'. See: https://cloud.google.com/bigquery/docs/partitioned-tables#date_timestamp_partitioned_tables
       .drop()
+
+    val partitionVals = (if (partitionFilters.isEmpty) {
+                           unfilteredDf
+                         } else {
+                           unfilteredDf.where(partitionFilters)
+                         })
       .as[String]
       .collect
       .toList
