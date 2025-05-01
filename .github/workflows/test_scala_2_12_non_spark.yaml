@@ -1,5 +1,7 @@
 name: Test non-spark modules on scala 2.12
 
+
+
 on:
   push:
     branches:

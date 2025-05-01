@@ -1,5 +1,7 @@
 name: Scala Fmt
 
+
+
 on:
   push:
     branches:
