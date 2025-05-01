@@ -7,6 +7,8 @@ import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions.{col, date_format, to_date, lit}
 
+case class PartitionColumnNotFoundException(message: String) extends UnsupportedOperationException(message)
+
 case object BigQueryNative extends Format {
 
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
@@ -78,30 +80,37 @@ case object BigQueryNative extends Format {
 
   override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
       implicit sparkSession: SparkSession): List[String] = {
-    if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
-      throw new NotImplementedError("subPartitionsFilter is not supported on this format")
+    try {
+      super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
+    } catch {
+      case e: PartitionColumnNotFoundException =>
+        // If we are here, it means we are looking at either an unpartitioned table or a view.
+        // Let's fall back to doing a naive brute force approach of partition listing.
+        if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
+          throw new NotImplementedError("subPartitionsFilter is not supported on this format.")
+        }
+        import sparkSession.implicits._
+
+        val tableIdentifier = SparkBQUtils.toTableId(tableName)
+        val providedProject = Option(tableIdentifier.getProject).getOrElse(bqOptions.getProjectId)
+
+        val bqPartSQL =
+          s"""
+             |select distinct ${partitionColumn} FROM ${tableName}
+             |""".stripMargin
+
+        val partVals = sparkSession.read
+          .format(bqFormat)
+          .option("project", providedProject)
+          // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+          // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+          .option("viewsEnabled", true)
+          .option("materializationDataset", tableIdentifier.getDataset)
+          .load(bqPartSQL)
+
+        partVals.as[String].collect().toList
+      case other: Throwable => throw other
     }
-    import sparkSession.implicits._
-
-    val tableIdentifier = SparkBQUtils.toTableId(tableName)
-    val providedProject = Option(tableIdentifier.getProject).getOrElse(bqOptions.getProjectId)
-
-    val bqPartSQL =
-      s"""
-         |select distinct ${partitionColumn} FROM ${tableName}
-         |""".stripMargin
-
-    val partVals = sparkSession.read
-      .format(bqFormat)
-      .option("project", providedProject)
-      // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
-      // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
-      .option("viewsEnabled", true)
-      .option("materializationDataset", tableIdentifier.getDataset)
-      .load(bqPartSQL)
-
-    partVals.as[String].collect().toList
-
   }
 
   override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
@@ -132,7 +141,7 @@ case object BigQueryNative extends Format {
       .as[String]
       .collect
       .headOption
-      .getOrElse(throw new UnsupportedOperationException(s"No partition column for table ${tableName} found."))
+      .getOrElse(throw PartitionColumnNotFoundException(s"No partition column for table ${tableName} found."))
 
     // See: https://cloud.google.com/bigquery/docs/information-schema-partitions
     val partValsSql =
