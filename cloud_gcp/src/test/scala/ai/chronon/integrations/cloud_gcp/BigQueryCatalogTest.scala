@@ -111,7 +111,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   }
 
   it should "integration testing bigquery external table" ignore {
-    val externalTable = "default_bigquery.data.checkouts_parquet"
+    val externalTable = "default_iceberg.data.checkouts_parquet"
 
     val table = tableUtils.loadTable(externalTable)
     table.show
@@ -156,8 +156,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val icebergFormatNoCat = FormatProvider.from(spark).readFormat(icebergTableNoCat)
     assertEquals(Some(Iceberg), icebergFormatNoCat)
 
-    val parts = icebergFormat.get.primaryPartitions(icebergTable, "ds")(spark)
-    val partsNoCat = icebergFormat.get.primaryPartitions(icebergTableNoCat, "ds")(spark)
+    val parts = icebergFormat.get.primaryPartitions(icebergTable, "ds", "")(spark)
+    val partsNoCat = icebergFormat.get.primaryPartitions(icebergTableNoCat, "ds", "")(spark)
     assertEquals(parts, partsNoCat)
 
     val dneTable = "default_iceberg.data.dne"

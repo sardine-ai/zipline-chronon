@@ -48,6 +48,7 @@ trait Format {
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,
                         partitionColumn: String,
+                        partitionFilters: String,
                         subPartitionsFilter: Map[String, String] = Map.empty)(implicit
       sparkSession: SparkSession): List[String] = {
 
@@ -55,7 +56,7 @@ trait Format {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
     }
 
-    val partitionSeq = partitions(tableName)(sparkSession)
+    val partitionSeq = partitions(tableName, partitionFilters)(sparkSession)
 
     partitionSeq.flatMap { partitionMap =>
       if (
@@ -76,7 +77,8 @@ trait Format {
   //         Map("ds" -> "2023-04-01", "hr" -> "13")
   //         Map("ds" -> "2023-04-02", "hr" -> "00")
   //      )
-  def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]]
+  def partitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[Map[String, String]]
 
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean

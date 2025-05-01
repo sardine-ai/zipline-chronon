@@ -9,11 +9,15 @@ import org.apache.spark.sql.delta.DeltaLog
 // In such cases, you should implement your own FormatProvider built on the newer Delta lake version
 case object DeltaLake extends Format {
 
-  override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): List[String] =
-    super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
+  override def primaryPartitions(tableName: String,
+                                 partitionColumn: String,
+                                 partitionFilters: String,
+                                 subPartitionsFilter: Map[String, String])(implicit
+      sparkSession: SparkSession): List[String] =
+    super.primaryPartitions(tableName, partitionColumn, partitionFilters, subPartitionsFilter)
 
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
+  override def partitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[Map[String, String]] = {
 
     // delta lake doesn't support the `SHOW PARTITIONS <tableName>` syntax - https://github.com/delta-io/delta/issues/996
     // there's alternative ways to retrieve partitions using the DeltaLog abstraction which is what we have to lean into

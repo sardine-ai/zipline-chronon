@@ -514,7 +514,8 @@ class TableUtilsTest extends AnyFlatSpec {
     val tableName = "db.test_last_available_partition"
     prepareTestDataWithSubPartitions(tableName)
     Seq("2022-11-01", "2022-11-02", "2022-11-03").foreach { ds =>
-      val firstDs = tableUtils.lastAvailablePartition(tableName, Map(Constants.LabelPartitionColumn -> ds))
+      val firstDs =
+        tableUtils.lastAvailablePartition(tableName, subPartitionFilters = Map(Constants.LabelPartitionColumn -> ds))
       assertTrue(firstDs.contains(ds))
     }
   }
@@ -523,7 +524,8 @@ class TableUtilsTest extends AnyFlatSpec {
     val tableName = "db.test_first_available_partition"
     prepareTestDataWithSubPartitions(tableName)
     Seq("2022-11-01", "2022-11-02", "2022-11-03").foreach { ds =>
-      val firstDs = tableUtils.firstAvailablePartition(tableName, Map(Constants.LabelPartitionColumn -> ds))
+      val firstDs =
+        tableUtils.firstAvailablePartition(tableName, subPartitionFilters = Map(Constants.LabelPartitionColumn -> ds))
       assertTrue(firstDs.contains("2022-11-01"))
     }
   }

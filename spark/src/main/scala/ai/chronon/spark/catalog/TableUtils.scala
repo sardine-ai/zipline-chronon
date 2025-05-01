@@ -165,7 +165,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       .getOrElse(
         throw new IllegalStateException(
           s"Could not determine read format of table ${tableName}. It is no longer reachable."))
-    val partitionSeq = format.partitions(tableName)(sparkSession)
+    val partitionSeq = format.partitions(tableName, "")(sparkSession)
 
     if (partitionColumnsFilter.isEmpty) {
 
@@ -182,15 +182,18 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def partitions(tableName: String,
                  subPartitionsFilter: Map[String, String] = Map.empty,
+                 partitionRange: Option[PartitionRange] = None,
                  partitionColumnName: String = partitionColumn): List[String] = {
     if (!tableReachable(tableName)) return List.empty[String]
+    val rangeWheres = andPredicates(partitionRange.map(whereClauses(_, partitionColumnName)).getOrElse(Seq.empty))
+
     tableFormatProvider
       .readFormat(tableName)
       .map((format) => {
         logger.info(
           s"Getting partitions for ${tableName} with partitionColumnName ${partitionColumnName} and subpartitions: ${subPartitionsFilter}")
         val partitions =
-          format.primaryPartitions(tableName, partitionColumnName, subPartitionsFilter)(sparkSession)
+          format.primaryPartitions(tableName, partitionColumnName, rangeWheres, subPartitionsFilter)(sparkSession)
 
         if (partitions.isEmpty) {
           logger.info(s"No partitions found for table: $tableName")
@@ -224,11 +227,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     loadTable(tableName).schema
   }
 
-  def lastAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].max(x, y))
+  def lastAvailablePartition(tableName: String,
+                             partitionRange: Option[PartitionRange] = None,
+                             subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
+    partitions(tableName, subPartitionFilters, partitionRange).reduceOption((x, y) => Ordering[String].max(x, y))
 
-  def firstAvailablePartition(tableName: String, subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(tableName, subPartitionFilters).reduceOption((x, y) => Ordering[String].min(x, y))
+  def firstAvailablePartition(tableName: String,
+                              partitionRange: Option[PartitionRange] = None,
+                              subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
+    partitions(tableName, subPartitionFilters, partitionRange).reduceOption((x, y) => Ordering[String].min(x, y))
 
   def createTable(df: DataFrame,
                   tableName: String,
@@ -395,8 +402,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                      inputPartitionColumnNames: Seq[String] = Seq(partitionColumn)): Option[Seq[PartitionRange]] = {
 
     val validPartitionRange = if (outputPartitionRange.start == null) { // determine partition range automatically
-      val inputStart = inputTables.flatMap(_.map(table =>
-        firstAvailablePartition(table, inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty))).min)
+      val inputStart = inputTables.flatMap(
+        _.map(table =>
+          firstAvailablePartition(table,
+                                  Option(outputPartitionRange),
+                                  inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty))).min)
       assert(
         inputStart.isDefined,
         s"""Either partition range needs to have a valid start or
@@ -433,7 +443,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         inputPartitionColumnName <- inputPartitionColumnNames;
         table <- inputTables;
         subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty);
-        partitionStr <- partitions(table, subPartitionFilters, inputPartitionColumnName)
+        partitionStr <- partitions(table, subPartitionFilters, Option(outputPartitionRange), inputPartitionColumnName)
       ) yield {
         partitionSpec.shift(partitionStr, inputToOutputShift)
       }

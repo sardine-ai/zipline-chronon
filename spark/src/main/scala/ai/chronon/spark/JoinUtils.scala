@@ -147,7 +147,7 @@ object JoinUtils {
     }
 
     lazy val firstAvailablePartitionOpt =
-      tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters)
+      tableUtils.firstAvailablePartition(leftSource.table, subPartitionFilters = leftSource.subPartitionFilters)
     lazy val defaultLeftStart = Option(leftSource.query.startPartition)
       .getOrElse {
         require(

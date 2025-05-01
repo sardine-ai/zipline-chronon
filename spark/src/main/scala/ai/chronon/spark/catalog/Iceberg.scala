@@ -6,23 +6,28 @@ import org.apache.spark.sql.types.StructType
 
 case object Iceberg extends Format {
 
-  override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): List[String] = {
+  override def primaryPartitions(tableName: String,
+                                 partitionColumn: String,
+                                 partitionFilters: String,
+                                 subPartitionsFilter: Map[String, String])(implicit
+      sparkSession: SparkSession): List[String] = {
 
     if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
     }
 
-    getIcebergPartitions(tableName)
+    getIcebergPartitions(tableName, partitionFilters)
   }
 
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
+  override def partitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[Map[String, String]] = {
     throw new NotImplementedError(
       "Multi-partitions retrieval is not supported on Iceberg tables yet." +
         "For single partition retrieval, please use 'partition' method.")
   }
 
-  private def getIcebergPartitions(tableName: String)(implicit sparkSession: SparkSession): List[String] = {
+  private def getIcebergPartitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[String] = {
 
     val partitionsDf = sparkSession.read
       .format("iceberg")
