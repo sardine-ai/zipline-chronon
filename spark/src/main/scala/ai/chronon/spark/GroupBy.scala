@@ -591,13 +591,14 @@ object GroupBy {
       case EVENTS =>
         if (Option(source.getEvents.isCumulative).getOrElse(false)) {
           lazy val latestAvailable: Option[String] =
-            tableUtils.lastAvailablePartition(source.table, source.subPartitionFilters)
+            tableUtils.lastAvailablePartition(source.table, subPartitionFilters = source.subPartitionFilters)
           val latestValid: String = Option(source.query.endPartition).getOrElse(latestAvailable.orNull)
           SourceDataProfile(latestValid, latestValid, latestValid)
         } else {
           val minQuery = tableUtils.partitionSpec.before(queryStart)
           val windowStart: String = window.map(tableUtils.partitionSpec.minus(minQuery, _)).orNull
-          lazy val firstAvailable = tableUtils.firstAvailablePartition(source.table, source.subPartitionFilters)
+          lazy val firstAvailable =
+            tableUtils.firstAvailablePartition(source.table, subPartitionFilters = source.subPartitionFilters)
           val sourceStart = Option(source.query.startPartition).getOrElse(firstAvailable.orNull)
           SourceDataProfile(windowStart, sourceStart, effectiveEnd)
         }

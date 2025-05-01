@@ -59,7 +59,7 @@ class BigQueryExternalTest extends AnyFlatSpec with MockitoSugar{
     val bqClient = mockBigQueryClient(tblName, dir.getAbsolutePath)
 
     val gcsFormat = BigQueryExternal
-    val partitions = gcsFormat.partitions(tblName, bqClient)(spark)
+    val partitions = gcsFormat.partitions(tblName, "", bqClient)(spark)
 
     assertEquals(Set(Map("ds" -> "20241223"), Map("ds" -> "20241224"), Map("ds" -> "20241225")), partitions.toSet)
 
@@ -83,7 +83,7 @@ class BigQueryExternalTest extends AnyFlatSpec with MockitoSugar{
 
     val mockBQClient = mockBigQueryClient(tblName, dir.getAbsolutePath)
     val gcsFormat = BigQueryExternal
-    val partitions = gcsFormat.partitions(tblName, mockBQClient)(spark)
+    val partitions = gcsFormat.partitions(tblName, "", mockBQClient)(spark)
 
     assertEquals(Set.empty, partitions.toSet)
 
@@ -115,7 +115,7 @@ class BigQueryExternalTest extends AnyFlatSpec with MockitoSugar{
     val tblName = "test_dataset.test_table"
     val mockBQClient = mockBigQueryClient(tblName, dir.getAbsolutePath)
     val gcsFormat = BigQueryExternal
-    val partitions = gcsFormat.partitions(tblName, mockBQClient)(spark)
+    val partitions = gcsFormat.partitions(tblName, "", mockBQClient)(spark)
 
     assertEquals(Set(Map("ds" -> "2024-12-23"), Map("ds" -> "2024-12-24"), Map("ds" -> "2024-12-25")), partitions.toSet)
 
