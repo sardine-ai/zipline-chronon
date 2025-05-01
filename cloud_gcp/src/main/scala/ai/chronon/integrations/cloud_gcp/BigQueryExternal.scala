@@ -14,11 +14,14 @@ case object BigQueryExternal extends Format {
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
   lazy val bigQueryClient: BigQuery = bqOptions.getService
 
-  override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): List[String] =
-    super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
+  override def primaryPartitions(tableName: String,
+                                 partitionColumn: String,
+                                 partitionFilters: String,
+                                 subPartitionsFilter: Map[String, String])(implicit
+      sparkSession: SparkSession): List[String] =
+    super.primaryPartitions(tableName, partitionColumn, partitionFilters, subPartitionsFilter)
 
-  private[cloud_gcp] def partitions(tableName: String, bqClient: BigQuery)(implicit
+  private[cloud_gcp] def partitions(tableName: String, partitionFilters: String, bqClient: BigQuery)(implicit
       sparkSession: SparkSession): List[Map[String, String]] = {
     val btTableIdentifier = SparkBQUtils.toTableId(tableName)(sparkSession)
     val definition = scala
@@ -55,11 +58,15 @@ case object BigQueryExternal extends Format {
       *        values = Row(2, "world", 6.28),
       *        path = "hdfs://<host>:<port>/ path/ to/ partition/ a=2/ b=world/ c=6.28")))
       */
-    val partitionSpec = sparkSession.read
+    val df = sparkSession.read
       .format(formatOptions.getType)
       .load(uri)
-      .queryExecution
-      .sparkPlan
+    val finalDf = if (partitionFilters.isEmpty) {
+      df
+    } else {
+      df.where(partitionFilters)
+    }
+    val partitionSpec = finalDf.queryExecution.sparkPlan
       .asInstanceOf[FileSourceScanExec]
       .relation
       .location
@@ -92,8 +99,9 @@ case object BigQueryExternal extends Format {
       .toList
   }
 
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
-    partitions(tableName, bigQueryClient)
+  override def partitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[Map[String, String]] = {
+    partitions(tableName, partitionFilters, bigQueryClient)
   }
 
   override def supportSubPartitionsFilter: Boolean = true

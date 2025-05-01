@@ -3,7 +3,7 @@ package ai.chronon.spark.batch
 import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.PartitionRange.toTimeRange
-import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange}
+import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.orchestration.JoinPartNode
 import ai.chronon.spark.Extensions._
@@ -20,13 +20,12 @@ import scala.jdk.CollectionConverters._
 
 case class JoinPartJobContext(leftDf: Option[DfWithStats],
                               joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]],
-                              leftTimeRangeOpt: Option[PartitionRange],
                               tableProps: Map[String, String],
                               runSmallMode: Boolean)
 
 class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)(implicit tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  implicit val partitionSpec = tableUtils.partitionSpec
+  implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
   private val leftTable = node.leftSourceTable
   private val joinPart = node.joinPart
@@ -50,14 +49,6 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       val query = Builders.Query(selects = relevantLeftCols.map(t => t -> t).toMap)
       val cachedLeftDf = tableUtils.scanDf(query = query, leftTable, range = Some(dateRange))
 
-      val leftTimeRangeOpt: Option[PartitionRange] =
-        if (cachedLeftDf.schema.fieldNames.contains(Constants.TimePartitionColumn)) {
-          val leftTimePartitionMinMax = cachedLeftDf.range[String](Constants.TimePartitionColumn)
-          Some(PartitionRange(leftTimePartitionMinMax._1, leftTimePartitionMinMax._2))
-        } else {
-          None
-        }
-
       val runSmallMode = JoinUtils.runSmallMode(tableUtils, cachedLeftDf)
 
       val leftWithStats = cachedLeftDf.withStats
@@ -67,7 +58,6 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
 
       JoinPartJobContext(Option(leftWithStats),
                          joinLevelBloomMapOpt,
-                         leftTimeRangeOpt,
                          Option(node.metaData.tableProps).getOrElse(Map.empty[String, String]),
                          runSmallMode)
     }
@@ -77,7 +67,6 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       jobContext.leftDf,
       joinPart,
       dateRange,
-      jobContext.leftTimeRangeOpt,
       node.metaData.outputTable,
       jobContext.tableProps,
       jobContext.joinLevelBloomMapOpt,
@@ -85,19 +74,18 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     )
   }
 
-  def computeRightTable(leftDfOpt: Option[DfWithStats],
-                        joinPart: JoinPart,
-                        leftRange: PartitionRange, // missing left partitions
-                        leftTimeRangeOpt: Option[PartitionRange], // range of timestamps within missing left partitions
-                        partTable: String,
-                        tableProps: Map[String, String] = Map(),
-                        joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]],
-                        smallMode: Boolean = false): Option[DataFrame] = {
+  private def computeRightTable(leftDfOpt: Option[DfWithStats],
+                                joinPart: JoinPart,
+                                leftRange: PartitionRange, // missing left partitions
+                                partTable: String,
+                                tableProps: Map[String, String] = Map(),
+                                joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]],
+                                smallMode: Boolean = false): Option[DataFrame] = {
 
     // val partMetrics = Metrics.Context(metrics, joinPart) -- TODO is this metrics context sufficient, or should we pass thru for monolith join?
     val partMetrics = Metrics.Context(Metrics.Environment.JoinOffline, joinPart.groupBy)
 
-    val rightRange = JoinUtils.shiftDays(node.leftDataModel, joinPart, leftTimeRangeOpt, leftDfOpt, leftRange)
+    val rightRange = JoinUtils.shiftDays(node.leftDataModel, joinPart, leftRange)
 
     // Can kill the option after we deprecate monolith join job
     leftDfOpt.map { leftDf =>

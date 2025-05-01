@@ -1,20 +1,24 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.catalog.Format
-import com.google.cloud.bigquery.BigQueryOptions
+import ai.chronon.spark.catalog.{Format, TableUtils}
+import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, StandardTableDefinition, TableDefinition, ViewDefinition}
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
+import org.apache.spark.sql.functions.{col, date_format, lit, to_date}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.{col, date_format, to_date, lit}
+
+case class PartitionColumnNotFoundException(message: String) extends UnsupportedOperationException(message)
 
 case object BigQueryNative extends Format {
 
   private val bqFormat = classOf[Spark35BigQueryTableProvider].getName
   private lazy val bqOptions = BigQueryOptions.getDefaultInstance
+  lazy val bigQueryClient: BigQuery = bqOptions.getService
 
-  private val internalBQCol = "__chronon_internal_bq_col__"
+  private val internalBQPartitionCol = "__chronon_internal_bq_partition_col__"
 
-  override def table(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
+  // TODO(tchow): use the cache flag
+  override def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
+      sparkSession: SparkSession): DataFrame = {
     import sparkSession.implicits._
 
     // First, need to clean the spark-based table name for the bigquery queries below.
@@ -48,13 +52,14 @@ case object BigQueryNative extends Format {
     // Next, we query the BQ table using the requested partitionFilter to grab all the distinct partition values that match the filter.
     val partitionWheres = if (partitionFilters.nonEmpty) s"WHERE ${partitionFilters}" else partitionFilters
     val partitionFormat = TableUtils(sparkSession).partitionFormat
-    val select = s"SELECT distinct(${partColName}) AS ${internalBQCol} FROM ${bqFriendlyName} ${partitionWheres}"
+    val select =
+      s"SELECT distinct(${partColName}) AS ${internalBQPartitionCol} FROM ${bqFriendlyName} ${partitionWheres}"
     val selectedParts = sparkSession.read
       .format(bqFormat)
       .option("viewsEnabled", true)
       .option("materializationDataset", bqTableId.getDataset)
       .load(select)
-      .select(date_format(col(internalBQCol), partitionFormat))
+      .select(date_format(col(internalBQPartitionCol), partitionFormat))
       .as[String]
       .collect
       .toList
@@ -73,11 +78,55 @@ case object BigQueryNative extends Format {
       .reduce(_ unionByName _)
   }
 
-  override def primaryPartitions(tableName: String, partitionColumn: String, subPartitionsFilter: Map[String, String])(
-      implicit sparkSession: SparkSession): List[String] =
-    super.primaryPartitions(tableName, partitionColumn, subPartitionsFilter)
+  override def primaryPartitions(tableName: String,
+                                 partitionColumn: String,
+                                 partitionFilters: String,
+                                 subPartitionsFilter: Map[String, String])(implicit
+      sparkSession: SparkSession): List[String] = {
+    val tableIdentifier = SparkBQUtils.toTableId(tableName)
+    val definition = scala
+      .Option(bigQueryClient.getTable(tableIdentifier))
+      .map((table) => table.getDefinition.asInstanceOf[TableDefinition])
+      .getOrElse(throw new IllegalArgumentException(s"Table ${tableName} does not exist."))
 
-  override def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]] = {
+    definition match {
+      case view: ViewDefinition => {
+        if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
+          throw new NotImplementedError("subPartitionsFilter is not supported on this format.")
+        }
+        import sparkSession.implicits._
+
+        val tableIdentifier = SparkBQUtils.toTableId(tableName)
+        val providedProject = Option(tableIdentifier.getProject).getOrElse(bqOptions.getProjectId)
+        val partitionWheres = if (partitionFilters.nonEmpty) s"WHERE ${partitionFilters}" else partitionFilters
+
+        val bqPartSQL =
+          s"""
+             |select distinct ${partitionColumn} FROM ${tableName} ${partitionWheres}
+             |""".stripMargin
+
+        val partVals = sparkSession.read
+          .format(bqFormat)
+          .option("project", providedProject)
+          // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
+          // and: https://cloud.google.com/bigquery/docs/information-schema-intro#limitations
+          .option("viewsEnabled", true)
+          .option("materializationDataset", tableIdentifier.getDataset)
+          .load(bqPartSQL)
+
+        partVals.as[String].collect().toList
+      }
+      case std: StandardTableDefinition =>
+        super.primaryPartitions(tableName, partitionColumn, partitionFilters, subPartitionsFilter)
+      case other =>
+        throw new IllegalArgumentException(
+          s"Table ${tableName} is not a view or standard table. It is of type ${other.getClass.getName}."
+        )
+    }
+  }
+
+  override def partitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[Map[String, String]] = {
     import sparkSession.implicits._
     val tableIdentifier = SparkBQUtils.toTableId(tableName)
     val providedProject = Option(tableIdentifier.getProject).getOrElse(bqOptions.getProjectId)
@@ -105,7 +154,7 @@ case object BigQueryNative extends Format {
       .as[String]
       .collect
       .headOption
-      .getOrElse(throw new UnsupportedOperationException(s"No partition column for table ${tableName} found."))
+      .getOrElse(throw PartitionColumnNotFoundException(s"No partition column for table ${tableName} found."))
 
     // See: https://cloud.google.com/bigquery/docs/information-schema-partitions
     val partValsSql =
@@ -137,7 +186,8 @@ case object BigQueryNative extends Format {
             "yyyyMMdd" // Note: this "yyyyMMdd" format is hardcoded but we need to change it to be something else.
           ),
           partitionFormat)
-          .as("partition_id"))
+          .as(partitionCol))
+      .where(partitionFilters)
       .na // Should filter out '__NULL__' and '__UNPARTITIONED__'. See: https://cloud.google.com/bigquery/docs/partitioned-tables#date_timestamp_partitioned_tables
       .drop()
       .as[String]
@@ -148,5 +198,5 @@ case object BigQueryNative extends Format {
 
   }
 
-  override def supportSubPartitionsFilter: Boolean = true
+  override def supportSubPartitionsFilter: Boolean = false
 }

@@ -1,26 +1,54 @@
 package ai.chronon.spark.catalog
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
-import org.apache.spark.sql.DataFrame
+
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
+import java.util.function
+
+object TableCache {
+  private val dfMap: ConcurrentMap[String, DataFrame] = new ConcurrentHashMap[String, DataFrame]()
+
+  def get(tableName: String)(implicit sparkSession: SparkSession): DataFrame = {
+    dfMap.computeIfAbsent(tableName,
+                          new function.Function[String, DataFrame] {
+                            override def apply(t: String): DataFrame = {
+                              sparkSession.read.table(t)
+                            }
+                          })
+  }
+
+  def remove(tableName: String): Unit = {
+    dfMap.remove(tableName)
+  }
+}
 
 trait Format {
 
   @transient protected lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def table(tableName: String, partitionFilters: String)(implicit sparkSession: SparkSession): DataFrame = {
-    val df = sparkSession.read.table(tableName)
+  def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
+      sparkSession: SparkSession): DataFrame = {
+
+    val df = if (cacheDf) {
+      TableCache.get(tableName)
+    } else {
+      sparkSession.read.table(tableName)
+    }
+
     if (partitionFilters.isEmpty) {
       df
     } else {
       df.where(partitionFilters)
     }
+
   }
 
   // Return the primary partitions (based on the 'partitionColumn') filtered down by sub-partition filters if provided
   // If subpartition filters are supplied and the format doesn't support it, we throw an error
   def primaryPartitions(tableName: String,
                         partitionColumn: String,
+                        partitionFilters: String,
                         subPartitionsFilter: Map[String, String] = Map.empty)(implicit
       sparkSession: SparkSession): List[String] = {
 
@@ -28,7 +56,7 @@ trait Format {
       throw new NotImplementedError("subPartitionsFilter is not supported on this format")
     }
 
-    val partitionSeq = partitions(tableName)(sparkSession)
+    val partitionSeq = partitions(tableName, partitionFilters)(sparkSession)
 
     partitionSeq.flatMap { partitionMap =>
       if (
@@ -49,7 +77,8 @@ trait Format {
   //         Map("ds" -> "2023-04-01", "hr" -> "13")
   //         Map("ds" -> "2023-04-02", "hr" -> "00")
   //      )
-  def partitions(tableName: String)(implicit sparkSession: SparkSession): List[Map[String, String]]
+  def partitions(tableName: String, partitionFilters: String)(implicit
+      sparkSession: SparkSession): List[Map[String, String]]
 
   // Does this format support sub partitions filters
   def supportSubPartitionsFilter: Boolean

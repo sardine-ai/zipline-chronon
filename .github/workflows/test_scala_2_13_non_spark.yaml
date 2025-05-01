@@ -48,10 +48,6 @@ jobs:
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
-
       - name: Run Flink tests
         run: |
           bazel test \
@@ -76,10 +72,6 @@ jobs:
       - name: Setup Bazel cache credentials
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
-
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
 
       - name: Run Aggregator tests
         run: |
@@ -106,10 +98,6 @@ jobs:
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
-
       - name: Run Online tests
         run: |
           bazel test \
@@ -134,10 +122,6 @@ jobs:
       - name: Setup Bazel cache credentials
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
-
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
 
       - name: Run api tests
         run: |
@@ -164,10 +148,6 @@ jobs:
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
-
       - name: Run service tests
         run: |
           bazel test \
@@ -193,10 +173,6 @@ jobs:
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
 
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
-
       - name: Run cloud gcp tests
         run: |
           bazel test \
@@ -221,10 +197,6 @@ jobs:
       - name: Setup Bazel cache credentials
         run: |
           echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
-
-      - name: Setup Sim-Links
-        id: sim-links
-        run: ./startup.sh
 
       - name: Run cloud aws tests
         run: |

@@ -287,13 +287,6 @@ class Join(joinConf: api.Join,
       }
     }
 
-    val leftTimeRangeOpt = if (leftTaggedDf.schema.fieldNames.contains(Constants.TimePartitionColumn)) {
-      val leftTimePartitionMinMax = leftTaggedDf.range[String](Constants.TimePartitionColumn)
-      Some(PartitionRange(leftTimePartitionMinMax._1, leftTimePartitionMinMax._2))
-    } else {
-      None
-    }
-
     implicit val executionContext: ExecutionContextExecutorService =
       ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(tableUtils.joinPartParallelism))
 
@@ -342,7 +335,7 @@ class Join(joinConf: api.Join,
               }
 
               val runContext =
-                JoinPartJobContext(unfilledLeftDf, bloomFilterOpt, leftTimeRangeOpt, tableProps, runSmallMode)
+                JoinPartJobContext(unfilledLeftDf, bloomFilterOpt, tableProps, runSmallMode)
 
               val skewKeys: Option[Map[String, Seq[String]]] = Option(joinConfCloned.skewKeys).map { jmap =>
                 val scalaMap = jmap.toScala

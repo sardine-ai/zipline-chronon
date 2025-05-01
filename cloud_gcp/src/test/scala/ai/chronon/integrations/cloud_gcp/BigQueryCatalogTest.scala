@@ -56,6 +56,12 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
 
+  it should "check views" ignore {
+    val viewName = "data.purchases_native_view"
+    val allParts = tableUtils.partitions(viewName, partitionColumnName = "ds")
+    assertEquals(30, allParts.size)
+  }
+
   it should "google runtime classes are available" in {
     assertTrue(GoogleHadoopFileSystemConfiguration.BLOCK_SIZE.isInstanceOf[HadoopConfigurationProperty[_]])
     assertCompiles("classOf[GoogleHadoopFileSystem]")
@@ -105,7 +111,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   }
 
   it should "integration testing bigquery external table" ignore {
-    val externalTable = "default_bigquery.data.checkouts_parquet"
+    val externalTable = "default_iceberg.data.checkouts_parquet"
 
     val table = tableUtils.loadTable(externalTable)
     table.show
@@ -150,8 +156,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val icebergFormatNoCat = FormatProvider.from(spark).readFormat(icebergTableNoCat)
     assertEquals(Some(Iceberg), icebergFormatNoCat)
 
-    val parts = icebergFormat.get.primaryPartitions(icebergTable, "ds")(spark)
-    val partsNoCat = icebergFormat.get.primaryPartitions(icebergTableNoCat, "ds")(spark)
+    val parts = icebergFormat.get.primaryPartitions(icebergTable, "ds", "")(spark)
+    val partsNoCat = icebergFormat.get.primaryPartitions(icebergTableNoCat, "ds", "")(spark)
     assertEquals(parts, partsNoCat)
 
     val dneTable = "default_iceberg.data.dne"

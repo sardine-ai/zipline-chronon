@@ -71,16 +71,20 @@ object JoinUtils {
              tableUtils: TableUtils,
              allowEmpty: Boolean = false,
              limit: Option[Int] = None): Option[DataFrame] = {
+
     val timeProjection = if (joinConf.left.dataModel == EVENTS) {
       Seq(Constants.TimeColumn -> Option(joinConf.left.query).map(_.timeColumn).orNull)
     } else {
       Seq()
     }
+
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
                                Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
                                range = Some(range))
+
     limit.foreach(l => df = df.limit(l))
+
     val skewFilter = joinConf.skewFilter()
     val result = skewFilter
       .map(sf => {
@@ -88,10 +92,12 @@ object JoinUtils {
         df.filter(sf)
       })
       .getOrElse(df)
+
     if (!allowEmpty && result.isEmpty) {
       logger.info(s"Left side query below produced 0 rows in range $range, and allowEmpty=false.")
       return None
     }
+
     Some(result)
   }
 
@@ -141,7 +147,7 @@ object JoinUtils {
     }
 
     lazy val firstAvailablePartitionOpt =
-      tableUtils.firstAvailablePartition(leftSource.table, leftSource.subPartitionFilters)
+      tableUtils.firstAvailablePartition(leftSource.table, subPartitionFilters = leftSource.subPartitionFilters)
     lazy val defaultLeftStart = Option(leftSource.query.startPartition)
       .getOrElse {
         require(
@@ -561,11 +567,7 @@ object JoinUtils {
     }.toMap)
   }
 
-  def shiftDays(leftDataModel: DataModel,
-                joinPart: JoinPart,
-                leftTimeRangeOpt: Option[PartitionRange],
-                leftDf: Option[DfWithStats],
-                leftRange: PartitionRange) = {
+  def shiftDays(leftDataModel: DataModel, joinPart: JoinPart, leftRange: PartitionRange): PartitionRange = {
     val shiftDays =
       if (leftDataModel == EVENTS && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
         -1
@@ -580,7 +582,7 @@ object JoinUtils {
     // events | entities | temporal => right part tables are aligned - so scan by leftRange
     // entities | entities | snapshot => right part tables are aligned - so scan by leftRange
     val rightRange = if (leftDataModel == EVENTS && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
-      // Diabling for now
+      // Disabling for now
       // val leftTimeRange = leftTimeRangeOpt.getOrElse(leftDf.get.timeRange.toPartitionRange)
       leftRange.shift(shiftDays)
     } else {
