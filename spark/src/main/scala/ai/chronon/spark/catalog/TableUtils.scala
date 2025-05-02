@@ -137,49 +137,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def containsPartitions(tableName: String, partitionSpec: Map[String, String]): Boolean = {
-    if (!tableReachable(tableName)) return false
-
-    val format = tableFormatProvider
-      .readFormat(tableName)
-      .getOrElse(
-        throw new IllegalStateException(
-          s"Could not determine read format of table ${tableName}. It is no longer reachable."))
-
-    format match {
-      case Iceberg => {
-        partitionSpec.values.toSet.subsetOf(this.partitions(tableName).toSet)
-      }
-      case _ => this.allPartitions(tableName).contains(partitionSpec)
-    }
-
-  }
-
-  // return all specified partition columns in a table in format of Map[partitionName, PartitionValue]
-  def allPartitions(tableName: String, partitionColumnsFilter: List[String] = List.empty): List[Map[String, String]] = {
-
-    if (!tableReachable(tableName)) return List.empty[Map[String, String]]
-
-    val format = tableFormatProvider
-      .readFormat(tableName)
-      .getOrElse(
-        throw new IllegalStateException(
-          s"Could not determine read format of table ${tableName}. It is no longer reachable."))
-    val partitionSeq = format.partitions(tableName, "")(sparkSession)
-
-    if (partitionColumnsFilter.isEmpty) {
-
-      partitionSeq
-
-    } else {
-
-      partitionSeq.map { partitionMap =>
-        partitionMap.filterKeys(key => partitionColumnsFilter.contains(key)).toMap
-      }
-
-    }
-  }
-
   def partitions(tableName: String,
                  subPartitionsFilter: Map[String, String] = Map.empty,
                  partitionRange: Option[PartitionRange] = None,

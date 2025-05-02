@@ -131,7 +131,6 @@ object Extensions {
     def outputTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}"
     def outputLabelTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labels"
     def outputFinalView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled"
-    def outputLatestLabelView: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labeled_latest"
     def outputLabelTableV2: String =
       s"${metaData.outputNamespace}.${metaData.cleanName}_with_labels" // Used for the LabelJoinV2 flow
     def loggedTable: String = s"${outputTable}_logged"
