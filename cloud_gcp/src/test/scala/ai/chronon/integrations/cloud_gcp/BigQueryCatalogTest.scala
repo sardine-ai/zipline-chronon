@@ -1,5 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
+import ai.chronon.api.PartitionRange
 import ai.chronon.spark.catalog.{FormatProvider, Iceberg, TableUtils}
 import ai.chronon.spark.submission.SparkSessionBuilder
 import com.esotericsoftware.kryo.Kryo
@@ -51,10 +52,29 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   )
   lazy val tableUtils: TableUtils = TableUtils(spark)
 
-  it should "check views" ignore {
+  it should "works with views" ignore {
     val viewName = "data.purchases_native_view"
-    val allParts = tableUtils.partitions(viewName, partitionColumnName = "ds")
-    assertEquals(30, allParts.size)
+    val nativeName = "data.purchases"
+
+    val viewParts = tableUtils.partitions(viewName, partitionRange = Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    assertEquals(30, viewParts.size)
+    val nativeParts = tableUtils.partitions(nativeName, partitionRange = Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    assertEquals(30, nativeParts.size)
+
+    assertEquals(nativeParts.toSet, viewParts.toSet)
+
+  }
+
+  it should "works with a partition range for views and tables" ignore {
+    val viewName = "data.purchases_native_view"
+    val nativeName = "data.purchases"
+    val viewTruncated = tableUtils.partitions(viewName, partitionRange = Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    assertEquals(3, viewTruncated.size)
+    val nativeTruncated = tableUtils.partitions(nativeName, partitionRange = Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    assertEquals(3, nativeTruncated.size)
+
+    assertEquals(nativeTruncated.toSet, viewTruncated.toSet)
+
   }
 
   it should "google runtime classes are available" in {
