@@ -19,7 +19,9 @@ package ai.chronon.online.metrics
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import com.timgroup.statsd.{Event, NoOpStatsDClient, NonBlockingStatsDClientBuilder, StatsDClient}
+import io.opentelemetry.api.OpenTelemetry
+
+import scala.collection.mutable
 
 object Metrics {
   object Environment extends Enumeration {
@@ -51,6 +53,7 @@ object Metrics {
     val Production = "production"
     val Accuracy = "accuracy"
     val Team = "team"
+    val Dataset = "dataset"
   }
 
   object Name {
@@ -85,8 +88,6 @@ object Metrics {
   }
 
   object Context {
-
-    val sampleRate: Double = 0.1
 
     def apply(environment: Environment, join: Join): Context = {
       Context(
@@ -126,27 +127,28 @@ object Metrics {
       )
     }
 
-    // Host can also be a Unix socket like: unix:///opt/datadog-agent/run/dogstatsd.sock
-    // In the unix socket case port is configured to be 0
-    val statsHost: String = System.getProperty("ai.chronon.metrics.host", "localhost")
-    val statsPort: Int = System.getProperty("ai.chronon.metrics.port", "8125").toInt
-    // Can disable stats collection for local / dev environments
-    val statsEnabled: Boolean = System.getProperty("ai.chronon.metrics.enabled", "true").toBoolean
-    val tagCache: TTLCache[Context, String] = new TTLCache[Context, String](
-      { ctx => ctx.toTags.reverse.mkString(",") },
-      { ctx => ctx },
-      ttlMillis = 5 * 24 * 60 * 60 * 1000 // 5 days
-    )
+    private val client: MetricsReporter = {
+      // Can disable metrics collection for local / dev environments
+      val metricsEnabled: Boolean = System.getProperty(MetricsEnabled, "true").toBoolean
+      val reporter: String = System.getProperty(MetricsReporter, "otel")
 
-    private val statsClient: StatsDClient = {
-      if (statsEnabled) {
-        new NonBlockingStatsDClientBuilder().prefix("ai.zipline").hostname(statsHost).port(statsPort).build()
-      } else {
-        new NoOpStatsDClient()
+      reporter.toLowerCase match {
+        case "otel" | "opentelemetry" =>
+          if (metricsEnabled) {
+            val metricReader = OtelMetricsReporter.buildOtelMetricReader()
+            val openTelemetry = OtelMetricsReporter.buildOpenTelemetryClient(metricReader)
+            new OtelMetricsReporter(openTelemetry)
+          } else {
+            new OtelMetricsReporter(OpenTelemetry.noop())
+          }
+        case _ =>
+          throw new IllegalArgumentException(s"Unknown metrics reporter: $reporter. Only opentelemetry is supported.")
       }
     }
-
   }
+
+  val MetricsEnabled = "ai.chronon.metrics.enabled"
+  val MetricsReporter = "ai.chronon.metrics.reporter"
 
   case class Context(environment: Environment,
                      join: String = null,
@@ -156,25 +158,12 @@ object Metrics {
                      accuracy: Accuracy = null,
                      team: String = null,
                      joinPartPrefix: String = null,
-                     suffix: String = null)
+                     suffix: String = null,
+                     dataset: String = null)
       extends Serializable {
 
     def withSuffix(suffixN: String): Context = copy(suffix = (Option(suffix) ++ Seq(suffixN)).mkString("."))
 
-    // Tagging happens to be the most expensive part(~40%) of reporting stats.
-    // And reporting stats is about 30% of overall fetching latency.
-    // So we do array packing directly instead of regular string interpolation.
-    // This simply creates "key:value"
-    // The optimization shaves about 2ms of 6ms of e2e overhead for 500 batch size.
-    def buildTag(key: String, value: String): String = {
-      val charBuf = new Array[Char](key.length + value.length + 1)
-      key.getChars(0, key.length, charBuf, 0)
-      value.getChars(0, value.length, charBuf, key.length + 1)
-      charBuf.update(key.length, ':')
-      new String(charBuf)
-    }
-
-    private lazy val tags = Metrics.Context.tagCache(this)
     private val prefixString = environment + Option(suffix).map("." + _).getOrElse("")
 
     private def prefix(s: String): String =
@@ -184,54 +173,16 @@ object Metrics {
         .append(s)
         .toString
 
-    @transient private lazy val stats: StatsDClient = Metrics.Context.statsClient
-
-    def increment(metric: String): Unit = stats.increment(prefix(metric), tags)
-
-    def increment(metric: String, tag: String): Unit = stats.increment(prefix(metric), s"$tags,$tag")
-
-    def incrementException(exception: Throwable)(implicit logger: org.slf4j.Logger): Unit = {
-      val stackTrace = exception.getStackTrace
-      val exceptionSignature = if (stackTrace.isEmpty) {
-        exception.getClass.toString
-      } else {
-        val stackRoot = stackTrace.apply(0)
-        val file = stackRoot.getFileName
-        val line = stackRoot.getLineNumber
-        val method = stackRoot.getMethodName
-        s"[$method@$file:$line]${exception.getClass.toString}"
-      }
-      logger.error(s"Exception Message: ${exception.traceString}")
-      stats.increment(prefix(Name.Exception), s"$tags,${Metrics.Name.Exception}:${exceptionSignature}")
-    }
-
-    def distribution(metric: String, value: Long): Unit =
-      stats.distribution(prefix(metric), value, Context.sampleRate, tags)
-
-    def distribution(metric: String, value: Long, tag: String): Unit =
-      stats.distribution(prefix(metric), value, Context.sampleRate, s"$tags,$tag")
-
-    def count(metric: String, value: Long): Unit = stats.count(prefix(metric), value, tags)
-
-    def gauge(metric: String, value: Long): Unit = stats.gauge(prefix(metric), value, tags)
-
-    def gauge(metric: String, value: Double): Unit = stats.gauge(prefix(metric), value, tags)
-
-    def recordEvent(metric: String, event: Event): Unit = stats.recordEvent(event, prefix(metric), tags)
-
-    def toTags: Array[String] = {
+    def toTags: Map[String, String] = {
       val joinNames: Array[String] = Option(join).map(_.split(",")).getOrElse(Array.empty[String]).map(_.sanitize)
       assert(
         environment != null,
         "Environment needs to be set - group_by.upload, group_by.streaming, join.fetching, group_by.fetching, group_by.offline etc")
-      val buffer = new Array[String](7 + joinNames.length)
-      var counter = 0
+      val buffer = mutable.Map[String, String]()
 
       def addTag(key: String, value: String): Unit = {
         if (value == null) return
-        assert(counter < buffer.length, "array overflow")
-        buffer.update(counter, buildTag(key, value))
-        counter += 1
+        buffer += key -> value
       }
 
       joinNames.foreach(addTag(Tag.Join, _))
@@ -245,7 +196,42 @@ object Metrics {
       addTag(Tag.Environment, environment)
       addTag(Tag.JoinPartPrefix, joinPartPrefix)
       addTag(Tag.Accuracy, if (accuracy != null) accuracy.name() else null)
-      buffer
+      addTag(Tag.Dataset, dataset)
+      buffer.toMap
     }
+
+    implicit val context: Context = this
+
+    def increment(metric: String): Unit = Context.client.count(prefix(metric), 1, Map.empty)
+
+    def increment(metric: String, additionalTags: Map[String, String]): Unit =
+      Context.client.count(prefix(metric), 1, additionalTags)
+
+    def incrementException(exception: Throwable)(implicit logger: org.slf4j.Logger): Unit = {
+      val stackTrace = exception.getStackTrace
+      val exceptionSignature = if (stackTrace.isEmpty) {
+        exception.getClass.toString
+      } else {
+        val stackRoot = stackTrace.apply(0)
+        val file = stackRoot.getFileName
+        val line = stackRoot.getLineNumber
+        val method = stackRoot.getMethodName
+        s"[$method@$file:$line]${exception.getClass.toString}"
+      }
+      logger.error(s"Exception Message: ${exception.traceString}")
+      Context.client.count(prefix(Name.Exception), 1, Map(Metrics.Name.Exception -> exceptionSignature))
+    }
+
+    def distribution(metric: String, value: Long): Unit =
+      Context.client.distribution(prefix(metric), value, Map.empty)
+
+    def distribution(metric: String, value: Long, additionalTags: Map[String, String]): Unit =
+      Context.client.distribution(prefix(metric), value, additionalTags)
+
+    def count(metric: String, value: Long): Unit = Context.client.count(prefix(metric), value)
+
+    def gauge(metric: String, value: Long): Unit = Context.client.longGauge(prefix(metric), value)
+
+    def gauge(metric: String, value: Double): Unit = Context.client.doubleGauge(prefix(metric), value)
   }
 }

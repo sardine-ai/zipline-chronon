@@ -1,3 +1,13 @@
+OTEL_DEPS = [
+    maven_artifact("io.opentelemetry:opentelemetry-api"),
+    maven_artifact("io_opentelemetry:opentelemetry-context"),
+    maven_artifact("io_opentelemetry:opentelemetry-sdk-common"),
+    maven_artifact("io.opentelemetry:opentelemetry-sdk"),
+    maven_artifact("io.opentelemetry:opentelemetry-sdk-metrics"),
+    maven_artifact("io.opentelemetry:opentelemetry-exporter-otlp"),
+    maven_artifact("io.opentelemetry:opentelemetry-exporter-prometheus"),
+]
+
 scala_library(
     name = "metrics_lib",
     srcs = glob(["src/main/scala/ai/chronon/online/metrics/*.scala"]),
@@ -6,10 +16,9 @@ scala_library(
         "//conditions:default": True,  # Enable for other versions
     }),
     visibility = ["//visibility:public"],
-    deps = [
+    deps = OTEL_DEPS + [
         "//api:lib",
         "//api:thrift_java",
-        maven_artifact("com.datadoghq:java-dogstatsd-client"),
         maven_artifact("org.slf4j:slf4j-api"),
         maven_artifact("org.apache.logging.log4j:log4j-api"),
         maven_artifact("org.apache.logging.log4j:log4j-core"),
@@ -41,7 +50,7 @@ scala_library(
         "//conditions:default": True,  # Enable for other versions
     }),
     visibility = ["//visibility:public"],
-    deps = [
+    deps = OTEL_DEPS + [
         ":metrics_lib",
         "//aggregator:lib",
         "//api:lib",
@@ -89,6 +98,7 @@ test_deps = _SCALA_TEST_DEPS + [
     maven_artifact("net.bytebuddy:byte-buddy-agent"),
     maven_artifact("org.apache.hadoop:hadoop-common"),
     maven_artifact("org.apache.hadoop:hadoop-client-api"),
+    maven_artifact("io.opentelemetry:opentelemetry-api"),
 ]
 
 scala_library(

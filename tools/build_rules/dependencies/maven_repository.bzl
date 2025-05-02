@@ -70,6 +70,7 @@ maven_repository = repository(
         "ch.qos.logback:logback-classic:1.5.6",
         "com.typesafe:config:1.4.3",
         "io.micrometer:micrometer-registry-statsd:1.13.6",
+        "io.micrometer:micrometer-registry-otlp:1.13.6",
         "net.sf.py4j:py4j:0.10.9.9",
         "org.apache.commons:commons-lang3:3.12.0",
         "org.apache.commons:commons-math3:3.6.1",
@@ -221,6 +222,14 @@ maven_repository = repository(
         # Temporal
         "io.temporal:temporal-sdk:1.28.0",
         "io.temporal:temporal-testing:1.28.0",
+
+        # OpenTelemetry
+        "io.opentelemetry:opentelemetry-api:1.49.0",
+        "io.opentelemetry:opentelemetry-sdk:1.49.0",
+        "io.opentelemetry:opentelemetry-sdk-metrics:1.49.0",
+        "io.opentelemetry:opentelemetry-exporter-otlp:1.49.0",
+        "io.opentelemetry:opentelemetry-exporter-prometheus:1.49.0-alpha",
+        "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.49.0",
     ],
     excluded_artifacts = [
         "org.apache.beam:beam-sdks-java-io-hadoop-common",

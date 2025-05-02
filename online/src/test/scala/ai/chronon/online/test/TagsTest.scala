@@ -17,40 +17,17 @@
 package ai.chronon.online.test
 
 import ai.chronon.api.Builders
-import ai.chronon.online.metrics.Metrics.Context
 import ai.chronon.online.metrics.Metrics.Environment
-import ai.chronon.online.metrics.TTLCache
-import ai.chronon.online.metrics.Metrics
+import ai.chronon.online.metrics.{Metrics, OtelMetricsReporter}
+import io.opentelemetry.api.OpenTelemetry
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
 
 class TagsTest extends AnyFlatSpec {
   // test that ttlCache of context is creates non duplicated entries
 
-  // copied from the private NonBlockingStatsDClient.tagString
-  def tagString(tags: Array[String], tagPrefix: String): String = {
-    var sb: StringBuilder = null
-    if (tagPrefix != null) {
-      if ((tags == null) || (tags.length == 0)) return tagPrefix
-      sb = new StringBuilder(tagPrefix)
-      sb.append(",")
-    } else {
-      if ((tags == null) || (tags.length == 0)) return ""
-      sb = new StringBuilder("|#")
-    }
-    for (n <- tags.length - 1 to 0 by -1) {
-      sb.append(tags(n))
-      if (n > 0) sb.append(",")
-    }
-    sb.toString
-  }
-
   it should "cached tags are computed tags" in {
-    val cache = new TTLCache[Metrics.Context, String](
-      { ctx => ctx.toTags.mkString(",") },
-      { ctx => ctx },
-      ttlMillis = 5 * 24 * 60 * 60 * 1000 // 5 days
-    )
+    val otelMetricsClient = new OtelMetricsReporter(OpenTelemetry.noop())
     val context = Metrics.Context(
       Environment.JoinOffline,
       Builders.Join(
@@ -75,14 +52,14 @@ class TagsTest extends AnyFlatSpec {
     val copyFake = context.copy(join = "something else")
     val copyCorrect = copyFake.copy(join = context.join)
 
-    // add three entires to cache - two distinct contexts and one copy of the first
-    cache(context)
-    cache(copyCorrect)
-    cache(copyFake)
-    assertEquals(cache.cMap.size(), 2)
+    // add three entries to cache - two distinct contexts and one copy of the first
+    otelMetricsClient.tagCache(context)
+    otelMetricsClient.tagCache(copyCorrect)
+    otelMetricsClient.tagCache(copyFake)
+    assertEquals(otelMetricsClient.tagCache.cMap.size(), 2)
 
-    val slowTags = tagString(context.toTags, null)
-    val fastTags = tagString(Array(Context.tagCache(copyCorrect)), null)
+    val slowTags = otelMetricsClient.tagCache(context)
+    val fastTags = otelMetricsClient.tagCache(copyCorrect)
     assertEquals(slowTags, fastTags)
   }
 
