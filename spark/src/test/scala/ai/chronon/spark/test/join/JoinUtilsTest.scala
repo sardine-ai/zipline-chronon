@@ -18,18 +18,17 @@ package ai.chronon.spark.test.join
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{Builders, Constants, PartitionSpec}
-import ai.chronon.api.PartitionRange
+import ai.chronon.api.{Builders, PartitionRange, PartitionSpec}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.JoinUtils.{contains_any, set_add}
 import ai.chronon.spark.JoinUtils
+import ai.chronon.spark.JoinUtils.{contains_any, set_add}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.test.{DataFrameGen, TestUtils}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -265,51 +264,6 @@ class JoinUtilsTest extends AnyFlatSpec {
     assertTrue(properties.isDefined)
     assertEquals(properties.get.get("featureTable"), Some(leftTableName))
     assertEquals(properties.get.get("labelTable"), Some(rightTableName))
-  }
-
-  it should "create latest label view" in {
-    val finalViewName = "joinUtil.testFinalView"
-    val leftTableName = "joinUtil.testFeatureTable2"
-    val rightTableName = "joinUtil.testLabelTable2"
-    tableUtils.createDatabase(namespace)
-    TestUtils.createSampleFeatureTableDf(spark).write.saveAsTable(leftTableName)
-    tableUtils.insertPartitions(TestUtils.createSampleLabelTableDf(spark),
-                                rightTableName,
-                                partitionColumns = List(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
-    val keys = Array("listing_id", tableUtils.partitionColumn)
-
-    JoinUtils.createOrReplaceView(
-      finalViewName,
-      leftTableName,
-      rightTableName,
-      keys,
-      tableUtils,
-      viewProperties = Map(Constants.LabelViewPropertyFeatureTable -> leftTableName,
-                           Constants.LabelViewPropertyKeyLabelTable -> rightTableName)
-    )
-    val view = tableUtils.sql(s"select * from $finalViewName")
-    view.show()
-    assertEquals(6, view.count())
-
-    //verity latest label view
-    val latestLabelView = "testLatestLabel"
-    JoinUtils.createLatestLabelView(latestLabelView,
-                                    finalViewName,
-                                    tableUtils,
-                                    propertiesOverride = Map("newProperties" -> "value"))
-    val latest = tableUtils.sql(s"select * from $latestLabelView")
-    latest.show()
-    assertEquals(2, latest.count())
-    assertEquals(0, latest.filter(latest("listing_id") === "3").count())
-    assertEquals("2022-11-22", latest.where(latest("ds") === "2022-10-07").select("label_ds").first().get(0))
-    // label_ds should be unique per ds + listing
-    val removeDup = latest.dropDuplicates(Seq("label_ds", "ds"))
-    assertEquals(removeDup.count(), latest.count())
-
-    val properties = tableUtils.getTableProperties(latestLabelView)
-    assertTrue(properties.isDefined)
-    assertEquals(properties.get.get(Constants.LabelViewPropertyFeatureTable), Some(leftTableName))
-    assertEquals(properties.get.get("newProperties"), Some("value"))
   }
 
   it should "filter columns" in {

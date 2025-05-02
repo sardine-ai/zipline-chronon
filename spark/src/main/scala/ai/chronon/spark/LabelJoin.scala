@@ -111,11 +111,6 @@ class LabelJoin(joinConf: api.Join, tableUtils: TableUtils, labelDS: String) {
         viewProperties = Map(Constants.LabelViewPropertyKeyLabelTable -> outputLabelTable,
                              Constants.LabelViewPropertyFeatureTable -> joinConf.metaData.outputTable)
       )
-      logger.info(s"Final labeled view created: ${joinConf.metaData.outputFinalView}")
-      JoinUtils.createLatestLabelView(joinConf.metaData.outputLatestLabelView,
-                                      baseView = joinConf.metaData.outputFinalView,
-                                      tableUtils)
-      logger.info(s"Final view with latest label created: ${joinConf.metaData.outputLatestLabelView}")
       labelDf
     }
   }

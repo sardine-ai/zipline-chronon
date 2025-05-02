@@ -87,14 +87,14 @@ trait Format {
 
 object Format {
 
-  def parseHiveStylePartition(pstring: String): Map[String, String] = {
+  def parseHiveStylePartition(pstring: String): List[(String, String)] = {
     pstring
       .split("/")
       .map { part =>
         val p = part.split("=", 2)
         p(0) -> p(1)
       }
-      .toMap
+      .toList
   }
 
 }

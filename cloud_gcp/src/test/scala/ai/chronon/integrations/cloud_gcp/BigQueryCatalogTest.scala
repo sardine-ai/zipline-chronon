@@ -4,12 +4,7 @@ import ai.chronon.spark.catalog.{FormatProvider, Iceberg, TableUtils}
 import ai.chronon.spark.submission.SparkSessionBuilder
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
-import com.google.cloud.hadoop.fs.gcs.{
-  GoogleHadoopFS,
-  GoogleHadoopFileSystem,
-  GoogleHadoopFileSystemConfiguration,
-  HadoopConfigurationProperty
-}
+import com.google.cloud.hadoop.fs.gcs.{GoogleHadoopFS, GoogleHadoopFileSystem, GoogleHadoopFileSystemConfiguration, HadoopConfigurationProperty}
 import com.google.cloud.spark.bigquery.SparkBigQueryUtil
 import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
 import org.apache.iceberg.gcp.gcs.GCSFileIO
@@ -106,7 +101,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val table = tableUtils.loadTable(nativeTable)
     table.show
     // val database = tableUtils.createDatabase("test_database")
-    val allParts = tableUtils.allPartitions(nativeTable)
+    val allParts = tableUtils.partitions(nativeTable)
     println(allParts)
   }
 
@@ -116,7 +111,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val table = tableUtils.loadTable(externalTable)
     table.show
     // val database = tableUtils.createDatabase("test_database")
-    val allParts = tableUtils.allPartitions(externalTable)
+    val allParts = tableUtils.partitions(externalTable)
     println(allParts)
   }
 

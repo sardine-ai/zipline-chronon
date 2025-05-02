@@ -1013,13 +1013,19 @@ object Driver {
       val tableUtils = args.buildTableUtils()
 
       val isAllPartitionsPresent = tablesToPartitionSpec.forall { case (tbl, spec) =>
-        val result = tableUtils.containsPartitions(tbl, spec)
-        if (result) {
+        val containsSpec = if (tableUtils.tableReachable(tbl)) {
+          val partList = tableUtils.partitions(tbl, spec.tail.toMap, partitionColumnName = spec.head._1)
+          partList.nonEmpty
+        } else {
+          logger.info(s"Table ${tbl} is not reachable.")
+          false
+        }
+        if (containsSpec) {
           logger.info(s"Table ${tbl} has partition ${spec} present.")
         } else {
           logger.info(s"Table ${tbl} does not have partition ${spec} present.")
         }
-        result
+        containsSpec
       }
       if (isAllPartitionsPresent) {
         logger.info(s"All partitions ${partitionNames} are present.")

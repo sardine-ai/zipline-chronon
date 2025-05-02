@@ -94,13 +94,6 @@ class FeatureWithLabelJoinTest extends AnyFlatSpec {
                    .select("label_ds")
                    .first()
                    .get(0))
-
-    //validate the latest label view
-    val latest = tableUtils.sql(s"select * from ${joinConf.metaData.outputLatestLabelView} order by label_ds")
-    latest.show()
-    // latest label should be all same "2022-11-11"
-    assertEquals(latest.agg(max("label_ds")).first().getString(0), latest.agg(min("label_ds")).first().getString(0))
-    assertEquals("2022-11-11", latest.agg(max("label_ds")).first().getString(0))
   }
 
   it should "final views with agg label" in {
@@ -164,22 +157,6 @@ class FeatureWithLabelJoinTest extends AnyFlatSpec {
     val runner2 = new LabelJoin(joinConf, tableUtils, "2022-10-07")
     val updatedLabelDf = runner2.computeLabelJoin()
     updatedLabelDf.show()
-
-    //validate the label view
-    val latest = tableUtils.sql(s"select * from ${joinConf.metaData.outputLatestLabelView} order by label_ds")
-    latest.show()
-    assertEquals(2,
-                 latest
-                   .where(latest("listing") === "3" && latest("ds") === "2022-10-03")
-                   .select("label_listing_labels_agg_is_active_max_5d")
-                   .first()
-                   .get(0))
-    assertEquals("2022-10-07",
-                 latest
-                   .where(latest("listing") === "1" && latest("ds") === "2022-10-03")
-                   .select("label_ds")
-                   .first()
-                   .get(0))
   }
 
   private def assertResult(computed: DataFrame, expected: DataFrame): Unit = {

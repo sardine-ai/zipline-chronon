@@ -20,7 +20,7 @@ case object Hive extends Format {
     sparkSession.sqlContext
       .sql(s"SHOW PARTITIONS $tableName")
       .collect()
-      .map(row => Format.parseHiveStylePartition(row.getString(0)))
+      .map(row => Format.parseHiveStylePartition(row.getString(0)).toMap)
       .toList
   }
 
