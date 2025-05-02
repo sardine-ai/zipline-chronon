@@ -120,8 +120,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
       keyRenamedRightDf
         .withColumn(
           Constants.TimePartitionColumn,
-          date_format(date_add(to_date(col(tableUtils.partitionColumn), tableUtils.partitionSpec.format), 1),
-                      tableUtils.partitionSpec.format)
+          col(tableUtils.partitionColumn)
         )
         .drop(tableUtils.partitionColumn)
     } else {

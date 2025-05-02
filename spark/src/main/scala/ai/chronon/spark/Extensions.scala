@@ -115,6 +115,10 @@ object Extensions {
       df.filter(pruneFilter)
     }
 
+    def shiftPartition(numDays: Int, partitionColumn: String = tableUtils.partitionColumn): DataFrame = {
+      df.withColumn(partitionColumn, date_add(df.col(partitionColumn), numDays))
+    }
+
     def partitionRange: PartitionRange = {
       val (start, end) = df.range[String](tableUtils.partitionColumn)
       PartitionRange(start, end)

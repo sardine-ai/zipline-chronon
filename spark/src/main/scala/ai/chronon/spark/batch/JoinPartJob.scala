@@ -208,15 +208,15 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       case (ENTITIES, EVENTS, _)   => partitionRangeGroupBy.snapshotEvents(dateRange)
       case (ENTITIES, ENTITIES, _) => partitionRangeGroupBy.snapshotEntities
       case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
-        genGroupBy(shiftedPartitionRange).snapshotEvents(shiftedPartitionRange)
+        genGroupBy(shiftedPartitionRange).snapshotEvents(shiftedPartitionRange).shiftPartition(1)
       case (EVENTS, EVENTS, Accuracy.TEMPORAL) =>
         genGroupBy(unfilledPartitionRange).temporalEvents(renamedLeftDf, Some(toTimeRange(unfilledPartitionRange)))
 
-      case (EVENTS, ENTITIES, Accuracy.SNAPSHOT) => genGroupBy(shiftedPartitionRange).snapshotEntities
+      case (EVENTS, ENTITIES, Accuracy.SNAPSHOT) => genGroupBy(shiftedPartitionRange).snapshotEntities.shiftPartition(1)
 
       case (EVENTS, ENTITIES, Accuracy.TEMPORAL) =>
         // Snapshots and mutations are partitioned with ds holding data between <ds 00:00> and ds <23:59>.
-        genGroupBy(shiftedPartitionRange).temporalEntities(renamedLeftDf)
+        genGroupBy(shiftedPartitionRange).temporalEntities(renamedLeftDf).shiftPartition(1)
     }
     val rightDfWithDerivations = if (joinPart.groupBy.hasDerivations) {
       val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(rightDf.columns).toSeq

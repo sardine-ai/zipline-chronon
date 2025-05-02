@@ -34,6 +34,7 @@ object RelevantLeftForJoinPart {
   }
 
   def partTableName(join: Join, joinPart: ai.chronon.api.JoinPart): String = {
+
     val relevantLeft = relevantLeftCompute(join.left, joinPart)
     val rightMetadata = joinPart.groupBy.metaData
     val prefix = Option(joinPart.prefix).map(_.sanitize + "__").getOrElse("")
@@ -50,6 +51,7 @@ object RelevantLeftForJoinPart {
     // removing ns to keep the table name short, hash is enough to differentiate
     val leftTable = removeNamespace(relevantLeft.leftTable)
 
+    // We don't strictly need leftTable here (handled by the hash), but including it for transparency
     s"${groupByName}__${leftTable}__$combinedHash"
   }
 
