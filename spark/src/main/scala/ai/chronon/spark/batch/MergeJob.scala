@@ -133,6 +133,10 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
                    |${leftDf.schema.pretty}
                    |Right Schema:
                    |${joinableRightDf.schema.pretty}""".stripMargin)
+
+    leftDf.show()
+    joinableRightDf.show()
+
     val joinedDf = coalescedJoin(leftDf, joinableRightDf, keys)
     logger.info(s"""Final Schema:
                    |${joinedDf.schema.pretty}

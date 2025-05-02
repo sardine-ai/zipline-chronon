@@ -10,9 +10,11 @@ import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.{GroupBy, JoinUtils}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.catalyst.dsl.expressions.StringToAttributeConversionHelper
 import org.apache.spark.sql.functions.{col, date_format}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.{Logger, LoggerFactory}
+import org.apache.spark.sql.functions._
 
 import java.util
 import scala.collection.{Map, Seq}
@@ -225,6 +227,9 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     } else {
       rightDf
     }
+
+    renamedLeftDf.selectExpr("min(ds) as min_ds", "max(ds) as max_ds").show()
+    rightDf.selectExpr("min(ds) as min_ds", "max(ds) as max_ds").show()
 
     if (showDf) {
       logger.info(s"printing results for joinPart: ${joinPart.groupBy.metaData.name}")

@@ -100,13 +100,17 @@ abstract class JoinBase(val joinConfCloned: api.Join,
       keyRenamedRightDf
         .withColumn(
           Constants.TimePartitionColumn,
-          date_format(date_add(to_date(col(tableUtils.partitionColumn), tableUtils.partitionSpec.format), 1),
-                      tableUtils.partitionSpec.format)
+          col(tableUtils.partitionColumn)
         )
         .drop(tableUtils.partitionColumn)
     } else {
       keyRenamedRightDf
     }
+
+    leftDf.selectExpr("min(ts_ds) as min_ds", "max(ts_ds) as max_ds").show()
+    joinableRightDf.selectExpr("min(ts_ds) as min_ds", "max(ts_ds) as max_ds").show()
+    //renamedLeftDf.selectExpr("min(ds) as min_ds", "max(ds) as max_ds").show()
+    //    rightDf.selectExpr("min(ds) as min_ds", "max(ds) as max_ds").show()
 
     logger.info(s"""
                |Join keys for ${joinPart.groupBy.metaData.name}: ${keys.mkString(", ")}
@@ -119,6 +123,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                |${joinedDf.schema.pretty}
                |""".stripMargin)
 
+    joinedDf.show()
     joinedDf
   }
 

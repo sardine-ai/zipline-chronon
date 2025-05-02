@@ -198,13 +198,7 @@ class Join(joinConf: api.Join,
   private def getRightPartsData(leftRange: PartitionRange): Seq[(JoinPart, DataFrame)] = {
     joinConfCloned.joinParts.asScala.map { joinPart =>
       val partTable = joinConfCloned.partOutputTable(joinPart)
-      val effectiveRange =
-        if (joinConfCloned.left.dataModel != ENTITIES && joinPart.groupBy.inferredAccuracy == Accuracy.SNAPSHOT) {
-          leftRange.shift(-1)
-        } else {
-          leftRange
-        }
-      val wheres = effectiveRange.whereClauses("ds")
+      val wheres = leftRange.whereClauses("ds")
       val sql = QueryUtils.build(null, partTable, wheres)
       logger.info(s"Pulling data from joinPart table with: $sql")
       (joinPart, tableUtils.scanDfBase(null, partTable, List.empty, wheres, None))
