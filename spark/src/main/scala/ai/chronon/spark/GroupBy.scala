@@ -597,9 +597,7 @@ object GroupBy {
         } else {
           val minQuery = tableUtils.partitionSpec.before(queryStart)
           val windowStart: String = window.map(tableUtils.partitionSpec.minus(minQuery, _)).orNull
-          lazy val firstAvailable =
-            tableUtils.firstAvailablePartition(source.table, subPartitionFilters = source.subPartitionFilters)
-          val sourceStart = Option(source.query.startPartition).getOrElse(firstAvailable.orNull)
+          lazy val sourceStart = Option(source.query.startPartition).orNull
           SourceDataProfile(windowStart, sourceStart, effectiveEnd)
         }
     }
@@ -708,17 +706,9 @@ object GroupBy {
     val tableProps = Option(groupByConf.metaData.tableProperties)
       .map(_.toScala)
       .orNull
-    val inputTables = groupByConf.getSources.toScala.map(_.table)
-    val isAnySourceCumulative =
-      groupByConf.getSources.toScala.exists(s => s.isSetEvents && s.getEvents.isCumulative)
-    val groupByUnfilledRangesOpt =
-      tableUtils.unfilledRanges(
-        outputTable,
-        PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
-        if (isAnySourceCumulative) None else Some(inputTables),
-        skipFirstHole = skipFirstHole,
-        inputPartitionColumnNames = groupByConf.getSources.toScala.map(_.partitionColumn(tableUtils))
-      )
+    val groupByUnfilledRangesOpt = Option(
+      Seq(PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec))
+    ) // TODO(tchow): possilbly revert if orchestrator is not yet available.
 
     if (groupByUnfilledRangesOpt.isEmpty) {
       logger.info(s"""Nothing to backfill for $outputTable - given
