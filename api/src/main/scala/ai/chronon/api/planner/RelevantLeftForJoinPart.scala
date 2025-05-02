@@ -34,7 +34,6 @@ object RelevantLeftForJoinPart {
   }
 
   def partTableName(join: Join, joinPart: ai.chronon.api.JoinPart): String = {
-
     val relevantLeft = relevantLeftCompute(join.left, joinPart)
     val rightMetadata = joinPart.groupBy.metaData
     val prefix = Option(joinPart.prefix).map(_.sanitize + "__").getOrElse("")
