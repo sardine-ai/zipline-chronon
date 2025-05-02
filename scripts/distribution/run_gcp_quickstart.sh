@@ -69,9 +69,11 @@ set -xo pipefail
 # Delete gcp tables to start from scratch
 if [[ "$ENVIRONMENT" == "canary" ]]; then
   bq rm -f -t canary-443022:data.gcp_purchases_v1_test
+  bq rm -f -t canary-443022:data.gcp_purchases_v1_view_test
   bq rm -f -t canary-443022:data.gcp_purchases_v1_test_upload
 else
   bq rm -f -t canary-443022:data.gcp_purchases_v1_dev
+  bq rm -f -t canary-443022:data.gcp_purchases_v1_view_dev
   bq rm -f -t canary-443022:data.gcp_purchases_v1_dev_upload
 fi
 #TODO: delete bigtable rows
@@ -132,6 +134,15 @@ fi
 
 fail_if_bash_failed $?
 
+echo -e "${GREEN}<<<<<.....................................BACKFILL-VIEW.....................................>>>>>\033[0m"
+if [[ "$ENVIRONMENT" == "canary" ]]; then
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_view_test
+else
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_view_dev
+fi
+
+fail_if_bash_failed $?
+
 echo -e "${GREEN}<<<<<.....................................CHECK-PARTITIONS.....................................>>>>>\033[0m"
 EXPECTED_PARTITION="2023-11-30"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
@@ -146,6 +157,14 @@ if [[ "$ENVIRONMENT" == "canary" ]]; then
   zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_test --ds  2023-12-01
 else
   zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev --ds  2023-12-01
+fi
+fail_if_bash_failed
+
+echo -e "${GREEN}<<<<<.....................................GROUP-BY-UPLOAD.....................................>>>>>\033[0m"
+if [[ "$ENVIRONMENT" == "canary" ]]; then
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_view_test --ds  2023-12-01
+else
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_view_dev --ds  2023-12-01
 fi
 fail_if_bash_failed
 

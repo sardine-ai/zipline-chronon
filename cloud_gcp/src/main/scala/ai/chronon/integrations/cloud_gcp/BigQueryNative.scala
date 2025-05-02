@@ -34,7 +34,7 @@ case object BigQueryNative extends Format {
          |
          |""".stripMargin
 
-    val partColName = sparkSession.read
+    val pColOption = sparkSession.read
       .format(bqFormat)
       .option("project", providedProject)
       // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/issues/434#issuecomment-886156191
@@ -45,37 +45,47 @@ case object BigQueryNative extends Format {
       .as[String]
       .collect
       .headOption
-      .getOrElse(
-        throw new UnsupportedOperationException(s"No partition column for table ${tableName} found.")
-      ) // TODO: support unpartitioned tables (uncommon case).
 
-    // Next, we query the BQ table using the requested partitionFilter to grab all the distinct partition values that match the filter.
     val partitionWheres = if (partitionFilters.nonEmpty) s"WHERE ${partitionFilters}" else partitionFilters
-    val partitionFormat = TableUtils(sparkSession).partitionFormat
-    val select =
-      s"SELECT distinct(${partColName}) AS ${internalBQPartitionCol} FROM ${bqFriendlyName} ${partitionWheres}"
-    val selectedParts = sparkSession.read
-      .format(bqFormat)
-      .option("viewsEnabled", true)
-      .option("materializationDataset", bqTableId.getDataset)
-      .load(select)
-      .select(date_format(col(internalBQPartitionCol), partitionFormat))
-      .as[String]
-      .collect
-      .toList
-    logger.info(s"Part values: ${selectedParts}")
-
-    // Finally, we query the BQ table for each of the selected partition values and union them together.
-    selectedParts
-      .map((partValue) => {
-        val pFilter = f"${partColName} = '${partValue}'"
-        sparkSession.read
+    pColOption match {
+      case Some(partColName) => {
+        // Next, we query the BQ table using the requested partitionFilter to grab all the distinct partition values that match the filter.
+        val partitionFormat = TableUtils(sparkSession).partitionFormat
+        val select =
+          s"SELECT distinct(${partColName}) AS ${internalBQPartitionCol} FROM ${bqFriendlyName} ${partitionWheres}"
+        logger.info(s"Listing in scope BQ native table partitions: ${select}")
+        val selectedParts = sparkSession.read
           .format(bqFormat)
-          .option("filter", pFilter)
-          .load(bqFriendlyName)
-          .withColumn(partColName, lit(partValue))
-      }) // todo: make it nullable
-      .reduce(_ unionByName _)
+          .option("viewsEnabled", true)
+          .option("materializationDataset", bqTableId.getDataset)
+          .load(select)
+          .select(date_format(col(internalBQPartitionCol), partitionFormat))
+          .as[String]
+          .collect
+          .toList
+        logger.info(s"Part values: ${selectedParts}")
+
+        // Finally, we query the BQ table for each of the selected partition values and union them together.
+        selectedParts
+          .map((partValue) => {
+            val pFilter = f"${partColName} = '${partValue}'"
+            sparkSession.read
+              .format(bqFormat)
+              .option("filter", pFilter)
+              .load(bqFriendlyName)
+              .withColumn(partColName, lit(partValue))
+          }) // todo: make it nullable
+          .reduce(_ unionByName _)
+      }
+      case None =>
+        val select = s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}"
+        logger.info(s"BQ Query: ${select}")
+        sparkSession.read
+          .option("viewsEnabled", true)
+          .option("materializationDataset", bqTableId.getDataset)
+          .format(bqFormat)
+          .load(select)
+    }
   }
 
   override def primaryPartitions(tableName: String,
