@@ -115,8 +115,11 @@ object Extensions {
       df.filter(pruneFilter)
     }
 
-    def shiftPartition(numDays: Int, partitionColumn: String = tableUtils.partitionColumn): DataFrame = {
-      df.withColumn(partitionColumn, date_add(df.col(partitionColumn), numDays))
+    def shiftPartition(numDays: Int): DataFrame = {
+      val partitionColumn = tableUtils.partitionColumn
+      df.withColumn(partitionColumn,
+                    date_format(date_add(to_date(col(partitionColumn), tableUtils.partitionSpec.format), numDays),
+                                tableUtils.partitionSpec.format))
     }
 
     def partitionRange: PartitionRange = {
