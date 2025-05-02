@@ -27,10 +27,7 @@ import ai.chronon.online.fetcher.Fetcher.{JoinSchemaResponse, Request, Response,
 import ai.chronon.online.metrics.{Metrics, TTLCache}
 import ai.chronon.online.serde._
 import com.google.gson.Gson
-import com.timgroup.statsd.Event
-import com.timgroup.statsd.Event.AlertType
 import org.apache.avro.generic.GenericRecord
-import org.json4s.BuildInfo
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.function.Consumer
@@ -109,25 +106,9 @@ class Fetcher(val kvStore: KVStore,
   val metadataStore: MetadataStore = new MetadataStore(fetchContext)
   private val joinPartFetcher = new JoinPartFetcher(fetchContext, metadataStore)
 
-  private def reportCallerNameFetcherVersion(): Unit = {
-    val message =
-      s"CallerName: ${Option(callerName).getOrElse("N/A")}, FetcherVersion: ${BuildInfo.version}"
-    val ctx = Metrics.Context(Metrics.Environment.Fetcher)
-    val event = Event
-      .builder()
-      .withTitle("FetcherInitialization")
-      .withText(message)
-      .withAlertType(AlertType.INFO)
-      .build()
-    ctx.recordEvent("caller_name_fetcher_version", event)
-  }
-
   lazy val joinCodecCache: TTLCache[String, Try[JoinCodec]] = metadataStore.buildJoinCodecCache(
     Some(logControlEvent)
   )
-
-  // run during initialization
-  reportCallerNameFetcherVersion()
 
   private[online] def withTs(responses: Future[Seq[Response]]): Future[FetcherResponseWithTs] = {
     responses.map { response =>
@@ -453,8 +434,10 @@ class Fetcher(val kvStore: KVStore,
       .toMap
 
     val context =
-      Metrics.Context(environment = Metrics.Environment.JoinFetching,
-                      join = validRequests.iterator.map(_.name.sanitize).toSeq.distinct.mkString(","))
+      Metrics.Context(
+        environment = Metrics.Environment.JoinFetching,
+        join = validRequests.iterator.map(_.name.sanitize).toSeq.distinct.mkString(",")
+      )
     context.distribution("response.external_pre_processing.latency", System.currentTimeMillis() - startTime)
     context.count("response.external_invalid_joins.count", invalidCount)
     val responseFutures =
@@ -508,7 +491,8 @@ class Fetcher(val kvStore: KVStore,
 
   def fetchJoinSchema(joinName: String): Try[JoinSchemaResponse] = {
     val startTime = System.currentTimeMillis()
-    val ctx = Metrics.Context(Metrics.Environment.JoinSchemaFetching, join = joinName)
+    val ctx =
+      Metrics.Context(Metrics.Environment.JoinSchemaFetching, join = joinName)
 
     val joinCodecTry = joinCodecCache(joinName)
 

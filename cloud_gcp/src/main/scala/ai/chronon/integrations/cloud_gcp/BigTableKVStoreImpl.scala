@@ -14,7 +14,7 @@ import ai.chronon.online.KVStore.ListRequest
 import ai.chronon.online.KVStore.ListResponse
 import ai.chronon.online.KVStore.ListValue
 import ai.chronon.online.metrics.Metrics
-import com.google.api.core.ApiFuture
+import com.google.api.core.{ApiFuture, ApiFutures}
 import com.google.cloud.RetryOption
 import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.BigQueryErrorMessages
@@ -36,6 +36,9 @@ import org.slf4j.LoggerFactory
 import org.threeten.bp.Duration
 
 import java.nio.charset.Charset
+import java.util
+import scala.collection.concurrent.TrieMap
+import scala.collection.mutable.ArrayBuffer
 import scala.compat.java8.FutureConverters
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -88,6 +91,8 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
   protected val metricsContext: Metrics.Context = Metrics.Context(Metrics.Environment.KVStore).withSuffix("bigtable")
 
+  protected val tableToContext = new TrieMap[String, Metrics.Context]()
+
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
   override def create(dataset: String, props: Map[String, Any]): Unit = {
@@ -114,8 +119,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
           case e: Exception =>
             logger.error("Error creating table", e)
-            metricsContext.increment("create.failures", s"exception:${e.getClass.getName}")
-
+            metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
         }
       }
       .orElse(throw new IllegalStateException("Missing BigTable admin client. Is the ENABLE_UPLOAD_CLIENTS flag set?"))
@@ -136,9 +140,15 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   private def readRowsMultiGet(
       requestsByDataset: Map[String, Seq[KVStore.GetRequest]]): Seq[Future[Seq[KVStore.GetResponse]]] = {
     requestsByDataset.map { case (dataset, datasetRequests) =>
+      val targetId = mapDatasetToTable(dataset)
+      val datasetMetricsContext = tableToContext.getOrElseUpdate(
+        targetId.toString,
+        metricsContext.copy(dataset = targetId.toString)
+      )
+
       // Create a single query for all requests in this dataset
       val query = Query
-        .create(mapDatasetToTable(dataset))
+        .create(targetId)
         .filter(Filters.FILTERS.family().exactMatch(ColumnFamilyString))
         .filter(Filters.FILTERS.qualifier().exactMatch(ColumnFamilyQualifierString))
 
@@ -184,8 +194,8 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       // Process all results at once
       scalaResultFuture
         .map { rows =>
-          metricsContext.distribution("multiGet.latency", System.currentTimeMillis() - startTs, s"dataset:$dataset")
-          metricsContext.increment("multiGet.successes", s"dataset:$dataset")
+          datasetMetricsContext.distribution("multiGet.latency", System.currentTimeMillis() - startTs)
+          datasetMetricsContext.increment("multiGet.successes")
 
           // Create a map for quick lookup by row key
           val rowKeyToRowMap = rows.asScala.map(row => row.getKey() -> row).toMap
@@ -206,7 +216,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         }
         .recover { case e: Exception =>
           logger.error("Error getting values", e)
-          metricsContext.increment("multiGet.bigtable_errors", s"exception:${e.getClass.getName},dataset:$dataset")
+          datasetMetricsContext.increment("multiGet.bigtable_errors", Map("exception" -> e.getClass.getName))
           // If the batch fails, return failures for all requests in the batch
           datasetRequests.map { request =>
             KVStore.GetResponse(request, Failure(e))
@@ -255,8 +265,13 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     val maybeListEntityType = request.props.get(ListEntityType)
     val maybeStartKey = request.props.get(ContinuationKey)
 
+    val targetId = mapDatasetToTable(request.dataset)
+    val datasetMetricsContext = tableToContext.getOrElseUpdate(
+      targetId.toString,
+      metricsContext.copy(dataset = targetId.toString)
+    )
     val query = Query
-      .create(mapDatasetToTable(request.dataset))
+      .create(targetId)
       .filter(Filters.FILTERS.family().exactMatch(ColumnFamilyString))
       .filter(Filters.FILTERS.qualifier().exactMatch(ColumnFamilyQualifierString))
       // we also limit to the latest cell per row as we don't want clients to iterate over all prior edits
@@ -280,8 +295,8 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
     rowsScalaFuture
       .map { rows =>
-        metricsContext.distribution("list.latency", System.currentTimeMillis() - startTs, s"dataset:${request.dataset}")
-        metricsContext.increment("list.successes", s"dataset:${request.dataset}")
+        datasetMetricsContext.distribution("list.latency", System.currentTimeMillis() - startTs)
+        datasetMetricsContext.increment("list.successes")
 
         val listValues = rows.asScala.flatMap { row =>
           row.getCells(ColumnFamilyString, ColumnFamilyQualifier).asScala.map { cell =>
@@ -300,7 +315,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       }
       .recover { case e: Exception =>
         logger.error("Error listing values", e)
-        metricsContext.increment("list.bigtable_errors", s"exception:${e.getClass.getName},dataset:${request.dataset}")
+        datasetMetricsContext.increment("list.bigtable_errors", Map("exception" -> e.getClass.getName))
 
         ListResponse(request, Failure(e), Map.empty)
 
@@ -315,6 +330,10 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
     val resultFutures = {
       requests.map { request =>
         val tableId = mapDatasetToTable(request.dataset)
+        val datasetMetricsContext = tableToContext.getOrElseUpdate(
+          tableId.toString,
+          metricsContext.copy(dataset = tableId.toString)
+        )
 
         val tableType = getTableType(request.dataset)
         val timestampInPutRequest = request.tsMillis.getOrElse(System.currentTimeMillis())
@@ -345,15 +364,13 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
         val scalaFuture = googleFutureToScalaFuture(mutateApiFuture)
         scalaFuture
           .map { _ =>
-            metricsContext.distribution("multiPut.latency",
-                                        System.currentTimeMillis() - startTs,
-                                        s"dataset:${request.dataset}")
-            metricsContext.increment("multiPut.successes", s"dataset:${request.dataset}")
+            datasetMetricsContext.distribution("multiPut.latency", System.currentTimeMillis() - startTs)
+            datasetMetricsContext.increment("multiPut.successes")
             true
           }
           .recover { case e: Exception =>
             logger.error("Error putting data", e)
-            metricsContext.increment("multiPut.failures", s"exception:${e.getClass.getName},dataset:${request.dataset}")
+            datasetMetricsContext.increment("multiPut.failures", Map("exception" -> e.getClass.getName))
             false
           }
       }
@@ -364,7 +381,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   override def bulkPut(sourceOfflineTable: String, destinationOnlineDataSet: String, partition: String): Unit = {
     if (maybeBigQueryClient.isEmpty || maybeAdminClient.isEmpty) {
       logger.error("Need the BigTable admin and BigQuery available to export data to BigTable")
-      metricsContext.increment("bulkPut.failures", "exception:missinguploadclients")
+      metricsContext.increment("bulkPut.failures", Map("exception" -> "missinguploadclients"))
       throw new RuntimeException("BigTable admin and BigQuery clients are needed to export data to BigTable")
     }
 
@@ -436,11 +453,12 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
       if (completedJob == null) {
         // job no longer exists
         logger.error(s"Job corresponding to $jobId no longer exists")
-        metricsContext.increment("bulkPut.failures", "exception:missingjob")
+        metricsContext.increment("bulkPut.failures", Map("exception" -> "missingjob"))
         throw new RuntimeException(s"Export job corresponding to $jobId no longer exists")
       } else if (completedJob.getStatus.getError != null) {
         logger.error(s"Job failed with error: ${completedJob.getStatus.getError}")
-        metricsContext.increment("bulkPut.failures", s"exception:${completedJob.getStatus.getError.getReason}")
+        metricsContext.increment("bulkPut.failures",
+                                 Map("exception" -> s"${completedJob.getStatus.getError.getReason}"))
         throw new RuntimeException(s"Export job failed with error: ${completedJob.getStatus.getError}")
       } else {
         logger.info("Export job completed successfully")
