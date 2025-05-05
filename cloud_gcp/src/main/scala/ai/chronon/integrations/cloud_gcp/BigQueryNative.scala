@@ -25,7 +25,7 @@ case object BigQueryNative extends Format {
     val bqTableId = SparkBQUtils.toTableId(tableName)
     val providedProject = scala.Option(bqTableId.getProject).getOrElse(bqOptions.getProjectId)
     val bqFriendlyName = f"${providedProject}.${bqTableId.getDataset}.${bqTableId.getTable}"
-
+    // test
     // Then, we query the BQ information schema to grab the table's partition column.
     val partColsSql =
       s"""
