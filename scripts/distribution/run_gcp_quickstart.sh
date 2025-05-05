@@ -71,10 +71,12 @@ if [[ "$ENVIRONMENT" == "canary" ]]; then
   bq rm -f -t canary-443022:data.gcp_purchases_v1_test
   bq rm -f -t canary-443022:data.gcp_purchases_v1_view_test
   bq rm -f -t canary-443022:data.gcp_purchases_v1_test_upload
+  bq rm -f -t canary-443022:data.gcp_training_set_v1_test
 else
   bq rm -f -t canary-443022:data.gcp_purchases_v1_dev
   bq rm -f -t canary-443022:data.gcp_purchases_v1_view_dev
   bq rm -f -t canary-443022:data.gcp_purchases_v1_dev_upload
+  bq rm -f -t canary-443022:data.gcp_training_set_v1_dev
 fi
 #TODO: delete bigtable rows
 
