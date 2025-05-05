@@ -167,6 +167,12 @@ case class StructField(name: String, fieldType: DataType)
 case object DateType extends DataType
 
 // maps to java.sql.Timestamp
+// maps to java.time.Instant if DATETIME_JAVA8API_ENABLED is true for java8. See spark doc:
+// ```
+// If the configuration property is set to true, java.time.Instant and java.time.LocalDate classes of Java
+// 8 API are used as external types for Catalyst's TimestampType and DateType. If it is set to false,
+// java.sql.Timestamp and java.sql.Date are used for the same purpose.
+// ```
 case object TimestampType extends DataType
 
 // maps to Array[Any]

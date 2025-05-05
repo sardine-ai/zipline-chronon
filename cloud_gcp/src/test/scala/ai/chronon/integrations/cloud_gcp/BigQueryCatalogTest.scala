@@ -34,7 +34,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
         "spark.chronon.partition.column" -> "ds",
         "spark.hadoop.fs.gs.impl" -> classOf[GoogleHadoopFileSystem].getName,
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> classOf[GoogleHadoopFS].getName,
-        "spark.sql.catalogImplementation" -> "in-memory",
+        "spark.sql.catalogImplementation" -> "in-memory"
 
 //        Uncomment to test
 //        "spark.sql.defaultCatalog" -> "default_iceberg",
@@ -116,6 +116,19 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     SparkBigQueryUtil.sparkDateToBigQuery(nonJava8Date)
   }
 
+  it should "bigquery connector converts spark timestamp regardless of setting" in {
+    val input = spark.createDataFrame(Seq((1, "2025-04-28 12:30:45"))).toDF("id", "ts")
+    spark.conf.set(SQLConf.DATETIME_JAVA8API_ENABLED.key, true)
+    val java8Timestamp = input.select(col("id"), col("ts").cast("timestamp")).collect.take(1).head.get(1)
+    assert(java8Timestamp.isInstanceOf[java.time.Instant])
+    SparkBigQueryUtil.sparkTimestampToBigQuery(java8Timestamp)
+
+    spark.conf.set(SQLConf.DATETIME_JAVA8API_ENABLED.key, false)
+    val nonJava8Timestamp = input.select(col("id"), col("ts").cast("timestamp")).collect.take(1).head.get(1)
+    assert(nonJava8Timestamp.isInstanceOf[java.sql.Timestamp])
+    SparkBigQueryUtil.sparkTimestampToBigQuery(nonJava8Timestamp)
+  }
+
   it should "integration testing bigquery native table" ignore {
     val nativeTable = "data.checkouts"
     val table = tableUtils.loadTable(nativeTable)
@@ -141,9 +154,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
     val singleFilter = tableUtils.loadTable(iceberg, List("ds = '2023-11-30'"))
     val multiFilter = tableUtils.loadTable(iceberg, List("ds = '2023-11-30'", "ds = '2023-11-30'"))
-    assertEquals(
-      singleFilter.select("user_id", "ds").as[(String, String)].collect.toList,
-      multiFilter.select("user_id", "ds").as[(String, String)].collect.toList)
+    assertEquals(singleFilter.select("user_id", "ds").as[(String, String)].collect.toList,
+                 multiFilter.select("user_id", "ds").as[(String, String)].collect.toList)
   }
 
   it should "integration testing formats" ignore {
@@ -180,27 +192,26 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     assertTrue(dneFormat.isEmpty)
   }
 
-
   it should "integration testing bigquery partitions" ignore {
     // TODO(tchow): This test is ignored because it requires a running instance of the bigquery. Need to figure out stubbing locally.
     // to run, set `GOOGLE_APPLICATION_CREDENTIALS=<path_to_application_default_credentials.json>
     val externalPartitions = tableUtils.partitions("data.checkouts_parquet_partitioned")
-     assertEquals(Seq("2023-11-30"), externalPartitions)
+    assertEquals(Seq("2023-11-30"), externalPartitions)
     val nativePartitions = tableUtils.partitions("data.purchases")
     assertEquals(
-      Set(20231118, 20231122, 20231125, 20231102, 20231123, 20231119, 20231130, 20231101, 20231117, 20231110, 20231108, 20231112, 20231115, 20231116, 20231113, 20231104, 20231103, 20231106, 20231121, 20231124, 20231128, 20231109, 20231127, 20231129, 20231126, 20231114, 20231107, 20231111, 20231120, 20231105).map(_.toString), nativePartitions.toSet)
+      Set(20231118, 20231122, 20231125, 20231102, 20231123, 20231119, 20231130, 20231101, 20231117, 20231110, 20231108,
+          20231112, 20231115, 20231116, 20231113, 20231104, 20231103, 20231106, 20231121, 20231124, 20231128, 20231109,
+          20231127, 20231129, 20231126, 20231114, 20231107, 20231111, 20231120, 20231105).map(_.toString),
+      nativePartitions.toSet
+    )
 
     val df = tableUtils.loadTable("`canary-443022.data`.purchases")
     df.show
 
-    tableUtils.insertPartitions(
-      df,
-      "data.tchow_test_iceberg",
-      Map(
-      "file_format" -> "PARQUET",
-      "table_type" -> "iceberg"),
-      List("ds"))
-
+    tableUtils.insertPartitions(df,
+                                "data.tchow_test_iceberg",
+                                Map("file_format" -> "PARQUET", "table_type" -> "iceberg"),
+                                List("ds"))
 
     val icebergCols = spark.catalog.listColumns("data.tchow_test_iceberg")
     val externalCols = spark.catalog.listColumns("data.checkouts_parquet_partitioned")
@@ -208,9 +219,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
     val icebergPartitions = spark.sql("SELECT * FROM data.tchow_test_iceberg.partitions")
 
-
-    val sqlDf = tableUtils.sql(
-      s"""
+    val sqlDf = tableUtils.sql(s"""
         |SELECT ds FROM data.checkouts_parquet_partitioned -- external parquet
         |UNION ALL
         |SELECT ds FROM data.purchases -- bigquery native
@@ -272,8 +281,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     input.close();
 
     assertNotNull("Deserialized object should not be null", deserializedObj);
-    assertTrue("Deserialized object should be an instance of GCSFileIO",
-      deserializedObj.isInstanceOf[GCSFileIO]);
+    assertTrue("Deserialized object should be an instance of GCSFileIO", deserializedObj.isInstanceOf[GCSFileIO]);
     assertEquals(original.properties(), deserializedObj.asInstanceOf[GCSFileIO].properties())
   }
 }
