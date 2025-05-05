@@ -95,11 +95,13 @@ class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable
     val irSchema = SparkConversions.fromChrononSchema(sawtoothOnlineAggregator.batchIrSchema)
     val keyBuilder = FastHashing.generateKeyBuilder(groupBy.keyColumns.toArray, groupBy.inputDf.schema)
 
-    logger.info(s"""
-        |BatchIR Element Size: ${SparkEnv.get.serializer
+    val batchIrElementSize = SparkEnv.get.serializer
       .newInstance()
       .serialize(sawtoothOnlineAggregator.init)
-      .capacity()}
+      .capacity()
+
+    logger.info(s"""
+        |BatchIR Element Size: $batchIrElementSize
         |""".stripMargin)
 
     val outputRdd = tableUtils

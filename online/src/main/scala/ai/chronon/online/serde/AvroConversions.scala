@@ -35,7 +35,12 @@ object AvroConversions {
   def toAvroValue(value: AnyRef, schema: Schema): Object =
     schema.getType match {
       case Schema.Type.UNION => toAvroValue(value, schema.getTypes.get(1))
-      case Schema.Type.LONG  => value.asInstanceOf[Long].asInstanceOf[Object]
+      case Schema.Type.LONG
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.timestampMillis().getName =>
+        // because we're setting spark.sql.datetime.java8API.enabled to True https://github.com/zipline-ai/chronon/blob/main/spark/src/main/scala/ai/chronon/spark/submission/SparkSessionBuilder.scala#L132,
+        // we'll convert to java.time.Instant
+        value.asInstanceOf[java.time.Instant].asInstanceOf[Object]
+      case Schema.Type.LONG => value.asInstanceOf[Long].asInstanceOf[Object]
       case Schema.Type.INT
           if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
         // Avro represents as java.time.LocalDate: https://github.com/apache/avro/blob/fe0261deecf22234bbd09251764152d4bf9a9c4a/lang/java/avro/src/main/java/org/apache/avro/data/TimeConversions.java#L38
@@ -59,7 +64,10 @@ object AvroConversions {
       case Schema.Type.INT
           if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
         DateType
-      case Schema.Type.INT     => IntType
+      case Schema.Type.INT => IntType
+      case Schema.Type.LONG
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.timestampMillis().getName =>
+        TimestampType
       case Schema.Type.LONG    => LongType
       case Schema.Type.FLOAT   => FloatType
       case Schema.Type.DOUBLE  => DoubleType
@@ -109,13 +117,14 @@ object AvroConversions {
         assert(keyType == StringType, "Avro only supports string keys for a map")
         Schema.createMap(fromChrononSchema(valueType, nameSet))
       }
-      case StringType  => Schema.create(Schema.Type.STRING)
-      case IntType     => Schema.create(Schema.Type.INT)
-      case LongType    => Schema.create(Schema.Type.LONG)
-      case FloatType   => Schema.create(Schema.Type.FLOAT)
-      case DoubleType  => Schema.create(Schema.Type.DOUBLE)
-      case BinaryType  => Schema.create(Schema.Type.BYTES)
-      case BooleanType => Schema.create(Schema.Type.BOOLEAN)
+      case StringType    => Schema.create(Schema.Type.STRING)
+      case IntType       => Schema.create(Schema.Type.INT)
+      case LongType      => Schema.create(Schema.Type.LONG)
+      case FloatType     => Schema.create(Schema.Type.FLOAT)
+      case DoubleType    => Schema.create(Schema.Type.DOUBLE)
+      case BinaryType    => Schema.create(Schema.Type.BYTES)
+      case BooleanType   => Schema.create(Schema.Type.BOOLEAN)
+      case TimestampType => LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG))
       case DateType =>
         LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT))
       case _ =>
