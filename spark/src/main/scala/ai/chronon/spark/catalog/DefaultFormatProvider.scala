@@ -22,18 +22,6 @@ class DefaultFormatProvider(val sparkSession: SparkSession) extends FormatProvid
     } else { null })
   }
 
-  def getCatalog(tableName: String): String = {
-    logger.info(s"Retrieving read format for table: ${tableName}")
-    val parsed = sparkSession.sessionState.sqlParser.parseMultipartIdentifier(tableName)
-    val parsedCatalog = parsed.toList match {
-      case catalog :: namespace :: tableName :: Nil => catalog
-      case namespace :: tableName :: Nil            => sparkSession.catalog.currentCatalog()
-      case tableName :: Nil                         => sparkSession.catalog.currentCatalog()
-      case _ => throw new IllegalStateException(s"Invalid table naming convention specified: ${tableName}")
-    }
-    parsedCatalog
-  }
-
   private def isIcebergTable(tableName: String): Boolean =
     Try {
       sparkSession.read.format("iceberg").load(tableName)
