@@ -19,7 +19,7 @@ class TableDependency:
     table: str
     partition_column: Optional[str] = None
 
-def StagingQuery(
+def staging_query(
     name: str,
     query: str,
     output_namespace: Optional[str] = None,

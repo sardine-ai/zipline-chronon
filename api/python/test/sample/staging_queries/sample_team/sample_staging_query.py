@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.staging_query import StagingQuery, TableDependency
+from ai.chronon.staging_query import staging_query, TableDependency
 
 query = """
 SELECT
@@ -26,7 +26,7 @@ FROM sample_namespace.sample_table
 WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
 
-v1 = StagingQuery(
+v1 = staging_query(
     query=query,
     start_partition="2020-03-01",
     setups=[

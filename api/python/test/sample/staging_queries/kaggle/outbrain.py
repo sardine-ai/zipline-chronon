@@ -13,9 +13,9 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.staging_query import StagingQuery, TableDependency
+from ai.chronon.staging_query import staging_query, TableDependency
 
-base_table = StagingQuery(
+base_table = staging_query(
     name='outbrain_left',
     query="""
         SELECT

@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from ai.chronon.staging_query import StagingQuery, TableDependency
+from ai.chronon.staging_query import staging_query, TableDependency
 
 query = """
     SELECT
@@ -30,7 +30,7 @@ query = """
     WHERE purchases.ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
 
-checkouts_query = StagingQuery(
+checkouts_query = staging_query(
     query=query,
     start_partition="2023-10-31",
     name='checkouts_staging_query',
