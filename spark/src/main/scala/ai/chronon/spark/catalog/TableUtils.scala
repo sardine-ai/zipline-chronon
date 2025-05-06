@@ -28,7 +28,6 @@ import org.apache.spark.sql.catalyst.util.QuotingUtils
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.{PrintWriter, StringWriter}
@@ -69,27 +68,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val checkLeftTimeRange: Boolean =
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
 
-  private val minWriteShuffleParallelism = 200
-
-  // see what's allowed and explanations here: https://sparkbyexamples.com/spark/spark-persistence-storage-levels/
-  private val cacheLevelString: String =
-    sparkSession.conf.get("spark.chronon.table_write.cache.level", "NONE").toUpperCase()
-  private val blockingCacheEviction: Boolean =
-    sparkSession.conf.get("spark.chronon.table_write.cache.blocking", "false").toBoolean
-
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
   @transient private lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
-
-  private val cacheLevel: Option[StorageLevel] = Try {
-    if (cacheLevelString == "NONE") None
-    else Some(StorageLevel.fromString(cacheLevelString))
-  }.recover { case ex: Throwable =>
-    new RuntimeException(s"Failed to create cache level from string: $cacheLevelString", ex).printStackTrace()
-    None
-  }.get
 
   val joinPartParallelism: Int = sparkSession.conf.get("spark.chronon.join.part.parallelism", "1").toInt
   private val aggregationParallelism: Int = sparkSession.conf.get("spark.chronon.group_by.parallelism", "1000").toInt
@@ -317,28 +300,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       case e: Exception =>
         logger.error("Error running query:", e)
         throw e
-    }
-  }
-
-  def wrapWithCache[T](opString: String, dataFrame: DataFrame)(func: => T): Try[T] = {
-    val start = System.currentTimeMillis()
-    cacheLevel.foreach { level =>
-      logger.info(s"Starting to cache dataframe before $opString - start @ ${TsUtils.toStr(start)}")
-      dataFrame.persist(level)
-    }
-    def clear(): Unit = {
-      cacheLevel.foreach(_ => dataFrame.unpersist(blockingCacheEviction))
-      val end = System.currentTimeMillis()
-      logger.info(
-        s"Cleared the dataframe cache after $opString - start @ ${TsUtils.toStr(start)} end @ ${TsUtils.toStr(end)}")
-    }
-    Try {
-      val t: T = func
-      clear()
-      t
-    }.recoverWith { case ex: Exception =>
-      clear()
-      Failure(ex)
     }
   }
 
