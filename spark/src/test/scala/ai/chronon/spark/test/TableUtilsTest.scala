@@ -18,7 +18,7 @@ package ai.chronon.spark.test
 
 import ai.chronon.api._
 import ai.chronon.spark._
-import ai.chronon.spark.catalog.{DefaultFormatProvider, FormatProvider, IncompatibleSchemaException}
+import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException}
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
 import org.apache.spark.sql.catalyst.parser.ParseException
@@ -604,14 +604,14 @@ class TableUtilsTest extends AnyFlatSpec {
   }
 
   it should "test catalog detection" in {
-    val fp = FormatProvider.from(spark).asInstanceOf[DefaultFormatProvider]
-    assertEquals("catalogA", fp.getCatalog("catalogA.foo.bar"))
-    assertEquals("catalogA", fp.getCatalog("`catalogA`.foo.bar"))
-    assertEquals("spark_catalog", fp.getCatalog("`catalogA.foo`.bar"))
-    assertEquals("spark_catalog", fp.getCatalog("`catalogA.foo.bar`"))
-    assertEquals("spark_catalog", fp.getCatalog("foo.bar"))
-    assertEquals("spark_catalog", fp.getCatalog("bar"))
-    assertThrows[ParseException](fp.getCatalog(""))
+    implicit val localSparkRef: SparkSession = spark
+    assertEquals("catalogA", Format.getCatalog("catalogA.foo.bar"))
+    assertEquals("catalogA", Format.getCatalog("`catalogA`.foo.bar"))
+    assertEquals("spark_catalog", Format.getCatalog("`catalogA.foo`.bar"))
+    assertEquals("spark_catalog", Format.getCatalog("`catalogA.foo.bar`"))
+    assertEquals("spark_catalog", Format.getCatalog("foo.bar"))
+    assertEquals("spark_catalog", Format.getCatalog("bar"))
+    assertThrows[ParseException](Format.getCatalog(""))
   }
 
 }

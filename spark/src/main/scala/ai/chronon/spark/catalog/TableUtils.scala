@@ -16,23 +16,23 @@
 
 package ai.chronon.spark.catalog
 
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils}
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
 import org.apache.spark.sql.catalyst.util.QuotingUtils
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.{PrintWriter, StringWriter}
-import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
-import scala.collection.{Seq, mutable}
+import java.time.format.DateTimeFormatter
+import scala.collection.{mutable, Seq}
 import scala.util.{Failure, Success, Try}
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
