@@ -5,7 +5,6 @@ shared_libs = [
     maven_artifact("software.amazon.awssdk:sdk-core"),
     maven_artifact("software.amazon.awssdk:utils"),
     maven_artifact("software.amazon.awssdk:emr"),
-    maven_artifact("com.google.guava:guava"),
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("com.fasterxml.jackson.module:jackson-module-afterburner"),
     maven_artifact_with_suffix("org.apache.hudi:hudi-spark3.5-bundle"),
