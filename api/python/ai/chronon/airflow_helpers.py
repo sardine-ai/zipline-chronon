@@ -5,7 +5,7 @@ import ai.chronon.utils as utils
 from ai.chronon.api.ttypes import GroupBy, Join
 
 
-def create_airflow_dependency(table, partition_column):
+def create_airflow_dependency(table, partition_column, additional_partitions=None):
     """
     Create an Airflow dependency object for a table.
 
@@ -30,9 +30,14 @@ def create_airflow_dependency(table, partition_column):
         )
         ```
         """
+
+    additional_partitions_str = ""
+    if additional_partitions:
+        additional_partitions_str = "/" + "/".join(additional_partitions)
+
     return {
         "name": f"wf_{utils.sanitize(table)}",
-        "spec": f"{table}/{partition_column}={{{{ ds }}}}",
+        "spec": f"{table}/{partition_column}={{{{ ds }}}}{additional_partitions_str}",
     }
 
 

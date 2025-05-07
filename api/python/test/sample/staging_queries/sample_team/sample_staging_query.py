@@ -36,6 +36,6 @@ v1 = StagingQuery(
     output_namespace="sample_namespace",
     table_properties={"sample_config_json": """{"sample_key": "sample value}"""},
     dependencies=[
-        TableDependency(table="sample_namespace.sample_table", partition_column="ds")
+        TableDependency(table="sample_namespace.sample_table", partition_column="ds", additional_partitions=["_HR=23:00"]),
     ],
     )
