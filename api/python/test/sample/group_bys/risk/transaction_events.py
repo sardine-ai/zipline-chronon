@@ -20,7 +20,7 @@ def create_transaction_source(key_field):
     )
 
 
-window_sizes = ["1h", "1d", "30d", "365d"]
+window_sizes = ["1d", "30d", "365d"]
 
 
 def create_txn_group_by(source, key):
@@ -37,7 +37,7 @@ def create_txn_group_by(source, key):
             Aggregation(
                 input_column="transaction_amount",
                 operation=Operation.SUM,
-                windows=["1h"],
+                windows=["1d"],
             ),
         ],
     )
