@@ -204,7 +204,7 @@ class Join(joinConf: api.Join,
         } else {
           leftRange
         }
-      val wheres = effectiveRange.whereClauses("ds")
+      val wheres = effectiveRange.whereClauses
       val sql = QueryUtils.build(null, partTable, wheres)
       logger.info(s"Pulling data from joinPart table with: $sql")
       (joinPart, tableUtils.scanDfBase(null, partTable, List.empty, wheres, None))

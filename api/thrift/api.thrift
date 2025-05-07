@@ -40,9 +40,8 @@ struct Query {
     **/
     23: optional common.Window partitionLag
 
-
- }
-
+}
+ 
 /**
     Staging Query encapsulates arbitrary spark computation. One key feature is that the computation follows a
     "fill-what's-missing" pattern. Basically instead of explicitly specifying dates you specify two macros.

@@ -638,6 +638,9 @@ object GroupBy {
         Constants.MutationTimeColumn -> source.query.mutationTimeColumn
       )
     }
+
+    val sourcePartitionSpec = source.query.partitionSpec(tableUtils.partitionSpec)
+
     val timeMapping = if (source.dataModel == ENTITIES) {
       Option(source.query.timeColumn).map(Constants.TimeColumn -> _)
     } else {
@@ -645,11 +648,12 @@ object GroupBy {
         Some(Constants.TimeColumn -> source.query.timeColumn)
       } else {
         val dsBasedTimestamp = // 1 millisecond before ds + 1
-          s"(((UNIX_TIMESTAMP(${tableUtils.partitionColumn}, '${tableUtils.partitionSpec.format}') + 86400) * 1000) - 1)"
+          s"(((UNIX_TIMESTAMP(${sourcePartitionSpec.column}, '${sourcePartitionSpec.format}') + 86400) * 1000) - 1)"
 
         Some(Constants.TimeColumn -> Option(source.query.timeColumn).getOrElse(dsBasedTimestamp))
       }
     }
+
     logger.info(s"""
          |Time Mapping: $timeMapping
          |""".stripMargin)

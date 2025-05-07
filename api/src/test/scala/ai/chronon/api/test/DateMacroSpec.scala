@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 
 class DateMacroSpec extends AnyFlatSpec with Matchers {
 
-  private val partitionSpec = PartitionSpec("yyyy-MM-dd", 24 * 3600 * 1000)
+  private val partitionSpec = PartitionSpec.daily
 
   // Tests for remoteQuotesIfPresent
   "remoteQuotesIfPresent" should "remove single quotes from the beginning and end of a string" in {

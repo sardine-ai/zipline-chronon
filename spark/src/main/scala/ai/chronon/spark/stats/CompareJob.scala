@@ -64,7 +64,7 @@ class CompareJob(
     val leftDf = tableUtils.sql(s"""
         |SELECT *
         |FROM ${joinConf.metaData.outputTable}
-        |WHERE ${partitionRange.betweenClauses(partitionColumn = tableUtils.partitionColumn)}
+        |WHERE ${partitionRange.betweenClauses}
         |""".stripMargin)
 
     // Run the staging query sql directly
@@ -169,11 +169,12 @@ object CompareJob {
     consolidatedData
   }
 
-  def getJoinKeys(joinConf: api.Join, tableUtils: TableUtils): Seq[String] = {
+  def getJoinKeys(joinConf: api.Join, tableUtils: TableUtils): Array[String] = {
     if (joinConf.isSetRowIds) {
-      joinConf.rowIds.toScala
+      joinConf.rowIds.toScala.toArray
     } else {
-      val keyCols = joinConf.leftKeyCols ++ Seq(tableUtils.partitionColumn)
+      val leftPartitionCol = joinConf.left.query.partitionSpec(tableUtils.partitionSpec).column
+      val keyCols = joinConf.leftKeyCols :+ leftPartitionCol
       if (joinConf.left.dataModel == EVENTS) {
         keyCols ++ Seq(Constants.TimeColumn)
       } else {

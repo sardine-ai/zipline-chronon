@@ -71,12 +71,13 @@ case class PartitionRange(start: String, end: String)(implicit val partitionSpec
       .toArray
   }
 
-  def betweenClauses(partitionColumn: String): String = {
-    s"$partitionColumn BETWEEN '$start' AND '$end'"
+  def betweenClauses: String = {
+    s"${partitionSpec.column} BETWEEN '$start' AND '$end'"
   }
 
-  def whereClauses(partitionColumn: String): Seq[String] = {
-    (Option(start).map(s => s"$partitionColumn >= '$s'") ++ Option(end).map(e => s"$partitionColumn <= '$e'")).toSeq
+  def whereClauses: Seq[String] = {
+    (Option(start).map(s => s"${partitionSpec.column} >= '$s'") ++ Option(end).map(e =>
+      s"${partitionSpec.column} <= '$e'")).toSeq
   }
 
   def steps(days: Int): Seq[PartitionRange] = {

@@ -122,10 +122,7 @@ object FlinkTestUtils {
         .toAvroSchema("Value")
         .toString(true)
     )
-    new GroupByServingInfoParsed(
-      groupByServingInfo,
-      PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
-    )
+    new GroupByServingInfoParsed(groupByServingInfo)
   }
 
   def makeGroupBy(keyColumns: Seq[String], filters: Seq[String] = Seq.empty): GroupBy =

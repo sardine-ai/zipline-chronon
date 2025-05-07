@@ -53,8 +53,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.partition.column", "ds")
   val partitionFormat: String =
     sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
-  val partitionSpec: PartitionSpec = PartitionSpec(partitionFormat, WindowUtils.Day.millis)
+  val partitionSpec: PartitionSpec = PartitionSpec(partitionColumn, partitionFormat, WindowUtils.Day.millis)
 
+  // TODO: remove this
   val outputPartitionSpec: PartitionSpecWithColumn = PartitionSpecWithColumn(partitionColumn, partitionSpec)
 
   val smallModelEnabled: Boolean =

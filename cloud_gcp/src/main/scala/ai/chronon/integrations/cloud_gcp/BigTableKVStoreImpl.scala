@@ -392,7 +392,7 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
 
     // we use the endDs + span to indicate the timestamp of all the cell data we upload for endDs
     // this is used in the KV store multiget calls
-    val partitionSpec = PartitionSpec("yyyy-MM-dd", WindowUtils.Day.millis)
+    val partitionSpec = PartitionSpec("ds", "yyyy-MM-dd", WindowUtils.Day.millis)
     val endDsPlusOne = partitionSpec.epochMillis(partition) + partitionSpec.spanMillis
 
     // we need to sanitize and append the batch suffix to the groupBy name as that's

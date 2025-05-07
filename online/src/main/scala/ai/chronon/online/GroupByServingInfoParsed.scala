@@ -18,7 +18,7 @@ package ai.chronon.online
 
 import ai.chronon.aggregator.windowing.{ResolutionUtils, SawtoothOnlineAggregator}
 import ai.chronon.api.Constants.{ReversalField, TimeField}
-import ai.chronon.api.Extensions.{GroupByOps, MetadataOps}
+import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, WindowOps, WindowUtils}
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.{DerivationFunc, buildDerivationFunction}
@@ -28,9 +28,12 @@ import org.apache.avro.Schema
 import scala.collection.Seq
 
 // mixin class - with schema
-class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo, partitionSpec: PartitionSpec)
+class GroupByServingInfoParsed(val groupByServingInfo: GroupByServingInfo)
     extends GroupByServingInfo(groupByServingInfo)
     with Serializable {
+
+  // the is not really used - we just need the format
+  private val partitionSpec = PartitionSpec("ds", groupByServingInfo.dateFormat, WindowUtils.Day.millis)
 
   // streaming starts scanning after batchEnd
   lazy val batchEndTsMillis: Long = partitionSpec.epochMillis(batchEndDate)

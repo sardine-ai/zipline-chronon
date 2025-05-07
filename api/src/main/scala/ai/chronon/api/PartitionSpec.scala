@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.TimeZone
 
-case class PartitionSpec(format: String, spanMillis: Long) {
+case class PartitionSpec(column: String, format: String, spanMillis: Long) {
 
   private def partitionFormatter =
     DateTimeFormatter
@@ -83,7 +83,5 @@ case class PartitionSpec(format: String, spanMillis: Long) {
 }
 
 object PartitionSpec {
-  val daily: PartitionSpec = PartitionSpec("yyyy-MM-dd", 24 * 60 * 60 * 1000)
-  val hourly: PartitionSpec = PartitionSpec("yyyy-MM-dd-HH", 60 * 60 * 1000)
-  val fifteenMinutes: PartitionSpec = PartitionSpec("yyyy-MM-dd-HH-mm", 15 * 60 * 1000)
+  val daily: PartitionSpec = PartitionSpec("ds", "yyyy-MM-dd", 24 * 60 * 60 * 1000)
 }

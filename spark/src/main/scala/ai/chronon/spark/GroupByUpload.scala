@@ -140,10 +140,13 @@ object GroupByUpload {
 
     val groupBy = ai.chronon.spark.GroupBy
       .from(groupByConf, PartitionRange(endDs, endDs), TableUtils(session), computeDependency = false)
+
     groupByServingInfo.setBatchEndDate(nextDay)
     groupByServingInfo.setGroupBy(groupByConf)
     groupByServingInfo.setKeyAvroSchema(groupBy.keySchema.toAvroSchema("Key").toString(true))
     groupByServingInfo.setSelectedAvroSchema(groupBy.preAggSchema.toAvroSchema("Value").toString(true))
+    groupByServingInfo.setDateFormat(tableUtils.partitionFormat)
+
     if (groupByConf.streamingSource.isDefined) {
       val streamingSource = groupByConf.streamingSource.get
 
@@ -181,7 +184,7 @@ object GroupByUpload {
       logger.info("Not setting InputAvroSchema to GroupByServingInfo as there is no streaming source defined.")
     }
 
-    val result = new GroupByServingInfoParsed(groupByServingInfo, tableUtils.partitionSpec)
+    val result = new GroupByServingInfoParsed(groupByServingInfo)
     val firstSource = groupByConf.sources.get(0)
     logger.info(s"""
         |Built GroupByServingInfo for ${groupByConf.metaData.name}:
@@ -259,6 +262,7 @@ object GroupByUpload {
       ))
     val metaRdd = tableUtils.sparkSession.sparkContext.parallelize(metaRows.toSeq)
     val metaDf = tableUtils.sparkSession.createDataFrame(metaRdd, kvDf.schema)
+
     kvDf
       .union(metaDf)
       .withColumn("ds", lit(endDs))
@@ -270,9 +274,15 @@ object GroupByUpload {
 
     val metricRow =
       kvDfReloaded.selectExpr("sum(bit_length(key_bytes))/8", "sum(bit_length(value_bytes))/8", "count(*)").collect()
-    context.gauge(Metrics.Name.KeyBytes, metricRow(0).getDouble(0).toLong)
-    context.gauge(Metrics.Name.ValueBytes, metricRow(0).getDouble(1).toLong)
-    context.gauge(Metrics.Name.RowCount, metricRow(0).getLong(2))
+
+    if (metricRow.length > 0) {
+      context.gauge(Metrics.Name.KeyBytes, metricRow(0).getDouble(0).toLong)
+      context.gauge(Metrics.Name.ValueBytes, metricRow(0).getDouble(1).toLong)
+      context.gauge(Metrics.Name.RowCount, metricRow(0).getLong(2))
+    } else {
+      throw new RuntimeException("GroupBy upload resulted in zero rows.")
+    }
+
     context.gauge(Metrics.Name.LatencyMinutes, (System.currentTimeMillis() - startTs) / (60 * 1000))
   }
 }
