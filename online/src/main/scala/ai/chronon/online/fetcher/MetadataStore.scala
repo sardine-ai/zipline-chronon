@@ -58,19 +58,7 @@ case class ConfPathOrName(confPath: Option[String] = None, confName: Option[Stri
 class MetadataStore(fetchContext: FetchContext) {
 
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  private var partitionSpec =
-    PartitionSpec(format = "yyyy-MM-dd", spanMillis = WindowUtils.Day.millis)
   private val CONF_BATCH_SIZE = 50
-
-  // Note this should match with the format used in the warehouse
-  def setPartitionMeta(format: String, spanMillis: Long): Unit = {
-    partitionSpec = PartitionSpec(format = format, spanMillis = spanMillis)
-  }
-
-  // Note this should match with the format used in the warehouse
-  def setPartitionMeta(format: String): Unit = {
-    partitionSpec = PartitionSpec(format = format, spanMillis = partitionSpec.spanMillis)
-  }
 
   implicit val executionContext: ExecutionContext = fetchContext.getOrCreateExecutionContext
 
@@ -411,7 +399,7 @@ class MetadataStore(fetchContext: FetchContext) {
             .Context(metrics.Metrics.Environment.MetaDataFetching, groupByServingInfo.groupBy)
             .withSuffix("group_by")
             .distribution(metrics.Metrics.Name.LatencyMillis, System.currentTimeMillis() - startTimeMs)
-          Success(new GroupByServingInfoParsed(groupByServingInfo, partitionSpec))
+          Success(new GroupByServingInfoParsed(groupByServingInfo))
         }
       },
       { gb =>

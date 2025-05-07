@@ -40,7 +40,7 @@ class ResultValidationAbilityTest extends AnyFlatSpec with BeforeAndAfter {
 
   before {
     when(mockTableUtils.partitionColumn).thenReturn("ds")
-    when(mockTableUtils.partitionSpec).thenReturn(PartitionSpec("yyyy-MM-dd", WindowUtils.Day.millis))
+    when(mockTableUtils.partitionSpec).thenReturn(PartitionSpec("ds", "yyyy-MM-dd", WindowUtils.Day.millis))
   }
 
   class TestArgs(args: Array[String]) extends ScallopConf(args) with OfflineSubcommand with ResultValidationAbility {

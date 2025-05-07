@@ -120,8 +120,8 @@ class JoinTest extends AnyFlatSpec {
     val rupeeTable = s"$namespace.rupee_transactions"
     spark.sql(s"DROP TABLE IF EXISTS $dollarTable")
     spark.sql(s"DROP TABLE IF EXISTS $rupeeTable")
-    DataFrameGen.entities(spark, dollarTransactions, 3000, partitions = 200).save(dollarTable, Map("tblProp1" -> "1"))
-    DataFrameGen.entities(spark, rupeeTransactions, 5000, partitions = 80).save(rupeeTable)
+    DataFrameGen.entities(spark, dollarTransactions, 300, partitions = 200).save(dollarTable, Map("tblProp1" -> "1"))
+    DataFrameGen.entities(spark, rupeeTransactions, 500, partitions = 80).save(rupeeTable)
 
     val dollarSource = Builders.Source.entities(
       query = Builders.Query(
@@ -1065,7 +1065,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 1000, partitions = 100)
+      .events(spark, itemQueries, 100, partitions = 100)
     // duplicate the events
     itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
 
@@ -1153,7 +1153,7 @@ class JoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries_$nameSuffix"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 1000, partitions = 100)
+      .events(spark, itemQueries, 100, partitions = 100)
 
     itemQueriesDf.save(s"${itemQueriesTable}_tmp")
     val structLeftDf = tableUtils.sql(

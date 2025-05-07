@@ -75,7 +75,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
         } else {
           dayStep
         }
-      val wheres = effectiveRange.whereClauses(tableUtils.partitionColumn)
+      val wheres = effectiveRange.whereClauses
       val sql = QueryUtils.build(null, partTable, wheres)
       logger.info(s"Pulling data from joinPart table with: $sql")
       (joinPart, tableUtils.scanDfBase(null, partTable, List.empty, wheres, None))

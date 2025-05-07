@@ -12,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
 class DataRangeTest extends AnyFlatSpec with Matchers {
 
   // Assuming you have a PartitionSpec and PartitionRange class defined somewhere
-  implicit val partitionSpec: PartitionSpec = new PartitionSpec("yyyy-MM-dd", new Window(1, TimeUnit.DAYS).millis)
+  implicit val partitionSpec: PartitionSpec = new PartitionSpec("ds", "yyyy-MM-dd", new Window(1, TimeUnit.DAYS).millis)
 
   "collapseToRange" should "collapse consecutive partitions into ranges" in {
     val partitions = List(

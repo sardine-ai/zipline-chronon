@@ -163,19 +163,17 @@ object CStream {
   }
 
   //  The main api: that generates dataframes given certain properties of data
-  def gen(columns: Seq[Column],
-          count: Int,
-          partitionColumn: String = null,
-          partitionSpec: PartitionSpec = null): RowsWithSchema = {
+  def gen(columns: Seq[Column], count: Int, partitionSpec: PartitionSpec = null): RowsWithSchema = {
     val schema = columns.map(_.schema)
-    val generators = columns.map(_.gen(partitionColumn, partitionSpec))
+    val generators = columns.map(_.gen(partitionSpec))
     val zippedStream = new ZippedStream(generators.toSeq: _*)(schema.indexWhere(_._1 == Constants.TimeColumn))
     RowsWithSchema(Seq.fill(count) { zippedStream.next() }.toArray, schema)
   }
 }
 
 case class Column(name: String, `type`: DataType, cardinality: Int, chunkSize: Int = 10, nullRate: Double = 0.1) {
-  def genImpl(dtype: DataType, partitionColumn: String, partitionSpec: PartitionSpec, nullRate: Double): CStream[Any] =
+  def genImpl(dtype: DataType, partitionSpec: PartitionSpec, nullRate: Double): CStream[Any] = {
+    val partitionColumn = Option(partitionSpec).map(_.column).orNull
     dtype match {
       case StringType =>
         name match {
@@ -191,16 +189,17 @@ case class Column(name: String, `type`: DataType, cardinality: Int, chunkSize: I
           case _                    => new LongStream(cardinality, nullRate)
         }
       case ListType(elementType) =>
-        genImpl(elementType, partitionColumn, partitionSpec, nullRate).chunk(chunkSize)
+        genImpl(elementType, partitionSpec, nullRate).chunk(chunkSize)
       case MapType(keyType, valueType) =>
-        val keyStream = genImpl(keyType, partitionColumn, partitionSpec, 0)
-        val valueStream = genImpl(valueType, partitionColumn, partitionSpec, nullRate)
+        val keyStream = genImpl(keyType, partitionSpec, 0)
+        val valueStream = genImpl(valueType, partitionSpec, nullRate)
         keyStream.zipChunk(valueStream, maxSize = chunkSize)
       case otherType => throw new UnsupportedOperationException(s"Can't generate random data for $otherType yet.")
     }
+  }
 
-  def gen(partitionColumn: String, partitionSpec: PartitionSpec): CStream[Any] =
-    genImpl(`type`, partitionColumn, partitionSpec, nullRate)
+  def gen(partitionSpec: PartitionSpec): CStream[Any] =
+    genImpl(`type`, partitionSpec, nullRate)
   def schema: (String, DataType) = name -> `type`
 }
 case class RowsWithSchema(rows: Array[TestRow], schema: Seq[(String, DataType)])

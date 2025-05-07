@@ -176,6 +176,7 @@ class DerivationTest extends AnyFlatSpec {
         col("ds")
       )
       .sample(0.8)
+
     val diffBootstrapTable = s"$namespace.bootstrap_diff"
     rawDiffBootstrapDf.save(diffBootstrapTable)
     val diffBootstrapDf = tableUtils.loadTable(diffBootstrapTable)
@@ -200,6 +201,7 @@ class DerivationTest extends AnyFlatSpec {
         col("ds")
       )
       .sample(0.8)
+
     val externalBootstrapTable = s"$namespace.bootstrap_external"
     rawExternalBootstrapDf.save(externalBootstrapTable)
     val externalBootstrapDf = tableUtils.loadTable(externalBootstrapTable)
@@ -224,6 +226,7 @@ class DerivationTest extends AnyFlatSpec {
         col("ds")
       )
       .sample(0.8)
+
     val contextualBootstrapTable = s"$namespace.bootstrap_contextual"
     rawContextualBootstrapDf.save(contextualBootstrapTable)
     val contextualBootstrapDf = tableUtils.loadTable(contextualBootstrapTable)

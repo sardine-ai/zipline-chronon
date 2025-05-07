@@ -108,7 +108,7 @@ class PartitionRunner[T](verb: String,
            |input: $inputTable (${inputRange.start} -> ${inputRange.end})
            |output: $outputTable (${outputRange.start} -> ${outputRange.end})
            |""".stripMargin.yellow)
-      val inputFilter = inputRange.whereClauses(tu.partitionColumn).mkString(" AND ")
+      val inputFilter = inputRange.whereClauses.mkString(" AND ")
       val inputDf = tu.loadTable(inputTable).filter(inputFilter)
       val (outputDf, sideVal) = computeFunc(inputDf)
       side = Option(sideVal)

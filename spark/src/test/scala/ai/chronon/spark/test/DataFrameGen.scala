@@ -40,8 +40,10 @@ object DataFrameGen {
   //  The main api: that generates dataframes given certain properties of data
   def gen(spark: SparkSession, columns: Seq[Column], count: Int, partitionColumn: Option[String] = None): DataFrame = {
     val tableUtils = TableUtils(spark)
+    val effectiveSpec =
+      tableUtils.partitionSpec.copy(column = partitionColumn.getOrElse(tableUtils.partitionSpec.column))
     val RowsWithSchema(rows, schema) =
-      CStream.gen(columns, count, partitionColumn.getOrElse(tableUtils.partitionColumn), tableUtils.partitionSpec)
+      CStream.gen(columns, count, effectiveSpec)
     val genericRows = rows.map { row => new GenericRow(row.fieldsSeq.toArray) }.toArray
     val data: RDD[Row] = spark.sparkContext.parallelize(genericRows)
     val sparkSchema = SparkConversions.fromChrononSchema(schema)

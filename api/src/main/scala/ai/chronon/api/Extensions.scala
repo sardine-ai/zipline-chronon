@@ -20,7 +20,6 @@ import ai.chronon.api
 import ai.chronon.api.Constants._
 import ai.chronon.api.DataModel._
 import ai.chronon.api.Operation._
-import ai.chronon.api.QueryUtils.buildSelects
 import ai.chronon.api.ScalaJavaConversions._
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.expr
@@ -1188,27 +1187,11 @@ object Extensions {
       result
     }
 
-    // mutationsOnSnapshot table appends default values for mutation_ts and is_before column on the snapshotTable
-    // otherwise we will populate the query with the actual mutation_ts and is_before expressions specified in the query
-    def baseQuery(mutationInfoOnSnapshot: Boolean = false): String = {
-
-      val selects = enrichedSelects(mutationInfoOnSnapshot)
-      val wheres = query.wheres.toScala
-
-      val finalSelects = buildSelects(selects, None)
-
-      val whereClause = Option(wheres)
-        .filter(_.nonEmpty)
-        .map { ws =>
-          s"""
-             |WHERE
-             |  ${ws.map(w => s"(${w})").mkString(" AND ")}""".stripMargin
-        }
-        .getOrElse("")
-
-      s"""SELECT
-         |  ${finalSelects.mkString(",\n  ")}
-         |$whereClause""".stripMargin
+    def partitionSpec(defaultSpec: PartitionSpec): PartitionSpec = {
+      val column = Option(query.partitionColumn).getOrElse(defaultSpec.column)
+      val format = Option(query.partitionFormat).getOrElse(defaultSpec.format)
+      val interval = Option(query.partitionInterval).getOrElse(WindowUtils.Day)
+      PartitionSpec(column, format, interval.millis)
     }
   }
 
