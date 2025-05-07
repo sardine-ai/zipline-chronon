@@ -1,4 +1,4 @@
-> DISCLAIMER: This is a fork of [Airbnb's Chronon repo](github.com/airbnb/chronon) with the same Apache-2 license.
+> DISCLAIMER: This is a fork of [Airbnb's Chronon repo](https://github.com/airbnb/chronon) with the same Apache-2 license.
 > 
 > ### What are the main differences?
 >   - Additional Connectors: BigQuery, Hudi, Glue, Iceberg, BigTable, Dynamo, Pub/Sub etc.
