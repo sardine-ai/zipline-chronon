@@ -60,7 +60,8 @@ struct ConfigProperties {
 struct TableInfo {
     // fully qualified table name
     1: optional string table
-    # if not present we will pull from defaults
+
+    // if not present we will pull from defaults
     // needed to enumerate what partitions are in a range
     100: optional string partitionColumn
     101: optional string partitionFormat
@@ -100,10 +101,14 @@ enum KvScanStrategy {
     LATEST = 1
 }
 
-struct KvDependency {
+struct KvInfo {
     1: optional string cluster
     2: optional string table
     3: optional string keyBase64
+}
+
+struct KvDependency {
+    1: optional KvInfo kvInfo
 
     10: optional i64 startMillis
     11: optional i64 endMillis
@@ -126,9 +131,9 @@ struct ExecutionInfo {
     13: optional list<TableDependency> tableDependencies
     14: optional TableInfo outputTableInfo
 
-    # relevant for streaming jobs
-    200: optional list<KvDependency> kvDependency
-    201: optional i64 kvPollIntervalMillis
+    200: optional list<KvDependency> kvDependencies
+    201: optional KvInfo outputKvInfo
+    202: optional i64 kvPollIntervalMillis
     # note that batch jobs could in theory also depend on model training runs
     # in which case we will be polling
     # in the future we will add other types of dependencies

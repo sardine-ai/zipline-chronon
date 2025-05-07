@@ -19,7 +19,7 @@ package ai.chronon.spark
 import ai.chronon.api
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
-import ai.chronon.api.planner.RelevantLeftForJoinPart
+import ai.chronon.api.planner.{PartitionSpecWithColumn, RelevantLeftForJoinPart}
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.{Constants, DateRange, ThriftJsonCodec}
 import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
@@ -822,7 +822,7 @@ object Driver {
     }
 
     def run(args: Args): Unit = {
-      val tableUtils = args.buildTableUtils()
+      implicit val tableUtils: TableUtils = args.buildTableUtils()
       val join = args.joinConf
 
       // Create a SourceWithFilterNode from the join's left source
@@ -886,7 +886,8 @@ object Driver {
     }
 
     def run(args: Args): Unit = {
-      val tableUtils = args.buildTableUtils()
+      implicit val tableUtils: TableUtils = args.buildTableUtils()
+
       val join = args.joinConf
       val joinPartName = args.joinPartName()
 

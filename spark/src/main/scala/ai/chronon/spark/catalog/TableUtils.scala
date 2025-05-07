@@ -20,6 +20,9 @@ import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUti
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.planner.PartitionSpecWithColumn
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
+
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
@@ -51,6 +54,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val partitionFormat: String =
     sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
   val partitionSpec: PartitionSpec = PartitionSpec(partitionFormat, WindowUtils.Day.millis)
+
+  val outputPartitionSpec: PartitionSpecWithColumn = PartitionSpecWithColumn(partitionColumn, partitionSpec)
+
   val smallModelEnabled: Boolean =
     sparkSession.conf.get("spark.chronon.backfill.small_mode.enabled", "true").toBoolean
   val smallModeNumRowsCutoff: Int =
@@ -82,16 +88,17 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       df
     }
 
-  def tableReachable(tableName: String): Boolean = {
+  def tableReachable(tableName: String, ignoreFailure: Boolean = false): Boolean = {
     Try { sparkSession.catalog.getTable(tableName) } match {
       case Success(_) => true
-      case Failure(ex) => {
-        logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
+      case Failure(ex) =>
+        if (!ignoreFailure) {
+          logger.info(s"""Couldn't reach $tableName. Error: ${ex.getMessage.red}
              |Call path:
              |${cleanStackTrace(ex).yellow}
              |""".stripMargin)
+        }
         false
-      }
     }
   }
 
@@ -183,7 +190,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                   tableProperties: Map[String, String] = null,
                   fileFormat: String): Unit = {
 
-    if (!tableReachable(tableName)) {
+    if (!tableReachable(tableName, ignoreFailure = true)) {
       try {
         sql(
           CreationUtils

@@ -1,9 +1,11 @@
 package ai.chronon.api.planner
 
 import ai.chronon.api
-import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.Extensions.{SourceOps, WindowUtils}
 import ai.chronon.api.Extensions.WindowUtils.convertUnits
-import ai.chronon.api.{PartitionRange, PartitionSpec, TableDependency, TableInfo, Window}
+import ai.chronon.api.{Accuracy, DataModel, PartitionRange, PartitionSpec, TableDependency, TableInfo, Window}
+import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions._
 
 object DependencyResolver {
 
@@ -11,16 +13,6 @@ object DependencyResolver {
     if (partition == null) return null
     if (offset == null) return null
     partitionSpec.minus(partition, offset)
-  }
-
-  def add(a: Window, b: Window): Window = {
-    if (a == null) return b
-    if (b == null) return a
-    if (a.timeUnit == b.timeUnit) return new Window(a.length + b.length, a.timeUnit)
-
-    // a's timeUnit takes precedence
-    val length = convertUnits(b, a.timeUnit).length + a.length
-    new Window(length, a.timeUnit)
   }
 
   private def max(partition: String, cutOff: String): String = {
@@ -33,39 +25,6 @@ object DependencyResolver {
     if (partition == null) return cutOff
     if (cutOff == null) return partition
     Ordering[String].min(partition, cutOff)
-  }
-
-  def tableDependency(source: api.Source,
-                      startOffset: Window,
-                      endOffset: Window,
-                      isMutation: Boolean = false): TableDependency = {
-
-    val startCutOff = source.query.getStartPartition
-    val endCutOff = source.query.getEndPartition
-
-    val hasMutationTable = source.isSetEntities && source.getEntities.isSetMutationTable
-
-    val table = if (isMutation) {
-      assert(hasMutationTable, "No mutation table found for entity source, but mutation table dependency requested.")
-      source.getEntities.getMutationTable
-    } else {
-      source.table
-    }
-
-    val result = new TableDependency()
-
-    if (startOffset != null) result.setStartOffset(startOffset)
-    if (endOffset != null) result.setEndOffset(endOffset)
-    if (startCutOff != null) result.setStartCutOff(startCutOff)
-    if (endCutOff != null) result.setEndCutOff(endCutOff)
-
-    val tableInfo = new TableInfo()
-      .setIsCumulative(source.isCumulative)
-      .setTable(table)
-
-    result.setTableInfo(tableInfo)
-
-    result
   }
 
   def computeInputRange(queryRange: PartitionRange, tableDep: TableDependency): Option[PartitionRange] = {

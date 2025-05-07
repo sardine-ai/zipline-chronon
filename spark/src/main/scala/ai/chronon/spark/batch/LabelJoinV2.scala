@@ -130,7 +130,8 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     resultDfsPerDay.tail.foldLeft(resultDfsPerDay.head)((acc, df) => acc.union(df))
   }
 
-  def computeDay(labelDs: String): DataFrame = {
+  // computes one day of labelDs
+  private def computeDay(labelDs: String): DataFrame = {
     logger.info(s"Running LabelJoinV2 for $labelDs")
 
     val labelDsAsPartitionRange = PartitionRange(labelDs, labelDs)
@@ -303,10 +304,10 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     logger.info(s"Wrote to table $outputLabelTable, into partitions: ${joinDsAsRange.start} in $elapsedMins mins")
   }
 
-  def computeTemporalLabelJoinPart(joinBaseDf: DataFrame,
-                                   joinDsAsRange: PartitionRange,
-                                   groupByConf: api.GroupBy,
-                                   labelOutputInfo: LabelPartOutputInfo): Seq[DataFrame] = {
+  private def computeTemporalLabelJoinPart(joinBaseDf: DataFrame,
+                                           joinDsAsRange: PartitionRange,
+                                           groupByConf: api.GroupBy,
+                                           labelOutputInfo: LabelPartOutputInfo): Seq[DataFrame] = {
 
     // 1-day and sub-day windows get processed to the same output partition, however, we need to handle the offset
     // differently for each one. So here we compute a dataframe for each window in the 1-day offset and join
@@ -352,7 +353,7 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     GroupBy.from(filteredGroupByConf, partitionRange, tableUtils, computeDependency = true, None)
   }
 
-  def filterGroupByWindows(groupBy: api.GroupBy, keepWindow: api.Window): api.GroupBy = {
+  private def filterGroupByWindows(groupBy: api.GroupBy, keepWindow: api.Window): api.GroupBy = {
     // Modifies a GroupBy to only keep the windows that are in the keepWindows list
     val gb = groupBy.deepCopy()
 

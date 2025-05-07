@@ -16,14 +16,13 @@ import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.Seq
 
-/*
-Runs after the `SourceJob` and produces boostrap table that is then used in the final join. Unique per join, whereas
-`SourceJob` output is shared across all joins.s
-
-Note for orchestrator: This needs to run iff there are bootstraps or external parts to the join (applies additional
-columns that may be used in derivations). Otherwise the left source table can be used directly in final join.
- */
-class BootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit tableUtils: TableUtils) {
+/** Runs after the `SourceJob` and produces boostrap table that is then used in the final join. Unique per join, whereas
+  * `SourceJob` output is shared across all joins.
+  *
+  * Note for orchestrator: This needs to run iff there are bootstraps or external parts to the join (applies additional
+  * columns that may be used in derivations). Otherwise, the left source table can be used directly in final join.
+  */
+class JoinBootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit tableUtils: TableUtils) {
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 

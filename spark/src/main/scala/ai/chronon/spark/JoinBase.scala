@@ -184,7 +184,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
             .setJoin(joinConfCloned)
             .setMetaData(bootstrapMetadata)
 
-          val bootstrapJob = new BootstrapJob(bootstrapNode, bootstrapJobDateRange)
+          val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapJobDateRange)
           bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
         } else {
           logger.info(s"Query produced no results for date range: $unfilledRange. Please check upstream.")
