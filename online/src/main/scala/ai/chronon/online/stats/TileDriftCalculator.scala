@@ -1,6 +1,6 @@
 package ai.chronon.online.stats
 
-import ai.chronon.api.Extensions.WindowOps
+import ai.chronon.api.Extensions.{WindowOps, WindowUtils}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.Window
 import ai.chronon.observability.DriftMetric
@@ -93,7 +93,7 @@ object TileDriftCalculator {
     summariesWithTimestamps.iterator
       .filter { case (_, ts) => ts >= startMs }
       .map { case (summary, ts) =>
-        val previousTs = ts - lookBackMs
+        val previousTs = startMs + (2 * WindowUtils.Day.millis)
         val previousSummary = summariesByTimestamp.get(previousTs)
         val drift = previousSummary.map(between(summary, _, metric)).getOrElse(new TileDrift())
         drift -> ts

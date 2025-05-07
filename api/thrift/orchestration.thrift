@@ -105,18 +105,19 @@ enum GroupByNodeType {
 }
 
 enum JoinNodeType{
-    BOOTSTRAP = 1,
-    RIGHT_PART = 2,
-    MERGE = 3,
-    BACKFILL = 4,
-    LABEL_PART = 5,
-    LABEL_JOIN = 6,
+    LEFT_SOURCE = 1
+    BOOTSTRAP = 2,
+    RIGHT_PART = 3,
+    MERGE = 4,
+    DERIVE = 5,
+    LABEL_PART = 6,
+    LABEL_JOIN = 7,
 
     // online nodes
     METADATA_UPLOAD = 20,
-    PREPARE_LOGS = 21,
 
     // observability nodes
+    PREPARE_LOGS = 21,
     SUMMARIZE = 40,
     DRIFT = 41,
     DRIFT_UPLOAD = 42,
@@ -205,20 +206,44 @@ struct JoinPartNode {
     5: optional map<string, list<string>> skewKeys
 }
 
-struct LabelPartNode {
+struct LabelJoinNode {
     1: optional api.MetaData metaData
     2: optional api.Join join
 }
 
+struct GroupByBackfillNode {
+    1: optional api.MetaData metaData
+    2: optional api.GroupBy groupBy
+}
+
+struct GroupByUploadNode {
+    1: optional api.MetaData metaData
+    2: optional api.GroupBy groupBy
+}
+
+struct GroupByStreamingNode {
+    1: optional api.MetaData metaData
+    2: optional api.GroupBy groupBy
+}
+
 union NodeUnion {
+    // join nodes
     1: SourceWithFilterNode sourceWithFilter
     2: JoinBootstrapNode joinBootstrap
     3: JoinPartNode joinPart
     4: JoinMergeNode joinMerge
     5: JoinDerivationNode joinDerivation
-    6: LabelPartNode labelPart
-    // TODO add label join
-    // TODO: add other types of nodes
+    6: LabelJoinNode labelJoin
+
+    // groupBy nodes
+    7: GroupByBackfillNode groupByBackfill
+    8: GroupByUploadNode groupByUpload
+    9: GroupByStreamingNode groupByStreaming
+
+    // stagingQuery nodes
+    10: api.StagingQuery stagingQuery
+
+    // TODO: add metrics nodes
 }
 
 enum NodeRunStatus {

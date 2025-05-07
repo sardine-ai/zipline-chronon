@@ -3,7 +3,7 @@ package ai.chronon.spark.batch
 import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.PartitionRange.toTimeRange
-import ai.chronon.api.{Accuracy, Builders, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
+import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.orchestration.JoinPartNode
 import ai.chronon.spark.Extensions._
@@ -64,23 +64,17 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
 
     // TODO: fix left df and left time range, bloom filter, small mode args
     computeRightTable(
-      jobContext.leftDf,
+      jobContext,
       joinPart,
       dateRange,
-      node.metaData.outputTable,
-      jobContext.tableProps,
-      jobContext.joinLevelBloomMapOpt,
-      jobContext.runSmallMode
+      node.metaData.outputTable
     )
   }
 
-  private def computeRightTable(leftDfOpt: Option[DfWithStats],
+  private def computeRightTable(jobContext: JoinPartJobContext,
                                 joinPart: JoinPart,
                                 leftRange: PartitionRange, // missing left partitions
-                                partTable: String,
-                                tableProps: Map[String, String] = Map(),
-                                joinLevelBloomMapOpt: Option[util.Map[String, BloomFilter]],
-                                smallMode: Boolean = false): Option[DataFrame] = {
+                                partTable: String): Option[DataFrame] = {
 
     // val partMetrics = Metrics.Context(metrics, joinPart) -- TODO is this metrics context sufficient, or should we pass thru for monolith join?
     val partMetrics = Metrics.Context(Metrics.Environment.JoinOffline, joinPart.groupBy)
@@ -88,16 +82,16 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
     val rightRange = JoinUtils.shiftDays(node.leftDataModel, joinPart, leftRange)
 
     // Can kill the option after we deprecate monolith join job
-    leftDfOpt.map { leftDf =>
+    jobContext.leftDf.foreach { leftDf =>
       try {
         val start = System.currentTimeMillis()
         val prunedLeft = leftDf.prunePartitions(leftRange) // We can kill this after we deprecate monolith join job
         val filledDf =
-          computeJoinPart(prunedLeft, joinPart, joinLevelBloomMapOpt, skipBloom = smallMode)
+          computeJoinPart(prunedLeft, joinPart, jobContext.joinLevelBloomMapOpt, skipBloom = jobContext.runSmallMode)
         // Cache join part data into intermediate table
         if (filledDf.isDefined) {
           logger.info(s"Writing to join part table: $partTable for partition range $rightRange")
-          filledDf.get.save(partTable, tableProps.toMap)
+          filledDf.get.save(partTable, jobContext.tableProps.toMap)
         } else {
           logger.info(s"Skipping $partTable because no data in computed joinPart.")
         }

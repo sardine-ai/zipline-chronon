@@ -35,10 +35,10 @@ object FetcherMain {
     val name: ScallopOption[String] = opt[String](required = false, descr = "name of the join/group-by to fetch")
     val confType: ScallopOption[String] =
       choice(
-        Seq(JoinKeyword, GroupByKeyword),
+        Seq(JoinFolder, GroupByFolder),
         required = false,
         descr = "the type of conf to fetch",
-        default = Some(JoinKeyword)
+        default = Some(JoinFolder)
       )
 
     val keyJsonFile: ScallopOption[String] = opt[String](
@@ -199,7 +199,7 @@ object FetcherMain {
           args.confPath.toOption.map(confPath => parseConf[Join](confPath))
         val startNs = System.nanoTime
         val requests = Seq(Fetcher.Request(featureName, keyMap, args.atMillis.toOption))
-        val resultFuture = if (args.confType() == JoinKeyword) {
+        val resultFuture = if (args.confType() == JoinFolder) {
           fetcher.fetchJoin(requests, joinConfOption)
         } else {
           fetcher.fetchGroupBys(requests)

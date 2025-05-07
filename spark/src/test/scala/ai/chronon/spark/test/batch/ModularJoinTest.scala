@@ -256,7 +256,7 @@ class ModularJoinTest extends AnyFlatSpec {
       .setJoin(joinConf)
       .setMetaData(bootstrapMetaData)
 
-    val bsj = new BootstrapJob(bootstrapNode, bootstrapJobRange)
+    val bsj = new JoinBootstrapJob(bootstrapNode, bootstrapJobRange)
     bsj.run()
     val sourceCount = tableUtils.sql(s"SELECT * FROM $sourceOutputTable").count()
     val bootstrapCount = tableUtils.sql(s"SELECT * FROM $bootstrapOutputTable").count()

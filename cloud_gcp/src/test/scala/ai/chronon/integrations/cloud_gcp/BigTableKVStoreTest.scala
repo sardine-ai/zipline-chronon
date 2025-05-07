@@ -1,6 +1,6 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.api.Constants.{ContinuationKey, GroupByKeyword, JoinKeyword, ListEntityType, ListLimit}
+import ai.chronon.api.Constants.{ContinuationKey, GroupByFolder, JoinFolder, ListEntityType, ListLimit}
 import ai.chronon.api.TilingUtils
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.GetResponse
@@ -212,13 +212,13 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     kvStore.create(dataset)
 
     val putGrpByReqs = (0 until 50).map { i =>
-      val key = s"$GroupByKeyword/gbkey-$i"
+      val key = s"$GroupByFolder/gbkey-$i"
       val value = s"""{"name": "name-$i", "age": $i}"""
       PutRequest(key.getBytes, value.getBytes, dataset, None)
     }
 
     val putJoinReqs = (0 until 50).map { i =>
-      val key = s"$JoinKeyword/joinkey-$i"
+      val key = s"$JoinFolder/joinkey-$i"
       val value = s"""{"name": "name-$i", "age": $i}"""
       PutRequest(key.getBytes, value.getBytes, dataset, None)
     }
@@ -228,7 +228,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
     // let's try and read just the joins
     val limit = 10
-    val listReq1 = ListRequest(dataset, Map(ListLimit -> limit, ListEntityType -> JoinKeyword))
+    val listReq1 = ListRequest(dataset, Map(ListLimit -> limit, ListEntityType -> JoinFolder))
 
     val listResult1 = Await.result(kvStore.list(listReq1), 1.second)
     listResult1.values.isSuccess shouldBe true
