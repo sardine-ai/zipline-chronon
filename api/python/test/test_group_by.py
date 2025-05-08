@@ -156,7 +156,7 @@ def test_validator_ok():
         )
     with pytest.raises(AssertionError):
         group_by.GroupBy(
-            sources=event_source("table"), 
+            sources=event_source("table"),
             keys=["subject"],
             aggregations=None,
         )
@@ -280,3 +280,40 @@ def test_windows_as_strings():
     assert windows[1] == common.Window(30, common.TimeUnit.DAYS)
 
     assert gb.metaData.tags["to_deprecate"]
+
+def test_query_api_obj():
+    selects_map = {
+        "key1": "key1",
+        "event_id": "event_id",
+        "ts": "ts",
+        "mutationTs": "mutationTs",
+        "ds": "ds",
+    }
+
+    wheres = ["key1 = 1"]
+    start_partition = "2020-04-09"
+    end_partition = "2020-04-10"
+    time_column = "ts"
+    mutation_time_column = "mutationTs"
+    partition_column = "ds"
+    partition_format = "yyyy-MM-dd"
+
+    query_obj = query.Query(
+        selects=selects_map,
+        wheres=wheres,
+        start_partition=start_partition,
+        end_partition=end_partition,
+        time_column=time_column,
+        mutation_time_column=mutation_time_column,
+        partition_column=partition_column,
+        partition_format=partition_format,
+    )
+
+    assert query_obj.selects == selects_map
+    assert query_obj.wheres == wheres
+    assert query_obj.startPartition == start_partition
+    assert query_obj.endPartition == end_partition
+    assert query_obj.timeColumn == time_column
+    assert query_obj.mutationTimeColumn == mutation_time_column
+    assert query_obj.partitionColumn == partition_column
+    assert query_obj.partitionFormat == partition_format

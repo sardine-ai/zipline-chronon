@@ -28,6 +28,7 @@ def Query(
     mutation_time_column: str = None,
     reversal_column: str = None,
     partition_column: str = None,
+    partition_format: str = None,
 ) -> api.Query:
     """
     Create a query object that is used to scan data from various data sources.
@@ -75,18 +76,22 @@ def Query(
     :param partition_column:
         Specify this to override spark.chronon.partition.column set in teams.py for this particular query.
     :type partition_column: str, optional
+    :param partition_format:
+        Date format string to expect the partition values to be in.
+    :type partition_format: str, optional
     :return: A Query object that Chronon can use to scan just the necessary data efficiently.
     """
     return api.Query(
-        selects,
-        wheres,
-        start_partition,
-        end_partition,
-        time_column,
-        setups,
-        mutation_time_column,
-        reversal_column,
-        partition_column,
+        selects=selects,
+        wheres=wheres,
+        startPartition=start_partition,
+        endPartition=end_partition,
+        timeColumn=time_column,
+        setups=setups,
+        mutationTimeColumn=mutation_time_column,
+        reversalColumn=reversal_column,
+        partitionColumn=partition_column,
+        partitionFormat=partition_format
     )
 
 
