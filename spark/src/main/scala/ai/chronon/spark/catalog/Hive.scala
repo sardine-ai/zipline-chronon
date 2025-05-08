@@ -17,11 +17,11 @@ case object Hive extends Format {
     // column values filled out as a formatted key=value pair
     // Eg. df schema = (partitions: String)
     // rows = [ "day=2020-10-10/hour=00", ... ]
-    sparkSession.sqlContext
+    val initial = sparkSession.sqlContext
       .sql(s"SHOW PARTITIONS $tableName")
       .collect()
-      .map(row => Format.parseHiveStylePartition(row.getString(0)).toMap)
-      .toList
+
+    initial.map(row => Format.parseHiveStylePartition(row.getString(0)).toMap).toList
   }
 
   override def supportSubPartitionsFilter: Boolean = true

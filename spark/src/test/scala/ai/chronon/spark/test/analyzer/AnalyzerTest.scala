@@ -71,7 +71,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
         Builders.MetaData(name = "test_join_analyzer.item_snapshot_features", namespace = namespace, team = "chronon")
     )
 
-    //run analyzer and validate output schema
+    // run analyzer and validate output schema
     val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
     val analyzerSchema = analyzer.analyzeJoin(joinConf)._1.map { case (k, v) => s"${k} => ${v}" }.toList.sorted
 
@@ -116,7 +116,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     tableUtils.sql(s"SELECT * FROM $viewsTable LIMIT 10").show()
 
     intercept[AssertionError] {
-      //run analyzer and validate output schema
+      // run analyzer and validate output schema
       val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
       analyzer.analyzeJoin(joinConf, validationAssert = true)
     }
@@ -254,7 +254,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
       metaData = Builders.MetaData(name = "test_join_analyzer.key_validation", namespace = namespace, team = "chronon")
     )
 
-    //run analyzer an ensure ts timestamp values result in analyzer passing
+    // run analyzer an ensure ts timestamp values result in analyzer passing
     val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
     analyzer.analyzeJoin(joinConf, validationAssert = true)
 
@@ -286,7 +286,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     )
 
     intercept[AssertionError] {
-      //run analyzer and trigger assertion error when timestamps are out of range
+      // run analyzer and trigger assertion error when timestamps are out of range
       val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
       analyzer.analyzeJoin(joinConf, validationAssert = true)
     }
@@ -318,7 +318,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     )
 
     intercept[AssertionError] {
-      //run analyzer and trigger assertion error when timestamps are all NULL
+      // run analyzer and trigger assertion error when timestamps are all NULL
       val analyzer = new Analyzer(tableUtils, joinConf, oneMonthAgo, today, skewDetection = true)
       analyzer.analyzeJoin(joinConf, validationAssert = true)
     }
@@ -336,7 +336,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
       accuracy = Accuracy.SNAPSHOT
     )
 
-    //run analyzer an ensure ts timestamp values result in analyzer passing
+    // run analyzer an ensure ts timestamp values result in analyzer passing
     val analyzer = new Analyzer(tableUtils, tableGroupBy, oneMonthAgo, today)
     analyzer.analyzeGroupBy(tableGroupBy)
 
@@ -355,7 +355,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     )
 
     intercept[AssertionError] {
-      //run analyzer and trigger assertion error when timestamps are all NULL
+      // run analyzer and trigger assertion error when timestamps are all NULL
       val analyzer = new Analyzer(tableUtils, tableGroupBy, oneMonthAgo, today)
       analyzer.analyzeGroupBy(tableGroupBy)
     }
@@ -374,7 +374,7 @@ class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
     )
 
     intercept[AssertionError] {
-      //run analyzer and trigger assertion error when timestamps are out of range
+      // run analyzer and trigger assertion error when timestamps are out of range
       val analyzer = new Analyzer(tableUtils, tableGroupBy, oneMonthAgo, today)
       analyzer.analyzeGroupBy(tableGroupBy)
     }

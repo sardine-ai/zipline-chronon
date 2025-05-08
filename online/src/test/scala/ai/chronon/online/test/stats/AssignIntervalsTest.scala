@@ -10,7 +10,7 @@ class AssignIntervalsTest extends AnyFlatSpec with Matchers {
     val percentiles = Array(1, 4, 6, 6, 6, 8, 9)
     val breaks = Array(0, 1, 2, 3, 5, 6, 7, 8, 9, 10)
 
-    //val interval = 0.25
+    // val interval = 0.25
     val expected = Array(0.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0 + 1.0 / 2.0, 1.0 / 2.0, 2.5, 0.5, 1, 0)
 
     val result = AssignIntervals.on(ptiles = percentiles.map(_.toDouble), breaks = breaks.map(_.toDouble))

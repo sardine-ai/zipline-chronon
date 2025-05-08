@@ -80,7 +80,7 @@ class ModularJoinTest extends AnyFlatSpec {
       table = dollarTable
     )
 
-    //println("Rupee Source start partition $month")
+    // println("Rupee Source start partition $month")
     val rupeeSource =
       Builders.Source.entities(
         query = Builders.Query(

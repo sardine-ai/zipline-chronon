@@ -34,13 +34,15 @@ class ThriftDecodingTest extends AnyFlatSpec {
     val tokens = new util.HashSet[String]()
     Seq("left", "source", "events", "derivations", "name", "expression")
       .foreach(tokens.add)
-    val decoder = new TBaseDecoderFactory("ai.chronon.api.Join",
-                                          tokens,
-                                          new SerializableFunction[String, String] {
-                                            //camel case to snake case
-                                            override def apply(t: String): String =
-                                              "[A-Z]".r.replaceAllIn(t, { m => "_" + m.group(0).toLowerCase() })
-                                          }).build()
+    val decoder = new TBaseDecoderFactory(
+      "ai.chronon.api.Join",
+      tokens,
+      new SerializableFunction[String, String] {
+        // camel case to snake case
+        override def apply(t: String): String =
+          "[A-Z]".r.replaceAllIn(t, { m => "_" + m.group(0).toLowerCase() })
+      }
+    ).build()
     val dks = buildJoin()
     val schema = decoder.dataType
     assertEquals(

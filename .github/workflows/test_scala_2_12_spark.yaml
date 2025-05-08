@@ -71,7 +71,7 @@ jobs:
             //spark:batch_test
 
   fetcher_tests:
-    runs-on: ubuntu-8_cores-32_gb
+    runs-on: ubuntu_32_core_128gb
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
       credentials:
@@ -97,7 +97,7 @@ jobs:
             //spark:fetcher_test
 
   join_tests:
-    runs-on: ubuntu-8_cores-32_gb
+    runs-on: ubuntu_32_core_128gb
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
       credentials:
@@ -123,7 +123,7 @@ jobs:
             //spark:join_test
 
   groupby_tests:
-    runs-on: ubuntu-8_cores-32_gb
+    runs-on: ubuntu_32_core_128gb
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
       credentials:

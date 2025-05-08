@@ -72,7 +72,7 @@ abstract class TimeOrdered(inputType: DataType) extends TimedAggregator[Any, Tim
 }
 
 class First(inputType: DataType) extends TimeOrdered(inputType) {
-  //mutating
+  // mutating
   override def update(
       ir: util.ArrayList[Any],
       input: Any,
@@ -92,7 +92,7 @@ class First(inputType: DataType) extends TimeOrdered(inputType) {
 }
 
 class Last(inputType: DataType) extends TimeOrdered(inputType) {
-  //mutating
+  // mutating
   override def update(
       ir: util.ArrayList[Any],
       input: Any,

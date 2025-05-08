@@ -88,7 +88,7 @@ case class PartitionRange(start: String, end: String)(implicit val partitionSpec
   }
 
   def partitions: Seq[String] = {
-    assert(wellDefined, s"Invalid partition range $this")
+    require(wellDefined, s"Invalid partition range $this")
     Stream
       .iterate(start)(partitionSpec.after)
       .takeWhile(_ <= end)
@@ -151,6 +151,15 @@ case class PartitionRange(start: String, end: String)(implicit val partitionSpec
       compareDate(this.end, that.end)
     }
   }
+
+  def translate(otherSpec: PartitionSpec): PartitionRange = {
+
+    val newStart = Option(start).map(d => partitionSpec.translate(d, otherSpec)).orNull
+    val newEnd = Option(end).map(d => partitionSpec.translate(d, otherSpec)).orNull
+
+    PartitionRange(newStart, newEnd)(otherSpec)
+  }
+
   override def toString: String = s"[$start...$end]"
 }
 

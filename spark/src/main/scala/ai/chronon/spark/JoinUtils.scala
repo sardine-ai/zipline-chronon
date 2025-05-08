@@ -17,14 +17,14 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api._
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api._
-import ai.chronon.api.planner.{JoinOfflinePlanner, PartitionSpecWithColumn}
+import ai.chronon.api.planner.JoinOfflinePlanner
 import ai.chronon.spark.Extensions._
-import com.google.gson.Gson
 import ai.chronon.spark.catalog.TableUtils
+import com.google.gson.Gson
 import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -79,10 +79,14 @@ object JoinUtils {
       Seq()
     }
 
+    implicit val tu: TableUtils = tableUtils
+    val effectiveLeftSpec = joinConf.left.partitionSpec
+    val effectiveLeftRange = range.translate(effectiveLeftSpec)
+
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
                                Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
-                               range = Some(range))
+                               range = Some(effectiveLeftRange))
 
     limit.foreach(l => df = df.limit(l))
 
@@ -95,11 +99,11 @@ object JoinUtils {
       .getOrElse(df)
 
     if (!allowEmpty && result.isEmpty) {
-      logger.info(s"Left side query below produced 0 rows in range $range, and allowEmpty=false.")
+      logger.info(s"Left side query below produced 0 rows in range $effectiveLeftRange, and allowEmpty=false.")
       return None
     }
 
-    Some(result)
+    Some(result.translatePartitionSpec(effectiveLeftSpec, tableUtils.partitionSpec))
   }
 
   def leftDfFromSource(left: ai.chronon.api.Source,
@@ -134,11 +138,11 @@ object JoinUtils {
   /** *
     * Compute partition range to be filled for given join conf
     */
-  def getRangesToFill(leftSource: ai.chronon.api.Source,
-                      tableUtils: TableUtils,
-                      endPartition: String,
-                      overrideStartPartition: Option[String] = None,
-                      historicalBackfill: Boolean = true): PartitionRange = {
+  def getRangeToFill(leftSource: ai.chronon.api.Source,
+                     tableUtils: TableUtils,
+                     endPartition: String,
+                     overrideStartPartition: Option[String] = None,
+                     historicalBackfill: Boolean = true): PartitionRange = {
 
     val overrideStart = if (historicalBackfill) {
       overrideStartPartition
@@ -147,8 +151,13 @@ object JoinUtils {
       Some(endPartition)
     }
 
-    lazy val firstAvailablePartitionOpt =
-      tableUtils.firstAvailablePartition(leftSource.table, subPartitionFilters = leftSource.subPartitionFilters)
+    implicit val tu: TableUtils = tableUtils
+    val leftSpec = leftSource.partitionSpec
+
+    val firstAvailablePartitionOpt =
+      tableUtils.firstAvailablePartition(leftSource.table,
+                                         leftSpec,
+                                         subPartitionFilters = leftSource.subPartitionFilters)
     lazy val defaultLeftStart = Option(leftSource.query.startPartition)
       .getOrElse {
         require(

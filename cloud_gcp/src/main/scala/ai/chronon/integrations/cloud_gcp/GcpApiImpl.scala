@@ -190,7 +190,7 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   override def externalRegistry: ExternalSourceRegistry = registry
 
-  //TODO - Implement this
+  // TODO - Implement this
   override def logResponse(resp: LoggableResponse): Unit = {}
 }
 

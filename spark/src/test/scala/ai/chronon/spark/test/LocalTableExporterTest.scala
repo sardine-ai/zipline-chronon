@@ -89,7 +89,8 @@ class LocalTableExporterTest extends AnyFlatSpec {
       Column("session_length", IntType, 10000)
     )
 
-    val df = DataFrameGen.gen(spark, schema, 20)
+    val tableUtils = TableUtils(spark)
+    val df = DataFrameGen.gen(spark, schema, 20, Some(tableUtils.partitionColumn), Some(tableUtils.partitionFormat))
     val tableName = "default.exporter_test_2"
     df.write.mode(SaveMode.Overwrite).saveAsTable(tableName)
 
@@ -101,11 +102,10 @@ class LocalTableExporterTest extends AnyFlatSpec {
     )
     val namespace = "test_namespace"
     val weightTable = s"$namespace.weights"
-    val wdf = DataFrameGen.gen(spark, weightSchema, 100)
+    val wdf =
+      DataFrameGen.gen(spark, weightSchema, 100, Some(tableUtils.partitionColumn), Some(tableUtils.partitionFormat))
     spark.sql(s"CREATE DATABASE $namespace")
     wdf.write.mode(SaveMode.Overwrite).saveAsTable(weightTable)
-
-    val tableUtils = TableUtils(spark)
 
     val exporter = new LocalTableExporter(tableUtils, tmpDir.getAbsolutePath, "csv", Some("local_test"))
     exporter.exportTable(tableName)
