@@ -44,7 +44,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                         selectedJoinParts: Option[Seq[String]] = None) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tu = tableUtils
-//  private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+  private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   assert(Option(joinConfCloned.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinOffline, joinConfCloned)
   val outputTable: String = joinConfCloned.metaData.outputTable
