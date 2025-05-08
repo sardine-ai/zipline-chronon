@@ -40,6 +40,12 @@ struct Query {
     **/
     23: optional common.Window partitionLag
 
+    /**
+    * Additional partitions to be used in sensing that the source data has landed.
+    * Should be a full partition string, such as `hr=23:00'
+    **/
+    24: optional list<string> subPartitionsToWaitFor
+
 }
  
 /**
