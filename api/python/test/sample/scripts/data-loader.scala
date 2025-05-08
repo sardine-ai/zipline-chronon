@@ -3,7 +3,6 @@
 import java.io.File
 import org.apache.spark.sql.types._
 
-
 spark.sql("CREATE DATABASE IF NOT EXISTS data;")
 // Directory containing CSV files
 val folderPath = "/srv/chronon/data/"
@@ -27,9 +26,9 @@ files.foreach { file =>
   val customSchema = StructType(
     columns.map { columnName =>
       val dataType = columnName match {
-        case "ts" => LongType
+        case "ts"                                                     => LongType
         case name if name.endsWith("_price") || name.endsWith("_amt") => LongType
-        case _ => StringType
+        case _                                                        => StringType
       }
       StructField(columnName, dataType, nullable = true)
     }

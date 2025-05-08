@@ -74,7 +74,7 @@ class MinHeap[T](maxSize: Int, ordering: Ordering[T]) {
     arr
   }
 
-  //mutating arr1 / arr2 intact
+  // mutating arr1 / arr2 intact
   def merge(
       arr1: ContainerType[T],
       arr2: ContainerType[T]

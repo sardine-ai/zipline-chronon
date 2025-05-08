@@ -80,6 +80,19 @@ case class PartitionSpec(column: String, format: String, spanMillis: Long) {
   def now: String = at(System.currentTimeMillis())
 
   def shiftBackFromNow(days: Int): String = shift(now, 0 - days)
+
+  def intervalWindow: Window = {
+    if (spanMillis == WindowUtils.Day.millis) WindowUtils.Day
+    else if (spanMillis == WindowUtils.Hour.millis) WindowUtils.Hour
+    else
+      throw new UnsupportedOperationException(
+        s"Partition Intervals should be either hour or day - found ${spanMillis / 60 * 1000} minutes")
+  }
+
+  def translate(date: String, targetSpec: PartitionSpec): String = {
+    val millis = epochMillis(date)
+    targetSpec.at(millis)
+  }
 }
 
 object PartitionSpec {

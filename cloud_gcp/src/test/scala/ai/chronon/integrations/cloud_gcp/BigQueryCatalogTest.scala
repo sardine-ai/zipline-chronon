@@ -5,7 +5,12 @@ import ai.chronon.spark.catalog.{FormatProvider, Iceberg, TableUtils}
 import ai.chronon.spark.submission.SparkSessionBuilder
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
-import com.google.cloud.hadoop.fs.gcs.{GoogleHadoopFS, GoogleHadoopFileSystem, GoogleHadoopFileSystemConfiguration, HadoopConfigurationProperty}
+import com.google.cloud.hadoop.fs.gcs.{
+  GoogleHadoopFS,
+  GoogleHadoopFileSystem,
+  GoogleHadoopFileSystemConfiguration,
+  HadoopConfigurationProperty
+}
 import com.google.cloud.spark.bigquery.SparkBigQueryUtil
 import org.apache.iceberg.gcp.bigquery.{BigQueryMetastoreCatalog => BQMSCatalog}
 import org.apache.iceberg.gcp.gcs.GCSFileIO
@@ -56,9 +61,17 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val viewName = "data.purchases_native_view"
     val nativeName = "data.purchases"
 
-    val viewParts = tableUtils.partitions(viewName, partitionRange = Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    val viewParts =
+      tableUtils.partitions(viewName,
+                            partitionRange =
+                              Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)),
+                            partitionColumnName = "ds")
     assertEquals(30, viewParts.size)
-    val nativeParts = tableUtils.partitions(nativeName, partitionRange = Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    val nativeParts =
+      tableUtils.partitions(nativeName,
+                            partitionRange =
+                              Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)),
+                            partitionColumnName = "ds")
     assertEquals(30, nativeParts.size)
 
     assertEquals(nativeParts.toSet, viewParts.toSet)
@@ -68,9 +81,17 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
   it should "works with a partition range for views and tables" ignore {
     val viewName = "data.purchases_native_view"
     val nativeName = "data.purchases"
-    val viewTruncated = tableUtils.partitions(viewName, partitionRange = Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    val viewTruncated =
+      tableUtils.partitions(viewName,
+                            partitionRange =
+                              Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)),
+                            partitionColumnName = "ds")
     assertEquals(3, viewTruncated.size)
-    val nativeTruncated = tableUtils.partitions(nativeName, partitionRange = Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)), partitionColumnName = "ds")
+    val nativeTruncated =
+      tableUtils.partitions(nativeName,
+                            partitionRange =
+                              Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)),
+                            partitionColumnName = "ds")
     assertEquals(3, nativeTruncated.size)
 
     assertEquals(nativeTruncated.toSet, viewTruncated.toSet)

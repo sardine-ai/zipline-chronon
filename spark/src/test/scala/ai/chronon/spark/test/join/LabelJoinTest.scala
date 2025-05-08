@@ -198,7 +198,7 @@ class LabelJoinTest extends AnyFlatSpec {
     computed.show()
     assertEquals(computed.count(), 6)
 
-    //add additional label column
+    // add additional label column
     val updatedLabelGroupBy = TestUtils.createAttributesGroupByV2(namespace, spark, "listing_labels")
     val updatedLabelJoin = Builders.LabelPart(
       labels = Seq(

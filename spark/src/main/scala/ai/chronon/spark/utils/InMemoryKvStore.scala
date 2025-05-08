@@ -35,7 +35,7 @@ import scala.util.Try
 class InMemoryKvStore(tableUtils: () => TableUtils, hardFailureOnInvalidDataset: Boolean = false)
     extends KVStore
     with Serializable {
-  //type aliases for readability
+  // type aliases for readability
   type Key = String
   type Data = Array[Byte]
   type DataSet = String

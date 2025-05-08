@@ -123,7 +123,7 @@ class DelegatingBigQueryMetastoreCatalog extends TableCatalog with SupportsNames
               fileBasedTable
             }
             case _: StandardTableDefinition => {
-              //todo(tchow): Support partitioning
+              // todo(tchow): Support partitioning
 
               // Hack because there's a bug in the BigQueryCatalog where they ignore the projectId.
               // See: https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1340

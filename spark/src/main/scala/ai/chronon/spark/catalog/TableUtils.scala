@@ -21,8 +21,6 @@ import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.planner.PartitionSpecWithColumn
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUtils, TsUtils}
-
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
@@ -131,11 +129,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def partitions(tableName: String,
                  subPartitionsFilter: Map[String, String] = Map.empty,
                  partitionRange: Option[PartitionRange] = None,
-                 partitionColumnName: String = partitionColumn): List[String] = {
+                 partitionColumnName: String = partitionColumn,
+                 tablePartitionSpec: Option[PartitionSpec] = None): List[String] = {
     if (!tableReachable(tableName)) return List.empty[String]
-    val rangeWheres = andPredicates(partitionRange.map(whereClauses(_, partitionColumnName)).getOrElse(Seq.empty))
+    val rangeWheres = andPredicates(partitionRange.map(_.whereClauses).getOrElse(Seq.empty))
 
-    tableFormatProvider
+    val partitions = tableFormatProvider
       .readFormat(tableName)
       .map((format) => {
         logger.info(
@@ -144,7 +143,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
           format.primaryPartitions(tableName, partitionColumnName, rangeWheres, subPartitionsFilter)(sparkSession)
 
         if (partitions.isEmpty) {
-          logger.info(s"No partitions found for table: $tableName")
+          logger.info(s"No partitions found for table: $tableName with subpartition filters ${subPartitionsFilter}")
         } else {
           logger.info(
             s"Found ${partitions.size}, between (${partitions.min}, ${partitions.max}) partitions for table: $tableName")
@@ -153,6 +152,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       })
       .getOrElse(List.empty)
 
+    // if table is yyyyMMdd and global partitionSpec is yyyy-MM-dd, partitions will use yyyyMMdd
+    // downstream range arithmetic requires yyyy-MM-dd - so we need to translate to global
+    tablePartitionSpec
+      .map(ps => partitions.map(date => ps.translate(date, partitionSpec)))
+      .getOrElse(partitions)
   }
 
   // Given a table and a query extract the schema of the columns involved as input.
@@ -181,9 +185,16 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     partitions(tableName, subPartitionFilters, partitionRange).reduceOption((x, y) => Ordering[String].max(x, y))
 
   def firstAvailablePartition(tableName: String,
+                              partitionSpec: PartitionSpec = partitionSpec,
                               partitionRange: Option[PartitionRange] = None,
                               subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(tableName, subPartitionFilters, partitionRange).reduceOption((x, y) => Ordering[String].min(x, y))
+    partitions(
+      tableName,
+      subPartitionFilters,
+      partitionRange.map(_.translate(partitionSpec)),
+      partitionColumnName = partitionSpec.column,
+      tablePartitionSpec = Some(partitionSpec)
+    ).reduceOption((x, y) => Ordering[String].min(x, y))
 
   def createTable(df: DataFrame,
                   tableName: String,
@@ -226,6 +237,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       expandTable(tableName, dfRearranged.schema)
     }
 
+    println(s"REARRANGED DF for ${tableName}::::::")
+    dfRearranged.show()
+
     // Run tableProperties
     Option(tableProperties).filter(_.nonEmpty).foreach { props =>
       sql(CreationUtils.alterTablePropertiesSql(tableName, props))
@@ -252,6 +266,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     TableCache.remove(tableName)
 
     logger.info(s"Writing to $tableName ...")
+
+    finalizedDf.show()
 
     finalizedDf.write
       .mode(saveMode)
@@ -322,26 +338,34 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def unfilledRanges(outputTable: String,
                      outputPartitionRange: PartitionRange,
                      inputTables: Option[Seq[String]] = None,
+                     // ------- TODO: CLEANUP --------
                      inputTableToSubPartitionFiltersMap: Map[String, Map[String, String]] = Map.empty,
                      inputToOutputShift: Int = 0,
                      skipFirstHole: Boolean = true,
-                     inputPartitionColumnNames: Seq[String] = Seq(partitionColumn)): Option[Seq[PartitionRange]] = {
+                     inputPartitionColumnNames: Seq[String] = Seq(partitionColumn),
+                     inputPartitionSpecs: Seq[PartitionSpec] = Seq(partitionSpec)
+
+                     // ------- TODO: CLEANUP --------
+  ): Option[Seq[PartitionRange]] = {
 
     val validPartitionRange = if (outputPartitionRange.start == null) { // determine partition range automatically
       val inputStart = inputTables.flatMap(
         _.map(table =>
           firstAvailablePartition(table,
+                                  outputPartitionRange.partitionSpec,
                                   Option(outputPartitionRange),
                                   inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty))).min)
-      assert(
+      require(
         inputStart.isDefined,
         s"""Either partition range needs to have a valid start or
            |an input table with valid data needs to be present
            |inputTables: $inputTables, partitionRange: $outputPartitionRange
            |""".stripMargin
       )
+
       outputPartitionRange.copy(start = partitionSpec.shift(inputStart.get, inputToOutputShift))(partitionSpec)
     } else {
+
       outputPartitionRange
     }
     val outputExisting = partitions(outputTable)
@@ -367,9 +391,14 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       for (
         inputTables <- inputTables.toSeq;
         inputPartitionColumnName <- inputPartitionColumnNames;
+        inputPartitionSpec <- inputPartitionSpecs;
         table <- inputTables;
         subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty);
-        partitionStr <- partitions(table, subPartitionFilters, Option(outputPartitionRange), inputPartitionColumnName)
+        partitionStr <- partitions(table,
+                                   subPartitionFilters,
+                                   Option(outputPartitionRange),
+                                   inputPartitionColumnName,
+                                   tablePartitionSpec = Some(inputPartitionSpec))
       ) yield {
         partitionSpec.shift(partitionStr, inputToOutputShift)
       }

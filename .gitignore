@@ -110,3 +110,5 @@ releases
 MODULE.bazel*
 
 /plugins/vscode/node_modules
+
+**/.claude/settings.local.json

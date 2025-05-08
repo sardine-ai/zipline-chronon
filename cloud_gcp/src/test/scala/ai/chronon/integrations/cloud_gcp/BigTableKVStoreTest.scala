@@ -96,7 +96,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   it should "fail big table creation if missing admin client" in {
     val kvStore = new BigTableKVStoreImpl(dataClient, None)
     val dataset = "test-table"
-    an [IllegalStateException] should be thrownBy kvStore.create(dataset)
+    an[IllegalStateException] should be thrownBy kvStore.create(dataset)
   }
 
   // Test write & read of a simple blob dataset
@@ -671,7 +671,11 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     putResult.foreach(r => r shouldBe true)
   }
 
-  private def generateAndWriteTimeSeriesData(kvStore: BigTableKVStoreImpl, dataset: String, tsRange: NumericRange[Long], fakePayload: String, key: String): Unit = {
+  private def generateAndWriteTimeSeriesData(kvStore: BigTableKVStoreImpl,
+                                             dataset: String,
+                                             tsRange: NumericRange[Long],
+                                             fakePayload: String,
+                                             key: String): Unit = {
     val tileKeys = tsRange.map { ts =>
       val tileKey = TilingUtils.buildTileKey(dataset, key.getBytes, Some(1.hour.toMillis), Some(ts))
       TilingUtils.serializeTileKey(tileKey)

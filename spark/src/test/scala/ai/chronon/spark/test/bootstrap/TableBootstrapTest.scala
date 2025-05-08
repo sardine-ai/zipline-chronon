@@ -115,7 +115,7 @@ class TableBootstrapTest extends AnyFlatSpec {
     val (bootstrapPart2, bootstrapDf2) =
       buildBootstrapPart(queryTable, namespace, bootstrapTable2, partitionCol = "date")
 
-    //val bootstrapDf2 = bootstrapDf2Partition.withColumnRenamed("date", "ds")
+    // val bootstrapDf2 = bootstrapDf2Partition.withColumnRenamed("date", "ds")
 
     // Create bootstrap join using base join as template
     val bootstrapJoin = baseJoin.deepCopy()

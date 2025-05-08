@@ -15,11 +15,9 @@ import com.google.cloud.bigquery._
 import java.util
 import org.mockito.Mockito.when
 
-
 import java.nio.file.Files
 
-class BigQueryExternalTest extends AnyFlatSpec with MockitoSugar{
-
+class BigQueryExternalTest extends AnyFlatSpec with MockitoSugar {
 
   lazy val spark: SparkSession = SparkSessionBuilder.build(
     "BigQuerySparkTest",
