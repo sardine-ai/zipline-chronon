@@ -134,11 +134,11 @@ object JoinUtils {
   /** *
     * Compute partition range to be filled for given join conf
     */
-  def getRangesToFill(leftSource: ai.chronon.api.Source,
-                      tableUtils: TableUtils,
-                      endPartition: String,
-                      overrideStartPartition: Option[String] = None,
-                      historicalBackfill: Boolean = true): PartitionRange = {
+  def getRangeToFill(leftSource: ai.chronon.api.Source,
+                     tableUtils: TableUtils,
+                     endPartition: String,
+                     overrideStartPartition: Option[String] = None,
+                     historicalBackfill: Boolean = true): PartitionRange = {
 
     val overrideStart = if (historicalBackfill) {
       overrideStartPartition

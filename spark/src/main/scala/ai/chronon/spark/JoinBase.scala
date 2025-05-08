@@ -131,11 +131,11 @@ abstract class JoinBase(val joinConfCloned: api.Join,
   private def getUnfilledRange(overrideStartPartition: Option[String],
                                outputTable: String): (PartitionRange, Seq[PartitionRange]) = {
 
-    val rangeToFill = JoinUtils.getRangesToFill(joinConfCloned.left,
-                                                tableUtils,
-                                                endPartition,
-                                                overrideStartPartition,
-                                                joinConfCloned.historicalBackfill)
+    val rangeToFill = JoinUtils.getRangeToFill(joinConfCloned.left,
+                                               tableUtils,
+                                               endPartition,
+                                               overrideStartPartition,
+                                               joinConfCloned.historicalBackfill)
     logger.info(s"Left side range to fill $rangeToFill")
 
     (rangeToFill,
@@ -279,12 +279,25 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     // OverrideStartPartition is used to replace the start partition of the join config. This is useful when
     //  1 - User would like to test run with different start partition
     //  2 - User has entity table which is cumulative and only want to run backfill for the latest partition
-    val rangeToFill = JoinUtils.getRangesToFill(joinConfCloned.left,
-                                                tableUtils,
-                                                endPartition,
-                                                overrideStartPartition,
-                                                joinConfCloned.historicalBackfill)
+    val rangeToFill = JoinUtils.getRangeToFill(joinConfCloned.left,
+                                               tableUtils,
+                                               endPartition,
+                                               overrideStartPartition,
+                                               joinConfCloned.historicalBackfill)
+
     logger.info(s"Join range to fill $rangeToFill")
+
+    // check if left source doesn't have any partition for the requested range
+    val existingLeftRange = tableUtils.partitions(joinConfCloned.left.table, partitionRange = Option(rangeToFill))
+    val requested = rangeToFill.partitions
+    val fillableRanges = requested.filter(existingLeftRange.contains)
+
+//    require(
+//      fillableRanges.nonEmpty,
+//      s"""No relevant input partitions present in ${joinConfCloned.left.table}
+//         |on join.left for the requested range ${rangeToFill.start} - ${rangeToFill.end} """.stripMargin
+//    )
+
     val unfilledRanges = tableUtils
       .unfilledRanges(
         outputTable,

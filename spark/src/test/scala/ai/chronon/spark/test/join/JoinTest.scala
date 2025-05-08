@@ -313,12 +313,14 @@ class JoinTest extends AnyFlatSpec {
       Column("weight", api.DoubleType, 500)
     )
     val weightTable = s"$namespace.weights"
-    DataFrameGen.entities(spark, weightSchema, 100, partitions = 400).save(weightTable)
+    DataFrameGen
+      .entities(spark, weightSchema, 100, partitions = 400, partitionFormat = Some("yyyyMMdd"))
+      .save(weightTable)
 
     val weightSource = Builders.Source.entities(
-      query = Builders.Query(selects = Builders.Selects("weight"),
-                             startPartition = yearAgo,
-                             endPartition = dayAndMonthBefore),
+      query = Builders
+        .Query(selects = Builders.Selects("weight"), startPartition = yearAgo, endPartition = dayAndMonthBefore)
+        .setPartitionFormat("yyyyMMdd"),
       snapshotTable = weightTable
     )
 
@@ -361,7 +363,11 @@ class JoinTest extends AnyFlatSpec {
       metaData = Builders.MetaData(name = "test.country_features", namespace = namespace, team = "chronon")
     )
 
-    val runner = new Join(joinConf, end, tableUtils)
+    val cloned = joinConf.deepCopy()
+    val futureDate = tableUtils.partitionSpec.plus(today, new Window(2, TimeUnit.DAYS))
+    cloned.left.query.setStartPartition(futureDate)
+    val runner = new Join(cloned, futureDate, tableUtils)
+
     val computed = runner.computeJoin(Some(7))
     val expected = tableUtils.sql(s"""
                                      |WITH

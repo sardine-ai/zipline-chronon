@@ -333,15 +333,17 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
           firstAvailablePartition(table,
                                   Option(outputPartitionRange),
                                   inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty))).min)
-      assert(
+      require(
         inputStart.isDefined,
         s"""Either partition range needs to have a valid start or
            |an input table with valid data needs to be present
            |inputTables: $inputTables, partitionRange: $outputPartitionRange
            |""".stripMargin
       )
+
       outputPartitionRange.copy(start = partitionSpec.shift(inputStart.get, inputToOutputShift))(partitionSpec)
     } else {
+
       outputPartitionRange
     }
     val outputExisting = partitions(outputTable)
