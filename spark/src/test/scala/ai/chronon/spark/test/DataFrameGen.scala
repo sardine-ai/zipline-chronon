@@ -38,10 +38,16 @@ import scala.collection.Seq
 // String types are nulled at row level and also at the set level (some strings are always absent)
 object DataFrameGen {
   //  The main api: that generates dataframes given certain properties of data
-  def gen(spark: SparkSession, columns: Seq[Column], count: Int, partitionColumn: Option[String] = None): DataFrame = {
+  def gen(spark: SparkSession,
+          columns: Seq[Column],
+          count: Int,
+          partitionColumn: Option[String],
+          partitionFormat: Option[String]): DataFrame = {
     val tableUtils = TableUtils(spark)
-    val effectiveSpec =
-      tableUtils.partitionSpec.copy(column = partitionColumn.getOrElse(tableUtils.partitionSpec.column))
+    val effectivePartitionCol = partitionColumn.getOrElse(tableUtils.partitionSpec.column)
+    val effectivePartitionFormat = partitionFormat.getOrElse(tableUtils.partitionSpec.format)
+    val effectiveSpec = tableUtils.partitionSpec.copy(column = effectivePartitionCol, format = effectivePartitionFormat)
+
     val RowsWithSchema(rows, schema) =
       CStream.gen(columns, count, effectiveSpec)
     val genericRows = rows.map { row => new GenericRow(row.fieldsSeq.toArray) }.toArray
@@ -55,12 +61,14 @@ object DataFrameGen {
              columns: Seq[Column],
              count: Int,
              partitions: Int,
-             partitionColumn: Option[String] = None): DataFrame = {
+             partitionColumn: Option[String] = None,
+             partitionFormat: Option[String] = None): DataFrame = {
     val partitionColumnString = partitionColumn.getOrElse(TableUtils(spark).partitionColumn)
-    val generated = gen(spark, columns :+ Column(Constants.TimeColumn, LongType, partitions), count)
-    generated.withColumn(
-      partitionColumnString,
-      from_unixtime(generated.col(Constants.TimeColumn) / 1000, TableUtils(spark).partitionSpec.format))
+    val generated =
+      gen(spark, columns :+ Column(Constants.TimeColumn, LongType, partitions), count, partitionColumn, partitionFormat)
+    val effectivePartitionFormat = partitionFormat.getOrElse(TableUtils(spark).partitionSpec.format)
+    generated.withColumn(partitionColumnString,
+                         from_unixtime(generated.col(Constants.TimeColumn) / 1000, effectivePartitionFormat))
   }
 
   //  Generates Entity data
@@ -68,9 +76,14 @@ object DataFrameGen {
                columns: Seq[Column],
                count: Int,
                partitions: Int,
-               partitionColumn: Option[String] = None): DataFrame = {
+               partitionColumn: Option[String] = None,
+               partitionFormat: Option[String] = None): DataFrame = {
     val partitionColumnString = partitionColumn.getOrElse(TableUtils(spark).partitionColumn)
-    gen(spark, columns :+ Column(partitionColumnString, StringType, partitions), count, partitionColumn)
+    gen(spark,
+        columns :+ Column(partitionColumnString, StringType, partitions),
+        count,
+        partitionColumn,
+        partitionFormat)
   }
 
   /** Mutations and snapshots generation.
@@ -92,7 +105,11 @@ object DataFrameGen {
     val tableUtils = TableUtils(spark)
     val mutationColumn = columns(mutationColumnIdx)
     // Randomly generated some entity data, store them as inserts w/ mutation_ts = ts and partition = dsOf[ts].
-    val generated = gen(spark, columns :+ Column(Constants.TimeColumn, LongType, partitions), count)
+    val generated = gen(spark,
+                        columns :+ Column(Constants.TimeColumn, LongType, partitions),
+                        count,
+                        Some(tableUtils.partitionColumn),
+                        Some(tableUtils.partitionFormat))
       .withColumn("created_at", col(Constants.TimeColumn))
       .withColumn("updated_at", col(Constants.TimeColumn))
     val withInserts = generated

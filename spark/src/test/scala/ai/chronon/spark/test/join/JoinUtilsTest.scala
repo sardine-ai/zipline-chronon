@@ -285,7 +285,7 @@ class JoinUtilsTest extends AnyFlatSpec {
     val startPartition = "2023-04-15"
     val endPartition = "2023-08-01"
     val leftSource = Builders.Source.events(Builders.Query(startPartition = startPartition), table = itemQueriesTable)
-    val range = JoinUtils.getRangesToFill(leftSource, tableUtils, endPartition)
+    val range = JoinUtils.getRangeToFill(leftSource, tableUtils, endPartition)
     assertEquals(range, PartitionRange(startPartition, endPartition))
   }
 
@@ -302,7 +302,7 @@ class JoinUtilsTest extends AnyFlatSpec {
     val startPartitionOverride = "2023-08-01"
     val endPartition = "2023-08-08"
     val leftSource = Builders.Source.events(Builders.Query(startPartition = startPartition), table = itemQueriesTable)
-    val range = JoinUtils.getRangesToFill(leftSource, tableUtils, endPartition, Some(startPartitionOverride))
+    val range = JoinUtils.getRangeToFill(leftSource, tableUtils, endPartition, Some(startPartitionOverride))
     assertEquals(range, PartitionRange(startPartitionOverride, endPartition))
   }
 

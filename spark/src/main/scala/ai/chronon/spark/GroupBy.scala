@@ -39,6 +39,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.serde.RowWrapper
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark.Extensions.SourceSparkOps
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
@@ -582,10 +583,17 @@ object GroupBy {
                                   queryRange: PartitionRange,
                                   tableUtils: TableUtils,
                                   window: Option[api.Window]): PartitionRange = {
-    val PartitionRange(queryStart, queryEnd) = queryRange
-    val effectiveEnd = (Option(queryRange.end) ++ Option(source.query.endPartition))
+
+    implicit val tu: TableUtils = tableUtils
+    val effectiveQueryRange = queryRange.translate(source.partitionSpec)
+    implicit val sourcePartitionSpec: PartitionSpec = source.partitionSpec
+
+    // from here on down - the math is based entirely on source partition spec
+    val PartitionRange(queryStart, queryEnd) = effectiveQueryRange
+    val effectiveEnd = (Option(effectiveQueryRange.end) ++ Option(source.query.endPartition))
       .reduceLeftOption(Ordering[String].min)
       .orNull
+
     val dataProfile: SourceDataProfile = source.dataModel match {
       case ENTITIES => SourceDataProfile(queryStart, source.query.startPartition, effectiveEnd)
       case EVENTS =>
@@ -601,7 +609,7 @@ object GroupBy {
           SourceDataProfile(windowStart, sourceStart, effectiveEnd)
         }
     }
-    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+
     val sourceRange = PartitionRange(dataProfile.earliestPresent, dataProfile.latestAllowed)
     val queryableDataRange =
       PartitionRange(dataProfile.earliestRequired, Seq(queryEnd, dataProfile.latestAllowed).max)
@@ -630,6 +638,7 @@ object GroupBy {
                        mutations: Boolean = false): DataFrame = {
 
     val intersectedRange: PartitionRange = getIntersectedRange(source, queryRange, tableUtils, window)
+    implicit val tu: TableUtils = tableUtils
 
     var metaColumns: Map[String, String] = Map(tableUtils.partitionColumn -> source.query.partitionColumn)
     if (mutations) {
@@ -659,7 +668,7 @@ object GroupBy {
          |""".stripMargin)
     metaColumns ++= timeMapping
 
-    val partitionConditions = tableUtils.whereClauses(intersectedRange, source.partitionColumn(tableUtils))
+    val partitionConditions = intersectedRange.whereClauses
 
     logger.info(s"""
          |Rendering source query:
@@ -685,14 +694,16 @@ object GroupBy {
       }))
       .orNull
 
-    tableUtils.scanDfBase(
-      selects,
-      if (mutations) source.getEntities.mutationTable.cleanSpec else source.table,
-      Option(source.query.wheres).map(_.toScala).getOrElse(Seq.empty[String]),
-      partitionConditions,
-      Some(metaColumns ++ keys.map(_ -> null)),
-      cacheDf = true
-    )
+    tableUtils
+      .scanDfBase(
+        selects,
+        if (mutations) source.getEntities.mutationTable.cleanSpec else source.table,
+        Option(source.query.wheres).map(_.toScala).getOrElse(Seq.empty[String]),
+        partitionConditions,
+        Some(metaColumns ++ keys.map(_ -> null)),
+        cacheDf = true
+      )
+      .translatePartitionSpec(sourcePartitionSpec, tableUtils.partitionSpec)
   }
 
   def computeBackfill(groupByConf: api.GroupBy,
