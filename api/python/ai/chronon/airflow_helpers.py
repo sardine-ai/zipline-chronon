@@ -12,6 +12,7 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
     Args:
         table: The table name (with namespace)
         partition_column: The partition column to use (defaults to 'ds')
+        additional_partitions: Additional partitions to include in the dependency
 
     Returns:
         A dictionary with name and spec for the Airflow dependency
@@ -47,6 +48,12 @@ def _get_partition_col_from_query(query):
         return query.partitionColumn
     return None
 
+def _get_additional_subPartitionsToWaitFor_from_query(query):
+    """Gets additional subPartitionsToWaitFor from query if available"""
+    if query:
+        return query.subPartitionsToWaitFor
+    return None
+
 
 def _get_airflow_deps_from_source(source, partition_column=None):
     """
@@ -60,20 +67,22 @@ def _get_airflow_deps_from_source(source, partition_column=None):
         A list of Airflow dependency objects
     """
     tables = []
+    additional_partitions = None
     # Assumes source has already been normalized
     if source.events:
         tables = [source.events.table]
         # Use partition column from query if available, otherwise use the provided one
-        source_partition_column = (
-            _get_partition_col_from_query(source.events.query) or partition_column
+        source_partition_column, additional_partitions = (
+            _get_partition_col_from_query(source.events.query) or partition_column, _get_additional_subPartitionsToWaitFor_from_query(source.events.query)
         )
+
     elif source.entities:
         # Given the setup of Query, we currently mandate the same partition column for snapshot and mutations tables
         tables = [source.entities.snapshotTable]
         if source.entities.mutationTable:
             tables.append(source.entities.mutationTable)
-        source_partition_column = (
-            _get_partition_col_from_query(source.entities.query) or partition_column
+        source_partition_column, additional_partitions = (
+            _get_partition_col_from_query(source.entities.query) or partition_column, _get_additional_subPartitionsToWaitFor_from_query(source.entities.query)
         )
     elif source.joinSource:
         # TODO: Handle joinSource -- it doesn't work right now because the metadata isn't set on joinSource at this point
@@ -83,7 +92,7 @@ def _get_airflow_deps_from_source(source, partition_column=None):
         return []
 
     return [
-        create_airflow_dependency(table, source_partition_column) for table in tables
+        create_airflow_dependency(table, source_partition_column, additional_partitions) for table in tables
     ]
 
 

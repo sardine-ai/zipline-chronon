@@ -29,6 +29,7 @@ def Query(
     reversal_column: str = None,
     partition_column: str = None,
     partition_format: str = None,
+    sub_partitions_to_wait_for: List[str] = None,
 ) -> api.Query:
     """
     Create a query object that is used to scan data from various data sources.
@@ -76,6 +77,9 @@ def Query(
     :param partition_column:
         Specify this to override spark.chronon.partition.column set in teams.py for this particular query.
     :type partition_column: str, optional
+    :param sub_partitions_to_wait_for:
+        Additional partitions to be used in sensing that the source data has landed. Should be a full partition string, such as `hr=23:00'
+    :type partition_column: List[str], optional
     :param partition_format:
         Date format string to expect the partition values to be in.
     :type partition_format: str, optional
@@ -91,6 +95,7 @@ def Query(
         mutationTimeColumn=mutation_time_column,
         reversalColumn=reversal_column,
         partitionColumn=partition_column,
+        subPartitionsToWaitFor=sub_partitions_to_wait_for,
         partitionFormat=partition_format
     )
 
