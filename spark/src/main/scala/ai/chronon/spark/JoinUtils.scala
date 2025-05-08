@@ -79,10 +79,14 @@ object JoinUtils {
       Seq()
     }
 
+    implicit val tu: TableUtils = tableUtils
+    val effectiveLeftSpec = joinConf.left.partitionSpec
+    val effectiveLeftRange = range.translate(effectiveLeftSpec)
+
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
                                Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
-                               range = Some(range))
+                               range = Some(effectiveLeftRange))
 
     limit.foreach(l => df = df.limit(l))
 
@@ -95,11 +99,11 @@ object JoinUtils {
       .getOrElse(df)
 
     if (!allowEmpty && result.isEmpty) {
-      logger.info(s"Left side query below produced 0 rows in range $range, and allowEmpty=false.")
+      logger.info(s"Left side query below produced 0 rows in range $effectiveLeftRange, and allowEmpty=false.")
       return None
     }
 
-    Some(result)
+    Some(result.translatePartitionSpec(effectiveLeftSpec, tableUtils.partitionSpec))
   }
 
   def leftDfFromSource(left: ai.chronon.api.Source,
@@ -316,7 +320,7 @@ object JoinUtils {
           val leftSideKeyName = joinPart.rightToLeft(keyName)
           logger.info(
             s"KeyName: $keyName, leftSide KeyName: $leftSideKeyName , Join right to left: ${joinPart.rightToLeft
-              .mkString(", ")}")
+                .mkString(", ")}")
           val values = collectedLeft.map(row => row.getAs[Any](leftSideKeyName))
           // Check for null keys, warn if found, err if all null
           val (notNullValues, nullValues) = values.partition(_ != null)
@@ -483,9 +487,12 @@ object JoinUtils {
   }
 
   def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Option[Map[String, Seq[String]]] = {
-    Option(jmap).map(_.toScala.map { case (key, list) =>
-      key -> list.asScala
-    }.toMap)
+    Option(jmap).map(
+      _.toScala
+        .map { case (key, list) =>
+          key -> list.asScala
+        }
+        .toMap)
   }
 
   def shiftDays(leftDataModel: DataModel, joinPart: JoinPart, leftRange: PartitionRange): PartitionRange = {

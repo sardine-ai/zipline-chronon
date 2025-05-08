@@ -17,9 +17,9 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.Extensions.{SourceOps, WindowOps}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange}
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange, Window}
 import ai.chronon.online.serde.{AvroConversions, SparkConversions}
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
@@ -267,6 +267,28 @@ object Extensions {
       logger.info(s"schema: ${df.schema.fieldNames.mkString("Array(", ", ", ")")}")
       df.replaceWithReadableTime(availableColumns, dropOriginal = true).show(truncate = false)
     }
+
+    def translatePartitionSpec(existingSpec: PartitionSpec, newSpec: PartitionSpec): DataFrame = {
+      var resultDf = df
+
+      // replace old column name with new one
+      if (existingSpec.column != newSpec.column) {
+        resultDf = resultDf.withColumnRenamed(existingSpec.column, newSpec.column)
+      }
+
+      // replace old format with new one
+      if (existingSpec.format != newSpec.format) {
+        resultDf = resultDf.withColumn(
+          newSpec.column,
+          date_format(
+            to_date(col(newSpec.column), existingSpec.format),
+            newSpec.format
+          )
+        )
+      }
+
+      resultDf
+    }
   }
 
   implicit class ArrayOps[T: ClassTag](arr: Array[T]) {
@@ -285,10 +307,23 @@ object Extensions {
       result
     }
   }
-  implicit class SourceSparkOps(source: api.Source) {
 
-    def partitionColumn(implicit tableUtils: TableUtils): String = {
+  implicit class SourceSparkOps(source: api.Source)(implicit tableUtils: TableUtils) {
+
+    def partitionColumn: String = {
       Option(source.query.partitionColumn).getOrElse(tableUtils.partitionColumn)
+    }
+
+    def partitionFormat: String = {
+      Option(source.query.partitionFormat).getOrElse(tableUtils.partitionFormat)
+    }
+
+    def partitionInterval: Window = {
+      Option(source.query.partitionInterval).getOrElse(tableUtils.partitionSpec.intervalWindow)
+    }
+
+    def partitionSpec: PartitionSpec = {
+      PartitionSpec(partitionColumn, partitionFormat, partitionInterval.millis)
     }
   }
 
