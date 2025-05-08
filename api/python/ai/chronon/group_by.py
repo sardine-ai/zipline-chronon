@@ -648,6 +648,7 @@ def GroupBy(
                 for output_col in get_output_col_names(agg):
                     column_tags[output_col] = agg.tags
 
+
     metadata = ttypes.MetaData(
         online=online,
         production=production,
