@@ -1,13 +1,14 @@
 name: Push to Platform
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 jobs:
   subtree-pull:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
 
     steps:
       - name: Checkout platform repo
@@ -50,7 +51,7 @@ jobs:
           git remote add chronon git@github.com:zipline-ai/chronon.git || true
           
           git fetch chronon main
-          git subtree pull --prefix=chronon chronon main --message="chore: update chronon subtree"
+          git subtree pull --prefix=chronon chronon main
 
       - name: Push changes to platform
         run: git push origin main
