@@ -17,10 +17,11 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange, Window}
 import ai.chronon.api.Extensions.{SourceOps, WindowOps}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange, Window}
 import ai.chronon.online.serde.{AvroConversions, SparkConversions}
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.avro.Schema
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -28,7 +29,6 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.{Logger, LoggerFactory}
-import ai.chronon.spark.catalog.{TableCache, TableUtils}
 
 import java.util
 import scala.collection.Seq
