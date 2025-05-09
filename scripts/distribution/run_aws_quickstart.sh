@@ -82,9 +82,6 @@ else
   aws glue delete-table --database-name data --name quickstart_purchases_v1_dev
 fi
 
-#aws s3 rm s3://zipline-warehouse-canary/data/aws_plaid_fv_v1 --recursive
-#aws glue delete-table --database-name data --name aws_plaid_fv_v1
-
 
 # Sleep for a bit since aws glue delete-table is asynchronous
 sleep 30

@@ -286,7 +286,7 @@ jobs:
           # Download Jars from Canary for attaching to the release
           aws s3 cp s3://zipline-artifacts-canary/release/passing-candidate/jars/cloud_aws_lib_deploy.jar .
 
-          for customer_id in "canary" "base" "dev" "plaid"; do
+          for customer_id in "canary" "base" "dev"; do
             echo "Uploading wheel to S3 for customer_id: $customer_id"
             aws s3 cp ${{ needs.build_python_wheel.outputs.wheel_file }} s3://zipline-artifacts-${customer_id}/release/${VERSION#v}/wheels/${{ needs.build_python_wheel.outputs.wheel_file }} --metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
