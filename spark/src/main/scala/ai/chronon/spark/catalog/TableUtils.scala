@@ -237,9 +237,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       expandTable(tableName, dfRearranged.schema)
     }
 
-    println(s"REARRANGED DF for ${tableName}::::::")
-    dfRearranged.show()
-
     // Run tableProperties
     Option(tableProperties).filter(_.nonEmpty).foreach { props =>
       sql(CreationUtils.alterTablePropertiesSql(tableName, props))
@@ -266,8 +263,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     TableCache.remove(tableName)
 
     logger.info(s"Writing to $tableName ...")
-
-    finalizedDf.show()
 
     finalizedDf.write
       .mode(saveMode)
