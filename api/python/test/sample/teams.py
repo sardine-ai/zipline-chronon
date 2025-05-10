@@ -7,9 +7,9 @@ default = Team(
     email="ml-infra@<customer>.com",  # TODO: Infra team email
     outputNamespace="default",
     conf=ConfigProperties(
-      common={
-          "spark.chronon.partition.column": "_DATE",
-      }
+        common={
+            "spark.chronon.partition.column": "_DATE",
+        }
     ),
     env=EnvironmentVariables(
         common={
@@ -100,8 +100,6 @@ sample_team = Team(
         },
     ),
 )
-
-etsy_search = Team(outputNamespace="etsy-search")
 
 kaggle = Team(outputNamespace="kaggle")
 

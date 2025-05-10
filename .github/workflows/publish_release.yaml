@@ -63,7 +63,7 @@ jobs:
         run: |
           CURRENT_TAG=${{ env.VERSION }}
           LATEST_TAG=$(gh release view --json tagName --jq '.tagName')
-          
+
           if [ "$CURRENT_TAG" = "$LATEST_TAG" ]; then
             echo "IS_LATEST=true" >> $GITHUB_OUTPUT
           else
@@ -170,7 +170,7 @@ jobs:
           gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar .
           gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar .
 
-          for customer_id in "canary" "etsy" "base" "dev"; do
+          for customer_id in "canary" "base" "dev"; do
             echo "Uploading wheel to GCS for customer_id: $customer_id"
             gcloud storage cp ${{ needs.build_python_wheel.outputs.wheel_file }} gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/wheels/${{ needs.build_python_wheel.outputs.wheel_file }}
             gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/wheels/${{ needs.build_python_wheel.outputs.wheel_file }} --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
@@ -194,10 +194,10 @@ jobs:
               gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/latest/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
 
-            gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar 
+            gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar
             gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/${VERSION#v}/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             if [ "${{ needs.check_ci_status.outputs.is_latest }}" == "true" ]; then
-              gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar 
+              gcloud storage cp gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar gs://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar
               gcloud storage objects update gs://zipline-artifacts-${customer_id}/release/latest/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
             fi
           done

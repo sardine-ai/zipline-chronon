@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# keep in sync with https://github.com/zipline-ai/infrastructure-creditkarma/blob/main/zipline-cli-install.sh
-
 function print_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
