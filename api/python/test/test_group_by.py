@@ -297,6 +297,7 @@ def test_query_api_obj():
     mutation_time_column = "mutationTs"
     partition_column = "ds"
     partition_format = "yyyy-MM-dd"
+    sub_partitions_to_wait_for = ["hr=23:00"]
 
     query_obj = query.Query(
         selects=selects_map,
@@ -307,6 +308,7 @@ def test_query_api_obj():
         mutation_time_column=mutation_time_column,
         partition_column=partition_column,
         partition_format=partition_format,
+        sub_partitions_to_wait_for=sub_partitions_to_wait_for
     )
 
     assert query_obj.selects == selects_map
@@ -317,3 +319,4 @@ def test_query_api_obj():
     assert query_obj.mutationTimeColumn == mutation_time_column
     assert query_obj.partitionColumn == partition_column
     assert query_obj.partitionFormat == partition_format
+    assert query_obj.subPartitionsToWaitFor == sub_partitions_to_wait_for
