@@ -67,7 +67,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       Map.empty,
       List.empty,
       "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
-      "--groupby-name=our clients.listing_canary.actions_v1",
+      "--groupby-name=listing_canary.actions_v1",
       "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
       "-ZGCP_PROJECT_ID=canary-443022",
       "-ZGCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance"

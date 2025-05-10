@@ -104,7 +104,7 @@ object FlinkKafkaBeaconEventDriver {
     {
       "type": "record",
       "name": "Beacon",
-      "namespace": "com.our clients",
+      "namespace": "com.customer",
       "fields": [
         {"name": "event_name", "type": ["null", "string"], "default": null},
         {"name": "timestamp", "type": "long"},

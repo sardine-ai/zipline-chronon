@@ -110,7 +110,7 @@ if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
     exit 1
 fi
 
-# Keeping this here to not break any existing users like our clients
+# Keeping this here to not break any existing users
 OLD_ZIPLINE_WHEEL_NAME="zipline_ai-0.1.0.dev0-py3-none-any.whl"
 cp $EXPECTED_ZIPLINE_WHEEL $OLD_ZIPLINE_WHEEL_NAME
 
@@ -167,7 +167,7 @@ fi
 
 
 # all customer ids
-GCP_CUSTOMER_IDS=("canary" "our clients")
+GCP_CUSTOMER_IDS=("canary")
 
 # Takes in array of customer ids
 function upload_to_gcp() {
