@@ -79,7 +79,7 @@ def Query(
     :type partition_column: str, optional
     :param sub_partitions_to_wait_for:
         Additional partitions to be used in sensing that the source data has landed. Should be a full partition string, such as `hr=23:00'
-    :type partition_column: List[str], optional
+    :type sub_partitions_to_wait_for: List[str], optional
     :param partition_format:
         Date format string to expect the partition values to be in.
     :type partition_format: str, optional
