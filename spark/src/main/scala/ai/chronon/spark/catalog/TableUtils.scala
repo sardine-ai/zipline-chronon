@@ -22,7 +22,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.planner.PartitionSpecWithColumn
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
-import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession, types}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
 import org.apache.spark.sql.catalyst.util.QuotingUtils
@@ -33,7 +33,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import java.io.{PrintWriter, StringWriter}
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
-import scala.collection.{mutable, Seq}
+import scala.collection.{Seq, mutable}
 import scala.util.{Failure, Success, Try}
 
 /** Trait to track the table format in use by a Chronon dataset and some utility methods to help
@@ -568,13 +568,26 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
     val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
 
-    // TODO: this is a temporary fix to handle the case where the partition column is not a string.
-    //  This is the case for partitioned BigQuery native tables.
-    (if (df.schema.fieldNames.contains(partitionColumn)) {
-       df.withColumn(partitionColumn, date_format(df.col(partitionColumn), partitionFormat))
-     } else {
-       df
-     }).coalesce(coalesceFactor * parallelism)
+    val partitionFieldType = df.schema.find(_.name == partitionColumn).map(_.dataType)
+
+    val adjustedDf = partitionFieldType match {
+
+      case Some(types.DateType) | Some(types.StringType) | Some(types.TimestampType) =>
+        val partitionExpr = date_format(df.col(partitionColumn), partitionFormat)
+        df.withColumn(partitionColumn, partitionExpr)
+
+      case Some(types.LongType) =>
+        val partitionExpr = from_unixtime(df.col(partitionColumn), partitionFormat)
+        df.withColumn(partitionColumn, partitionExpr)
+
+      case None => df
+
+      case Some(badType) =>
+        throw new UnsupportedOperationException(s"Partition column of type ${badType.simpleString} is not supported.")
+
+    }
+
+    adjustedDf.coalesce(coalesceFactor * parallelism)
   }
 
   def whereClauses(partitionRange: PartitionRange, partitionColumn: String = partitionColumn): Seq[String] = {
