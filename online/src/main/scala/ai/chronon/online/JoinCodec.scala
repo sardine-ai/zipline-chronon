@@ -36,6 +36,7 @@ case class JoinCodec(conf: JoinOps,
                      baseValueSchema: StructType,
                      keyCodec: AvroCodec,
                      baseValueCodec: AvroCodec,
+                     valueInfos: Array[JoinCodec.ValueInfo],
                      hasPartialFailure: Boolean = false)
     extends Serializable {
 
@@ -98,4 +99,17 @@ object JoinCodec {
     )
     new Gson().toJson(schemaMap.toJava)
   }
+
+  /** Tracks details on the feature values that the join is producing.
+    * @param fullName - Full feature name (e.g. prefix_groupName_featureName)
+    * @param groupName - Name of the group (GroupBy name / derivation / external part name)
+    * @param prefix - Prefix for the group
+    * @param leftKeys - Keys needed to look up this feature
+    * @param schemaString - User friendly schema string for the feature
+    */
+  case class ValueInfo(fullName: String,
+                       groupName: String,
+                       prefix: String,
+                       leftKeys: Array[String],
+                       schemaString: String)
 }

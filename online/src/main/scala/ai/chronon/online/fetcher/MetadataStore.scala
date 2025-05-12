@@ -292,14 +292,23 @@ class MetadataStore(fetchContext: FetchContext) {
   def buildJoinCodec(joinConf: Join, refreshOnFail: Boolean): JoinCodec = {
     val keyFields = new mutable.LinkedHashSet[StructField]
     val valueFields = new mutable.ListBuffer[StructField]
+    val valueInfos = mutable.ListBuffer.empty[JoinCodec.ValueInfo]
     var hasPartialFailure = false
     // collect keyFields and valueFields from joinParts/GroupBys
     joinConf.joinPartOps.foreach { joinPart =>
       getGroupByServingInfo(joinPart.groupBy.metaData.getName)
         .map { servingInfo =>
           val (keys, values) = buildJoinPartCodec(joinPart, servingInfo)
+
           keys.foreach(k => keyFields.add(k))
           values.foreach(v => valueFields.append(v))
+
+          val leftKeys = keys.map(_.name).map(joinPart.rightToLeft)
+          values.foreach { v =>
+            val schemaString = SparkConversions.fromChrononType(v.fieldType).catalogString
+            valueInfos.append(JoinCodec
+              .ValueInfo(v.name, joinPart.groupBy.metaData.getName, joinPart.prefix, leftKeys.toArray, schemaString))
+          }
         }
         .recoverWith {
           case exception: Throwable => {
@@ -332,9 +341,18 @@ class MetadataStore(fetchContext: FetchContext) {
               .fields
               .map(f => StructField(prefix + f.name, f.fieldType))
 
-          buildFields(source.getKeySchema).foreach(f =>
-            keyFields.add(f.copy(name = part.rightToLeft.getOrElse(f.name, f.name))))
-          buildFields(source.getValueSchema, part.fullName + "_").foreach(f => valueFields.append(f))
+          val keyStructFields =
+            buildFields(source.getKeySchema).map(f => f.copy(name = part.rightToLeft.getOrElse(f.name, f.name)))
+          keyStructFields.foreach(keyFields.add)
+          val leftKeys = keyStructFields.map(_.name)
+
+          buildFields(source.getValueSchema, part.fullName + "_").foreach { f =>
+            val schemaString = SparkConversions.fromChrononType(f.fieldType).catalogString
+            valueInfos.append(
+              JoinCodec.ValueInfo(f.name, part.source.metadata.getName, part.prefix, leftKeys.toArray, schemaString))
+            valueFields.append(f)
+          }
+
         }
     }
 
@@ -343,7 +361,7 @@ class MetadataStore(fetchContext: FetchContext) {
     val keyCodec = AvroCodec.of(AvroConversions.fromChrononSchema(keySchema).toString)
     val baseValueSchema = StructType(s"${joinName.sanitize}_value", valueFields.toArray)
     val baseValueCodec = serde.AvroCodec.of(AvroConversions.fromChrononSchema(baseValueSchema).toString)
-    JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec, hasPartialFailure)
+    JoinCodec(joinConf, keySchema, baseValueSchema, keyCodec, baseValueCodec, valueInfos.toArray, hasPartialFailure)
   }
 
   def getSchemaFromKVStore(dataset: String, key: String): serde.AvroCodec = {
