@@ -27,15 +27,16 @@ public class ChrononServiceLauncher extends Launcher {
         boolean enableMetrics = Optional.ofNullable(System.getProperty(Metrics.MetricsEnabled()))
                 .map(Boolean::parseBoolean)
                 .orElse(false);
+        boolean isUrlDefined = OtelMetricsReporter.getExporterUrl().isDefined();
 
-        if (enableMetrics) {
+        if (enableMetrics && isUrlDefined) {
             initializeMetrics(options);
         }
     }
 
     private void initializeMetrics(VertxOptions options) {
         String serviceName = "ai.chronon";
-        String exporterUrl = OtelMetricsReporter.getExporterUrl() + "/v1/metrics";
+        String exporterUrl = OtelMetricsReporter.getExporterUrl().get() + "/v1/metrics";
         String exportInterval = OtelMetricsReporter.MetricsExporterInterval();
 
         // Configure OTLP using Micrometer's built-in registry
