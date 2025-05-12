@@ -577,7 +577,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
         df.withColumn(partitionColumn, partitionExpr)
 
       case Some(types.LongType) =>
-        val partitionExpr = from_unixtime(df.col(partitionColumn) / 1000, partitionFormat)
+        val partitionExpr = from_unixtime(df.col(partitionColumn) / 1000L, partitionFormat)
         df.withColumn(partitionColumn, partitionExpr)
 
       case None => df

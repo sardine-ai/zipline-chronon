@@ -21,9 +21,9 @@ import ai.chronon.spark._
 import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException}
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
+import org.apache.spark.sql.{Row, _}
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{Row, _}
 import org.junit.Assert.{assertEquals, assertNull, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -612,6 +612,87 @@ class TableUtilsTest extends AnyFlatSpec {
     assertEquals("spark_catalog", Format.getCatalog("foo.bar"))
     assertEquals("spark_catalog", Format.getCatalog("bar"))
     assertThrows[ParseException](Format.getCatalog(""))
+  }
+
+  it should "handle partition columns of string types" in {
+    val tableName = "db.test_partition_column_types"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+
+    try {
+      val columns = Array(
+        StructField("long_field", LongType),
+        StructField("int_field", IntType),
+        StructField("ds", StringType)
+      )
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(
+          Row(1L, 2, "2025-05-08")
+        )
+      )
+      tableUtils.createTable(df, tableName, fileFormat = "PARQUET")
+      tableUtils.insertPartitions(df, tableName, partitionColumns = List("ds"))
+      assertTrue(spark.catalog.tableExists(tableName))
+      assertEquals(df.collect().toList,
+                   tableUtils.scanDfBase(Map.empty[String, String], tableName, List.empty, List.empty).collect().toList)
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
+
+  }
+
+  it should "handle partition columns of long types" in {
+    val tableName = "db.test_partition_column_types"
+    spark.sql("CREATE DATABASE IF NOT EXISTS db")
+
+    try {
+      val columns = Array(
+        StructField("long_field", LongType),
+        StructField("int_field", IntType),
+        StructField("ds", LongType)
+      )
+      val df = makeDf(
+        spark,
+        StructType(
+          tableName,
+          columns
+        ),
+        List(
+          Row(1L, 2, 1747068965000L)
+        )
+      )
+
+      val expectedColumns = Array(
+        StructField("long_field", LongType),
+        StructField("int_field", IntType),
+        StructField("ds", StringType)
+      )
+
+      val expectedDf = makeDf(
+        spark,
+        StructType(
+          tableName,
+          expectedColumns
+        ),
+        List(
+          Row(1L, 2, "2025-05-12")
+        )
+      )
+      tableUtils.createTable(df, tableName, fileFormat = "PARQUET")
+      tableUtils.insertPartitions(df, tableName, partitionColumns = List("ds"))
+      assertTrue(spark.catalog.tableExists(tableName))
+      assertEquals(
+        expectedDf.collect().toList,
+        tableUtils.scanDfBase(Map.empty[String, String], tableName, List.empty, List.empty).collect().toList
+      )
+    } finally {
+      spark.sql(s"DROP TABLE IF EXISTS $tableName")
+    }
+
   }
 
 }
