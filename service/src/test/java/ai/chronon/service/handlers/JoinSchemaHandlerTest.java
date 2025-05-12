@@ -3,6 +3,7 @@ package ai.chronon.service.handlers;
 import ai.chronon.online.JTry;
 import ai.chronon.online.JavaFetcher;
 import ai.chronon.online.JavaJoinSchemaResponse;
+import ai.chronon.online.JoinCodec;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
@@ -59,8 +60,10 @@ public class JoinSchemaHandlerTest {
         Async async = context.async();
 
         String avroSchemaString = "{\"type\":\"record\",\"name\":\"User\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"}]}";
-
-        JavaJoinSchemaResponse joinSchemaResponse = new JavaJoinSchemaResponse("user_join", avroSchemaString, avroSchemaString, "fakeschemaHash");
+        String [] keys = {"user_id"};
+        JavaJoinSchemaResponse.ValueInfo valueInfo = new JavaJoinSchemaResponse.ValueInfo("my_groupby_feature_1", "my_groupby", "", keys, "foo");
+        JavaJoinSchemaResponse.ValueInfo[] valueInfos = {valueInfo};
+        JavaJoinSchemaResponse joinSchemaResponse = new JavaJoinSchemaResponse("user_join", avroSchemaString, avroSchemaString, "fakeschemaHash", valueInfos);
         JTry<JavaJoinSchemaResponse> joinSchemaResponseTry = JTry.success(joinSchemaResponse);
 
         // Set up mocks
@@ -92,6 +95,15 @@ public class JoinSchemaHandlerTest {
 
             String valueSchema = actualResponse.getString("valueSchema");
             context.assertEquals(valueSchema, avroSchemaString);
+
+            // sanity check the value info payload
+            JsonArray valueInfoArray = actualResponse.getJsonArray("valueInfos");
+            context.assertEquals(valueInfoArray.size(), 1);
+            JsonObject valueInfoJson = valueInfoArray.getJsonObject(0);
+            context.assertEquals(valueInfoJson.getString("fullName"), "my_groupby_feature_1");
+            JsonArray leftKeysArray = valueInfoJson.getJsonArray("leftKeys");
+            context.assertEquals(leftKeysArray.size(), 1);
+            context.assertEquals(leftKeysArray.getString(0), "user_id");
 
             // confirm we can parse the avro schema fine
             new Schema.Parser().parse(keySchema);
