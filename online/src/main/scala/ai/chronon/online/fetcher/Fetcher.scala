@@ -79,8 +79,13 @@ object Fetcher {
     * @param keySchema - Avro schema string for the key
     * @param valueSchema - Avro schema string for the value
     * @param schemaHash - Hash of the join schema payload (used to track updates to key / value schema fields or types)
+    * @param valueInfos - Per feature column metadata (e.g. group name, corresponding left lookup keys, ..)
     */
-  case class JoinSchemaResponse(joinName: String, keySchema: String, valueSchema: String, schemaHash: String)
+  case class JoinSchemaResponse(joinName: String,
+                                keySchema: String,
+                                valueSchema: String,
+                                schemaHash: String,
+                                valueInfos: Array[JoinCodec.ValueInfo])
 }
 
 private[online] case class FetcherResponseWithTs(responses: Seq[Fetcher.Response], endTs: Long)
@@ -501,7 +506,8 @@ class Fetcher(val kvStore: KVStore,
         val response = JoinSchemaResponse(joinName,
                                           joinCodec.keyCodec.schemaStr,
                                           joinCodec.valueCodec.schemaStr,
-                                          joinCodec.loggingSchemaHash)
+                                          joinCodec.loggingSchemaHash,
+                                          joinCodec.valueInfos.toArray)
         if (joinCodec.hasPartialFailure) {
           joinCodecCache.refresh(joinName)
         }
