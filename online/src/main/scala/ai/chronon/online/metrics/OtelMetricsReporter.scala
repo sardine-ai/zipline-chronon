@@ -87,29 +87,31 @@ object OtelMetricsReporter {
 
   val MetricsReaderDefault = "http"
   val MetricsReaderPrometheus = "prometheus"
-  val MetricsExporterUrlDefault = "http://localhost:4318"
   val MetricsExporterInterval = "PT15s"
   val MetricsExporterPrometheusPortDefault = "8905"
 
-  def getExporterUrl: String = {
-    System.getProperty(MetricsExporterUrlKey, MetricsExporterUrlDefault)
+  def getExporterUrl: Option[String] = {
+    Option(System.getProperty(MetricsExporterUrlKey))
   }
 
-  def buildOtelMetricReader(): MetricReader = {
+  def buildOtelMetricReader(): Option[MetricReader] = {
     val metricReader = System.getProperty(MetricsReader, MetricsReaderDefault)
     metricReader.toLowerCase match {
       case MetricsReaderDefault =>
-        val exporterUrl = getExporterUrl + "/v1/metrics"
+        getExporterUrl.map { url =>
+          val exporterUrl = url + "/v1/metrics"
+          val metricExporter = OtlpHttpMetricExporter.builder.setEndpoint(exporterUrl).build
+          // Configure periodic metric reader// Configure periodic metric reader
+          PeriodicMetricReader.builder(metricExporter).setInterval(Duration.parse(MetricsExporterInterval)).build
+        }
 
-        val metricExporter = OtlpHttpMetricExporter.builder.setEndpoint(exporterUrl).build
-        // Configure periodic metric reader// Configure periodic metric reader
-        PeriodicMetricReader.builder(metricExporter).setInterval(Duration.parse(MetricsExporterInterval)).build
       case MetricsReaderPrometheus =>
         val prometheusPort =
           System.getProperty(MetricsExporterPrometheusPortKey, MetricsExporterPrometheusPortDefault).toInt
-        PrometheusHttpServer.builder
-          .setPort(prometheusPort)
-          .build
+        Some(
+          PrometheusHttpServer.builder
+            .setPort(prometheusPort)
+            .build)
       case _ =>
         throw new IllegalArgumentException(s"Unknown metrics reader (only http / prometheus supported): $metricReader")
     }

@@ -135,8 +135,12 @@ object Metrics {
       reporter.toLowerCase match {
         case "otel" | "opentelemetry" =>
           if (metricsEnabled) {
-            val metricReader = OtelMetricsReporter.buildOtelMetricReader()
-            val openTelemetry = OtelMetricsReporter.buildOpenTelemetryClient(metricReader)
+            val maybeMetricReader = OtelMetricsReporter.buildOtelMetricReader()
+            val openTelemetry = maybeMetricReader
+              .map { metricReader =>
+                OtelMetricsReporter.buildOpenTelemetryClient(metricReader)
+              }
+              .getOrElse(OpenTelemetry.noop())
             new OtelMetricsReporter(openTelemetry)
           } else {
             new OtelMetricsReporter(OpenTelemetry.noop())
