@@ -568,6 +568,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
     val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
 
+    // TODO: handle partition columns overridden at the source
     val partitionFieldType = df.schema.find(_.name == partitionColumn).map(_.dataType)
 
     val adjustedDf = partitionFieldType match {
