@@ -1,14 +1,15 @@
-package org.apache.spark.sql.avro
+package ai.chronon.flink.test.deser
 
 import ai.chronon.api.ScalaJavaConversions.ListOps
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, SourceProjectionDeserializationSchema}
 import ai.chronon.flink.test.UserAvroSchema
 import ai.chronon.online.serde.SparkConversions
-import org.scalatest.flatspec.AnyFlatSpec
 import org.apache.flink.api.common.functions.util.ListCollector
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util
 
-class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
+class SourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
   import AvroObjectCreator._
 
   it should "project and let through avro data" in {
@@ -22,14 +23,15 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
     val resultList = new util.ArrayList[Map[String, Any]]()
     val listCollector = new ListCollector(resultList)
 
-    val deserSchema =
-      new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
+    val avroSerdeProvider = new InMemoryAvroDeserializationSchemaProvider(UserAvroSchema.schema)
+    val deserSchema = DeserializationSchemaBuilder.buildSourceProjectionDeserSchema(avroSerdeProvider, groupBy)
     deserSchema.open(new DummyInitializationContext)
+
     val recordBytes = createDummyRecordBytes(schemaStr)
     deserSchema.deserialize(recordBytes, listCollector)
 
     // sanity check projected schemas is what we expect
-    val projectedSchema = deserSchema.projectedSchema
+    val projectedSchema = deserSchema.asInstanceOf[SourceProjectionDeserializationSchema].projectedSchema
     assert(projectedSchema.map(_._1).toSet == Set("id", "username", "isActive", "ts"))
 
     // now check the types of projected data matching up with types in source schems
@@ -60,9 +62,10 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
         Map("id" -> "id", "username" -> "username", "isActive" -> "isActive"),
         Seq("id == 45678", "isActive == true")
       )
-    val deserSchema =
-      new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
+    val avroSerdeProvider = new InMemoryAvroDeserializationSchemaProvider(UserAvroSchema.schema)
+    val deserSchema = DeserializationSchemaBuilder.buildSourceProjectionDeserSchema(avroSerdeProvider, groupBy)
     deserSchema.open(new DummyInitializationContext)
+
     val recordBytes = createDummyRecordBytes(schemaStr)
 
     val resultList = new util.ArrayList[Map[String, Any]]()
@@ -81,9 +84,11 @@ class AvroSourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
         Map("id" -> "id", "username" -> "username", "isActive" -> "isActive"),
         Seq("id == 45678", "isActive == true")
       )
-    val deserSchema =
-      new AvroSourceProjectionDeserializationSchema(groupBy, schemaStr, schemaRegistryWireFormat = false)
+
+    val avroSerdeProvider = new InMemoryAvroDeserializationSchemaProvider(UserAvroSchema.schema)
+    val deserSchema = DeserializationSchemaBuilder.buildSourceProjectionDeserSchema(avroSerdeProvider, groupBy)
     deserSchema.open(new DummyInitializationContext)
+
     val recordBytes = createDummyRecordBytes(schemaStr)
 
     // corrupt the record bytes

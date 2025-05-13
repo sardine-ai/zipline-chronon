@@ -35,6 +35,7 @@ shared_deps = [
     maven_artifact("ch.qos.reload4j:reload4j"),
     maven_artifact("org.threeten:threetenbp"),
     maven_artifact("org.apache.kafka:kafka-clients"),
+    maven_artifact("org.apache.avro:avro"),
     maven_artifact("com.google.cloud.spark:spark-3.5-bigquery"),
     maven_artifact_with_suffix("org.apache.iceberg:iceberg-spark-runtime-3.5"),
     maven_artifact("org.objenesis:objenesis"),

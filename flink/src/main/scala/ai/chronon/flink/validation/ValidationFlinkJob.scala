@@ -1,14 +1,8 @@
 package ai.chronon.flink.validation
 
 import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
-import ai.chronon.flink.SourceIdentitySchemaRegistrySchemaProvider.RegistryHostKey
 import ai.chronon.flink.validation.SparkExprEvalComparisonFn.compareResultRows
-import ai.chronon.flink.{
-  FlinkSource,
-  KafkaFlinkSource,
-  SourceIdentitySchemaRegistrySchemaProvider,
-  SparkExpressionEvalFn
-}
+import ai.chronon.flink.{FlinkSource, KafkaFlinkSource, SparkExpressionEvalFn}
 import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.online.{GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -24,6 +18,7 @@ import org.slf4j.LoggerFactory
 import java.lang
 import scala.collection.mutable
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider}
 
 case class EventRecord(recordId: String, event: Row)
 case class ValidationStats(totalRecords: Int,
@@ -144,15 +139,10 @@ object ValidationFlinkJob {
         val topicUri = servingInfo.groupBy.streamingSource.get.topic
         val topicInfo = TopicInfo.parse(topicUri)
 
-        val schemaProvider =
-          topicInfo.params.get(RegistryHostKey) match {
-            case Some(_) => new SourceIdentitySchemaRegistrySchemaProvider(topicInfo.params)
-            case None =>
-              throw new IllegalArgumentException(
-                s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
-          }
+        val schemaProvider = FlinkSerDeProvider.build(topicInfo)
 
-        val deserializationSchema = schemaProvider.buildDeserializationSchema(servingInfo.groupBy)
+        val deserializationSchema =
+          DeserializationSchemaBuilder.buildSourceIdentityDeserSchema(schemaProvider, servingInfo.groupBy)
 
         val source =
           topicInfo.messageBus match {

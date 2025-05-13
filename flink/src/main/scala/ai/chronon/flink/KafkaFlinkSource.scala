@@ -1,5 +1,6 @@
 package ai.chronon.flink
 
+import ai.chronon.flink.deser.ChrononDeserializationSchema
 import ai.chronon.online.TopicChecker
 import ai.chronon.online.TopicInfo
 import org.apache.flink.api.common.eventtime.WatermarkStrategy

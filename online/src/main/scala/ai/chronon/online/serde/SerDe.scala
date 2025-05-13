@@ -1,14 +1,14 @@
 package ai.chronon.online.serde
 
-import ai.chronon.api.{Constants, StructType}
-import org.apache.avro.Schema
-import org.apache.avro.generic.GenericRecord
-import org.apache.avro.io.{BinaryDecoder, DecoderFactory}
-import org.apache.avro.specific.SpecificDatumReader
+import ai.chronon.api.StructType
 
-import java.io.{ByteArrayInputStream, InputStream}
-
-abstract class Serde extends Serializable {
+/** A concrete Serde implementation is responsible for providing details on the incoming event schema
+  * and rails to deserialize individual events. Events are deserialized to Chronon's [Mutation] type.
+  *
+  * As these Serde implementations are used in distributed streaming engines such as Flink, care must be taken
+  * to ensure that implementations are serializable (thus fields members of the class must be serializable).
+  */
+abstract class SerDe extends Serializable {
   def fromBytes(bytes: Array[Byte]): Mutation
   def schema: StructType
   def toBytes(mutation: Mutation): Array[Byte] = {
@@ -33,7 +33,7 @@ abstract class Serde extends Serializable {
   *      For the entities case, `mutation_ts` when absent will use `ts` as a replacement
   *
   *       ==== TYPE CONVERSIONS ====
-  *      Java types corresponding to the schema types. [[Serde]] should produce mutations that comply.
+  *      Java types corresponding to the schema types. [[SerDe]] should produce mutations that comply.
   *      NOTE: everything is nullable (hence boxed)
   *      IntType        java.lang.Integer
   *      LongType       java.lang.Long
@@ -49,33 +49,3 @@ abstract class Serde extends Serializable {
   *      StructType     Array[Any]
   */
 case class Mutation(schema: StructType = null, before: Array[Any] = null, after: Array[Any] = null)
-
-class AvroSerde(inputSchema: StructType) extends Serde {
-
-  private val avroSchema = AvroConversions.fromChrononSchema(inputSchema)
-
-  @transient lazy val avroToRowConverter = AvroConversions.genericRecordToChrononRowConverter(inputSchema)
-
-  private def byteArrayToAvro(avro: Array[Byte], schema: Schema): GenericRecord = {
-    val reader = new SpecificDatumReader[GenericRecord](schema)
-    val input: InputStream = new ByteArrayInputStream(avro)
-    val decoder: BinaryDecoder = DecoderFactory.get().binaryDecoder(input, null)
-    reader.read(null, decoder)
-  }
-
-  override def fromBytes(bytes: Array[Byte]): Mutation = {
-    val avroRecord = byteArrayToAvro(bytes, avroSchema)
-
-    val row: Array[Any] = avroToRowConverter(avroRecord)
-
-    val reversalIndex = schema.indexWhere(_.name == Constants.ReversalColumn)
-    if (reversalIndex >= 0 && row(reversalIndex).asInstanceOf[Boolean]) {
-      Mutation(schema, row, null)
-    } else {
-      Mutation(schema, null, row)
-    }
-
-  }
-
-  override def schema: StructType = inputSchema
-}

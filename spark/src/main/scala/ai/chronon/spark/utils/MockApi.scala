@@ -103,11 +103,11 @@ class MockApi(kvStore: () => KVStore, val namespace: String) extends Api(null) {
   val loggedResponseList: ConcurrentLinkedQueue[LoggableResponseBase64] =
     new ConcurrentLinkedQueue[LoggableResponseBase64]
 
-  override def streamDecoder(parsedInfo: GroupByServingInfoParsed): Serde = {
+  override def streamDecoder(parsedInfo: GroupByServingInfoParsed): SerDe = {
     println(
       s"decoding stream ${parsedInfo.groupBy.streamingSource.get.topic} with " +
         s"schema: ${SparkConversions.fromChrononSchema(parsedInfo.streamChrononSchema).catalogString}")
-    new AvroSerde(parsedInfo.streamChrononSchema)
+    new AvroSerDe(AvroConversions.fromChrononSchema(parsedInfo.streamChrononSchema))
   }
 
   override def genKvStore: KVStore = {
