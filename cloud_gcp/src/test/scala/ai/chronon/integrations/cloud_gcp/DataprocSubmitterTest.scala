@@ -82,7 +82,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       submitter.submit(
         spark.submission.FlinkJob,
         Map(
-          MainClass -> "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
+          MainClass -> "ai.chronon.flink.FlinkKafkaItemEventDriver",
           FlinkMainJarURI -> "gs://zipline-jars/flink_kafka_ingest-assembly-0.1.0-SNAPSHOT.jar",
           JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar",
           // This is where we write out checkpoints / persist state while the job is running
@@ -91,8 +91,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         Map.empty,
         List.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
-        "--kafka-topic=test-beacon-main",
-        "--data-file-name=gs://zl-warehouse/beacon_events/beacon-output.avro",
+        "--kafka-topic=test-item-event-data",
+        "--data-file-name=gs://zl-warehouse/canary_item_events/events-output.avro",
         "--event-delay-millis=10",
       )
     println(submittedJobId)

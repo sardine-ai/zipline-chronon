@@ -19,7 +19,7 @@ import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.Serialization
 
 // Canary test app that can point to a source data file and will emit an event to Kafka periodically with an updated timestamp
-object FlinkKafkaBeaconEventDriver {
+object FlinkKafkaItemEventDriver {
   // Pull in the Serialization trait to sidestep: https://github.com/scallop/scallop/issues/137
   class JobArgs(args: Seq[String]) extends ScallopConf(args) with Serialization {
     val dataFileName: ScallopOption[String] =
@@ -42,14 +42,13 @@ object FlinkKafkaBeaconEventDriver {
     val kafkaTopic = jobArgs.kafkaTopic()
     val eventDelayMillis = jobArgs.eventDelayMillis()
 
-    val schema = buildAvroSchema()
     // Configure GCS source
     val avroFormat = new AvroInputFormat[GenericRecord](
       new Path(dataFileName),
       classOf[GenericRecord]
     )
 
-    implicit val typeInfo: TypeInformation[GenericRecord] = new GenericRecordAvroTypeInfo(schema)
+    implicit val typeInfo: TypeInformation[GenericRecord] = new GenericRecordAvroTypeInfo(avroSchema)
 
     // Set up the streaming execution environment
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -70,7 +69,7 @@ object FlinkKafkaBeaconEventDriver {
     val serializationSchema = KafkaRecordSerializationSchema
       .builder()
       .setTopic(kafkaTopic)
-      .setValueSerializationSchema(AvroSerializationSchema.forGeneric(schema))
+      .setValueSerializationSchema(AvroSerializationSchema.forGeneric(avroSchema))
       .build()
 
     val producerConfig = new java.util.Properties()
@@ -96,40 +95,28 @@ object FlinkKafkaBeaconEventDriver {
       .setParallelism(transformedStream.getParallelism)
 
     // Execute program
-    env.execute("Periodic Kafka Beacon Data Producer")
+    env.execute("Periodic Kafka Data Producer")
   }
 
-  def buildAvroSchema(): Schema = {
+  lazy val avroSchema: Schema = {
     new Schema.Parser().parse("""
     {
       "type": "record",
-      "name": "Beacon",
-      "namespace": "com.customer",
+      "name": "Event",
+      "namespace": "ai.chronon",
       "fields": [
-        {"name": "event_name", "type": ["null", "string"], "default": null},
+        {"name": "event_type", "type": ["null", "string"], "default": null},
         {"name": "timestamp", "type": "long"},
-        {"name": "browser_id", "type": ["null", "string"], "default": null},
-        {"name": "primary_event", "type": "boolean"},
-        {"name": "guid", "type": ["null", "string"], "default": null},
-        {"name": "page_guid", "type": ["null", "string"], "default": null},
-        {"name": "event_logger", "type": ["null", "string"], "default": null},
-        {"name": "event_source", "type": ["null", "string"], "default": null},
-        {"name": "ip", "type": ["null", "string"], "default": null},
-        {"name": "user_agent", "type": ["null", "string"], "default": null},
-        {"name": "loc", "type": ["null", "string"], "default": null},
-        {"name": "ref", "type": ["null", "string"], "default": null},
-        {"name": "cookies", "type": ["null", {"type": "map", "values": ["null", "string"]}], "default": null},
-        {"name": "ab", "type": ["null", {"type": "map", "values": ["null", {"type": "array", "items": ["null", "string"]}]}], "default": null},
-        {"name": "user_id", "type": ["null", "long"], "default": null},
-        {"name": "isMobileRequest", "type": ["null", "boolean"], "default": null},
-        {"name": "isMobileDevice", "type": ["null", "boolean"], "default": null},
-        {"name": "isMobileTemplate", "type": ["null", "boolean"], "default": null},
-        {"name": "detected_currency_code", "type": ["null", "string"], "default": null},
-        {"name": "detected_language", "type": ["null", "string"], "default": null},
-        {"name": "detected_region", "type": ["null", "string"], "default": null},
-        {"name": "listing_ids", "type": ["null", {"type": "array", "items": "long"}], "default": null},
-        {"name": "event_timestamp", "type": ["null", "long"], "default": null},
-        {"name": "properties", "type": ["null", {"type": "map", "values": ["null", "string"]}], "default": null}
+        {"name": "visitor_id", "type": ["null", "string"], "default": null},
+        {"name": "is_primary", "type": "boolean"},
+        {"name": "logger_name", "type": ["null", "string"], "default": null},
+        {"name": "source", "type": ["null", "string"], "default": null},
+        {"name": "is_mobile_req", "type": ["null", "boolean"], "default": null},
+        {"name": "is_mobile_device", "type": ["null", "boolean"], "default": null},
+        {"name": "is_mobile_view", "type": ["null", "boolean"], "default": null},
+        {"name": "item_ids", "type": ["null", {"type": "array", "items": "long"}], "default": null},
+        {"name": "created_at", "type": ["null", "long"], "default": null},
+        {"name": "attributes", "type": ["null", {"type": "map", "values": ["null", "string"]}], "default": null}
       ]
     }
   """)
