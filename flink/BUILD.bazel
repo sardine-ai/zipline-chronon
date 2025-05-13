@@ -88,6 +88,6 @@ jvm_binary(
     # To exclude runtime dependencies not needed for flink environment in the cluster
     # otherwise we run into version conflict errors
     deploy_env = ["//tools/build_rules/flink:flink"],
-    main_class = "ai.chronon.flink.FlinkKafkaBeaconEventDriver",
+    main_class = "ai.chronon.flink.FlinkKafkaItemEventDriver",
     runtime_deps = [":lib"],
 )
