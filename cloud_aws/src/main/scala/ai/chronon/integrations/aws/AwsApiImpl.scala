@@ -42,7 +42,7 @@ class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
   /** The stream decoder method in the AwsApi is currently unimplemented. This needs to be implemented before
     * we can spin up the Aws streaming Chronon stack
     */
-  override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde = ???
+  override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): SerDe = ???
 
   /** The external registry extension is currently unimplemented. We'll need to implement this prior to spinning up
     * a fully functional Chronon serving stack in Aws

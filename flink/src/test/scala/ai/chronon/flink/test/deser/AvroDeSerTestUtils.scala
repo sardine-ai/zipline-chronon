@@ -1,7 +1,8 @@
-package org.apache.spark.sql.avro
+package ai.chronon.flink.test.deser
 
-import ai.chronon.api.{Accuracy, Builders, GroupBy, Operation, TimeUnit, Window}
-import ai.chronon.online.serde.AvroCodec
+import ai.chronon.api.{Accuracy, Builders, GroupBy, StructType}
+import ai.chronon.online.serde.{AvroCodec, AvroSerDe, Mutation, SerDe}
+import org.apache.avro.Schema
 import org.apache.avro.generic.GenericData
 import org.apache.flink.api.common.serialization.{DeserializationSchema, SerializationSchema}
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup
@@ -16,6 +17,14 @@ class DummyInitializationContext
 
   override def getUserCodeClassLoader: UserCodeClassLoader =
     SimpleUserCodeClassLoader.create(classOf[DummyInitializationContext].getClassLoader)
+}
+
+class InMemoryAvroDeserializationSchemaProvider(schema: Schema) extends SerDe {
+  val avroSerDe = new AvroSerDe(schema)
+  override def schema: StructType = avroSerDe.schema
+  override def fromBytes(message: Array[Byte]): Mutation = {
+    avroSerDe.fromBytes(message)
+  }
 }
 
 object AvroObjectCreator {

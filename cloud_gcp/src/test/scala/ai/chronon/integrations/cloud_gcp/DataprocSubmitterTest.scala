@@ -76,7 +76,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
   it should "test flink kafka ingest job locally" ignore {
 
-    val submitter = DataprocSubmitter()
+    val submitterConf = SubmitterConf("canary-443022", "us-central1", "zipline-canary-cluster")
+    val submitter = DataprocSubmitter(submitterConf)
     val submittedJobId =
       submitter.submit(
         spark.submission.FlinkJob,
@@ -91,7 +92,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         List.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
         "--kafka-topic=test-beacon-main",
-        "--data-file-name=gs://zl-warehouse/beacon_events/beacon-output.avro"
+        "--data-file-name=gs://zl-warehouse/beacon_events/beacon-output.avro",
+        "--event-delay-millis=10",
       )
     println(submittedJobId)
   }

@@ -172,7 +172,7 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
   }
   private var fetcherObj: Fetcher = null
 
-  def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde
+  def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): SerDe
 
   def genKvStore: KVStore
 

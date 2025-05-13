@@ -8,7 +8,7 @@ import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.FlinkJob.watermarkStrategy
-import ai.chronon.flink.SourceIdentitySchemaRegistrySchemaProvider.RegistryHostKey
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider, SourceProjection}
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.flink.types.WriteResponse
@@ -312,15 +312,10 @@ object FlinkJob {
     val topicUri = servingInfo.groupBy.streamingSource.get.topic
     val topicInfo = TopicInfo.parse(topicUri)
 
-    val schemaProvider =
-      topicInfo.params.get(RegistryHostKey) match {
-        case Some(_) => new ProjectedSchemaRegistrySchemaProvider(topicInfo.params)
-        case None =>
-          throw new IllegalArgumentException(
-            s"We only support schema registry based schema lookups. Missing $RegistryHostKey in topic config")
-      }
+    val schemaProvider = FlinkSerDeProvider.build(topicInfo)
 
-    val deserializationSchema = schemaProvider.buildDeserializationSchema(servingInfo.groupBy)
+    val deserializationSchema =
+      DeserializationSchemaBuilder.buildSourceProjectionDeserSchema(schemaProvider, servingInfo.groupBy)
     require(
       deserializationSchema.isInstanceOf[SourceProjection],
       s"Expect created deserialization schema for groupBy: $groupByName with $topicInfo to mixin SourceProjection. " +

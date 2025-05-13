@@ -92,6 +92,11 @@ class SparkExpressionEval[EventType](encoder: Encoder[EventType], groupBy: Group
     result
   }
 
+  def performSql(row: Array[Any]): Seq[Map[String, Any]] = {
+    val internalRow = catalystUtil.inputArrEncoder(row).asInstanceOf[InternalRow]
+    performSql(internalRow)
+  }
+
   def evaluateExpressions(inputEvent: EventType,
                           rowSerializer: ExpressionEncoder.Serializer[EventType]): Seq[Map[String, Any]] = {
     try {

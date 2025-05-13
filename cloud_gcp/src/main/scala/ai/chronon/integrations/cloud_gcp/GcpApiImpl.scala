@@ -7,8 +7,7 @@ import ai.chronon.online.FlagStoreConstants
 import ai.chronon.online.GroupByServingInfoParsed
 import ai.chronon.online.KVStore
 import ai.chronon.online.LoggableResponse
-import ai.chronon.online.serde.Serde
-import ai.chronon.online.serde.AvroSerde
+import ai.chronon.online.serde.{AvroConversions, AvroSerDe, SerDe}
 import com.google.api.gax.core.{InstantiatingExecutorProvider, NoCredentialsProvider}
 import com.google.api.gax.retrying.RetrySettings
 import com.google.cloud.bigquery.BigQueryOptions
@@ -40,8 +39,8 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
   // We set the flag store to always return true for tiling enabled
   setFlagStore(tilingEnabledFlagStore)
 
-  override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): Serde =
-    new AvroSerde(groupByServingInfoParsed.streamChrononSchema)
+  override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): SerDe =
+    new AvroSerDe(AvroConversions.fromChrononSchema(groupByServingInfoParsed.streamChrononSchema))
 
   override def genKvStore: KVStore = {
 
