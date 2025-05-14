@@ -1,17 +1,16 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.submission.JobSubmitter
 import ai.chronon.spark.submission.JobSubmitterConstants._
-import ai.chronon.spark.submission.JobType
-import ai.chronon.spark.submission.{FlinkJob => TypeFlinkJob}
-import ai.chronon.spark.submission.{SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
+import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
+import java.util.UUID
 
-import scala.collection.JavaConverters._
 import scala.io.Source
+import scala.jdk.CollectionConverters._
 
 case class SubmitterConf(
     projectId: String,
@@ -28,7 +27,104 @@ case class GeneralJob(
     mainClass: String
 )
 
-class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: SubmitterConf) extends JobSubmitter {
+case class MoreThanOneRunningFlinkJob(message: String) extends Exception(message)
+
+case class NoRunningFlinkJob(message: String) extends Exception(message)
+
+class DataprocSubmitter(jobControllerClient: JobControllerClient,
+                        gcsClient: GCSClient = GCSClient(),
+                        conf: SubmitterConf)
+    extends JobSubmitter {
+
+  def getConf: SubmitterConf = conf
+
+  def formatDataprocLabel(label: String): String = {
+    // dataproc label keys and values only allow lowercase, numbers, underscores, and dashes.
+    // Replaces any character that is not:
+    // - a letter (a-z or A-Z)
+    // - /a digit (0-9)
+    // - a dash (-)
+    // - an underscore (_)
+    // with an underscore (_)
+    // And lowercase.
+    label.replaceAll("[^a-zA-Z0-9_-]", "_").toLowerCase
+  }
+
+  def listRunningGroupByFlinkJobs(groupByName: String): List[String] = {
+    val projectId = conf.projectId
+    val region = conf.region
+    val groupByNameDataprocLabel = formatDataprocLabel(groupByName)
+
+    //  String values for filters cannot have quotations or else search doesn't work.
+    // for example "labels.job-type = flink" and NOT "labels.job-type = 'flink'"
+    val filters =
+      s"status.state = ACTIVE AND labels.job-type = flink AND labels.metadata-name = $groupByNameDataprocLabel"
+
+    println(s"Searching for running flink jobs with filter: [$filters]")
+
+    val listResult = jobControllerClient.listJobs(
+      ListJobsRequest
+        .newBuilder()
+        .setProjectId(projectId)
+        .setRegion(region)
+        .setFilter(filters)
+        .build()
+    )
+    listResult.iterateAll().iterator().asScala.toList.map(_.getReference.getJobId)
+  }
+
+  def getZiplineVersionOfDataprocJob(jobId: String): String = {
+    val projectId = conf.projectId
+    val region = conf.region
+    val currentJob: Job = jobControllerClient.getJob(projectId, region, jobId)
+    val labels = currentJob.getLabelsMap
+    labels.get(formatDataprocLabel(ZiplineVersion))
+  }
+
+  def getLatestFlinkCheckpoint(groupByName: String,
+                               manifestBucketPath: String,
+                               flinkCheckpointUri: String): Option[String] = {
+    val manifestFileName = "manifest.txt"
+
+    val groupByCheckpointPath = new Path(manifestBucketPath, groupByName)
+    val manifestObjectPath = new Path(groupByCheckpointPath, manifestFileName).toString
+    println(s"Checking for manifest file at $manifestObjectPath")
+
+    if (!gcsClient.fileExists(manifestObjectPath)) {
+      println(s"No manifest file found for $groupByName. Returning no checkpoints.")
+      return None // No manifest file found
+    }
+
+    val manifestStr = new String(gcsClient.downloadObjectToMemory(manifestObjectPath))
+    val manifestTuples = manifestStr.split(",")
+    val flinkJobTuple = manifestTuples.find(_.startsWith("flinkJobId"))
+    val flinkJobId = flinkJobTuple
+      .map(_.split("=")(1))
+      .getOrElse(throw new RuntimeException("Flink job id not found in manifest file."))
+
+    val matchedFiles = gcsClient.listFiles(new Path(flinkCheckpointUri, flinkJobId).toString).toList
+    val allCheckpoints = matchedFiles
+      .filter(_.split("/").exists(_.startsWith("chk-")))
+      .map(_.split("/").find(_.startsWith("chk-")).get)
+      .distinct
+      .sortBy(chk => chk.substring(4).toInt)(Ordering.Int.reverse)
+    println(s"Flink checkpoints for $groupByName: $allCheckpoints")
+
+    val latestCheckpoint = allCheckpoints.headOption
+    val latestCheckpointUri = latestCheckpoint
+      .map(chk => {
+        val flinkJobPath = new Path(flinkCheckpointUri, flinkJobId)
+        new Path(flinkJobPath, chk).toString
+      })
+
+    if (latestCheckpointUri.isEmpty) {
+      println(s"No checkpoints found for $groupByName.")
+    } else {
+      println(s"Latest checkpoint for $groupByName: ${latestCheckpointUri.get}")
+    }
+
+    latestCheckpointUri
+  }
 
   override def status(jobId: String): String = {
     try {
@@ -57,17 +153,34 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     val mainClass = submissionProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
     val jarUri = submissionProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
 
+    val jobId = submissionProperties.getOrElse(JobId, throw new RuntimeException("No generated job id found"))
+
     val jobBuilder = jobType match {
       case TypeSparkJob => buildSparkJob(mainClass, jarUri, files, jobProperties, args: _*)
       case TypeFlinkJob =>
         val mainJarUri =
           submissionProperties.getOrElse(FlinkMainJarURI,
                                          throw new RuntimeException(s"Missing expected $FlinkMainJarURI"))
-        val flinkStateUri =
-          submissionProperties.getOrElse(FlinkStateUri, throw new RuntimeException(s"Missing expected $FlinkStateUri"))
+        val flinkCheckpointPath =
+          submissionProperties.getOrElse(FlinkCheckpointUri,
+                                         throw new RuntimeException(s"Missing expected $FlinkCheckpointUri"))
         val maybeSavepointUri = submissionProperties.get(SavepointUri)
-        buildFlinkJob(mainClass, mainJarUri, jarUri, flinkStateUri, maybeSavepointUri, jobProperties, args: _*)
+        buildFlinkJob(mainClass,
+                      mainJarUri,
+                      jarUri,
+                      flinkCheckpointPath,
+                      maybeSavepointUri,
+                      jobProperties,
+                      (args :+ "--parent-job-id" :+ jobId): _*)
     }
+
+    // attach the job type and metadata name
+    val submissionJobType = jobType match {
+      case TypeSparkJob => SparkJobType
+      case TypeFlinkJob => FlinkJobType
+    }
+    val metadataName =
+      submissionProperties.getOrElse(MetadataName, throw new RuntimeException("Metadata name not found"))
 
     val jobPlacement = JobPlacement
       .newBuilder()
@@ -75,13 +188,27 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
       .build()
 
     try {
+
       val job = jobBuilder
-        .setReference(jobReference)
+        .setReference(jobReference(jobId))
         .setPlacement(jobPlacement)
+        .putLabels(formatDataprocLabel(JobType), formatDataprocLabel(submissionJobType))
+        .putLabels(formatDataprocLabel(MetadataName), formatDataprocLabel(metadataName))
+        .putLabels(
+          formatDataprocLabel(ZiplineVersion),
+          formatDataprocLabel(
+            submissionProperties.getOrElse(ZiplineVersion, throw new RuntimeException("Zipline version not found")))
+        )
         .build()
 
       val submittedJob = jobControllerClient.submitJob(conf.projectId, conf.region, job)
-      submittedJob.getReference.getJobId
+      val submittedJobId = submittedJob.getReference.getJobId
+
+      if (jobId != submittedJobId) {
+        throw new IllegalStateException(s"Computed job id $jobId does not match submitted job id $submittedJobId")
+      }
+
+      submittedJobId
 
     } catch {
       case e: ApiException =>
@@ -105,13 +232,13 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
     Job.newBuilder().setSparkJob(sparkJob)
   }
 
-  private def buildFlinkJob(mainClass: String,
-                            mainJarUri: String,
-                            jarUri: String,
-                            flinkStateUri: String,
-                            maybeSavePointUri: Option[String],
-                            jobProperties: Map[String, String],
-                            args: String*): Job.Builder = {
+  private[cloud_gcp] def buildFlinkJob(mainClass: String,
+                                       mainJarUri: String,
+                                       jarUri: String,
+                                       flinkCheckpointUri: String,
+                                       maybeSavePointUri: Option[String],
+                                       jobProperties: Map[String, String],
+                                       args: String*): Job.Builder = {
 
     // JobManager is primarily responsible for coordinating the job (task slots, checkpoint triggering) and not much else
     // so 4G should suffice.
@@ -140,8 +267,8 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         // bump this a bit as Kafka and KV stores often need direct buffers
         "taskmanager.memory.task.off-heap.size" -> "1G",
         "yarn.classpath.include-user-jar" -> "FIRST",
-        "state.savepoints.dir" -> flinkStateUri,
-        "state.checkpoints.dir" -> flinkStateUri,
+        "state.savepoints.dir" -> flinkCheckpointUri,
+        "state.checkpoints.dir" -> flinkCheckpointUri,
         // override the local dir for rocksdb as the default ends up being too large file name size wise
         "state.backend.rocksdb.localdir" -> "/tmp/flink-state",
         "state.checkpoint-storage" -> "filesystem",
@@ -152,7 +279,10 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         "metrics.reporter.prom.factory.class" -> "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
         "metrics.reporter.prom.host" -> "localhost",
         "metrics.reporter.prom.port" -> "9250-9260",
-        "metrics.reporter.statsd.interval" -> "60 SECONDS"
+        "metrics.reporter.statsd.interval" -> "60 SECONDS",
+        "state.backend.type" -> "rocksdb",
+        "state.backend.incremental" -> "true",
+        "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
       )
 
     val flinkJobBuilder = FlinkJob
@@ -169,10 +299,17 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient, conf: Submitte
         case None               => flinkJobBuilder
       }
 
-    Job.newBuilder().setFlinkJob(updatedFlinkJobBuilder.build())
+    Job
+      .newBuilder()
+      .setFlinkJob(updatedFlinkJobBuilder.build())
   }
 
-  def jobReference: JobReference = JobReference.newBuilder().build()
+  private def jobReference(jobId: String): JobReference = {
+    JobReference
+      .newBuilder()
+      .setJobId(jobId)
+      .build()
+  }
 }
 
 object DataprocSubmitter {
@@ -181,14 +318,14 @@ object DataprocSubmitter {
     val jobControllerClient = JobControllerClient.create(
       JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
     )
-    new DataprocSubmitter(jobControllerClient, conf)
+    new DataprocSubmitter(jobControllerClient, GCSClient(), conf)
   }
 
   def apply(conf: SubmitterConf): DataprocSubmitter = {
     val jobControllerClient = JobControllerClient.create(
       JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
     )
-    new DataprocSubmitter(jobControllerClient, conf)
+    new DataprocSubmitter(jobControllerClient, GCSClient(projectId = conf.projectId), conf)
   }
 
   private[cloud_gcp] def loadConfig: SubmitterConf = {
@@ -198,8 +335,11 @@ object DataprocSubmitter {
     inputStreamOption
       .map(Source.fromInputStream)
       .map((is) =>
-        try { is.mkString }
-        finally { is.close })
+        try {
+          is.mkString
+        } finally {
+          is.close
+        })
       .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
       .map((jMap) => Extraction.decompose(jMap.asScala.toMap))
       .map((jVal) => render(jVal))
@@ -209,83 +349,111 @@ object DataprocSubmitter {
 
   }
 
-  // TODO: merge this with FilesArgKeyword
-  private val GCSFilesArgKeyword = "--gcs-files"
-
-  def main(args: Array[String]): Unit = {
-
-    val gcsFilesArgs = args.filter(_.startsWith(FilesArgKeyword))
-    assert(gcsFilesArgs.length == 0 || gcsFilesArgs.length == 1)
-
-    val gcsFiles = if (gcsFilesArgs.isEmpty) {
-      Array.empty[String]
-    } else {
-      gcsFilesArgs(0).split("=")(1).split(",")
-    }
-
-    // List of args that are not application args
-    val internalArgs = Set(
-      GCSFilesArgKeyword
-    ) ++ SharedInternalArgs
-
-    val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
-
-    val required_vars = List.apply(
-      "GCP_PROJECT_ID",
-      "GCP_REGION",
-      "GCP_DATAPROC_CLUSTER_NAME"
-    )
-    val missing_vars = required_vars.filter(!sys.env.contains(_))
-    if (missing_vars.nonEmpty) {
-      throw new Exception(s"Missing required environment variables: ${missing_vars.mkString(", ")}")
-    }
-    val projectId = sys.env.getOrElse("GCP_PROJECT_ID", throw new Exception("GCP_PROJECT_ID not set"))
-    val region = sys.env.getOrElse("GCP_REGION", throw new Exception("GCP_REGION not set"))
+  private def initializeDataprocSubmitter(): DataprocSubmitter = {
+    val projectId = sys.env.getOrElse(GcpProjectIdEnvVar, throw new Exception(s"$GcpProjectIdEnvVar not set"))
+    val region = sys.env.getOrElse(GcpRegionEnvVar, throw new Exception(s"$GcpRegionEnvVar not set"))
     val clusterName = sys.env
-      .getOrElse("GCP_DATAPROC_CLUSTER_NAME", throw new Exception("GCP_DATAPROC_CLUSTER_NAME not set"))
+      .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
 
     val submitterConf = SubmitterConf(
       projectId,
       region,
       clusterName
     )
-    val submitter = DataprocSubmitter(submitterConf)
+    DataprocSubmitter(submitterConf)
+  }
 
+  private[cloud_gcp] def createSubmissionPropsMap(jobType: JobType,
+                                                  submitter: DataprocSubmitter,
+                                                  envMap: Map[String, Option[String]] = Map.empty,
+                                                  args: Array[String]): Map[String, String] = {
     val jarUri = JobSubmitter
       .getArgValue(args, JarUriArgKeyword)
       .getOrElse(throw new Exception("Missing required argument: " + JarUriArgKeyword))
     val mainClass = JobSubmitter
       .getArgValue(args, MainClassKeyword)
       .getOrElse(throw new Exception("Missing required argument: " + MainClassKeyword))
-    val jobTypeValue = JobSubmitter
-      .getArgValue(args, JobTypeArgKeyword)
-      .getOrElse(throw new Exception("Missing required argument: " + JobTypeArgKeyword))
 
-    val modeConfigProperties = JobSubmitter.getModeConfigProperties(args)
+    val metadataName = Option(JobSubmitter.getMetadata(args).get.getName).getOrElse("")
 
-    val (jobType, submissionProps) = jobTypeValue.toLowerCase match {
-      case "spark" => (TypeSparkJob, Map(MainClass -> mainClass, JarURI -> jarUri))
-      case "flink" => {
-        val flinkStateUri = sys.env.getOrElse("FLINK_STATE_URI", throw new Exception("FLINK_STATE_URI not set"))
+    val jobId = UUID.randomUUID().toString
 
+    val submissionProps = jobType match {
+      case TypeSparkJob =>
+        Map(MainClass -> mainClass, JarURI -> jarUri, MetadataName -> metadataName, JobId -> jobId)
+      case TypeFlinkJob =>
+        val flinkCheckpointUri = JobSubmitter
+          .getArgValue(args, StreamingCheckpointPathArgKeyword)
+          .getOrElse(throw new Exception(s"Missing required argument $StreamingCheckpointPathArgKeyword"))
         val flinkMainJarUri = JobSubmitter
           .getArgValue(args, FlinkMainJarUriArgKeyword)
           .getOrElse(throw new Exception("Missing required argument: " + FlinkMainJarUriArgKeyword))
-        val baseJobProps = Map(MainClass -> mainClass,
-                               JarURI -> jarUri,
-                               FlinkMainJarURI -> flinkMainJarUri,
-                               FlinkStateUri -> flinkStateUri)
-        if (args.exists(_.startsWith(FlinkSavepointUriArgKeyword))) {
-          val savepointUri = JobSubmitter.getArgValue(args, FlinkSavepointUriArgKeyword).get
-          (TypeFlinkJob, baseJobProps + (SavepointUri -> savepointUri))
-        } else (TypeFlinkJob, baseJobProps)
-      }
+        val baseJobProps = Map(
+          MainClass -> mainClass,
+          JarURI -> jarUri,
+          FlinkMainJarURI -> flinkMainJarUri,
+          FlinkCheckpointUri -> flinkCheckpointUri,
+          MetadataName -> metadataName,
+          JobId -> jobId
+        )
+
+        val groupByName = JobSubmitter
+          .getArgValue(args, GroupByNameArgKeyword)
+          .getOrElse(throw new Exception("Missing required argument: " + GroupByNameArgKeyword))
+
+        val userPassedSavepoint = JobSubmitter
+          .getArgValue(args, StreamingCustomSavepointArgKeyword)
+        val maybeSavepointUri =
+          if (userPassedSavepoint.isDefined) {
+            userPassedSavepoint
+          } else if (args.contains(StreamingLatestSavepointArgKeyword)) {
+            submitter.getLatestFlinkCheckpoint(
+              groupByName = groupByName,
+              manifestBucketPath = JobSubmitter
+                .getArgValue(args, StreamingManifestPathArgKeyword)
+                .getOrElse(throw new Exception("Missing required argument: " + StreamingManifestPathArgKeyword)),
+              flinkCheckpointUri = flinkCheckpointUri
+            )
+          } else {
+            None
+          }
+
+        if (maybeSavepointUri.isEmpty) {
+          baseJobProps
+        } else {
+          val savepointUri = maybeSavepointUri.get
+          println(s"Deploying Flink app with savepoint uri $savepointUri")
+          baseJobProps + (SavepointUri -> savepointUri)
+        }
       case _ => throw new Exception("Invalid job type")
     }
 
+    // Add additional properties
+    submissionProps ++ Map(
+      ZiplineVersion -> JobSubmitter
+        .getArgValue(args, ZiplineVersionArgKeyword)
+        .getOrElse(throw new Exception("Missing required argument: " + ZiplineVersionArgKeyword)))
+  }
+
+  private[cloud_gcp] def getDataprocFilesArgs(args: Array[String] = Array.empty): List[String] = {
+    val gcsFilesArgs = args.filter(_.startsWith(FilesArgKeyword))
+    val gcsFiles = if (gcsFilesArgs.isEmpty) {
+      Array.empty[String]
+    } else {
+      gcsFilesArgs(0).split("=")(1).split(",")
+    }
+    gcsFiles.toList
+  }
+
+  private[cloud_gcp] def getApplicationArgs(jobType: JobType,
+                                            envMap: Map[String, Option[String]],
+                                            args: Array[String]) = {
+    val internalArgs = SharedInternalArgs
+    val userArgs = args.filter(arg => !internalArgs.exists(arg.startsWith))
     val finalArgs = jobType match {
       case TypeSparkJob => {
-        val bigtableInstanceId = sys.env.getOrElse("GCP_BIGTABLE_INSTANCE_ID", "")
+        val bigtableInstanceId = envMap(GcpBigtableInstanceIdEnvVar).getOrElse("")
+        val projectId = envMap(GcpProjectIdEnvVar).getOrElse(throw new Exception(s"GcpProjectId not set"))
         val gcpArgsToPass = Array.apply(
           "--is-gcp",
           s"--gcp-project-id=${projectId}",
@@ -293,20 +461,146 @@ object DataprocSubmitter {
         )
         Array.concat(userArgs, gcpArgsToPass)
       }
-      case TypeFlinkJob => userArgs
+      case TypeFlinkJob => {
+        val additionalArgsToFilterOut = Set(
+          ConfTypeArgKeyword
+        )
+        userArgs.filter(arg => !additionalArgsToFilterOut.exists(arg.startsWith))
+      }
+    }
+    finalArgs
+  }
+
+  private def validateOnlyOneFlinkSavepointDeploymentStrategySet(args: Array[String]): Unit = {
+    val isStreamingLatestSet = args.contains(StreamingLatestSavepointArgKeyword)
+    val isStreamingWithSavepointSet = JobSubmitter.getArgValue(args, StreamingCustomSavepointArgKeyword).isDefined
+    val isStreamingNoSavepointSet = args.contains(StreamingNoSavepointArgKeyword)
+    List(isStreamingLatestSet, isStreamingWithSavepointSet, isStreamingNoSavepointSet).count(_ == true) match {
+      case 0 => throw new Exception("No savepoint deploy strategy provided")
+      case 1 => // OK
+      case _ =>
+        throw new Exception("Multiple savepoint deploy strategies provided. " +
+          s"Only one of $StreamingLatestSavepointArgKeyword, $StreamingCustomSavepointArgKeyword, $StreamingNoSavepointArgKeyword should be provided")
+    }
+  }
+
+  private def compareZiplineVersionOfRunningFlinkJob(
+      args: Array[String],
+      submitter: DataprocSubmitter,
+      jobId: String
+  ): Boolean = {
+    val localZiplineVersion = submitter.formatDataprocLabel(
+      JobSubmitter
+        .getArgValue(args, LocalZiplineVersionArgKeyword)
+        .getOrElse(throw new Exception("Missing required argument: " + LocalZiplineVersionArgKeyword)))
+    val remoteZiplineVersion = submitter.getZiplineVersionOfDataprocJob(jobId)
+    println(
+      s"Local Zipline version: $localZiplineVersion. " +
+        s"Remote Zipline version for Dataproc job $jobId: $remoteZiplineVersion")
+    return localZiplineVersion == remoteZiplineVersion
+  }
+
+  private def findRunningFlinkJobId(groupByName: String, submitter: DataprocSubmitter): Option[String] = {
+    val matchedIds =
+      submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)
+    if (matchedIds.size > 1) {
+      throw MoreThanOneRunningFlinkJob(
+        s"Multiple running Flink jobs found for GroupBy name $groupByName. " +
+          s"Only one should be active. Job ids = ${matchedIds.mkString(", ")}"
+      )
+    } else if (matchedIds.isEmpty) {
+      println(s"No running Flink jobs found for GroupBy name $groupByName.")
+      None
+    } else {
+      Some(matchedIds.head)
+    }
+  }
+
+  private[cloud_gcp] def run(args: Array[String],
+                             submitter: DataprocSubmitter,
+                             envMap: Map[String, Option[String]] = Map.empty): Unit = {
+    // Get the job type
+    val jobTypeValue = JobSubmitter
+      .getArgValue(args, JobTypeArgKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + JobTypeArgKeyword))
+    val jobType = jobTypeValue.toLowerCase match {
+      case SparkJobType => TypeSparkJob
+      case FlinkJobType => TypeFlinkJob
+      case _            => throw new Exception("Invalid job type")
     }
 
+    // Additional checks for streaming
+    if (jobType == TypeFlinkJob) {
+      val groupByName = JobSubmitter
+        .getArgValue(args, GroupByNameArgKeyword)
+        .getOrElse(throw new Exception("Missing required argument: " + GroupByNameArgKeyword))
+
+      val maybeJobId = findRunningFlinkJobId(groupByName, submitter)
+
+      val streamingMode = JobSubmitter
+        .getArgValue(args, StreamingModeArgKeyword)
+        .getOrElse(throw new Exception("Missing required argument: " + StreamingModeArgKeyword))
+
+      if (CheckIfJobIsRunning.equals(streamingMode)) {
+        if (maybeJobId.isEmpty) {
+          println(s"No running Flink job found for GroupBy name $groupByName.")
+          throw NoRunningFlinkJob(
+            s"No running Flink job found for GroupBy name $groupByName"
+          )
+        } else {
+          println(s"One running Flink job found for GroupBy name $groupByName. Job id = ${maybeJobId.get}")
+          return
+        }
+      } else if (StreamingDeploy.equals(streamingMode)) {
+        if (args.contains(StreamingVersionCheckDeploy) && maybeJobId.isDefined) {
+          if (compareZiplineVersionOfRunningFlinkJob(args, submitter, maybeJobId.get)) {
+            println(s"Local Zipline version matches running Flink app's Zipline version. Exiting")
+            return
+          } else {
+            println(s"Local Zipline version does not match remote Zipline version. Proceeding with deployment.")
+          }
+        }
+
+        // Check that only one type of savepoint deploy strategy is provided
+        validateOnlyOneFlinkSavepointDeploymentStrategySet(args)
+
+        if (maybeJobId.isDefined) {
+          val matchedId = maybeJobId.get
+          submitter.kill(matchedId)
+          println(s"Cancelled running Flink job with id $matchedId for GroupBy name $groupByName.")
+        }
+      }
+    }
+
+    // Filter and finalize application args
+
+    val finalArgs = getApplicationArgs(
+      jobType = jobType,
+      args = args,
+      envMap = envMap
+    )
     println(finalArgs.mkString("Array(", ", ", ")"))
 
     val jobId = submitter.submit(
       jobType = jobType,
-      submissionProperties = submissionProps,
-      jobProperties = modeConfigProperties.getOrElse(Map.empty),
-      files = gcsFiles.toList,
+      submissionProperties =
+        createSubmissionPropsMap(jobType = jobType, args = args, submitter = submitter, envMap = envMap),
+      jobProperties = JobSubmitter.getModeConfigProperties(args).getOrElse(Map.empty),
+      files = getDataprocFilesArgs(args),
       finalArgs: _*
     )
     println("Dataproc submitter job id: " + jobId)
     println(
-      s"Safe to exit. Follow the job status at: https://console.cloud.google.com/dataproc/jobs/${jobId}/configuration?region=${region}&project=${projectId}")
+      s"Safe to exit. Follow the job status at: https://console.cloud.google.com/dataproc/jobs/${jobId}/configuration?region=${submitter.getConf.region}&project=${submitter.getConf.projectId}")
   }
+
+  def main(args: Array[String]): Unit = {
+    val submitter = initializeDataprocSubmitter()
+    val envMap = Map(
+      GcpBigtableInstanceIdEnvVar -> sys.env.get(GcpBigtableInstanceIdEnvVar),
+      GcpProjectIdEnvVar -> sys.env.get(GcpProjectIdEnvVar)
+    )
+    DataprocSubmitter.run(args = args, submitter = submitter, envMap = envMap)
+  }
+
 }

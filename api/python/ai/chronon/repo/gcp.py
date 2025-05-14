@@ -2,6 +2,7 @@ import base64
 import json
 import multiprocessing
 import os
+import time
 from typing import List
 from urllib.parse import urlparse
 
@@ -63,6 +64,7 @@ class GcpRunner(Runner):
 
         super().__init__(args, os.path.expanduser(jar_path))
 
+
     @staticmethod
     def get_gcp_project_id() -> str:
         return get_environ_arg("GCP_PROJECT_ID")
@@ -77,8 +79,8 @@ class GcpRunner(Runner):
 
     @staticmethod
     @retry_decorator(retries=2, backoff=5)
-    def download_gcs_blob(remote_file_name, destination_file_name):
-        """Downloads a blob from the bucket."""
+    def download_gcs_to_text(remote_file_name: str):
+        """Download from the bucket using path."""
         parsed = urlparse(remote_file_name)
         bucket_name = parsed.netloc
         source_blob_name = parsed.path.lstrip("/")
@@ -86,8 +88,34 @@ class GcpRunner(Runner):
             storage_client = storage.Client(project=GcpRunner.get_gcp_project_id())
             bucket = storage_client.bucket(bucket_name)
             blob = bucket.blob(source_blob_name)
+
+            if not blob.exists():
+                return blob.exists(), None
+            else:
+                return blob.exists(), blob.download_as_text()
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to download {source_blob_name}: {str(e)}"
+            ) from e
+
+    @staticmethod
+    @retry_decorator(retries=2, backoff=5)
+    def download_gcs_file(remote_file_name: str, destination_file_name: str):
+        """Download from the bucket using path."""
+        parsed = urlparse(remote_file_name)
+        bucket_name = parsed.netloc
+        source_blob_name = parsed.path.lstrip("/")
+        try:
+            storage_client = storage.Client(project=GcpRunner.get_gcp_project_id())
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(source_blob_name)
+
+            if not blob.exists():
+                raise FileNotFoundError(
+                    f"Blob {source_blob_name} not found in bucket {bucket_name}"
+                )
             blob.download_to_filename(destination_file_name)
-            print(
+            LOG.info(
                 "Downloaded storage object {} from bucket {} to local file {}.".format(
                     source_blob_name, bucket_name, destination_file_name
                 )
@@ -108,7 +136,7 @@ class GcpRunner(Runner):
             blob = bucket.blob(destination_blob_name)
             blob.upload_from_filename(source_file_name)
 
-            print(
+            LOG.info(
                 f"File {source_file_name} uploaded to {destination_blob_name} in bucket {bucket_name}."
             )
             return f"gs://{bucket_name}/{destination_blob_name}"
@@ -173,14 +201,14 @@ class GcpRunner(Runner):
             gcs_hash = GcpRunner.get_gcs_file_hash(remote_file_path)
             local_hash = GcpRunner.get_local_file_hash(local_file_path)
 
-            print(
+            LOG.info(
                 f"Local hash of {local_file_path}: {local_hash}. GCS file {remote_file_path} hash: {gcs_hash}"
             )
 
             return gcs_hash == local_hash
 
         except Exception as e:
-            print(f"Error comparing files: {str(e)}")
+            LOG.info(f"Error comparing files: {str(e)}")
             return False
 
     @staticmethod
@@ -198,14 +226,14 @@ class GcpRunner(Runner):
         )
 
         if are_identical:
-            print(f"{dest_path} matches GCS {source_path}")
+            LOG.info(f"{dest_path} matches GCS {source_path}")
         else:
-            print(
+            LOG.info(
                 f"{dest_path} does NOT match GCS {source_path}"
             )
-            print(f"Downloading {jar_name} from GCS...")
+            LOG.info(f"Downloading {jar_name} from GCS...")
 
-            GcpRunner.download_gcs_blob(source_path, dest_path)
+            GcpRunner.download_gcs_file(source_path, dest_path)
         return dest_path
 
     def generate_dataproc_submitter_args(
@@ -242,9 +270,7 @@ class GcpRunner(Runner):
         # include jar uri. should also already be in the bucket
         jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_JAR_DEFAULT}")
 
-        final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class}"
-
-
+        final_args = "{user_args} --jar-uri={jar_uri} --job-type={job_type} --main-class={main_class} --zipline-version={zipline_version}"
 
         if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
@@ -255,42 +281,72 @@ class GcpRunner(Runner):
                     jar_uri=jar_uri,
                     job_type=job_type.value,
                     main_class=main_class,
+                    zipline_version=self._version,
                 )
                 + f" --flink-main-jar-uri={flink_jar_uri}"
             )
 
         elif job_type == JobType.SPARK:
             main_class = "ai.chronon.spark.Driver"
-            return (
-                final_args.format(
-                    user_args=user_args,
-                    jar_uri=jar_uri,
-                    job_type=job_type.value,
-                    main_class=main_class,
-                ) + (f" --files={gcs_file_args}" if gcs_file_args else "")
-
-            )
+            return final_args.format(
+                user_args=user_args,
+                jar_uri=jar_uri,
+                job_type=job_type.value,
+                main_class=main_class,
+                zipline_version=self._version,
+            ) + (f" --files={gcs_file_args}" if gcs_file_args else "")
         else:
             raise ValueError(f"Invalid job type: {job_type}")
 
+    @staticmethod
+    def get_state_dataproc_job(job_id):
+        jobs_info_str = check_output(
+            f"gcloud dataproc jobs describe {job_id} --region={GcpRunner.get_gcp_region_id()} "
+            f"--project={GcpRunner.get_gcp_project_id()} --format=json"
+        ).decode("utf-8")
+        job_info = json.loads(jobs_info_str)
+        return job_info.get("status", {}).get("state", "")
+
     def run_dataproc_flink_streaming(self):
         user_args = {
-            "--groupby-name": self.groupby_name,
+            "--groupby-name": self.conf_metadata_name,
             "--kafka-bootstrap": self.kafka_bootstrap,
             "--online-class": ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
             "-ZGCP_PROJECT_ID": GcpRunner.get_gcp_project_id(),
             "-ZGCP_BIGTABLE_INSTANCE_ID": GcpRunner.get_gcp_bigtable_instance_id(),
-            "--savepoint-uri": self.savepoint_uri,
             "--validate-rows": self.validate_rows,
+            "--streaming-manifest-path": self.streaming_manifest_path,
+            "--streaming-checkpoint-path": self.streaming_checkpoint_path,
+            "--local-zipline-version": self._version,
+
+            # Need these for extracting metadata name in submitter
+            "--local-conf-path": self.local_abs_conf_path,
+            "--original-mode": self.mode,
+            "--conf-type": self.conf_type,
         }
 
+        args = self._args.get("args")
+        if "check-if-job-is-running" in args:
+            user_args["--streaming-mode"] = "check-if-job-is-running"
+        elif "deploy" in args:
+            user_args["--streaming-mode"] = "deploy"
+
         flag_args = {"--mock-source": self.mock_source, "--validate": self.validate}
+
+        # Set the savepoint deploy strategy
+        if self.latest_savepoint:
+            flag_args["--latest-savepoint"] = self.latest_savepoint
+        elif self.custom_savepoint:
+            user_args["--custom-savepoint"] = self.custom_savepoint
+        else:
+            flag_args["--no-savepoint"] = self.no_savepoint
+
+        # Set version check deploy
+        if self.version_check:
+            flag_args["--version-check"] = self.version_check
+
+        user_args_str = " ".join(f"{key}={value}" for key, value in user_args.items() if value)
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
-
-        user_args_str = " ".join(
-            f"{key}={value}" for key, value in user_args.items() if value
-        )
-
         dataproc_args = self.generate_dataproc_submitter_args(
             job_type=JobType.FLINK,
             version=self._version,
@@ -298,6 +354,7 @@ class GcpRunner(Runner):
             user_args=" ".join([user_args_str, flag_args_str]),
         )
         command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
+
         return command
 
     def run(self):
@@ -343,6 +400,7 @@ class GcpRunner(Runner):
             command = f"java -cp {self.jar_path} {DATAPROC_ENTRY} {dataproc_args}"
             command_list.append(command)
         elif self.mode in ["streaming", "streaming-client"]:
+            args = self._args.get("args")
             # streaming mode
             command = self.run_dataproc_flink_streaming()
             command_list.append(command)
@@ -433,17 +491,18 @@ class GcpRunner(Runner):
 
             dataproc_submitter_id_str = "Dataproc submitter job id"
 
-            dataproc_submitter_logs = [
-                s for s in output if dataproc_submitter_id_str in s
-            ]
+            dataproc_submitter_logs = [s for s in output if dataproc_submitter_id_str in s]
+
+            submitted_job_id = None
             if dataproc_submitter_logs:
                 log = dataproc_submitter_logs[0]
-                job_id = (log[
-                    log.index(dataproc_submitter_id_str)
-                    + len(dataproc_submitter_id_str)
-                    + 1 :
-                ]).strip()
-                print(
+                submitted_job_id = (
+                    log[log.index(dataproc_submitter_id_str) + len(dataproc_submitter_id_str) + 1 :]
+                ).strip()
+
+
+            if not self.disable_cloud_logging and submitted_job_id:
+                LOG.info(
                     """
                 <-----------------------------------------------------------------------------------
                 ------------------------------------------------------------------------------------
@@ -453,23 +512,56 @@ class GcpRunner(Runner):
                 """
                 )
                 check_call(
-                    f"gcloud dataproc jobs wait {job_id} --region={GcpRunner.get_gcp_region_id()} "
+                    f"gcloud dataproc jobs wait {submitted_job_id} --region={GcpRunner.get_gcp_region_id()} "
                     f"--project={GcpRunner.get_gcp_project_id()}"
                 )
 
                 # Fetch the final job state
-                jobs_info_str = (check_output(
-                    f"gcloud dataproc jobs describe {job_id} --region={GcpRunner.get_gcp_region_id()} "
-                    f"--project={GcpRunner.get_gcp_project_id()} --format=json")
-                                 .decode("utf-8"))
-                job_info = json.loads(jobs_info_str)
-                job_state = job_info.get("status", {}).get("state", "")
+                job_state = GcpRunner.get_state_dataproc_job(submitted_job_id)
 
-
-                print("<<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>")
+                LOG.info("<<<<<<<<<<<<<<<<-----------------JOB STATUS----------------->>>>>>>>>>>>>>>>>")
                 if job_state != 'DONE':
-                    print(f"Job {job_id} is not in DONE state. Current state: {job_state}")
-                    raise RuntimeError(f"Job {job_id} failed.")
+                    LOG.info(f"Job {submitted_job_id} is not in DONE state. Current state: {job_state}")
+                    raise RuntimeError(f"Job {submitted_job_id} failed.")
                 else:
-                    print(f"Job {job_id} is in DONE state.")
-                return job_id
+                    LOG.info(f"Job {submitted_job_id} is in DONE state.")
+                return
+
+            # If streaming deploy job, poll and check for final
+            if (submitted_job_id and self.mode in ["streaming", "streaming-client"]
+                    and "deploy" in self._args.get("args")):
+                # Poll the dataproc job id for 5 minutes until the job
+                total_time_seconds = 5 * 60
+                interval_seconds = 10
+                start_time = time.time()
+                while time.time() - start_time < total_time_seconds:
+                    current_state = GcpRunner.get_state_dataproc_job(submitted_job_id)
+
+                    non_terminal_states = ['SETUP_DONE', 'RUNNING', 'PENDING', 'STATE_UNSPECIFIED']
+                    if current_state not in non_terminal_states:
+                        raise RuntimeError(f"Flink job is not in {non_terminal_states}. "
+                                           f"Current state: {current_state}")
+
+                    manifest_path = os.path.join(self.streaming_manifest_path, self.conf_metadata_name, "manifest.txt")
+                    manifest_exists, raw_manifest = self.download_gcs_to_text(str(manifest_path))
+
+                    if manifest_exists:
+                        manifest = raw_manifest.strip()
+                        LOG.info(f"Checking Flink manifest to confirm deployment. Manifest: [{manifest}]")
+                        manifest_tuples = manifest.split(",")
+
+                        flink_job_id = [f.split("=")[1] for f in manifest_tuples if f.startswith("flinkJobId")][0]
+                        parent_job_id = [f.split("=")[1] for f in manifest_tuples if f.startswith("parentJobId")][0]
+
+                        if parent_job_id == submitted_job_id:
+                            LOG.info(f"Flink job has been deployed successfully. Flink job ID = [{flink_job_id}]."
+                                     f" Dataproc job ID = [{submitted_job_id}]")
+                            break
+                        else:
+                            LOG.info(f"Flink manifest not updated with new Dataproc job id {submitted_job_id}.")
+                    LOG.info(f"Sleeping for {interval_seconds} seconds...")
+                    time.sleep(interval_seconds)
+                else:
+                    raise RuntimeError(
+                        f"Failed to confirm Flink manifest for new deployment with Dataproc job id {submitted_job_id}."
+                    )

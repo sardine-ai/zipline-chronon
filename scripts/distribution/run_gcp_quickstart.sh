@@ -200,11 +200,10 @@ fail_if_bash_failed
 echo -e "${GREEN}<<<<<.....................................FETCH.....................................>>>>>\033[0m"
 touch tmp_fetch.out
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_test -k '{"user_id":"5"}' --name gcp.purchases.v1_test 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_test -k '{"user_id":"5"}' --name gcp.purchases.v1_test 2>&1 | tee tmp_fetch.out
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_dev  -k '{"user_id":"5"}' --name gcp.purchases.v1_dev 2>&1 | tee tmp_fetch.out | grep -q purchase_price_average_14d
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_dev  -k '{"user_id":"5"}' --name gcp.purchases.v1_dev 2>&1 | tee tmp_fetch.out
 fi
-fail_if_bash_failed
 cat tmp_fetch.out | grep purchase_price_average_14d
 # check if exit code of previous is 0
 if [ $? -ne 0 ]; then

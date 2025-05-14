@@ -31,10 +31,20 @@ class Runner:
         )  # in case user sets dash instead of underscore
 
         # streaming flink
-        self.groupby_name = args.get("groupby_name")
+        self.conf_metadata_name = self.get_metadata_name_from_conf()
         self.kafka_bootstrap = args.get("kafka_bootstrap")
+        self.latest_savepoint = args.get("latest_savepoint")
+        self.custom_savepoint = args.get("custom_savepoint")
+        self.no_savepoint = args.get("no_savepoint")
+        self.version_check = args.get("version_check")
+
+        flink_state_uri = args.get("flink_state_uri")
+        if flink_state_uri:
+            self.streaming_manifest_path = os.path.join(flink_state_uri, "manifests")
+            self.streaming_checkpoint_path = os.path.join(flink_state_uri, "checkpoints")
+
         self.mock_source = args.get("mock_source")
-        self.savepoint_uri = args.get("savepoint_uri")
+
         self.validate = args.get("validate")
         self.validate_rows = args.get("validate_rows")
 
@@ -95,6 +105,13 @@ class Runner:
         else:
             self.spark_submit = args["spark_submit_path"]
         self.list_apps_cmd = args["list_apps"]
+
+        self.disable_cloud_logging = args.get("disable_cloud_logging")
+
+    def get_metadata_name_from_conf(self):
+        with open(os.path.join(self.repo, self.conf), "r") as conf_file:
+            data = json.load(conf_file)
+            return data.get("metaData", {}).get("name", None)
 
     def run_spark_streaming(self):
         # streaming mode
