@@ -8,6 +8,7 @@ function print_usage() {
     echo "  --aws       Build and upload only AWS artifacts"
     echo "  --customer_ids <customer_id>  Specify customer IDs to upload artifacts to."
     echo "  -h, --help  Show this help message"
+    echo "  --skip-checks  Skip git checks (not recommended)"
 }
 
 # No arguments provided
@@ -18,6 +19,7 @@ fi
 
 BUILD_AWS=false
 BUILD_GCP=false
+SKIP_GIT_CHECKS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -47,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             INPUT_CUSTOMER_IDS=("$2")
             shift 2
             ;;
+        --skip-checks)
+            SKIP_GIT_CHECKS=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             print_usage
@@ -56,7 +62,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-if [[ -n $(git diff HEAD) ]]; then
+if [[ "$SKIP_GIT_CHECKS" != "true" && -n $(git diff HEAD) ]]; then
     echo "Error: You have uncommitted changes. Please commit and push them to git so we can track them."
     exit 1
 fi
@@ -68,7 +74,7 @@ local_branch=$(git rev-parse --abbrev-ref HEAD)
 git fetch origin $local_branch
 
 # Check if local is behind remote
-if [[ -n $(git diff HEAD..origin/$local_branch) ]]; then
+if [[ "$SKIP_GIT_CHECKS" != "true" && -n $(git diff HEAD..origin/$local_branch) ]]; then
     echo "Error: Your branch is not in sync with remote"
     echo "Please push your local changes and sync your local branch $local_branch with remote"
     exit 1
@@ -162,8 +168,6 @@ if [ "$BUILD_GCP" = true ]; then
     fi
 
 fi
-
-
 
 
 # all customer ids

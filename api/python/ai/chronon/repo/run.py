@@ -79,11 +79,19 @@ def set_defaults(ctx):
         "render_info": os.path.join(chronon_repo_path, RENDER_INFO_DEFAULT_SCRIPT),
         "project_conf": obj.get("project_conf"),
         "artifact_prefix": os.environ.get("ARTIFACT_PREFIX"),
+        "flink_state_uri": os.environ.get("FLINK_STATE_URI"),
     }
     for key, value in defaults.items():
         if ctx.params.get(key) is None and value is not None:
             ctx.params[key] = value
 
+def validate_flink_state(ctx, param, value):
+    uri_schemes = ["gs://", "s3://"]
+    if value and not any(value.startswith(scheme) for scheme in uri_schemes):
+        raise click.BadParameter(
+            f"Flink state uri must start with {uri_schemes}"
+        )
+    return value
 
 @click.command(
     name="run",
@@ -156,14 +164,20 @@ def set_defaults(ctx):
     help="Path to script rendering additional information of the given config. "
     "Only applicable when mode is set to info",
 )
-@click.option("--groupby-name", help="Name of groupby to be used for groupby streaming")
 @click.option("--kafka-bootstrap", help="Kafka bootstrap server in host:port format")
+@click.option("--latest-savepoint", is_flag=True, default=False, help="Deploys streaming job with latest savepoint")
+@click.option("--custom-savepoint", help="Savepoint to deploy streaming job with.")
+@click.option("--no-savepoint", is_flag=True, default=False, help="Deploys streaming job without a savepoint")
+@click.option("--version-check", is_flag=True, default=False,
+              help="Checks if Zipline version of running streaming job is different from local version and deploys the job if they are different")
+@click.option("--flink-state-uri",
+              help="Bucket for storing flink state checkpoints/savepoints and other internal pieces for orchestration.",
+              callback=validate_flink_state)
 @click.option(
     "--mock-source",
     is_flag=True,
     help="Use a mocked data source instead of a real source for groupby-streaming Flink.",
 )
-@click.option("--savepoint-uri", help="Savepoint URI for Flink streaming job")
 @click.option(
     "--validate",
     is_flag=True,
@@ -177,6 +191,7 @@ def set_defaults(ctx):
     "--artifact-prefix",
     help="Remote artifact URI to install zipline client artifacts necessary for interacting with Zipline infrastructure.",
 )
+@click.option("--disable-cloud-logging", is_flag=True, default=False, help="Disables cloud logging")
 @click.pass_context
 def main(
     ctx,
@@ -203,14 +218,18 @@ def main(
     release_tag,
     list_apps,
     render_info,
-    groupby_name,
     kafka_bootstrap,
+    latest_savepoint,
+    custom_savepoint,
+    no_savepoint,
+    version_check,
+    flink_state_uri,
     mock_source,
-    savepoint_uri,
     validate,
     validate_rows,
     join_part_name,
     artifact_prefix,
+    disable_cloud_logging
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))

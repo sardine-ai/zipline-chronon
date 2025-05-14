@@ -11,85 +11,115 @@ boltons==25.0.0
     # via
     #   face
     #   glom
-boto3==1.37.6
+boto3==1.38.14
     # via -r requirements/base.in
-botocore==1.37.6
+botocore==1.38.14
     # via
     #   boto3
     #   s3transfer
-cachetools==5.5.0
+cachetools==5.5.2
     # via google-auth
-charset-normalizer==3.4.1
+certifi==2025.4.26
     # via requests
-click==8.1.8
+charset-normalizer==3.4.2
+    # via requests
+click==8.2.0
     # via -r requirements/base.in
 crcmod==1.7
     # via -r requirements/base.in
 face==24.0.0
     # via glom
 glom==24.11.0
-    # via -r requirements/base.
-google-api-core==2.24.0
+    # via -r requirements/base.in
+google-api-core[grpc]==2.24.2
     # via
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.37.0
+google-auth==2.40.1
     # via
     #   google-api-core
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-storage
-google-cloud-core==2.4.1
+google-cloud-bigquery-storage==2.31.0
+    # via -r requirements/base.in
+google-cloud-core==2.4.3
     # via google-cloud-storage
 google-cloud-storage==2.19.0
     # via -r requirements/base.in
-google-crc32c==1.6.0
+google-crc32c==1.7.1
     # via
     #   google-cloud-storage
     #   google-resumable-media
 google-resumable-media==2.7.2
     # via google-cloud-storage
-googleapis-common-protos==1.66.0
+googleapis-common-protos==1.70.0
+    # via
+    #   google-api-core
+    #   grpcio-status
+grpcio==1.71.0
+    # via
+    #   google-api-core
+    #   grpcio-status
+grpcio-status==1.71.0
     # via google-api-core
 idna==3.10
     # via requests
+importlib-resources==6.5.2
+    # via -r requirements/base.in
 jmespath==1.0.1
     # via
     #   boto3
     #   botocore
 markdown-it-py==3.0.0
     # via rich
-proto-plus==1.25.0
-    # via google-api-core
-protobuf==5.29.3
+mdurl==0.1.2
+    # via markdown-it-py
+proto-plus==1.26.1
     # via
     #   google-api-core
+    #   google-cloud-bigquery-storage
+protobuf==5.29.4
+    # via
+    #   google-api-core
+    #   google-cloud-bigquery-storage
     #   googleapis-common-protos
+    #   grpcio-status
     #   proto-plus
+py4j==0.10.9.7
+    # via pyspark
 pyasn1==0.6.1
     # via
     #   pyasn1-modules
     #   rsa
-pyasn1-modules==0.4.1
+pyasn1-modules==0.4.2
     # via google-auth
 pygments==2.19.1
     # via rich
+pyspark==3.5.4
+    # via -r requirements/base.in
 python-dateutil==2.9.0.post0
     # via botocore
 requests==2.32.3
     # via
     #   google-api-core
     #   google-cloud-storage
-rich==13.9.4
+rich==14.0.0
     # via -r requirements/base.in
-rsa==4.9
+rsa==4.9.1
     # via google-auth
-s3transfer==0.11.4
+s3transfer==0.12.0
     # via boto3
 six==1.17.0
-    # via thrift
+    # via
+    #   python-dateutil
+    #   thrift
+sqlglot==26.17.1
+    # via -r requirements/base.in
 thrift==0.21.0
     # via -r requirements/base.in
-urllib3==2.3.0
+urllib3==2.4.0
     # via
     #   botocore
     #   requests

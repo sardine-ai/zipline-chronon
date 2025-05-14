@@ -148,6 +148,7 @@ maven_repository = repository(
         "com.google.api.grpc:grpc-google-cloud-bigtable-v2:2.57.1",
         "com.google.cloud:google-cloud-pubsub:1.131.0",
         "com.google.cloud:google-cloud-dataproc:4.52.0",
+        "com.google.cloud:google-cloud-storage:2.46.0",
         # Have to specify in group:artifact:packaging:version format if version doesn't start with a digit
         # Code reference: https://github.com/bazel-contrib/rules_jvm_external/blob/master/private/lib/coordinates.bzl#L44
         "com.google.cloud.bigdataoss:gcs-connector:jar:hadoop3-2.2.26",

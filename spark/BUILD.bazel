@@ -172,11 +172,13 @@ scala_test_suite(
     name = "tests",
     srcs = glob([
         "src/test/scala/ai/chronon/spark/test/*.scala",
+        "src/test/scala/ai/chronon/spark/test/submission/*.scala",
         "src/test/scala/ai/chronon/spark/test/udafs/*.scala",
         "src/test/scala/ai/chronon/spark/test/stats/drift/*.scala",
         "src/test/scala/ai/chronon/spark/test/bootstrap/*.scala",
     ]),
-    data = glob(["spark/src/test/resources/**/*"]),
+    data = ["//spark/src/test/resources:test-resources"],
+
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     tags = ["large"],
@@ -247,7 +249,9 @@ scala_test_suite(
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
-    deps = test_deps + [":test_lib"],
+    deps = test_deps + [
+        ":test_lib",
+    ],
 )
 
 jvm_binary(
