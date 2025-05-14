@@ -43,7 +43,7 @@ object PlanNode {
     .flatMap(tryParsingConf[T])
     .toSeq
 
-  def planConfs[T](cons: Seq[T], planner: Planner[T]): Seq[PlanNode] = ???
+  def planConfs[T](confs: Seq[T], planner: Planner[T]): Seq[PlanNode] = ???
   def generatePlans(compiledFolder: String): Seq[PlanNode] = ???
 
 }

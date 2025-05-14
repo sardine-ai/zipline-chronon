@@ -262,6 +262,7 @@ struct Conf {
     1: optional string name
     2: optional string hash
     3: optional string contents
+    4: optional LogicalType logicalType
 }
 
 struct DiffRequest {
