@@ -34,6 +34,8 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
       throw new UnsupportedOperationException(
         s"Engine type ${stagingQueryConf.getEngineType} is not supported for Staging Query")
     }
+    logger.info("Running setups for StagingQuery")
+    Option(stagingQueryConf.setups).foreach(_.toScala.foreach(tableUtils.sql))
     // the input table is not partitioned, usually for data testing or for kaggle demos
     if (stagingQueryConf.startPartition == null) {
       tableUtils.sql(stagingQueryConf.query).save(outputTable, partitionColumns = List.empty)
@@ -54,7 +56,6 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
       }
       val stagingQueryUnfilledRanges = unfilledRanges.get
       logger.info(s"Staging Query unfilled ranges: $stagingQueryUnfilledRanges")
-      Option(stagingQueryConf.setups).foreach(_.toScala.foreach(tableUtils.sql))
       val exceptions = mutable.Buffer.empty[String]
       stagingQueryUnfilledRanges.foreach { stagingQueryUnfilledRange =>
         try {
