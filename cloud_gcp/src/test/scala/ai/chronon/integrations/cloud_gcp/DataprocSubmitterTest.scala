@@ -113,7 +113,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$LocalConfPathArgKeyword=${path.toAbsolutePath.toString}",
         s"$ConfTypeArgKeyword=group_bys",
         s"$OriginalModeArgKeyword=backfill",
-        s"$ZiplineVersionArgKeyword=0.1.0"
+        s"$ZiplineVersionArgKeyword=0.1.0",
+        s"$JobIdArgKeyword=job-id"
       )
     )
 
@@ -160,7 +161,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$GroupByNameArgKeyword=$groupByName",
         s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
         s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
-        s"$StreamingLatestSavepointArgKeyword"
+        s"$StreamingLatestSavepointArgKeyword",
+        s"$JobIdArgKeyword=job-id"
       )
     )
 
@@ -201,7 +203,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$GroupByNameArgKeyword=$groupByName",
         s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
         s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
-        s"$StreamingNoSavepointArgKeyword"
+        s"$StreamingNoSavepointArgKeyword",
+        s"$JobIdArgKeyword=job-id"
       )
     )
 
@@ -245,7 +248,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$GroupByNameArgKeyword=$groupByName",
         s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
         s"$StreamingCustomSavepointArgKeyword=$userPassedSavepoint",
-        s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri"
+        s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
+        s"$JobIdArgKeyword=job-id"
       )
     )
 
@@ -473,7 +477,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       s"$GroupByNameArgKeyword=$groupByName",
       s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
       s"$StreamingCheckpointPathArgKeyword=gs://zl-warehouse/flink-state/checkpoints",
-      s"$StreamingNoSavepointArgKeyword"
+      s"$StreamingNoSavepointArgKeyword",
+      s"$JobIdArgKeyword=job-id"
     )
     val submitter = mock[DataprocSubmitter]
 
@@ -526,7 +531,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       s"$GroupByNameArgKeyword=$groupByName",
       s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
       s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
-      s"$StreamingLatestSavepointArgKeyword"
+      s"$StreamingLatestSavepointArgKeyword",
+      s"$JobIdArgKeyword=job-id"
     )
     val submitter = mock[DataprocSubmitter]
 
@@ -588,7 +594,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       s"$GroupByNameArgKeyword=$groupByName",
       s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
       s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
-      s"$StreamingCustomSavepointArgKeyword=gs://zl-warehouse/flink-state/checkpoints/1234/chk-12"
+      s"$StreamingCustomSavepointArgKeyword=gs://zl-warehouse/flink-state/checkpoints/1234/chk-12",
+      s"$JobIdArgKeyword=job-id"
     )
     val submitter = mock[DataprocSubmitter]
 

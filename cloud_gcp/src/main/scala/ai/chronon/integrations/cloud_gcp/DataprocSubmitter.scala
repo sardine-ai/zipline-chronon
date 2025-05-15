@@ -7,7 +7,6 @@ import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
-import java.util.UUID
 
 import scala.io.Source
 import scala.jdk.CollectionConverters._
@@ -376,7 +375,9 @@ object DataprocSubmitter {
 
     val metadataName = Option(JobSubmitter.getMetadata(args).get.getName).getOrElse("")
 
-    val jobId = UUID.randomUUID().toString
+    val jobId = JobSubmitter
+      .getArgValue(args, JobIdArgKeyword)
+      .getOrElse(throw new Exception("Missing required argument: " + JobIdArgKeyword))
 
     val submissionProps = jobType match {
       case TypeSparkJob =>
