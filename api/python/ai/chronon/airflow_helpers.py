@@ -149,6 +149,9 @@ def _set_join_deps(join):
     # Update the metadata customJson with dependencies
     _dedupe_and_set_airflow_deps_json(join, deps)
 
+    # Set the t/f flag for label_join
+    _set_label_join_flag(join)
+
 
 def _set_group_by_deps(group_by):
     if not group_by.sources:
@@ -168,6 +171,16 @@ def _set_group_by_deps(group_by):
 
     # Update the metadata customJson with dependencies
     _dedupe_and_set_airflow_deps_json(group_by, deps)
+
+
+def _set_label_join_flag(join):
+    existing_json = join.metaData.customJson or "{}"
+    json_map = json.loads(existing_json)
+    label_join_flag = False
+    if join.labelParts:
+        label_join_flag = True
+    json_map["label_join"] = label_join_flag
+    join.metaData.customJson = json.dumps(json_map)
 
 
 def _dedupe_and_set_airflow_deps_json(obj, deps):
