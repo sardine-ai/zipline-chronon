@@ -20,7 +20,7 @@ from ai.chronon.join import (
     JoinPart,
 )
 from ai.chronon.repo.constants import RunMode
-from ai.chronon.types import EnvironmentVariables
+from ai.chronon.types import EnvironmentVariables, LabelParts
 
 v1 = Join(
     left=test_sources.staging_entities,
@@ -33,6 +33,7 @@ v1 = Join(
         }
     ),
     online=True,
+    label_part=LabelParts([JoinPart(group_by=sample_group_by.v1)], 1, 1)
 )
 
 never = Join(
