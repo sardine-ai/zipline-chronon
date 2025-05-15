@@ -412,7 +412,7 @@ class MetadataStore(fetchContext: FetchContext) {
         } else {
           import ai.chronon.online.metrics
           val groupByServingInfo = ThriftJsonCodec
-            .fromJsonStr[GroupByServingInfo](metaData.get, check = true, classOf[GroupByServingInfo])
+            .fromJsonStr[GroupByServingInfo](metaData.get, check = false, classOf[GroupByServingInfo])
           metrics.Metrics
             .Context(metrics.Metrics.Environment.MetaDataFetching, groupByServingInfo.groupBy)
             .withSuffix("group_by")
