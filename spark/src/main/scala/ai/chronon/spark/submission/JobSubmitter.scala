@@ -152,6 +152,8 @@ object JobSubmitterConstants {
   val StreamingCustomSavepointArgKeyword = "--custom-savepoint"
   val StreamingNoSavepointArgKeyword = "--no-savepoint"
 
+  val JobIdArgKeyword = "--job-id"
+
   val SharedInternalArgs: Set[String] = Set(
     JarUriArgKeyword,
     JobTypeArgKeyword,
@@ -167,7 +169,8 @@ object JobSubmitterConstants {
     StreamingCustomSavepointArgKeyword,
     StreamingNoSavepointArgKeyword,
     StreamingCheckpointPathArgKeyword,
-    StreamingVersionCheckDeploy
+    StreamingVersionCheckDeploy,
+    JobIdArgKeyword
   )
 
   val GcpBigtableInstanceIdEnvVar = "GCP_BIGTABLE_INSTANCE_ID"
