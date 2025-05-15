@@ -1,10 +1,10 @@
 package ai.chronon.api.planner
 
-import ai.chronon.api.PartitionRange
+import ai.chronon.api.{PartitionRange, PartitionSpec}
 import ai.chronon.api
 
 trait BatchRunContext {
-  def partitionSpecWithColumn: PartitionSpecWithColumn
+  def partitionSpec: PartitionSpec
 }
 // run context in our case will be tableUtils
 trait NodeRunner[Conf] {

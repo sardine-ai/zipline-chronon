@@ -11,7 +11,7 @@ import scala.collection.mutable
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.collection.Seq
 
-class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpecWithColumn)
+class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
     extends Planner[Join](join)(outputPartitionSpec) {
 
   val leftSourceNode: SourceWithFilterNode = {
