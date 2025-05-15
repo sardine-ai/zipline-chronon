@@ -17,28 +17,28 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api.{Constants, DateRange, ThriftJsonCodec}
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
-import ai.chronon.api.planner.{PartitionSpecWithColumn, RelevantLeftForJoinPart}
+import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.{Constants, DateRange, ThriftJsonCodec}
-import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
 import ai.chronon.online.{Api, MetadataDirWalker, MetadataEndPoint, TopicChecker}
+import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
 import ai.chronon.orchestration.{JoinMergeNode, JoinPartNode}
 import ai.chronon.spark.batch._
 import ai.chronon.spark.catalog.{Format, TableUtils}
-import ai.chronon.spark.stats.drift.{Summarizer, SummaryPacker, SummaryUploader}
 import ai.chronon.spark.stats.{CompareBaseJob, CompareJob, ConsistencyJob}
+import ai.chronon.spark.stats.drift.{Summarizer, SummaryPacker, SummaryUploader}
 import ai.chronon.spark.streaming.JoinSourceRunner
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkFiles
+import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.apache.spark.sql.streaming.StreamingQueryListener
 import org.apache.spark.sql.streaming.StreamingQueryListener.{
   QueryProgressEvent,
   QueryStartedEvent,
   QueryTerminatedEvent
 }
-import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
@@ -49,8 +49,8 @@ import java.io.File
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
 
@@ -1016,7 +1016,9 @@ object Driver {
       val isAllPartitionsPresent = tablesToPartitionSpec.forall { case (tbl, spec) =>
         val containsSpec = if (tableUtils.tableReachable(tbl)) {
           val partList = tableUtils.partitions(tbl, spec.tail.toMap, partitionColumnName = spec.head._1)
-          partList.nonEmpty
+          logger.info(
+            s"Checking for presence of partition: ${spec.head} for table: ${tbl} with subpartitions: ${spec.tail}")
+          partList.contains(spec.head._2)
         } else {
           logger.info(s"Table ${tbl} is not reachable.")
           false
