@@ -1,12 +1,20 @@
 package ai.chronon.api.planner
 import ai.chronon.api.Extensions.{MetadataOps, StringOps, WindowUtils}
 import ai.chronon.api.ScalaJavaConversions.{JListOps, MapOps}
-import ai.chronon.api.{ConfigType, ExecutionInfo, MetaData, TableDependency, TableInfo}
+import ai.chronon.api.{
+  ConfigType,
+  Constants,
+  ExecutionInfo,
+  MetaData,
+  PartitionSpec,
+  TableDependency,
+  TableInfo,
+  ThriftJsonCodec
+}
 import ai.chronon.api
 import ai.chronon.api.Constants.{getClass, _}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.{Constants, ThriftJsonCodec}
 import com.google.gson.Gson
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -23,7 +31,7 @@ object MetaDataUtils {
             modeName: String,
             nodeName: String,
             tableDependencies: Seq[TableDependency],
-            stepDays: Option[Int] = None)(implicit partitionSpecWithColumn: PartitionSpecWithColumn): MetaData = {
+            stepDays: Option[Int] = None)(implicit partitionSpec: PartitionSpec): MetaData = {
 
     val copy = baseMetadata.deepCopy()
     val newName = nodeName
@@ -48,9 +56,9 @@ object MetaDataUtils {
     // fully qualified: namespace + outputTable
     copy.executionInfo.outputTableInfo
       .setTable(copy.outputTable)
-      .setPartitionColumn(partitionSpecWithColumn.partitionColumn)
-      .setPartitionFormat(partitionSpecWithColumn.partitionSpec.format)
-      .setPartitionInterval(WindowUtils.hours(partitionSpecWithColumn.partitionSpec.spanMillis))
+      .setPartitionColumn(partitionSpec.column)
+      .setPartitionFormat(partitionSpec.format)
+      .setPartitionInterval(WindowUtils.hours(partitionSpec.spanMillis))
 
     // set table dependencies
     copy.executionInfo.setTableDependencies(tableDependencies.toJava)

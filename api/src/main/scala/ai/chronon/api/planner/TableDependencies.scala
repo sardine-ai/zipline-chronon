@@ -2,12 +2,11 @@ package ai.chronon.api.planner
 import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.IteratorOps
-import ai.chronon.api.{Accuracy, DataModel, TableDependency, TableInfo, Window}
+import ai.chronon.api.{Accuracy, DataModel, PartitionSpec, TableDependency, TableInfo, Window}
 
 object TableDependencies {
 
-  def fromJoin(join: api.Join, labelParts: api.LabelParts)(implicit
-      specWithColumn: PartitionSpecWithColumn): Seq[TableDependency] = {
+  def fromJoin(join: api.Join, labelParts: api.LabelParts)(implicit spec: PartitionSpec): Seq[TableDependency] = {
 
     val joinParts = labelParts.labels.iterator().toScala.toArray.distinct
     joinParts.flatMap { jp =>
@@ -61,9 +60,9 @@ object TableDependencies {
               .setTableInfo(
                 new TableInfo()
                   .setTable(jp.groupBy.metaData.outputTable)
-                  .setPartitionColumn(specWithColumn.partitionColumn)
-                  .setPartitionFormat(specWithColumn.partitionSpec.format)
-                  .setPartitionInterval(WindowUtils.hours(specWithColumn.partitionSpec.spanMillis))
+                  .setPartitionColumn("dt")
+                  .setPartitionFormat(spec.format)
+                  .setPartitionInterval(WindowUtils.hours(spec.spanMillis))
               )
               .setStartOffset(minWindow.inverse)
               .setEndOffset(maxWindow.inverse)

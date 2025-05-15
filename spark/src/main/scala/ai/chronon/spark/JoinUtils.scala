@@ -532,10 +532,10 @@ object JoinUtils {
   }
 
   def computeLeftSourceTableName(join: api.Join)(implicit tableUtils: TableUtils): String = {
-    new JoinOfflinePlanner(join)(tableUtils.outputPartitionSpec).leftSourceNode.metaData.cleanName
+    new JoinOfflinePlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.cleanName
   }
 
   def computeFullLeftSourceTableName(join: api.Join)(implicit tableUtils: TableUtils): String = {
-    new JoinOfflinePlanner(join)(tableUtils.outputPartitionSpec).leftSourceNode.metaData.outputTable
+    new JoinOfflinePlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.outputTable
   }
 }

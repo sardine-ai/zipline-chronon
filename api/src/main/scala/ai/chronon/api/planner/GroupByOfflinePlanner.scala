@@ -1,11 +1,11 @@
 package ai.chronon.api.planner
 import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.{DataModel, GroupBy, MetaData, TableDependency, ThriftJsonCodec}
+import ai.chronon.api.{DataModel, GroupBy, MetaData, PartitionSpec, TableDependency, ThriftJsonCodec}
 import ai.chronon.orchestration.GroupByBackfillNode
 
 import scala.util.Try
 
-class GroupByOfflinePlanner(groupBy: GroupBy)(implicit outputPartitionSpec: PartitionSpecWithColumn)
+class GroupByOfflinePlanner(groupBy: GroupBy)(implicit outputPartitionSpec: PartitionSpec)
     extends Planner[GroupBy](groupBy)(outputPartitionSpec) {
 
   private def tableDeps: Seq[TableDependency] = TableDependencies.fromGroupBy(groupBy)

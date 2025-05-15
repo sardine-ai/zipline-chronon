@@ -20,7 +20,6 @@ import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUti
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.planner.PartitionSpecWithColumn
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
@@ -52,9 +51,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val partitionFormat: String =
     sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
   val partitionSpec: PartitionSpec = PartitionSpec(partitionColumn, partitionFormat, WindowUtils.Day.millis)
-
-  // TODO: remove this
-  val outputPartitionSpec: PartitionSpecWithColumn = PartitionSpecWithColumn(partitionColumn, partitionSpec)
 
   val smallModelEnabled: Boolean =
     sparkSession.conf.get("spark.chronon.backfill.small_mode.enabled", "true").toBoolean

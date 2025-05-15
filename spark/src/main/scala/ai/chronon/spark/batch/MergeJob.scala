@@ -2,7 +2,7 @@ package ai.chronon.spark.batch
 
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions.{DateRangeOps, GroupByOps, JoinPartOps, MetadataOps, SourceOps}
-import ai.chronon.api.planner.{PartitionSpecWithColumn, RelevantLeftForJoinPart}
+import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.api.{Accuracy, Constants, DataModel, DateRange, JoinPart, PartitionRange, PartitionSpec, QueryUtils}
 import ai.chronon.orchestration.JoinMergeNode
 import ai.chronon.spark.Extensions._
