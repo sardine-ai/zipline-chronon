@@ -69,7 +69,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
-  @transient private lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
+  @transient private[spark] lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   val joinPartParallelism: Int = sparkSession.conf.get("spark.chronon.join.part.parallelism", "1").toInt
   private val aggregationParallelism: Int = sparkSession.conf.get("spark.chronon.group_by.parallelism", "1000").toInt

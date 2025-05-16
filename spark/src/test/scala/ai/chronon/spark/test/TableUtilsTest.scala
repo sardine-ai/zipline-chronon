@@ -18,14 +18,18 @@ package ai.chronon.spark.test
 
 import ai.chronon.api._
 import ai.chronon.spark._
-import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException}
+import ai.chronon.spark.catalog.{Format, FormatProvider, IncompatibleSchemaException, TableUtils}
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{Row, _}
 import org.junit.Assert.{assertEquals, assertNull, assertTrue}
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{verify, when}
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.util.Try
 
@@ -612,6 +616,143 @@ class TableUtilsTest extends AnyFlatSpec {
     assertEquals("spark_catalog", Format.getCatalog("foo.bar"))
     assertEquals("spark_catalog", Format.getCatalog("bar"))
     assertThrows[ParseException](Format.getCatalog(""))
+  }
+
+  it should "test partitions function for when table is partitioned not with the default partition column but using default partition spec for the PartitionRange" in {
+    val inputTableName = "some_table"
+    val inputSubPartitionsFilter: Map[String, String] = Map.empty
+    val inputStartDs = "2023-01-01"
+    val inputEndDs = "2023-01-02"
+
+    // Using the default partition spec
+    val inputPartitionRange = Some(PartitionRange(inputStartDs, inputEndDs)(partitionSpec))
+
+    val inputPartitionColumnName = "not_ds"
+    val inputTablePartitionSpec = Some(PartitionSpec(inputPartitionColumnName, "yyyy-MM-dd", 24 * 60 * 60 * 1000L))
+
+    val mockFormatProviderType = mock[FormatProvider.type]
+    val mockFormatProvider = mock[FormatProvider]
+    when(mockFormatProviderType.from(any())).thenReturn(mockFormatProvider)
+
+    val mockFormat = mock[Format]
+    when(mockFormatProvider.readFormat(inputTableName)).thenReturn(Some(mockFormat))
+
+    val tableNameCapture = ArgumentCaptor.forClass(classOf[String])
+    val partitionColumnNameCapture = ArgumentCaptor.forClass(classOf[String])
+    val partitionFiltersCapture = ArgumentCaptor.forClass(classOf[String])
+    val subPartitionsFilterCapture = ArgumentCaptor.forClass(classOf[Map[String, String]])
+
+    when(
+      mockFormat.primaryPartitions(
+        any(),
+        any(),
+        any(),
+        any()
+      )(any())).thenReturn(List.empty)
+
+    val overrideTableUtils = new TableUtils(spark) {
+      @transient override lazy val tableFormatProvider: FormatProvider = mockFormatProvider
+
+      override def tableReachable(tableName: String, ignoreFailure: Boolean): Boolean =
+        true
+    }
+
+    overrideTableUtils.partitions(
+      tableName = inputTableName,
+      subPartitionsFilter = inputSubPartitionsFilter,
+      partitionRange = inputPartitionRange,
+      partitionColumnName = inputPartitionColumnName,
+      tablePartitionSpec = inputTablePartitionSpec
+    )
+
+    verify(mockFormat).primaryPartitions(
+      tableName = tableNameCapture.capture(),
+      partitionColumn = partitionColumnNameCapture.capture(),
+      partitionFilters = partitionFiltersCapture.capture(),
+      subPartitionsFilter = subPartitionsFilterCapture.capture()
+    )(any())
+
+    val tableNameCaptured = tableNameCapture.getValue
+    val partitionColumnNameCaptured = partitionColumnNameCapture.getValue
+    val partitionFiltersCaptured = partitionFiltersCapture.getValue
+    val subPartitionsFilterCaptured = subPartitionsFilterCapture.getValue
+
+    assertEquals(tableNameCaptured, inputTableName)
+    assertEquals(partitionColumnNameCaptured, inputPartitionColumnName)
+    assertEquals(partitionFiltersCaptured, s"(ds >= '$inputStartDs') AND (ds <= '$inputEndDs')")
+
+    assertEquals(subPartitionsFilterCaptured, inputSubPartitionsFilter)
+  }
+
+  it should "test partitions function for when table is partitioned not with the default partition column with custom partition spec for the PartitionRange" in {
+    val inputTableName = "some_table"
+    val inputSubPartitionsFilter: Map[String, String] = Map.empty
+    val inputStartDs = "2023-01-01"
+    val inputEndDs = "2023-01-02"
+
+    val inputPartitionColumnName = "not_ds"
+
+    // Creating a partition range with custom partition spec
+    val customPartitionSpec = PartitionSpec(inputPartitionColumnName, "yyyy-MM-dd", 24 * 60 * 60 * 1000L)
+    val inputPartitionRange = Some(PartitionRange(inputStartDs, inputEndDs)(customPartitionSpec))
+
+    val inputTablePartitionSpec = Some(PartitionSpec(inputPartitionColumnName, "yyyy-MM-dd", 24 * 60 * 60 * 1000L))
+
+    val mockFormatProviderType = mock[FormatProvider.type]
+    val mockFormatProvider = mock[FormatProvider]
+    when(mockFormatProviderType.from(any())).thenReturn(mockFormatProvider)
+
+    val mockFormat = mock[Format]
+    when(mockFormatProvider.readFormat(inputTableName)).thenReturn(Some(mockFormat))
+
+    val tableNameCapture = ArgumentCaptor.forClass(classOf[String])
+    val partitionColumnNameCapture = ArgumentCaptor.forClass(classOf[String])
+    val partitionFiltersCapture = ArgumentCaptor.forClass(classOf[String])
+    val subPartitionsFilterCapture = ArgumentCaptor.forClass(classOf[Map[String, String]])
+
+    when(
+      mockFormat.primaryPartitions(
+        any(),
+        any(),
+        any(),
+        any()
+      )(any())).thenReturn(List.empty)
+
+    val overrideTableUtils = new TableUtils(spark) {
+      @transient override lazy val tableFormatProvider: FormatProvider = mockFormatProvider
+
+      override def tableReachable(tableName: String, ignoreFailure: Boolean): Boolean =
+        true
+    }
+
+    // Call the method under test
+    overrideTableUtils.partitions(
+      tableName = inputTableName,
+      subPartitionsFilter = inputSubPartitionsFilter,
+      partitionRange = inputPartitionRange,
+      partitionColumnName = inputPartitionColumnName,
+      tablePartitionSpec = inputTablePartitionSpec
+    )
+
+    // Move verification AFTER the method call
+    verify(mockFormat).primaryPartitions(
+      tableName = tableNameCapture.capture(),
+      partitionColumn = partitionColumnNameCapture.capture(),
+      partitionFilters = partitionFiltersCapture.capture(),
+      subPartitionsFilter = subPartitionsFilterCapture.capture()
+    )(any())
+
+    val tableNameCaptured = tableNameCapture.getValue
+    val partitionColumnNameCaptured = partitionColumnNameCapture.getValue
+    val partitionFiltersCaptured = partitionFiltersCapture.getValue
+    val subPartitionsFilterCaptured = subPartitionsFilterCapture.getValue
+
+    assertEquals(tableNameCaptured, inputTableName)
+    assertEquals(partitionColumnNameCaptured, inputPartitionColumnName)
+    assertEquals(partitionFiltersCaptured,
+                 s"($inputPartitionColumnName >= '$inputStartDs') AND ($inputPartitionColumnName <= '$inputEndDs')")
+
+    assertEquals(subPartitionsFilterCaptured, inputSubPartitionsFilter)
   }
 
 }
