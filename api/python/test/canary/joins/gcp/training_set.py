@@ -1,4 +1,4 @@
-from group_bys.gcp.purchases import v1_dev, v1_test
+from group_bys.gcp import purchases
 
 from ai.chronon.api.ttypes import EventSource, Source
 from ai.chronon.join import Join, JoinPart
@@ -23,13 +23,40 @@ source = Source(
 v1_test = Join(
     left=source,
     right_parts=[
-        JoinPart(group_by=v1_test)
+        JoinPart(group_by=purchases.v1_test)
     ],
 )
 
 v1_dev = Join(
     left=source,
     right_parts=[
-        JoinPart(group_by=v1_dev)
+        JoinPart(group_by=purchases.v1_dev)
+    ],
+)
+
+source_notds = Source(
+    events=EventSource(
+        table="data.checkouts_notds",
+        query=Query(
+            selects=selects(
+                "user_id"
+            ),  # The primary key used to join various GroupBys together
+            time_column="ts",
+            partition_column="notds"
+        ),  # The event time used to compute feature values as-of
+    )
+)
+
+v1_test_notds = Join(
+    left=source_notds,
+    right_parts=[
+        JoinPart(group_by=purchases.v1_test_notds)
+    ],
+)
+
+v1_dev_notds = Join(
+    left=source_notds,
+    right_parts=[
+        JoinPart(group_by=purchases.v1_dev_notds)
     ],
 )

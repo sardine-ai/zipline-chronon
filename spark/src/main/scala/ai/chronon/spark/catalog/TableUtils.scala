@@ -130,13 +130,15 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     if (!tableReachable(tableName)) return List.empty[String]
     val rangeWheres = andPredicates(partitionRange.map(_.whereClauses).getOrElse(Seq.empty))
 
+    val effectivePartColumn = tablePartitionSpec.map(_.column).getOrElse(partitionColumnName)
+
     val partitions = tableFormatProvider
       .readFormat(tableName)
       .map((format) => {
         logger.info(
-          s"Getting partitions for ${tableName} with partitionColumnName ${partitionColumnName} and subpartitions: ${subPartitionsFilter}")
+          s"Getting partitions for ${tableName} with partitionColumnName ${effectivePartColumn} and subpartitions: ${subPartitionsFilter}")
         val partitions =
-          format.primaryPartitions(tableName, partitionColumnName, rangeWheres, subPartitionsFilter)(sparkSession)
+          format.primaryPartitions(tableName, effectivePartColumn, rangeWheres, subPartitionsFilter)(sparkSession)
 
         if (partitions.isEmpty) {
           logger.info(s"No partitions found for table: $tableName with subpartition filters ${subPartitionsFilter}")

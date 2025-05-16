@@ -21,9 +21,9 @@ import ai.chronon.spark._
 import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException}
 import ai.chronon.spark.test.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
+import org.apache.spark.sql.{Row, _}
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{Row, _}
 import org.junit.Assert.{assertEquals, assertNull, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 
