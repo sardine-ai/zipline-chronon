@@ -679,9 +679,11 @@ class TableUtilsTest extends AnyFlatSpec {
 
     assertEquals(tableNameCaptured, inputTableName)
     assertEquals(partitionColumnNameCaptured, inputPartitionColumnName)
+    assertEquals(subPartitionsFilterCaptured, inputSubPartitionsFilter)
+
+    // Still using `ds` even though we set a `not_ds`
     assertEquals(partitionFiltersCaptured, s"(ds >= '$inputStartDs') AND (ds <= '$inputEndDs')")
 
-    assertEquals(subPartitionsFilterCaptured, inputSubPartitionsFilter)
   }
 
   it should "test partitions function for when table is partitioned not with the default partition column with custom partition spec for the PartitionRange" in {
@@ -749,10 +751,12 @@ class TableUtilsTest extends AnyFlatSpec {
 
     assertEquals(tableNameCaptured, inputTableName)
     assertEquals(partitionColumnNameCaptured, inputPartitionColumnName)
+    assertEquals(subPartitionsFilterCaptured, inputSubPartitionsFilter)
+
+    // Actually using the `non_ds`
     assertEquals(partitionFiltersCaptured,
                  s"($inputPartitionColumnName >= '$inputStartDs') AND ($inputPartitionColumnName <= '$inputEndDs')")
 
-    assertEquals(subPartitionsFilterCaptured, inputSubPartitionsFilter)
   }
 
 }
