@@ -60,7 +60,7 @@ object TableDependencies {
               .setTableInfo(
                 new TableInfo()
                   .setTable(jp.groupBy.metaData.outputTable)
-                  .setPartitionColumn("dt")
+                  .setPartitionColumn(spec.column)
                   .setPartitionFormat(spec.format)
                   .setPartitionInterval(WindowUtils.hours(spec.spanMillis))
               )
