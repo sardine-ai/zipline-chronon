@@ -325,9 +325,8 @@ object JoinUtils {
       groupByKeyExpressions
         .map { case (keyName, groupByKeyExpression) =>
           val leftSideKeyName = joinPart.rightToLeft(keyName)
-          logger.info(
-            s"KeyName: $keyName, leftSide KeyName: $leftSideKeyName , Join right to left: ${joinPart.rightToLeft
-                .mkString(", ")}")
+          logger.info(s"KeyName: $keyName, leftSide KeyName: $leftSideKeyName , " +
+            s"Join right to left: ${joinPart.rightToLeft.mkString(", ")}")
           val values = collectedLeft.map(row => row.getAs[Any](leftSideKeyName))
           // Check for null keys, warn if found, err if all null
           val (notNullValues, nullValues) = values.partition(_ != null)
@@ -494,12 +493,7 @@ object JoinUtils {
   }
 
   def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Option[Map[String, Seq[String]]] = {
-    Option(jmap).map(
-      _.toScala
-        .map { case (key, list) =>
-          key -> list.asScala
-        }
-        .toMap)
+    Option(jmap).map(_.toScala.map { case (key, list) => key -> list.asScala }.toMap)
   }
 
   def shiftDays(leftDataModel: DataModel, joinPart: JoinPart, leftRange: PartitionRange): PartitionRange = {
