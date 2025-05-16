@@ -83,9 +83,11 @@ object JoinUtils {
     val effectiveLeftSpec = joinConf.left.partitionSpec
     val effectiveLeftRange = range.translate(effectiveLeftSpec)
 
+    val partitionColumnOfLeft = effectiveLeftSpec.column
+
     var df = tableUtils.scanDf(joinConf.left.query,
                                joinConf.left.table,
-                               Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
+                               Some((Map(partitionColumnOfLeft -> null) ++ timeProjection).toMap),
                                range = Some(effectiveLeftRange))
 
     limit.foreach(l => df = df.limit(l))
