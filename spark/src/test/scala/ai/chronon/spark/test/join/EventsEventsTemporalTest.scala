@@ -18,6 +18,7 @@ package ai.chronon.spark.test.join
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
+import ai.chronon.api.Extensions.SourceOps
 import ai.chronon.api.{Builders, Operation, TimeUnit, Window}
 import ai.chronon.spark._
 import ai.chronon.spark.Extensions._
@@ -54,9 +55,9 @@ class EventsEventsTemporalTest extends BaseJoinTest {
 
     // left side
     val itemQueries = List(Column("item", api.StringType, 10))
-    val itemQueriesTable = s"$namespace.item_queries_events_events_temporal"
-    val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 100, partitions = 100)
+    val itemQueriesTable = joinConf.left.table
+    val itemQueriesDf = DataFrameGen.events(spark, itemQueries, 100, partitions = 100)
+
     // duplicate the events
     itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
 
