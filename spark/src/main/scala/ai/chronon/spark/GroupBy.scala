@@ -362,11 +362,17 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
             eventsOpt.map(_.iterator.map(SparkConversions.toChrononRow(_, tsIndex))).orNull
           }
 
-          val inputs = inputsIt.toArray
-          util.Arrays.sort(inputs, RowWrapper.timeComparator)
+          val sortedInputs = if (inputsIt != null) {
+            val inputs = inputsIt.toArray
+            util.Arrays.sort(inputs, RowWrapper.timeComparator)
+            inputs
+          } else {
+            null
+          }
 
           val queries = queriesWithPartition.map { TimeTuple.getTs }
-          val irs = sawtoothAggregator.cumulate(inputs.asInstanceOf[Array[api.Row]], queries, headStartIrOpt.orNull)
+          val irs =
+            sawtoothAggregator.cumulate(sortedInputs.asInstanceOf[Array[api.Row]], queries, headStartIrOpt.orNull)
 
           queries.indices.map { i =>
             (keys.data ++ queriesWithPartition(i).toArray, normalizeOrFinalize(irs(i)))
