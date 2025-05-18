@@ -91,11 +91,12 @@ abstract class BaseJoinTest extends AnyFlatSpec {
   protected def getEventsEventsTemporal(nameSuffix: String = "") = {
     // left side
     val itemQueries = List(Column("item", api.StringType, 100))
-    val itemQueriesTable = s"$namespace.item_queries"
+    val itemQueriesTable = s"${namespace}.item_queries_$nameSuffix"
     val itemQueriesDf = DataFrameGen
       .events(spark, itemQueries, 100, partitions = 100)
+
     // duplicate the events
-    itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
+    itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
     val suffix = if (nameSuffix.isEmpty) "" else s"_$nameSuffix"
