@@ -54,7 +54,7 @@ class EventsEventsTemporalTest extends BaseJoinTest {
 
     // left side
     val itemQueries = List(Column("item", api.StringType, 10))
-    val itemQueriesTable = s"$namespace.item_queries"
+    val itemQueriesTable = s"$namespace.item_queries_events_events_temporal"
     val itemQueriesDf = DataFrameGen
       .events(spark, itemQueries, 100, partitions = 100)
     // duplicate the events

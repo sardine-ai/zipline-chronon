@@ -17,7 +17,8 @@
 package ai.chronon.spark.test.join
 
 import ai.chronon.api.Builders
-import ai.chronon.api.{Window, TimeUnit}
+import ai.chronon.api.Extensions.SourceOps
+import ai.chronon.api.{TimeUnit, Window}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.spark._
 import ai.chronon.spark.Extensions._
@@ -34,7 +35,7 @@ class EventsEventsCumulativeTest extends BaseJoinTest {
     joinConf.setJoinParts(Seq(Builders.JoinPart(groupBy = viewsGroupBy)).toJava)
 
     // Run job
-    val itemQueriesTable = s"$namespace.item_queries"
+    val itemQueriesTable = joinConf.left.table
     println("Item Queries DF: ")
     val q =
       s"""
