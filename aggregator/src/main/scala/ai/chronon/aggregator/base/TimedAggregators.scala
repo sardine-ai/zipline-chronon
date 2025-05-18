@@ -52,6 +52,34 @@ object TimeTuple extends Ordering[util.ArrayList[Any]] {
   }
 }
 
+object ArrayTimeTuple extends Ordering[Array[Any]] {
+  type typ = Array[Any]
+
+  def `type`(inputType: DataType): DataType =
+    StructType(
+      s"TimePair_${DataType.toString(inputType)}",
+      Array(
+        StructField("epochMillis", LongType),
+        StructField("payload", inputType)
+      )
+    )
+
+  def make(ts: Long, payload: Any): typ = {
+    Array(ts, payload)
+  }
+
+  def reset(ts: Long, payload: Any, tup: Array[Any]): Unit = {
+    tup.update(0, ts)
+    tup.update(1, payload)
+  }
+
+  def getTs(tup: typ): Long = tup(0).asInstanceOf[Long]
+
+  override def compare(x: Array[Any], y: Array[Any]): Int = {
+    java.lang.Long.compare(getTs(x), getTs(y))
+  }
+}
+
 abstract class TimeOrdered(inputType: DataType) extends TimedAggregator[Any, TimeTuple.typ, Any] {
   override def outputType: DataType = inputType
 

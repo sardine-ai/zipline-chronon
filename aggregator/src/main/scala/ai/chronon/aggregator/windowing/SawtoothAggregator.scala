@@ -96,47 +96,47 @@ class SawtoothAggregator(aggregations: Seq[Aggregation], inputSchema: Seq[(Strin
 
   // method is used to generate head-realtime ness on top of hops
   // But without the requirement that the input be sorted
-  def cumulate(inputs: Iterator[Row], // don't need to be sorted
+  def cumulate(sortedInputs: Array[Row], // don't need to be sorted
                sortedEndTimes: Array[Long], // sorted,
                baseIR: Array[Any]): Array[Array[Any]] = {
+
     if (sortedEndTimes == null || sortedEndTimes.isEmpty) return Array.empty[Array[Any]]
-    if (inputs == null || inputs.isEmpty)
+
+    if (sortedInputs == null || sortedInputs.isEmpty)
       return Array.fill[Array[Any]](sortedEndTimes.length)(baseIR)
 
     val result = Array.fill[Array[Any]](sortedEndTimes.length)(null)
-    while (inputs.hasNext) {
-      val row = inputs.next()
-      val inputTs = row.ts
-      var updateIndex = util.Arrays.binarySearch(sortedEndTimes, inputTs)
-      if (updateIndex >= 0) { // we found an exact match so we need to search further to get updateIndex
-        while (updateIndex < sortedEndTimes.length && sortedEndTimes(updateIndex) == inputTs)
-          updateIndex += 1
-      } else {
-        // binary search didn't find an exact match
-        updateIndex = math.abs(updateIndex) - 1
-      }
-      if (updateIndex < sortedEndTimes.length && updateIndex >= 0) {
-        if (result(updateIndex) == null) {
-          result.update(updateIndex, new Array[Any](baseAggregator.length))
-        }
-        baseAggregator.update(result(updateIndex), row)
-      }
+
+    var inputIdx = 0
+    var queryIdx = 0
+
+    var queryIr = if(baseIR == null) {
+      new Array[Any](windowedAggregator.length)
+    } else {
+      baseIR
     }
 
-    // at this point results aren't cumulated, and are one per spec, instead of one per window
-    var currBase = baseIR
-    for (i <- result.indices) {
-      val binned = result(i)
-      if (binned != null) {
-        currBase = windowedAggregator.clone(currBase)
-        for (col <- windowedAggregator.indices) {
-          val merged = windowedAggregator(col)
-            .merge(currBase(col), binned(baseIrIndices(col)))
-          currBase.update(col, merged)
+    while(queryIdx < sortedEndTimes.length) {
+
+      var didClone = false
+
+      while(inputIdx < sortedInputs.length && sortedInputs(inputIdx).ts < sortedEndTimes(queryIdx)) {
+
+        // clone only if necessary - queryIrs differ between consecutive endTimes
+        if (!didClone) {
+          queryIr = windowedAggregator.clone(queryIr)
+          didClone = true
         }
+
+        windowedAggregator.update(queryIr, sortedInputs(inputIdx))
+        inputIdx += 1
       }
-      result.update(i, currBase)
+
+      result.update(queryIdx, queryIr)
+      queryIdx += 1
+
     }
+
     result
   }
 }

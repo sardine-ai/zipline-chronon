@@ -22,6 +22,8 @@ import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.types._
 
 import java.util
+import java.util.Comparator
+import java.util.function.ToLongFunction
 import scala.collection.{Seq, mutable}
 
 // wrapper class of spark ai.chronon.aggregator.row that the RowAggregator can work with
@@ -51,6 +53,13 @@ class RowWrapper(val row: Row, val tsIndex: Int, val reversalIndex: Int = -1, va
             "Requested mutation timestamp from a ai.chronon.api.Row with missing `mutation_ts` column")
     getAs[Long](mutationTsIndex)
   }
+
+}
+
+object RowWrapper {
+  val timeComparator: Comparator[RowWrapper] = util.Comparator.comparingLong(new ToLongFunction[RowWrapper] {
+    override def applyAsLong(value: RowWrapper): Long = value.ts
+  })
 }
 
 object SparkConversions {

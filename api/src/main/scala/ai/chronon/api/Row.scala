@@ -17,6 +17,8 @@
 package ai.chronon.api
 
 import java.util
+import java.util.Comparator
+import java.util.function.ToLongFunction
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.collection.mutable
 
@@ -70,6 +72,11 @@ trait SchemaTraverser[SchemaType] {
 }
 
 object Row {
+
+  val timeComparator: Comparator[Row] = util.Comparator.comparingLong(new ToLongFunction[Row] {
+    override def applyAsLong(value: Row): Long = value.ts
+  })
+
   // recursively traverse a logical struct, and convert it chronon's row type
   def from[CompositeType, BinaryType, ArrayType, StringType](
       value: Any,

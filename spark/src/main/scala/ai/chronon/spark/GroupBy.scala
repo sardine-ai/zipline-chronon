@@ -21,16 +21,7 @@ import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing._
 import ai.chronon.api
-import ai.chronon.api.{
-  Accuracy,
-  Constants,
-  DataModel,
-  ParametricMacro,
-  PartitionRange,
-  PartitionSpec,
-  TsUtils,
-  TimeRange
-}
+import ai.chronon.api.{Accuracy, Constants, DataModel, ParametricMacro, PartitionRange, PartitionSpec, TimeRange, TsUtils}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.DataModel.EVENTS
@@ -50,6 +41,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import java.util
+import java.util.function.ToLongFunction
 import scala.collection.Seq
 import scala.collection.mutable
 
@@ -357,11 +349,17 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
         case ((keys: KeyWithHash, _: Long),
               ((queriesWithPartition: Array[TimeTuple.typ], headStartIrOpt: Option[Array[Any]]),
                eventsOpt: Option[Iterable[Row]])) =>
-          val inputsIt: Iterator[RowWrapper] = {
-            eventsOpt.map(_.map(SparkConversions.toChrononRow(_, tsIndex)).iterator).orNull
+
+          val inputsIt = {
+            eventsOpt.map(_.iterator.map(SparkConversions.toChrononRow(_, tsIndex))).orNull
           }
+
+          val inputs = inputsIt.toArray
+          util.Arrays.sort(inputs, RowWrapper.timeComparator)
+
           val queries = queriesWithPartition.map { TimeTuple.getTs }
-          val irs = sawtoothAggregator.cumulate(inputsIt, queries, headStartIrOpt.orNull)
+          val irs = sawtoothAggregator.cumulate(inputs.asInstanceOf[Array[api.Row]], queries, headStartIrOpt.orNull)
+
           queries.indices.map { i =>
             (keys.data ++ queriesWithPartition(i).toArray, normalizeOrFinalize(irs(i)))
           }

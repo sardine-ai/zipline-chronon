@@ -425,8 +425,8 @@ object ColumnAggregator {
 
       case Operation.FIRST   => timed(new First(inputType))
       case Operation.LAST    => timed(new Last(inputType))
-      case Operation.FIRST_K => timed(new FirstK(inputType, aggregationPart.getInt("k")))
-      case Operation.LAST_K  => timed(new LastK(inputType, aggregationPart.getInt("k")))
+      case Operation.FIRST_K => timed(new BufferedFirstK(inputType, aggregationPart.getInt("k")))
+      case Operation.LAST_K  => timed(new BufferedLastK(inputType, aggregationPart.getInt("k")))
     }
   }
 }
