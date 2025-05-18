@@ -103,7 +103,7 @@ class TileCodecTest extends AnyFlatSpec {
     val originalIsComplete = true
     val rows = Seq(
       createRow(1519862399984L, 4, 4.0f, "A", Seq("D", "A", "B", "A")),
-      createRow(1519862399984L, 40, 5.0f, "B", Seq()),
+      createRow(1519862399986L, 40, 5.0f, "B", Seq()),
       createRow(1519862399988L, 4, 3.0f, "C", Seq("A", "B", "C"))
     )
     rows.foreach(row => tileCodec.rowAggregator.update(rowIR, row))
