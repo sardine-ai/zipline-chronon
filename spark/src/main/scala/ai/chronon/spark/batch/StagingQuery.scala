@@ -70,6 +70,9 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
             val df = tableUtils.sql(renderedQuery)
             df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
             logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
+
+            val dfCount = df.count()
+            logger.info(s"Wrote $dfCount rows.")
           }
           logger.info(s"Finished writing Staging Query data to $outputTable")
         } catch {
