@@ -21,7 +21,16 @@ import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.aggregator.row.RowAggregator
 import ai.chronon.aggregator.windowing._
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Constants, DataModel, ParametricMacro, PartitionRange, PartitionSpec, TimeRange, TsUtils}
+import ai.chronon.api.{
+  Accuracy,
+  Constants,
+  DataModel,
+  ParametricMacro,
+  PartitionRange,
+  PartitionSpec,
+  TimeRange,
+  TsUtils
+}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.DataModel.EVENTS
@@ -349,7 +358,6 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
         case ((keys: KeyWithHash, _: Long),
               ((queriesWithPartition: Array[TimeTuple.typ], headStartIrOpt: Option[Array[Any]]),
                eventsOpt: Option[Iterable[Row]])) =>
-
           val inputsIt = {
             eventsOpt.map(_.iterator.map(SparkConversions.toChrononRow(_, tsIndex))).orNull
           }

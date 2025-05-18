@@ -110,17 +110,17 @@ class SawtoothAggregator(aggregations: Seq[Aggregation], inputSchema: Seq[(Strin
     var inputIdx = 0
     var queryIdx = 0
 
-    var queryIr = if(baseIR == null) {
+    var queryIr = if (baseIR == null) {
       new Array[Any](windowedAggregator.length)
     } else {
       baseIR
     }
 
-    while(queryIdx < sortedEndTimes.length) {
+    while (queryIdx < sortedEndTimes.length) {
 
       var didClone = false
 
-      while(inputIdx < sortedInputs.length && sortedInputs(inputIdx).ts < sortedEndTimes(queryIdx)) {
+      while (inputIdx < sortedInputs.length && sortedInputs(inputIdx).ts < sortedEndTimes(queryIdx)) {
 
         // clone only if necessary - queryIrs differ between consecutive endTimes
         if (!didClone) {
