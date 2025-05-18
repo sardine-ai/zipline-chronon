@@ -287,8 +287,6 @@ struct WorkflowStartRequest {
     2: optional string branch
     3: optional string startDate
     4: optional string endDate
-    5: optional string partitionSpecFormat
-    6: optional i64 partitionSpecMillis
 }
 
 struct WorkflowStartResponse {
