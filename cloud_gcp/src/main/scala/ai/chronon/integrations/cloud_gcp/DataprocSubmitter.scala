@@ -572,24 +572,31 @@ object DataprocSubmitter {
           )
           .build()
       )
+
+      val gceClusterConfig = GceClusterConfig
+        .newBuilder()
+        .setNetworkUri(networkUri)
+        .setServiceAccount(f"dataproc@$projectId.iam.gserviceaccount.com")
+        .addAllServiceAccountScopes(
+          List(
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/cloud.useraccounts.readonly",
+            "https://www.googleapis.com/auth/devstorage.read_write",
+            "https://www.googleapis.com/auth/logging.write"
+          ).asJava
+        )
+        .putMetadata("hive-version", "3.1.2")
+        .putMetadata("SPARK_BQ_CONNECTOR_URL", "gs://spark-lib/bigquery/spark-3.5-bigquery-0.42.1.jar")
+        .setInternalIpOnly(true)
+
+      for(tag <- tags if tag != "") {
+        gceClusterConfig
+        .addTags(tag)
+      }
+
+      config
       .setGceClusterConfig(
-        GceClusterConfig
-          .newBuilder()
-          .setNetworkUri(networkUri)
-          .setServiceAccount(f"dataproc@$projectId.iam.gserviceaccount.com")
-          .addAllServiceAccountScopes(
-            List(
-              "https://www.googleapis.com/auth/cloud-platform",
-              "https://www.googleapis.com/auth/cloud.useraccounts.readonly",
-              "https://www.googleapis.com/auth/devstorage.read_write",
-              "https://www.googleapis.com/auth/logging.write"
-            ).asJava
-          )
-          .putMetadata("hive-version", "3.1.2")
-          .putMetadata("SPARK_BQ_CONNECTOR_URL", "gs://spark-lib/bigquery/spark-3.5-bigquery-0.42.1.jar")
-          .setInternalIpOnly(true)
-          .addAllTags(tags.asJava)
-          .build()
+        gceClusterConfig.build()
       )
       .setSoftwareConfig(
         SoftwareConfig
@@ -629,7 +636,7 @@ object DataprocSubmitter {
         .setExecutableFile(f"$artifact_prefix/scripts/opsagent_install.sh")
         .build())
 
-    for(action <- initializationActions) {
+    for(action <- initializationActions if action != "") {
         config.addInitializationActions(
             NodeInitializationAction
             .newBuilder()
