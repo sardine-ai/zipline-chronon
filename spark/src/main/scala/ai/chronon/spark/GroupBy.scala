@@ -311,10 +311,16 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
     assert(queryTsType == LongType, s"ts column needs to be long type, but found $queryTsType")
     val partitionIndex = queriesDf.schema.fieldIndex(tableUtils.partitionColumn)
 
+    val numPartitions = queriesDf.rdd.getNumPartitions
+    val queriesRdd = if (numPartitions < 1000) {
+      queriesDf.rdd.repartition(1000)
+    } else {
+      queriesDf.rdd
+    }
     // group the data to collect all the timestamps by key and headStart
     // key, headStart -> timestamps in [headStart, nextHeadStart)
     // nextHeadStart = headStart + minHopSize
-    val queriesByHeadStarts = queriesDf.rdd
+    val queriesByHeadStarts = queriesRdd
       .map { row =>
         val tsVal = row.get(queryTsIndex)
         assert(tsVal != null, "ts column cannot be null in left source or query df")
