@@ -62,7 +62,7 @@ gcp = Team(
             "GCP_PROJECT_ID": "canary-443022",
             "GCP_REGION": "us-central1",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
-
+            "GCP_DATAPROC_CLUSTER": "zipline-canary-cluster",
         },
         modeEnvironments={
             RunMode.BACKFILL: {
