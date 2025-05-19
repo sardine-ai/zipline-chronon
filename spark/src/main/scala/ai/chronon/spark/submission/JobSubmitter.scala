@@ -177,11 +177,11 @@ object JobSubmitterConstants {
   val GcpProjectIdEnvVar = "GCP_PROJECT_ID"
   val GcpRegionEnvVar = "GCP_REGION"
   val GcpDataprocClusterNameEnvVar = "GCP_DATAPROC_CLUSTER_NAME"
-  val GcpDataprocInitializationActionsEnvVar = "DATAPROC_INITIALIZATION_ACTIONS"
-  val GcpDataprocNetworkEnvVar = "DATAPROC_NETWORK"
-  val GcpDataprocHostTypeEnvVar = "DATAPROC_HOST_TYPE"
-  val GcpDataprocNumWorkersEnvVar = "DATAPROC_NUM_WORKERS"
-  val GcpDataprocTagsEnvVar = "DATAPROC_TAGS"
+  val GcpDataprocInitializationActionsEnvVar = "GCP_DATAPROC_INITIALIZATION_ACTIONS"
+  val GcpDataprocNetworkEnvVar = "GCP_DATAPROC_NETWORK"
+  val GcpDataprocHostTypeEnvVar = "GCP_DATAPROC_HOST_TYPE"
+  val GcpDataprocNumWorkersEnvVar = "GCP_DATAPROC_NUM_WORKERS"
+  val GcpDataprocTagsEnvVar = "GCP_DATAPROC_TAGS"
 
   val ArtifactPrefixEnvVar = "ARTIFACT_PREFIX"
 
