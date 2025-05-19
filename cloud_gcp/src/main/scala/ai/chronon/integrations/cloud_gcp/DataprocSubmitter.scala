@@ -587,7 +587,7 @@ object DataprocSubmitter {
         )
         .putMetadata("hive-version", "3.1.2")
         .putMetadata("SPARK_BQ_CONNECTOR_URL", "gs://spark-lib/bigquery/spark-3.5-bigquery-0.42.1.jar")
-        .putMetadata(ArtifactPrefixEnvVar, artifact_prefix)
+        .putMetadata("artifact_prefix", artifact_prefix)
         .setInternalIpOnly(true)
 
       for(tag <- tags if tag != "") {
