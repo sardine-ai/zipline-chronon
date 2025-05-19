@@ -184,6 +184,7 @@ object JobSubmitterConstants {
   val GcpDataprocWorkerHostTypeEnvVar = "GCP_DATAPROC_WORKER_HOST_TYPE"
   val GcpDataprocMasterHostTypeEnvVar = "GCP_DATAPROC_MASTER_HOST_TYPE"
   val GcpDataprocNetworkEnvVar = "GCP_DATAPROC_NETWORK"
+  val GcpDataprocSubNetworkEnvVar = "GCP_DATAPROC_SUBNETWORK"
   val GcpDataprocTagsEnvVar = "GCP_DATAPROC_TAGS"
   val GcpDataprocInitializationActionsEnvVar = "GCP_DATAPROC_INITIALIZATION_ACTIONS"
 
