@@ -6,7 +6,7 @@ import com.google.cloud.dataproc.v1._
 import com.google.protobuf.Duration
 import org.apache.hadoop.fs.Path
 import org.json4s._
-import org.json4s.jackson.JsonMethods._s
+import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
