@@ -181,7 +181,8 @@ object JobSubmitterConstants {
   // Transient Dataproc creation
   val GcpCreateDataprocEnvVar = "GCP_CREATE_DATAPROC"
   val GcpDataprocNumWorkersEnvVar = "GCP_DATAPROC_NUM_WORKERS"
-  val GcpDataprocHostTypeEnvVar = "GCP_DATAPROC_HOST_TYPE"
+  val GcpDataprocWorkerHostTypeEnvVar = "GCP_DATAPROC_WORKER_HOST_TYPE"
+  val GcpDataprocMasterHostTypeEnvVar = "GCP_DATAPROC_MASTER_HOST_TYPE"
   val GcpDataprocNetworkEnvVar = "GCP_DATAPROC_NETWORK"
   val GcpDataprocTagsEnvVar = "GCP_DATAPROC_TAGS"
   val GcpDataprocInitializationActionsEnvVar = "GCP_DATAPROC_INITIALIZATION_ACTIONS"

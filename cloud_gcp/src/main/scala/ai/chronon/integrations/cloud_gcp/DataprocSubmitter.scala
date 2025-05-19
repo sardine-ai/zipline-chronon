@@ -534,8 +534,10 @@ object DataprocSubmitter {
         .getOrElse(GcpDataprocNumWorkersEnvVar,
                    throw new Exception(s"$GcpCreateDataprocEnvVar is true but $GcpDataprocNumWorkersEnvVar not set"))
         .toInt).getOrElse(throw new Exception(s"$GcpDataprocNumWorkersEnvVar must be an integer"))
-    val hostType = sys.env
-      .getOrElse(GcpDataprocHostTypeEnvVar, "n2-highmem-4")
+    val masterHostType = sys.env
+      .getOrElse(GcpDataprocMasterHostTypeEnvVar, "n2-highmem-64")
+    val workerHostType = sys.env
+      .getOrElse(GcpDataprocWorkerHostTypeEnvVar, "n2-highmem-16")
     val networkUri = sys.env
       .getOrElse(GcpDataprocNetworkEnvVar, "default")
     val initializationActions = sys.env
@@ -554,7 +556,7 @@ object DataprocSubmitter {
         InstanceGroupConfig
           .newBuilder()
           .setNumInstances(1)
-          .setMachineTypeUri("n2-highmem-64") // Adjust machine type as needed
+          .setMachineTypeUri(masterHostType) // Adjust machine type as needed
           .setDiskConfig(
             DiskConfig
               .newBuilder()
@@ -568,7 +570,7 @@ object DataprocSubmitter {
         InstanceGroupConfig
           .newBuilder()
           .setNumInstances(numWorkers) // Initial number of worker nodes. Autoscaling will adjust this
-          .setMachineTypeUri(hostType)
+          .setMachineTypeUri(workerHostType)
           .setDiskConfig(
             DiskConfig
               .newBuilder()
