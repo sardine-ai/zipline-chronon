@@ -25,8 +25,7 @@ default = Team(
             "GCP_REGION": "us-central1",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "FLINK_STATE_URI": "gs://zipline-warehouse-canary/flink-state",
-            "GCP_DATAPROC_NUM_WORKERS": "2",
-            "ARTIFACT_PREFIX": "gs://zipline-artifacts-canary",
+            "GCP_DATAPROC_CLUSTER": "zipline-canary-cluster"
         },
     ),
 )
@@ -63,9 +62,15 @@ gcp = Team(
             "GCP_PROJECT_ID": "canary-443022",
             "GCP_REGION": "us-central1",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
-            "GCP_DATAPROC_NUM_WORKERS": "2",
-            "ARTIFACT_PREFIX": "gs://zipline-artifacts-canary",
+
         },
+        modeEnvironments={
+            RunMode.BACKFILL: {
+                "GCP_CREATE_DATAPROC": "true",
+                "GCP_DATAPROC_NUM_WORKERS": "2",
+                "ARTIFACT_PREFIX": "gs://zipline-artifacts-canary",
+            }
+        }
     ),
     conf=ConfigProperties(
         common={
