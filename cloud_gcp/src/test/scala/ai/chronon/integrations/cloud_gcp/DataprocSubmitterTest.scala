@@ -749,14 +749,15 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     when(mockDataprocClient.getCluster(any[String], any[String], any[String])).thenReturn(mockCluster)
 
-
     val region = "test-region"
     val projectId = "test-project"
+    setEnv(GcpCreateDataprocEnvVar, "true")
     setEnv(ArtifactPrefixEnvVar, "gs://test-bucket")
     setEnv(GcpDataprocNumWorkersEnvVar, "2")
 
     val clusterName = DataprocSubmitter.createDataprocCluster(region, projectId, mockDataprocClient)
 
+    assert(clusterName.startsWith("zipline-transient-cluster-"))
     verify(mockDataprocClient).createClusterAsync(any())
   }
 
