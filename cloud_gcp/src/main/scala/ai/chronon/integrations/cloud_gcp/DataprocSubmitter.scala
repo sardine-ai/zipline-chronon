@@ -677,14 +677,21 @@ object DataprocSubmitter {
       .build()
 
     // Asynchronously create the cluster and wait for it to be ready
-    dataprocClient
-      .createClusterAsync(createRequest)
-      .get(5, java.util.concurrent.TimeUnit.MINUTES) match {
-      case null =>
+    try {
+      val operation = dataprocClient
+        .createClusterAsync(createRequest)
+        .get(5, java.util.concurrent.TimeUnit.MINUTES)
+      if (operation == null) {
         throw new RuntimeException("Failed to create Dataproc cluster.")
-      case _ =>
-        println(s"Created Dataproc cluster: $clusterName")
+      }
+      println(s"Created Dataproc cluster: $clusterName")
+    } catch {
+      case e: java.util.concurrent.TimeoutException =>
+        throw new RuntimeException(s"Timeout waiting for cluster creation: ${e.getMessage}", e)
+      case e: Exception =>
+        throw new RuntimeException(s"Error creating Dataproc cluster: ${e.getMessage}", e)
     }
+
     // Check status of the cluster creation
     var currentState = dataprocClient.getCluster(projectId, region, clusterName).getStatus.getState
     while (
