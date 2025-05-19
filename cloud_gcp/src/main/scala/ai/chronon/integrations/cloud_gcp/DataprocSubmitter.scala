@@ -352,18 +352,15 @@ object DataprocSubmitter {
   private def initializeDataprocSubmitter(): DataprocSubmitter = {
     val projectId = sys.env.getOrElse(GcpProjectIdEnvVar, throw new Exception(s"$GcpProjectIdEnvVar not set"))
     val region = sys.env.getOrElse(GcpRegionEnvVar, throw new Exception(s"$GcpRegionEnvVar not set"))
-    val clusterName = if (sys.env.contains(GcpDataprocClusterNameEnvVar) &&
-      (!sys.env.contains(GcpCreateDataprocEnvVar) ||
-        sys.env.getOrElse(GcpCreateDataprocEnvVar, "false").toBoolean)) {
-      sys.env
-        .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
-    } else if (sys.env.contains(GcpDataprocNumWorkersEnvVar) &&
-      sys.env.getOrElse(GcpCreateDataprocEnvVar, "false").toBoolean) {
+    val clusterName = if (sys.env.getOrElse(GcpCreateDataprocEnvVar, "false").toBoolean) {
       val dataprocClient = ClusterControllerClient.create(
         ClusterControllerSettings.newBuilder().setEndpoint(s"$region-dataproc.googleapis.com:443").build())
       createDataprocCluster(projectId, region, dataprocClient)
+    } else if (sys.env.contains(GcpDataprocClusterNameEnvVar)) {
+      sys.env
+        .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
     } else {
-      throw new Exception(s"Either $GcpDataprocClusterNameEnvVar or $GcpDataprocNumWorkersEnvVar must be set, but neither are")
+      throw new Exception(s"Either $GcpDataprocClusterNameEnvVar or $GcpCreateDataprocEnvVar must be set, but neither are")
     }
 
     val submitterConf = SubmitterConf(
@@ -532,7 +529,7 @@ object DataprocSubmitter {
 
   private def buildClusterConfig(projectId: String, artifact_prefix: String): ClusterConfig = {
     val numWorkers = sys.env
-      .getOrElse(GcpDataprocNumWorkersEnvVar, throw new Exception(s"$GcpDataprocNumWorkersEnvVar not set"))
+      .getOrElse(GcpDataprocNumWorkersEnvVar, throw new Exception(s"$GcpCreateDataprocEnvVar is true but $GcpDataprocNumWorkersEnvVar not set"))
       .toInt
     val hostType = sys.env
       .getOrElse(GcpDataprocHostTypeEnvVar, "n2-highmem-4")
