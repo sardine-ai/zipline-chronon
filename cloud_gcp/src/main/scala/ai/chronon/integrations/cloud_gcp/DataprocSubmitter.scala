@@ -631,10 +631,6 @@ object DataprocSubmitter {
           .setExecutableFile(f"$artifact_prefix/scripts/copy_java_security.sh")
           .build()
       )
-      .addInitializationActions(NodeInitializationAction
-        .newBuilder()
-        .setExecutableFile(f"$artifact_prefix/scripts/opsagent_install.sh")
-        .build())
 
     for(action <- initializationActions if action != "") {
         config.addInitializationActions(
