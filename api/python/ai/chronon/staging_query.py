@@ -19,6 +19,7 @@ class TableDependency:
     table: str
     partition_column: Optional[str] = None
     additional_partitions: Optional[List[str]] = None
+    offset: Optional[int] = None
 
 def StagingQuery(
     name: str,
@@ -97,7 +98,7 @@ def StagingQuery(
         stepDays=step_days,
     )
 
-    airflow_dependencies = [airflow_helpers.create_airflow_dependency(t.table, t.partition_column, t.additional_partitions) for t in dependencies] if dependencies else []
+    airflow_dependencies = [airflow_helpers.create_airflow_dependency(t.table, t.partition_column, t.additional_partitions, t.offset) for t in dependencies] if dependencies else []
     custom_json = json.dumps({"airflow_dependencies": airflow_dependencies})
 
     # Create metadata
