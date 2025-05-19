@@ -182,6 +182,7 @@ object JobSubmitterConstants {
   val GcpDataprocHostTypeEnvVar = "GCP_DATAPROC_HOST_TYPE"
   val GcpDataprocNumWorkersEnvVar = "GCP_DATAPROC_NUM_WORKERS"
   val GcpDataprocTagsEnvVar = "GCP_DATAPROC_TAGS"
+  val GcpCreateDataprocEnvVar = "GCP_CREATE_DATAPROC"
 
   val ArtifactPrefixEnvVar = "ARTIFACT_PREFIX"
 

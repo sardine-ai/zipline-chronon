@@ -352,10 +352,13 @@ object DataprocSubmitter {
   private def initializeDataprocSubmitter(): DataprocSubmitter = {
     val projectId = sys.env.getOrElse(GcpProjectIdEnvVar, throw new Exception(s"$GcpProjectIdEnvVar not set"))
     val region = sys.env.getOrElse(GcpRegionEnvVar, throw new Exception(s"$GcpRegionEnvVar not set"))
-    val clusterName = if (sys.env.contains(GcpDataprocClusterNameEnvVar)) {
+    val clusterName = if (sys.env.contains(GcpDataprocClusterNameEnvVar) &&
+      (!sys.env.contains(GcpCreateDataprocEnvVar) ||
+        sys.env.getOrElse(GcpCreateDataprocEnvVar, "false").toBoolean)) {
       sys.env
         .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
-    } else if (sys.env.contains(GcpDataprocNumWorkersEnvVar)) {
+    } else if (sys.env.contains(GcpDataprocNumWorkersEnvVar) &&
+      sys.env.getOrElse(GcpCreateDataprocEnvVar, "false").toBoolean) {
       val dataprocClient = ClusterControllerClient.create(
         ClusterControllerSettings.newBuilder().setEndpoint(s"$region-dataproc.googleapis.com:443").build())
       createDataprocCluster(projectId, region, dataprocClient)
@@ -532,7 +535,7 @@ object DataprocSubmitter {
       .getOrElse(GcpDataprocNumWorkersEnvVar, throw new Exception(s"$GcpDataprocNumWorkersEnvVar not set"))
       .toInt
     val hostType = sys.env
-      .getOrElse(GcpDataprocHostTypeEnvVar, "n2-highmem-16")
+      .getOrElse(GcpDataprocHostTypeEnvVar, "n2-highmem-4")
     val networkUri = sys.env
       .getOrElse(GcpDataprocNetworkEnvVar, "default")
     val initializationActions = sys.env
