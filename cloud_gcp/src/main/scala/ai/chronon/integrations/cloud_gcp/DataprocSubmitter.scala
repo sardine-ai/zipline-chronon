@@ -3,9 +3,11 @@ import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
+import com.google.protobuf.Duration
 import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
+import org.scalatest.tools.Durations.Duration
 import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
@@ -351,8 +353,16 @@ object DataprocSubmitter {
   private def initializeDataprocSubmitter(): DataprocSubmitter = {
     val projectId = sys.env.getOrElse(GcpProjectIdEnvVar, throw new Exception(s"$GcpProjectIdEnvVar not set"))
     val region = sys.env.getOrElse(GcpRegionEnvVar, throw new Exception(s"$GcpRegionEnvVar not set"))
-    val clusterName = sys.env
-      .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
+    val clusterName = if (sys.env.contains(GcpDataprocClusterNameEnvVar)) {
+      sys.env
+        .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
+    } else if (sys.env.contains(GcpDataprocNumWorkersEnvVar)) {
+      val dataprocClient = ClusterControllerClient.create(
+        ClusterControllerSettings.newBuilder().setEndpoint(s"$region-dataproc.googleapis.com:443").build())
+      createDataprocCluster(projectId, region, dataprocClient)
+    } else {
+      throw new Exception(s"Either $GcpDataprocClusterNameEnvVar or $GcpDataprocNumWorkersEnvVar must be set, but neither are")
+    }
 
     val submitterConf = SubmitterConf(
       projectId,
@@ -514,6 +524,175 @@ object DataprocSubmitter {
       None
     } else {
       Some(matchedIds.head)
+    }
+  }
+
+
+  private def buildClusterConfig(projectId: String, artifact_prefix: String): ClusterConfig = {
+    val numWorkers = sys.env
+      .getOrElse(GcpDataprocNumWorkersEnvVar, throw new Exception(s"$GcpDataprocNumWorkersEnvVar not set"))
+      .toInt
+    val hostType = sys.env
+      .getOrElse(GcpDataprocHostTypeEnvVar, "n1-highmem-16")
+    val networkUri = sys.env
+      .getOrElse(GcpDataprocNetworkEnvVar, "default")
+    val initializationActions = sys.env
+      .getOrElse(GcpDataprocInitializationActionsEnvVar, "").split(",").toList
+    val tags = sys.env
+      .getOrElse(GcpDataprocTagsEnvVar, "").split(",").toList
+
+    // Build the cluster configuration with autoscaling
+    val config = ClusterConfig
+      .newBuilder()
+      .setMasterConfig(
+        InstanceGroupConfig
+          .newBuilder()
+          .setNumInstances(1)
+          .setMachineTypeUri("n2-highmem-64") // Adjust machine type as needed
+          .setDiskConfig(
+            DiskConfig
+              .newBuilder()
+              .setBootDiskType("pd-standard") // Use SSD for better performance
+              .setBootDiskSizeGb(1024) // Adjust disk size as needed
+              .build()
+          )
+          .build()
+      )
+      .setWorkerConfig(
+        InstanceGroupConfig
+          .newBuilder()
+          .setNumInstances(numWorkers) // Initial number of worker nodes. Autoscaling will adjust this
+          .setMachineTypeUri(hostType)
+          .setDiskConfig(
+            DiskConfig
+              .newBuilder()
+              .setBootDiskType("pd-standard")
+              .setBootDiskSizeGb(64)
+              .setNumLocalSsds(2)
+              .build()
+          )
+          .build()
+      )
+      .setGceClusterConfig(
+        GceClusterConfig
+          .newBuilder()
+          .setNetworkUri(networkUri)
+          .setServiceAccount(f"dataproc@$projectId.iam.gserviceaccount.com")
+          .addAllServiceAccountScopes(
+            List(
+              "https://www.googleapis.com/auth/cloud-platform",
+              "https://www.googleapis.com/auth/cloud.useraccounts.readonly",
+              "https://www.googleapis.com/auth/devstorage.read_write",
+              "https://www.googleapis.com/auth/logging.write"
+            ).asJava
+          )
+          .putMetadata("hive-version", "3.1.2")
+          .putMetadata("SPARK_BQ_CONNECTOR_URL", "gs://spark-lib/bigquery/spark-3.5-bigquery-0.42.1.jar")
+          .setInternalIpOnly(true)
+          .addAllTags(tags.asJava)
+          .build()
+      )
+      .setSoftwareConfig(
+        SoftwareConfig
+          .newBuilder()
+          .setImageVersion("2.2.50-debian12")
+          .addOptionalComponents(Component.FLINK)
+          .addOptionalComponents(Component.JUPYTER)
+          .putProperties("flink:env.java.opts.client",
+            "-Djava.net.preferIPv4Stack=true -Djava.security.properties=/etc/flink/conf/java.security")
+          .build()
+      )
+      .setEndpointConfig(
+        EndpointConfig
+          .newBuilder()
+          .setEnableHttpPortAccess(true)
+          .build()
+      )
+      .setLifecycleConfig(
+        LifecycleConfig
+          .newBuilder()
+          .setIdleDeleteTtl(
+            Duration
+              .newBuilder()
+              .setSeconds(7200) // 2 hours
+              .build()
+          )
+          .build()
+      )
+      .addInitializationActions(
+        NodeInitializationAction
+          .newBuilder()
+          .setExecutableFile(f"$artifact_prefix/scripts/copy_java_security.sh")
+          .build()
+      )
+      .addInitializationActions(NodeInitializationAction
+        .newBuilder()
+        .setExecutableFile(f"$artifact_prefix/scripts/opsagent_install.sh")
+        .build())
+
+    for(action <- initializationActions) {
+        config.addInitializationActions(
+            NodeInitializationAction
+            .newBuilder()
+            .setExecutableFile(action)
+            .build()
+        )
+    }
+
+    config.build()
+  }
+
+  private[cloud_gcp] def createDataprocCluster(projectId: String, region: String,
+                                              dataprocClient: ClusterControllerClient): String = {
+    val artifact_prefix = sys.env
+      .getOrElse(ArtifactPrefixEnvVar, throw new Exception(s"$ArtifactPrefixEnvVar not set"))
+
+    val clusterConfig = buildClusterConfig(projectId, artifact_prefix)
+
+    val clusterName = s"zipline-transient-cluster-${System.currentTimeMillis()}"
+
+    val cluster: Cluster = Cluster
+      .newBuilder()
+      .setClusterName(clusterName)
+      .setProjectId(projectId)
+      .setConfig(clusterConfig)
+      .build()
+
+    val createRequest = CreateClusterRequest
+      .newBuilder()
+      .setProjectId(projectId)
+      .setRegion(region)
+      .setCluster(cluster)
+      .build()
+
+    // Asynchronously create the cluster and wait for it to be ready
+    dataprocClient
+      .createClusterAsync(createRequest)
+      .get(5, java.util.concurrent.TimeUnit.MINUTES) match {
+      case null =>
+        throw new RuntimeException("Failed to create Dataproc cluster.")
+      case _ =>
+        println(s"Created Dataproc cluster: $clusterName")
+    }
+    // Check status of the cluster creation
+    var currentState = dataprocClient.getCluster(projectId, region, clusterName).getStatus.getState
+    while (
+      currentState != ClusterStatus.State.RUNNING &&
+        currentState != ClusterStatus.State.ERROR &&
+        currentState != ClusterStatus.State.STOPPING
+    ) {
+      println(s"Waiting for Dataproc cluster $clusterName to be in RUNNING state. Current state: $currentState")
+      Thread.sleep(30000) // Wait for 30 seconds before checking again
+      currentState = dataprocClient.getCluster(projectId, region, clusterName).getStatus.getState
+    }
+    currentState match {
+      case ClusterStatus.State.RUNNING =>
+        println(s"Dataproc cluster $clusterName is running.")
+        clusterName
+      case ClusterStatus.State.ERROR =>
+        throw new RuntimeException(s"Failed to create Dataproc cluster $clusterName: ERROR state.")
+      case _ =>
+        throw new RuntimeException(s"Dataproc cluster $clusterName is in unexpected state: $currentState.")
     }
   }
 
