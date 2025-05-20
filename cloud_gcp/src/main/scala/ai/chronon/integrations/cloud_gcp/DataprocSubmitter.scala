@@ -604,8 +604,9 @@ object DataprocSubmitter {
         .addTags(tag)
     }
     if (sys.env.contains(GcpDataprocSubNetworkEnvVar)) {
-        gceClusterConfig
-            .setSubnetworkUri(sys.env.getOrElse(GcpDataprocSubNetworkEnvVar, throw new Exception(s"$GcpDataprocSubNetworkEnvVar not set")))
+      gceClusterConfig
+        .setSubnetworkUri(
+          sys.env.getOrElse(GcpDataprocSubNetworkEnvVar, throw new Exception(s"$GcpDataprocSubNetworkEnvVar not set")))
     }
 
     config
