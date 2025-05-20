@@ -686,7 +686,7 @@ object DataprocSubmitter {
     try {
       val operation = dataprocClient
         .createClusterAsync(createRequest)
-        .get(10, java.util.concurrent.TimeUnit.MINUTES)
+        .get(15, java.util.concurrent.TimeUnit.MINUTES)
       if (operation == null) {
         throw new RuntimeException("Failed to create Dataproc cluster.")
       }
