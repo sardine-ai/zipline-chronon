@@ -11,13 +11,15 @@
         "CLOUD_PROVIDER": "GCP",
         "ARTIFACT_PREFIX": "gs://zipline-artifacts-customer",
         "STREAMING_MANIFEST_BUCKET_PATH": "gs://zipline-warehouse-customer/flink-manifest"
-      }
+      },
+      "modeEnvironments":{}
     },
     "conf": {
       "common": {
         "spark.chronon.partition.format": "yyyy-MM-dd",
         "spark.chronon.partition.column": "_DATE"
-      }
+      },
+      "modeConfigs":{}
     }
   }
 }

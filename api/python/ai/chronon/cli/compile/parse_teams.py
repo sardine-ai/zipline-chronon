@@ -203,6 +203,7 @@ def _merge_mode_maps(
         final_common = _merge_maps(final_common, result.common, mode_map.common)
 
         mode_environments_or_configs = getattr(result, env_or_config_attribute)
+
         if mode_environments_or_configs:
             for mode in mode_environments_or_configs:
                 mode_environments_or_configs[mode] = _merge_maps(
