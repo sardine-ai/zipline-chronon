@@ -665,7 +665,17 @@ object DataprocSubmitter {
     val artifact_prefix = sys.env
       .getOrElse(ArtifactPrefixEnvVar, throw new Exception(s"$ArtifactPrefixEnvVar not set"))
 
-    val clusterConfig = buildClusterConfig(projectId, artifact_prefix)
+    val clusterConfig = if (sys.env.contains(GcpDataprocClusterConfigFileEnvVar)) {
+      val gcsClient = GCSClient(projectId = projectId)
+      // Load the cluster configuration from the specified file
+      val clusterConfigFile = sys.env
+        .getOrElse(GcpDataprocClusterConfigFileEnvVar,
+                   throw new Exception(s"$GcpDataprocClusterConfigFileEnvVar not set"))
+      val clusterConfigByteArray = gcsClient.downloadObjectToMemory(clusterConfigFile)
+      ClusterConfig.parseFrom(clusterConfigByteArray)
+    } else {
+      buildClusterConfig(projectId, artifact_prefix)
+    }
 
     val clusterName = s"zipline-transient-cluster-${System.currentTimeMillis()}"
 
