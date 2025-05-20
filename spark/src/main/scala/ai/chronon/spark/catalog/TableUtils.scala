@@ -65,6 +65,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   val checkLeftTimeRange: Boolean =
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
 
+  private val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 10000)
+  private val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 2)
+
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
   // transient because the format provider is not always serializable.
@@ -287,8 +290,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   }
 
   def sql(query: String): DataFrame = {
-    val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
-    val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
     val stackTraceString = cleanStackTrace(new Throwable())
 
     logger.info(s"""
@@ -562,9 +563,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       val whereStr = andPredicates(wheres)
       df = df.where(whereStr)
     }
-
-    val parallelism = sparkSession.sparkContext.getConf.getInt("spark.default.parallelism", 1000)
-    val coalesceFactor = sparkSession.sparkContext.getConf.getInt("spark.chronon.coalesce.factor", 10)
 
     // TODO: this is a temporary fix to handle the case where the partition column is not a string.
     //  This is the case for partitioned BigQuery native tables.
