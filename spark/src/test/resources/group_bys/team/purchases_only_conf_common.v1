@@ -16,12 +16,14 @@
           "GCP_BIGTABLE_INSTANCE_ID": "zipline-customer-instance",
           "FLINK_STATE_URI": "gs://zipline-warehouse-customer/flink-state",
           "CLOUD_PROVIDER": "GCP"
-        }
+        },
+        "modeEnvironments":{}
       },
       "conf": {
         "common": {
           "spark.chronon.partition.format": "yyyy-MM-dd"
-        }
+        },
+        "modeConfigs": {}
       },
       "scheduleCron": "@daily",
       "historicalBackfill": 0
