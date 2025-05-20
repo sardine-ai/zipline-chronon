@@ -482,6 +482,11 @@ object Driver {
                      descr = "Auto expand hive table if new columns added in staging query",
                      default = Option(true))
 
+      override val stepDays: ScallopOption[Int] =
+        opt[Int](required = false,
+                 descr = "Runs offline stagingquery backfill in steps, step-days at a time. Default is 1 day",
+                 default = Option(1))
+
       lazy val stagingQueryConf: api.StagingQuery = parseConf[api.StagingQuery](confPath())
       override def subcommandName(): String = s"staging_query_${stagingQueryConf.metaData.name}_backfill"
     }

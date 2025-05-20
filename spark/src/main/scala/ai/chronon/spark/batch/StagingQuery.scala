@@ -19,7 +19,6 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
   private val outputTable = stagingQueryConf.metaData.outputTable
   private val tableProps = Option(stagingQueryConf.metaData.tableProperties)
     .map(_.toScala.toMap)
-    .orNull
 
   private val partitionCols: Seq[String] =
     Seq(tableUtils.partitionColumn) ++
@@ -68,7 +67,10 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
               StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
             logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
             val df = tableUtils.sql(renderedQuery)
-            df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
+            df.save(outputTable,
+                    tableProps.getOrElse(Map.empty) ++ Map("write.distribution-mode" -> "none"),
+                    partitionCols,
+                    autoExpand = enableAutoExpand.get)
             logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
           }
           logger.info(s"Finished writing Staging Query data to $outputTable")

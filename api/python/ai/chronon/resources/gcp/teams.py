@@ -20,9 +20,9 @@ default = Team(
             "spark.sql.defaultUrlStreamHandlerFactory.enabled": "false",
             "spark.kryo.registrator": "ai.chronon.integrations.cloud_gcp.ChrononIcebergKryoRegistrator",
 
-            "spark.chronon.coalesce.factor": "10",
-            "spark.default.parallelism": "10",
-            "spark.sql.shuffle.partitions": "10",
+            "spark.chronon.coalesce.factor": "2",
+            "spark.default.parallelism": "10000",
+            "spark.sql.shuffle.partitions": "10000",
 
             # TODO: Please fill in the following values
             "spark.sql.catalog.bigquery_catalog.warehouse": "gs://zipline-warehouse-<customer_id>/data/tables/",
