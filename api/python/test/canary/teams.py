@@ -65,7 +65,7 @@ gcp = Team(
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
         },
         modeEnvironments={
-            RunMode.BACKFILL: {
+            RunMode.UPLOAD: {
                 "GCP_CREATE_DATAPROC": "true",
                 "GCP_DATAPROC_NUM_WORKERS": "2",
                 "GCP_DATAPROC_MASTER_HOST_TYPE": "n2-highmem-8",
