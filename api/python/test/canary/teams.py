@@ -68,11 +68,8 @@ gcp = Team(
             RunMode.BACKFILL: {
                 "GCP_CREATE_DATAPROC": "true",
                 "GCP_DATAPROC_NUM_WORKERS": "2",
-                "ARTIFACT_PREFIX": "gs://zipline-artifacts-canary",
-            },
-            RunMode.UPLOAD: {
-                "GCP_CREATE_DATAPROC": "true",
-                "GCP_DATAPROC_NUM_WORKERS": "2",
+                "GCP_DATAPROC_MASTER_HOST_TYPE": "n2-highmem-8",
+                "GCP_DATAPROC_WORKER_HOST_TYPE": "n2-highmem-4",
                 "ARTIFACT_PREFIX": "gs://zipline-artifacts-canary",
             }
         }
