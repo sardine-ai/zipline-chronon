@@ -3,6 +3,7 @@ from typing import OrderedDict
 
 import ai.chronon.utils as utils
 from ai.chronon.api.ttypes import GroupBy, Join
+from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
 
 
 def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0):
@@ -189,7 +190,7 @@ def _dedupe_and_set_airflow_deps_json(obj, deps):
     unique = [OrderedDict(t) for t in sorted_items]
     existing_json = obj.metaData.customJson or "{}"
     json_map = json.loads(existing_json)
-    json_map["airflowDependencies"] = unique
+    json_map[AIRFLOW_DEPENDENCIES_KEY] = unique
     obj.metaData.customJson = json.dumps(json_map)
 
 

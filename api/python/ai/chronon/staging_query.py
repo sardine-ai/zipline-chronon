@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 import ai.chronon.airflow_helpers as airflow_helpers
 import ai.chronon.api.common.ttypes as common
 import ai.chronon.api.ttypes as ttypes
+from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
 
 
 # Wrapper for EngineType
@@ -99,7 +100,7 @@ def StagingQuery(
     )
 
     airflow_dependencies = [airflow_helpers.create_airflow_dependency(t.table, t.partition_column, t.additional_partitions, t.offset) for t in dependencies] if dependencies else []
-    custom_json = json.dumps({"airflow_dependencies": airflow_dependencies})
+    custom_json = json.dumps({AIRFLOW_DEPENDENCIES_KEY: airflow_dependencies})
 
     # Create metadata
     meta_data = ttypes.MetaData(
