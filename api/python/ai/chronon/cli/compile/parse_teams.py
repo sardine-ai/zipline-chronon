@@ -143,6 +143,8 @@ def merge_team_execution_info(metadata: MetaData, team_dict: Dict[str, Team], te
         env_or_config_attribute=EnvOrConfigAttribute.CONFIG,
     )
 
+    metadata.executionInfo.clusterConf ....
+
 
 def _merge_maps(*maps: Optional[Dict[str, str]]):
     """

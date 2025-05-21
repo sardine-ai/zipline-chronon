@@ -57,6 +57,11 @@ struct ConfigProperties {
     2: map<string, map<string, string>> modeConfigs = {}
 }
 
+struct ClusterConfigProperties {
+    1: map<string, string> common = {}
+    2: map<string, map<string, string>> modeConfigs = {}
+}
+
 struct TableInfo {
     // fully qualified table name
     1: optional string table

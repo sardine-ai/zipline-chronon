@@ -107,9 +107,35 @@ gcp = Team(
             RunMode.BACKFILL: {
                 "spark.chronon.backfill_cloud_provider": "gcp",  # dummy test config
             }
-        }
+        },
     ),
+    clusterConf=ClusterConfigProperties(
+        common={},
+        modeConfigs={
+            RunMode.BACKFILL: generate_etsy_specific_config()
+        }
+    )
 )
+
+def generate_etsy_specific_config():
+    default_config = generate_dataproc_cluster_config()
+    default_config['initializatino_actions'].append(...)
+    return default_config
+
+def generate_dataproc_cluster_config(num_workers, worker_type,...):
+    return {
+        "master_instance_type": "n1-standard-4",
+        "worker_instance_type": "n1-standard-4",
+        "worker_count": num_workers,
+        "master_disk_size": 500,
+        "worker_disk_size": 500,
+        "region": "us-central1",
+        "zone": "us-central1-a",
+        "network": "default",
+        "subnet": "default",
+        # Add other properties as needed
+    }
+    # TODO: json encode any ClusterConfig dataproc objects to avoid nesting
 
 aws = Team(
     outputNamespace="data",
