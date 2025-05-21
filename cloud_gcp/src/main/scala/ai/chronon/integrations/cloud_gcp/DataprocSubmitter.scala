@@ -3,12 +3,15 @@ import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
+import com.google.cloud.storage.{BlobId, StorageOptions}
 import com.google.protobuf.Duration
+import com.google.protobuf.util.JsonFormat
 import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.yaml.snakeyaml.Yaml
 
+import java.net.URI
 import scala.io.Source
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -666,13 +669,24 @@ object DataprocSubmitter {
       .getOrElse(ArtifactPrefixEnvVar, throw new Exception(s"$ArtifactPrefixEnvVar not set"))
 
     val clusterConfig = if (sys.env.contains(GcpDataprocClusterConfigFileEnvVar)) {
-      val gcsClient = GCSClient(projectId = projectId)
-      // Load the cluster configuration from the specified file
-      val clusterConfigFile = sys.env
+      val storage = StorageOptions.getDefaultInstance.getService
+      val fileName = sys.env
         .getOrElse(GcpDataprocClusterConfigFileEnvVar,
                    throw new Exception(s"$GcpDataprocClusterConfigFileEnvVar not set"))
-      val clusterConfigByteArray = gcsClient.downloadObjectToMemory(clusterConfigFile)
-      ClusterConfig.parseFrom(clusterConfigByteArray)
+
+      val uriOfFile = new URI(fileName)
+      val bucketName = uriOfFile.getHost
+      val blobName = Option(uriOfFile.getPath).map(_.stripPrefix("/")).getOrElse("")
+      val blobId = BlobId.of(bucketName, blobName)
+      val blob = storage.get(blobId)
+
+      if (blob == null) {
+        throw new IllegalArgumentException(s"File gs://$bucketName/$blobName not found")
+      }
+      val jsonString = new String(blob.getContent())
+      val builder = ClusterConfig.newBuilder()
+      JsonFormat.parser().merge(jsonString, builder)
+      builder.build()
     } else {
       buildClusterConfig(projectId, artifact_prefix)
     }
