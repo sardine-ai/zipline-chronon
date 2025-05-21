@@ -6,7 +6,8 @@ from ai.chronon.api.ttypes import GroupBy, Join
 from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
 
 
-def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0):
+def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0,
+                              input_and_output_partition_formats:tuple[str,str]=None):
     """
     Create an Airflow dependency object for a table.
 
@@ -14,6 +15,8 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
         table: The table name (with namespace)
         partition_column: The partition column to use (defaults to 'ds')
         additional_partitions: Additional partitions to include in the dependency
+        offset: The offset to use for the partition column (defaults to 0)
+        input_and_output_partition_formats: Tuple of input and output partition formats
 
     Returns:
         A dictionary with name and spec for the Airflow dependency
@@ -37,10 +40,20 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
     if additional_partitions:
         additional_partitions_str = "/" + "/".join(additional_partitions)
 
-    return {
-        "name": f"wf_{utils.sanitize(table)}",
-        "spec": f"{table}/{partition_column}={{{{ macros.ds_add(ds, {offset}) }}}}{additional_partitions_str}",
-    }
+
+    if input_and_output_partition_formats:
+        input_format = input_and_output_partition_formats[0]
+        output_format = input_and_output_partition_formats[1]
+
+        return {
+            "name": f"wf_{utils.sanitize(table)}",
+            "spec": f"{table}/{partition_column}={{{{ macros.ds_format(macros.ds_add(ds, {offset}), {input_format}, {output_format}) }}}}{additional_partitions_str}",
+        }
+    else:
+        return {
+            "name": f"wf_{utils.sanitize(table)}",
+            "spec": f"{table}/{partition_column}={{{{ macros.ds_add(ds, {offset}) }}}}{additional_partitions_str}",
+        }
 
 
 def _get_partition_col_from_query(query):
