@@ -18,6 +18,7 @@ import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Base64;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -82,6 +83,46 @@ public class RouteHandlerWrapper {
         return params.encodePrettily();
     }
 
+    private static <I> I parseInput(RoutingContext ctx, Class<I> inputClass) throws Exception {
+        String encodedParams = combinedParamJson(ctx);
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return mapper.readValue(encodedParams, inputClass);
+    }
+
+    private static <O> void sendSuccessResponse(RoutingContext ctx, O output) throws Exception {
+        String responseFormat = ctx.request().getHeader(RESPONSE_CONTENT_TYPE_HEADER);
+        if (responseFormat == null || responseFormat.equals("application/json")) {
+            String outputJson = outputToJson(ctx, output);
+            ctx.response()
+                    .setStatusCode(200)
+                    .putHeader("content-type", JSON_TYPE_VALUE)
+                    .end(outputJson);
+        } else {
+            String responseBase64 = convertToTBinaryB64(responseFormat, output);
+            ctx.response()
+                    .setStatusCode(200)
+                    .putHeader("content-type", TBINARY_B64_TYPE_VALUE)
+                    .end(responseBase64);
+        }
+    }
+
+    private static void handleException(RoutingContext ctx, Throwable ex, String errorMessage) {
+        if (ex instanceof IllegalArgumentException) {
+            LOGGER.error(errorMessage, ex);
+            ctx.response()
+                .setStatusCode(400)
+                .putHeader("content-type", "application/json")
+                .end(toErrorPayload(ex));
+        } else {
+            LOGGER.error(errorMessage, ex);
+            ctx.response()
+                    .setStatusCode(500)
+                    .putHeader("content-type", "application/json")
+                    .end(toErrorPayload(ex));
+        }
+    }
+    
     /**
      * Creates a RoutingContext handler that maps parameters to an Input object and transforms it to Output
      *
@@ -93,41 +134,64 @@ public class RouteHandlerWrapper {
      * TODO: To use consistent helper wrappers for the response.
      */
     public static <I, O> Handler<RoutingContext> createHandler(Function<I, O> transformer, Class<I> inputClass) {
-
         return ctx -> {
             try {
-                String encodedParams = combinedParamJson(ctx);
-
-                ObjectMapper mapper = new ObjectMapper();
-                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-                I input = mapper.readValue(encodedParams, inputClass);
+                I input = parseInput(ctx, inputClass);
                 O output = transformer.apply(input);
-
-                String responseFormat = ctx.request().getHeader(RESPONSE_CONTENT_TYPE_HEADER);
-                if (responseFormat == null || responseFormat.equals("application/json")) {
-                    String outputJson = outputToJson(ctx, output);
-                    ctx.response()
-                            .setStatusCode(200)
-                            .putHeader("content-type", JSON_TYPE_VALUE)
-                            .end(outputJson);
-                } else {
-                    String responseBase64 = convertToTBinaryB64(responseFormat, output);
-                    ctx.response().setStatusCode(200).putHeader("content-type", TBINARY_B64_TYPE_VALUE).end(responseBase64);
-                }
-
-            } catch (IllegalArgumentException ex) {
-                LOGGER.error("Incorrect arguments passed for handler creation", ex);
-                ctx.response()
-                    .setStatusCode(400)
-                    .putHeader("content-type", "application/json")
-                    .end(toErrorPayload(ex));
+                sendSuccessResponse(ctx, output);
             } catch (Exception ex) {
-                LOGGER.error("Internal error occurred during handler creation", ex);
-                ctx.response()
-                        .setStatusCode(500)
-                        .putHeader("content-type", "application/json")
-                        .end(toErrorPayload(ex));
+                handleException(ctx, ex, "Error in handler");
+            }
+        };
+    }
+
+    /**
+     * Creates a RoutingContext handler that maps parameters to an Input object and transforms it to a CompletableFuture of Output
+     * This method is specifically designed for asynchronous handlers that return CompletableFuture.
+     *
+     * @param asyncTransformer Function to convert from Input to CompletableFuture of Output
+     * @param inputClass  Class object for the Input type
+     * @param <I>         Input type with setter methods
+     * @param <O>         Output type
+     * @return Handler for RoutingContext that handles the CompletableFuture response
+     */
+    public static <I, O> Handler<RoutingContext> createAsyncHandler(Function<I, CompletableFuture<O>> asyncTransformer, Class<I> inputClass) {
+        return ctx -> {
+            try {
+                I input = parseInput(ctx, inputClass);
+                
+                // Apply the async transformer to get the CompletableFuture
+                CompletableFuture<O> futureOutput = asyncTransformer.apply(input);
+
+                // Handle the future's completion
+                futureOutput.whenComplete((output, throwable) -> {
+                    if (throwable != null) {
+                        // Handle errors from the CompletableFuture
+                        LOGGER.error("Error in async operation", throwable);
+                        Throwable rootCause = throwable;
+                        while (rootCause.getCause() != null) {
+                            rootCause = rootCause.getCause();
+                        }
+
+                        int statusCode = 500; // Default to internal server error
+                        if (rootCause instanceof IllegalArgumentException) {
+                            statusCode = 400; // Bad request for validation errors
+                        }
+
+                        ctx.response()
+                                .setStatusCode(statusCode)
+                                .putHeader("content-type", "application/json")
+                                .end(toErrorPayload(rootCause));
+                    } else {
+                        try {
+                            sendSuccessResponse(ctx, output);
+                        } catch (Exception ex) {
+                            handleException(ctx, ex, "Error processing successful async result");
+                        }
+                    }
+                });
+            } catch (Exception ex) {
+                handleException(ctx, ex, "Error preparing async handler");
             }
         };
     }
