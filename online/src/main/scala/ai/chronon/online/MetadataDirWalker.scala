@@ -22,7 +22,7 @@ class MetadataDirWalker(dirPath: String, metadataEndPointNames: List[String], ma
   @transient implicit lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private def loadJsonToConf[T <: TBase[_, _]: Manifest: ClassTag](file: String): Option[T] = {
     try {
-      val configConf = ThriftJsonCodec.fromJsonFile[T](file, check = true)
+      val configConf = ThriftJsonCodec.fromJsonFile[T](file, check = false)
       Some(configConf)
     } catch {
       case e: Throwable =>
@@ -212,6 +212,6 @@ object MetadataDirWalker {
 
   def parse[T <: TBase[_, _]: Manifest: ClassTag](file: File): Try[T] =
     Try {
-      ThriftJsonCodec.fromJsonFile[T](file, check = true)
+      ThriftJsonCodec.fromJsonFile[T](file, check = false)
     }
 }

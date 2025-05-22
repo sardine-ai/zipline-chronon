@@ -153,7 +153,7 @@ object FetcherMain {
   }
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
-    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
+    ThriftJsonCodec.fromJsonFile[T](confPath, check = false)
 
   def run(args: FetcherArgs): Unit = {
     configureLogging()

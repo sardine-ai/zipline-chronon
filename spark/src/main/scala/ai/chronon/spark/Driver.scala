@@ -65,7 +65,7 @@ object Driver {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
-    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
+    ThriftJsonCodec.fromJsonFile[T](confPath, check = false)
 
   trait SharedSubCommandArgs {
     this: ScallopConf =>
@@ -753,7 +753,7 @@ object Driver {
         descr = "Lag time for chaining, before fetching upstream join results, in milliseconds. Default 2 seconds"
       )
       def parseConf[T <: TBase[_, _]: Manifest: ClassTag]: T =
-        ThriftJsonCodec.fromJsonFile[T](confPath(), check = true)
+        ThriftJsonCodec.fromJsonFile[T](confPath(), check = false)
     }
 
     def findFile(path: String): Option[String] = {

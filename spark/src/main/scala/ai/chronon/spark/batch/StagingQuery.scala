@@ -98,7 +98,7 @@ class Args(args: Seq[String]) extends ScallopConf(args) {
   val skipEqualCheck: ScallopOption[Boolean] =
     opt[Boolean](required = false, default = Some(false)) // only applies to join job for versioning
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag]: T =
-    ThriftJsonCodec.fromJsonFile[T](confPath(), check = true)
+    ThriftJsonCodec.fromJsonFile[T](confPath(), check = false)
 
   override def toString(): String = {
     s"""

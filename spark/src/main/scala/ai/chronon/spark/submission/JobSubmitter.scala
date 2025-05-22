@@ -37,7 +37,7 @@ object JobSubmitter {
   }
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
-    ThriftJsonCodec.fromJsonFile[T](confPath, check = true)
+    ThriftJsonCodec.fromJsonFile[T](confPath, check = false)
 
   def getMetadata(args: Array[String]): Option[MetaData] = {
     val localConfPathValue = getArgValue(args, LocalConfPathArgKeyword)
