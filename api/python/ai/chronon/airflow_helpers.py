@@ -8,7 +8,7 @@ from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
 DATE_FORMAT_DASHES = "%Y-%m-%d"
 
 def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0,
-                              partition_format=None):
+                              partition_format=None, override_partition_value=None):
     """
     Create an Airflow dependency object for a table.
 
@@ -17,7 +17,8 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
         partition_column: The partition column to use (defaults to 'ds')
         additional_partitions: Additional partitions to include in the dependency
         offset: The offset to use for the partition column (defaults to 0)
-        input_and_output_partition_formats: Tuple of input and output partition formats
+        partition_format: The format to use for the partition column (defaults to None)
+        override_partition_value: The value to use for the partition column (defaults to None)
 
     Returns:
         A dictionary with name and spec for the Airflow dependency
@@ -41,8 +42,12 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
     if additional_partitions:
         additional_partitions_str = "/" + "/".join(additional_partitions)
 
-
-    if partition_format:
+    if override_partition_value:
+        return {
+            "name": f"wf_{utils.sanitize(table)}",
+            "spec": f"{table}/{partition_column}={override_partition_value}",
+        }
+    elif partition_format:
 
         return {
             "name": f"wf_{utils.sanitize(table)}",
