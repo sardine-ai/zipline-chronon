@@ -85,6 +85,10 @@ def StagingQuery(
     :param step_days:
         The maximum number of days to process at once
     :type step_days: int
+    :param dependencies:
+        List of dependencies for the StagingQuery. Each dependency can be either a TableDependency object
+        or a dictionary with 'name' and 'spec' keys.
+    :type dependencies: List[Union[TableDependency, Dict]]
     :return:
         A StagingQuery object
     """
@@ -100,23 +104,25 @@ def StagingQuery(
     )
 
     airflow_dependencies = []
-    for d in dependencies:
-        if isinstance(d, TableDependency):
-            # Create an Airflow dependency object for the table
-            airflow_dependency = airflow_helpers.create_airflow_dependency(
-                d.table,
-                d.partition_column,
-                d.additional_partitions,
-                d.offset,
-            )
-            airflow_dependencies.append(airflow_dependency)
-        elif isinstance(d, dict):
-            # If it's already a dictionary, just append it
-            airflow_dependencies.append(d)
-        else:
-            raise ValueError(
-                "Dependencies must be either TableDependency instances or dictionaries."
-            )
+
+    if dependencies:
+        for d in dependencies:
+            if isinstance(d, TableDependency):
+                # Create an Airflow dependency object for the table
+                airflow_dependency = airflow_helpers.create_airflow_dependency(
+                    d.table,
+                    d.partition_column,
+                    d.additional_partitions,
+                    d.offset,
+                )
+                airflow_dependencies.append(airflow_dependency)
+            elif isinstance(d, dict):
+                # If it's already a dictionary, just append it
+                airflow_dependencies.append(d)
+            else:
+                raise ValueError(
+                    "Dependencies must be either TableDependency instances or dictionaries."
+                )
 
     custom_json = json.dumps({AIRFLOW_DEPENDENCIES_KEY: airflow_dependencies})
 
