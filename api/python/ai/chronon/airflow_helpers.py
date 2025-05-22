@@ -5,9 +5,10 @@ import ai.chronon.utils as utils
 from ai.chronon.api.ttypes import GroupBy, Join
 from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
 
+DATE_FORMAT_DASHES = "%Y-%m-%d"
 
 def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0,
-                              input_and_output_partition_formats:tuple[str,str]=None):
+                              partition_format=None):
     """
     Create an Airflow dependency object for a table.
 
@@ -41,13 +42,11 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
         additional_partitions_str = "/" + "/".join(additional_partitions)
 
 
-    if input_and_output_partition_formats:
-        input_format = input_and_output_partition_formats[0]
-        output_format = input_and_output_partition_formats[1]
+    if partition_format:
 
         return {
             "name": f"wf_{utils.sanitize(table)}",
-            "spec": f"{table}/{partition_column}={{{{ macros.ds_format(macros.ds_add(ds, {offset}), {input_format}, {output_format}) }}}}{additional_partitions_str}",
+            "spec": f"{table}/{partition_column}={{{{ macros.ds_format(macros.ds_add(ds, {offset}), {DATE_FORMAT_DASHES}, {partition_format}) }}}}{additional_partitions_str}",
         }
     else:
         return {
