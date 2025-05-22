@@ -1,9 +1,15 @@
 import json
+import math
 from typing import OrderedDict
 
 import ai.chronon.utils as utils
+from ai.chronon.api.common.ttypes import TimeUnit
 from ai.chronon.api.ttypes import GroupBy, Join
-from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
+from ai.chronon.constants import (
+    AIRFLOW_DEPENDENCIES_KEY,
+    AIRFLOW_LABEL_DEPENDENCIES_KEY,
+    PARTITION_COLUMN_KEY,
+)
 
 
 def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0):
@@ -107,6 +113,23 @@ def extract_default_partition_column(obj):
         return None
 
 
+def _get_distinct_day_windows(group_by):
+    windows = []
+    aggs = group_by.aggregations
+    if aggs:
+        for agg in aggs:
+            for window in agg.windows:
+                time_unit = window.timeUnit
+                length = window.length
+                if time_unit == TimeUnit.DAYS:
+                    windows.append(length)
+                elif time_unit == TimeUnit.HOURS:
+                    windows.append(math.ceil(length/24))
+                elif time_unit == TimeUnit.MINUTES:
+                    windows.append(math.ceil(length/(24*60)))
+    return set(windows)
+
+
 def _set_join_deps(join):
     default_partition_col = extract_default_partition_column(join)
 
@@ -133,22 +156,42 @@ def _set_join_deps(join):
                         _get_airflow_deps_from_source(source, source_partition_column)
                     )
 
+    label_deps = []
     # Handle label parts
     if join.labelParts and join.labelParts.labels:
+        join_output_table = utils.output_table_name(join, full_name=True)
+        partition_column = join.metaData.executionInfo.conf.common[PARTITION_COLUMN_KEY]
+
+
+        # set the dependencies on the label sources
         for label_part in join.labelParts.labels:
-            if label_part.groupBy and label_part.groupBy.sources:
+            group_by = label_part.groupBy
+
+            # set the dependency on the join output -- one for each distinct window offset
+            windows = _get_distinct_day_windows(group_by)
+            for window in windows:
+                label_deps.append(
+                    create_airflow_dependency(join_output_table, partition_column, offset=-1 * window)
+                )
+
+            if group_by and group_by.sources:
                 for source in label_part.groupBy.sources:
                     source_query = utils.get_query(source)
                     source_partition_column = (
                         _get_partition_col_from_query(source_query)
                         or default_partition_col
                     )
-                    deps.extend(
+                    label_deps.extend(
                         _get_airflow_deps_from_source(source, source_partition_column)
                     )
 
+
     # Update the metadata customJson with dependencies
-    _dedupe_and_set_airflow_deps_json(join, deps)
+    _dedupe_and_set_airflow_deps_json(join, deps, AIRFLOW_DEPENDENCIES_KEY)
+
+    # Update the metadata customJson with label join deps
+    if label_deps:
+        _dedupe_and_set_airflow_deps_json(join, label_deps, AIRFLOW_LABEL_DEPENDENCIES_KEY)
 
     # Set the t/f flag for label_join
     _set_label_join_flag(join)
@@ -171,7 +214,7 @@ def _set_group_by_deps(group_by):
         deps.extend(_get_airflow_deps_from_source(source, source_partition_column))
 
     # Update the metadata customJson with dependencies
-    _dedupe_and_set_airflow_deps_json(group_by, deps)
+    _dedupe_and_set_airflow_deps_json(group_by, deps, AIRFLOW_DEPENDENCIES_KEY)
 
 
 def _set_label_join_flag(join):
@@ -184,13 +227,13 @@ def _set_label_join_flag(join):
     join.metaData.customJson = json.dumps(json_map)
 
 
-def _dedupe_and_set_airflow_deps_json(obj, deps):
+def _dedupe_and_set_airflow_deps_json(obj, deps, custom_json_key):
     sorted_items = [tuple(sorted(d.items())) for d in deps]
     # Use OrderedDict for re-producible ordering of dependencies
     unique = [OrderedDict(t) for t in sorted_items]
     existing_json = obj.metaData.customJson or "{}"
     json_map = json.loads(existing_json)
-    json_map[AIRFLOW_DEPENDENCIES_KEY] = unique
+    json_map[custom_json_key] = unique
     obj.metaData.customJson = json.dumps(json_map)
 
 
