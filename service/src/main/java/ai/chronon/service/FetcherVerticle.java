@@ -7,6 +7,7 @@ import ai.chronon.service.handlers.JoinListHandler;
 import ai.chronon.service.handlers.JoinSchemaHandler;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.http.Http2Settings;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
@@ -68,11 +69,21 @@ public class FetcherVerticle extends AbstractVerticle {
                .end(configJsonString);
         });
 
+        Http2Settings http2Settings = new Http2Settings()
+                .setMaxConcurrentStreams(200)
+                .setInitialWindowSize(1024 * 1024);
+
         // Start HTTP server
         HttpServerOptions httpOptions =
                 new HttpServerOptions()
                         .setTcpKeepAlive(true)
-                        .setIdleTimeout(60);
+                        .setIdleTimeout(60)
+                        // HTTP/2 specific settings - these are currently the default in our Vert.x version
+                        // but we make them explicit for clarity and to guard against future changes
+                        .setUseAlpn(false)           // No need for ALPN in cleartext mode
+                        .setSsl(false)               // No SSL for cleartext
+                        .setHttp2ClearTextEnabled(true)
+                        .setInitialSettings(http2Settings);
         server = vertx.createHttpServer(httpOptions);
         server.requestHandler(router)
                 .listen(port)

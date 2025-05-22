@@ -85,33 +85,35 @@ object OtelMetricsReporter {
   val MetricsExporterPrometheusPortKey = "ai.chronon.metrics.exporter.port"
   val MetricsExporterResourceKey = "ai.chronon.metrics.exporter.resources"
 
-  val MetricsReaderDefault = "http"
+  val MetricsReaderHttp = "http"
   val MetricsReaderPrometheus = "prometheus"
   val MetricsExporterInterval = "PT15s"
+  val MetricsExporterUrlDefault = "http://localhost:4318"
   val MetricsExporterPrometheusPortDefault = "8905"
 
-  def getExporterUrl: Option[String] = {
-    Option(System.getProperty(MetricsExporterUrlKey))
+  def getExporterUrl: String = {
+    System.getProperty(MetricsExporterUrlKey, MetricsExporterUrlDefault)
   }
 
-  def buildOtelMetricReader(): Option[MetricReader] = {
-    val metricReader = System.getProperty(MetricsReader, MetricsReaderDefault)
+  def getMetricsReader: String = {
+    System.getProperty(MetricsReader, MetricsReaderHttp)
+  }
+
+  def buildOtelMetricReader(): MetricReader = {
+    val metricReader = getMetricsReader
     metricReader.toLowerCase match {
-      case MetricsReaderDefault =>
-        getExporterUrl.map { url =>
-          val exporterUrl = url + "/v1/metrics"
-          val metricExporter = OtlpHttpMetricExporter.builder.setEndpoint(exporterUrl).build
-          // Configure periodic metric reader// Configure periodic metric reader
-          PeriodicMetricReader.builder(metricExporter).setInterval(Duration.parse(MetricsExporterInterval)).build
-        }
+      case MetricsReaderHttp =>
+        val exporterUrl = getExporterUrl + "/v1/metrics"
+        val metricExporter = OtlpHttpMetricExporter.builder.setEndpoint(exporterUrl).build
+        // Configure periodic metric reader// Configure periodic metric reader
+        PeriodicMetricReader.builder(metricExporter).setInterval(Duration.parse(MetricsExporterInterval)).build
 
       case MetricsReaderPrometheus =>
         val prometheusPort =
           System.getProperty(MetricsExporterPrometheusPortKey, MetricsExporterPrometheusPortDefault).toInt
-        Some(
-          PrometheusHttpServer.builder
-            .setPort(prometheusPort)
-            .build)
+        PrometheusHttpServer.builder
+          .setPort(prometheusPort)
+          .build
       case _ =>
         throw new IllegalArgumentException(s"Unknown metrics reader (only http / prometheus supported): $metricReader")
     }

@@ -71,6 +71,11 @@ maven_repository = repository(
         "com.typesafe:config:1.4.3",
         "io.micrometer:micrometer-registry-statsd:1.13.6",
         "io.micrometer:micrometer-registry-otlp:1.13.6",
+        # use an older version of micrometer-registry-prometheus to avoid
+        # running into issues where they've moved classes from io.micrometer.prometheus to
+        # io.micrometer.prometheusmetrics and Vert.x metrics haven't picked this up
+        # Can revisit when we bump Vert.x to 5.x
+        "io.micrometer:micrometer-registry-prometheus:1.10.13",
         "net.sf.py4j:py4j:0.10.9.9",
         "org.apache.commons:commons-lang3:3.12.0",
         "org.apache.commons:commons-math3:3.6.1",

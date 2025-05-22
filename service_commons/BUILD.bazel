@@ -10,6 +10,7 @@ java_library(
         maven_artifact("com.typesafe:config"),
         maven_artifact("io.netty:netty-all"),
         maven_artifact("io.micrometer:micrometer-registry-otlp"),
+        maven_artifact("io.micrometer:micrometer-registry-prometheus"),
         maven_artifact("io.micrometer:micrometer-core"),
         maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
         maven_artifact("org.slf4j:slf4j-api"),

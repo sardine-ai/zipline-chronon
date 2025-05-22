@@ -128,19 +128,15 @@ object Metrics {
     }
 
     private val client: MetricsReporter = {
-      // Can disable metrics collection for local / dev environments
-      val metricsEnabled: Boolean = System.getProperty(MetricsEnabled, "true").toBoolean
+      // Metrics collection is turned off by default, we explicitly turn on in serving contexts
+      val metricsEnabled: Boolean = System.getProperty(MetricsEnabled, "false").toBoolean
       val reporter: String = System.getProperty(MetricsReporter, "otel")
 
       reporter.toLowerCase match {
         case "otel" | "opentelemetry" =>
           if (metricsEnabled) {
-            val maybeMetricReader = OtelMetricsReporter.buildOtelMetricReader()
-            val openTelemetry = maybeMetricReader
-              .map { metricReader =>
-                OtelMetricsReporter.buildOpenTelemetryClient(metricReader)
-              }
-              .getOrElse(OpenTelemetry.noop())
+            val metricReader = OtelMetricsReporter.buildOtelMetricReader()
+            val openTelemetry = OtelMetricsReporter.buildOpenTelemetryClient(metricReader)
             new OtelMetricsReporter(openTelemetry)
           } else {
             new OtelMetricsReporter(OpenTelemetry.noop())
