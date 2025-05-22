@@ -497,6 +497,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          ssh-key: ${{ secrets.CHRONON_REPO_DEPLOY_KEY }}
       - name: Update Stable Branch
         env:
           TARGET_BRANCH: main-passing-tests
@@ -524,7 +525,7 @@ jobs:
 
 
   on_fail_notify_slack:
-    needs: [run_aws_integration_tests, run_gcp_integration_tests]
+    needs: [run_aws_integration_tests, run_gcp_integration_tests, merge_to_main-passing-tests]
     if: failure()
     runs-on: ubuntu-latest
 
