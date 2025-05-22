@@ -2,7 +2,7 @@
 import inspect
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import ai.chronon.airflow_helpers as airflow_helpers
 import ai.chronon.api.common.ttypes as common
@@ -31,7 +31,7 @@ def StagingQuery(
     setups: Optional[List[str]] = None,
     partition_column: Optional[str] = None,
     engine_type: Optional[EngineType] = None,
-    dependencies: Optional[List[TableDependency]] = None,
+    dependencies: Optional[List[Union[TableDependency, Dict]]] = None,
     tags: Optional[Dict[str, str]] = None,
     # execution params
     offline_schedule: str = "@daily",
@@ -99,7 +99,25 @@ def StagingQuery(
         stepDays=step_days,
     )
 
-    airflow_dependencies = [airflow_helpers.create_airflow_dependency(t.table, t.partition_column, t.additional_partitions, t.offset) for t in dependencies] if dependencies else []
+    airflow_dependencies = []
+    for d in dependencies:
+        if isinstance(d, TableDependency):
+            # Create an Airflow dependency object for the table
+            airflow_dependency = airflow_helpers.create_airflow_dependency(
+                d.table,
+                d.partition_column,
+                d.additional_partitions,
+                d.offset,
+            )
+            airflow_dependencies.append(airflow_dependency)
+        elif isinstance(d, dict):
+            # If it's already a dictionary, just append it
+            airflow_dependencies.append(d)
+        else:
+            raise ValueError(
+                "Dependencies must be either TableDependency instances or dictionaries."
+            )
+
     custom_json = json.dumps({AIRFLOW_DEPENDENCIES_KEY: airflow_dependencies})
 
     # Create metadata

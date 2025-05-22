@@ -37,5 +37,9 @@ v1 = StagingQuery(
     table_properties={"sample_config_json": """{"sample_key": "sample value}"""},
     dependencies=[
         TableDependency(table="sample_namespace.sample_table", partition_column="ds", additional_partitions=["_HR=23:00"], offset=1),
+        {
+            "name": "wf_sample_namespace.sample_table",
+            "spec": "sample_namespace.sample_table/ds={{ macros.ds_add(ds, 1) }}",
+        }
     ],
     )
