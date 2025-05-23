@@ -15,6 +15,7 @@ import org.apache.spark.sql.types.{DataType, StructType}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
+import scala.math.Ordering.Implicits._
 import scala.collection.Seq
 
 // let's say we are running the label join on `ds`, we want to modify partitions of the join output table
@@ -196,13 +197,16 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
 
     // Each unique window is an output partition in the joined table
     // Each window may contain a subset of the joinParts and their columns
-    computableWindowToOutputs.foreach { case (windowLength, joinOutputInfo) =>
-      computeOutputForWindow(windowLength,
-                             joinOutputInfo,
-                             existingLabelTableOutputPartitions,
-                             windowToLabelOutputInfos,
-                             labelDsAsPartitionRange)
-    }
+    // Ensure that we write old to new in case downstream partition sensing makes that assumption
+    computableWindowToOutputs.toSeq
+      .sortBy(_._1)(Ordering[Int].reverse)
+      .foreach { case (windowLength, joinOutputInfo) =>
+        computeOutputForWindow(windowLength,
+                               joinOutputInfo,
+                               existingLabelTableOutputPartitions,
+                               windowToLabelOutputInfos,
+                               labelDsAsPartitionRange)
+      }
 
     val allOutputDfs = computableWindowToOutputs.values
       .map(_.joinDsAsRange)
