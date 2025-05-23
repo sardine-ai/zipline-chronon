@@ -90,7 +90,11 @@ scala_library(
         "//conditions:default": True,
     }),
     visibility = ["//visibility:public"],
-    deps = [],
+    deps = [
+        "//api:lib",
+        "//spark:lib",
+        "//tools/build_rules/spark:spark-exec",
+    ],
 )
 
 scala_library(
