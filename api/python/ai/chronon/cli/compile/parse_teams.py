@@ -166,55 +166,64 @@ class EnvOrConfigAttribute(str, Enum):
     ENV = "modeEnvironments"
     CONFIG = "modeConfigs"
 
-
 def _merge_mode_maps(
-    *mode_maps: Union[EnvironmentVariables, ConfigProperties],
+    *mode_maps: Optional[Union[EnvironmentVariables, ConfigProperties]],
     env_or_config_attribute: EnvOrConfigAttribute,
 ):
     """
     Merges multiple environment variables into one - with the later maps overriding the earlier ones.
     """
 
+    # Merge `common` to each individual mode map. Creates a new map
+    def push_common_to_modes(mode_map: Union[EnvironmentVariables, ConfigProperties], mode_key: EnvOrConfigAttribute):
+        final_mode_map = deepcopy(mode_map)
+        common = final_mode_map.common
+        modes  = getattr(final_mode_map, mode_key)
+        for _ in modes:
+            modes[_] = _merge_maps(
+                common, modes[_]
+            )
+        return final_mode_map
+
+
+    filtered_mode_maps = [m for m in mode_maps if m]
+
+    # Initialize the result with the first mode map
     result = None
 
-    final_common = {}
+    if len(filtered_mode_maps) >= 1:
+        result = push_common_to_modes(filtered_mode_maps[0], env_or_config_attribute)
 
-    for mode_map in mode_maps:
+    # Merge each new mode map into the result
+    for m in filtered_mode_maps[1:]:
+        # We want to prepare the individual modes with `common` in incoming_mode_map
+        incoming_mode_map = push_common_to_modes(m, env_or_config_attribute)
 
-        if mode_map is None:
-            continue
+        # create new common
+        incoming_common = incoming_mode_map.common
+        new_common = _merge_maps(result.common, incoming_common)
+        result.common = new_common
 
-        if result is None:
-            result = deepcopy(mode_map)
-            if result.common is not None:
-                mode_environments_or_configs = getattr(result, env_or_config_attribute)
-                if mode_environments_or_configs:
-                    for mode in mode_environments_or_configs:
-                        mode_environments_or_configs[mode] = _merge_maps(
-                            result.common, mode_environments_or_configs[mode]
-                        )
+        current_modes = getattr(result, env_or_config_attribute)
+        incoming_modes = getattr(incoming_mode_map, env_or_config_attribute)
 
-                final_common = _merge_maps(final_common, result.common)
-                result.common = None
-            continue
+        current_modes_keys = list(current_modes.keys())
+        incoming_modes_keys = list(incoming_modes.keys())
 
-        # we don't set common in the env vars, because we want
-        # group_by.common to take precedence over team.backfill
-        final_common = _merge_maps(final_common, result.common, mode_map.common)
+        all_modes_keys = list(set(current_modes_keys + incoming_modes_keys))
+        for mode in all_modes_keys:
 
-        mode_environments_or_configs = getattr(result, env_or_config_attribute)
+            current_mode = current_modes.get(mode, {})
 
-        if mode_environments_or_configs:
-            for mode in mode_environments_or_configs:
-                mode_environments_or_configs[mode] = _merge_maps(
-                    mode_environments_or_configs[mode],
-                    mode_map.common,
-                    getattr(mode_map, env_or_config_attribute).get(mode),
-                )
+            # if the incoming_mode is not found, we NEED to default to incoming_common
+            incoming_mode = incoming_modes.get(mode, incoming_common)
 
-    if result:
-        # Want to persist the merged common as the default mode map if
-        # user has not explicitly set a mode they want to run, we can use common.
-        result.common = final_common
+            # first to last with later ones overriding the earlier ones
+            # common -> current mode level -> incoming mode level
+
+            new_mode = _merge_maps(
+                new_common, current_mode, incoming_mode
+            )
+            current_modes[mode] = new_mode
 
     return result
