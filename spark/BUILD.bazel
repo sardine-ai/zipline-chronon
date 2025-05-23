@@ -83,6 +83,17 @@ scala_library(
 )
 
 scala_library(
+    name = "ingest_lib",
+    srcs = glob(["src/main/scala/ai/chronon/spark/ingest/*.scala"]),
+    format = select({
+        "//tools/config:scala_2_13": False,
+        "//conditions:default": True,
+    }),
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+scala_library(
     name = "batch_lib",
     srcs = glob(["src/main/scala/ai/chronon/spark/batch/*.scala"]),
     format = True,

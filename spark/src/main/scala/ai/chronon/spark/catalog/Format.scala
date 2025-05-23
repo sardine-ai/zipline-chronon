@@ -108,4 +108,9 @@ object Format {
     parsedCatalog
   }
 
+  def andPredicates(predicates: Seq[String]): String = {
+    val whereStr = predicates.map(p => s"($p)").mkString(" AND ")
+    whereStr
+  }
+
 }

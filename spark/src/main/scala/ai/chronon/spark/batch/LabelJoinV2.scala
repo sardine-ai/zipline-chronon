@@ -1,9 +1,9 @@
 package ai.chronon.spark.batch
 import ai.chronon.api
+import ai.chronon.api._
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionRange.toTimeRange
-import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
@@ -15,8 +15,8 @@ import org.apache.spark.sql.types.{DataType, StructType}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
-import scala.math.Ordering.Implicits._
 import scala.collection.Seq
+import scala.math.Ordering.Implicits._
 
 // let's say we are running the label join on `ds`, we want to modify partitions of the join output table
 // that are `ds - windowLength` days old. window sizes could repeat across different label join parts

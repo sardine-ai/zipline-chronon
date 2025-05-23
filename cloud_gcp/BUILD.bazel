@@ -1,5 +1,6 @@
 shared_deps = [
     ":iceberg_bigquery_catalog_lib",
+    "//spark:ingest_lib",
     "//api:lib",
     "//api:thrift_java",
     "//online:lib",

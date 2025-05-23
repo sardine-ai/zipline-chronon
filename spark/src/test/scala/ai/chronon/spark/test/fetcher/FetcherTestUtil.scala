@@ -2,39 +2,24 @@ package ai.chronon.spark.test.fetcher
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.{
-  Accuracy,
-  BooleanType,
-  Builders,
-  DoubleType,
-  IntType,
-  ListType,
-  LongType,
-  Operation,
-  StringType,
-  StructField,
-  StructType,
-  TimeUnit,
-  TsUtils,
-  Window
-}
+import ai.chronon.api._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online._
-import ai.chronon.spark.Extensions._
 import ai.chronon.online.fetcher.Fetcher.{Request, Response}
 import ai.chronon.online.serde.SparkConversions
+import ai.chronon.spark.{Join => _, _}
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.test.DataFrameGen
 import ai.chronon.spark.utils.MockApi
-import ai.chronon.spark.{Join => _, _}
-import org.apache.spark.sql.functions.avg
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.functions.avg
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.Seq
 import scala.compat.java8.FutureConverters
-import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration.{Duration, SECONDS}
 
 object FetcherTestUtil {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
