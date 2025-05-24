@@ -8,7 +8,7 @@ import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.PartitionRange
-
+import ai.chronon.spark.catalog.Format
 import scala.util.{Failure, Success, Try}
 
 class BigQueryImport extends DataImport {
@@ -85,7 +85,6 @@ class BigQueryImport extends DataImport {
 
   override def sync(sourceTableName: String, destinationTableName: String, partitionRange: PartitionRange)(implicit
       sparkSession: SparkSession): Unit = {
-    import ai.chronon.spark.catalog.Format
     // First, need to clean the spark-based table name for the bigquery queries below.
     val bqTableId = SparkBQUtils.toTableId(sourceTableName)
     val providedProject = scala.Option(bqTableId.getProject).getOrElse(bqOptions.getProjectId)
@@ -101,8 +100,9 @@ class BigQueryImport extends DataImport {
         s"SELECT ${nativeCol.colName} as ${internalBQPartitionCol}, * FROM ${bqFriendlyName} ${partitionWheres}"
       case _ => s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}"
     }
+    val catalogName = Format.getCatalog(sourceTableName)
     val destPath = destPrefix(
-      catalogName = bqTableId.getDataset,
+      catalogName = catalogName,
       tableName = destinationTableName,
       formatStr = formatStr
     )
