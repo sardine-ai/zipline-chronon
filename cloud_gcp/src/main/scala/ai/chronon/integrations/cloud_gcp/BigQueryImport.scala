@@ -10,6 +10,7 @@ import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.PartitionRange
 import ai.chronon.spark.catalog.Format
 import scala.util.{Failure, Success, Try}
+import java.util.UUID
 
 class BigQueryImport extends DataImport {
 
@@ -74,7 +75,6 @@ class BigQueryImport extends DataImport {
                                     tableName: String,
                                     formatStr: String,
                                     uniqueId: scala.Option[String] = None)(implicit sparkSession: SparkSession) = {
-    import java.util.UUID
     val warehouseLocation = sparkSession.sessionState.conf
       .getConfString(s"spark.sql.catalog.${catalogName}.warehouse")
       .stripSuffix("/")
@@ -96,8 +96,16 @@ class BigQueryImport extends DataImport {
     val whereClauses = Format.andPredicates(partitionRange.whereClauses)
     val partitionWheres = if (whereClauses.nonEmpty) s"WHERE ${whereClauses}" else whereClauses
     val select = pColOption match {
-      case Some(nativeCol) if nativeCol.isSystemDefined =>
-        s"SELECT ${nativeCol.colName} as ${internalBQPartitionCol}, * FROM ${bqFriendlyName} ${partitionWheres}"
+      case Some(nativeCol) => {
+        require(
+          nativeCol.colName.equals(spec.column),
+          s"Configured column in the pipeline definition ${spec.column} does not match what's defined on the BigQuery table: ${nativeCol.colName}. "
+        )
+        if (nativeCol.isSystemDefined)
+          s"SELECT ${nativeCol.colName} as ${internalBQPartitionCol}, * FROM ${bqFriendlyName} ${partitionWheres}"
+        else
+          s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}"
+      }
       case _ => s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}"
     }
     val catalogName = Format.getCatalog(sourceTableName)
