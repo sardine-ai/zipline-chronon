@@ -1,12 +1,12 @@
 package ai.chronon.integrations.cloud_gcp
 
 import ai.chronon.api.Extensions._
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.ingest.DataImport
 import com.google.cloud.bigquery.{BigQuery, BigQueryOptions, Job, JobInfo, QueryJobConfiguration, TableId}
 import com.google.cloud.spark.bigquery.v2.Spark35BigQueryTableProvider
 import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
-import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.api.PartitionRange
 import ai.chronon.spark.catalog.Format
 import scala.util.{Failure, Success, Try}
@@ -138,15 +138,16 @@ class BigQueryImport extends DataImport {
         throw e
       case Success(_) =>
         val internalLoad = sparkSession.read.format(formatStr).load(destPath)
-        val tableUtils = TableUtils(sparkSession)
         val dfToWrite = pColOption
           .map { case (nativeColumn) => // as long as we have a native partition column we'll attempt to rename it.
             internalLoad
               .withColumnRenamed(internalBQPartitionCol, nativeColumn.colName)
           }
           .getOrElse(internalLoad)
-        tableUtils
-          .insertPartitions(dfToWrite, destinationTableName, partitionColumns = List(spec.column))
+        dfToWrite.save(
+          destinationTableName,
+          partitionColumns = List(spec.column)
+        )
     }
   }
 }
