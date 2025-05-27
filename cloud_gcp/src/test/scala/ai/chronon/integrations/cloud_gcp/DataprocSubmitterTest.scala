@@ -3,6 +3,9 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark
 import ai.chronon.spark.submission
 import ai.chronon.spark.submission.JobSubmitterConstants._
+import com.google.api.core.ApiFuture
+import com.google.api.gax.longrunning.{OperationFuture, OperationSnapshot}
+import com.google.api.gax.retrying.RetryingFuture
 import com.google.api.gax.rpc.UnaryCallable
 import com.google.cloud.dataproc.v1.JobControllerClient.ListJobsPagedResponse
 import com.google.cloud.dataproc.v1._
@@ -15,9 +18,18 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.mockito.MockitoSugar
 
 import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters._
 
 class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
+  def setEnv(key: String, value: String): Unit = {
+    val env = System.getenv()
+    val field = env.getClass.getDeclaredField("m")
+    field.setAccessible(true)
+    val writableEnv = field.get(env).asInstanceOf[java.util.Map[String, String]]
+    writableEnv.put(key, value)
+  }
+
   it should "test buildFlinkJob with the expected flinkStateUri and savepointUri" in {
     val submitter = new DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
                                           conf = SubmitterConf("test-project", "test-region", "test-cluster"))
@@ -713,6 +725,92 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     assertEquals(listRequest.getFilter,
                  "status.state = ACTIVE AND labels.job-type = flink AND labels.metadata-name = test-groupby-name")
 
+  }
+
+  it should "create a Dataproc cluster successfully with a given config" in {
+    val mockDataprocClient = mock[ClusterControllerClient]
+
+    val mockOperationFuture = mock[OperationFuture[Cluster, ClusterOperationMetadata]]
+    val mockRetryingFuture = mock[RetryingFuture[OperationSnapshot]]
+    val mockMetadataFuture = mock[ApiFuture[ClusterOperationMetadata]]
+    val mockCluster = Cluster
+      .newBuilder()
+      .setStatus(ClusterStatus.newBuilder().setState(ClusterStatus.State.RUNNING))
+      .build()
+
+    when(mockDataprocClient.createClusterAsync(any[CreateClusterRequest]))
+      .thenReturn(mockOperationFuture)
+    when(mockOperationFuture.getPollingFuture).thenReturn(mockRetryingFuture)
+    when(mockOperationFuture.peekMetadata()).thenReturn(mockMetadataFuture)
+    when(mockOperationFuture.get(anyLong(), any[TimeUnit])).thenReturn(mockCluster)
+
+    when(mockDataprocClient.createClusterAsync(any[CreateClusterRequest]))
+      .thenReturn(mockOperationFuture)
+
+    when(mockDataprocClient.getCluster(any[String], any[String], any[String])).thenReturn(mockCluster)
+
+    val region = "test-region"
+    val projectId = "test-project"
+
+    val clusterConfigStr = """{
+      "masterConfig": {
+        "numInstances": 1,
+        "machineTypeUri": "n1-standard-4"
+      },
+      "workerConfig": {
+        "numInstances": 2,
+        "machineTypeUri": "n1-standard-4"
+      }
+    }"""
+
+    val clusterName =
+      DataprocSubmitter.getOrCreateCluster("", Option(Map("dataproc.config" -> clusterConfigStr)), projectId, region, mockDataprocClient)
+
+    assert(clusterName.startsWith("zipline-"))
+    verify(mockDataprocClient).createClusterAsync(any())
+  }
+
+  it should "not create a new cluster if given name exists" in {
+    val mockDataprocClient = mock[ClusterControllerClient]
+
+    val mockOperationFuture = mock[OperationFuture[Cluster, ClusterOperationMetadata]]
+    val mockRetryingFuture = mock[RetryingFuture[OperationSnapshot]]
+    val mockMetadataFuture = mock[ApiFuture[ClusterOperationMetadata]]
+    val mockCluster = Cluster
+      .newBuilder()
+      .setStatus(ClusterStatus.newBuilder().setState(ClusterStatus.State.RUNNING))
+      .build()
+
+    when(mockDataprocClient.createClusterAsync(any[CreateClusterRequest]))
+      .thenReturn(mockOperationFuture)
+    when(mockOperationFuture.getPollingFuture).thenReturn(mockRetryingFuture)
+    when(mockOperationFuture.peekMetadata()).thenReturn(mockMetadataFuture)
+    when(mockOperationFuture.get(anyLong(), any[TimeUnit])).thenReturn(mockCluster)
+
+    when(mockDataprocClient.createClusterAsync(any[CreateClusterRequest]))
+      .thenReturn(mockOperationFuture)
+
+    when(mockDataprocClient.getCluster(any[String], any[String], any[String])).thenReturn(mockCluster)
+
+    val region = "test-region"
+    val projectId = "test-project"
+
+    val clusterConfigStr = """{
+      "masterConfig": {
+        "numInstances": 1,
+        "machineTypeUri": "n1-standard-4"
+      },
+      "workerConfig": {
+        "numInstances": 2,
+        "machineTypeUri": "n1-standard-4"
+      }
+    }"""
+
+    val clusterName =
+      DataprocSubmitter.getOrCreateCluster("test-cluster", Option(Map("dataproc.config" -> clusterConfigStr)), projectId, region, mockDataprocClient)
+
+    assert(clusterName.equals("test-cluster"))
+    verify(mockDataprocClient, never()).createClusterAsync(any())
   }
 
   it should "test getZiplineVersionOfDataprocJob successfully" in {

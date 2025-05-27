@@ -1,6 +1,7 @@
 from ai.chronon.api.ttypes import Team
+from ai.chronon.repo.cluster import generate_dataproc_cluster_config
 from ai.chronon.repo.constants import RunMode
-from ai.chronon.types import ConfigProperties, EnvironmentVariables
+from ai.chronon.types import ClusterConfigProperties, ConfigProperties, EnvironmentVariables
 
 default = Team(
     description="Default team",
@@ -29,7 +30,6 @@ default = Team(
         },
     ),
 )
-
 
 test = Team(
     outputNamespace="test",
@@ -64,6 +64,11 @@ gcp = Team(
             "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
         },
+        modeEnvironments={
+            RunMode.UPLOAD: {
+                "GCP_DATAPROC_CLUSTER_NAME": "zipline-transient-upload-cluster"
+            }
+        }
     ),
     conf=ConfigProperties(
         common={
@@ -97,6 +102,15 @@ gcp = Team(
         modeConfigs={
             RunMode.BACKFILL: {
                 "spark.chronon.backfill_cloud_provider": "gcp",  # dummy test config
+            }
+        }
+    ),
+    clusterConf=ClusterConfigProperties(
+        modeClusterConfigs={
+            RunMode.UPLOAD: {
+                "dataproc.config": generate_dataproc_cluster_config(2, "canary-443022", "gs://zipline-artifacts-canary",
+                                                                    worker_host_type="n2-highmem-4",
+                                                                    master_host_type="n2-highmem-8")
             }
         }
     ),

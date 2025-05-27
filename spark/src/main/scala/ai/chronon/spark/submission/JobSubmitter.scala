@@ -98,6 +98,37 @@ object JobSubmitter {
 
     modeConfigProperties
   }
+
+  def getClusterConfig(args: Array[String]): Option[Map[String, String]] = {
+    val maybeMetadata = getMetadata(args)
+    val clusterConfig = if (maybeMetadata.isDefined) {
+      val metadata = maybeMetadata.get
+
+      val executionInfo = Option(metadata.getExecutionInfo)
+
+      if (executionInfo.isEmpty) {
+        None
+      } else {
+        val originalMode = getArgValue(args, OriginalModeArgKeyword)
+
+        (Option(executionInfo.get.clusterConf), originalMode) match {
+          case (Some(clusterConf), Some(mode)) =>
+            val modeConfig =
+              if (clusterConf.isSetModeClusterConfigs && clusterConf.getModeClusterConfigs.containsKey(mode)) {
+                clusterConf.getModeClusterConfigs.get(mode).toScala
+              } else if (clusterConf.isSetCommon) {
+                clusterConf.getCommon.toScala
+              } else {
+                Map[String, String]()
+              }
+            Option(modeConfig)
+          case _ => None
+        }
+      }
+    } else None
+    clusterConfig
+  }
+
 }
 
 abstract class JobAuth {

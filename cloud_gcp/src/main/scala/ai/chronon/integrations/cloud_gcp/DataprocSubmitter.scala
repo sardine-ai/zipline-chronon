@@ -3,9 +3,11 @@ import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
+import com.google.protobuf.util.JsonFormat
 import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
+import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 
 import scala.io.Source
@@ -348,16 +350,19 @@ object DataprocSubmitter {
 
   }
 
-  private def initializeDataprocSubmitter(): DataprocSubmitter = {
+  private def initializeDataprocSubmitter(clusterName: String,
+                                          maybeClusterConfig: Option[Map[String, String]]): DataprocSubmitter = {
     val projectId = sys.env.getOrElse(GcpProjectIdEnvVar, throw new Exception(s"$GcpProjectIdEnvVar not set"))
     val region = sys.env.getOrElse(GcpRegionEnvVar, throw new Exception(s"$GcpRegionEnvVar not set"))
-    val clusterName = sys.env
-      .getOrElse(GcpDataprocClusterNameEnvVar, throw new Exception(s"$GcpDataprocClusterNameEnvVar not set"))
+    val dataprocClient = ClusterControllerClient.create(
+      ClusterControllerSettings.newBuilder().setEndpoint(s"$region-dataproc.googleapis.com:443").build())
+
+    val submitterClusterName = getOrCreateCluster(clusterName, maybeClusterConfig, projectId, region, dataprocClient)
 
     val submitterConf = SubmitterConf(
       projectId,
       region,
-      clusterName
+      submitterClusterName
     )
     DataprocSubmitter(submitterConf)
   }
@@ -517,6 +522,137 @@ object DataprocSubmitter {
     }
   }
 
+  private[cloud_gcp] def getOrCreateCluster(clusterName: String,
+                                            maybeClusterConfig: Option[Map[String, String]],
+                                            projectId: String,
+                                            region: String,
+                                            dataprocClient: ClusterControllerClient): String = {
+    if (clusterName != "") {
+      try {
+        val cluster = dataprocClient.getCluster(projectId, region, clusterName)
+        if (cluster != null && cluster.getStatus.getState == ClusterStatus.State.RUNNING) {
+          println(s"Dataproc cluster $clusterName already exists and is running.")
+          clusterName
+        } else if (maybeClusterConfig.isDefined && maybeClusterConfig.get.contains("dataproc.config")) {
+          // Print to stderr so that it flushes immediately
+          System.err.println(
+            s"Dataproc cluster $clusterName does not exist or is not running. Creating it with the provided config.")
+          createDataprocCluster(clusterName,
+                                projectId,
+                                region,
+                                dataprocClient,
+                                maybeClusterConfig.get.getOrElse("dataproc.config", ""))
+        } else {
+          throw new Exception(s"Dataproc cluster $clusterName does not exist and no cluster config provided.")
+        }
+      } catch {
+        case _: ApiException if maybeClusterConfig.isDefined && maybeClusterConfig.get.contains("dataproc.config") =>
+          // Print to stderr so that it flushes immediately
+          System.err.println(s"Dataproc cluster $clusterName does not exist. Creating it with the provided config.")
+          createDataprocCluster(clusterName,
+                                projectId,
+                                region,
+                                dataprocClient,
+                                maybeClusterConfig.get.getOrElse("dataproc.config", ""))
+        case _: ApiException =>
+          throw new Exception(s"Dataproc cluster $clusterName does not exist and no cluster config provided.")
+      }
+    } else if (maybeClusterConfig.isDefined && maybeClusterConfig.get.contains("dataproc.config")) {
+      // Print to stderr so that it flushes immediately
+      System.err.println(s"Creating a transient dataproc cluster based on config.")
+      val transientClusterName = s"zipline-${java.util.UUID.randomUUID()}"
+      createDataprocCluster(transientClusterName,
+                            projectId,
+                            region,
+                            dataprocClient,
+                            maybeClusterConfig.get.getOrElse("dataproc.config", ""))
+    } else {
+      throw new Exception(
+        s"$GcpDataprocClusterNameEnvVar is not set and no cluster config was provided. " +
+          s"Please set $GcpDataprocClusterNameEnvVar or provide a cluster config in teams.py.")
+    }
+  }
+
+  /** Creates a Dataproc cluster with the given name, project ID, region, and configuration.
+    *
+    * @param clusterName The name of the cluster to create.
+    * @param projectId The GCP project ID.
+    * @param region The region where the cluster will be created.
+    * @param dataprocClient The ClusterControllerClient to interact with the Dataproc API.
+    * @param clusterConfigStr The JSON string representing the cluster configuration.
+    * @return The name of the created cluster.
+    */
+  private[cloud_gcp] def createDataprocCluster(clusterName: String,
+                                               projectId: String,
+                                               region: String,
+                                               dataprocClient: ClusterControllerClient,
+                                               clusterConfigStr: String): String = {
+
+    val builder = ClusterConfig.newBuilder()
+    val clusterConfig =
+      try {
+        JsonFormat.parser().merge(clusterConfigStr, builder)
+        builder.build()
+      } catch {
+        case e: Exception =>
+          throw new IllegalArgumentException(s"Failed to parse JSON: ${e.getMessage}", e)
+      }
+
+    val cluster: Cluster = Cluster
+      .newBuilder()
+      .setClusterName(clusterName)
+      .setProjectId(projectId)
+      .setConfig(clusterConfig)
+      .build()
+
+    val createRequest = CreateClusterRequest
+      .newBuilder()
+      .setProjectId(projectId)
+      .setRegion(region)
+      .setCluster(cluster)
+      .build()
+
+    // Asynchronously create the cluster and wait for it to be ready
+    try {
+      val operation = dataprocClient
+        .createClusterAsync(createRequest)
+        .get(15, java.util.concurrent.TimeUnit.MINUTES)
+      if (operation == null) {
+        throw new RuntimeException("Failed to create Dataproc cluster.")
+      }
+      println(s"Created Dataproc cluster: $clusterName")
+    } catch {
+      case e: java.util.concurrent.TimeoutException =>
+        throw new RuntimeException(s"Timeout waiting for cluster creation: ${e.getMessage}", e)
+      case e: Exception =>
+        throw new RuntimeException(s"Error creating Dataproc cluster: ${e.getMessage}", e)
+    }
+
+    // Check status of the cluster creation
+    var currentStatus = dataprocClient.getCluster(projectId, region, clusterName).getStatus
+    var currentState = currentStatus.getState
+    while (
+      currentState != ClusterStatus.State.RUNNING &&
+      currentState != ClusterStatus.State.ERROR &&
+      currentState != ClusterStatus.State.STOPPING
+    ) {
+      println(s"Waiting for Dataproc cluster $clusterName to be in RUNNING state. Current state: $currentState")
+      Thread.sleep(30000) // Wait for 30 seconds before checking again
+      currentStatus = dataprocClient.getCluster(projectId, region, clusterName).getStatus
+      currentState = currentStatus.getState
+    }
+    currentState match {
+      case ClusterStatus.State.RUNNING =>
+        println(s"Dataproc cluster $clusterName is running.")
+        clusterName
+      case ClusterStatus.State.ERROR =>
+        throw new RuntimeException(
+          s"Failed to create Dataproc cluster $clusterName: ERROR state: ${currentStatus.toString}")
+      case _ =>
+        throw new RuntimeException(s"Dataproc cluster $clusterName is in unexpected state: $currentState.")
+    }
+  }
+
   private[cloud_gcp] def run(args: Array[String],
                              submitter: DataprocSubmitter,
                              envMap: Map[String, Option[String]] = Map.empty): Unit = {
@@ -596,7 +732,10 @@ object DataprocSubmitter {
   }
 
   def main(args: Array[String]): Unit = {
-    val submitter = initializeDataprocSubmitter()
+    val clusterName = sys.env
+      .getOrElse(GcpDataprocClusterNameEnvVar, "")
+    val maybeClusterConfig = JobSubmitter.getClusterConfig(args)
+    val submitter = initializeDataprocSubmitter(clusterName, maybeClusterConfig)
     val envMap = Map(
       GcpBigtableInstanceIdEnvVar -> sys.env.get(GcpBigtableInstanceIdEnvVar),
       GcpProjectIdEnvVar -> sys.env.get(GcpProjectIdEnvVar)

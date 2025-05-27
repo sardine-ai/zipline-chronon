@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, Union
 
 from ai.chronon.api.common.ttypes import (
+    ClusterConfigProperties,
     ConfigProperties,
     EnvironmentVariables,
     ExecutionInfo,
@@ -40,7 +41,6 @@ def import_module_from_file(file_path):
 
 
 def load_teams(conf_root: str, print: bool = True) -> Dict[str, Team]:
-
     teams_file = os.path.join(conf_root, "teams.py")
 
     assert os.path.exists(
@@ -69,9 +69,7 @@ def load_teams(conf_root: str, print: bool = True) -> Dict[str, Team]:
     return team_dict
 
 
-
 def update_metadata(obj: Any, team_dict: Dict[str, Team]):
-
     assert obj is not None, "Cannot update metadata None object"
 
     metadata = obj.metaData
@@ -82,15 +80,15 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
     team = obj.metaData.team
 
     assert (
-        team is not None
+            team is not None
     ), f"Team name is required in metadata for {name}. This usually set by compiler. Internal error."
 
     assert (
-        team in team_dict
+            team in team_dict
     ), f"Team '{team}' not found in teams.py. Please add an entry 🙏"
 
     assert (
-        _DEFAULT_CONF_TEAM in team_dict
+            _DEFAULT_CONF_TEAM in team_dict
     ), f"'{_DEFAULT_CONF_TEAM}' team not found in teams.py, please add an entry 🙏."
 
     # Only set the outputNamespace if it hasn't been set already
@@ -99,6 +97,7 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
     if isinstance(obj, Join):
         join_namespace = obj.metaData.outputNamespace
+
         # set the metadata for each join part and labelParts
         def set_group_by_metadata(join_part_gb, output_namespace):
             if join_part_gb is not None:
@@ -124,6 +123,7 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
     merge_team_execution_info(metadata, team_dict, team)
 
+
 def merge_team_execution_info(metadata: MetaData, team_dict: Dict[str, Team], team_name: str):
     default_team = team_dict.get(_DEFAULT_CONF_TEAM)
     if not metadata.executionInfo:
@@ -141,6 +141,13 @@ def merge_team_execution_info(metadata: MetaData, team_dict: Dict[str, Team], te
         team_dict[team_name].conf,
         metadata.executionInfo.conf,
         env_or_config_attribute=EnvOrConfigAttribute.CONFIG,
+    )
+
+    metadata.executionInfo.clusterConf = _merge_mode_maps(
+        default_team.clusterConf if default_team else {},
+        team_dict[team_name].clusterConf,
+        metadata.executionInfo.clusterConf,
+        env_or_config_attribute=EnvOrConfigAttribute.CLUSTER_CONFIG,
     )
 
 
@@ -165,10 +172,12 @@ def _merge_maps(*maps: Optional[Dict[str, str]]):
 class EnvOrConfigAttribute(str, Enum):
     ENV = "modeEnvironments"
     CONFIG = "modeConfigs"
+    CLUSTER_CONFIG = "modeClusterConfigs"
+
 
 def _merge_mode_maps(
-    *mode_maps: Optional[Union[EnvironmentVariables, ConfigProperties]],
-    env_or_config_attribute: EnvOrConfigAttribute,
+        *mode_maps: Optional[Union[EnvironmentVariables, ConfigProperties, ClusterConfigProperties]],
+        env_or_config_attribute: EnvOrConfigAttribute,
 ):
     """
     Merges multiple environment variables into one - with the later maps overriding the earlier ones.
@@ -178,13 +187,12 @@ def _merge_mode_maps(
     def push_common_to_modes(mode_map: Union[EnvironmentVariables, ConfigProperties], mode_key: EnvOrConfigAttribute):
         final_mode_map = deepcopy(mode_map)
         common = final_mode_map.common
-        modes  = getattr(final_mode_map, mode_key)
+        modes = getattr(final_mode_map, mode_key)
         for _ in modes:
             modes[_] = _merge_maps(
                 common, modes[_]
             )
         return final_mode_map
-
 
     filtered_mode_maps = [m for m in mode_maps if m]
 
@@ -212,7 +220,6 @@ def _merge_mode_maps(
 
         all_modes_keys = list(set(current_modes_keys + incoming_modes_keys))
         for mode in all_modes_keys:
-
             current_mode = current_modes.get(mode, {})
 
             # if the incoming_mode is not found, we NEED to default to incoming_common

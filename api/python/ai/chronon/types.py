@@ -50,6 +50,7 @@ MetaData = ttypes.MetaData
 
 EnvironmentVariables = common.EnvironmentVariables
 ConfigProperties = common.ConfigProperties
+ClusterConfigProperties = common.ClusterConfigProperties
 ExecutionInfo = common.ExecutionInfo
 TableDependency = common.TableDependency
 

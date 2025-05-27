@@ -57,6 +57,22 @@ struct ConfigProperties {
     2: map<string, map<string, string>> modeConfigs = {}
 }
 
+/**
+* Cluster config for different modes of execution as a json string - with "common" applying to all modes
+* These are settings for creating a new cluster for running the job
+*
+* these confs are layered in order of priority
+*   1. company file defaults specified in teams.py - in the "common" team
+*   2. team wide defaults that apply to all objects in the team folder
+*   3. object specific defaults - applies to only the object that are declares them
+*
+*   All the maps from the above three places are merged to create final cluster config
+**/
+struct ClusterConfigProperties {
+    1: map<string, string> common = {}
+    2: map<string, map<string, string>> modeClusterConfigs = {}
+}
+
 struct TableInfo {
     // fully qualified table name
     1: optional string table
@@ -122,6 +138,7 @@ struct ExecutionInfo {
     2: optional ConfigProperties conf
     3: optional i64 dependencyPollIntervalMillis
     4: optional i64 healthCheckIntervalMillis
+    5: optional ClusterConfigProperties clusterConf
 
     # relevant for batch jobs
     # temporal workflow nodes maintain their own cron schedule
