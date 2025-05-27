@@ -94,13 +94,13 @@ object UnionJoin {
           F.expr(s"""
         array_sort(
           left_data_array_unsorted,
-          (left, right) -> CAST(left.$leftTimeCol - right.$leftTimeCol AS INT)
+          (left, right) -> case when left.$leftTimeCol < right.$leftTimeCol then -1 when left.$leftTimeCol > right.$leftTimeCol then 1 else 0 end
         )
       """).as("left_data_array") :+
           F.expr(s"""
         array_sort(
           right_data_array_unsorted,
-          (left, right) -> CAST(left.$rightTimeCol - right.$rightTimeCol AS INT)
+          (left, right) -> case when left.$rightTimeCol < right.$rightTimeCol then -1 when left.$rightTimeCol > right.$rightTimeCol then 1 else 0 end
         )
       """).as("right_data_array"): _*
       )
