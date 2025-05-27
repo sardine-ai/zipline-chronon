@@ -17,7 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Constants, DateRange, ThriftJsonCodec}
+import ai.chronon.api.{Constants, DateRange, PartitionRange, ThriftJsonCodec}
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
 import ai.chronon.api.planner.RelevantLeftForJoinPart
@@ -27,6 +27,7 @@ import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, Met
 import ai.chronon.orchestration.{JoinMergeNode, JoinPartNode}
 import ai.chronon.spark.batch._
 import ai.chronon.spark.catalog.{Format, TableUtils}
+import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.stats.{CompareBaseJob, CompareJob, ConsistencyJob}
 import ai.chronon.spark.stats.drift.{Summarizer, SummaryPacker, SummaryUploader}
 import ai.chronon.spark.streaming.JoinSourceRunner
@@ -275,6 +276,30 @@ object Driver {
 
     def run(args: Args): Unit = {
       val tableUtils = args.buildTableUtils()
+
+      if (tableUtils.sparkSession.conf.get("spark.chronon.join.backfill.mode.skewFree", "false").toBoolean) {
+        logger.info(s" >>> Running join backfill in skew free mode <<< ")
+        val startPartition = args.startPartitionOverride.toOption.getOrElse(args.joinConf.left.query.startPartition)
+        val endPartition = args.endDate()
+
+        val joinName = args.joinConf.metaData.name
+        val stepDays = args.stepDays.toOption.getOrElse(1)
+
+        logger.info(
+          s"Filling partitions for join:$joinName, partitions:[$startPartition, $endPartition], steps:$stepDays")
+
+        val partitionRange = PartitionRange(startPartition, endPartition)(tableUtils.partitionSpec)
+        val partitionSteps = partitionRange.steps(stepDays)
+
+        partitionSteps.zipWithIndex.foreach { case (stepRange, idx) =>
+          logger.info(s"Processing range $stepRange (${idx + 1}/${partitionSteps.length})")
+          UnionJoin.computeJoinAndSave(args.joinConf, stepRange)(tableUtils)
+          logger.info(s"Wrote range $stepRange (${idx + 1}/${partitionSteps.length})")
+        }
+
+        return
+      }
+
       val join = new Join(
         args.joinConf,
         args.endDate(),

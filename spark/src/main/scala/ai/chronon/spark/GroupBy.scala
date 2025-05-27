@@ -483,6 +483,47 @@ object GroupBy {
     result.setSources(newSources)
   }
 
+  def inputDf(groupByConfOld: api.GroupBy,
+              queryRange: PartitionRange,
+              tableUtils: TableUtils,
+              computeDependency: Boolean = false): DataFrame = {
+
+    logger.info(s"\n----[Processing GroupBy: ${groupByConfOld.metaData.name}]----")
+
+    val groupByConf = replaceJoinSource(groupByConfOld, queryRange, tableUtils, computeDependency)
+
+    val inputDf = groupByConf.sources.toScala
+      .map { source =>
+        sourceDf(groupByConf,
+                 source,
+                 groupByConf.getKeyColumns.toScala,
+                 queryRange,
+                 tableUtils,
+                 groupByConf.maxWindow,
+                 groupByConf.inferredAccuracy)
+
+      }
+      .reduce { (df1, df2) =>
+        // align the columns by name - when one source has select * the ordering might not be aligned
+        val columns1 = df1.schema.fields.map(_.name)
+        df1.union(df2.selectExpr(columns1: _*))
+      }
+
+    def doesNotNeedTime = !Option(groupByConf.getAggregations).exists(_.toScala.needsTimestamp)
+    def hasValidTimeColumn = inputDf.schema.find(_.name == Constants.TimeColumn).exists(_.dataType == LongType)
+
+    require(
+      doesNotNeedTime || hasValidTimeColumn,
+      s"Time column, ts doesn't exists (or is not a LONG type) for groupBy ${groupByConf.metaData.name}, but you either have windowed aggregation(s) or time based aggregation(s) like: " +
+        "first, last, firstK, lastK. \n" +
+        "Please note that for the entities case, \"ts\" needs to be explicitly specified in the selects."
+    )
+
+    // at-least one of the keys should be present in the row.
+    val nullFilterClause = groupByConf.keyColumns.toScala.map(key => s"($key IS NOT NULL)").mkString(" OR ")
+    inputDf.filter(nullFilterClause)
+  }
+
   def from(groupByConfOld: api.GroupBy,
            queryRange: PartitionRange,
            tableUtils: TableUtils,

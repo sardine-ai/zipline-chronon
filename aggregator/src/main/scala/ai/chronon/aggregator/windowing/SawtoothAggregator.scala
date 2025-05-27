@@ -23,7 +23,7 @@ import ai.chronon.api.Extensions.WindowMapping
 import ai.chronon.api.Extensions.WindowOps
 
 import java.util
-import scala.collection.Seq
+import scala.collection.{Seq, mutable}
 
 // Head Sliding, Tail Hopping Window - effective window size when plotted against query timestamp
 // will look the edge of sawtooth - instead of like a straight line.
@@ -139,6 +139,62 @@ class SawtoothAggregator(aggregations: Seq[Aggregation], inputSchema: Seq[(Strin
     }
     result
   }
+
+  // method is used to generate head-realtime ness on top of hops
+  // But without the requirement that the input be sorted
+  def cumulateAndFinalizeSorted(sortedInputs: mutable.Buffer[Row], // don't need to be sorted
+                                sortedEndTimes: mutable.Buffer[Row], // sorted,
+                                baseIR: Array[Any],
+                                consumer: (Row, Array[Any]) => Unit): Unit = {
+
+    if (sortedEndTimes == null || sortedEndTimes.isEmpty) return
+
+    if (sortedInputs == null || sortedInputs.isEmpty) {
+      sortedEndTimes.foreach(query => consumer(query, windowedAggregator.finalize(baseIR)))
+      return
+    }
+
+    var inputIdx = 0
+    var queryIdx = 0
+
+    var queryIr = if (baseIR == null) {
+      new Array[Any](windowedAggregator.length)
+    } else {
+      baseIR
+    }
+
+    var queryFinalized = if (baseIR == null) {
+      new Array[Any](windowedAggregator.length)
+    } else {
+      windowedAggregator.finalize(queryIr)
+    }
+
+    while (queryIdx < sortedEndTimes.length) {
+
+      var didClone = false
+
+      while (inputIdx < sortedInputs.length && sortedInputs(inputIdx).ts < sortedEndTimes(queryIdx).ts) {
+
+        // clone only if necessary - queryIrs differ between consecutive endTimes
+        if (!didClone) {
+          queryIr = windowedAggregator.clone(queryIr)
+          didClone = true
+        }
+
+        windowedAggregator.update(queryIr, sortedInputs(inputIdx))
+        inputIdx += 1
+      }
+
+      // re-use the finalized values if there are no events between two query times.
+      if (didClone) {
+        queryFinalized = windowedAggregator.finalize(queryIr)
+      }
+
+      consumer(sortedEndTimes(queryIdx), queryFinalized)
+      queryIdx += 1
+    }
+  }
+
 }
 
 private class Entry(var startIndex: Int, var endIndex: Int, var ir: Any) {}

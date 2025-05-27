@@ -94,6 +94,7 @@ object Extensions {
   }
 
   implicit class DataframeOps(df: DataFrame) {
+
     @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
     private val tableUtils: TableUtils = TableUtils(df.sparkSession)
     private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec

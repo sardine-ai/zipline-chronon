@@ -322,6 +322,7 @@ object FetcherTestUtil {
       )
     val ratingsTable = s"$namespace.ratings_table"
     DataFrameGen.events(spark, ratingCols, rowCount, 180).save(ratingsTable)
+
     val vendorRatingsGroupBy = Builders.GroupBy(
       sources = Seq(Builders.Source.events(query = Builders.Query(), table = ratingsTable)),
       keyColumns = Seq("vendor"),
@@ -352,11 +353,13 @@ object FetcherTestUtil {
     // no-agg
     val userBalanceCols = Seq(userCol, Column("balance", IntType, 5000))
     val balanceTable = s"$namespace.balance_table"
+
     DataFrameGen
       .entities(spark, userBalanceCols, rowCount, 180)
       .groupBy("user", "ds")
       .agg(avg("balance") as "avg_balance")
       .save(balanceTable)
+
     val userBalanceGroupBy = Builders.GroupBy(
       sources = Seq(Builders.Source.entities(query = Builders.Query(), snapshotTable = balanceTable)),
       keyColumns = Seq("user"),
@@ -404,7 +407,7 @@ object FetcherTestUtil {
     val mutationTable = s"$namespace.reviews_table_mutations"
     val mutationTopic = "reviews_mutation_topic"
     val (snapshotDf, mutationsDf) =
-      DataFrameGen.mutations(spark, vendorReviewCols, 10000, 35, 0.2, 1, keyColumnName = "vendor")
+      DataFrameGen.mutations(spark, vendorReviewCols, rowCount, 35, 0.2, 1, keyColumnName = "vendor")
     snapshotDf.withColumnRenamed("vendor", "vendor_id").save(snapshotTable)
     mutationsDf.withColumnRenamed("vendor", "vendor_id").save(mutationTable)
     val reviewGroupBy = Builders.GroupBy(

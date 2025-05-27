@@ -25,7 +25,7 @@ import ai.chronon.api._
 import scala.collection.Seq
 
 // This implements the two-stack-lite algorithm
-// To understand the intuition behind the algorithm I highly recommend reading the intuition text in the end of this file
+// To understand the intuition behind the algorithm I highly recommend reading the snippet in the end of this file
 class TwoStackLiteAggregator(inputSchema: StructType,
                              aggregations: Seq[Aggregation],
                              resolution: Resolution = FiveMinuteResolution) {

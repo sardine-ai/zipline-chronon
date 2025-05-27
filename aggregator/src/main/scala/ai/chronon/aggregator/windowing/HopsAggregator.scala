@@ -143,6 +143,7 @@ class HopsAggregator(minQueryTs: Long,
       .mkString(", ")
     logger.info(s"""Left bounds: $readableHopsToBoundsMap 
          |minQueryTs = ${TsUtils.toStr(minQueryTs)}""".stripMargin)
+
     result
   }
 
