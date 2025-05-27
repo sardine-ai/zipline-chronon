@@ -1,5 +1,5 @@
-# Start from a Debian base image
-FROM openjdk:17-jdk-slim
+# Build from a base image with Java 17. We use the Amazon Corretto image as it is a well-supported OpenJDK distribution.
+FROM public.ecr.aws/docker/library/amazoncorretto:17-alpine
 
 # We expect jars to be copied to the build_output directory as docker can't read from bazel-bin as that's a symlink
 # https://stackoverflow.com/questions/31881904/docker-follow-symlink-outside-context
@@ -11,24 +11,16 @@ ENV GCP_ONLINE_CLASS=ai.chronon.integrations.cloud_gcp.GcpApiImpl
 ENV AWS_ONLINE_CLASS=ai.chronon.integrations.aws.AwsApiImpl
 
 # Update package lists and install necessary tools
-RUN apt-get update && apt-get install -y \
+RUN apk update && apk add --no-cache \
     curl \
     python3 \
     python3-dev \
-    python3-setuptools \
+    py3-setuptools \
     vim \
     wget \
     procps \
-    python3-pip
-
-ENV SCALA_VERSION 2.12.18
-
-RUN curl https://downloads.lightbend.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.deb -k -o scala.deb && \
-    apt install -y ./scala.deb && \
-    rm -rf scala.deb /var/lib/apt/lists/*
-
-ENV SCALA_HOME="/usr/bin/scala"
-ENV PATH=${PATH}:${SCALA_HOME}/bin
+    py3-pip \
+    bash
 
 WORKDIR /srv/zipline
 
@@ -50,4 +42,3 @@ RUN mkdir -p $LOG_PATH && \
     chmod 755 $LOG_PATH
 
 CMD /srv/zipline/fetcher/start.sh
-
