@@ -72,6 +72,8 @@ gcp = Team(
     ),
     conf=ConfigProperties(
         common={
+            "cloud.profiler.enable": "true",
+            "cloud.profiler.name": "zipline-canary",
             "spark.chronon.cloud_provider": "gcp",  # dummy test config
             "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
             "spark.chronon.partition.format": "yyyy-MM-dd",
