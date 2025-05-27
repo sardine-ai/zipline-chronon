@@ -90,6 +90,14 @@ struct StagingQuery {
     * By default, spark is the compute engine. You can specify an override (eg. bigquery, etc.)
     **/
     6: optional EngineType engineType
+
+    7: optional list<Export> exports
+}
+
+struct Export {
+    1: optional string source
+    2: optional string destination
+    3: optional EngineType engineType
 }
 
 struct EventSource {

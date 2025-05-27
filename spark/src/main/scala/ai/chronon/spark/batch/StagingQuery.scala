@@ -1,19 +1,23 @@
 package ai.chronon.spark.batch
 import ai.chronon.api
+import ai.chronon.api.{EngineType, ParametricMacro, PartitionRange, ThriftJsonCodec}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.{EngineType, ParametricMacro, PartitionRange, ThriftJsonCodec}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.spark.ingest.DataImport
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
 class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils) {
+
+  import org.apache.spark.sql.SparkSession
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   assert(Option(stagingQueryConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   private val outputTable = stagingQueryConf.metaData.outputTable
@@ -25,6 +29,12 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
     Seq(tableUtils.partitionColumn) ++
       (Option(stagingQueryConf.metaData.additionalOutputPartitionColumns.toScala)
         .getOrElse(Seq.empty))
+
+  def runExports(partitionRange: PartitionRange)(implicit sparkSession: SparkSession): Unit = {
+    val exports = Option(stagingQueryConf.getExports).map(_.toScala).getOrElse(Seq.empty)
+    exports.foreach((export) =>
+      DataImport.from(export.getEngineType).sync(export.getSource, export.getDestination, partitionRange))
+  }
 
   def computeStagingQuery(stepDays: Option[Int] = None,
                           enableAutoExpand: Option[Boolean] = Some(true),
@@ -71,6 +81,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
             logger.info(s"Computing staging query for range: $range  $progress")
             val renderedQuery =
               StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
+            runExports(range)(tableUtils.sparkSession)
             logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
             val df = tableUtils.sql(renderedQuery)
             df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
