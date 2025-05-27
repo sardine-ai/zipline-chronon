@@ -33,7 +33,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
   def runExports(partitionRange: PartitionRange)(implicit sparkSession: SparkSession): Unit = {
     val exports = Option(stagingQueryConf.getExports).map(_.toScala).getOrElse(Seq.empty)
     exports.foreach((export) =>
-      DataImport.from(export.getEngineType).sync(export.getSource, export.getDestination, partitionRange))
+      DataImport.from(export.getEngineType).sync(export.getSourceTable, export.getDestinationTable, partitionRange))
   }
 
   def computeStagingQuery(stepDays: Option[Int] = None,

@@ -95,8 +95,8 @@ struct StagingQuery {
 }
 
 struct Export {
-    1: optional string source
-    2: optional string destination
+    1: optional string sourceTable
+    2: optional string destinationTable
     3: optional EngineType engineType
 }
 
