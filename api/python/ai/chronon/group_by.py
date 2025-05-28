@@ -442,6 +442,7 @@ def GroupBy(
     offline_schedule: str = "@daily",
     conf: common.ConfigProperties = None,
     env_vars: common.EnvironmentVariables = None,
+    cluster_conf: common.ClusterConfigProperties = None,
     step_days: int = None,
     disable_historical_backfill: bool = False,
 ) -> ttypes.GroupBy:
@@ -570,6 +571,8 @@ def GroupBy(
         4. env vars set in the team.env.common
         5. env vars set in the default.env.<mode>
         6. env vars set in the default.env.common
+    :param cluster_conf:
+        Cluster configuration properties for the join.
     :param step_days
         The maximum number of days to output at once
     :return:
@@ -639,6 +642,7 @@ def GroupBy(
         env=env_vars,
         stepDays=step_days,
         historicalBackfill=disable_historical_backfill,
+        clusterConf=cluster_conf,
     )
 
     column_tags = {}

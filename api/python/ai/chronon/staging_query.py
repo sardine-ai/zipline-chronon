@@ -37,6 +37,7 @@ def StagingQuery(
     offline_schedule: str = "@daily",
     conf: Optional[common.ConfigProperties] = None,
     env_vars: Optional[common.EnvironmentVariables] = None,
+    cluster_conf: common.ClusterConfigProperties = None,
     step_days: Optional[int] = None,
 ) -> ttypes.StagingQuery:
     """
@@ -82,6 +83,8 @@ def StagingQuery(
     :param env_vars:
         Environment variables for the StagingQuery.
     :type env_vars: common.EnvironmentVariables
+    :param cluster_conf:
+        Cluster configuration properties for the join.
     :param step_days:
         The maximum number of days to process at once
     :type step_days: int
@@ -101,6 +104,7 @@ def StagingQuery(
         conf=conf,
         env=env_vars,
         stepDays=step_days,
+        clusterConf=cluster_conf
     )
 
     airflow_dependencies = []
