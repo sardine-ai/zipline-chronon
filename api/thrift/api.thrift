@@ -91,13 +91,14 @@ struct StagingQuery {
     **/
     6: optional EngineType engineType
 
-    7: optional list<Export> exports
+    7: optional list<DataImport> dataImports
 }
 
-struct Export {
+struct DataImport {
     1: optional string sourceTable
     2: optional string destinationTable
     3: optional EngineType engineType
+    4: optional string query
 }
 
 struct EventSource {

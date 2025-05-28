@@ -83,8 +83,10 @@ class BigQueryImport extends DataImport {
 
   }
 
-  override def sync(sourceTableName: String, destinationTableName: String, partitionRange: PartitionRange)(implicit
-      sparkSession: SparkSession): Unit = {
+  override def sync(sourceTableName: String,
+                    destinationTableName: String,
+                    partitionRange: PartitionRange,
+                    query: Option[String])(implicit sparkSession: SparkSession): Unit = {
     // First, need to clean the spark-based table name for the bigquery queries below.
     val bqTableId = SparkBQUtils.toTableId(sourceTableName)
     val providedProject = scala.Option(bqTableId.getProject).getOrElse(bqOptions.getProjectId)
@@ -95,7 +97,7 @@ class BigQueryImport extends DataImport {
     val spec = partitionRange.partitionSpec
     val whereClauses = Format.andPredicates(partitionRange.whereClauses)
     val partitionWheres = if (whereClauses.nonEmpty) s"WHERE ${whereClauses}" else whereClauses
-    val select = pColOption match {
+    val select = query.getOrElse(pColOption match {
       case Some(nativeCol) => {
         require(
           nativeCol.colName.equals(spec.column),
@@ -107,7 +109,7 @@ class BigQueryImport extends DataImport {
           s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}"
       }
       case _ => s"SELECT * FROM ${bqFriendlyName} ${partitionWheres}"
-    }
+    })
     val catalogName = Format.getCatalog(sourceTableName)
     val destPath = destPrefix(
       catalogName = catalogName,

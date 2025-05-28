@@ -10,13 +10,12 @@ import ai.chronon.spark.submission.SparkSessionBuilder
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
 import ai.chronon.spark.ingest.DataImport
+import org.apache.spark.sql.SparkSession
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
 class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils) {
-
-  import org.apache.spark.sql.SparkSession
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   assert(Option(stagingQueryConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
@@ -31,9 +30,20 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
         .getOrElse(Seq.empty))
 
   def runExports(partitionRange: PartitionRange)(implicit sparkSession: SparkSession): Unit = {
-    val exports = Option(stagingQueryConf.getExports).map(_.toScala).getOrElse(Seq.empty)
-    exports.foreach((export) =>
-      DataImport.from(export.getEngineType).sync(export.getSourceTable, export.getDestinationTable, partitionRange))
+    val exports = Option(stagingQueryConf.getDataImports).map(_.toScala).getOrElse(Seq.empty)
+    exports.foreach((export) => {
+      val renderedQuery = Option(export.getQuery).map(
+        StagingQuery.substitute(
+          tableUtils,
+          _,
+          partitionRange.start,
+          partitionRange.end,
+          endPartition
+        ))
+      DataImport
+        .from(export.getEngineType)
+        .sync(export.getSourceTable, export.getDestinationTable, partitionRange, renderedQuery)
+    })
   }
 
   def computeStagingQuery(stepDays: Option[Int] = None,

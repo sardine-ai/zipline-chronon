@@ -5,8 +5,10 @@ import scala.reflect.runtime.universe.runtimeMirror
 
 abstract class DataImport {
 
-  def sync(sourceTableName: String, destinationTableName: String, partitionRange: PartitionRange)(implicit
-      sparkSession: SparkSession): Unit
+  def sync(sourceTableName: String,
+           destinationTableName: String,
+           partitionRange: PartitionRange,
+           query: Option[String])(implicit sparkSession: SparkSession): Unit
 
 }
 
