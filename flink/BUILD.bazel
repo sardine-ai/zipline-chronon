@@ -1,10 +1,7 @@
 scala_library(
     name = "lib",
     srcs = glob(["src/main/**/*.scala"]),
-    format = select({
-        "//tools/config:scala_2_13": False,  # Disable for 2.13
-        "//conditions:default": True,  # Enable for other versions
-    }),
+    format = True,
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
         "//aggregator:lib",
@@ -57,10 +54,7 @@ test_deps = _FLINK_TEST_DEPS + _SCALA_TEST_DEPS + [
 scala_library(
     name = "test_lib",
     srcs = glob(["src/test/**/*.scala"]),
-    format = select({
-        "//tools/config:scala_2_13": False,  # Disable for 2.13
-        "//conditions:default": True,  # Enable for other versions
-    }),
+    format = True,
     visibility = ["//visibility:public"],
     deps = test_deps,
 )

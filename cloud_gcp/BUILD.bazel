@@ -46,10 +46,7 @@ shared_deps = [
 scala_library(
     name = "base_cloud_gcp_lib",
     srcs = glob(["src/main/**/*.scala"]),
-    format = select({
-        "//tools/config:scala_2_13": False,  # Disable for 2.13
-        "//conditions:default": True,  # Enable for other versions
-    }),
+    format = True,
     visibility = ["//visibility:public"],
     deps = shared_deps,
 )
@@ -57,15 +54,6 @@ scala_library(
 jvm_binary(
     name = "cloud_gcp_lib",
     deploy_env = ["//tools/build_rules/cloud_gcp:cloud_gcp"],
-    main_class = "None",
-    runtime_deps = [
-        ":base_cloud_gcp_lib",
-    ],
-)
-
-jvm_binary(
-    name = "cloud_gcp_embedded_lib",
-    deploy_env = ["//tools/build_rules/cloud_gcp_embedded:cloud_gcp_embedded"],
     main_class = "None",
     runtime_deps = [
         ":base_cloud_gcp_lib",

@@ -13,11 +13,6 @@ maven_repository = repository(
         "org.scala-lang.modules:scala-parser-combinators_2.12:2.3.0",
         "org.scala-lang.modules:scala-java8-compat_2.12:1.0.2",
 
-        # Scala 2.13 libraries
-        "org.scala-lang.modules:scala-collection-compat_2.13:2.6.0",
-        "org.scala-lang.modules:scala-parser-combinators_2.13:2.3.0",
-        "org.scala-lang.modules:scala-java8-compat_2.13:1.0.2",
-
         # Unit testing
         "junit:junit:4.13.2",
         "org.junit.jupiter:junit-jupiter-api:5.10.5",
@@ -35,15 +30,6 @@ maven_repository = repository(
         "org.scalatest:scalatest-shouldmatchers_2.12:3.2.15",
         "org.scalatest:scalatest-matchers-core_2.12:3.2.15",
         "org.scalactic:scalactic_2.12:3.2.15",
-        "org.mockito:mockito-core:5.12.0",
-
-        # Unit testing - for scala 2.13
-        "org.scalatestplus:mockito-3-4_2.13:3.2.10.0",
-        "org.mockito:mockito-scala_2.13:1.17.0",
-        "org.scalatest:scalatest_2.13:3.2.15",
-        "org.scalatest:scalatest-shouldmatchers_2.13:3.2.15",
-        "org.scalatest:scalatest-matchers-core_2.13:3.2.15",
-        "org.scalactic:scalactic_2.13:3.2.15",
         "org.mockito:mockito-core:5.12.0",
 
         # Add other dependencies
@@ -92,18 +78,6 @@ maven_repository = repository(
         "io.delta:delta-spark_2.12:3.2.0",
         "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1",
         "org.apache.hudi:hudi-spark3.5-bundle_2.12:1.0.0",
-
-        # Add other dependencies - for scala 2.13
-        "org.apache.logging.log4j:log4j-api-scala_2.13:13.1.0",
-        "com.fasterxml.jackson.module:jackson-module-scala_2.13:2.15.2",
-        "org.rogach:scallop_2.13:5.1.0",
-        "com.softwaremill.sttp.client3:core_2.13:3.9.7",
-        "org.json4s:json4s-jackson_2.13:3.7.0-M11",
-        "org.json4s:json4s-core_2.13:3.7.0-M11",
-        "org.json4s:json4s-ast_2.13:3.7.0-M11",
-        "io.delta:delta-spark_2.13:3.2.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.6.1",
-        "org.apache.hudi:hudi-spark3.5-bundle_2.13:1.0.0",
 
         # grpc
         "io.grpc:grpc-core:1.69.0",
@@ -201,29 +175,14 @@ maven_repository = repository(
         "org.apache.spark:spark-streaming_2.12:3.5.3",
         "org.apache.spark:spark-avro_2.12:3.5.3",
 
-        # Spark artifacts - for scala 2.13
-        "org.apache.spark:spark-sql_2.13:3.5.3",
-        "org.apache.spark:spark-hive_2.13:3.5.3",
-        "org.apache.spark:spark-streaming_2.13:3.5.3",
-        "org.apache.spark:spark-avro_2.13:3.5.3",
-
         # Circe - for scala 2.12
         "io.circe:circe-core_2.12:0.14.9",
         "io.circe:circe-generic_2.12:0.14.9",
         "io.circe:circe-parser_2.12:0.14.9",
         "com.chuusai:shapeless_2.12:2.3.12",
 
-        # Circe - for scala 2.13
-        "io.circe:circe-core_2.13:0.14.9",
-        "io.circe:circe-generic_2.13:0.14.9",
-        "io.circe:circe-parser_2.13:0.14.9",
-        "com.chuusai:shapeless_2.13:2.3.12",
-
         # Slick - for scala 2.12
         "com.typesafe.slick:slick_2.12:3.3.3",
-
-        # Slick - for scala 2.13
-        "com.typesafe.slick:slick_2.13:3.4.1",
 
         # Temporal
         "io.temporal:temporal-sdk:1.28.0",

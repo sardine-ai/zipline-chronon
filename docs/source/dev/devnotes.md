@@ -124,14 +124,10 @@ from [here](https://docs.aws.amazon.com/corretto/latest/corretto-17-ug/downloads
 # Command
 # By default we build using scala 2.12
 bazel build //{module}:{target}_deploy.jar
-# For scala 2.13
-bazel build --config scala_2.13 //{module}:{target}_deploy.jar
 
 # Cloud Gcp Jar
 # Creates uber jar in {Workspace}/bazel-bin/cloud_gcp folder with name cloud_gcp_lib_deploy.jar
 bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
-# For scala 2.13
-bazel build --config scala_2.13 //cloud_gcp:cloud_gcp_lib_deploy.jar
 # Flink Jars
 bazel build //flink:flink_assembly_deploy.jar
 bazel build //flink:flink_kafka_assembly_deploy.jar

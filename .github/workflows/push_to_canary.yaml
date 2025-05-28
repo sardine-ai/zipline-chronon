@@ -109,9 +109,6 @@ jobs:
           bazel build //service:service_assembly_deploy.jar \
             --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
             --google_credentials=bazel-cache-key.json
-          bazel build //cloud_gcp:cloud_gcp_embedded_lib_deploy.jar --config scala_2.13 \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json
 
       - name: Upload Flink Assembly Jar
         uses: actions/upload-artifact@v4
@@ -130,12 +127,6 @@ jobs:
         with:
           name: cloud-gcp-jar
           path: bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar
-
-      - name: Upload Cloud GCP Embedded Jar
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloud-gcp-embedded-jar
-          path: bazel-bin/cloud_gcp/cloud_gcp_embedded_lib_deploy.jar
 
       - name: Upload Service Assembly Jar
         uses: actions/upload-artifact@v4
@@ -218,11 +209,6 @@ jobs:
         with:
           name: cloud-gcp-jar
 
-      - name: Download Cloud GCP Embedded Jar
-        uses: actions/download-artifact@v4
-        with:
-          name: cloud-gcp-embedded-jar
-
       - name: Download Service Assembly Jar
         uses: actions/download-artifact@v4
         with:
@@ -252,8 +238,6 @@ jobs:
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp cloud_gcp_lib_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/cloud_gcp_lib_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          gcloud storage cp cloud_gcp_embedded_lib_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/cloud_gcp_embedded_lib_deploy.jar
-          gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/cloud_gcp_embedded_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp service_assembly_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/service_assembly_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
 
@@ -422,11 +406,6 @@ jobs:
         with:
           name: cloud-gcp-jar
 
-      - name: Download Cloud GCP Embedded Jar
-        uses: actions/download-artifact@v4
-        with:
-          name: cloud-gcp-embedded-jar
-
       - name: Download Service Assembly Jar
         uses: actions/download-artifact@v4
         with:
@@ -456,8 +435,6 @@ jobs:
           gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp cloud_gcp_lib_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          gcloud storage cp cloud_gcp_embedded_lib_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_embedded_lib_deploy.jar
-          gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/cloud_gcp_embedded_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
           gcloud storage cp service_assembly_deploy.jar gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/passing-candidate/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
 
@@ -479,7 +456,6 @@ jobs:
             flink-assembly-jar
             cloud-aws-jar
             cloud-gcp-jar
-            cloud-gcp-embedded-jar
             service-assembly-jar
 
 
