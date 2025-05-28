@@ -63,6 +63,7 @@ gcp = Team(
             "GCP_REGION": "us-central1",
             "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
+            "ENABLE_PUBSUB": "true",
         },
         modeEnvironments={
             RunMode.UPLOAD: {

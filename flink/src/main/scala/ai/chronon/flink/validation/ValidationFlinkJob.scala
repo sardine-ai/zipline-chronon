@@ -2,7 +2,7 @@ package ai.chronon.flink.validation
 
 import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.flink.validation.SparkExprEvalComparisonFn.compareResultRows
-import ai.chronon.flink.{FlinkSource, KafkaFlinkSource, SparkExpressionEvalFn}
+import ai.chronon.flink.SparkExpressionEvalFn
 import ai.chronon.online.fetcher.MetadataStore
 import ai.chronon.online.{GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -18,7 +18,10 @@ import org.slf4j.LoggerFactory
 import java.lang
 import scala.collection.mutable
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.flink.FlinkJob.CheckPointInterval
 import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider}
+import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider}
+import org.apache.flink.streaming.api.CheckpointingMode
 
 case class EventRecord(recordId: String, event: Row)
 case class ValidationStats(totalRecords: Int,
@@ -129,7 +132,7 @@ class ValidationFlinkJob(eventSrc: FlinkSource[Row],
 
 object ValidationFlinkJob {
   def run(metadataStore: MetadataStore,
-          kafkaBootstrap: Option[String],
+          props: Map[String, String],
           groupByName: String,
           validateRows: Int): Seq[ValidationStats] = {
 
@@ -144,13 +147,8 @@ object ValidationFlinkJob {
         val deserializationSchema =
           DeserializationSchemaBuilder.buildSourceIdentityDeserSchema(schemaProvider, servingInfo.groupBy)
 
-        val source =
-          topicInfo.messageBus match {
-            case "kafka" =>
-              new KafkaFlinkSource(kafkaBootstrap, deserializationSchema, topicInfo)
-            case _ =>
-              throw new IllegalArgumentException(s"Unsupported message bus: ${topicInfo.messageBus}")
-          }
+        val source = FlinkSourceProvider.build(props, deserializationSchema, topicInfo)
+
         // keep //ism low as we just need a small set of rows to compare against
         new ValidationFlinkJob(
           eventSrc = source,
@@ -169,6 +167,7 @@ object ValidationFlinkJob {
     env.getConfig
       .enableForceKryo() // use kryo for complex types that Flink's default ser system doesn't support (e.g case classes)
     env.getConfig.enableGenericTypes() // more permissive type checks
+    env.enableCheckpointing(CheckPointInterval.toMillis, CheckpointingMode.AT_LEAST_ONCE)
 
     val jobDatastream = validationJob.runValidationJob(env)
 

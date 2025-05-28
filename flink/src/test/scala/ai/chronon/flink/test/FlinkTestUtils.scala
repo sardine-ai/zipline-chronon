@@ -11,7 +11,8 @@ import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
-import ai.chronon.flink.{AsyncKVStoreWriter, FlinkSource, SparkExpressionEvalFn}
+import ai.chronon.flink.source.FlinkSource
+import ai.chronon.flink.{AsyncKVStoreWriter, SparkExpressionEvalFn}
 import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.Extensions.StructTypeOps
@@ -38,15 +39,6 @@ import scala.collection.Seq
 
 case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: Long)
 
-class E2EEventSource(mockEvents: Seq[E2ETestEvent]) extends FlinkSource[E2ETestEvent] {
-
-  override def getDataStream(topic: String, groupName: String)(
-      env: StreamExecutionEnvironment,
-      parallelism: Int): SingleOutputStreamOperator[E2ETestEvent] = {
-    env.fromCollection(mockEvents.toJava)
-  }
-}
-
 class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: SparkExpressionEvalFn[E2ETestEvent])
     extends FlinkSource[Map[String, Any]] {
   def watermarkStrategy: WatermarkStrategy[E2ETestEvent] =
@@ -56,6 +48,9 @@ class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: 
         override def extractTimestamp(event: E2ETestEvent, previousElementTimestamp: Long): Long =
           event.created
       })
+
+  implicit val parallelism: Int = 1
+
   override def getDataStream(topic: String, groupName: String)(
       env: StreamExecutionEnvironment,
       parallelism: Int): SingleOutputStreamOperator[Map[String, Any]] = {

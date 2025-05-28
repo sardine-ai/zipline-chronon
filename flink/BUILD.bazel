@@ -1,6 +1,6 @@
 scala_library(
     name = "lib",
-    srcs = glob(["src/main/**/*.scala"]),
+    srcs = glob(["src/main/scala/ai/chronon/flink/**/*.scala"]),
     format = True,
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
@@ -53,7 +53,7 @@ test_deps = _FLINK_TEST_DEPS + _SCALA_TEST_DEPS + [
 
 scala_library(
     name = "test_lib",
-    srcs = glob(["src/test/**/*.scala"]),
+    srcs = glob(["src/test/scala/ai/chronon/flink/**/*.scala"]),
     format = True,
     visibility = ["//visibility:public"],
     deps = test_deps,
@@ -61,7 +61,7 @@ scala_library(
 
 scala_test_suite(
     name = "tests",
-    srcs = glob(["src/test/**/*.scala"]),
+    srcs = glob(["src/test/scala/ai/chronon/flink/**/*.scala"]),
     # defined in prelude_bazel file
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     visibility = ["//visibility:public"],
@@ -84,4 +84,52 @@ jvm_binary(
     deploy_env = ["//tools/build_rules/flink:flink"],
     main_class = "ai.chronon.flink.FlinkKafkaItemEventDriver",
     runtime_deps = [":lib"],
+)
+
+## Connectors targets ##
+scala_library(
+    name = "pubsub_connectors_lib",
+    srcs = glob(["src/main/scala/ai/chronon/flink_connectors/pubsub/**/*.scala"]),
+    format = True,
+    visibility = ["//visibility:public"],
+    deps = _FLINK_DEPS + [
+        "//online:lib",
+        "//flink:lib",
+        maven_artifact_with_suffix("org.rogach:scallop"),
+        maven_artifact("org.apache.avro:avro"),
+        maven_artifact("org.apache.flink:flink-connector-gcp-pubsub"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("com.esotericsoftware.kryo:kryo"),
+    ],
+)
+
+jvm_binary(
+    name = "connectors_pubsub",
+    deploy_env = ["//tools/build_rules/flink:flink"],
+    main_class = "None",
+    runtime_deps = [
+        ":pubsub_connectors_lib",
+    ],
+)
+
+jvm_binary(
+    name = "flink_pubsub_assembly",
+    # To exclude runtime dependencies not needed for flink environment in the cluster
+    # otherwise we run into version conflict errors
+    deploy_env = ["//tools/build_rules/flink:flink"],
+    main_class = "ai.chronon.flink_connectors.pubsub.FlinkPubSubItemEventDriver",
+    runtime_deps = [":pubsub_connectors_lib"],
+)
+
+scala_test_suite(
+    name = "connectors_pubsub_tests",
+    srcs = glob(["src/test/scala/ai/chronon/flink_connectors/pubsub/**/*.scala"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    visibility = ["//visibility:public"],
+    deps = _FLINK_TEST_DEPS + _SCALA_TEST_DEPS + [
+        "//online:lib",
+       ":lib",
+       ":pubsub_connectors_lib",
+    ]
 )

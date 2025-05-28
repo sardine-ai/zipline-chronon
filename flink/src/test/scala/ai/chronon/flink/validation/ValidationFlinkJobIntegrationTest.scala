@@ -1,8 +1,9 @@
 package ai.chronon.flink.validation
 
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.flink.source.FlinkSource
 import ai.chronon.flink.test.{CollectSink, FlinkTestUtils}
-import ai.chronon.flink.{FlinkSource, SparkExpressionEval, SparkExpressionEvalFn}
+import ai.chronon.flink.{SparkExpressionEval, SparkExpressionEvalFn}
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
@@ -18,6 +19,8 @@ import java.util
 import java.util.Collections
 
 class RowEventSource(mockEvents: Seq[Row]) extends FlinkSource[Row] {
+
+  implicit val parallelism: Int = 1
 
   override def getDataStream(topic: String, groupName: String)(env: StreamExecutionEnvironment,
                                                                parallelism: Int): SingleOutputStreamOperator[Row] = {

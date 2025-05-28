@@ -155,6 +155,9 @@ maven_repository = repository(
         "org.apache.flink:flink-runtime:1.17.0:tests",
         "org.apache.flink:flink-test-utils:1.17.0",
 
+        # Flink Connectors
+        "org.apache.flink:flink-connector-gcp-pubsub:3.0.2-1.17",
+
         # Vertx
         "io.vertx:vertx-core:4.5.10",
         "io.vertx:vertx-web:4.5.10",

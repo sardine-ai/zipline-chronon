@@ -7,6 +7,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, DataType}
 import ai.chronon.flink.FlinkJob.watermarkStrategy
 import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider, SourceProjection}
+import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider, KafkaFlinkSource}
 import ai.chronon.flink.types.{AvroCodecOutput, TimestampedTile, WriteResponse}
 import ai.chronon.flink.validation.ValidationFlinkJob
 import ai.chronon.flink.window.{
@@ -266,11 +267,15 @@ object FlinkJob {
     val validateRows = jobArgs.validateRows()
     val maybeParentJobId = jobArgs.parentJobId.toOption
 
+    val propsWithStreamingParams = props ++ Map(
+      KafkaFlinkSource.KafkaBootstrap -> kafkaBootstrap.getOrElse("")
+    )
+
     val api = buildApi(onlineClassName, props)
     val metadataStore = new MetadataStore(FetchContext(api.genKvStore, MetadataDataset))
 
     if (validateMode) {
-      val validationResults = ValidationFlinkJob.run(metadataStore, kafkaBootstrap, groupByName, validateRows)
+      val validationResults = ValidationFlinkJob.run(metadataStore, propsWithStreamingParams, groupByName, validateRows)
       if (validationResults.map(_.totalMismatches).sum > 0) {
         val validationSummary = s"Total records: ${validationResults.map(_.totalRecords).sum}, " +
           s"Total matches: ${validationResults.map(_.totalMatches).sum}, " +
@@ -284,7 +289,7 @@ object FlinkJob {
     val flinkJob =
       maybeServingInfo
         .map { servingInfo =>
-          buildFlinkJob(groupByName, kafkaBootstrap, api, servingInfo)
+          buildFlinkJob(groupByName, propsWithStreamingParams, api, servingInfo)
         }
         .recover { case e: Exception =>
           throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
@@ -330,7 +335,7 @@ object FlinkJob {
   }
 
   private def buildFlinkJob(groupByName: String,
-                            kafkaBootstrap: Option[String],
+                            props: Map[String, String],
                             api: Api,
                             servingInfo: GroupByServingInfoParsed) = {
     val topicUri = servingInfo.groupBy.streamingSource.get.topic
@@ -347,13 +352,7 @@ object FlinkJob {
     )
     val projectedSchema = deserializationSchema.asInstanceOf[SourceProjection].projectedSchema
 
-    val source =
-      topicInfo.messageBus match {
-        case "kafka" =>
-          new ProjectedKafkaFlinkSource(kafkaBootstrap, deserializationSchema, topicInfo)
-        case _ =>
-          throw new IllegalArgumentException(s"Unsupported message bus: ${topicInfo.messageBus}")
-      }
+    val source = FlinkSourceProvider.build(props, deserializationSchema, topicInfo)
 
     new FlinkJob(
       eventSrc = source,

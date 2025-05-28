@@ -1,8 +1,6 @@
-package ai.chronon.flink
+package ai.chronon.flink.source
 
-import ai.chronon.flink.deser.ChrononDeserializationSchema
-import ai.chronon.online.TopicChecker
-import ai.chronon.online.TopicInfo
+import ai.chronon.online.{TopicChecker, TopicInfo}
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.connector.kafka.source.KafkaSource
@@ -10,34 +8,32 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.spark.sql.Row
 
-class BaseKafkaFlinkSource[T](kafkaBootstrap: Option[String],
-                              deserializationSchema: DeserializationSchema[T],
-                              topicInfo: TopicInfo)
+class KafkaFlinkSource[T](props: Map[String, String],
+                          deserializationSchema: DeserializationSchema[T],
+                          topicInfo: TopicInfo)
     extends FlinkSource[T] {
-  val bootstrap: String =
-    kafkaBootstrap.getOrElse(
-      topicInfo.params.getOrElse(
-        "bootstrap",
-        topicInfo.params("host") + topicInfo.params
-          .get("port")
-          .map(":" + _)
-          .getOrElse(throw new IllegalArgumentException("No bootstrap servers provided"))
-      ))
-
-  // confirm the topic exists
-  TopicChecker.topicShouldExist(topicInfo.name, bootstrap, topicInfo.params)
+  import KafkaFlinkSource._
+  val bootstrap: String = {
+    // we first check props for the bootstrap server and fallback to topicInfo if not found
+    FlinkSourceProvider
+      .getProperty(KafkaBootstrap, props, topicInfo)
+      .orElse(getBootstrapFromHostPort(topicInfo.params.get("host"), topicInfo.params.get("port")))
+      .getOrElse(throw new IllegalArgumentException("No bootstrap servers provided"))
+  }
 
   // we use a small scale factor as topics are often over partitioned. We can make this configurable via topicInfo
   val scaleFactor = 0.25
 
-  implicit val parallelism: Int = {
+  implicit lazy val parallelism: Int = {
     math.ceil(TopicChecker.getPartitions(topicInfo.name, bootstrap, topicInfo.params) * scaleFactor).toInt
   }
 
   override def getDataStream(topic: String, groupByName: String)(env: StreamExecutionEnvironment,
                                                                  parallelism: Int): SingleOutputStreamOperator[T] = {
+    // confirm the topic exists
+    TopicChecker.topicShouldExist(topicInfo.name, bootstrap, topicInfo.params)
+
     val kafkaSource = KafkaSource
       .builder[T]()
       .setTopics(topicInfo.name)
@@ -56,12 +52,11 @@ class BaseKafkaFlinkSource[T](kafkaBootstrap: Option[String],
   }
 }
 
-class KafkaFlinkSource(kafkaBootstrap: Option[String],
-                       deserializationSchema: ChrononDeserializationSchema[Row],
-                       topicInfo: TopicInfo)
-    extends BaseKafkaFlinkSource[Row](kafkaBootstrap, deserializationSchema, topicInfo)
+object KafkaFlinkSource {
+  val KafkaBootstrap = "bootstrap"
 
-class ProjectedKafkaFlinkSource(kafkaBootstrap: Option[String],
-                                deserializationSchema: ChrononDeserializationSchema[Map[String, Any]],
-                                topicInfo: TopicInfo)
-    extends BaseKafkaFlinkSource[Map[String, Any]](kafkaBootstrap, deserializationSchema, topicInfo)
+  def getBootstrapFromHostPort(maybeHost: Option[String], maybePort: Option[String]): Option[String] = {
+    maybeHost
+      .map(host => host + maybePort.map(":" + _).getOrElse(""))
+  }
+}

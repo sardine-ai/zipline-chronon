@@ -33,29 +33,33 @@ def build_source(topic: str) -> Source:
         )
     )
 
+def build_actions_groupby(source: Source) -> GroupBy:
+    return GroupBy(
+        sources=[source],
+        keys=["listing_id"],
+        online=True,
+        aggregations=[
+            Aggregation(input_column="add_cart", operation=Operation.SUM, windows=["1d"]),
+            Aggregation(input_column="view", operation=Operation.SUM, windows=["1d"]),
+            Aggregation(input_column="purchase", operation=Operation.SUM, windows=["7d"]),
+            Aggregation(input_column="favorite", operation=Operation.SUM, windows=["1d"]),
+        ],
+        conf=ConfigProperties(
+            common={
+                "spark.chronon.partition.column": "_DATE",
+            }
+        ),
+    )
+
 # GCP Kafka clusters require TLS
 google_kafka_cfgs = "security.protocol=SASL_SSL/sasl.mechanism=OAUTHBEARER/sasl.login.callback.handler.class=com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler/sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;"
 schema_provider_cfgs = "provider_class=ai.chronon.flink.deser.MockCustomSchemaProvider/schema_name=item_event"
 kafka_topic = f"kafka://test-item-event-data/{schema_provider_cfgs}/{google_kafka_cfgs}"
-actions_source = build_source(kafka_topic)
+kafka_source = build_source(kafka_topic)
 
-actions_v1 = GroupBy(
-    sources=[actions_source],
-    keys=["listing_id"],
-    online=True,
-    aggregations=[
-        Aggregation(
-            input_column="add_cart", operation=Operation.SUM, windows=["1d"]
-        ),
-        Aggregation(input_column="view", operation=Operation.SUM, windows=["1d"]),
-        Aggregation(input_column="purchase", operation=Operation.SUM, windows=["7d"]),
-        Aggregation(
-            input_column="favorite", operation=Operation.SUM, windows=["1d"]
-        ),
-    ],
-    conf=ConfigProperties(
-        common={
-            "spark.chronon.partition.column": "_DATE",
-        }
-    ),
-)
+actions_v1 = build_actions_groupby(kafka_source)
+
+# Add a pubsub equivalent source + GroupBy. We use the same item event schema for the events
+pubsub_topic = f"pubsub://test-item-event-data/{schema_provider_cfgs}/tasks=4/subscription=test-item-event-data-sub"
+pubsub_source = build_source(pubsub_topic)
+actions_pubsub = build_actions_groupby(pubsub_source)

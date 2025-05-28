@@ -152,11 +152,19 @@ if [ "$BUILD_AWS" = true ]; then
 fi
 if [ "$BUILD_GCP" = true ]; then
     bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+    # build flink pubsub connectors
+    bazel build //flink:connectors_pubsub_deploy.jar
+
+    FLINK_PUBSUB_JAR="$CHRONON_ROOT_DIR/bazel-bin/flink/connectors_pubsub_deploy.jar"
 
     CLOUD_GCP_JAR="$CHRONON_ROOT_DIR/bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar"
 
     if [ ! -f "$CLOUD_GCP_JAR" ]; then
         echo "$CLOUD_GCP_JAR not found"
+        exit 1
+    fi
+    if [ ! -f "$FLINK_PUBSUB_JAR" ]; then
+        echo "$FLINK_PUBSUB_JAR not found"
         exit 1
     fi
 
@@ -185,6 +193,7 @@ function upload_to_gcp() {
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$FLINK_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
+                gcloud storage cp "$FLINK_PUBSUB_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done
               echo "Succeeded"
               break;;

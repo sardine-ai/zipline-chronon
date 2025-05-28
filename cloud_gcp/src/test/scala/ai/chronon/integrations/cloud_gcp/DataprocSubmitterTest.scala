@@ -19,6 +19,7 @@ import org.scalatestplus.mockito.MockitoSugar
 
 import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 import scala.jdk.CollectionConverters._
 
 class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
@@ -39,6 +40,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       mainJarUri = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
       flinkCheckpointUri = "gs://zl-warehouse/flink-state",
       maybeSavePointUri = Option("gs://zipline-warehouse/flink-state/groupby-name/chk-1"),
+      maybePubSubConnectorJarUri = None,
       jobProperties = Map("key" -> "value"),
       args = List("args1", "args2"): _*
     )
@@ -99,12 +101,36 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       mainJarUri = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
       flinkCheckpointUri = "gs://zl-warehouse/flink-state",
       maybeSavePointUri = None,
+      maybePubSubConnectorJarUri = None,
       jobProperties = Map("key" -> "value"),
       args = List("args1", "args2"): _*
     )
     assertEquals(job.getTypeJobCase, Job.TypeJobCase.FLINK_JOB)
     val flinkJob = job.getFlinkJob
     assert(flinkJob.getSavepointUri.isEmpty)
+  }
+
+  it should "test buildFlinkJob with pubsub connector uri" in {
+    val submitter = new DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
+      conf = SubmitterConf("test-project", "test-region", "test-cluster"))
+    val job = submitter.buildFlinkJob(
+      mainClass = "ai.chronon.flink.FlinkJob",
+      jarUri = "gs://zipline-jars/cloud-gcp.jar",
+      mainJarUri = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
+      flinkCheckpointUri = "gs://zl-warehouse/flink-state",
+      maybeSavePointUri = None,
+      maybePubSubConnectorJarUri = Some("gs://zipline-jars/flink-pubsub-connector.jar"),
+      jobProperties = Map("key" -> "value"),
+      args = List("args1", "args2"): _*
+    )
+    assertEquals(job.getTypeJobCase, Job.TypeJobCase.FLINK_JOB)
+    val flinkJob = job.getFlinkJob
+    val jarFileUris = flinkJob.getJarFileUrisList.asScala.toSet
+    val expectedJarFileUris = Set(
+      "gs://zipline-jars/cloud-gcp.jar",
+      "gs://zipline-jars/flink-pubsub-connector.jar"
+    )
+    assertEquals(jarFileUris, expectedJarFileUris)
   }
 
   it should "test createSubmissionPropsMap for spark job" in {
@@ -924,30 +950,6 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     assertEquals(actual.get, "gs://test-bucket/flink-state/some-flink-job-id/chk-11")
   }
 
-  it should "test flink job locally" ignore {
-
-    val submitter = DataprocSubmitter()
-    submitter.submit(
-      spark.submission.FlinkJob,
-      Map(
-        MainClass -> "ai.chronon.flink.FlinkJob",
-        FlinkMainJarURI -> "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
-        // Include savepoint / checkpoint Uri to resume from where a job left off
-        // SavepointUri -> "gs://zl-warehouse/flink-state/93686c72c3fd63f58d631e8388d8180d/chk-12",
-        JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar",
-        // This is where we write out checkpoints / persist state while the job is running
-        FlinkStateUri -> "gs://zl-warehouse/flink-state"
-      ),
-      Map.empty,
-      List.empty,
-      "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
-      "--groupby-name=listing_canary.actions_v1",
-      "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
-      "-ZGCP_PROJECT_ID=canary-443022",
-      "-ZGCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance"
-    )
-  }
-
   it should "test flink kafka ingest job locally" ignore {
 
     val submitterConf = SubmitterConf("canary-443022", "us-central1", "zipline-canary-cluster")
@@ -966,6 +968,33 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         List.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
         "--kafka-topic=test-item-event-data",
+        "--data-file-name=gs://zl-warehouse/canary_item_events/events-output.avro",
+        "--event-delay-millis=10"
+      )
+    println(submittedJobId)
+  }
+
+  it should "test flink PubSub ingest job locally" ignore {
+
+    val submitterConf = SubmitterConf("canary-443022", "us-central1", "zipline-canary-cluster")
+    val submitter = DataprocSubmitter(submitterConf)
+    val submittedJobId =
+      submitter.submit(
+        spark.submission.FlinkJob,
+        Map(
+          MainClass -> "ai.chronon.flink_connectors.pubsub.FlinkPubSubItemEventDriver",
+          MetadataName -> "test-item-event-data",
+          ZiplineVersion -> "0.1.0",
+          FlinkMainJarURI -> "gs://zipline-jars/flink_pubsub_ingest-assembly-0.1.0-SNAPSHOT.jar",
+          JobId -> ("pubsub-driver-" + UUID.randomUUID().toString),
+          JarURI -> "gs://zipline-jars/cloud_gcp_bigtable.jar",
+          // This is where we write out checkpoints / persist state while the job is running
+          FlinkCheckpointUri -> "gs://zl-warehouse/flink-state"
+        ),
+        Map.empty,
+        List.empty,
+        "--gcp-project=canary-443022",
+        "--topic=test-item-event-data",
         "--data-file-name=gs://zl-warehouse/canary_item_events/events-output.avro",
         "--event-delay-millis=10"
       )

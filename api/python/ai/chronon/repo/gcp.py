@@ -30,6 +30,7 @@ DATAPROC_ENTRY = "ai.chronon.integrations.cloud_gcp.DataprocSubmitter"
 ZIPLINE_GCP_JAR_DEFAULT = "cloud_gcp_lib_deploy.jar"
 ZIPLINE_GCP_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.cloud_gcp.GcpApiImpl"
 ZIPLINE_GCP_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
+ZIPLINE_GCP_FLINK_PUBSUB_JAR_DEFAULT = "connectors_pubsub_deploy.jar"
 ZIPLINE_GCP_SERVICE_JAR = "service_assembly_deploy.jar"
 
 
@@ -73,6 +74,11 @@ class GcpRunner(Runner):
     @staticmethod
     def get_gcp_bigtable_instance_id() -> str:
         return get_environ_arg("GCP_BIGTABLE_INSTANCE_ID")
+
+    @staticmethod
+    def is_pubsub_enabled() -> bool:
+        pubsub_enabled_env = get_environ_arg("ENABLE_PUBSUB", ignoreError=True)
+        return pubsub_enabled_env and pubsub_enabled_env.lower() == "true"
 
     @staticmethod
     def get_gcp_region_id() -> str:
@@ -276,17 +282,19 @@ class GcpRunner(Runner):
         if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
             flink_jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_FLINK_JAR_DEFAULT}")
-            return (
-                final_args.format(
+            enable_pubsub = GcpRunner.is_pubsub_enabled()
+            flink_pubsub_connector_jar_uri = os.path.join(release_prefix, f"{ZIPLINE_GCP_FLINK_PUBSUB_JAR_DEFAULT}")
+            base_formatted_args = final_args.format(
                     user_args=user_args,
                     jar_uri=jar_uri,
                     job_type=job_type.value,
                     main_class=main_class,
                     zipline_version=self._version,
                     job_id=self.job_id,
-                )
-                + f" --flink-main-jar-uri={flink_jar_uri}"
-            )
+                ) + f" --flink-main-jar-uri={flink_jar_uri}"
+            if enable_pubsub:
+                base_formatted_args += f" --flink-pubsub-jar-uri={flink_pubsub_connector_jar_uri}"
+            return base_formatted_args
 
         elif job_type == JobType.SPARK:
             main_class = "ai.chronon.spark.Driver"
