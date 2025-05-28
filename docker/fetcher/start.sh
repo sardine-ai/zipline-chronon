@@ -19,6 +19,7 @@ else
 fi
 
 METRICS_OPTS=""
+JVM_OPTS=""
 
 if [ -n "$CHRONON_METRICS_READER" ]; then
   METRICS_OPTS="-Dai.chronon.metrics.enabled=true"
@@ -41,12 +42,17 @@ else
   METRICS_OPTS="-Dai.chronon.metrics.enabled=false"
 fi
 
-JMX_OPTS="-XX:MaxMetaspaceSize=1g -XX:MaxRAMPercentage=70.0 -XX:MinRAMPercentage=70.0 -XX:InitialRAMPercentage=70.0 -XX:MaxHeapFreeRatio=100 -XX:MinHeapFreeRatio=0"
+# Configure Google Cloud Profiler if enabled
+if [ "$ENABLE_GCLOUD_PROFILER" = true ]; then
+  JVM_OPTS="$JVM_OPTS -agentpath:/opt/cprof/profiler_java_agent.so=-cprof_service=chronon-fetcher,-logtostderr,-minloglevel=1,-cprof_enable_heap_sampling"
+fi
+
+JVM_OPTS="$JVM_OPTS -XX:MaxMetaspaceSize=1g -XX:MaxRAMPercentage=70.0 -XX:MinRAMPercentage=70.0 -XX:InitialRAMPercentage=70.0 -XX:MaxHeapFreeRatio=100 -XX:MinHeapFreeRatio=0"
 
 echo "Starting Fetcher service with online jar $ONLINE_JAR and online class $ONLINE_CLASS"
 
-if ! java -jar $FETCHER_JAR run ai.chronon.service.FetcherVerticle \
-  $JMX_OPTS \
+if ! java $JVM_OPTS -jar $FETCHER_JAR \
+  run ai.chronon.service.FetcherVerticle \
   -Dserver.port=$FETCHER_PORT \
   -Donline.jar=$ONLINE_JAR \
   $METRICS_OPTS \

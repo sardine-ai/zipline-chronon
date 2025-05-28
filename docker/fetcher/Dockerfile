@@ -1,5 +1,6 @@
-# Build from a base image with Java 17. We use the Amazon Corretto image as it is a well-supported OpenJDK distribution.
-FROM public.ecr.aws/docker/library/amazoncorretto:17-alpine
+# Build from a base image with Java 17. We use a Debian based image as we have seen some netty related .so
+# failures on other distros like Alpine.
+FROM public.ecr.aws/docker/library/eclipse-temurin:17-jdk
 
 # We expect jars to be copied to the build_output directory as docker can't read from bazel-bin as that's a symlink
 # https://stackoverflow.com/questions/31881904/docker-follow-symlink-outside-context
@@ -11,16 +12,20 @@ ENV GCP_ONLINE_CLASS=ai.chronon.integrations.cloud_gcp.GcpApiImpl
 ENV AWS_ONLINE_CLASS=ai.chronon.integrations.aws.AwsApiImpl
 
 # Update package lists and install necessary tools
-RUN apk update && apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     curl \
     python3 \
     python3-dev \
-    py3-setuptools \
+    python3-setuptools \
     vim \
     wget \
     procps \
-    py3-pip \
-    bash
+    python3-pip
+
+# Install Google Cloud Profiler
+RUN mkdir -p /opt/cprof && \
+  wget -q -O- https://storage.googleapis.com/cloud-profiler/java/latest/profiler_java_agent.tar.gz \
+  | tar xzv -C /opt/cprof
 
 WORKDIR /srv/zipline
 
