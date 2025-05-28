@@ -32,7 +32,7 @@ def StagingQuery(
     partition_column: Optional[str] = None,
     engine_type: Optional[EngineType] = None,
     dependencies: Optional[List[Union[TableDependency, Dict]]] = None,
-    exports: Optional[List[ttypes.Export]] = None,
+    exports: Optional[List[ttypes.DataImport]] = None,
     tags: Optional[Dict[str, str]] = None,
     # execution params
     offline_schedule: str = "@daily",
