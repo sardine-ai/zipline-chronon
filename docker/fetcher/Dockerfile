@@ -14,13 +14,9 @@ ENV AWS_ONLINE_CLASS=ai.chronon.integrations.aws.AwsApiImpl
 # Update package lists and install necessary tools
 RUN apt-get update && apt-get install -y \
     curl \
-    python3 \
-    python3-dev \
-    python3-setuptools \
     vim \
     wget \
-    procps \
-    python3-pip
+    procps
 
 # Install Google Cloud Profiler
 RUN mkdir -p /opt/cprof && \
