@@ -9,14 +9,14 @@ At a high level, the flow is `config (GroupBy/Join/StagingQuery) -> control plan
 The table below gives further details on each of these control plane tasks, and their corresponding Data plane actions:
 
 
-|                   | Dag name format                             | Relationship to repo | Trigger               | Data plane purpose                                                             |
-|-------------------|---------------------------------------------|----------------------|-----------------------|--------------------------------------------------------------------------------|
-| GroupBy Batch     | chronon_group_by_batch_{team}               | One DAG per team     | Upstream data landing | Run batch uploads to the KV Store. Produce historic snapshots of GroupBy Data. |
-| GroupBy Streaming | chronon_group_by_streaming_{team}           | One DAG per team     | Continuous            | Run streaming jobs for realtime updates to KV Store.                           |
-| StagingQuery      | chronon_staging_query_batch_{team}          | One DAG per team     | Upstream data landing | Run StagingQuery batch computation.                                            |
-| Join Computation  | chronon_join_{team}__{join_id}              | One DAG per Join     | Upstream data landing | Run Join backfill/frontfill.                                                   |
-| Join Consistency  | chronon_online_offline_comparison_{join_id} | One DAG per Join     | Upstream data landing | Run job that checks consistency between online and offline values.             |
-| Metadata          | chronon_metadata_upload                     | One DAG              | Daily                 | Upload necessary metadata to the KV store to enable serving.                   |
+|                   | Dag name format                               | Relationship to repo | Trigger               | Data plane purpose                                                             |
+| ----------------- | --------------------------------------------- | -------------------- | --------------------- | ------------------------------------------------------------------------------ |
+| GroupBy Batch     | `chronon*group_by_batch*{team}`               | One DAG per team     | Upstream data landing | Run batch uploads to the KV Store. Produce historic snapshots of GroupBy Data. |
+| GroupBy Streaming | `chronon*group_by_streaming*{team}`           | One DAG per team     | Continuous            | Run streaming jobs for realtime updates to KV Store.                           |
+| StagingQuery      | `chronon*staging_query_batch*{team}`          | One DAG per team     | Upstream data landing | Run StagingQuery batch computation.                                            |
+| Join Computation  | `chronon*join*{team}\_\_{join_id}`            | One DAG per Join     | Upstream data landing | Run Join backfill/frontfill.                                                   |
+| Join Consistency  | `chronon*online_offline_comparison*{join_id}` | One DAG per Join     | Upstream data landing | Run job that checks consistency between online and offline values.             |
+| Metadata          | `chronon_metadata_upload`                     | One DAG              | Daily                 | Upload necessary metadata to the KV store to enable serving.                   |
 
 Here are a few code pointers that can be followed to get an even deeper understanding of each of these actions and their effect:
 

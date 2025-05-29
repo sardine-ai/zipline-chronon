@@ -484,7 +484,7 @@ This command will take into the account the name of the tag and handles a series
 
 # Testing on REPL
 
-{One-time} First install the ammonite REPL with [support](https://ammonite.io/#OlderScalaVersions) for scala 2.12
+`One-time` First install the ammonite REPL with [support](https://ammonite.io/#OlderScalaVersions) for scala 2.12
 
 ```shell
 sudo sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/com-lihaoyi/Ammonite/releases/download/3.0.0-M0/2.12-3.0.0-M0) > /usr/local/bin/amm && chmod +x /usr/local/bin/amm' && amm

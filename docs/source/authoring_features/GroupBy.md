@@ -120,7 +120,7 @@ traditional SQL this would require an expensive `explode` command and is support
 
 ## Maps as inputs
 
-Aggregations over columns of type 'Map<String, Value>'. For example - if you have two histograms this will allow for merging those
+Aggregations over columns of type `Map<String, Value>`. For example - if you have two histograms this will allow for merging those
 histograms using - min, max, avg, sum etc. You can merge maps of any scalar values types using aggregations that operate on scalar values.
 The output of aggregations with scala values on map types is another map with aggregates as values.
 

@@ -168,7 +168,7 @@ cd ~/kaggle_outbrain_parquet
 
 And then:
 
-```
+```shell
 spark-sql> SELECT * FROM kaggle_outbrain_training_set
 spark-sql> WHERE kaggle_outbrain_ad_uuid_clicked_sum_3d IS NOT NULL
 spark-sql> LIMIT 10;
