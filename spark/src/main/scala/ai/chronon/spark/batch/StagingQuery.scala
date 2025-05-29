@@ -37,6 +37,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
     logger.info("Running setups for StagingQuery")
     Option(stagingQueryConf.setups).foreach(_.toScala.foreach(tableUtils.sql))
     // the input table is not partitioned, usually for data testing or for kaggle demos
+
     if (stagingQueryConf.startPartition == null) {
       tableUtils.sql(stagingQueryConf.query).save(outputTable, partitionColumns = List.empty)
     } else {

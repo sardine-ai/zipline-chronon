@@ -884,8 +884,8 @@ object Extensions {
       }
     }
 
-    lazy val startPartition: String = Option(bootstrapPart.query).map(_.startPartition).orNull
-    lazy val endPartition: String = Option(bootstrapPart.query).map(_.endPartition).orNull
+    lazy val startPartition = Option(bootstrapPart.query).map(_.startPartition)
+    lazy val endPartition = Option(bootstrapPart.query).map(_.endPartition)
   }
 
   object JoinOps {
@@ -1292,9 +1292,9 @@ object Extensions {
 
   implicit class DateRangeOps(dateRange: DateRange) {
     def toPartitionRange(implicit partitionSpec: PartitionSpec): PartitionRange = {
-      val start = dateRange.startDate
-      val end = dateRange.endDate
-      new PartitionRange(start, end)
+      val start = Option(dateRange.startDate)
+      val end = Option(dateRange.endDate)
+      new PartitionRange(start, end, partitionSpec)
     }
   }
 }

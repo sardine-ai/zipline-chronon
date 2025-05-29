@@ -279,7 +279,8 @@ object Driver {
 
       if (tableUtils.sparkSession.conf.get("spark.chronon.join.backfill.mode.skewFree", "false").toBoolean) {
         logger.info(s" >>> Running join backfill in skew free mode <<< ")
-        val startPartition = args.startPartitionOverride.toOption.getOrElse(args.joinConf.left.query.startPartition)
+        val startPartition =
+          args.startPartitionOverride.toOption.orElse(Option(args.joinConf.left.query.startPartition))
         val endPartition = args.endDate()
 
         val joinName = args.joinConf.metaData.name

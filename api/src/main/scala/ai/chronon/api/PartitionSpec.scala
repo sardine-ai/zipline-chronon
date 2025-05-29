@@ -74,8 +74,15 @@ case class PartitionSpec(column: String, format: String, spanMillis: Long) {
 
   def before(millis: Long): String = at(millis - spanMillis)
 
-  def shift(date: String, days: Int): String =
-    partitionFormatter.format(Instant.ofEpochMilli(epochMillis(date) + days * spanMillis))
+  def shift(date: String, days: Int): String = {
+    shift(date, days * spanMillis)
+  }
+
+  // TODO: Use Option all the way through
+  def shift(date: String, millis: Long): String = {
+    if (date == null) return null
+    partitionFormatter.format(Instant.ofEpochMilli(epochMillis(date) + millis))
+  }
 
   def now: String = at(System.currentTimeMillis())
 

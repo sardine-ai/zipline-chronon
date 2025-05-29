@@ -76,11 +76,18 @@ class JoinBootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit table
       logger.info(s"\nProcessing Bootstrap from table ${part.table} for range $range")
 
       val bootstrapRange = if (part.isSetQuery) {
-        dateRange.intersect(PartitionRange(part.startPartition, part.endPartition))
+        dateRange.intersect(PartitionRange(part.startPartition, part.endPartition, partitionSpec))
       } else {
         dateRange
       }
-      if (!bootstrapRange.valid) {
+
+      def valid(range: PartitionRange): Boolean = {
+        (range.start, range.end) match {
+          case (Some(s), Some(e)) => s <= e
+          case _                  => true
+        }
+      }
+      if (!valid(bootstrapRange)) {
         logger.info(s"partition range of bootstrap table ${part.table} is beyond unfilled range")
         partialDf
       } else {

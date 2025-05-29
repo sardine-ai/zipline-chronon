@@ -218,14 +218,18 @@ object GroupByUpload {
     val batchEndDate = partitionSpec.after(endDs)
     // for snapshot accuracy - we don't need to scan mutations
     lazy val groupBy =
-      GroupBy.from(groupByConf, PartitionRange(endDs, endDs), tableUtils, computeDependency = true, showDf = showDf)
+      GroupBy.from(groupByConf,
+                   PartitionRange(Option(endDs), Option(endDs), partitionSpec),
+                   tableUtils,
+                   computeDependency = true,
+                   showDf = showDf)
     lazy val groupByUpload = new GroupByUpload(endDs, groupBy)
     // for temporal accuracy - we don't need to scan mutations for upload
     // when endDs = xxxx-01-02 the timestamp from airflow is more than (xxxx-01-03 00:00:00)
     // we wait for event partitions of (xxxx-01-02) which contain data until (xxxx-01-02 23:59:59.999)
     lazy val shiftedGroupBy =
       GroupBy.from(groupByConf,
-                   PartitionRange(endDs, endDs).shift(1),
+                   PartitionRange(Option(endDs), Option(endDs), partitionSpec).shift(1),
                    tableUtils,
                    computeDependency = true,
                    showDf = showDf)

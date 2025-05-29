@@ -319,8 +319,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def chunk(partitions: Set[String]): Seq[PartitionRange] = {
     val sortedDates = partitions.toSeq.sorted
     sortedDates.foldLeft(Seq[PartitionRange]()) { (ranges, nextDate) =>
-      if (ranges.isEmpty || partitionSpec.after(ranges.last.end) != nextDate) {
-        ranges :+ PartitionRange(nextDate, nextDate)(partitionSpec)
+      if (ranges.isEmpty || partitionSpec.after(ranges.last.end.orNull) != nextDate) {
+        ranges :+ PartitionRange(nextDate, nextDate, partitionSpec)
       } else {
         val newRange = PartitionRange(ranges.last.start, nextDate)(partitionSpec)
         ranges.dropRight(1) :+ newRange
@@ -356,7 +356,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
            |""".stripMargin
       )
 
-      outputPartitionRange.copy(start = partitionSpec.shift(inputStart.get, inputToOutputShift))(partitionSpec)
+      outputPartitionRange.copy(start = inputStart.map(partitionSpec.shift(_, inputToOutputShift)),
+                                partitionSpec = partitionSpec)
     } else {
 
       outputPartitionRange
@@ -366,9 +367,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     // If a user fills a new partition in the newer end of the range, then we will never fill any partitions before that range.
     // We instead log a message saying why we won't fill the earliest hole.
     val cutoffPartition = if (outputExisting.nonEmpty) {
-      Seq[String](outputExisting.min, outputPartitionRange.start).filter(_ != null).max
+      // TODO: clean up
+      Seq[String](outputExisting.min, outputPartitionRange.start.orNull).filter(_ != null).max
     } else {
-      validPartitionRange.start
+      validPartitionRange.start.orNull
     }
 
     val fillablePartitions =

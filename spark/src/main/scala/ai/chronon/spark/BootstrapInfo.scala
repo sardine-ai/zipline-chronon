@@ -200,7 +200,7 @@ object BootstrapInfo {
     // Verify that join keys are valid columns on the bootstrap source table
     val tableHashes = tableBootstrapParts
       .map(part => {
-        val range = PartitionRange(part.startPartition, part.endPartition)
+        val range = PartitionRange(part.startPartition, part.endPartition, partitionSpec)
         val bootstrapDf =
           tableUtils
             .scanDf(part.query, part.table, Some(Map(part.query.effectivePartitionColumn -> null)), range = Some(range))
@@ -284,8 +284,8 @@ object BootstrapInfo {
         assert(
           bootstrapInfo.fieldsMap(field.name) == field,
           s"""Table $table has column ${field.name} with ${field.fieldType}, but Join ${joinConf.metaData.name} has the same field with ${bootstrapInfo
-            .fieldsMap(field.name)
-            .fieldType}
+              .fieldsMap(field.name)
+              .fieldType}
            |""".stripMargin
         ))
     }
