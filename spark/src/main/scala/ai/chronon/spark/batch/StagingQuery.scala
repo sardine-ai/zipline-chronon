@@ -29,7 +29,8 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
   def computeStagingQuery(stepDays: Option[Int] = None,
                           enableAutoExpand: Option[Boolean] = Some(true),
                           overrideStartPartition: Option[String] = None,
-                          skipFirstHole: Boolean = true): Unit = {
+                          skipFirstHole: Boolean = true,
+                          forceOverwrite: Boolean = false): Unit = {
     if (Option(stagingQueryConf.getEngineType).getOrElse(EngineType.SPARK) != EngineType.SPARK) {
       throw new UnsupportedOperationException(
         s"Engine type ${stagingQueryConf.getEngineType} is not supported for Staging Query")
@@ -55,9 +56,12 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
         return
       }
       val stagingQueryUnfilledRanges = unfilledRanges.get
-      logger.info(s"Staging Query unfilled ranges: $stagingQueryUnfilledRanges")
       val exceptions = mutable.Buffer.empty[String]
-      stagingQueryUnfilledRanges.foreach { stagingQueryUnfilledRange =>
+      val rangeToRun =
+        if (forceOverwrite) Seq(PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec))
+        else stagingQueryUnfilledRanges
+      logger.info(s"--forceOverwrite set to: ${forceOverwrite}. Proceeding Staging Query run with range: ${rangeToRun}")
+      rangeToRun.foreach { stagingQueryUnfilledRange =>
         try {
           val stepRanges = stepDays.map(stagingQueryUnfilledRange.steps).getOrElse(Seq(stagingQueryUnfilledRange))
           logger.info(s"Staging query ranges to compute: ${stepRanges.map { _.toString }.pretty}")

@@ -509,6 +509,10 @@ object Driver {
 
       lazy val stagingQueryConf: api.StagingQuery = parseConf[api.StagingQuery](confPath())
       override def subcommandName(): String = s"staging_query_${stagingQueryConf.metaData.name}_backfill"
+
+      val forceOverwrite =
+        opt[Boolean]("key", descr = "Setting to true overwrites any existing partitions.", default = Some(false))
+
     }
 
     def run(args: Args): Unit = {
@@ -521,7 +525,8 @@ object Driver {
       stagingQueryJob.computeStagingQuery(args.stepDays.toOption,
                                           args.enableAutoExpand.toOption,
                                           args.startPartitionOverride.toOption,
-                                          !args.runFirstHole())
+                                          !args.runFirstHole(),
+                                          args.forceOverwrite())
 
       if (args.shouldExport()) {
         args.exportTableToLocal(args.stagingQueryConf.metaData.outputTable, tableUtils)
