@@ -260,6 +260,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     TableCache.remove(tableName)
 
+    finalizedDf.cache()
+
     logger.info(s"Writing to $tableName ...")
 
     finalizedDf.write
@@ -271,6 +273,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       .insertInto(tableName)
 
     logger.info(s"Finished writing to $tableName")
+
+    logger.info(s"Table $tableName has been written with ${finalizedDf.count()} rows.")
   }
 
   // retains only the invocations from chronon code.
