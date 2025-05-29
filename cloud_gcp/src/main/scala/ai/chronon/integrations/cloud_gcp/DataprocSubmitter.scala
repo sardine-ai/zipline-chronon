@@ -539,7 +539,10 @@ object DataprocSubmitter {
     if (clusterName != "") {
       try {
         val cluster = dataprocClient.getCluster(projectId, region, clusterName)
-        if (cluster != null && cluster.getStatus.getState == ClusterStatus.State.RUNNING) {
+        if (
+          cluster != null && Set(ClusterStatus.State.RUNNING, ClusterStatus.State.UPDATING).contains(
+            cluster.getStatus.getState)
+        ) {
           println(s"Dataproc cluster $clusterName already exists and is running.")
           clusterName
         } else if (maybeClusterConfig.isDefined && maybeClusterConfig.get.contains("dataproc.config")) {
