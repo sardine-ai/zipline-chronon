@@ -29,7 +29,8 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
   def computeStagingQuery(stepDays: Option[Int] = None,
                           enableAutoExpand: Option[Boolean] = Some(true),
                           overrideStartPartition: Option[String] = None,
-                          skipFirstHole: Boolean = true): Unit = {
+                          skipFirstHole: Boolean = true,
+                          forceOverwrite: Boolean = false): Unit = {
     if (Option(stagingQueryConf.getEngineType).getOrElse(EngineType.SPARK) != EngineType.SPARK) {
       throw new UnsupportedOperationException(
         s"Engine type ${stagingQueryConf.getEngineType} is not supported for Staging Query")
@@ -41,23 +42,27 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
       tableUtils.sql(stagingQueryConf.query).save(outputTable, partitionColumns = List.empty)
     } else {
       val overrideStart = overrideStartPartition.getOrElse(stagingQueryConf.startPartition)
-      val unfilledRanges =
-        tableUtils.unfilledRanges(outputTable,
-                                  PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
-                                  skipFirstHole = skipFirstHole)
+      val rangeToRun =
+        if (forceOverwrite) Seq(PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec))
+        else {
+          val unfilledRanges =
+            tableUtils.unfilledRanges(outputTable,
+                                      PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
+                                      skipFirstHole = skipFirstHole)
 
-      if (unfilledRanges.isEmpty) {
-        logger.info(s"""No unfilled range for $outputTable given
-             |start partition of ${stagingQueryConf.startPartition}
-             |override start partition of $overrideStart
-             |end partition of $endPartition
-             |""".stripMargin)
-        return
-      }
-      val stagingQueryUnfilledRanges = unfilledRanges.get
-      logger.info(s"Staging Query unfilled ranges: $stagingQueryUnfilledRanges")
+          if (unfilledRanges.isEmpty) {
+            logger.info(s"""No unfilled range for $outputTable given
+                           |start partition of ${stagingQueryConf.startPartition}
+                           |override start partition of $overrideStart
+                           |end partition of $endPartition
+                           |""".stripMargin)
+            return
+          }
+          unfilledRanges.getOrElse(Seq.empty)
+        }
+      logger.info(s"--forceOverwrite set to: ${forceOverwrite}. Proceeding Staging Query run with range: ${rangeToRun}")
       val exceptions = mutable.Buffer.empty[String]
-      stagingQueryUnfilledRanges.foreach { stagingQueryUnfilledRange =>
+      rangeToRun.foreach { stagingQueryUnfilledRange =>
         try {
           val stepRanges = stepDays.map(stagingQueryUnfilledRange.steps).getOrElse(Seq(stagingQueryUnfilledRange))
           logger.info(s"Staging query ranges to compute: ${stepRanges.map { _.toString }.pretty}")
