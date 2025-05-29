@@ -42,25 +42,26 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
       tableUtils.sql(stagingQueryConf.query).save(outputTable, partitionColumns = List.empty)
     } else {
       val overrideStart = overrideStartPartition.getOrElse(stagingQueryConf.startPartition)
-      val unfilledRanges =
-        tableUtils.unfilledRanges(outputTable,
-                                  PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
-                                  skipFirstHole = skipFirstHole)
-
-      if (unfilledRanges.isEmpty) {
-        logger.info(s"""No unfilled range for $outputTable given
-             |start partition of ${stagingQueryConf.startPartition}
-             |override start partition of $overrideStart
-             |end partition of $endPartition
-             |""".stripMargin)
-        return
-      }
-      val stagingQueryUnfilledRanges = unfilledRanges.get
-      val exceptions = mutable.Buffer.empty[String]
       val rangeToRun =
         if (forceOverwrite) Seq(PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec))
-        else stagingQueryUnfilledRanges
+        else {
+          val unfilledRanges =
+            tableUtils.unfilledRanges(outputTable,
+                                      PartitionRange(overrideStart, endPartition)(tableUtils.partitionSpec),
+                                      skipFirstHole = skipFirstHole)
+
+          if (unfilledRanges.isEmpty) {
+            logger.info(s"""No unfilled range for $outputTable given
+                           |start partition of ${stagingQueryConf.startPartition}
+                           |override start partition of $overrideStart
+                           |end partition of $endPartition
+                           |""".stripMargin)
+            return
+          }
+          unfilledRanges.getOrElse(Seq.empty)
+        }
       logger.info(s"--forceOverwrite set to: ${forceOverwrite}. Proceeding Staging Query run with range: ${rangeToRun}")
+      val exceptions = mutable.Buffer.empty[String]
       rangeToRun.foreach { stagingQueryUnfilledRange =>
         try {
           val stepRanges = stepDays.map(stagingQueryUnfilledRange.steps).getOrElse(Seq(stagingQueryUnfilledRange))
