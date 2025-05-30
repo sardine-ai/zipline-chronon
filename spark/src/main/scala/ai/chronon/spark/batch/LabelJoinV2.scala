@@ -1,9 +1,9 @@
 package ai.chronon.spark.batch
 import ai.chronon.api
+import ai.chronon.api._
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.PartitionRange.toTimeRange
-import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Extensions._
@@ -15,8 +15,8 @@ import org.apache.spark.sql.types.{DataType, StructType}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
-import scala.math.Ordering.Implicits._
 import scala.collection.Seq
+import scala.math.Ordering.Implicits._
 
 // let's say we are running the label join on `ds`, we want to modify partitions of the join output table
 // that are `ds - windowLength` days old. window sizes could repeat across different label join parts
@@ -132,10 +132,10 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
   }
 
   // computes one day of labelDs
-  private def computeDay(labelDs: String): DataFrame = {
+  private def computeDay(labelDs: Option[String]): DataFrame = {
     logger.info(s"Running LabelJoinV2 for $labelDs")
 
-    val labelDsAsPartitionRange = PartitionRange(labelDs, labelDs)
+    val labelDsAsPartitionRange = PartitionRange(labelDs, labelDs, partitionSpec)
 
     runAssertions()
 
@@ -157,15 +157,15 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
 
       // Always log this no matter what.
       val baseLogString = s"""Missing following partitions from $joinTable: ${missingWindowToOutputs.values
-        .map(_.joinDsAsRange.start)
-        .mkString(", ")}
+                              .map(_.joinDsAsRange.start)
+                              .mkString(", ")}
            |
            |Found existing partitions of join output: ${existingJoinPartitions.mkString(", ")}
            |
            |Required dates are computed based on label date (the run date) - window for distinct windows that are used in label parts.
            |
            |In this case, the run date is: $labelDs, and given the existing partitions we are unable to compute the labels for the following windows: ${missingWindowToOutputs.keys
-        .mkString(", ")} (days).
+                              .mkString(", ")} (days).
            |
            |""".stripMargin
 
@@ -231,8 +231,8 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
     logger.info(
       s"Computing labels for window: $windowLength days on labelDs: ${labelDsAsPartitionRange.start} \n" +
         s"Includes the following joinParts and output cols: ${joinOutputInfo.labelPartOutputInfos
-          .map(x => s"${x.labelPart.groupBy.metaData.name} -> ${x.outputColumnNames.mkString(", ")}")
-          .mkString("\n")}")
+            .map(x => s"${x.labelPart.groupBy.metaData.name} -> ${x.outputColumnNames.mkString(", ")}")
+            .mkString("\n")}")
 
     val startMillis = System.currentTimeMillis()
     // This is the join output ds that we're working with

@@ -281,7 +281,7 @@ object Driver {
         logger.info(s" >>> Running join backfill in skew free mode <<< ")
         val startPartition =
           args.startPartitionOverride.toOption.orElse(Option(args.joinConf.left.query.startPartition))
-        val endPartition = args.endDate()
+        val endPartition = Option(args.endDate())
 
         val joinName = args.joinConf.metaData.name
         val stepDays = args.stepDays.toOption.getOrElse(1)
@@ -289,7 +289,7 @@ object Driver {
         logger.info(
           s"Filling partitions for join:$joinName, partitions:[$startPartition, $endPartition], steps:$stepDays")
 
-        val partitionRange = PartitionRange(startPartition, endPartition)(tableUtils.partitionSpec)
+        val partitionRange = PartitionRange(startPartition, endPartition, tableUtils.partitionSpec)
         val partitionSteps = partitionRange.steps(stepDays)
 
         partitionSteps.zipWithIndex.foreach { case (stepRange, idx) =>

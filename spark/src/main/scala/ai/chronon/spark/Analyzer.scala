@@ -267,10 +267,12 @@ class Analyzer(tableUtils: TableUtils,
       JoinUtils.getRangeToFill(joinConf.left, tableUtils, endDate, historicalBackfill = joinConf.historicalBackfill)
     logger.info(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
-      .unfilledRanges(joinConf.metaData.outputTable,
-                      rangeToFill,
-                      Some(Seq(joinConf.left.table)),
-                      inputPartitionColumnNames = Seq(joinConf.left.query.effectivePartitionColumn))
+      .unfilledRanges(
+        joinConf.metaData.outputTable,
+        rangeToFill,
+        Some(Seq(joinConf.left.table)),
+        inputPartitionColumnNames = Seq(joinConf.left.query.partitionSpec(tableUtils.partitionSpec).column)
+      )
       .getOrElse(Seq.empty)
 
     joinConf.joinParts.toScala.foreach { part =>
@@ -378,12 +380,10 @@ class Analyzer(tableUtils: TableUtils,
         Some(
           rightKey ->
             s"[ERROR]: Right side of the join doesn't contain the key $rightKey. Available keys are [${right.keys
-              .mkString(",")}]")
+                .mkString(",")}]")
       case (rightKey, leftKey) if left(leftKey) != right(rightKey) =>
-        Some(
-          leftKey ->
-            s"[ERROR]: Join key, '$leftKey', has mismatched data types - left type: ${left(
-              leftKey)} vs. right type ${right(rightKey)}")
+        Some(leftKey ->
+          s"[ERROR]: Join key, '$leftKey', has mismatched data types - left type: ${left(leftKey)} vs. right type ${right(rightKey)}")
       case _ => None
     }
   }

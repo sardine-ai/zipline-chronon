@@ -80,7 +80,7 @@ object JoinUtils {
     }
 
     implicit val tu: TableUtils = tableUtils
-    val effectiveLeftSpec = joinConf.left.partitionSpec
+    val effectiveLeftSpec = joinConf.left.query.partitionSpec(tableUtils.partitionSpec)
     val effectiveLeftRange = range.translate(effectiveLeftSpec)
 
     val partitionColumnOfLeft = effectiveLeftSpec.column
@@ -154,7 +154,7 @@ object JoinUtils {
     }
 
     implicit val tu: TableUtils = tableUtils
-    val leftSpec = leftSource.partitionSpec
+    val leftSpec = leftSource.query.partitionSpec(tableUtils.partitionSpec)
 
     val firstAvailablePartitionOpt =
       tableUtils.firstAvailablePartition(leftSource.table,
@@ -169,11 +169,11 @@ object JoinUtils {
         firstAvailablePartitionOpt.get
       }
 
-    val leftStart = overrideStart.getOrElse(defaultLeftStart)
-    val leftEnd = Option(leftSource.query.endPartition).getOrElse(endPartition)
+    val leftStart = overrideStart.orElse(Option(defaultLeftStart))
+    val leftEnd = Option(leftSource.query.endPartition).orElse(Option(endPartition))
 
     logger.info(s"Attempting to fill join partition range: $leftStart to $leftEnd")
-    PartitionRange(leftStart, leftEnd)(leftSpec)
+    PartitionRange(leftStart, leftEnd, leftSpec)
   }
 
   /** *

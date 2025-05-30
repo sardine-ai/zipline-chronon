@@ -181,7 +181,9 @@ object BootstrapInfo {
       .foreach(part => {
         // practically there should only be one logBootstrapPart per Join, but nevertheless we will loop here
         val schema = tableUtils.getSchemaFromTable(part.table)
-        val missingKeys = part.keys(joinConf, part.query.effectivePartitionColumn).filterNot(schema.fieldNames.contains)
+        val missingKeys = part
+          .keys(joinConf, part.query.partitionSpec(tableUtils.partitionSpec).column)
+          .filterNot(schema.fieldNames.contains)
         collectException(assert(
           missingKeys.isEmpty,
           s"Log table ${part.table} does not contain some specified keys: ${missingKeys.prettyInline}, table schema: ${schema.pretty}"
@@ -203,7 +205,10 @@ object BootstrapInfo {
         val range = PartitionRange(part.startPartition, part.endPartition, partitionSpec)
         val bootstrapDf =
           tableUtils
-            .scanDf(part.query, part.table, Some(Map(part.query.effectivePartitionColumn -> null)), range = Some(range))
+            .scanDf(part.query,
+                    part.table,
+                    Some(Map(part.query.partitionSpec(partitionSpec).column -> null)),
+                    range = Some(range))
         val schema = bootstrapDf.schema
         // We expect partition column and not effectivePartitionColumn because of the scanDf rename
         val missingKeys = part.keys(joinConf, tableUtils.partitionColumn).filterNot(schema.fieldNames.contains)

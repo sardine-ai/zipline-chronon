@@ -145,7 +145,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
          rangeToFill,
          Some(Seq(joinConfCloned.left.table)),
          skipFirstHole = skipFirstHole,
-         inputPartitionColumnNames = Seq(joinConfCloned.left.query.effectivePartitionColumn)
+         inputPartitionColumnNames = Seq(joinConfCloned.left.query.partitionSpec(partitionSpec).column)
        )
        .getOrElse(Seq.empty))
   }
@@ -291,8 +291,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     val existingLeftRange = tableUtils.partitions(
       joinConfCloned.left.table,
       partitionRange = Option(rangeToFill),
-      tablePartitionSpec = Option(joinConfCloned.left.partitionSpec),
-      partitionColumnName = joinConfCloned.left.partitionSpec.column
+      tablePartitionSpec = Option(joinConfCloned.left.query.partitionSpec(partitionSpec)),
+      partitionColumnName = joinConfCloned.left.query.partitionSpec(partitionSpec).column
     )
     val requested = rangeToFill.partitions
     val fillableRanges = requested.filter(existingLeftRange.contains)
@@ -309,8 +309,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
         rangeToFill,
         Some(Seq(joinConfCloned.left.table)),
         skipFirstHole = skipFirstHole,
-        inputPartitionColumnNames = Seq(joinConfCloned.left.query.effectivePartitionColumn),
-        inputPartitionSpecs = Seq(joinConfCloned.left.partitionSpec)
+        inputPartitionColumnNames = Seq(joinConfCloned.left.query.partitionSpec(partitionSpec).column),
+        inputPartitionSpecs = Seq(joinConfCloned.left.query.partitionSpec(partitionSpec))
       )
       .getOrElse(Seq.empty)
 

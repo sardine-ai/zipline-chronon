@@ -17,7 +17,8 @@ then each join may have a further Bootstrap computation to produce the left side
  */
 class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtils: TableUtils) {
   private val sourceWithFilter = node
-  private val dateRange = range.toPartitionRange(tableUtils.partitionSpec)
+  private val dateRange =
+    range.toPartitionRange(sourceWithFilter.getSource.query.partitionSpec(tableUtils.partitionSpec))
   private val outputTable = node.metaData.outputTable
 
   def run(): Unit = {

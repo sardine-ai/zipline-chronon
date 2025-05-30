@@ -17,8 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange, Window}
-import ai.chronon.api.Extensions.{SourceOps, WindowOps}
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.serde.{AvroConversions, SparkConversions}
 import ai.chronon.spark.catalog.TableUtils
@@ -59,9 +58,9 @@ object Extensions {
   case class DfStats(count: Long, partitionRange: PartitionRange)
   // helper class to maintain datafram stats that are necessary for downstream operations
   case class DfWithStats(df: DataFrame, partitionCounts: Map[String, Long])(implicit val partitionSpec: PartitionSpec) {
-    private val minPartition: String = partitionCounts.keys.min
-    private val maxPartition: String = partitionCounts.keys.max
-    val partitionRange: PartitionRange = PartitionRange(minPartition, maxPartition)
+    private val minPartition: Option[String] = Option(partitionCounts.keys.min)
+    private val maxPartition: Option[String] = Option(partitionCounts.keys.max)
+    val partitionRange: PartitionRange = PartitionRange(minPartition, maxPartition, partitionSpec)
     val count: Long = partitionCounts.values.sum
 
     lazy val timeRange: TimeRange = df.calculateTimeRange
@@ -118,7 +117,7 @@ object Extensions {
 
     def partitionRange: PartitionRange = {
       val (start, end) = df.range[String](tableUtils.partitionColumn)
-      PartitionRange(start, end)
+      PartitionRange(Option(start), Option(end), tableUtils.partitionSpec)
     }
 
     def withStats: DfWithStats = DfWithStats(df)
@@ -307,29 +306,5 @@ object Extensions {
       }
       result
     }
-  }
-
-  implicit class SourceSparkOps(source: api.Source)(implicit tableUtils: TableUtils) {
-
-    def partitionColumn: String = {
-      Option(source.query.partitionColumn).getOrElse(tableUtils.partitionColumn)
-    }
-
-    def partitionFormat: String = {
-      Option(source.query.partitionFormat).getOrElse(tableUtils.partitionFormat)
-    }
-
-    def partitionInterval: Window = {
-      Option(source.query.partitionInterval).getOrElse(tableUtils.partitionSpec.intervalWindow)
-    }
-
-    def partitionSpec: PartitionSpec = {
-      PartitionSpec(partitionColumn, partitionFormat, partitionInterval.millis)
-    }
-  }
-
-  implicit class QuerySparkOps(query: api.Query) {
-    def effectivePartitionColumn(implicit tableUtils: TableUtils): String =
-      Option(query).flatMap(q => Option(q.partitionColumn)).getOrElse(tableUtils.partitionColumn)
   }
 }
