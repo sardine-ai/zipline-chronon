@@ -17,29 +17,29 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Constants, DateRange, PartitionRange, ThriftJsonCodec}
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
 import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.api.thrift.TBase
-import ai.chronon.online.{Api, MetadataDirWalker, MetadataEndPoint, TopicChecker}
+import ai.chronon.api.{Constants, DateRange, PartitionRange, ThriftJsonCodec}
 import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
+import ai.chronon.online.{Api, MetadataDirWalker, MetadataEndPoint, TopicChecker}
 import ai.chronon.orchestration.{JoinMergeNode, JoinPartNode}
 import ai.chronon.spark.batch._
 import ai.chronon.spark.catalog.{Format, TableUtils}
 import ai.chronon.spark.join.UnionJoin
-import ai.chronon.spark.stats.{CompareBaseJob, CompareJob, ConsistencyJob}
 import ai.chronon.spark.stats.drift.{Summarizer, SummaryPacker, SummaryUploader}
+import ai.chronon.spark.stats.{CompareBaseJob, CompareJob, ConsistencyJob}
 import ai.chronon.spark.streaming.JoinSourceRunner
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkFiles
-import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.apache.spark.sql.streaming.StreamingQueryListener
 import org.apache.spark.sql.streaming.StreamingQueryListener.{
   QueryProgressEvent,
   QueryStartedEvent,
   QueryTerminatedEvent
 }
+import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
@@ -50,8 +50,8 @@ import java.io.File
 import java.nio.file.{Files, Paths}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.ScalaClassLoader
 
@@ -509,6 +509,12 @@ object Driver {
 
       lazy val stagingQueryConf: api.StagingQuery = parseConf[api.StagingQuery](confPath())
       override def subcommandName(): String = s"staging_query_${stagingQueryConf.metaData.name}_backfill"
+
+      val forceOverwrite =
+        opt[Boolean]("force-overwrite",
+                     descr = "Setting to true overwrites any existing partitions.",
+                     default = Some(false))
+
     }
 
     def run(args: Args): Unit = {
@@ -521,7 +527,8 @@ object Driver {
       stagingQueryJob.computeStagingQuery(args.stepDays.toOption,
                                           args.enableAutoExpand.toOption,
                                           args.startPartitionOverride.toOption,
-                                          !args.runFirstHole())
+                                          !args.runFirstHole(),
+                                          args.forceOverwrite())
 
       if (args.shouldExport()) {
         args.exportTableToLocal(args.stagingQueryConf.metaData.outputTable, tableUtils)
