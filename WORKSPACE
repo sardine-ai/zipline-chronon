@@ -2,6 +2,18 @@ workspace(name = "chronon")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+new_local_repository(
+    name = "clang_include",
+    path = "/Library/Developer/CommandLineTools/usr/lib/clang/17/include",
+    build_file_content = """
+cc_library(
+    name = "headers",
+    hdrs = glob(["**/*.h"]),
+    visibility = ["//visibility:public"],
+)
+    """
+)
+
 http_archive(
     name = "zlib",
     sha256 = "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",

@@ -29,4 +29,7 @@ cc_library(
         ],
         "//conditions:default": [],
     }),
+    deps = [
+        "@clang_include//:headers",
+    ],
 )
