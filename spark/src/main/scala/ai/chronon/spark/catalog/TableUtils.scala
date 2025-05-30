@@ -64,6 +64,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.backfill.bloomfilter.threshold", "1000000").toLong
   val checkLeftTimeRange: Boolean =
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
+  private val isBenchmarkMode = sparkSession.conf.get("spark.chronon.backfill.benchmarkMode.enabled", "true").toBoolean
 
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
@@ -260,8 +261,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     TableCache.remove(tableName)
 
-    logger.info(s"Writing to $tableName ...")
+    if (!isBenchmarkMode) {
+      finalizedDf.cache()
+    }
 
+    logger.info(s"Writing to $tableName ...")
     finalizedDf.write
       .mode(saveMode)
       // Requires table to exist before inserting.
@@ -269,8 +273,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       // Does NOT overwrite the schema.
       // Handles dynamic partition overwrite.
       .insertInto(tableName)
-
     logger.info(s"Finished writing to $tableName")
+
+    if (!isBenchmarkMode) {
+      logger.info(s"Table $tableName has been written with ${finalizedDf.count()} rows.")
+    }
   }
 
   // retains only the invocations from chronon code.
