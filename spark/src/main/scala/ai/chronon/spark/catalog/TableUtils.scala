@@ -277,6 +277,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     if (!isBenchmarkMode) {
       logger.info(s"Table $tableName has been written with ${finalizedDf.count()} rows.")
+      finalizedDf.unpersist()
     }
   }
 
