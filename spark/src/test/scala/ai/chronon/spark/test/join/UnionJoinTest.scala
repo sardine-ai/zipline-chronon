@@ -7,7 +7,7 @@ import ai.chronon.api._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.test.DataFrameGen
-import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+import org.scalatest.matchers.should.Matchers._
 
 class UnionJoinTest extends BaseJoinTest {
 
@@ -80,5 +80,118 @@ class UnionJoinTest extends BaseJoinTest {
     val outputData = outputDf.where("item IS NOT NULL and ts IS NOT NULL").collect()
     val queriesData = queriesDf.where("item IS NOT NULL and ts IS NOT NULL").collect()
     outputData.length shouldBe queriesData.length
+  }
+
+  it should "test UnionJoin with GroupBy and Join derivations" in {
+
+    val eventsSchema = List(
+      Column("user_id", api.StringType, 1),
+      Column("item_id", api.StringType, 1),
+      Column("amount", api.LongType, 100),
+      Column("category", api.StringType, 3)
+    )
+
+    val eventsTable = s"$namespace.events_with_derivations"
+    DataFrameGen
+      .events(spark, eventsSchema, count = 50000, partitions = 40) // Increased count and partitions
+      .save(eventsTable)
+
+    val eventsSource = Builders.Source.events(
+      table = eventsTable,
+      query = Builders.Query(
+        selects = Builders.Selects("amount", "category"),
+        startPartition = tableUtils.partitionSpec.minus(today, new Window(40, TimeUnit.DAYS)) // Increased window
+      )
+    )
+
+    // GroupBy with derivations
+    val groupByWithDerivations = Builders
+      .GroupBy(
+        sources = Seq(eventsSource),
+        keyColumns = Seq("user_id"),
+        aggregations = Seq(
+          Builders.Aggregation(operation = Operation.SUM,
+                               inputColumn = "amount",
+                               windows = Seq(new Window(7, TimeUnit.DAYS))),
+          Builders.Aggregation(operation = Operation.COUNT,
+                               inputColumn = "amount",
+                               windows = Seq(new Window(7, TimeUnit.DAYS))),
+          Builders.Aggregation(operation = Operation.SUM,
+                               inputColumn = "amount",
+                               windows = Seq(new Window(30, TimeUnit.DAYS)))
+        ),
+        derivations = Seq(
+          Builders.Derivation(name = "*", expression = "*"), // Include all base columns
+          Builders.Derivation(name = "avg_amount_7d", expression = "amount_sum_7d / amount_count_7d"),
+          Builders.Derivation(name = "amount_ratio", expression = "amount_sum_7d / amount_sum_30d")
+        ),
+        metaData = Builders.MetaData(name = "unit_test.user_features_with_derivations", namespace = namespace)
+      )
+      .setAccuracy(Accuracy.TEMPORAL)
+
+    // Left side events
+    val leftSchema = List(Column("user_id", api.StringType, 1))
+    val leftTable = s"$namespace.user_queries_with_derivations"
+    DataFrameGen
+      .events(spark, leftSchema, count = 5000, partitions = 20) // Increased count and partitions
+      .save(leftTable)
+
+    val start = tableUtils.partitionSpec.minus(today, new Window(40, TimeUnit.DAYS))
+    val dateRange = PartitionRange(start, today)(tableUtils.partitionSpec)
+
+    // Join with derivations
+    val joinWithDerivations = Builders.Join(
+      left = Builders.Source.events(Builders.Query(startPartition = start), table = leftTable),
+      joinParts = Seq(Builders.JoinPart(groupBy = groupByWithDerivations)),
+      derivations = Seq(
+        Builders.Derivation(name = "*", expression = "*"), // Include all columns
+        Builders.Derivation(name = "spend_efficiency", expression = "avg_amount_7d * amount_ratio"),
+        Builders.Derivation(
+          name = "user_tier",
+          expression =
+            "CASE WHEN amount_sum_30d > 1000 THEN 'high' WHEN amount_sum_30d > 500 THEN 'medium' ELSE 'low' END")
+      ),
+      metaData =
+        Builders.MetaData(name = "test.user_features_derived.union_join", namespace = namespace, team = "user_team")
+    )
+
+    // Execute UnionJoin with derivations
+    UnionJoin.computeJoinAndSave(joinWithDerivations, dateRange)
+
+    val outputDf = tableUtils.loadTable(joinWithDerivations.metaData.outputTable)
+
+    // Verify that derived columns exist
+    val schema = outputDf.schema
+    schema.fieldNames should contain("avg_amount_7d") // GroupBy derivation
+    schema.fieldNames should contain("amount_ratio") // GroupBy derivation
+    schema.fieldNames should contain("spend_efficiency") // Join derivation
+    schema.fieldNames should contain("user_tier") // Join derivation
+
+    // Verify that base aggregation columns still exist due to wildcard
+    schema.fieldNames should contain("amount_sum_7d")
+    schema.fieldNames should contain("amount_count_7d")
+    schema.fieldNames should contain("amount_sum_30d")
+
+    val outputData = outputDf.where("user_id IS NOT NULL and ts IS NOT NULL").collect()
+    outputData.length should be > 0
+
+    // Verify derivation logic works - ensure we actually test the calculation
+    val validRows = outputData.filter { row =>
+      val avgAmount7d = Option(row.getAs[Double]("avg_amount_7d"))
+      val amountSum7d = Option(row.getAs[Long]("amount_sum_7d"))
+      val amountCount7d = Option(row.getAs[Long]("amount_count_7d"))
+      avgAmount7d.isDefined && amountSum7d.isDefined && amountCount7d.isDefined &&
+      amountCount7d.get > 0 && amountSum7d.get > 0
+    }
+
+    validRows.length should be > 0 // Ensure we have at least one row to test
+
+    // Verify GroupBy derivation calculation on a valid row
+    val sampleRow = validRows.head
+    val avgAmount7d = sampleRow.getAs[Double]("avg_amount_7d")
+    val amountSum7d = sampleRow.getAs[Long]("amount_sum_7d")
+    val amountCount7d = sampleRow.getAs[Long]("amount_count_7d")
+
+    Math.abs(avgAmount7d - (amountSum7d.toDouble / amountCount7d)) should be < 0.001
   }
 }

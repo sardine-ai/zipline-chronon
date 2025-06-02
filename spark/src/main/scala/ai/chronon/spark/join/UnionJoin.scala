@@ -1,7 +1,8 @@
 package ai.chronon.spark.join
 
 import ai.chronon.api
-import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps}
+import ai.chronon.api.Extensions.{DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
+import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api.{Accuracy, Constants, PartitionRange}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils
@@ -169,10 +170,28 @@ object UnionJoin {
       }
     }
 
-    val resultDf = tableUtils.sparkSession.createDataFrame(outputRdd, outputSchema)
+    val baseResultDf = tableUtils.sparkSession.createDataFrame(outputRdd, outputSchema)
+
+    // Apply GroupBy derivations to the aggregated results
+    val groupByDerivedDf = if (groupBy.hasDerivations) {
+      val finalOutputColumns = groupBy.derivationsScala.finalOutputColumn(baseResultDf.columns)
+      baseResultDf.select(finalOutputColumns: _*)
+    } else {
+      baseResultDf
+    }
+
+    // Apply Join derivations if they exist
+    val finalResultDf = if (joinConf.isSetDerivations && !joinConf.derivations.isEmpty()) {
+      val derivations = joinConf.derivations.toScala
+      val projections = derivations.derivationProjection(groupByDerivedDf.columns)
+      val finalOutputColumns = derivations.finalOutputColumn(groupByDerivedDf.columns)
+      groupByDerivedDf.select(finalOutputColumns: _*)
+    } else {
+      groupByDerivedDf
+    }
 
     logger.info(s"Saving output to ${joinConf.metaData.outputTable}")
-    resultDf.save(joinConf.metaData.outputTable)
+    finalResultDf.save(joinConf.metaData.outputTable)
   }
 
 }
