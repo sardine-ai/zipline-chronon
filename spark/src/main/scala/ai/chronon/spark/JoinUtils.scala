@@ -80,7 +80,7 @@ object JoinUtils {
     }
 
     implicit val tu: TableUtils = tableUtils
-    val effectiveLeftSpec = joinConf.left.partitionSpec
+    val effectiveLeftSpec = joinConf.left.query.partitionSpec(tableUtils.partitionSpec)
     val effectiveLeftRange = range.translate(effectiveLeftSpec)
 
     val partitionColumnOfLeft = effectiveLeftSpec.column
@@ -154,7 +154,7 @@ object JoinUtils {
     }
 
     implicit val tu: TableUtils = tableUtils
-    val leftSpec = leftSource.partitionSpec
+    val leftSpec = leftSource.query.partitionSpec(tableUtils.partitionSpec)
 
     val firstAvailablePartitionOpt =
       tableUtils.firstAvailablePartition(leftSource.table,

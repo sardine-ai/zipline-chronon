@@ -17,24 +17,23 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataModel, DataType, PartitionRange}
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.{Accuracy, AggregationPart, Constants, DataModel, DataType, PartitionRange}
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.spark.Driver.parseConf
-import ai.chronon.spark.Extensions.QuerySparkOps
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.ItemSketchSerializable
 import org.apache.datasketches.frequencies.ErrorType
-import ai.chronon.spark.catalog.TableUtils
+import org.apache.spark.sql.{types, DataFrame, Row}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{StringType, StructType}
-import org.apache.spark.sql.{DataFrame, Row, types}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.collection.{immutable, mutable, Seq}
 import scala.collection.mutable.ListBuffer
-import scala.collection.{Seq, immutable, mutable}
 
 class Analyzer(tableUtils: TableUtils,
                conf: Any,
@@ -267,10 +266,12 @@ class Analyzer(tableUtils: TableUtils,
       JoinUtils.getRangeToFill(joinConf.left, tableUtils, endDate, historicalBackfill = joinConf.historicalBackfill)
     logger.info(s"Join range to fill $rangeToFill")
     val unfilledRanges = tableUtils
-      .unfilledRanges(joinConf.metaData.outputTable,
-                      rangeToFill,
-                      Some(Seq(joinConf.left.table)),
-                      inputPartitionColumnNames = Seq(joinConf.left.query.effectivePartitionColumn))
+      .unfilledRanges(
+        joinConf.metaData.outputTable,
+        rangeToFill,
+        Some(Seq(joinConf.left.table)),
+        inputPartitionColumnNames = Seq(joinConf.left.query.partitionSpec(tableUtils.partitionSpec).column)
+      )
       .getOrElse(Seq.empty)
 
     joinConf.joinParts.toScala.foreach { part =>

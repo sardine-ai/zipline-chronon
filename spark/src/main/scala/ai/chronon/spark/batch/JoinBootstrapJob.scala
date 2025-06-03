@@ -1,6 +1,6 @@
 package ai.chronon.spark.batch
 
-import ai.chronon.api.Extensions.{BootstrapPartOps, DateRangeOps, ExternalPartOps, MetadataOps, SourceOps, StringsOps}
+import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api.{Constants, DateRange, PartitionRange, PartitionSpec, StructField, StructType}
 import ai.chronon.online.serde.SparkConversions
@@ -87,7 +87,7 @@ class JoinBootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit table
         var bootstrapDf =
           tableUtils.scanDf(part.query,
                             part.table,
-                            Some(Map(part.query.effectivePartitionColumn -> null)),
+                            Some(Map(part.query.partitionSpec(tableUtils.partitionSpec).column -> null)),
                             range = Some(bootstrapRange))
 
         // attach semantic_hash for either log or regular table bootstrap

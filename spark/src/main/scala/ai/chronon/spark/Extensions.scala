@@ -17,8 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange, Window}
-import ai.chronon.api.Extensions.{SourceOps, WindowOps}
+import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, TimeRange}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.serde.{AvroConversions, SparkConversions}
 import ai.chronon.spark.catalog.TableUtils
@@ -307,29 +306,5 @@ object Extensions {
       }
       result
     }
-  }
-
-  implicit class SourceSparkOps(source: api.Source)(implicit tableUtils: TableUtils) {
-
-    def partitionColumn: String = {
-      Option(source.query.partitionColumn).getOrElse(tableUtils.partitionColumn)
-    }
-
-    def partitionFormat: String = {
-      Option(source.query.partitionFormat).getOrElse(tableUtils.partitionFormat)
-    }
-
-    def partitionInterval: Window = {
-      Option(source.query.partitionInterval).getOrElse(tableUtils.partitionSpec.intervalWindow)
-    }
-
-    def partitionSpec: PartitionSpec = {
-      PartitionSpec(partitionColumn, partitionFormat, partitionInterval.millis)
-    }
-  }
-
-  implicit class QuerySparkOps(query: api.Query) {
-    def effectivePartitionColumn(implicit tableUtils: TableUtils): String =
-      Option(query).flatMap(q => Option(q.partitionColumn)).getOrElse(tableUtils.partitionColumn)
   }
 }

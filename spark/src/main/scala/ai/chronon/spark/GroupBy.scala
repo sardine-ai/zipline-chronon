@@ -17,8 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.aggregator.base.TimeTuple
-import ai.chronon.aggregator.row.ColumnAggregator
-import ai.chronon.aggregator.row.RowAggregator
+import ai.chronon.aggregator.row.{ColumnAggregator, RowAggregator}
 import ai.chronon.aggregator.windowing._
 import ai.chronon.api
 import ai.chronon.api.{
@@ -28,30 +27,23 @@ import ai.chronon.api.{
   ParametricMacro,
   PartitionRange,
   PartitionSpec,
-  TsUtils,
-  TimeRange
+  TimeRange,
+  TsUtils
 }
-import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.api.DataModel.ENTITIES
-import ai.chronon.api.DataModel.EVENTS
+import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.serde.RowWrapper
-import ai.chronon.online.serde.SparkConversions
+import ai.chronon.online.serde.{RowWrapper, SparkConversions}
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.Extensions.SourceSparkOps
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.types._
 import org.apache.spark.util.sketch.BloomFilter
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.util
-import scala.collection.Seq
-import scala.collection.mutable
+import scala.collection.{mutable, Seq}
 
 class GroupBy(val aggregations: Seq[api.Aggregation],
               val keyColumns: Seq[String],
@@ -626,8 +618,8 @@ object GroupBy {
                                   window: Option[api.Window]): PartitionRange = {
 
     implicit val tu: TableUtils = tableUtils
-    val effectiveQueryRange = queryRange.translate(source.partitionSpec)
-    implicit val sourcePartitionSpec: PartitionSpec = source.partitionSpec
+    val effectiveQueryRange = queryRange.translate(source.query.partitionSpec(tableUtils.partitionSpec))
+    implicit val sourcePartitionSpec: PartitionSpec = source.query.partitionSpec(tableUtils.partitionSpec)
 
     // from here on down - the math is based entirely on source partition spec
     val PartitionRange(queryStart, queryEnd) = effectiveQueryRange
