@@ -95,6 +95,51 @@ class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
       .setParallelism(1) // Use parallelism 1 to get a single output file
   }
 
+  /** The "untiled" version of the Flink app.
+    *
+    *  At a high level, the operators are structured as follows:
+    *    source -> Spark expression eval -> Avro conversion -> KV store writer
+    *    source - Reads objects of type T (specific case class, Thrift / Proto) from a  topic
+    *   Spark expression eval - Evaluates the Spark SQL expression in the GroupBy and projects and filters the input data
+    *   Avro conversion - Converts the Spark expr eval output to a form that can be written out to the KV store
+    *      (PutRequest object)
+    *   KV store writer - Writes the PutRequest objects to the KV store using the AsyncDataStream API
+    *
+    *  In this untiled version, there are no shuffles and thus this ends up being a single node in the Flink DAG
+    *  (with the above 4 operators and parallelism as injected by the user).
+    */
+  def runGroupByJob(env: StreamExecutionEnvironment): DataStream[WriteResponse] = {
+
+    logger.info(
+      f"Running Flink job for groupByName=${groupByName}, Topic=${topic}. " +
+        "Tiling is disabled.")
+
+    // we expect parallelism on the source stream to be set by the source provider
+    val sourceSparkProjectedStream: DataStream[Map[String, Any]] =
+      eventSrc
+        .getDataStream(topic, groupByName)(env, parallelism)
+        .uid(s"source-$groupByName")
+        .name(s"Source for $groupByName")
+
+    val sparkExprEvalDSWithWatermarks: DataStream[Map[String, Any]] = sourceSparkProjectedStream
+      .assignTimestampsAndWatermarks(watermarkStrategy)
+      .uid(s"spark-expr-eval-timestamps-$groupByName")
+      .name(s"Spark expression eval with timestamps for $groupByName")
+      .setParallelism(sourceSparkProjectedStream.getParallelism)
+
+    val putRecordDS: DataStream[AvroCodecOutput] = sparkExprEvalDSWithWatermarks
+      .flatMap(AvroCodecFn(groupByServingInfoParsed))
+      .uid(s"avro-conversion-$groupByName")
+      .name(s"Avro conversion for $groupByName")
+      .setParallelism(sourceSparkProjectedStream.getParallelism)
+
+    AsyncKVStoreWriter.withUnorderedWaits(
+      putRecordDS,
+      sinkFn,
+      groupByName
+    )
+  }
+
   /** The "tiled" version of the Flink app.
     *
     * The operators are structured as follows:

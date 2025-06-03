@@ -1,6 +1,6 @@
 package ai.chronon.flink.test
 
-import ai.chronon.api.TilingUtils
+import ai.chronon.api.{GroupBy, TilingUtils}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.{FlinkJob, SparkExpressionEval, SparkExpressionEvalFn}
 import ai.chronon.flink.types.TimestampedIR
@@ -42,7 +42,7 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
     // Get all keys we expect to be in the GenericRecord
     val decodedKeys: List[String] =
-      groupByServingInfoParsed.groupBy.keyColumns.toScala.map(record.get(_).toString).toList
+      groupByServingInfoParsed.groupBy.keyColumns.toScala.map(record.get(_).toString)
 
     val tsMills = in.tsMillis
     new TimestampedTile(decodedKeys.map(_.asInstanceOf[Any]).toJava, tileBytes, tsMills)
@@ -65,6 +65,35 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
     CollectSink.values.clear()
   }
 
+  it should "flink job end to end" in {
+    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+
+    val elements = Seq(
+      E2ETestEvent("test1", 12, 1.5, 1699366993123L),
+      E2ETestEvent("test2", 13, 1.6, 1699366993124L),
+      E2ETestEvent("test3", 14, 1.7, 1699366993125L)
+    )
+
+    val groupBy = FlinkTestUtils.makeGroupBy(Seq("id"))
+    val (job, _) = buildFlinkJob(groupBy, elements)
+    val mockApi = mock[Api](withSettings().serializable())
+
+    job.runGroupByJob(env).addSink(new CollectSink)
+
+    env.execute("FlinkJobIntegrationTest")
+
+    // capture the datastream of the 'created' timestamps of all the written out events
+    val writeEventCreatedDS = CollectSink.values.toScala
+
+    writeEventCreatedDS.size shouldBe elements.size
+    // check that the timestamps of the written out events match the input events
+    // we use a Set as we can have elements out of order given we have multiple tasks
+
+    writeEventCreatedDS.map(_.tsMillis).toSet shouldBe elements.map(_.created).toSet
+    // check that all the writes were successful
+    writeEventCreatedDS.map(_.status) shouldBe Seq(true, true, true)
+  }
+
   it should "tiled flink job end to end" in {
     implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
 
@@ -78,21 +107,7 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
     // Make a GroupBy that SUMs the double_val of the elements.
     val groupBy = FlinkTestUtils.makeGroupBy(Seq("id"))
-    val sparkExpressionEvalFn = new SparkExpressionEvalFn(Encoders.product[E2ETestEvent], groupBy)
-    val source = new WatermarkedE2EEventSource(elements, sparkExpressionEvalFn)
-
-    // Prepare the Flink Job
-    val encoder = Encoders.product[E2ETestEvent]
-    val outputSchema = new SparkExpressionEval(encoder, groupBy).getOutputSchema
-    val outputSchemaDataTypes = outputSchema.fields.map { field =>
-      (field.name, SparkConversions.toChrononType(field.name, field.dataType))
-    }
-
-    val groupByServingInfoParsed =
-      FlinkTestUtils.makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
-    val mockApi = mock[Api](withSettings().serializable())
-    val writerFn = new MockAsyncKVStoreWriter(Seq(true), mockApi, "testTiledFlinkJobEndToEndFG")
-    val job = new FlinkJob(source, outputSchemaDataTypes, writerFn, groupByServingInfoParsed, 2)
+    val (job, groupByServingInfoParsed) = buildFlinkJob(groupBy, elements)
     job.runTiledGroupByJob(env).addSink(new CollectSink)
 
     env.execute("TiledFlinkJobIntegrationTest")
@@ -135,5 +150,23 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
     )
 
     expectedFinalIRsPerKey shouldBe finalIRsPerKey
+  }
+
+  private def buildFlinkJob(groupBy: GroupBy, elements: Seq[E2ETestEvent]): (FlinkJob, GroupByServingInfoParsed) = {
+    val sparkExpressionEvalFn = new SparkExpressionEvalFn(Encoders.product[E2ETestEvent], groupBy)
+    val source = new WatermarkedE2EEventSource(elements, sparkExpressionEvalFn)
+
+    // Prepare the Flink Job
+    val encoder = Encoders.product[E2ETestEvent]
+    val outputSchema = new SparkExpressionEval(encoder, groupBy).getOutputSchema
+    val outputSchemaDataTypes = outputSchema.fields.map { field =>
+      (field.name, SparkConversions.toChrononType(field.name, field.dataType))
+    }
+
+    val groupByServingInfoParsed =
+      FlinkTestUtils.makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
+    val mockApi = mock[Api](withSettings().serializable())
+    val writerFn = new MockAsyncKVStoreWriter(Seq(true), mockApi, groupBy.metaData.name)
+    (new FlinkJob(source, outputSchemaDataTypes, writerFn, groupByServingInfoParsed, 2), groupByServingInfoParsed)
   }
 }

@@ -87,9 +87,8 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
 /** A Flink function that is responsible for converting the Spark expr eval output and converting that to a form
   * that can be written out to the KV store (PutRequest object)
   * @param groupByServingInfoParsed The GroupBy we are working with
-  * @tparam T The input data type
   */
-case class AvroCodecFn[T](groupByServingInfoParsed: GroupByServingInfoParsed)
+case class AvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed)
     extends BaseAvroCodecFn[Map[String, Any], AvroCodecOutput] {
 
   override def open(configuration: Configuration): Unit = {
