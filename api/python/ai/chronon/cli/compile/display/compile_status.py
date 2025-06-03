@@ -18,8 +18,9 @@ class CompileStatus:
         self.use_live = use_live
         # we need vertical_overflow to be visible as the output gets cufoff when our output goes past the termianal window
         # but then we start seeing duplicates: https://github.com/Textualize/rich/issues/3263
-        self.live = Live(refresh_per_second=50, vertical_overflow="visible")
-        self.live.start()
+        if self.use_live:
+            self.live = Live(refresh_per_second=50, vertical_overflow="visible")
+            self.live.start()
 
     def print_live_console(self, msg: str):
         if self.use_live:
