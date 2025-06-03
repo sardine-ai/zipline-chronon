@@ -620,10 +620,11 @@ object GroupBy {
     implicit val tu: TableUtils = tableUtils
     val effectiveQueryRange = queryRange.translate(source.query.partitionSpec(tableUtils.partitionSpec))
     implicit val sourcePartitionSpec: PartitionSpec = source.query.partitionSpec(tableUtils.partitionSpec)
-
     // from here on down - the math is based entirely on source partition spec
-    val PartitionRange(queryStart, queryEnd) = effectiveQueryRange
-    val effectiveEnd = (Option(effectiveQueryRange.end) ++ Option(source.query.endPartition))
+    implicit val spec: PartitionSpec = queryRange.partitionSpec
+
+    val PartitionRange(queryStart, queryEnd) = queryRange
+    val effectiveEnd = (Option(queryRange.end) ++ Option(source.query.endPartition))
       .reduceLeftOption(Ordering[String].min)
       .orNull
 
@@ -670,8 +671,10 @@ object GroupBy {
                        accuracy: api.Accuracy,
                        mutations: Boolean = false): DataFrame = {
 
-    val intersectedRange: PartitionRange = getIntersectedRange(source, queryRange, tableUtils, window)
-    implicit val tu: TableUtils = tableUtils
+    // Based on user inputted start and end, and the partitions available in each source table,
+    // compute the partitions that we want to scan.
+    val sourceQueryRange = queryRange.translate(source.query.partitionSpec(tableUtils.partitionSpec))
+    val intersectedRange: PartitionRange = getIntersectedRange(source, sourceQueryRange, tableUtils, window)
 
     var metaColumns: Map[String, String] = Map(tableUtils.partitionColumn -> source.query.partitionColumn)
     if (mutations) {
@@ -719,7 +722,7 @@ object GroupBy {
     val selects = Option(source.query.selects)
       .map(_.toScala.map(keyValue => {
         if (keyValue._2.contains(Constants.ChrononRunDs)) {
-          val parametricMacro = ParametricMacro(Constants.ChrononRunDs, _ => queryRange.start)
+          val parametricMacro = ParametricMacro(Constants.ChrononRunDs, _ => sourceQueryRange.start)
           (keyValue._1, parametricMacro.replace(keyValue._2))
         } else {
           keyValue
@@ -772,8 +775,8 @@ object GroupBy {
       try {
         val stepRanges = stepDays.map(groupByUnfilledRange.steps).getOrElse(Seq(groupByUnfilledRange))
         logger.info(s"Group By ranges to compute: ${stepRanges.map {
-          _.toString()
-        }.pretty}")
+            _.toString()
+          }.pretty}")
         stepRanges.zipWithIndex.foreach { case (range, index) =>
           logger.info(s"Computing group by for range: $range [${index + 1}/${stepRanges.size}]")
           val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)

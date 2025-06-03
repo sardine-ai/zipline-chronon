@@ -17,23 +17,23 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api._
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api._
-import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online._
+import ai.chronon.online.OnlineDerivationUtil.timeFields
 import ai.chronon.online.metrics._
 import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions.{StructTypeOps, _}
 import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.Base64
-import scala.collection.{Seq, mutable}
+import scala.collection.{mutable, Seq}
 import scala.util.{Failure, Success, Try}
 
 /** Purpose of LogFlattenerJob is to unpack serialized Avro data from online requests and flatten each field

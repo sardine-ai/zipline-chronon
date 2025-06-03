@@ -17,7 +17,7 @@ then each join may have a further Bootstrap computation to produce the left side
  */
 class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtils: TableUtils) {
   private val sourceWithFilter = node
-  private val dateRange = range.toPartitionRange(tableUtils.partitionSpec)
+  private val dateRange = range.toPartitionRange(node.source.query.partitionSpec(tableUtils.partitionSpec))
   private val outputTable = node.metaData.outputTable
 
   def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Option[Map[String, Seq[String]]] = {
@@ -50,7 +50,7 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
     dateRange.steps(days = 1).foreach { dayStep =>
       val df = tableUtils.scanDf(skewFilteredSource.query,
                                  skewFilteredSource.table,
-                                 Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
+                                 Some((Map(dayStep.partitionSpec.column -> null) ++ timeProjection).toMap),
                                  range = Some(dayStep))
 
       if (df.isEmpty) {
