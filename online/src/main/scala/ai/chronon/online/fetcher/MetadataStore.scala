@@ -76,7 +76,6 @@ class MetadataStore(fetchContext: FetchContext) {
     val confKey = confPathOrName.computeConfKey(confTypeKeyword)
     fetchContext.kvStore
       .getString(confKey, fetchContext.metadataDataset, fetchContext.timeoutMillis)
-      .map(conf => ThriftJsonCodec.fromJsonStr[T](conf, false, clazz))
       .recoverWith { case th: Throwable =>
         Failure(
           new RuntimeException(
@@ -84,6 +83,7 @@ class MetadataStore(fetchContext: FetchContext) {
             th
           ))
       }
+      .map(conf => ThriftJsonCodec.fromJsonStr[T](conf, false, clazz))
   }
 
   private def getEntityListByTeam[T <: TBase[_, _]: Manifest](team: String): Try[Seq[String]] = {
