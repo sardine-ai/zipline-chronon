@@ -16,13 +16,15 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.Constants
+import ai.chronon.api.{BinaryType, BooleanType, Constants, DataType, LongType, StringType, StructType}
 import ai.chronon.online.KVStore._
 import ai.chronon.online.fetcher.Fetcher
 import org.apache.spark.sql.SparkSession
 import org.slf4j.{Logger, LoggerFactory}
 import ai.chronon.online.serde._
+import org.apache.avro.util.Utf8
 
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.function.Consumer
@@ -138,6 +140,40 @@ case class LoggableResponse(keyBytes: Array[Byte],
                             joinName: String,
                             tsMillis: Long,
                             schemaHash: String)
+
+object LoggableResponse {
+  val fields: Array[(String, DataType)] = Array(
+    "keyBytes" -> BinaryType,
+    "valueBytes" -> BinaryType,
+    "joinName" -> StringType,
+    "tsMillis" -> LongType,
+    "schemaHash" -> StringType
+  )
+
+  lazy val loggableResponseSchema: StructType = StructType.from("loggableResponse", fields)
+
+  lazy val loggableResponseAvroSchema: String = AvroConversions.fromChrononSchema(loggableResponseSchema).toString()
+  lazy val avroCodec: AvroCodec = AvroCodec.of(loggableResponseAvroSchema)
+
+  private val responseToBytesFn = AvroConversions.encodeBytes(loggableResponseSchema, null)
+
+  def toAvroBytes(response: LoggableResponse): Array[Byte] = {
+    val responseFields =
+      Array(response.keyBytes, response.valueBytes, response.joinName, response.tsMillis, response.schemaHash)
+    responseToBytesFn(responseFields)
+  }
+
+  def fromAvroBytes(bytes: Array[Byte]): LoggableResponse = {
+    val decodedResponse = avroCodec.decode(bytes)
+    LoggableResponse(
+      decodedResponse.get("keyBytes").asInstanceOf[ByteBuffer].array(),
+      decodedResponse.get("valueBytes").asInstanceOf[ByteBuffer].array(),
+      decodedResponse.get("joinName").asInstanceOf[Utf8].toString,
+      decodedResponse.get("tsMillis").asInstanceOf[Long],
+      decodedResponse.get("schemaHash").asInstanceOf[Utf8].toString
+    )
+  }
+}
 
 case class LoggableResponseBase64(keyBase64: String,
                                   valueBase64: String,

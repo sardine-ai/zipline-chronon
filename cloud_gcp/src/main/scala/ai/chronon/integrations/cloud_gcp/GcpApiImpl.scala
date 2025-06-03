@@ -1,12 +1,16 @@
 package ai.chronon.integrations.cloud_gcp
 
-import ai.chronon.online.Api
-import ai.chronon.online.ExternalSourceRegistry
-import ai.chronon.online.FlagStore
-import ai.chronon.online.FlagStoreConstants
-import ai.chronon.online.GroupByServingInfoParsed
-import ai.chronon.online.KVStore
-import ai.chronon.online.LoggableResponse
+import ai.chronon.online.{
+  Api,
+  ExternalSourceRegistry,
+  FlagStore,
+  FlagStoreConstants,
+  GroupByServingInfoParsed,
+  KVStore,
+  KafkaLoggableResponseConsumer,
+  LoggableResponse,
+  TopicInfo
+}
 import ai.chronon.online.serde.{AvroConversions, AvroSerDe, SerDe}
 import com.google.api.gax.core.{InstantiatingExecutorProvider, NoCredentialsProvider}
 import com.google.api.gax.retrying.RetrySettings
@@ -21,6 +25,7 @@ import java.time.Duration
 import java.util
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Consumer
 
 class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
@@ -38,6 +43,17 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   // We set the flag store to always return true for tiling enabled
   setFlagStore(tilingEnabledFlagStore)
+
+  lazy val responseConsumer: Consumer[LoggableResponse] =
+    getOptional(FetcherOOCTopicInfo, conf)
+      .map(t => TopicInfo.parse(t)) match {
+      case Some(topicInfo) if topicInfo.messageBus.toLowerCase == "kafka" =>
+        new KafkaLoggableResponseConsumer(topicInfo)
+      case _ =>
+        // fall back to no-op consumer
+        logger.info("Falling back to NoOp online/offline response consumer as FETCHER_OOC_TOPIC_INFO isn't configured")
+        (_: LoggableResponse) => {}
+    }
 
   override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): SerDe =
     new AvroSerDe(AvroConversions.fromChrononSchema(groupByServingInfoParsed.streamChrononSchema))
@@ -189,8 +205,7 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   override def externalRegistry: ExternalSourceRegistry = registry
 
-  // TODO - Implement this
-  override def logResponse(resp: LoggableResponse): Unit = {}
+  override def logResponse(resp: LoggableResponse): Unit = responseConsumer.accept(resp)
 }
 
 object GcpApiImpl {
@@ -206,6 +221,8 @@ object GcpApiImpl {
   private[cloud_gcp] val BigTableTotalTimeoutDuration = "BIGTABLE_TOTAL_TIMEOUT_DURATION"
   private[cloud_gcp] val BigTableMaxAttempts = "BIGTABLE_MAX_ATTEMPTS"
   private[cloud_gcp] val BigTableRpcTimeoutMultiplier = "BIGTABLE_RPC_TIMEOUT_MULTIPLIER"
+
+  private[cloud_gcp] val FetcherOOCTopicInfo = "FETCHER_OOC_TOPIC_INFO"
 
   private val DefaultInitialRpcTimeoutDuration = Duration.ofMillis(100L)
   private val DefaultRpcTimeoutMultiplier = 1.25
