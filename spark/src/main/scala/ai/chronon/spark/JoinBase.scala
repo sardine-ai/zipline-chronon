@@ -166,8 +166,6 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     } else {
       // Register UDFs for the left part computation
       Option(joinConfCloned.setups).foreach(_.foreach(tableUtils.sql))
-      val leftSchema = leftDf(joinConfCloned, unfilledRanges.head, tableUtils, limit = Some(1)).map(df => df.schema)
-      val bootstrapInfo = BootstrapInfo.from(joinConfCloned, rangeToFill, tableUtils, leftSchema)
       logger.info(s"Running ranges: $unfilledRanges")
       unfilledRanges.foreach { unfilledRange =>
         val leftDf = JoinUtils.leftDf(joinConfCloned, unfilledRange, tableUtils)
@@ -185,6 +183,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
             .setMetaData(bootstrapMetadata)
 
           val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapJobDateRange)
+          val leftSchema = leftDf.map(df => df.schema)
+          val bootstrapInfo = BootstrapInfo.from(joinConfCloned, rangeToFill, tableUtils, leftSchema)
           bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
         } else {
           logger.info(s"Query produced no results for date range: $unfilledRange. Please check upstream.")

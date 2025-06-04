@@ -5,11 +5,11 @@ import ai.chronon.api.Extensions.{MetadataOps, _}
 import ai.chronon.api.ScalaJavaConversions.JListOps
 import ai.chronon.orchestration.SourceWithFilterNode
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.JoinUtils.parseSkewKeys
 import ai.chronon.spark.catalog.TableUtils
 
 import scala.collection.{Map, Seq}
 import scala.jdk.CollectionConverters._
+import ai.chronon.api.ScalaJavaConversions._
 
 /*
 Runs and materializes a `Source` for a given `dateRange`. Used in the Join computation flow to first compute the Source,
@@ -19,6 +19,10 @@ class SourceJob(node: SourceWithFilterNode, range: DateRange)(implicit tableUtil
   private val sourceWithFilter = node
   private val dateRange = range.toPartitionRange(tableUtils.partitionSpec)
   private val outputTable = node.metaData.outputTable
+
+  def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Option[Map[String, Seq[String]]] = {
+    Option(jmap).map(_.toScala.map { case (key, list) => key -> list.asScala }.toMap)
+  }
 
   def run(): Unit = {
 
