@@ -1,11 +1,7 @@
 package ai.chronon.flink
 
-import ai.chronon.api.Constants
-import ai.chronon.api.Extensions.GroupByOps
-import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.GroupBy
-import ai.chronon.api.Query
-import ai.chronon.api.{StructType => ChrononStructType}
+import ai.chronon.api.{Constants, DataModel, GroupBy, StructType => ChrononStructType}
+import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, SourceOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.CatalystUtil
 import ai.chronon.online.serde.SparkConversions
@@ -22,6 +18,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.Seq
+import scala.jdk.CollectionConverters.asScalaBufferConverter
 
 /** Core utility class for Spark expression evaluation that can be reused across different Flink operators.
   * This evaluator is instantiated for a given EventType (specific case class object, Thrift / Proto object).
@@ -38,13 +35,48 @@ class SparkExpressionEval[EventType](encoder: Encoder[EventType], groupBy: Group
 
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  private val query: Query = groupBy.streamingSource.get.getEvents.query
+  private def buildQueryTransformsAndFilters(gb: GroupBy): (Seq[(String, String)], Seq[String]) = {
+    require(gb.streamingSource.isDefined, s"Streaming source is missing in GroupBy: ${gb.metaData.cleanName}")
+    val query = gb.streamingSource.get.query
+    require(query != null, s"Streaming query is missing in GroupBy: ${gb.metaData.cleanName}")
 
-  private val timeColumnAlias: String = Constants.TimeColumn
-  private val timeColumn: String = Option(query.timeColumn).getOrElse(timeColumnAlias)
-  private val transforms: Seq[(String, String)] =
-    (query.selects.toScala ++ Map(timeColumnAlias -> timeColumn)).toSeq
-  private val filters: Seq[String] = query.getWheres.toScala
+    val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
+    val reversalColumn = Option(query.reversalColumn).getOrElse(Constants.ReversalColumn)
+    val mutationTimeColumn =
+      Option(query.mutationTimeColumn).getOrElse(Constants.MutationTimeColumn)
+    val selects = Option(query.selects).map(_.toScala).getOrElse(Map.empty[String, String])
+
+    val transforms: Seq[(String, String)] = gb.dataModel match {
+      case DataModel.EVENTS =>
+        (selects ++ Map(Constants.TimeColumn -> timeColumn)).toSeq
+      case DataModel.ENTITIES =>
+        (selects ++ Map(
+          Constants.TimeColumn -> timeColumn,
+          Constants.ReversalColumn -> reversalColumn,
+          Constants.MutationTimeColumn -> mutationTimeColumn
+        )).toSeq
+    }
+
+    // Filter rows such that at least one of the key columns is not null.
+    val keyWhereOption = gb.getKeyColumns.asScala
+      .map { key =>
+        s"${selects.getOrElse(key, key)} IS NOT NULL"
+      }
+      .mkString(" OR ")
+
+    val timeFilters = gb.dataModel match {
+      case DataModel.ENTITIES => Seq(s"${Constants.MutationTimeColumn} is NOT NULL", s"$timeColumn is NOT NULL")
+      case DataModel.EVENTS   => Seq(s"$timeColumn is NOT NULL")
+    }
+
+    val baseFilters = query.getWheres.toScala
+
+    val filters: Seq[String] = baseFilters ++ timeFilters :+ s"($keyWhereOption)"
+
+    (transforms, filters)
+  }
+
+  private val (transforms, filters) = buildQueryTransformsAndFilters(groupBy)
 
   // Chronon's CatalystUtil expects a Chronon `StructType` so we convert the
   // Encoder[T]'s schema to one.

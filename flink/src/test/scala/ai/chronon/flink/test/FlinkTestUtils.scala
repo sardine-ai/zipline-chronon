@@ -38,6 +38,12 @@ import scala.concurrent.Future
 import scala.collection.Seq
 
 case class E2ETestEvent(id: String, int_val: Int, double_val: Double, created: Long)
+case class E2ETestMutationEvent(id: String,
+                                int_val: Int,
+                                double_val: Double,
+                                created: Long,
+                                mutationTime: Long,
+                                isBefore: Boolean)
 
 class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: SparkExpressionEvalFn[E2ETestEvent])
     extends FlinkSource[Map[String, Any]] {
@@ -150,6 +156,42 @@ object FlinkTestUtils {
       ),
       metaData = Builders.MetaData(
         name = "e2e-count"
+      ),
+      accuracy = Accuracy.TEMPORAL
+    )
+
+  def makeEntityGroupBy(keyColumns: Seq[String], filters: Seq[String] = Seq.empty): GroupBy =
+    Builders.GroupBy(
+      sources = Seq(
+        Builders.Source.entities(
+          snapshotTable = "events.my_stream_raw",
+          mutationTopic = "events.my_stream",
+          query = Builders.Query(
+            selects = Map(
+              "id" -> "id",
+              "int_val" -> "int_val",
+              "double_val" -> "double_val"
+            ),
+            wheres = filters,
+            timeColumn = "created",
+            mutationTimeColumn = "mutationTime",
+            reversalColumn = "isBefore",
+            startPartition = "20231106"
+          )
+        )
+      ),
+      keyColumns = keyColumns,
+      aggregations = Seq(
+        Builders.Aggregation(
+          operation = Operation.SUM,
+          inputColumn = "double_val",
+          windows = Seq(
+            new Window(1, TimeUnit.DAYS)
+          )
+        )
+      ),
+      metaData = Builders.MetaData(
+        name = "e2e-count-entity"
       ),
       accuracy = Accuracy.TEMPORAL
     )

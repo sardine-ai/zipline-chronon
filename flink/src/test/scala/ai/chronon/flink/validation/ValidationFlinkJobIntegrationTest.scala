@@ -3,7 +3,7 @@ package ai.chronon.flink.validation
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.source.FlinkSource
 import ai.chronon.flink.test.{CollectSink, FlinkTestUtils}
-import ai.chronon.flink.{SparkExpressionEval, SparkExpressionEvalFn}
+import ai.chronon.flink.SparkExpressionEval
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
