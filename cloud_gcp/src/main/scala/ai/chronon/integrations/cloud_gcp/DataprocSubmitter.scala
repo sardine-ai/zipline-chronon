@@ -167,13 +167,14 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
                                          throw new RuntimeException(s"Missing expected $FlinkCheckpointUri"))
         val maybeSavepointUri = submissionProperties.get(SavepointUri)
         val maybePubSubConnectorJarUri = submissionProperties.get(FlinkPubSubConnectorJarURI)
-
+        val maybeAdditionalJarsUri = submissionProperties.get(AdditionalJars)
+        val additionalJars = maybeAdditionalJarsUri.map(_.split(",")).getOrElse(Array.empty)
+        val jarUris = Array(jarUri) ++ maybePubSubConnectorJarUri.toList ++ additionalJars
         buildFlinkJob(mainClass,
                       mainJarUri,
-                      jarUri,
+                      jarUris,
                       flinkCheckpointPath,
                       maybeSavepointUri,
-                      maybePubSubConnectorJarUri,
                       jobProperties,
                       (args :+ "--parent-job-id" :+ jobId): _*)
     }
@@ -238,10 +239,9 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
 
   private[cloud_gcp] def buildFlinkJob(mainClass: String,
                                        mainJarUri: String,
-                                       jarUri: String,
+                                       jarUris: Array[String],
                                        flinkCheckpointUri: String,
                                        maybeSavePointUri: Option[String],
-                                       maybePubSubConnectorJarUri: Option[String],
                                        jobProperties: Map[String, String],
                                        args: String*): Job.Builder = {
 
@@ -290,7 +290,6 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
         "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
       )
 
-    val jarUris = Array(jarUri) ++ maybePubSubConnectorJarUri.toList
     val flinkJobBuilder = FlinkJob
       .newBuilder()
       .setMainClass(mainClass)
@@ -402,6 +401,8 @@ object DataprocSubmitter {
         // pull the pubsub connector uri if it has been passed
         val maybePubSubJarUri = JobSubmitter
           .getArgValue(args, FlinkPubSubJarUriArgKeyword)
+        // include additional jars if present
+        val additionalJars = JobSubmitter.getArgValue(args, AdditionalJarsUriArgKeyword)
 
         val baseJobProps = Map(
           MainClass -> mainClass,
@@ -410,7 +411,7 @@ object DataprocSubmitter {
           FlinkCheckpointUri -> flinkCheckpointUri,
           MetadataName -> metadataName,
           JobId -> jobId
-        ) ++ maybePubSubJarUri.map(FlinkPubSubConnectorJarURI -> _)
+        ) ++ (maybePubSubJarUri.map(FlinkPubSubConnectorJarURI -> _) ++ additionalJars.map(AdditionalJars -> _))
 
         val groupByName = JobSubmitter
           .getArgValue(args, GroupByNameArgKeyword)
