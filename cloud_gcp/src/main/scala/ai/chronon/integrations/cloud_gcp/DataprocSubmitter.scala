@@ -666,9 +666,10 @@ object DataprocSubmitter {
     }
   }
 
-  private[cloud_gcp] def run(args: Array[String],
-                             submitter: DataprocSubmitter,
-                             envMap: Map[String, Option[String]] = Map.empty): Unit = {
+  def run(args: Array[String],
+          submitter: DataprocSubmitter,
+          envMap: Map[String, Option[String]] = Map.empty,
+          maybeConf: Option[Map[String, String]] = None): Unit = {
     // Get the job type
     val jobTypeValue = JobSubmitter
       .getArgValue(args, JobTypeArgKeyword)
@@ -735,7 +736,7 @@ object DataprocSubmitter {
       jobType = jobType,
       submissionProperties =
         createSubmissionPropsMap(jobType = jobType, args = args, submitter = submitter, envMap = envMap),
-      jobProperties = JobSubmitter.getModeConfigProperties(args).getOrElse(Map.empty),
+      jobProperties = maybeConf.getOrElse(JobSubmitter.getModeConfigProperties(args).getOrElse(Map.empty)),
       files = getDataprocFilesArgs(args),
       finalArgs: _*
     )
