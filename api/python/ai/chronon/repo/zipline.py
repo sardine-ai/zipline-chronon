@@ -4,7 +4,7 @@ from importlib.metadata import version as ver
 import click
 
 from ai.chronon.cli.compile.display.console import console
-from ai.chronon.repo.compilev3 import compile_v3
+from ai.chronon.repo.compile import compile
 from ai.chronon.repo.init import main as init_main
 from ai.chronon.repo.run import main as run_main
 
@@ -44,6 +44,6 @@ def zipline(ctx):
     ctx.obj["version"] = _set_package_version()
 
 
-zipline.add_command(compile_v3)
+zipline.add_command(compile)
 zipline.add_command(run_main)
 zipline.add_command(init_main)

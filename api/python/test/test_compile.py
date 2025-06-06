@@ -1,88 +1,57 @@
-"""
-Run the flow for materialize.
-"""
+import os
+from unittest.mock import MagicMock, patch
 
-#     Copyright (C) 2023 The Chronon Authors.
-#
-#     Licensed under the Apache License, Version 2.0 (the "License");
-#     you may not use this file except in compliance with the License.
-#     You may obtain a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#     Unless required by applicable law or agreed to in writing, software
-#     distributed under the License is distributed on an "AS IS" BASIS,
-#     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#     See the License for the specific language governing permissions and
-#     limitations under the License.
-
-import pytest
-from click.testing import CliRunner
-
-from ai.chronon.repo.compile import extract_and_convert
+from ai.chronon.api.ttypes import GroupBy, MetaData
+from ai.chronon.cli.compile import parse_configs
+from ai.chronon.cli.compile.compile_context import CompileContext
+from ai.chronon.repo.compile import __compile
 
 
-@pytest.mark.skip
-def test_basic_compile():
-
-    runner = CliRunner()
-
-    result = runner.invoke(
-        extract_and_convert,
-        ["--chronon_root=test/sample", "--input_path=joins/sample_team/"],
-    )
-    assert result.exit_code == 0
-
-    result = runner.invoke(
-        extract_and_convert,
-        ["--chronon_root=test/sample", "--input_path=joins/sample_team"],
-    )
-    assert result.exit_code == 0
-
-    result = runner.invoke(
-        extract_and_convert,
-        ["--chronon_root=test/sample", "--input_path=joins/sample_team/sample_join.py"],
-    )
-    assert result.exit_code == 0
+def test_compile(repo):
+    os.chdir(repo)
+    results = __compile(chronon_root=repo)
+    assert len(results) != 0
 
 
-@pytest.mark.skip
-def test_debug_compile():
-    runner = CliRunner()
-    result = runner.invoke(
-        extract_and_convert,
-        ["--chronon_root=test/sample", "--input_path=joins/sample_team/", "--debug"],
-    )
-    assert result.exit_code == 0
-
-
-@pytest.mark.skip
-def test_failed_compile():
-    """
-    Should fail as it fails to find teams.
-    """
-    runner = CliRunner()
-    result = runner.invoke(
-        extract_and_convert,
-        [
-            "--input_path=joins/sample_team/",
-        ],
-    )
-    assert result.exit_code != 0
-
-
-@pytest.mark.skip
-def test_failed_compile_missing_input_column():
-    """
-    Should raise errors as we are trying to create aggregations without input column.
-    """
-    runner = CliRunner()
-    result = runner.invoke(
-        extract_and_convert,
-        [
-            "--chronon_root=test/sample",
-            "--input_path=group_bys/sample_team/sample_group_by_missing_input_column.py",
-            "--debug",
-        ],
-    )
-    assert result.exit_code != 0
+def test_parse_configs_relative_source_file():
+    """Test that sourceFile is stored as a path relative to chronon_root."""
+    # Setup
+    test_root = "/fake/root/path"
+    test_file_path = "/fake/root/path/group_bys/team/test_group_by.py" 
+    test_input_dir = os.path.join(test_root, "group_bys")
+    
+    # Create a properly initialized GroupBy object with MetaData
+    mock_obj = GroupBy()
+    mock_obj.metaData = MetaData()
+    
+    # Create mock context
+    mock_compile_context = MagicMock(spec=CompileContext)
+    mock_compile_context.chronon_root = test_root
+    mock_compile_context.teams_dict = {}
+    mock_compile_context.validator = MagicMock()
+    mock_compile_context.validator.validate_obj.return_value = []
+    mock_compile_context.compile_status = MagicMock()
+    
+    # Configure mocks
+    with patch('ai.chronon.cli.compile.parse_configs.from_file') as mock_from_file, \
+         patch('ai.chronon.cli.compile.serializer.thrift_simple_json') as mock_serialize, \
+         patch('glob.glob', return_value=[test_file_path]), \
+         patch('ai.chronon.cli.compile.parse_teams.update_metadata'):
+        
+        # Configure mock return values
+        mock_from_file.return_value = {"team.test_group_by.test_var": mock_obj}
+        mock_serialize.return_value = "{}"
+        
+        # Call the function being tested
+        results = parse_configs.from_folder(GroupBy, test_input_dir, mock_compile_context)
+    
+    # Assertions
+    assert len(results) == 1
+    assert results[0].obj is not None
+    assert hasattr(results[0].obj, 'metaData')
+    assert results[0].obj.metaData is not None
+    
+    # The sourceFile should be a relative path from chronon_root
+    expected_relative_path = "group_bys/team/test_group_by.py"
+    assert results[0].obj.metaData.sourceFile == expected_relative_path
+    assert not results[0].obj.metaData.sourceFile.startswith("/")  # Should be relative, not absolute
