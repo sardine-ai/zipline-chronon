@@ -20,7 +20,8 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.collection.Seq
 
-class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
+// Flink Job Integration Test for Event-based GroupBys
+class FlinkJobEventIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
   val flinkCluster = new MiniClusterWithClientResource(
     new MiniClusterResourceConfiguration.Builder()

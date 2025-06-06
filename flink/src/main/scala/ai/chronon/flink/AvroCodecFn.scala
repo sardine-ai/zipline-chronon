@@ -1,10 +1,8 @@
 package ai.chronon.flink
 
-import ai.chronon.api.Constants
 import ai.chronon.api.DataModel
 import ai.chronon.api.Extensions.GroupByOps
 import ai.chronon.api.Extensions.WindowUtils
-import ai.chronon.api.Query
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TilingUtils
 import ai.chronon.api.{StructType => ChrononStructType}
@@ -19,8 +17,6 @@ import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Seq
-
 /** Base class for the Avro conversion Flink operator.
   *
   * Subclasses should override the RichFlatMapFunction methods (flatMap) and groupByServingInfoParsed.
@@ -33,19 +29,16 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   @transient protected var avroConversionErrorCounter: Counter = _
-  @transient protected var eventProcessingErrorCounter: Counter =
-    _ // Shared metric for errors across the entire Flink app.
+  // Shared metric for errors across the entire Flink app.
+  @transient protected var eventProcessingErrorCounter: Counter = _
 
-  protected lazy val query: Query = groupByServingInfoParsed.groupBy.streamingSource.get.getEvents.query
   protected lazy val streamingDataset: String = groupByServingInfoParsed.groupBy.streamingDataset
-
-  // TODO: update to use constant names that are company specific
-  protected lazy val timeColumnAlias: String = Constants.TimeColumn
-  protected lazy val timeColumn: String = Option(query.timeColumn).getOrElse(timeColumnAlias)
 
   protected lazy val (keyToBytes, valueToBytes): (Any => Array[Byte], Any => Array[Byte]) =
     getKVSerializers(groupByServingInfoParsed)
-  protected lazy val (keyColumns, valueColumns): (Array[String], Array[String]) = getKVColumns
+  protected lazy val (keyColumns, valueColumns, eventTimeColumn) =
+    SparkExpressionEval.buildKeyValueEventTimeColumns(groupByServingInfoParsed.groupBy)
+
   protected lazy val extraneousRecord: Any => Array[Any] = {
     case x: Map[_, _] if x.keys.forall(_.isInstanceOf[String]) =>
       x.toArray.flatMap { case (key, value) => Array(key, value) }
@@ -56,31 +49,14 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   ) => {
     val keyZSchema: ChrononStructType = groupByServingInfoParsed.keyChrononSchema
     val valueZSchema: ChrononStructType = groupByServingInfoParsed.groupBy.dataModel match {
-      case DataModel.EVENTS => groupByServingInfoParsed.valueChrononSchema
-      case _ =>
-        throw new IllegalArgumentException(
-          s"Only the events based data model is supported at the moment - ${groupByServingInfoParsed.groupBy}"
-        )
+      case DataModel.EVENTS   => groupByServingInfoParsed.valueChrononSchema
+      case DataModel.ENTITIES => groupByServingInfoParsed.mutationValueChrononSchema
     }
 
     (
       AvroConversions.encodeBytes(keyZSchema, extraneousRecord),
       AvroConversions.encodeBytes(valueZSchema, extraneousRecord)
     )
-  }
-
-  private lazy val getKVColumns: (Array[String], Array[String]) = {
-    val keyColumns = groupByServingInfoParsed.groupBy.keyColumns.toScala.toArray
-    val (additionalColumns, _) = groupByServingInfoParsed.groupBy.dataModel match {
-      case DataModel.EVENTS =>
-        Seq.empty[String] -> timeColumn
-      case _ =>
-        throw new IllegalArgumentException(
-          s"Only the events based data model is supported at the moment - ${groupByServingInfoParsed.groupBy}"
-        )
-    }
-    val valueColumns = groupByServingInfoParsed.groupBy.aggregationInputs ++ additionalColumns
-    (keyColumns, valueColumns)
   }
 }
 
@@ -114,7 +90,7 @@ case class AvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed)
     }
 
   def avroConvertMapToPutRequest(in: Map[String, Any]): AvroCodecOutput = {
-    val tsMills = in(timeColumnAlias).asInstanceOf[Long]
+    val tsMills = in(eventTimeColumn).asInstanceOf[Long]
     val keyBytes = keyToBytes(keyColumns.map(in(_)))
     val valueBytes = valueToBytes(valueColumns.map(in(_)))
     new AvroCodecOutput(keyBytes, valueBytes, streamingDataset, tsMills)

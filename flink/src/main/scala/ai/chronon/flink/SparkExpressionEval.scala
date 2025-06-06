@@ -1,6 +1,6 @@
 package ai.chronon.flink
 
-import ai.chronon.api.{Constants, DataModel, GroupBy, StructType => ChrononStructType}
+import ai.chronon.api.{Constants, DataModel, GroupBy, Query, StructType => ChrononStructType}
 import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, SourceOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.CatalystUtil
@@ -32,49 +32,9 @@ import scala.jdk.CollectionConverters.asScalaBufferConverter
   * @tparam EventType The type of the input event.
   */
 class SparkExpressionEval[EventType](encoder: Encoder[EventType], groupBy: GroupBy) extends Serializable {
+  import SparkExpressionEval._
 
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-
-  private def buildQueryTransformsAndFilters(gb: GroupBy): (Seq[(String, String)], Seq[String]) = {
-    require(gb.streamingSource.isDefined, s"Streaming source is missing in GroupBy: ${gb.metaData.cleanName}")
-    val query = gb.streamingSource.get.query
-    require(query != null, s"Streaming query is missing in GroupBy: ${gb.metaData.cleanName}")
-
-    val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
-    val reversalColumn = Option(query.reversalColumn).getOrElse(Constants.ReversalColumn)
-    val mutationTimeColumn =
-      Option(query.mutationTimeColumn).getOrElse(Constants.MutationTimeColumn)
-    val selects = Option(query.selects).map(_.toScala).getOrElse(Map.empty[String, String])
-
-    val transforms: Seq[(String, String)] = gb.dataModel match {
-      case DataModel.EVENTS =>
-        (selects ++ Map(Constants.TimeColumn -> timeColumn)).toSeq
-      case DataModel.ENTITIES =>
-        (selects ++ Map(
-          Constants.TimeColumn -> timeColumn,
-          Constants.ReversalColumn -> reversalColumn,
-          Constants.MutationTimeColumn -> mutationTimeColumn
-        )).toSeq
-    }
-
-    // Filter rows such that at least one of the key columns is not null.
-    val keyWhereOption = gb.getKeyColumns.asScala
-      .map { key =>
-        s"${selects.getOrElse(key, key)} IS NOT NULL"
-      }
-      .mkString(" OR ")
-
-    val timeFilters = gb.dataModel match {
-      case DataModel.ENTITIES => Seq(s"${Constants.MutationTimeColumn} is NOT NULL", s"$timeColumn is NOT NULL")
-      case DataModel.EVENTS   => Seq(s"$timeColumn is NOT NULL")
-    }
-
-    val baseFilters = query.getWheres.toScala
-
-    val filters: Seq[String] = baseFilters ++ timeFilters :+ s"($keyWhereOption)"
-
-    (transforms, filters)
-  }
 
   private val (transforms, filters) = buildQueryTransformsAndFilters(groupBy)
 
@@ -219,5 +179,56 @@ class SparkExpressionEval[EventType](encoder: Encoder[EventType], groupBy: Group
       val maybeRow = catalystUtil.performSql(row)
       (recordId, maybeRow)
     }.toMap
+  }
+}
+
+object SparkExpressionEval {
+  def validateQuery(gb: GroupBy): Query = {
+    require(gb.streamingSource.isDefined, s"Streaming source is missing in GroupBy: ${gb.metaData.cleanName}")
+    val query = gb.streamingSource.get.query
+    require(query != null, s"Streaming query is missing in GroupBy: ${gb.metaData.cleanName}")
+    query
+  }
+
+  private def buildQueryTransformsAndFilters(gb: GroupBy): (Seq[(String, String)], Seq[String]) = {
+    val query = validateQuery(gb)
+
+    val timeColumn = Option(query.timeColumn).getOrElse(Constants.TimeColumn)
+    val reversalColumn = Option(query.reversalColumn).getOrElse(Constants.ReversalColumn)
+    val mutationTimeColumn =
+      Option(query.mutationTimeColumn).getOrElse(Constants.MutationTimeColumn)
+    val selects = Option(query.selects).map(_.toScala).getOrElse(Map.empty[String, String])
+
+    val transforms: Seq[(String, String)] = gb.dataModel match {
+      case DataModel.EVENTS =>
+        (selects ++ Map(Constants.TimeColumn -> timeColumn)).toSeq
+      case DataModel.ENTITIES =>
+        (selects ++ Map(
+          Constants.TimeColumn -> timeColumn,
+          Constants.ReversalColumn -> reversalColumn,
+          Constants.MutationTimeColumn -> mutationTimeColumn
+        )).toSeq
+    }
+
+    val timeFilters = gb.dataModel match {
+      case DataModel.ENTITIES => Seq(s"${Constants.MutationTimeColumn} is NOT NULL", s"$timeColumn is NOT NULL")
+      case DataModel.EVENTS   => Seq(s"$timeColumn is NOT NULL")
+    }
+
+    val baseFilters = query.getWheres.toScala
+
+    val filters: Seq[String] = baseFilters ++ timeFilters
+
+    (transforms, filters)
+  }
+
+  def buildKeyValueEventTimeColumns(gb: GroupBy): (Array[String], Array[String], String) = {
+    val keyColumns = gb.keyColumns.asScala.toArray
+    val (additionalColumns, eventTimeColumn) = gb.dataModel match {
+      case DataModel.EVENTS   => Seq.empty -> Constants.TimeColumn
+      case DataModel.ENTITIES => Constants.MutationAvroColumns -> Constants.MutationTimeColumn
+    }
+    val valueColumns = gb.aggregationInputs ++ additionalColumns
+    (keyColumns, valueColumns, eventTimeColumn)
   }
 }

@@ -2,12 +2,9 @@ package ai.chronon.flink.test
 
 import ai.chronon.api.Accuracy
 import ai.chronon.api.Builders
-import ai.chronon.api.Extensions.WindowOps
-import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.GroupBy
 import ai.chronon.api.GroupByServingInfo
 import ai.chronon.api.Operation
-import ai.chronon.api.PartitionSpec
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
@@ -45,15 +42,10 @@ case class E2ETestMutationEvent(id: String,
                                 mutationTime: Long,
                                 isBefore: Boolean)
 
-class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: SparkExpressionEvalFn[E2ETestEvent])
+abstract class BaseWatermarkedE2EEventSource[T](mockEvents: Seq[T], sparkExprEvalFn: SparkExpressionEvalFn[T])
     extends FlinkSource[Map[String, Any]] {
-  def watermarkStrategy: WatermarkStrategy[E2ETestEvent] =
-    WatermarkStrategy
-      .forBoundedOutOfOrderness[E2ETestEvent](Duration.ofSeconds(5))
-      .withTimestampAssigner(new SerializableTimestampAssigner[E2ETestEvent] {
-        override def extractTimestamp(event: E2ETestEvent, previousElementTimestamp: Long): Long =
-          event.created
-      })
+
+  def watermarkStrategy: WatermarkStrategy[T]
 
   implicit val parallelism: Int = 1
 
@@ -65,6 +57,29 @@ class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: 
       .assignTimestampsAndWatermarks(watermarkStrategy)
       .flatMap(sparkExprEvalFn)
   }
+}
+
+class WatermarkedE2EEventSource(mockEvents: Seq[E2ETestEvent], sparkExprEvalFn: SparkExpressionEvalFn[E2ETestEvent])
+    extends BaseWatermarkedE2EEventSource[E2ETestEvent](mockEvents, sparkExprEvalFn) {
+  def watermarkStrategy: WatermarkStrategy[E2ETestEvent] =
+    WatermarkStrategy
+      .forBoundedOutOfOrderness[E2ETestEvent](Duration.ofSeconds(5))
+      .withTimestampAssigner(new SerializableTimestampAssigner[E2ETestEvent] {
+        override def extractTimestamp(event: E2ETestEvent, previousElementTimestamp: Long): Long =
+          event.created
+      })
+}
+
+class WatermarkedE2ETestMutationEventSource(mockEvents: Seq[E2ETestMutationEvent],
+                                            sparkExprEvalFn: SparkExpressionEvalFn[E2ETestMutationEvent])
+    extends BaseWatermarkedE2EEventSource[E2ETestMutationEvent](mockEvents, sparkExprEvalFn) {
+  def watermarkStrategy: WatermarkStrategy[E2ETestMutationEvent] =
+    WatermarkStrategy
+      .forBoundedOutOfOrderness[E2ETestMutationEvent](Duration.ofSeconds(5))
+      .withTimestampAssigner(new SerializableTimestampAssigner[E2ETestMutationEvent] {
+        override def extractTimestamp(event: E2ETestMutationEvent, previousElementTimestamp: Long): Long =
+          event.created
+      })
 }
 
 class MockAsyncKVStoreWriter(mockResults: Seq[Boolean], onlineImpl: Api, featureGroup: String)
