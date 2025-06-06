@@ -1,4 +1,5 @@
 package ai.chronon.integrations.cloud_gcp
+import ai.chronon.api.Builders.MetaData
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
@@ -382,7 +383,7 @@ object DataprocSubmitter {
       .getArgValue(args, MainClassKeyword)
       .getOrElse(throw new Exception("Missing required argument: " + MainClassKeyword))
 
-    val metadataName = Option(JobSubmitter.getMetadata(args).get.getName).getOrElse("")
+    val metadataName = Option(JobSubmitter.getMetadata(args).getOrElse(MetaData()).getName).getOrElse("")
 
     val jobId = JobSubmitter
       .getArgValue(args, JobIdArgKeyword)
