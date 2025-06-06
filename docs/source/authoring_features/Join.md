@@ -6,7 +6,7 @@ Let's use an example to explain this further. In the [Quickstart](../getting_sta
 
 This is important because it means that when we serve the model online, inference will be made at checkout time, and therefore backfilled features for training data should correspond to a historical checkout event, with features computed as of those checkout times. In other words, every row of training data for the model has identical feature values to what the model would have seen had it made a production inference request at that time.
 
-To see how we do this, let's take a look at the left side of the join definition (taken from [Quickstart Training Set Join](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/joins/quickstart/training_set.py)).
+To see how we do this, let's take a look at the left side of the join definition (taken from [Quickstart Training Set Join](https://github.com/zipline/chronon/blob/main/api/python/test/sample/joins/quickstart/training_set.py)).
 
 ```python
 source = Source(
@@ -206,17 +206,17 @@ More details and scenarios about bootstrap can be found in Bootstrap documentati
 
 ##
 
-# Computation examples
+## Computation examples
 
 The following explain the backfill accuracy for each possible combination of left-side source type and right-side/GroupBy source type.
 
-## Left side events, right side streaming events
+### Left side events, right side streaming events
 
 In this case you will get point-in-time correct feature backfills in your join table, meaning that every feature for this GroupBy will be accurate as of the millisecond that is provided on the left side `time_column`. For example, if a row on the left side has a timestamp of `2023-12-20 12:01:01.923` and an aggregation in the `GroupBy` has a `10 day` window, then only raw events between `2023-12-10 12:01:01.923` and `2023-12-20 12:01:01.922` will be included in the aggregation value.
 
 This is because these are the values that would have been observed online for that feature at that particular left side timestamp (values are updated in realtime).
 
-## Left side events, right side batch events
+### Left side events, right side batch events
 
 In this case you will get midnight accurate feature backfills in your join table by default, meaning that every feature for this GroupBy will be accurate as of the midnight boundary prior to the time provided on the left side `time_column`.
 
@@ -226,15 +226,15 @@ This is because these are the values that would have been observed online for th
 
 However, you can also configure the backfills to be point-in-time correct for this `GroupBy` by setting `accuracy=TEMPORAL`.
 
-## Left side entities, right side realtime entities
+### Left side entities, right side realtime entities
 
 In this case you will get midnight accurate feature backfills in your join table by default, same as the `Left side events, right side batch events` case. This is because an `EntitySource` on the left means that the use case that we're modeling is inherently batch, so we don't have any intra-day accurate timeline for backfills.
 
-## Left side entities, right side batch entities
+### Left side entities, right side batch entities
 
 In this case you will get midnight accurate feature backfills in your join table by default, same as the `Left side events, right side batch events` and `Left side entities, right side realtime entities` cases, for a combination of both reasons.
 
-# Scenarios Deep Dive
+## Scenarios Deep Dive
 
 This section goes over various common scenarios for how users might want to manage their offline data for ML worklows. "Offline data" means data that is materialized in the warehouse (often used for model training, evaluation and analysis workflows), as opposed to "Online data" which is in the production model serving path.
 
@@ -254,7 +254,7 @@ It outlines how you can combine logging, bootstrapping, labels and joins togethe
     10. [Adding labels and apply aggregation on labels](#Adding-labels-and-apply-aggregation-on-labels)
 3. [FAQs](#FAQs)
 
-## Introduction
+### Introduction
 
 Chronon improves the overall experience of creating and managing offline datasets that are powering your ML workflows, with three core building blocks:
 
@@ -268,7 +268,7 @@ Chronon improves the overall experience of creating and managing offline dataset
 3. **Label computation** - for attaching labels to features to form the full training set
    You can now add labels to your features! Chronon now supports a wide range of labeling computation patterns, including both pre-aggregated labels, or labels that require windowed aggregations
 
-### Create a brand-new feature set
+#### Create a brand-new feature set
 Goal
 - build the training set for a brand-new model and serve the same feature set online for inference
 
@@ -308,7 +308,7 @@ v1 = Join(
 )
 ```
 
-### Set up log-based data refresh for an online model
+#### Set up log-based data refresh for an online model
 Goal
 - Create a feature pipeline to automatically populate new ds using logged feature values
 
@@ -404,7 +404,7 @@ v2 = Join(
   bootstrap_parts=[BootstrapPart(table="db_name.team_name_model_v1")]
 )
 ```
-### Improve an existing feature set of an online model
+#### Improve an existing feature set of an online model
 Goal
 - Create a new version of an existing model, carrying over most of the existing features while adding some new features.
   Steps
@@ -437,7 +437,7 @@ v2 = Join(
   ]
 )
 ```
-### Expand a model to a new set of drivers
+#### Expand a model to a new set of drivers
 Goal
 - Create a new version of an existing model that expands to new traffic endpoints
 - This requires us to backfill features for the new endpoints in order to backtest the model, while keeping using log data for existing endpoints.
@@ -483,7 +483,7 @@ v2 = Join(
   ]
 )
 ```
-### Reuse existing feature data from the same drivers
+#### Reuse existing feature data from the same drivers
 Goal:
 - Build a new model while leveraging training data of an existing model that shares the same events.
   Step
@@ -511,7 +511,7 @@ bootstrap_parts=[
     ]
 )
 ```
-### Utilize advanced features
+#### Utilize advanced features
 Goal:
 - Leverage external / contextual features in the model. Once they are served online, we want to log them for future model retrains. For initial backfills, users will come up with a custom way to provide backfilled values
   Steps
@@ -561,7 +561,7 @@ v1 = Join(
    ]
 )
 ```
-### Leverage feature data from legacy data pipelines
+#### Leverage feature data from legacy data pipelines
 Goal
 - We have feature data from a legacy data pipeline before a certain cutoff, and while we are moving over to Chronon after that, we would like to retain and ingest the historical data into the final training table produced by Chronon.
   Steps
@@ -612,7 +612,7 @@ v1 = Join(
   ]
 )
 ```
-### Overwrite incorrect logged feature values
+#### Overwrite incorrect logged feature values
 Goal
 - The online serving was broken for certain feature values for a certain time period. We would like to overwrite the feature values by providing a custom backfill table.
   Step
@@ -641,7 +641,7 @@ v1 = Join(
    ]
 )
 ```
-### Adding labels to training dataset
+#### Adding labels to training dataset
 Goal
 - We have a backfilled feature table and label data available. We would like to associate label values to features and generate the training dataset.
   Steps
@@ -682,7 +682,7 @@ v2 = Join(
    )
 )
 ```
-### Adding labels and apply aggregation on labels
+#### Adding labels and apply aggregation on labels
 Goal
 - We have raw labels and would like to apply an aggregation to labels before adding these labels to  training datasets.
   Steps

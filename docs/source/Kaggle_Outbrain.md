@@ -17,7 +17,7 @@ One time steps to get up and running with Chronon.
 ### Setup the chronon repo
 ```shell
 cd ~/repos
-git clone git@github.com:airbnb/chronon.git
+git clone git@github.com:zipline/chronon.git
 export PYTHONPATH=/Users/$USER/repos/chronon/api/python/:/Users/$USER/repos/chronon/api/python/test/sample/:$PYTHONPATH
 ```
 
