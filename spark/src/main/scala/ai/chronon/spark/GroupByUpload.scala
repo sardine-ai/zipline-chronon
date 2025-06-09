@@ -104,9 +104,7 @@ class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable
         |BatchIR Element Size: $batchIrElementSize
         |""".stripMargin)
 
-    val outputRdd = tableUtils
-      .preAggRepartition(groupBy.inputDf)
-      .rdd
+    val outputRdd = groupBy.inputDf.rdd
       .keyBy(keyBuilder)
       .aggregateByKey(sawtoothOnlineAggregator.init)( // shuffle point
         seqOp = { case (batchIr, row) =>

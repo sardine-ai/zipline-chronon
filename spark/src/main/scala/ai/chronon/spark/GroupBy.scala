@@ -136,9 +136,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
         |${preppedInputDf.schema.pretty}
         |""".stripMargin)
 
-    tableUtils
-      .preAggRepartition(preppedInputDf)
-      .rdd
+    preppedInputDf.rdd
       .keyBy(keyBuilder)
       .aggregateByKey(windowAggregator.init)(seqOp = irUpdateFunc, combOp = windowAggregator.merge)
       .map { case (keyWithHash, ir) => keyWithHash.data -> normalizeOrFinalize(ir) }

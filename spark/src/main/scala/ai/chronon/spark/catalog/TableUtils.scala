@@ -73,16 +73,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   @transient private lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   val joinPartParallelism: Int = sparkSession.conf.get("spark.chronon.join.part.parallelism", "1").toInt
-  private val aggregationParallelism: Int = sparkSession.conf.get("spark.chronon.group_by.parallelism", "1000").toInt
 
   sparkSession.sparkContext.setLogLevel("ERROR")
-
-  def preAggRepartition(df: DataFrame): DataFrame =
-    if (df.rdd.getNumPartitions < aggregationParallelism) {
-      df.repartition(aggregationParallelism)
-    } else {
-      df
-    }
 
   def tableReachable(tableName: String, ignoreFailure: Boolean = false): Boolean = {
     Try { sparkSession.catalog.getTable(tableName) } match {
