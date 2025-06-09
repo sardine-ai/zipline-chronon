@@ -79,6 +79,7 @@ sealed trait BaseKvRdd {
 case class KvRdd(data: RDD[(Array[Any], Array[Any])], keySchema: StructType, valueSchema: StructType)(implicit
     sparkSession: SparkSession)
     extends BaseKvRdd {
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   val withTime = false
 
@@ -94,12 +95,14 @@ case class KvRdd(data: RDD[(Array[Any], Array[Any])], keySchema: StructType, val
       val result: Array[Any] = Array(keyToBytes(keys), valueToBytes(values), keyJson, valueJson)
       new GenericRow(result)
     }
+
     logger.info(s"""
           |key schema:
           |  ${AvroConversions.fromChrononSchema(keyZSchema).toString(true)}
           |value schema:
           |  ${AvroConversions.fromChrononSchema(valueZSchema).toString(true)}
           |""".stripMargin)
+
     sparkSession.createDataFrame(avroRdd, rowSchema)
   }
 

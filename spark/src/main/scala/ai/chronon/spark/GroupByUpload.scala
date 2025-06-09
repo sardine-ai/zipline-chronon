@@ -63,18 +63,30 @@ class GroupByUpload(endPartition: String, groupBy: GroupBy) extends Serializable
   private def fromBase(rdd: RDD[(Array[Any], Array[Any])]): KvRdd = {
     KvRdd(rdd.map { case (keyAndDs, values) => keyAndDs.init -> values }, groupBy.keySchema, groupBy.postAggSchema)
   }
+
   def snapshotEntities: KvRdd = {
     if (groupBy.aggregations == null || groupBy.aggregations.isEmpty) {
-      // pre-agg to PairRdd
-      val keysAndPartition = (groupBy.keyColumns :+ tableUtils.partitionColumn).toArray
-      val keyBuilder = FastHashing.generateKeyBuilder(keysAndPartition, groupBy.inputDf.schema)
-      val values = groupBy.inputDf.schema.map(_.name).filterNot(keysAndPartition.contains)
-      val valuesIndices = values.map(groupBy.inputDf.schema.fieldIndex).toArray
+
+      val keySchema = groupBy.keySchema
+      val keyBuilder = FastHashing.generateKeyBuilder(keySchema.fieldNames, groupBy.inputDf.schema)
+
+      val valueSchema = groupBy.preAggSchema
+      val valuesIndices = valueSchema.fieldNames.map(groupBy.inputDf.schema.fieldIndex)
+
       val rdd = groupBy.inputDf.rdd
         .map { row =>
-          keyBuilder(row).data.init -> valuesIndices.map(row.get)
+          keyBuilder(row).data -> valuesIndices.map(row.get)
         }
+
+      logger.info(s"""
+           |pre-agg upload:
+           |  input schema: ${groupBy.inputDf.schema.catalogString}
+           |    key schema: ${groupBy.keySchema.catalogString}
+           |  value schema: ${groupBy.preAggSchema.catalogString}
+           |""".stripMargin)
+
       KvRdd(rdd, groupBy.keySchema, groupBy.preAggSchema)
+
     } else {
       fromBase(groupBy.snapshotEntitiesBase)
     }
@@ -245,6 +257,7 @@ object GroupByUpload {
     }
 
     val kvDf = kvRdd.toAvroDf(jsonPercent = jsonPercent)
+
     if (showDf) {
       kvRdd.toFlatDf.prettyPrint()
     }
