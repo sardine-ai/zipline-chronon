@@ -620,11 +620,19 @@ def GroupBy(
         elif isinstance(source, ttypes.EntitySource):
             return ttypes.Source(entities=source)
         elif isinstance(source, ttypes.JoinSource):
-            if not source.join.metadata.isSetOutputNamespace():
-                source.join.metadata.setOutputNamespace(output_namespace)
+            utils.__set_name(source.join, ttypes.Join, "joins")
+            if not source.join.metaData.outputNamespace:
+                source.join.metaData.outputNamespace = output_namespace
             return ttypes.Source(joinSource=source)
         elif isinstance(source, ttypes.Source):
-            return source
+            if source.entities:
+                return _normalize_source(source.entities)
+            elif source.events:
+                return _normalize_source(source.events)
+            elif source.joinSource:
+                return _normalize_source(source.joinSource)
+            else:
+                return source
         else:
             print("unrecognized " + str(source))
 
@@ -658,7 +666,7 @@ def GroupBy(
         production=production,
         outputNamespace=output_namespace,
         tableProperties=table_properties,
-        team=team,
+        team=team, 
         executionInfo=exec_info,
         tags=tags if tags else None,
         columnTags=column_tags if column_tags else None,
