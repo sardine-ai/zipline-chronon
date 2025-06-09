@@ -54,9 +54,26 @@
   - if two active runs depends on the same upstream step - cancelling one of the steps should not kill the upstream job
   - but if only one active run depends on the step, it is okay to cancel it, and kill the underlying job
 
+
 ## Design Principles
 
 The scale here is going to be very low - given that it is operating on a small number of active jobs.
-So the orchestrator should be run as a single process on a server accepting scheduling requests backed by a relational database.
+So the orchestrator should be run as a single process on a single server accepting scheduling requests backed by a relational database.
 
+All the code described below should be in scala as case classes for tables (slick), requests and responses.
+
+At a high level we need to create a sync flow that pushes user local configs/queries to the remote. We work with git to ensure tracking:
+   1. Remote will handle list of incoming `UploadRequest(commit, branch, user, Map[conf_name, hash])`, and check this against the existing `contents` table with schema `(conf_name, hash, content, commit, branch, user, timestamp)`
+         1. Local cli should ensure that a sync is blocked when the local git status is dirty
+   2. Remote returns `statuses: List[conf_status:(conf, hash, diff)]` to local for only the newly added or updated confs by user
+      1. diff is None for newly added confs, but computed against "latest_main(conf_name)": existing-most-recently-updated-conf-on-main.
+   3. for non-main incoming branches - 
+      1. once the user confirms -  the local then sends up `List(conf, hash, content, commit, branch, user)` to be added as new rows into the table.
+   4. for main incoming branch
+      1. we will update 
+
+2. the concept of a "run" - of a conf with all its dependencies for a particular date.
+2. the run invokes the planner and creates nodes of un-planned confs.
+3. we then recursively find the dependencies of the terminal node of the conf.
+4. we split the unscheduled & missing
 
