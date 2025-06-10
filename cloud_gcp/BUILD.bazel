@@ -31,7 +31,6 @@ shared_deps = [
     maven_artifact("com.google.guava:guava"),
     maven_artifact("com.google.protobuf:protobuf-java"),
     maven_artifact("com.google.protobuf:protobuf-java-util"),
-    maven_artifact("org.yaml:snakeyaml"),
     maven_artifact("io.grpc:grpc-netty-shaded"),
     maven_artifact("org.slf4j:slf4j-api"),
     maven_artifact("ch.qos.reload4j:reload4j"),

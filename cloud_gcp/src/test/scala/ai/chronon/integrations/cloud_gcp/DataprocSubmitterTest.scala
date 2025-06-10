@@ -110,7 +110,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
   it should "test buildFlinkJob with pubsub connector uri" in {
     val submitter = new DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
-      conf = SubmitterConf("test-project", "test-region", "test-cluster"))
+                                          conf = SubmitterConf("test-project", "test-region", "test-cluster"))
     val job = submitter.buildFlinkJob(
       mainClass = "ai.chronon.flink.FlinkJob",
       jarUris = Array("gs://zipline-jars/cloud-gcp.jar", "gs://zipline-jars/flink-pubsub-connector.jar"),
@@ -834,7 +834,11 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     }"""
 
     val clusterName =
-      DataprocSubmitter.getOrCreateCluster("", Option(Map("dataproc.config" -> clusterConfigStr)), projectId, region, mockDataprocClient)
+      DataprocSubmitter.getOrCreateCluster("",
+                                           Option(Map("dataproc.config" -> clusterConfigStr)),
+                                           projectId,
+                                           region,
+                                           mockDataprocClient)
 
     assert(clusterName.startsWith("zipline-"))
     verify(mockDataprocClient).createClusterAsync(any())
@@ -877,7 +881,11 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     }"""
 
     val clusterName =
-      DataprocSubmitter.getOrCreateCluster("test-cluster", Option(Map("dataproc.config" -> clusterConfigStr)), projectId, region, mockDataprocClient)
+      DataprocSubmitter.getOrCreateCluster("test-cluster",
+                                           Option(Map("dataproc.config" -> clusterConfigStr)),
+                                           projectId,
+                                           region,
+                                           mockDataprocClient)
 
     assert(clusterName.equals("test-cluster"))
     verify(mockDataprocClient, never()).createClusterAsync(any())
@@ -1043,48 +1051,5 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         "--event-delay-millis=10"
       )
     println(submittedJobId)
-  }
-
-  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
-
-    val submitter = DataprocSubmitter()
-    val submittedJobId =
-      submitter.submit(
-        spark.submission.SparkJob,
-        Map(MainClass -> "ai.chronon.spark.Driver",
-            JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
-        Map.empty,
-        List("gs://zipline-jars/training_set.v1",
-             "gs://zipline-jars/dataproc-submitter-conf.yaml",
-             "gs://zipline-jars/additional-confs.yaml"),
-        "join",
-        "--end-date=2024-12-10",
-        "--additional-conf-path=additional-confs.yaml",
-        "--conf-path=training_set.v1"
-      )
-    println(submittedJobId)
-  }
-
-  it should "Used to test GBU bulk load locally. Do not enable this in CI/CD!" ignore {
-
-    val submitter = DataprocSubmitter()
-    val submittedJobId =
-      submitter.submit(
-        spark.submission.SparkJob,
-        Map(MainClass -> "ai.chronon.spark.Driver",
-            JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
-        Map.empty,
-        List.empty,
-        "groupby-upload-bulk-load",
-        "-ZGCP_PROJECT_ID=bigtable-project-id",
-        "-ZGCP_INSTANCE_ID=bigtable-instance-id",
-        "--online-jar=cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
-        "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
-        "--src-offline-table=data.test_gbu",
-        "--group-by-name=quickstart.purchases.v1",
-        "--partition-string=2024-01-01"
-      )
-    println(submittedJobId)
-    assertEquals(submittedJobId, "mock-job-id")
   }
 }
