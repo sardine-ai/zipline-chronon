@@ -116,7 +116,7 @@ def validate_additional_jars(ctx, param, value):
     default="dev",
     help="Running environment - default to be dev",
 )
-@click.option("--mode", type=click.Choice([str(k) for k in MODE_ARGS.keys()]), default=RunMode.BACKFILL)
+@click.option("--mode", type=click.Choice([str(k) for k in MODE_ARGS.keys()]), default=str(RunMode.BACKFILL))
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
 @click.option(
