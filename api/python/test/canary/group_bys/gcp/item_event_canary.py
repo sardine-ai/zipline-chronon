@@ -60,6 +60,7 @@ kafka_source = build_source(kafka_topic)
 actions_v1 = build_actions_groupby(kafka_source)
 
 # Add a pubsub equivalent source + GroupBy. We use the same item event schema for the events
-pubsub_topic = f"pubsub://test-item-event-data/{schema_provider_cfgs}/tasks=4/subscription=test-item-event-data-sub"
+pubsub_schema_provider_cfgs = "serde=pubsub_schema/project=canary-443022/schemaId=item-event"
+pubsub_topic = f"pubsub://test-item-event-data/{pubsub_schema_provider_cfgs}/tasks=4/subscription=test-item-event-data-sub"
 pubsub_source = build_source(pubsub_topic)
-actions_pubsub = build_actions_groupby(pubsub_source)
+actions_pubsub_v2 = build_actions_groupby(pubsub_source)
