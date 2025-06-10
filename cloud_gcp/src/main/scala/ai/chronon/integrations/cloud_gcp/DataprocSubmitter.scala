@@ -1,17 +1,14 @@
 package ai.chronon.integrations.cloud_gcp
 import ai.chronon.api.Builders.MetaData
-import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.JobSubmitterConstants._
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import com.google.protobuf.util.JsonFormat
 import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.slf4j.LoggerFactory
-import org.yaml.snakeyaml.Yaml
 
-import scala.io.Source
 import scala.jdk.CollectionConverters._
 
 case class SubmitterConf(
@@ -319,40 +316,12 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
 }
 
 object DataprocSubmitter {
-  def apply(): DataprocSubmitter = {
-    val conf = loadConfig
-    val jobControllerClient = JobControllerClient.create(
-      JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
-    )
-    new DataprocSubmitter(jobControllerClient, GCSClient(), conf)
-  }
 
   def apply(conf: SubmitterConf): DataprocSubmitter = {
     val jobControllerClient = JobControllerClient.create(
       JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
     )
     new DataprocSubmitter(jobControllerClient, GCSClient(projectId = conf.projectId), conf)
-  }
-
-  private[cloud_gcp] def loadConfig: SubmitterConf = {
-    val inputStreamOption = Option(getClass.getClassLoader.getResourceAsStream("dataproc-submitter-conf.yaml"))
-    val yamlLoader = new Yaml()
-    implicit val formats: Formats = DefaultFormats
-    inputStreamOption
-      .map(Source.fromInputStream)
-      .map((is) =>
-        try {
-          is.mkString
-        } finally {
-          is.close
-        })
-      .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
-      .map((jMap) => Extraction.decompose(jMap.asScala.toMap))
-      .map((jVal) => render(jVal))
-      .map(compact)
-      .map(parse(_).extract[SubmitterConf])
-      .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
-
   }
 
   private def initializeDataprocSubmitter(clusterName: String,
