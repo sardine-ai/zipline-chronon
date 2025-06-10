@@ -515,4 +515,12 @@ class ConfValidator(object):
                         src.events.table
                     ))
                 )
+            elif (
+                src.joinSource
+            ):
+                join_obj = src.joinSource.join
+                if join_obj.metaData.name is None or join_obj.metaData.team is None:
+                    errors.append(
+                        ValueError(f"Join must be defined with team and name: {join_obj}")
+                    )
         return errors
