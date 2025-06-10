@@ -97,4 +97,11 @@ object Constants {
   val ListEntityType: String = "entity_type"
 
   val DefaultPercentiles: Seq[String] = Seq("p5", "p50", "p95")
+
+  // Debezium constants
+  val DebeziumPayloadField = "payload"
+  val DebeziumOpField = "op"
+  val DebeziumBeforeField = "before"
+  val DebeziumAfterField = "after"
+
 }

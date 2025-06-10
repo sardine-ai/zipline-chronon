@@ -14,7 +14,7 @@ import org.apache.avro.Schema
   * forwards to the right host + port. Scheme defaults to http. Subject defaults to the topic name + "-value" (based on schema
   * registry conventions).
   */
-class SchemaRegistrySerDe(topicInfo: TopicInfo) extends SerDe {
+class SchemaRegistrySerDe(topicInfo: TopicInfo, maybeCdcTransport: Option[String] = None) extends SerDe {
   import SchemaRegistrySerDe._
 
   private val schemaRegistryHost: String =
@@ -86,6 +86,8 @@ class SchemaRegistrySerDe(topicInfo: TopicInfo) extends SerDe {
       }
     avroSerDe.fromBytes(messageBytes)
   }
+
+  override def cdcTransport: Option[String] = maybeCdcTransport
 }
 
 object SchemaRegistrySerDe {

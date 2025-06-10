@@ -19,12 +19,15 @@ class DummyInitializationContext
     SimpleUserCodeClassLoader.create(classOf[DummyInitializationContext].getClassLoader)
 }
 
-class InMemoryAvroDeserializationSchemaProvider(schema: Schema) extends SerDe {
+class InMemoryAvroDeserializationSchemaProvider(schema: Schema, maybeCdcTransport: Option[String] = None)
+    extends SerDe {
   val avroSerDe = new AvroSerDe(schema)
   override def schema: StructType = avroSerDe.schema
   override def fromBytes(message: Array[Byte]): Mutation = {
     avroSerDe.fromBytes(message)
   }
+
+  override def cdcTransport: Option[String] = maybeCdcTransport
 }
 
 object AvroObjectCreator {

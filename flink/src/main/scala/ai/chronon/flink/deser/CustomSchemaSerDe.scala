@@ -24,7 +24,7 @@ object CustomSchemaSerDe {
 
 /** Mock custom schema provider that vends out a custom hardcoded event schema
   */
-class MockCustomSchemaProvider(topicInfo: TopicInfo) extends SerDe {
+class MockCustomSchemaProvider(topicInfo: TopicInfo, maybeCdcTransport: Option[String] = None) extends SerDe {
   private val schemaName = topicInfo.params.getOrElse(CustomSchemaSerDe.SchemaName, "item_event")
   require(schemaName == "item_event", s"Schema name must be 'item_event', but got $schemaName")
 
@@ -38,4 +38,6 @@ class MockCustomSchemaProvider(topicInfo: TopicInfo) extends SerDe {
   override def fromBytes(messageBytes: Array[Byte]): Mutation = {
     avroSerDe.fromBytes(messageBytes)
   }
+
+  override def cdcTransport: Option[String] = maybeCdcTransport
 }

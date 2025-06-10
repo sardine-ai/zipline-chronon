@@ -8,7 +8,7 @@ import org.apache.avro.specific.SpecificDatumReader
 
 import java.io.{ByteArrayInputStream, InputStream}
 
-class AvroSerDe(avroSchema: Schema) extends SerDe {
+class AvroSerDe(avroSchema: Schema, maybeCdcTransport: Option[String] = None) extends SerDe {
 
   lazy val chrononSchema = AvroConversions.toChrononSchema(avroSchema).asInstanceOf[StructType]
 
@@ -24,15 +24,37 @@ class AvroSerDe(avroSchema: Schema) extends SerDe {
   override def fromBytes(bytes: Array[Byte]): Mutation = {
     val avroRecord = byteArrayToAvro(bytes, avroSchema)
 
-    val row: Array[Any] = avroToRowConverter(avroRecord)
+    cdcTransport match {
+      case Some("debezium") => {
+        // Extract Debezium fields
+        val payload = avroRecord.get(Constants.DebeziumPayloadField).asInstanceOf[GenericRecord]
+        val operation = payload.get(Constants.DebeziumOpField).toString
 
-    val reversalIndex = schema.indexWhere(_.name == Constants.ReversalColumn)
-    if (reversalIndex >= 0 && row(reversalIndex).asInstanceOf[Boolean]) {
-      Mutation(schema, row, null)
-    } else {
-      Mutation(schema, null, row)
+        val before = payload.get(Constants.DebeziumBeforeField).asInstanceOf[GenericRecord]
+        val beforeRow: Array[Any] = avroToRowConverter(before)
+
+        val after = payload.get(Constants.DebeziumAfterField).asInstanceOf[GenericRecord]
+        val afterRow: Array[Any] = avroToRowConverter(after)
+
+        operation match {
+          case "c" => Mutation(chrononSchema, null, afterRow) // Create
+          case "u" => Mutation(chrononSchema, beforeRow, afterRow) // Update
+          case "d" => Mutation(chrononSchema, beforeRow, null) // Delete
+          case _   => throw new IllegalArgumentException(s"Unsupported Debezium operation: $operation")
+        }
+      }
+      case None =>
+        val row: Array[Any] = avroToRowConverter(avroRecord)
+        val reversalIndex = schema.indexWhere(_.name == Constants.ReversalColumn)
+        if (reversalIndex >= 0 && row(reversalIndex).asInstanceOf[Boolean]) {
+          Mutation(schema, row, null)
+        } else {
+          Mutation(schema, null, row)
+        }
     }
   }
 
   override def schema: StructType = chrononSchema
+
+  override def cdcTransport: Option[String] = maybeCdcTransport
 }

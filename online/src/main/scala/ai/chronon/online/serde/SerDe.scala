@@ -15,6 +15,7 @@ abstract class SerDe extends Serializable {
     // not implemented
     throw new UnsupportedOperationException("toBytes not implemented")
   }
+  def cdcTransport: Option[String]
 }
 
 /** ==== MUTATION vs. EVENT ====
