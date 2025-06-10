@@ -17,7 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
+import ai.chronon.api.{Accuracy, ConfValidator, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
@@ -42,10 +42,10 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                         skipFirstHole: Boolean,
                         showDf: Boolean = false,
                         selectedJoinParts: Option[Seq[String]] = None) {
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tu = tableUtils
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
-  assert(Option(joinConfCloned.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinOffline, joinConfCloned)
   val outputTable: String = joinConfCloned.metaData.outputTable
 
@@ -60,6 +60,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
   // Combine tableProperties set on conf with encoded Join
   protected val tableProps: Map[String, String] =
     confTableProps ++ Map(Constants.SemanticHashKey -> gson.toJson(joinConfCloned.semanticHash.asJava))
+
+  ConfValidator.validate("joins", joinConfCloned)
 
   def joinWithLeft(leftDf: DataFrame, rightDf: DataFrame, joinPart: JoinPart): DataFrame = {
     val partLeftKeys = joinPart.rightToLeft.values.toArray
@@ -233,14 +235,6 @@ abstract class JoinBase(val joinConfCloned: api.Join,
   def computeJoinOpt(stepDays: Option[Int] = None,
                      overrideStartPartition: Option[String] = None,
                      useBootstrapForLeft: Boolean = false): Option[DataFrame] = {
-
-    assert(Option(joinConfCloned.metaData.team).nonEmpty,
-           s"join.metaData.team needs to be set for join ${joinConfCloned.metaData.name}")
-
-    joinConfCloned.joinParts.asScala.foreach { jp =>
-      assert(Option(jp.groupBy.metaData.team).nonEmpty,
-             s"groupBy.metaData.team needs to be set for joinPart ${jp.groupBy.metaData.name}")
-    }
 
     // Run validations before starting the job
     // val analyzer = new Analyzer(tableUtils, joinConfCloned, endPartition, endPartition, silenceMode = true)

@@ -44,6 +44,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import java.util
 import scala.collection.{mutable, Seq}
+import ai.chronon.api.ConfValidator
 
 class GroupBy(val aggregations: Seq[api.Aggregation],
               val keyColumns: Seq[String],
@@ -526,6 +527,7 @@ object GroupBy {
            finalize: Boolean = true,
            showDf: Boolean = false): GroupBy = {
     logger.info(s"\n----[Processing GroupBy: ${groupByConfOld.metaData.name}]----")
+    ConfValidator.validate("group_bys", groupByConfOld)
     val groupByConf = replaceJoinSource(groupByConfOld, queryRange, tableUtils, computeDependency, showDf)
     val inputDf = groupByConf.sources.toScala
       .map { source =>
@@ -773,8 +775,8 @@ object GroupBy {
       try {
         val stepRanges = stepDays.map(groupByUnfilledRange.steps).getOrElse(Seq(groupByUnfilledRange))
         logger.info(s"Group By ranges to compute: ${stepRanges.map {
-          _.toString()
-        }.pretty}")
+            _.toString()
+          }.pretty}")
         stepRanges.zipWithIndex.foreach { case (range, index) =>
           logger.info(s"Computing group by for range: $range [${index + 1}/${stepRanges.size}]")
           val groupByBackfill = from(groupByConf, range, tableUtils, computeDependency = true)
