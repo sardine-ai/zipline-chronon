@@ -9,6 +9,9 @@
 - can operate in multiple modes
   - the main modes we support are offline & online
   - the planner creates offline nodes and online nodes from a conf (with potential overlap)
+
+- shared compute
+  - nodes that repeat across multiple confs - repeated join parts in experiments of a join - should share compute and data
   
 - lineage based 
   - nodes are connected to each other - through 
@@ -54,26 +57,118 @@
   - if two active runs depends on the same upstream step - cancelling one of the steps should not kill the upstream job
   - but if only one active run depends on the step, it is okay to cancel it, and kill the underlying job
 
+- un-bounded-computation
+  - streaming jobs could be running forever, we still need to collect status intermittently and restart
+  
 
 ## Design Principles
 
 The scale here is going to be very low - given that it is operating on a small number of active jobs.
 So the orchestrator should be run as a single process on a single server accepting scheduling requests backed by a relational database.
 
-All the code described below should be in scala as case classes for tables (slick), requests and responses.
+This is the rough schema - we will convert this into SQL statements 
 
-At a high level we need to create a sync flow that pushes user local configs/queries to the remote. We work with git to ensure tracking:
-   1. Remote will handle list of incoming `UploadRequest(commit, branch, user, Map[conf_name, hash])`, and check this against the existing `contents` table with schema `(conf_name, hash, content, commit, branch, user, timestamp)`
-         1. Local cli should ensure that a sync is blocked when the local git status is dirty
-   2. Remote returns `statuses: List[conf_status:(conf, hash, diff)]` to local for only the newly added or updated confs by user
-      1. diff is None for newly added confs, but computed against "latest_main(conf_name)": existing-most-recently-updated-conf-on-main.
-   3. for non-main incoming branches - 
-      1. once the user confirms -  the local then sends up `List(conf, hash, content, commit, branch, user)` to be added as new rows into the table.
-   4. for main incoming branch
-      1. we will update 
+```scala
+// ------------ Conf repo -----------
+// There is a central conf repo that is version controlled - defining Chronon objects like joins, group_bys and staging_queries
+// Users create a branch and add new objects, modify or delete existing objects
+// We "sync" these confs to a database, without repeating existing confs, while tracking which confs are pointed to by which branch
 
-2. the concept of a "run" - of a conf with all its dependencies for a particular date.
-2. the run invokes the planner and creates nodes of un-planned confs.
-3. we then recursively find the dependencies of the terminal node of the conf.
-4. we split the unscheduled & missing
+
+// ----------- Conf Sync flow -------------
+
+// (name, hash) are PK (primary key)
+case class Conf(name: String, hash: String, contents: String)
+
+// (branch_name, conf_name) is PK & (conf_name, conf_hash) are FK (foreign key) into `Conf` table
+case class BranchToConf(branch_name: String, conf_name: String, conf_hash: String)
+
+// ---------------- Planner Flow -------------
+// Planner takes a conf and creates nodes from it, additionally planner also indicates if a particular node is terminal to a "mode"
+// planner will produce a set of nodes and additionally produce a map of terminal nodes per mode {mode -> node_name}
+// the persistence layer will then convert those into database entries
+
+// (conf_name, conf_hash) are FK into conf table, (node_name, node_hash) are fk into node table
+case class ConfToNode(conf_name: String, conf_hash: String, node_name: String, node_hash: String) // (conf_name, node_name) is pk and conf_name,   
+
+// (name, hash) are PK
+case class Node(name: String, hash: String, contents: String, output_table: Option[String], mode_if_terminal: Option[String], step_size: Option[Int])
+
+// (node_name, node_hash) is a FK into node table - derived from metaData.executionInfo.tableDependencies
+case class InputToNode(input_table: String, node_name: String, node_hash: String)
+
+// tracks existing partitions - tasks, on startup will double-check partitions of their inputs and outputs and send them to the orchestrator
+case class PartitionStatus(table_name: string, partition: String, status: String)
+
+// -------------- Runner flow [WorkflowManager + JobManager] ------------------
+// id is always auto incrementing and the PK. 
+// runner should support launching, canceling and status checking a workflow
+// if a nodeRun is only referred to by one workflow_run_id that is cancelled, it should be also cancelled.
+// status of a workflow and node should be running, failed, cancelled, additionally node can also have a "waiting", "pre-existing" and "upstream_failed" status 
+// while its upstream nodes are being computed.
+
+// the core execution loop will work with the JobManagerInterface 
+// - and status check active node runs - and on completion - we need to launch or mark-failed the downstream nodes
+// - and upon launching, we will prioritize the statuses from the partition status table, and fill missing 
+
+case class WorkflowRun(id: Long, conf_name: String, mode: String, start_partition: Option[String], end_partition: String, branch: String, user: String, status: Boolean, workflow_plan: String)
+
+// For status = "running" nodes, we should check their progress every x minutes - checking status can be left to a job interface (see below)
+case class NodeRun(id: Long, name: String, hash: String, start: String, end: String, status: Boolean,  job_details: Details)
+
+case class WorkflowToNodeRun(workflow_run_id: Long, node_run_id: Long)
+
+// ------- failover flow -----------
+// upon restart of the service we need to continue 
+
+// ---------------- Interfaces & Functions to use --------------
+case class Details(cluster: String, id: String, tracking_url: String)
+
+
+trait JobManagerInterface {
+  def run(node: Node, start: String, end: String): Details
+  def check(nodeRun: NodeRun): Status
+  def cancel(nodeRun: NodeRun): Status
+}
+
+// normal scala class - this is what the cli will send up
+case class WorkflowRequest(confName: String, mode: String, branch: String, user: String, start: String, end: String)
+
+// normal scala class 
+case class NodeRange(node_name: String, node_hash: String, start_partition: String, end_partition: String, dependencyNodes: Seq[String])
+
+// plan in the workflow_run table above is simply a json version of this
+case class WorkflowPlan(nameToRange: Map[String, NodeRange], workflowRequest: WorkflowRequest, terminalNodeName: String)
+
+trait WorkflowManager {
+  // uses terminal node of the mode for the conf 
+  def createRun(workflowRequest: WorkflowRequest): WorkflowRun = {
+    // step 1. find the terminal node for the mode
+    // step 2. recursively query the upstream nodes of this
+    // step 3. use table dependencies to compute which start and end dates to set: NodeRange, now we have the WorkflowPlan
+    // step 4: 
+    //    a. insert a new row into the table and return the WorkflowRun with the id
+    //    b. return WorkflowRun
+  }
+  
+  def run(workflowRun: WorkflowRun): WorkflowStatus = {
+    // submit each of the nodeRanges to NodeManager and query NodeStatus for the range from the nodeManager
+    // node manager will compute dependency-steps of each of the step and wait for them to finish
+    // NodeManager also has a cancel method to cancel steps that are only needed by a single workflowId
+  }
+  
+  def cancel(workflowRun: WorkflowRun): WorkflowStatus = {
+    
+  }
+  
+}
+
+trait NodeManager {
+  def calculateSteps(workflowId: Long, node: String, hash: String, start: String, end: String, branch: String): Seq[Step]
+  
+  def runStepsInParallel() = ???
+  
+}
+// we will implement this interface for Google Dataproc and AWS EMR for spark and flink jobs
+```
 
