@@ -223,7 +223,7 @@ object ColumnAggregator {
                 columnIndices: ColumnIndices,
                 bucketIndex: Option[Int]): ColumnAggregator = {
     baseInputType match {
-      case DateType | TimestampType =>
+      case DateType | TimestampType | TimestampNZType =>
         throw new IllegalArgumentException(
           s"Error while aggregating over '${aggregationPart.inputColumn}'. " +
             "Date type and Timestamp time should not be aggregated over (They don't serialize well in avro either). " +

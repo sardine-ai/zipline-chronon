@@ -40,6 +40,12 @@ object AvroConversions {
         // because we're setting spark.sql.datetime.java8API.enabled to True https://github.com/zipline-ai/chronon/blob/main/spark/src/main/scala/ai/chronon/spark/submission/SparkSessionBuilder.scala#L132,
         // we'll convert to java.time.Instant
         value.asInstanceOf[java.time.Instant].asInstanceOf[Object]
+      case Schema.Type.LONG
+          if Option(schema.getLogicalType)
+            .map(_.getName)
+            .getOrElse("") == LogicalTypes.localTimestampMicros().getName =>
+        // https://github.com/apache/spark/blob/45546005cfb1787e471b7504a7b5cbe2428abc8e/sql/api/src/main/scala/org/apache/spark/sql/catalyst/encoders/RowEncoder.scala#L51
+        value.asInstanceOf[java.time.LocalDateTime].asInstanceOf[Object]
       case Schema.Type.LONG => value.asInstanceOf[Long].asInstanceOf[Object]
       case Schema.Type.INT
           if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.date().getName =>
@@ -68,6 +74,11 @@ object AvroConversions {
       case Schema.Type.LONG
           if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes.timestampMillis().getName =>
         TimestampType
+      case Schema.Type.LONG
+          if Option(schema.getLogicalType).map(_.getName).getOrElse("") == LogicalTypes
+            .localTimestampMicros()
+            .getName =>
+        TimestampNZType
       case Schema.Type.LONG    => LongType
       case Schema.Type.FLOAT   => FloatType
       case Schema.Type.DOUBLE  => DoubleType
@@ -125,6 +136,8 @@ object AvroConversions {
       case BinaryType    => Schema.create(Schema.Type.BYTES)
       case BooleanType   => Schema.create(Schema.Type.BOOLEAN)
       case TimestampType => LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG))
+      case TimestampNZType =>
+        LogicalTypes.localTimestampMicros().addToSchema(Schema.create(Schema.Type.LONG))
       case DateType =>
         LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT))
       case _ =>

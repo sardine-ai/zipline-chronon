@@ -38,6 +38,7 @@ object DataType {
       case MapType(keyType, valueType) => s"map_${toString(keyType)}_${toString(valueType)}"
       case DateType                    => "date"
       case TimestampType               => "timestamp"
+      case TimestampNZType             => "timestamp_ntz"
       case StructType(name, _)         => s"struct_$name"
       case UnknownType(_)              => "unknown_type"
     }
@@ -174,6 +175,9 @@ case object DateType extends DataType
 // java.sql.Timestamp and java.sql.Date are used for the same purpose.
 // ```
 case object TimestampType extends DataType
+
+// spark TimestampNTZType -> java.time.LocalDateTime
+case object TimestampNZType extends DataType
 
 // maps to Array[Any]
 case class StructType(name: String, fields: Array[StructField])

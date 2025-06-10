@@ -72,6 +72,7 @@ object SparkConversions {
       case BooleanType               => api.BooleanType
       case DateType                  => api.DateType
       case TimestampType             => api.TimestampType
+      case TimestampNTZType          => api.TimestampNZType
       case ArrayType(elementType, _) => api.ListType(toChrononType(s"${typeName}Element", elementType))
       case MapType(keyType, valueType, _) =>
         api.MapType(toChrononType(s"${typeName}Key", keyType), toChrononType(s"${typeName}Value", valueType))
