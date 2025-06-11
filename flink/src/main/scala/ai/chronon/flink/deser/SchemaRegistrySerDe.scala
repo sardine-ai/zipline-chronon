@@ -31,6 +31,9 @@ class SchemaRegistrySerDe(topicInfo: TopicInfo, maybeCdcTransport: Option[String
   private val schemaRegistryWireFormat: Boolean =
     topicInfo.params.getOrElse(SchemaRegistryWireFormat, "true").toBoolean
 
+  private val maybeSerdeKey: Option[String] =
+    topicInfo.params.get(SerdeKey)
+
   protected[flink] def buildSchemaRegistryClient(schemeString: String,
                                                  registryHost: String,
                                                  maybePortString: Option[String]): SchemaRegistryClient = {
@@ -84,6 +87,10 @@ class SchemaRegistrySerDe(topicInfo: TopicInfo, maybeCdcTransport: Option[String
       } else {
         message
       }
+    maybeSerdeKey match {
+      case Some("debezium") => ??
+
+    }
     avroSerDe.fromBytes(messageBytes)
   }
 
@@ -96,4 +103,5 @@ object SchemaRegistrySerDe {
   val RegistrySchemeKey = "registry_scheme"
   val RegistrySubjectKey = "subject"
   val SchemaRegistryWireFormat = "schema_registry_wire_format"
+  val SerdeKey = "serde" // used to identify this SerDe in the topic params
 }
