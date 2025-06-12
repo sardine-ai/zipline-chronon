@@ -1,0 +1,5 @@
+request_id,listing_id,attribution,ts,ds
+request_1,listing_1,[view|click],2025-05-03 11:00:01,2025-05-03
+request_2,listing_2,[view|click],2025-05-09 10:10:10,2025-05-09
+request_2,listing_2,[view|click|cart],2025-05-09 15:10:10,2025-05-09
+request_3,listing_3,[view],2025-05-10 10:10:10,2025-05-10
