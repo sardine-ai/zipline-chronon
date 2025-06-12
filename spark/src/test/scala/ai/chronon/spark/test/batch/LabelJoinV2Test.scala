@@ -784,13 +784,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
     val labelComputedMay4 = labelJoinMay4.compute()
     labelComputedMay4.show(truncate = false)
     val expectedMay4Df = Seq(
-      ("request_1",
-       "listing_1",
-       "1746266400000",
-       null,
-       "[view|click]",
-       // we expect only tight for request_1 + listing_1 to be filled. loose will be filled in the future May 10 run
-       "2025-05-03")
+      ("request_1", "listing_1", "1746266400000", null, "[view|click]", "2025-05-03")
+      // we expect only tight for request_1 + listing_1 to be filled. loose will be filled in the future May 10 run
     ).toDF(
       "request_id",
       "listing_id",
