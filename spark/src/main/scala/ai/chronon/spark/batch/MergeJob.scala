@@ -3,8 +3,18 @@ package ai.chronon.spark.batch
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions.{DateRangeOps, GroupByOps, JoinPartOps, MetadataOps, SourceOps}
 import ai.chronon.api.planner.RelevantLeftForJoinPart
-import ai.chronon.api.{Accuracy, Constants, DataModel, DateRange, JoinPart, PartitionRange, PartitionSpec, QueryUtils}
-import ai.chronon.orchestration.JoinMergeNode
+import ai.chronon.api.{
+  Accuracy,
+  Constants,
+  DataModel,
+  DateRange,
+  JoinPart,
+  MetaData,
+  PartitionRange,
+  PartitionSpec,
+  QueryUtils
+}
+import ai.chronon.planner.JoinMergeNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.coalescedJoin
 import ai.chronon.spark.JoinUtils
@@ -23,7 +33,8 @@ joinPartsToTables is a map of JoinPart to the table name of the output of that j
 due to bootstrap can be omitted from this map.
  */
 
-class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(implicit tableUtils: TableUtils) {
+class MergeJob(node: JoinMergeNode, metaData: MetaData, range: DateRange, joinParts: Seq[JoinPart])(implicit
+    tableUtils: TableUtils) {
 
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
@@ -36,7 +47,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
     JoinUtils.computeFullLeftSourceTableName(join)
   }
   // Use the node's Join's metadata for output table
-  private val outputTable = node.metaData.outputTable
+  private val outputTable = metaData.outputTable
   private val dateRange = range.toPartitionRange
 
   def run(): Unit = {
@@ -61,7 +72,7 @@ class MergeJob(node: JoinMergeNode, range: DateRange, joinParts: Seq[JoinPart])(
             Failure(e)
         }
 
-      joinedDfTry.get.save(outputTable, node.metaData.tableProps, autoExpand = true)
+      joinedDfTry.get.save(outputTable, metaData.tableProps, autoExpand = true)
     }
   }
 

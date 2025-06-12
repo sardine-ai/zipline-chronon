@@ -24,7 +24,7 @@ import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.api.thrift.TBase
 import ai.chronon.online.{Api, MetadataDirWalker, MetadataEndPoint, TopicChecker}
 import ai.chronon.online.fetcher.{ConfPathOrName, FetchContext, FetcherMain, MetadataStore}
-import ai.chronon.orchestration.{JoinMergeNode, JoinPartNode}
+import ai.chronon.planner.{JoinMergeNode, JoinPartNode, SourceWithFilterNode}
 import ai.chronon.spark.batch._
 import ai.chronon.spark.catalog.{Format, TableUtils}
 import ai.chronon.spark.join.UnionJoin
@@ -854,6 +854,7 @@ object Driver {
     }
 
     def run(args: Args): Unit = {
+      import ai.chronon.planner.NodeContent
       implicit val tableUtils: TableUtils = args.buildTableUtils()
       val join = args.joinConf
 
@@ -862,7 +863,7 @@ object Driver {
       val outputTable = JoinUtils.computeLeftSourceTableName(join)
 
       // Create a SourceWithFilterNode with the extracted information
-      val sourceWithFilterNode = new ai.chronon.orchestration.SourceWithFilterNode()
+      val sourceWithFilterNode = new SourceWithFilterNode()
       sourceWithFilterNode.setSource(source)
       sourceWithFilterNode.setExcludeKeys(join.skewKeys)
 
@@ -881,8 +882,6 @@ object Driver {
         .setOutputNamespace(sourceNamespace)
         .setTableProperties(join.metaData.tableProperties)
 
-      sourceWithFilterNode.setMetaData(sourceMetaData)
-
       // Calculate the date range
       val endDate = args.endDate()
       val startDate: String = args.startPartitionOverride.getOrElse(args.endDate())
@@ -891,7 +890,7 @@ object Driver {
         .setEndDate(endDate)
 
       // Run the SourceJob
-      val sourceJob = new SourceJob(sourceWithFilterNode, dateRange)(tableUtils)
+      val sourceJob = new SourceJob(sourceWithFilterNode, sourceMetaData, dateRange)(tableUtils)
       sourceJob.run()
 
       logger.info(s"SourceJob completed. Output table: ${outputTable}")
@@ -945,8 +944,6 @@ object Driver {
         .setName(joinPartTableName)
         .setOutputNamespace(outputNamespace)
 
-      joinPartNode.setMetaData(metadata)
-
       // Calculate the date range
       val endDate = args.endDate()
       val startDate = args.startPartitionOverride.getOrElse(args.endDate())
@@ -955,13 +952,13 @@ object Driver {
         .setEndDate(endDate)
 
       // Run the JoinPartJob
-      val joinPartJob = new JoinPartJob(joinPartNode, dateRange, showDf = false)(tableUtils)
+      val joinPartJob = new JoinPartJob(joinPartNode, metadata, dateRange, showDf = false)(tableUtils)
       joinPartJob.run()
 
-      logger.info(s"JoinPartJob completed. Output table: ${joinPartNode.metaData.outputTable}")
+      logger.info(s"JoinPartJob completed. Output table: ${metadata.outputTable}")
 
       if (args.shouldExport()) {
-        args.exportTableToLocal(joinPartNode.metaData.outputTable, tableUtils)
+        args.exportTableToLocal(metadata.outputTable, tableUtils)
       }
     }
   }
@@ -998,9 +995,8 @@ object Driver {
 
       val mergeNode = new JoinMergeNode()
         .setJoin(joinConf)
-        .setMetaData(mergeMetaData)
 
-      val mergeJob = new MergeJob(mergeNode, dateRange, allJoinParts)(tableUtils)
+      val mergeJob = new MergeJob(mergeNode, mergeMetaData, dateRange, allJoinParts)(tableUtils)
 
       mergeJob.run()
 

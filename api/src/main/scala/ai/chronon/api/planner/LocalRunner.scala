@@ -2,18 +2,13 @@ package ai.chronon.api.planner
 
 import ai.chronon.api.thrift.TBase
 import ai.chronon.api.{Constants, MetaData, ThriftJsonCodec}
+import ai.chronon.planner.{Node, NodeContent, SourceWithFilterNode}
 
 import java.io.File
 import scala.reflect.ClassTag
 import scala.util.Try
 
-trait PlanNode {
-  def metaData: MetaData
-  def contents: Any
-  def semanticHash: String
-}
-
-object PlanNode {
+object LocalRunner {
 
   private def listFiles(dir: String = "."): Seq[String] = {
     val baseDir = new File(dir)
@@ -42,8 +37,5 @@ object PlanNode {
     .filterNot(isIgnorableFile)
     .flatMap(tryParsingConf[T])
     .toSeq
-
-  def planConfs[T](confs: Seq[T], planner: Planner[T]): Seq[PlanNode] = ???
-  def generatePlans(compiledFolder: String): Seq[PlanNode] = ???
 
 }

@@ -3,18 +3,33 @@ package ai.chronon.api.planner
 import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, SourceOps, StringOps}
 import ai.chronon.api.ScalaJavaConversions.{IterableOps, IteratorOps}
 import ai.chronon.api._
-import ai.chronon.api.planner.JoinOfflinePlanner._
-import ai.chronon.api.planner.GroupByOfflinePlanner._
-import ai.chronon.orchestration._
+import ai.chronon.planner._
 
-import scala.collection.mutable
-import scala.language.{implicitConversions, reflectiveCalls}
 import scala.collection.Seq
+import scala.language.{implicitConversions, reflectiveCalls}
 
-class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
+class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
     extends Planner[Join](join)(outputPartitionSpec) {
 
-  val leftSourceNode: SourceWithFilterNode = {
+  // will mutate the join in place - use on deepCopy-ied objects only
+  private def unsetNestedMetadata(join: Join): Unit = {
+    join.unsetMetaData()
+    Option(join.joinParts).foreach(_.iterator().toScala.foreach(_.groupBy.unsetMetaData()))
+    Option(join.labelParts).foreach(_.labels.iterator().toScala.foreach(_.groupBy.unsetMetaData()))
+    join.unsetOnlineExternalParts()
+  }
+
+  private def joinWithoutExecutionInfo: Join = {
+    val copied = join.deepCopy()
+    copied.metaData.unsetExecutionInfo()
+    Option(copied.joinParts).foreach(_.iterator().toScala.foreach(_.groupBy.metaData.unsetExecutionInfo()))
+    Option(copied.labelParts).foreach(_.labels.iterator().toScala.foreach(_.groupBy.metaData.unsetExecutionInfo()))
+    copied.unsetOnlineExternalParts()
+    copied
+  }
+
+  val leftSourceNode: Node = {
+
     val left = join.left
     val result = new SourceWithFilterNode()
       .setSource(left)
@@ -28,18 +43,18 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
     // at this point metaData.outputTable = join_namespace.source__<source_namespace>__<table>__<hash>
     val metaData = MetaDataUtils.layer(
       join.metaData,
-      JoinNodeType.LEFT_SOURCE.toString.toLowerCase(),
+      "left_source",
       outputTableName,
       TableDependencies.fromSource(join.left).toSeq,
       stepDays = Some(1)
     )
 
-    result.setMetaData(metaData)
+    toNode(metaData, _.setSourceWithFilter(result), result)
   }
 
-  val bootstrapNodeOpt: Option[JoinBootstrapNode] = Option(join.bootstrapParts).map { bootstrapParts =>
+  private val bootstrapNodeOpt: Option[Node] = Option(join.bootstrapParts).map { bootstrapParts =>
     val result = new JoinBootstrapNode()
-      .setJoin(join)
+      .setJoin(joinWithoutExecutionInfo)
 
     // bootstrap tables are unfortunately unique to the join - can't be re-used if a new join part is added
     val bootstrapNodeName = join.metaData.name + "/boostrap"
@@ -50,18 +65,31 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
 
     val metaData = MetaDataUtils.layer(
       join.metaData,
-      JoinNodeType.BOOTSTRAP.toString.toLowerCase(),
+      "bootstrap",
       bootstrapNodeName,
       tableDeps,
       stepDays = Some(1)
     )
 
-    result.setMetaData(metaData)
+    val content = new NodeContent()
+    content.setJoinBootstrap(result)
+
+    val copy = result.deepCopy()
+    unsetNestedMetadata(copy.join)
+
+    toNode(metaData, _.setJoinBootstrap(result), copy)
   }
 
-  private def buildJoinPartNode(joinPart: JoinPart): JoinPartNode = {
+  private def copyAndEraseExecutionInfo(joinPart: JoinPart): JoinPart = {
+    val copy = joinPart.deepCopy()
+    copy.groupBy.metaData.unsetExecutionInfo()
+    copy
+  }
+
+  private def buildJoinPartNode(joinPart: JoinPart): Node = {
+
     val result = new JoinPartNode()
-      .setJoinPart(joinPart)
+      .setJoinPart(copyAndEraseExecutionInfo(joinPart))
       .setLeftDataModel(join.left.dataModel)
       .setLeftSourceTable(leftSourceNode.metaData.outputTable)
 
@@ -83,19 +111,22 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
     val metaData = MetaDataUtils
       .layer(
         joinPart.groupBy.metaData,
-        JoinNodeType.RIGHT_PART.toString.toLowerCase(),
+        "right_part",
         partTable,
         deps,
         stepDays = Some(stepDays)
       )
       .setOutputNamespace(join.metaData.outputNamespace)
 
-    result.setMetaData(metaData)
+    val copy = result.deepCopy()
+    copy.joinPart.groupBy.unsetMetaData()
+
+    toNode(metaData, _.setJoinPart(result), copy)
   }
 
-  private val joinPartNodes: Seq[JoinPartNode] = join.joinParts.toScala.map { buildJoinPartNode }.toSeq
+  private val joinPartNodes: Seq[Node] = join.joinParts.toScala.map { buildJoinPartNode }.toSeq
 
-  val mergeNode: JoinMergeNode = {
+  val mergeNode: Node = {
     val result = new JoinMergeNode()
       .setJoin(join)
 
@@ -118,16 +149,21 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
     val metaData = MetaDataUtils
       .layer(
         join.metaData,
-        JoinNodeType.MERGE.toString.toLowerCase(),
+        "merge",
         mergeNodeName,
         deps,
         stepDays = Some(1)
       )
 
-    result.setMetaData(metaData)
+    val copy = result.deepCopy()
+    unsetNestedMetadata(copy.join)
+    copy.join.unsetDerivations()
+    copy.join.unsetLabelParts()
+
+    toNode(metaData, _.setJoinMerge(result), copy)
   }
 
-  private val derivationNodeOpt: Option[JoinDerivationNode] = Option(join.derivations).map { _ =>
+  private val derivationNodeOpt: Option[Node] = Option(join.derivations).map { _ =>
     val result = new JoinDerivationNode()
       .setJoin(join)
 
@@ -136,13 +172,17 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
     val metaData = MetaDataUtils
       .layer(
         join.metaData,
-        JoinNodeType.DERIVE.toString.toLowerCase(),
+        "derive",
         derivationNodeName,
         Seq(TableDependencies.fromTable(mergeNode.metaData.outputTable)),
         stepDays = Some(1)
       )
 
-    result.setMetaData(metaData)
+    val copy = result.deepCopy()
+    unsetNestedMetadata(copy.join)
+    copy.join.unsetLabelParts()
+
+    toNode(metaData, _.setJoinDerivation(result), copy)
   }
 
   // these need us to additionally (groupBy backfill) generate the snapshot tables
@@ -156,7 +196,7 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
     )
     .getOrElse(Array.empty)
 
-  private val labelJoinNodeOpt: Option[LabelJoinNode] = Option(join.labelParts).map { labelParts =>
+  private val labelJoinNodeOpt: Option[Node] = Option(join.labelParts).map { labelParts =>
     val result = new LabelJoinNode()
       .setJoin(join)
 
@@ -166,123 +206,47 @@ class JoinOfflinePlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec
       .map(_.metaData.outputTable)
       .getOrElse(mergeNode.metaData.outputTable)
 
-    val labelPartDeps = TableDependencies.fromJoin(join, labelParts) :+ TableDependencies.fromTable(inputTable)
+    val labelPartDeps = TableDependencies.fromJoin(join) :+ TableDependencies.fromTable(inputTable)
 
     val metaData = MetaDataUtils
       .layer(
         join.metaData,
-        JoinNodeType.LABEL_JOIN.toString.toLowerCase(),
+        "label_join",
         labelNodeName,
         labelPartDeps,
         stepDays = Some(1)
       )
 
-    result.setMetaData(metaData)
+    val copy = result.deepCopy()
+    unsetNestedMetadata(copy.join)
+
+    toNode(metaData, _.setLabelJoin(result), copy)
   }
 
-  override def offlineNodes: Seq[PlanNode] = {
-    val result: mutable.ArrayBuffer[PlanNode] = mutable.ArrayBuffer.empty[PlanNode]
+  def offlineNodes: Seq[Node] = {
 
-    result.append(leftSourceNode)
-    bootstrapNodeOpt.foreach(bn => result.append(bn))
-    joinPartNodes.foreach(jpn => result.append(jpn))
-
-    result.append(mergeNode)
-    derivationNodeOpt.foreach(dn => result.append(dn))
-    snapshotLabelParts.foreach(lp => result.append(lp.groupBy))
-    labelJoinNodeOpt.foreach(ljn => result.append(ljn))
-
-    result
+    Seq(leftSourceNode) ++
+      bootstrapNodeOpt ++
+      joinPartNodes ++
+      Seq(mergeNode) ++
+      derivationNodeOpt ++
+      snapshotLabelParts.map(_.groupBy).map { gb =>
+        new GroupByPlanner(gb).backfillNode
+      } ++
+      labelJoinNodeOpt
   }
 
-  override def onlineNodes: Seq[PlanNode] = ???
+  override def buildPlan: ConfPlan = ???
 }
 
-object JoinOfflinePlanner {
+object JoinPlanner {
 
+  // will mutate the join in place - use on deepCopy-ied objects only
   private def unsetNestedMetadata(join: Join): Unit = {
     join.unsetMetaData()
     Option(join.joinParts).foreach(_.iterator().toScala.foreach(_.groupBy.unsetMetaData()))
     Option(join.labelParts).foreach(_.labels.iterator().toScala.foreach(_.groupBy.unsetMetaData()))
     join.unsetOnlineExternalParts()
-  }
-
-  implicit class LabelJoinNodeIsPlanNode(node: LabelJoinNode) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      result.unsetMetaData()
-      unsetNestedMetadata(result.join)
-      result
-    })
-  }
-
-  implicit class JoinDerivationNodeIsPlanNode(node: JoinDerivationNode) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      result.unsetMetaData()
-      unsetNestedMetadata(result.join)
-      result.join.unsetLabelParts()
-      result
-    })
-  }
-
-  implicit class JoinMergeNodeIsPlanNode(node: JoinMergeNode) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      result.unsetMetaData()
-      unsetNestedMetadata(result.join)
-      result.join.unsetDerivations()
-      result.join.unsetLabelParts()
-      result
-    })
-  }
-
-  implicit class JoinPartNodeIsPlanNode(node: JoinPartNode) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      result.unsetMetaData()
-      result.joinPart.groupBy.unsetMetaData()
-      result
-    })
-  }
-
-  implicit class JoinBootstrapNodeIsPlanNode(node: JoinBootstrapNode) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      result.unsetMetaData()
-      unsetNestedMetadata(result.join)
-      result
-    })
-  }
-
-  implicit class SourceWithFilterNodeIsPlanNode(node: SourceWithFilterNode) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      result.unsetMetaData()
-      result
-    })
-  }
-
-  implicit class JoinIsPlanNode(node: Join) extends PlanNode {
-    override def metaData: MetaData = node.metaData
-    override def contents: Any = node
-    override def semanticHash: String = ThriftJsonCodec.hexDigest({
-      val result = node.deepCopy()
-      unsetNestedMetadata(node)
-      result
-    })
   }
 
 }

@@ -20,14 +20,14 @@ import ai.chronon.api
 import ai.chronon.api.{Accuracy, Constants, DateRange, JoinPart, PartitionRange, PartitionSpec}
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.online.metrics.Metrics
-import ai.chronon.orchestration.JoinBootstrapNode
+import ai.chronon.planner.JoinBootstrapNode
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, leftDf, shouldRecomputeLeft, tablesToRecompute}
 import ai.chronon.spark.batch._
 import com.google.gson.Gson
+import ai.chronon.api.MetaData
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.slf4j.{Logger, LoggerFactory}
@@ -42,19 +42,22 @@ abstract class JoinBase(val joinConfCloned: api.Join,
                         skipFirstHole: Boolean,
                         showDf: Boolean = false,
                         selectedJoinParts: Option[Seq[String]] = None) {
+
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val tu = tableUtils
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
-  assert(Option(joinConfCloned.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
+
+  val joinMetaData: MetaData = joinConfCloned.metaData
+  assert(Option(joinMetaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
   val metrics: Metrics.Context = Metrics.Context(Metrics.Environment.JoinOffline, joinConfCloned)
-  val outputTable: String = joinConfCloned.metaData.outputTable
+  val outputTable: String = joinMetaData.outputTable
 
   // Used for parallelized JoinPart execution
-  val bootstrapTable: String = joinConfCloned.metaData.bootstrapTable
+  val bootstrapTable: String = joinMetaData.bootstrapTable
 
   // Get table properties from config
   protected val confTableProps: Map[String, String] =
-    Option(joinConfCloned.metaData.tableProps).getOrElse(Map.empty[String, String])
+    Option(joinMetaData.tableProps).getOrElse(Map.empty[String, String])
 
   private val gson = new Gson()
   // Combine tableProperties set on conf with encoded Join
@@ -180,9 +183,8 @@ abstract class JoinBase(val joinConfCloned: api.Join,
           bootstrapMetadata.setName(bootstrapTable)
           val bootstrapNode = new JoinBootstrapNode()
             .setJoin(joinConfCloned)
-            .setMetaData(bootstrapMetadata)
 
-          val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapJobDateRange)
+          val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapMetadata, bootstrapJobDateRange)
           val leftSchema = leftDf.map(df => df.schema)
           val bootstrapInfo = BootstrapInfo.from(joinConfCloned, rangeToFill, tableUtils, leftSchema)
           bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
@@ -327,7 +329,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     val leftSchema = leftDf(joinConfCloned, unfilledRanges.head, tableUtils, limit = Some(1)).map(df => df.schema)
     // build bootstrap info once for the entire job
-    val bootstrapInfo = BootstrapInfo.from(joinConfCloned, rangeToFill, tableUtils, leftSchema)
+    val bootstrapInfo = BootstrapInfo.from(joinConfCloned.deepCopy(), rangeToFill, tableUtils, leftSchema)
 
     val wholeRange = PartitionRange(unfilledRanges.minBy(_.start).start, unfilledRanges.maxBy(_.end).end)
 

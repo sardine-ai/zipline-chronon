@@ -6,9 +6,21 @@ import ai.chronon.api.{Accuracy, DataModel, PartitionSpec, TableDependency, Tabl
 
 object TableDependencies {
 
-  def fromJoin(join: api.Join, labelParts: api.LabelParts)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+  def fromStagingQuery(stagingQuery: api.StagingQuery)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+    stagingQuery.tableDependencies
+      .iterator()
+      .toScala
+      .map { tableDep =>
+        new TableDependency()
+          .setTableInfo(tableDep)
+      }
+      .toSeq
+  }
 
-    val joinParts = labelParts.labels.iterator().toScala.toArray.distinct
+  def fromJoin(join: api.Join)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+    val labelParts = Option(join.labelParts)
+
+    val joinParts = labelParts.map(_.labels.iterator().toScala.toArray.distinct).getOrElse(Array.empty)
     joinParts.flatMap { jp =>
       require(
         jp.groupBy.dataModel == DataModel.EVENTS,

@@ -90,6 +90,8 @@ struct StagingQuery {
     * By default, spark is the compute engine. You can specify an override (eg. bigquery, etc.)
     **/
     6: optional EngineType engineType
+
+    7: optional list<common.TableInfo> tableDependencies
 }
 
 struct EventSource {

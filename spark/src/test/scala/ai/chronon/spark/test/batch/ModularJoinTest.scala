@@ -2,23 +2,17 @@ package ai.chronon.spark.test.batch
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
+import ai.chronon.api._
 import ai.chronon.api.Extensions._
-
-import ai.chronon.spark.batch._
-import ai.chronon.api.{planner, _}
-import ai.chronon.orchestration.JoinBootstrapNode
-import ai.chronon.orchestration.JoinDerivationNode
-import ai.chronon.orchestration.JoinPartNode
-import ai.chronon.orchestration.JoinMergeNode
-import ai.chronon.orchestration.SourceWithFilterNode
-import ai.chronon.spark.Extensions._
+import ai.chronon.planner.{JoinBootstrapNode, JoinDerivationNode, JoinMergeNode, JoinPartNode, SourceWithFilterNode}
 import ai.chronon.spark._
+import ai.chronon.spark.batch._
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
-import ai.chronon.spark.catalog.TableUtils
 
 class ModularJoinTest extends AnyFlatSpec {
 
@@ -214,14 +208,11 @@ class ModularJoinTest extends AnyFlatSpec {
       .setName(sourceName)
       .setOutputNamespace(sourceNamespace)
 
-    // Set metadata on source node
-    leftSourceWithFilter.setMetaData(sourceMetaData)
-
     val sourceJobRange = new DateRange()
       .setStartDate(start)
       .setEndDate(today)
 
-    val sourceRunner = new SourceJob(leftSourceWithFilter, sourceJobRange)
+    val sourceRunner = new SourceJob(leftSourceWithFilter, sourceMetaData, sourceJobRange)
     sourceRunner.run()
     tableUtils.sql(s"SELECT * FROM $sourceOutputTable").show()
     val sourceExpected = spark.sql(s"SELECT *, date as ds FROM $queryTable WHERE date >= '$start' AND date <= '$today'")
@@ -254,9 +245,8 @@ class ModularJoinTest extends AnyFlatSpec {
 
     val bootstrapNode = new JoinBootstrapNode()
       .setJoin(joinConf)
-      .setMetaData(bootstrapMetaData)
 
-    val bsj = new JoinBootstrapJob(bootstrapNode, bootstrapJobRange)
+    val bsj = new JoinBootstrapJob(bootstrapNode, bootstrapMetaData, bootstrapJobRange)
     bsj.run()
     val sourceCount = tableUtils.sql(s"SELECT * FROM $sourceOutputTable").count()
     val bootstrapCount = tableUtils.sql(s"SELECT * FROM $bootstrapOutputTable").count()
@@ -296,9 +286,8 @@ class ModularJoinTest extends AnyFlatSpec {
       .setLeftSourceTable(sourceOutputTable)
       .setLeftDataModel(joinConf.getLeft.dataModel)
       .setJoinPart(jp1)
-      .setMetaData(metaData)
 
-    val joinPartJob = new JoinPartJob(joinPartNode, joinPartJobRange)
+    val joinPartJob = new JoinPartJob(joinPartNode, metaData, joinPartJobRange)
     joinPartJob.run()
     tableUtils.sql(s"SELECT * FROM $joinPart1FullTableName").show()
 
@@ -315,9 +304,8 @@ class ModularJoinTest extends AnyFlatSpec {
       .setLeftSourceTable(sourceOutputTable)
       .setLeftDataModel(joinConf.getLeft.dataModel)
       .setJoinPart(jp2)
-      .setMetaData(metaData2)
 
-    val joinPart2Job = new JoinPartJob(joinPartNode2, joinPartJobRange)
+    val joinPart2Job = new JoinPartJob(joinPartNode2, metaData2, joinPartJobRange)
     joinPart2Job.run()
     tableUtils.sql(s"SELECT * FROM $joinPart2FullTableName").show()
 
@@ -335,9 +323,8 @@ class ModularJoinTest extends AnyFlatSpec {
 
     val mergeNode = new JoinMergeNode()
       .setJoin(joinConf)
-      .setMetaData(mergeMetaData)
 
-    val finalJoinJob = new MergeJob(mergeNode, mergeJobRange, Seq(jp1, jp2))
+    val finalJoinJob = new MergeJob(mergeNode, mergeMetaData, mergeJobRange, Seq(jp1, jp2))
     finalJoinJob.run()
     tableUtils.sql(s"SELECT * FROM $mergeJobOutputTable").show()
 
@@ -360,9 +347,8 @@ class ModularJoinTest extends AnyFlatSpec {
 
     val derivationNode = new JoinDerivationNode()
       .setJoin(joinConf)
-      .setMetaData(derivationMetaData)
 
-    val joinDerivationJob = new JoinDerivationJob(derivationNode, derivationRange)
+    val joinDerivationJob = new JoinDerivationJob(derivationNode, derivationMetaData, derivationRange)
     joinDerivationJob.run()
     tableUtils.sql(s"SELECT * FROM $derivationOutputTable").show()
 

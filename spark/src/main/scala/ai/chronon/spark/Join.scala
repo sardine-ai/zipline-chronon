@@ -17,13 +17,13 @@
 package ai.chronon.spark
 
 import ai.chronon.api
+import ai.chronon.api._
 import ai.chronon.api.DataModel.ENTITIES
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api._
-import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.online.serde.SparkConversions
-import ai.chronon.orchestration.{JoinBootstrapNode, JoinPartNode}
+import ai.chronon.planner.{JoinBootstrapNode, JoinPartNode}
+import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils._
 import ai.chronon.spark.batch._
@@ -31,10 +31,7 @@ import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
-import java.util.concurrent.Executors
-import scala.collection.{Seq, mutable}
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutorService, Future}
+import scala.collection.{mutable, Seq}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -183,7 +180,7 @@ class Join(joinConf: api.Join,
       }
 
     logger.info(
-      s"\n======= CoveringSet for Join ${joinConfCloned.metaData.name} for PartitionRange(${leftRange.start}, ${leftRange.end}) =======\n")
+      s"\n======= CoveringSet for Join ${joinMetaData.name} for PartitionRange(${leftRange.start}, ${leftRange.end}) =======\n")
     coveringSetsPerJoinPart.foreach { case (joinPartMetadata, coveringSets) =>
       logger.info(s"Bootstrap sets for join part ${joinPartMetadata.joinPart.groupBy.metaData.name}")
       coveringSets.foreach { coveringSet =>
@@ -255,10 +252,10 @@ class Join(joinConf: api.Join,
 
       val bootstrapNode = new JoinBootstrapNode()
         .setJoin(joinConfCloned)
-        .setMetaData(bootstrapMetadata)
 
-      val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapJobRange)
+      val bootstrapJob = new JoinBootstrapJob(bootstrapNode, bootstrapMetadata, bootstrapJobRange)
       bootstrapJob.computeBootstrapTable(leftTaggedDf, bootstrapInfo, tableProps = tableProps)
+
     }
 
     val bootStrapWithStats = bootstrapDf.withStats
@@ -287,95 +284,81 @@ class Join(joinConf: api.Join,
       }
     }
 
-    implicit val executionContext: ExecutionContextExecutorService =
-      ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(tableUtils.joinPartParallelism))
-
     val joinedDfTry = Try {
-      // parallelize the computation of each of the parts
 
-      Thread.currentThread().setName(s"Join-${leftRange.start}-${leftRange.end}")
       // compute join parts (GB) backfills
       // for each GB, we first find out the unfilled subset of bootstrap table which still requires the backfill.
       // we do this by utilizing the per-record metadata computed during the bootstrap process.
       // then for each GB, we compute a join_part table that contains aggregated feature values for the required key space
       // the required key space is a slight superset of key space of the left, due to the nature of using bloom-filter.
       try {
-        val rightResultsFuture = bootstrapCoveringSets.map { case (partMetadata, coveringSets) =>
-          Future {
-            val joinPart = partMetadata.joinPart
-            val threadName = s"${joinPart.groupBy.metaData.cleanName}-${leftRange.start}-${leftRange.end}"
-            tableUtils.sparkSession.sparkContext
-              .setLocalProperty("spark.scheduler.pool", s"${joinPart.groupBy.metaData.cleanName}-part-pool")
-            val unfilledLeftDf = findUnfilledRecords(bootStrapWithStats, coveringSets.filter(_.isCovering))
-            Thread.currentThread().setName(s"active-$threadName")
+        val rightResults = bootstrapCoveringSets.flatMap { case (partMetadata, coveringSets) =>
+          val joinPart = partMetadata.joinPart
+          val unfilledLeftDf = findUnfilledRecords(bootStrapWithStats, coveringSets.filter(_.isCovering))
 
-            // if the join part contains ChrononRunDs macro, then we need to make sure the join is for a single day
-            val selects = Option(joinPart.groupBy.sources.toScala.map(_.query.selects).map(_.toScala))
-            if (
-              selects.isDefined && selects.get.nonEmpty && selects.get.exists(selectsMap =>
-                Option(selectsMap).isDefined && selectsMap.values.exists(_.contains(Constants.ChrononRunDs)))
-            ) {
-              assert(
-                leftRange.isSingleDay,
-                s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is $leftRange")
-            }
-
-            // Small mode changes the JoinPart definition, which creates a different part table hash suffix
-            // We want to make sure output table is consistent based on original semantics, not small mode behavior
-            // So partTable needs to be defined BEFORE the runSmallMode logic below
-            val partTable = planner.RelevantLeftForJoinPart.partTableName(joinConfCloned, joinPart)
-
-            val bloomFilterOpt = if (runSmallMode) {
-              // If left DF is small, hardcode the key filter into the joinPart's GroupBy's where clause.
-              injectKeyFilter(leftDf, joinPart)
-              None
-            } else {
-              joinLevelBloomMapOpt
-            }
-
-            val runContext =
-              JoinPartJobContext(unfilledLeftDf, bloomFilterOpt, tableProps, runSmallMode)
-
-            val skewKeys: Option[Map[String, Seq[String]]] = Option(joinConfCloned.skewKeys).map { jmap =>
-              val scalaMap = jmap.toScala
-              scalaMap.map { case (key, list) =>
-                key -> list.asScala
-              }
-            }
-
-            val leftTable = if (usingBootstrappedLeft) {
-              joinConfCloned.metaData.bootstrapTable
-            } else {
-              JoinUtils.computeFullLeftSourceTableName(joinConfCloned)
-            }
-
-            val joinPartJobRange = new DateRange()
-              .setStartDate(leftRange.start)
-              .setEndDate(leftRange.end)
-
-            val skewKeysAsJava = skewKeys.map { keyMap =>
-              keyMap.map { case (key, value) =>
-                (key, value.asJava)
-              }.asJava
-            }.orNull
-
-            val joinPartNodeMetadata = joinConfCloned.metaData.deepCopy()
-            joinPartNodeMetadata.setName(partTable)
-
-            val joinPartNode = new JoinPartNode()
-              .setLeftDataModel(joinConfCloned.getLeft.dataModel)
-              .setJoinPart(joinPart)
-              .setSkewKeys(skewKeysAsJava)
-              .setMetaData(joinPartNodeMetadata)
-
-            val joinPartJob = new JoinPartJob(joinPartNode, joinPartJobRange)
-            val df = joinPartJob.run(Some(runContext)).map(df => joinPart -> df)
-
-            Thread.currentThread().setName(s"done-$threadName")
-            df
+          // if the join part contains ChrononRunDs macro, then we need to make sure the join is for a single day
+          val selects = Option(joinPart.groupBy.sources.toScala.map(_.query.selects).map(_.toScala))
+          if (
+            selects.isDefined && selects.get.nonEmpty && selects.get.exists(selectsMap =>
+              Option(selectsMap).isDefined && selectsMap.values.exists(_.contains(Constants.ChrononRunDs)))
+          ) {
+            assert(
+              leftRange.isSingleDay,
+              s"Macro ${Constants.ChrononRunDs} is only supported for single day join, current range is $leftRange")
           }
+
+          // Small mode changes the JoinPart definition, which creates a different part table hash suffix
+          // We want to make sure output table is consistent based on original semantics, not small mode behavior
+          // So partTable needs to be defined BEFORE the runSmallMode logic below
+          val partTable = planner.RelevantLeftForJoinPart.partTableName(joinConfCloned, joinPart)
+
+          val bloomFilterOpt = if (runSmallMode) {
+            // If left DF is small, hardcode the key filter into the joinPart's GroupBy's where clause.
+            injectKeyFilter(leftDf, joinPart)
+            None
+          } else {
+            joinLevelBloomMapOpt
+          }
+
+          val runContext =
+            JoinPartJobContext(unfilledLeftDf, bloomFilterOpt, tableProps, runSmallMode)
+
+          val skewKeys: Option[Map[String, Seq[String]]] = Option(joinConfCloned.skewKeys).map { jmap =>
+            val scalaMap = jmap.toScala
+            scalaMap.map { case (key, list) =>
+              key -> list.asScala
+            }
+          }
+
+          val leftTable = if (usingBootstrappedLeft) {
+            joinConfCloned.metaData.bootstrapTable
+          } else {
+            JoinUtils.computeFullLeftSourceTableName(joinConfCloned)
+          }
+
+          val joinPartJobRange = new DateRange()
+            .setStartDate(leftRange.start)
+            .setEndDate(leftRange.end)
+
+          val skewKeysAsJava = skewKeys.map { keyMap =>
+            keyMap.map { case (key, value) =>
+              (key, value.asJava)
+            }.asJava
+          }.orNull
+
+          val joinPartNodeMetadata = joinConfCloned.metaData.deepCopy()
+          joinPartNodeMetadata.setName(partTable)
+
+          val joinPartNode = new JoinPartNode()
+            .setLeftDataModel(joinConfCloned.getLeft.dataModel)
+            .setJoinPart(joinPart)
+            .setSkewKeys(skewKeysAsJava)
+
+          val joinPartJob = new JoinPartJob(joinPartNode, joinPartNodeMetadata, joinPartJobRange)
+          val df = joinPartJob.run(Some(runContext)).map(df => joinPart -> df)
+
+          df
         }
-        val rightResults = Await.result(Future.sequence(rightResultsFuture), Duration.Inf).flatten
 
         // early exit if selectedJoinParts is defined. Otherwise, we combine all join parts
         if (selectedJoinParts.isDefined) return None
@@ -394,8 +377,6 @@ class Join(joinConf: api.Join,
         case e: Exception =>
           e.printStackTrace()
           Failure(e)
-      } finally {
-        executionContext.shutdownNow()
       }
     }.get
 

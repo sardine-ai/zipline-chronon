@@ -5,7 +5,7 @@ import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinP
 import ai.chronon.api.PartitionRange.toTimeRange
 import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
-import ai.chronon.orchestration.JoinPartNode
+import ai.chronon.planner.JoinPartNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.{GroupBy, JoinUtils}
@@ -23,7 +23,8 @@ case class JoinPartJobContext(leftDf: Option[DfWithStats],
                               tableProps: Map[String, String],
                               runSmallMode: Boolean)
 
-class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)(implicit tableUtils: TableUtils) {
+class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, showDf: Boolean = false)(implicit
+    tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
@@ -58,7 +59,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
 
       JoinPartJobContext(Option(leftWithStats),
                          joinLevelBloomMapOpt,
-                         Option(node.metaData.tableProps).getOrElse(Map.empty[String, String]),
+                         Option(metaData.tableProps).getOrElse(Map.empty[String, String]),
                          runSmallMode)
     }
 
@@ -67,7 +68,7 @@ class JoinPartJob(node: JoinPartNode, range: DateRange, showDf: Boolean = false)
       jobContext,
       joinPart,
       dateRange,
-      node.metaData.outputTable
+      metaData.outputTable
     )
   }
 

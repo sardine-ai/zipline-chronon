@@ -21,7 +21,7 @@ import ai.chronon.api._
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.planner.JoinOfflinePlanner
+import ai.chronon.api.planner.JoinPlanner
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import com.google.gson.Gson
@@ -468,10 +468,10 @@ object JoinUtils {
   }
 
   def computeLeftSourceTableName(join: api.Join)(implicit tableUtils: TableUtils): String = {
-    new JoinOfflinePlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.cleanName
+    new JoinPlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.cleanName
   }
 
   def computeFullLeftSourceTableName(join: api.Join)(implicit tableUtils: TableUtils): String = {
-    new JoinOfflinePlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.outputTable
+    new JoinPlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.outputTable
   }
 }
