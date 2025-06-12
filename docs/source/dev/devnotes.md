@@ -238,7 +238,7 @@ debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.h
 - Follow the steps below to configure unit tests in intellij:
 
   Run > Edit Configurations
-  ![](./intellij_unit_test_1.png)
+  <!-- ![](./intellij_unit_test_1.png) -->
 
   Set the
   following [java arguments](https://stackoverflow.com/questions/72724816/running-unit-tests-with-spark-3-3-0-on-java-17-fails-with-illegalaccesserror-cl)
@@ -258,10 +258,10 @@ debugging [tutorial](https://www.jetbrains.com/help/idea/tutorial-remote-debug.h
   --add-opens=java.base/sun.security.action=ALL-UNNAMED \
   --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
   ```
-  ![](./intellij_unit_test_2.png)
+  <!-- ![](./intellij_unit_test_2.png) -->
 
   Then, set the classpath to `chronon/<module_name>`
-  ![](./intellij_unit_test_3.png)
+  <!-- ![](./intellij_unit_test_3.png) -->
 - Do the same for `ScalaTests` as well.
 - Run
   an [example test](https://github.com/zipline-ai/chronon/blob/main/spark/src/test/scala/ai/chronon/spark/test/bootstrap/LogBootstrapTest.scala)
@@ -582,4 +582,5 @@ This approach is useful for various test debugging scenarios, such as:
 1. Download Pycharm
 2. Open up Pycharm at `chronon/api` directory. Limiting the IDE with just this directory will help the IDE not get confused when resolving imports like `ai.chronon...` as IDE may attempt to go to the `java` or `scala` modules instead. Also helpful tip: `Invalidated Caches / Restart` from the `File` menu can help resolve some of the import issues.
 3. Then `Mark Directory as` > `Sources Root` for the `py` directory.
-![img.png](img.png)
+
+![PyCharm](../../images/dev_pycharm.png)

@@ -203,11 +203,11 @@ Imagine updating a tree structure - where leaf nodes represent the individual qu
 
 1. Given a sorted array of query timestamps, and an event - with a timestamp, we can binary search and find out which indices to update. Let's say we found out from binary searching that we need to update timestamps indexed between 4 & 13 as shown below.
 
-![tiling input](../images/tiling_input.png)
+<!-- ![tiling input](../images/tiling_input.png) -->
 
 1. Now we can overlay a complete binary tree on this array of query timestamps, and try to update a smaller set of range nodes.
 
-![tiling tree](../images/tiling_tree.png)
+<!-- ![tiling tree](../images/tiling_tree.png) -->
 
 Imagine we have a Data Structure to efficiently perform updates that has the following api:
 

@@ -240,19 +240,19 @@ This section goes over various common scenarios for how users might want to mana
 
 It outlines how you can combine logging, bootstrapping, labels and joins together into cohesive workflows.
 
-1. [Introduction](##Introduction)
+1. [Introduction](#introduction)
 2. Scenarios Deep Dive
-    1. [Create a brand new feature set data](#Create-a-brand-new-feature-set)
-    2. [Set up log-based data refresh for an online model](#Set-up-log-based-data-refresh-for-an-online-model)
-    3. [Improve an existing feature set of an online model](#Improve-an-existing-feature-set-of-an-online-model)
-    4. [Expand a model to a new set of drivers](#Expand-a-model-to-a-new-set-of-drivers)
-    5. [Reuse existing feature data from the same drivers](#E---Reuse-existing-feature-data-from-the-same-drivers)
-    6. [Utilize advanced features](#Utilize-advanced-features)
-    7. [Leverage feature data from legacy data pipelines](#Leverage-feature-data-from-legacy-data-pipelines)
-    8. [Overwrite incorrect logged feature values](#Overwrite-incorrect-logged-feature-values)
-    9. [Adding labels to training dataset](#Adding-labels-to-training-dataset)
-    10. [Adding labels and apply aggregation on labels](#Adding-labels-and-apply-aggregation-on-labels)
-3. [FAQs](#FAQs)
+    1. [Create a brand new feature set data](#create-a-brand-new-feature-set)
+    2. [Set up log-based data refresh for an online model](#set-up-log-based-data-refresh-for-an-online-model)
+    3. [Improve an existing feature set of an online model](#improve-an-existing-feature-set-of-an-online-model)
+    4. [Expand a model to a new set of drivers](#expand-a-model-to-a-new-set-of-drivers)
+    5. [Reuse existing feature data from the same drivers](#reuse-existing-feature-data-from-the-same-drivers)
+    6. [Utilize advanced features](#utilize-advanced-features)
+    7. [Leverage feature data from legacy data pipelines](#leverage-feature-data-from-legacy-data-pipelines)
+    8. [Overwrite incorrect logged feature values](#overwrite-incorrect-logged-feature-values)
+    9. [Adding labels to training dataset](#adding-labels-to-training-dataset)
+    10. [Adding labels and apply aggregation on labels](#adding-labels-and-apply-aggregation-on-labels)
+3. [FAQs](#faqs)
 
 ### Introduction
 
