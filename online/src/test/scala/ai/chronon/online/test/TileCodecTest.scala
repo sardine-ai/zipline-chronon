@@ -16,11 +16,13 @@
 
 package ai.chronon.online.test
 
-import ai.chronon.api._
+import ai.chronon.api.ScalaJavaConversions.JListOps
+import ai.chronon.api.{StructField, _}
 import ai.chronon.online.TileCodec
 import ai.chronon.online.serde.ArrayRow
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -59,7 +61,12 @@ class TileCodecTest extends AnyFlatSpec {
     Builders.Aggregation(Operation.HISTOGRAM,
                          "hist_input",
                          Seq(new Window(1, TimeUnit.DAYS), new Window(7, TimeUnit.DAYS)),
-                         argMap = Map("k" -> "2")) -> Seq(histogram, histogram)
+                         argMap = Map("k" -> "2")) -> Seq(histogram, histogram),
+    Builders.Aggregation(Operation.LAST_K,
+                         "activity",
+                         Seq(new Window(1, TimeUnit.DAYS), new Window(7, TimeUnit.DAYS)),
+                         argMap = Map("k" -> "2")) -> Seq(List(Array("C", 3.0f), Array("B", 5.0f)).toJava,
+                                                          List(Array("C", 3.0f), Array("B", 5.0f)).toJava)
   )
 
   private val bucketedAggregations: Array[Aggregation] = Array(
@@ -78,7 +85,12 @@ class TileCodecTest extends AnyFlatSpec {
     "views" -> IntType,
     "rating" -> FloatType,
     "title" -> StringType,
-    "hist_input" -> ListType(StringType)
+    "hist_input" -> ListType(StringType),
+    "activity" -> StructType("activity_struct",
+                             Array(
+                               StructField("story_name", StringType),
+                               StructField("story_rating", FloatType)
+                             ))
   )
 
   def createRow(ts: Long, views: Int, rating: Float, title: String, histInput: Seq[String]): Row = {
@@ -87,9 +99,19 @@ class TileCodecTest extends AnyFlatSpec {
       "views" -> views,
       "rating" -> rating,
       "title" -> title,
-      "hist_input" -> histInput
+      "hist_input" -> histInput,
+      "activity" -> Map("story_name" -> title, "story_rating" -> rating)
     )
     new ArrayRow(values.map(_._2), ts)
+  }
+
+  def deepEquals(a: Any, b: Any): Boolean = (a, b) match {
+    case (arr1: Array[_], arr2: Array[_]) => arr1.deep == arr2.deep
+    case (seq1: Seq[_], seq2: Seq[_]) =>
+      seq1.size == seq2.size && seq1.zip(seq2).forall { case (x, y) => deepEquals(x, y) }
+    case (list1: java.util.List[_], list2: java.util.List[_]) =>
+      deepEquals(list1.asScala.toSeq, list2.asScala.toSeq)
+    case _ => a == b
   }
 
   it should "tile codec ir ser round trip" in {
@@ -122,7 +144,7 @@ class TileCodecTest extends AnyFlatSpec {
     expectedFlattenedVals.zip(finalResults).zip(windowedRowAggregator.outputSchema.map(_._1)).foreach {
       case ((expected, actual), name) =>
         logger.info(s"Checking: $name")
-        assertEquals(expected, actual)
+        deepEquals(expected, actual) shouldBe true
     }
   }
 

@@ -241,6 +241,20 @@ object Row {
               dataType,
               schemaTraverser.map(_.currentNode)
             )
+
+          case map: Map[String, Any] =>
+            composer(
+              fields.iterator
+                .map { field =>
+                  val valueOpt = map.get(field.name)
+                  valueOpt.map { value =>
+                    edit(value, field.fieldType, getFieldSchema(field))
+                  }.orNull
+                },
+              dataType,
+              schemaTraverser.map(_.currentNode)
+            )
+
           case value: Any =>
             assert(extraneousRecord != null, s"No handler for $value of class ${value.getClass}")
             composer(
