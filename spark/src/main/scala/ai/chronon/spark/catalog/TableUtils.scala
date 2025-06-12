@@ -66,6 +66,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
   private val isBenchmarkMode = sparkSession.conf.get("spark.chronon.backfill.benchmarkMode.enabled", "true").toBoolean
 
+  // For label join job allows you to join sub-day windows to the same day on the join rather than
+  // the default behavior which is using a 1 day offset
+  val roundDownHourOffset: Boolean =
+    sparkSession.conf.get("spark.chronon.join.label_join.round_down_sub_day_windows", "false").toBoolean
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
   // transient because the format provider is not always serializable.
