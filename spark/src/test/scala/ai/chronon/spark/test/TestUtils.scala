@@ -26,7 +26,7 @@ import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, unix_timestamp}
 
 object TestUtils {
   def createViewsGroupBy(namespace: String,
@@ -450,5 +450,25 @@ object TestUtils {
       metaData = Builders.MetaData(name = name, namespace = namespace),
       accuracy = Accuracy.TEMPORAL
     )
+  }
+
+  def createTableWithCsvData(tableUtils: TableUtils,
+                             csvPath: String,
+                             outputTableName: String,
+                             tsColName: String = "ts",
+                             tsFormat: String = "yyyy-MM-dd HH:mm:ss"): Unit = {
+    val df = createDataframeFromCsv(tableUtils.sparkSession, csvPath, tsColName, tsFormat)
+    tableUtils.insertPartitions(df = df, tableName = outputTableName)
+  }
+
+  def createDataframeFromCsv(spark: SparkSession,
+                             csvPath: String,
+                             tsColName: String = "ts",
+                             tsFormat: String = "yyyy-MM-dd HH:mm:ss"): DataFrame = {
+    spark.read
+      .option("header", "true")
+      .option("inferSchema", "true")
+      .csv(csvPath)
+      .withColumn("ts", (unix_timestamp(col(tsColName), tsFormat) * 1000).cast("long"))
   }
 }
