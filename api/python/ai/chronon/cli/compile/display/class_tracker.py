@@ -96,9 +96,14 @@ class ClassTracker:
         text = Text(overflow="fold", no_wrap=False)
 
         if self.files_to_errors:
-            for file, error in self.files_to_errors.items():
+            for file, errors in self.files_to_errors.items():
                 text.append("  ERROR ", style="bold red")
-                text.append(f"- {file}: {str(error)}\n")
+                text.append(f"- {file}:\n")
+                
+                for error in errors:
+                    # Format each error properly, handling newlines
+                    error_msg = str(error)
+                    text.append(f"    {error_msg}\n", style="red")
 
         return text
 

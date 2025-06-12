@@ -40,6 +40,7 @@ event_source = EventSource(
         selects=selects(
             event="event_expr",
             group_by_subject="group_by_expr",
+            subject="subject",
         ),
         start_partition="2021-04-09",
         time_column="ts",
