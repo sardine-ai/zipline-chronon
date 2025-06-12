@@ -22,8 +22,6 @@ class LabelJoinV2Test extends AnyFlatSpec {
   @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
   val spark: SparkSession = submission.SparkSessionBuilder.build("LabelJoinV2Test", local = true)
-  import spark.implicits._
-
   private val tableUtils = TableTestUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val twentyNineDaysAgo = tableUtils.partitionSpec.minus(today, new Window(29, TimeUnit.DAYS))
@@ -771,6 +769,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
       "LabelJoinV2TestWithoutRoundDown",
       additionalConfig = Option(Map("spark.chronon.join.label_join.round_down_sub_day_windows" -> "false")),
       local = true)
+    import sparkNoRoundDownWithFixture.implicits._
+
     val namespace = "label_joinv2_temporal_with_fixtures_without_round_down"
 
     val tableUtils = TableTestUtils(sparkNoRoundDownWithFixture)
@@ -831,6 +831,8 @@ class LabelJoinV2Test extends AnyFlatSpec {
       "LabelJoinV2TestWithRoundDown",
       additionalConfig = Option(Map("spark.chronon.join.label_join.round_down_sub_day_windows" -> "true")),
       local = true)
+    import sparkRoundDownWithFixture.implicits._
+
     val namespace = "label_joinv2_temporal_with_fixtures_round_down"
 
     val tableUtils = TableTestUtils(sparkRoundDownWithFixture)
