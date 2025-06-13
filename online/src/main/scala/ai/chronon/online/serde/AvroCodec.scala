@@ -25,8 +25,9 @@ import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.avro.io._
 import com.linkedin.avro.fastserde.FastGenericDatumReader
 import com.linkedin.avro.fastserde.FastGenericDatumWriter
+import java.util.concurrent.ConcurrentHashMap
+
 import java.io.ByteArrayOutputStream
-import scala.collection.mutable
 
 class AvroCodec(val schemaStr: String) extends Serializable {
   @transient private lazy val parser = new Schema.Parser()
@@ -130,11 +131,16 @@ class ArrayRow(values: Array[Any], millis: Long, mutation: Boolean = false) exte
 
 object AvroCodec {
   // creating new codecs is expensive - so we want to do it once per process
-  // but at the same-time we want to avoid contention across threads - hence threadlocal
-  private val codecMap: ThreadLocal[mutable.HashMap[String, AvroCodec]] =
-    new ThreadLocal[mutable.HashMap[String, AvroCodec]] {
-      override def initialValue(): mutable.HashMap[String, AvroCodec] = new mutable.HashMap[String, AvroCodec]()
-    }
+  // but at the same-time we want to avoid contention across threads - hence thread-local
+  private val codecMap: ConcurrentHashMap[String, ThreadLocal[AvroCodec]] =
+    new ConcurrentHashMap[String, ThreadLocal[AvroCodec]]
 
-  def of(schemaStr: String): AvroCodec = codecMap.get().getOrElseUpdate(schemaStr, new AvroCodec(schemaStr))
+  def ofThreaded(schemaStr: String): ThreadLocal[AvroCodec] = codecMap.computeIfAbsent(
+    schemaStr,
+    str =>
+      new ThreadLocal[AvroCodec] {
+        override def initialValue(): AvroCodec = new AvroCodec(str)
+      })
+
+  def of(schemaStr: String): AvroCodec = ofThreaded(schemaStr).get()
 }
