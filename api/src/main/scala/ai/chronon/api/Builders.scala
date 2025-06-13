@@ -256,6 +256,7 @@ object Builders {
       if (keyMapping != null)
         result.setKeyMapping(keyMapping.toJava)
       result.setPrefix(prefix)
+      result.setUseLongNames(true)
       result
     }
   }
