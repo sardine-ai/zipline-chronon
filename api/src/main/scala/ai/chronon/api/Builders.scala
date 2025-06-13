@@ -249,12 +249,10 @@ object Builders {
     def apply(
         groupBy: GroupBy = null,
         keyMapping: Map[String, String] = null,
-        prefix: String = null,
-        useLongNames: Boolean = true
-    ): JoinPart = {
-      val result = new JoinPart()
+        prefix: String = null
+    ): ai.chronon.api.JoinPart = {
+      val result = new ai.chronon.api.JoinPart()
       result.setGroupBy(groupBy)
-      result.setUseLongNames(useLongNames)
       if (keyMapping != null)
         result.setKeyMapping(keyMapping.toJava)
       result.setPrefix(prefix)

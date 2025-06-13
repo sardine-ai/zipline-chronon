@@ -74,14 +74,8 @@ class ShortNamesTest extends AnyFlatSpec {
       backfillStartDate = fiftyDaysAgo
     )
 
-    /*
     val labelParts = Builders.LabelPart(
-      labels = Seq(Builders.JoinPart(groupBy = labelsGroupBy, useLongNames = false))
-    )
-     */
-
-    val labelParts = Builders.LabelPart(
-      labels = Seq(Builders.JoinPart(groupBy = labelsGroupBy))
+      labels = Seq(Builders.JoinPart(groupBy = labelsGroupBy).setUseLongNames(false))
     )
 
     // left side
@@ -93,14 +87,14 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
 
-    val joinConf = Builders.Join(
-      left = Builders.Source.events(Builders.Query(startPartition = start), table = itemQueriesTable),
-      //joinParts = Seq(Builders.JoinPart(groupBy = viewsGroupBy, prefix = "user", useLongNames = false)),
-      joinParts = Seq(Builders.JoinPart(groupBy = viewsGroupBy, prefix = "user")),
-      labelParts = labelParts,
-      metaData = Builders.MetaData(name = "test.item_snapshot_features", namespace = namespace, team = "chronon"),
-      //useLongNames = false
-    )
+    val joinConf = Builders
+      .Join(
+        left = Builders.Source.events(Builders.Query(startPartition = start), table = itemQueriesTable),
+        joinParts = Seq(Builders.JoinPart(groupBy = viewsGroupBy, prefix = "user").setUseLongNames(false)),
+        labelParts = labelParts,
+        metaData = Builders.MetaData(name = "test.item_snapshot_features", namespace = namespace, team = "chronon")
+      )
+      .setUseLongNames(false)
 
     val join = new Join(joinConf = joinConf, endPartition = monthAgo, tableUtils)
     val computed = join.computeJoin()
@@ -193,9 +187,9 @@ class ShortNamesTest extends AnyFlatSpec {
       Builders.Source.entities(
         query = Builders.Query(
           selects = Map("ts" -> "ts",
-            "amount_dollars" -> "CAST(amount_rupees/70 as long)",
-            "user_name" -> "user_name",
-            "user" -> "user"),
+                        "amount_dollars" -> "CAST(amount_rupees/70 as long)",
+                        "user_name" -> "user_name",
+                        "user" -> "user"),
           startPartition = monthAgo,
           setups = Seq(
             "create temporary function temp_replace_right_b as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'",
@@ -211,8 +205,8 @@ class ShortNamesTest extends AnyFlatSpec {
       keyColumns = Seq("user", "user_name"),
       aggregations = Seq(
         Builders.Aggregation(operation = Operation.SUM,
-          inputColumn = "amount_dollars",
-          windows = Seq(new Window(30, TimeUnit.DAYS)))),
+                             inputColumn = "amount_dollars",
+                             windows = Seq(new Window(30, TimeUnit.DAYS)))),
       metaData = Builders.MetaData(name = "unit_test.user_transactions", namespace = namespace, team = "chronon")
     )
 
@@ -253,8 +247,8 @@ class ShortNamesTest extends AnyFlatSpec {
       keyColumns = Seq("user"),
       aggregations = Seq(
         Builders.Aggregation(operation = Operation.SUM,
-          inputColumn = "amount_dollars",
-          windows = Seq(new Window(10, TimeUnit.DAYS)))),
+                             inputColumn = "amount_dollars",
+                             windows = Seq(new Window(10, TimeUnit.DAYS)))),
       metaData = Builders.MetaData(name = "unit_test.user_transactions", namespace = namespace, team = "chronon")
     )
 
@@ -268,11 +262,14 @@ class ShortNamesTest extends AnyFlatSpec {
       keyColumns = Seq("user", "ts")
     )
 
-    val jp1 = Builders.JoinPart(groupBy = groupBy, keyMapping = Map("user_name" -> "user", "user" -> "user_name"), useLongNames = false)
-    //val jp1 = Builders.JoinPart(groupBy = groupBy, keyMapping = Map("user_name" -> "user", "user" -> "user_name"))
+    val jp1 = Builders
+      .JoinPart(
+        groupBy = groupBy,
+        keyMapping = Map("user_name" -> "user", "user" -> "user_name")
+      )
+      .setUseLongNames(false)
 
-    //val jp2 = Builders.JoinPart(groupBy = groupBy2, useLongNames = false)
-    val jp2 = Builders.JoinPart(groupBy = groupBy2)
+    val jp2 = Builders.JoinPart(groupBy = groupBy2).setUseLongNames(false)
 
     val returnOneSource = Builders.ExternalSource(
       metadata = Builders.MetaData(
@@ -282,28 +279,29 @@ class ShortNamesTest extends AnyFlatSpec {
       valueSchema = StructType("value_one", Array(StructField("value_number", IntType)))
     )
 
-    val joinConf: ai.chronon.api.Join = Builders.Join(
-      left = Builders.Source.events(
-        query = Builders.Query(
-          startPartition = start,
-          setups = Seq(
-            "create temporary function temp_replace_left as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'",
-            "create temporary function temp_replace_right_c as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'"
+    val joinConf: ai.chronon.api.Join = Builders
+      .Join(
+        left = Builders.Source.events(
+          query = Builders.Query(
+            startPartition = start,
+            setups = Seq(
+              "create temporary function temp_replace_left as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'",
+              "create temporary function temp_replace_right_c as 'org.apache.hadoop.hive.ql.udf.UDFRegExpReplace'"
+            ),
+            partitionColumn = "date"
           ),
-          partitionColumn = "date"
+          table = queryTable
         ),
-        table = queryTable
-      ),
-      joinParts = Seq(jp1, jp2, Builders.JoinPart(groupBy = bootstrapGroupBy)),
-      bootstrapParts = Seq(bootstrapPart), // ext_return_one_number
-      derivations = Seq(
-        Builders.Derivation("ratio_derivation", "amount_dollars_sum / (COALESCE(amount_dollars_sum_30d, 0) + 1)"),
-        Builders.Derivation("external_coalesce", "COALESCE(ext_return_one_value_number, 1)")
-      ),
-      //useLongNames = false,
-      externalParts = Seq(Builders.ExternalPart(returnOneSource)),
-      metaData = Builders.MetaData(name = "test.user_transaction_features", namespace = namespace, team = "chronon")
-    )
+        joinParts = Seq(jp1, jp2, Builders.JoinPart(groupBy = bootstrapGroupBy)),
+        bootstrapParts = Seq(bootstrapPart), // ext_return_one_number
+        derivations = Seq(
+          Builders.Derivation("ratio_derivation", "amount_dollars_sum / (COALESCE(amount_dollars_sum_30d, 0) + 1)"),
+          Builders.Derivation("external_coalesce", "COALESCE(ext_return_one_value_number, 1)")
+        ),
+        externalParts = Seq(Builders.ExternalPart(returnOneSource)),
+        metaData = Builders.MetaData(name = "test.user_transaction_features", namespace = namespace, team = "chronon")
+      )
+      .setUseLongNames(false)
 
     val leftSourceWithFilter = new SourceWithFilterNode().setSource(joinConf.left)
 
@@ -510,4 +508,3 @@ class ShortNamesTest extends AnyFlatSpec {
   }
 
 }
-
