@@ -16,70 +16,8 @@ source = Source(
             time_column="ts") # The event time
     ))
 
-view_source = Source(
-    events=EventSource(
-        table="data.purchases_native_view", # This points to the log table in the warehouse with historical purchase events, updated in batch daily
-        topic=None, # See the 'returns' GroupBy for an example that has a streaming source configured. In this case, this would be the streaming source topic that can be listened to for realtime events
-        query=Query(
-            selects=selects("user_id","purchase_price"), # Select the fields we care about
-            time_column="ts") # The event time
-    ))
-
 window_sizes = [Window(length=day, time_unit=TimeUnit.DAYS) for day in [3, 14, 30]] # Define some window sizes to use below
 
-v1_view_dev = GroupBy(
-    backfill_start_date="2023-11-01",
-    sources=[view_source],
-    keys=["user_id"], # We are aggregating by user
-    online=True,
-    aggregations=[Aggregation(
-        input_column="purchase_price",
-        operation=Operation.SUM,
-        windows=window_sizes
-    ), # The sum of purchases prices in various windows
-        Aggregation(
-            input_column="purchase_price",
-            operation=Operation.COUNT,
-            windows=window_sizes
-        ), # The count of purchases in various windows
-        Aggregation(
-            input_column="purchase_price",
-            operation=Operation.AVERAGE,
-            windows=window_sizes
-        ), # The average purchases by user in various windows
-        Aggregation(
-            input_column="purchase_price",
-            operation=Operation.LAST_K(10),
-        ),
-    ],
-)
-
-v1_view_test = GroupBy(
-    backfill_start_date="2023-11-01",
-    sources=[view_source],
-    keys=["user_id"], # We are aggregating by user
-    online=True,
-    aggregations=[Aggregation(
-        input_column="purchase_price",
-        operation=Operation.SUM,
-        windows=window_sizes
-    ), # The sum of purchases prices in various windows
-        Aggregation(
-            input_column="purchase_price",
-            operation=Operation.COUNT,
-            windows=window_sizes
-        ), # The count of purchases in various windows
-        Aggregation(
-            input_column="purchase_price",
-            operation=Operation.AVERAGE,
-            windows=window_sizes
-        ), # The average purchases by user in various windows
-        Aggregation(
-            input_column="purchase_price",
-            operation=Operation.LAST_K(10),
-        ),
-    ],
-)
 
 v1_dev = GroupBy(
     backfill_start_date="2023-11-01",
