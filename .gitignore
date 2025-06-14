@@ -17,8 +17,7 @@
 **/.vscode/
 **/__pycache__/
 **/.DS_Store
-api/python/test/canary/compiled/
-api/python/test/canary/production/
+api/python/ai/chronon/resources/gcp/compiled/
 api/python/test/sample/compiled/
 api/python/test/sample/production/
 api/python/ai/chronon/api/
