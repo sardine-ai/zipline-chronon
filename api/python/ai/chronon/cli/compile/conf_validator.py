@@ -223,34 +223,37 @@ def detect_feature_name_collisions(
         entity_set_type: str,
         name: str
 ) -> BaseException | None:
-    # Build a map: group_by.metaData.name -> set of its (possibly-prefixed) output columns
-    outputs: Dict[str, Set[str]] = {}
+    # Build a map of output_column -> set of group_by name
+    output_col_to_gbs = {}
     for gb, prefix in group_bys:
         prefix_str = f"{prefix}_" if prefix else ""
         cols = {
             f"{prefix_str}{base_col}"
             for base_col in get_group_by_output_columns(gb, exclude_keys=True)
         }
-        outputs[gb.metaData.name] = cols
+        gb_name = gb.metaData.name
+        for col in cols:
+            if col not in output_col_to_gbs:
+                output_col_to_gbs[col] = set()
+            output_col_to_gbs[col].add(gb_name)
 
-    # Detect collisions between every pair of GroupBys
-    collision_groups: Dict[frozenset, Set[str]] = defaultdict(set)
-    for (name_a, out_a), (name_b, out_b) in combinations(outputs.items(), 2):
-        shared = out_a & out_b
-        if shared:
-            collision_groups[frozenset(shared)].update([name_a, name_b])
+    # Find output columns that are produced by more than one group_by
+    collisions = {
+        col: gb_names
+        for col, gb_names in output_col_to_gbs.items()
+        if len(gb_names) > 1
+    }
 
-    if not collision_groups:
+    if not collisions:
         return None  # no collisions
 
     # Assemble an error message listing the conflicting GroupBys by name
     lines = [
         f"{entity_set_type} for Join: {name} has the following output name collisions:\n"
     ]
-    for shared_cols, gb_names in collision_groups.items():
+    for col, gb_names in collisions.items():
         names_str = ", ".join(sorted(gb_names))
-        cols_str = ", ".join(sorted(shared_cols))
-        lines.append(f"  - [{names_str}] collide on: [{cols_str}]")
+        lines.append(f"  - [{col}] has collisions from: [{names_str}]")
 
     lines.append(
         "\nConsider assigning distinct `prefix` values to the conflicting parts to avoid collisions."
