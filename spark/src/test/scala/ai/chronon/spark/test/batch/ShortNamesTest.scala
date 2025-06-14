@@ -224,7 +224,7 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val queryTable = s"$namespace.queries"
     DataFrameGen
-      .events(spark, queriesSchema, 3000, partitions = 180, partitionColumn = Some("date"))
+      .events(spark, queriesSchema, 6000, partitions = 180, partitionColumn = Some("date"))
       .save(queryTable, partitionColumns = Seq("date"))
 
     // Make bootstrap part and table
@@ -292,7 +292,7 @@ class ShortNamesTest extends AnyFlatSpec {
           ),
           table = queryTable
         ),
-        joinParts = Seq(jp1, jp2, Builders.JoinPart(groupBy = bootstrapGroupBy)),
+        joinParts = Seq(jp1, jp2, Builders.JoinPart(groupBy = bootstrapGroupBy).setUseLongNames(false)),
         bootstrapParts = Seq(bootstrapPart), // ext_return_one_number
         derivations = Seq(
           Builders.Derivation("ratio_derivation", "amount_dollars_sum / (COALESCE(amount_dollars_sum_30d, 0) + 1)"),
