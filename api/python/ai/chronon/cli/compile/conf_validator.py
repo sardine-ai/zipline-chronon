@@ -20,7 +20,6 @@ import logging
 import re
 import textwrap
 from collections import defaultdict
-from itertools import combinations
 from typing import Dict, List, Set, Tuple
 
 import ai.chronon.api.common.ttypes as common
