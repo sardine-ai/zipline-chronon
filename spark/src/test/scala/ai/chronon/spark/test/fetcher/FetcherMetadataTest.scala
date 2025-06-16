@@ -30,11 +30,12 @@ class FetcherMetadataTest extends AnyFlatSpec {
 
     val testResponse = GetResponse(
       request = GetRequest("testKey".getBytes(), "testDataSet"),
-      values = Success(Seq.empty) // .latest failes when an empty sequence is passed. .maxBy on an empty seq.
+      values = Success(Seq.empty)
     )
     val actual = testResponse.latest
     assertTrue(actual.isFailure)
-    assertTrue(actual.failed.get.isInstanceOf[UnsupportedOperationException])
+    assertTrue(actual.failed.get.isInstanceOf[RuntimeException])
+    assertTrue(actual.failed.get.getMessage.contains("Values from KvStore were empty."))
   }
 
   it should "test metadata store" in {

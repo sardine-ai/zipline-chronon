@@ -16,13 +16,13 @@
 
 package ai.chronon.online
 
-import ai.chronon.api.{BinaryType, BooleanType, Constants, DataType, LongType, StringType, StructType}
+import ai.chronon.api._
 import ai.chronon.online.KVStore._
 import ai.chronon.online.fetcher.Fetcher
-import org.apache.spark.sql.SparkSession
-import org.slf4j.{Logger, LoggerFactory}
 import ai.chronon.online.serde._
 import org.apache.avro.util.Utf8
+import org.apache.spark.sql.SparkSession
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
@@ -43,7 +43,15 @@ object KVStore {
                         endTsMillis: Option[Long] = None)
   case class TimedValue(bytes: Array[Byte], millis: Long)
   case class GetResponse(request: GetRequest, values: Try[Seq[TimedValue]]) {
-    def latest: Try[TimedValue] = values.map(_.maxBy(_.millis))
+    def latest: Try[TimedValue] = {
+      values.flatMap { seq =>
+        if (seq.isEmpty) {
+          Failure(new RuntimeException("Values from KvStore were empty."))
+        } else {
+          Success(seq.maxBy(_.millis))
+        }
+      }
+    }
   }
   case class PutRequest(keyBytes: Array[Byte], valueBytes: Array[Byte], dataset: String, tsMillis: Option[Long] = None)
 
@@ -98,7 +106,10 @@ trait KVStore {
         if (resp.values.isFailure) {
           Failure(buildException(resp.values.failed.get))
         } else {
-          Success(resp.latest.get.bytes)
+          resp.latest match {
+            case Success(timedValue) => Success(timedValue.bytes)
+            case Failure(e)          => Failure(buildException(e))
+          }
         }
     }
   }
