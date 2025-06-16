@@ -46,7 +46,8 @@ object KVStore {
     def latest: Try[TimedValue] = {
       values.flatMap { seq =>
         if (seq.isEmpty) {
-          Failure(new RuntimeException("Values from KvStore were empty."))
+          // Could create a custom exception here, but using NoSuchElementException as upstream code rescues on it
+          Failure(new NoSuchElementException("Values from KvStore were empty."))
         } else {
           Success(seq.maxBy(_.millis))
         }

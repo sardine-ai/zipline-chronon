@@ -34,7 +34,7 @@ class FetcherMetadataTest extends AnyFlatSpec {
     )
     val actual = testResponse.latest
     assertTrue(actual.isFailure)
-    assertTrue(actual.failed.get.isInstanceOf[RuntimeException])
+    assertTrue(actual.failed.get.isInstanceOf[NoSuchElementException])
     assertTrue(actual.failed.get.getMessage.contains("Values from KvStore were empty."))
   }
 
