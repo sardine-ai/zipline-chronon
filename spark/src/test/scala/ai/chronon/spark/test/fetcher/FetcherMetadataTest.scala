@@ -3,7 +3,7 @@ package ai.chronon.spark.test.fetcher
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions.IterableOps
-import ai.chronon.online.KVStore.GetRequest
+import ai.chronon.online.KVStore.{GetRequest, GetResponse}
 import ai.chronon.online.fetcher.FetchContext
 import ai.chronon.online.{MetadataDirWalker, MetadataEndPoint, fetcher}
 import ai.chronon.spark.catalog.TableUtils
@@ -14,15 +14,28 @@ import org.apache.spark.sql.SparkSession
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 import ai.chronon.spark.Extensions._
+
 import java.util.concurrent.Executors
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.Source
+import scala.util.Success
 
 class FetcherMetadataTest extends AnyFlatSpec {
 
   val sessionName = "FetcherMetadataTest"
   val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
+
+  it should "test empty values for GetResponse" in {
+
+    val testResponse = GetResponse(
+      request = GetRequest("testKey".getBytes(), "testDataSet"),
+      values = Success(Seq.empty) // .latest failes when an empty sequence is passed. .maxBy on an empty seq.
+    )
+    val actual = testResponse.latest
+    assertTrue(actual.isFailure)
+    assertTrue(actual.failed.get.isInstanceOf[UnsupportedOperationException])
+  }
 
   it should "test metadata store" in {
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
