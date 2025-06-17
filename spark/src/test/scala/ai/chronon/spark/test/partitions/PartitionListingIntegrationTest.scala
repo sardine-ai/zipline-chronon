@@ -286,6 +286,42 @@ class PartitionListingIntegrationTest extends AnyFunSuite with BeforeAndAfterAll
     logger.info(s"✓ Custom partition column partitions: ${partitionResponse.partitions}")
   }
 
+  test("Custom partition format and interval") {
+    // Create data with compact date format
+    val testData = spark.range(1, 31)
+      .withColumn("compact_date", when(col("id") <= 15, "20230301").otherwise("20230302"))
+
+    testData.write
+      .mode(SaveMode.Overwrite)
+      .partitionBy("compact_date")
+      .option("path", s"$tempDir/test_format_partition")
+      .saveAsTable("test_format_partition")
+
+    logger.info("Created table with compact date format")
+
+    // Test with custom partition format
+    val url = s"$baseUrl/api/partitions/test_format_partition?partitionColumn=compact_date&partitionFormat=yyyyMMdd"
+    val (statusCode, response) = httpGet(url)
+    assert(statusCode == 200)
+
+    val partitionResponse = parsePartitionResponse(response)
+    assert(partitionResponse.success)
+    assert(partitionResponse.partitions.contains("20230301"))
+    assert(partitionResponse.partitions.contains("20230302"))
+
+    logger.info(s"✓ Custom format partitions: ${partitionResponse.partitions}")
+
+    // Test with hourly interval parameter
+    val hourlyUrl = s"$baseUrl/api/partitions/test_format_partition?partitionInterval=hourly&partitionFormat=yyyyMMdd"
+    val (hourlyStatusCode, hourlyResponse) = httpGet(hourlyUrl)
+    assert(hourlyStatusCode == 200)
+
+    val hourlyPartitionResponse = parsePartitionResponse(hourlyResponse)
+    assert(hourlyPartitionResponse.success)
+
+    logger.info(s"✓ Hourly interval partitions: ${hourlyPartitionResponse.partitions}")
+  }
+
   test("Curl commands demonstration") {
     logger.info("\n" + "="*80)
     logger.info("CURL COMMAND DEMONSTRATIONS")
@@ -297,6 +333,8 @@ class PartitionListingIntegrationTest extends AnyFunSuite with BeforeAndAfterAll
       s"curl -s $baseUrl/api/partitions/test_hive_partitioned",
       s"curl -s '$baseUrl/api/partitions/test_events?startDate=2023-01-02&endDate=2023-01-04'",
       s"curl -s '$baseUrl/api/partitions/test_multi_partition?filter.region=us-west'",
+      s"curl -s '$baseUrl/api/partitions/test_custom_partition?partitionColumn=event_date'",
+      s"curl -s '$baseUrl/api/partitions/test_format_partition?partitionFormat=yyyyMMdd&partitionInterval=daily'",
       s"curl -s $baseUrl/api/partitions/non_existent_table"
     )
 

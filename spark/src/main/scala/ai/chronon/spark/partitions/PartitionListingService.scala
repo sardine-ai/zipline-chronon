@@ -1,6 +1,7 @@
 package ai.chronon.spark.partitions
 
-import ai.chronon.api.{PartitionRange, PartitionSpec}
+import ai.chronon.api.{PartitionRange, PartitionSpec, Window}
+import ai.chronon.api.Extensions.{WindowUtils, WindowOps}
 import ai.chronon.spark.catalog.TableUtils
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -52,19 +53,32 @@ class PartitionListingService(sparkSession: SparkSession, port: Int = 8080) {
       }
     }
 
+    private def createPartitionSpec(queryParams: Map[String, String]): PartitionSpec = {
+      val column = queryParams.getOrElse("partitionColumn", tableUtils.partitionColumn)
+      val format = queryParams.getOrElse("partitionFormat", "yyyy-MM-dd")
+      val interval = queryParams.get("partitionInterval") match {
+        case Some("hourly") => WindowUtils.Hour.millis
+        case Some("daily") => WindowUtils.Day.millis
+        case Some(millis) if millis.forall(_.isDigit) => millis.toLong
+        case _ => WindowUtils.Day.millis // default to daily
+      }
+      PartitionSpec(column, format, interval)
+    }
+
     private def listPartitions(tableName: String, queryParams: Map[String, String]): PartitionListResponse = {
       Try {
         val subPartitionsFilter = queryParams.collect {
           case (key, value) if key.startsWith("filter.") => key.substring(7) -> value
         }
         
-        val partitionColumnName = queryParams.getOrElse("partitionColumn", tableUtils.partitionColumn)
+        val partitionSpec = createPartitionSpec(queryParams)
+        val partitionColumnName = partitionSpec.column
         
         val partitionRange = for {
           startDate <- queryParams.get("startDate")
           endDate <- queryParams.get("endDate")
         } yield {
-          implicit val defaultPartitionSpec: PartitionSpec = PartitionSpec.daily.copy(column = partitionColumnName)
+          implicit val implicitPartitionSpec: PartitionSpec = partitionSpec
           PartitionRange(startDate, endDate)
         }
 

@@ -45,6 +45,15 @@ curl "http://localhost:8080/api/partitions/my_table?filter.region=us-west"
 
 # Custom partition column
 curl "http://localhost:8080/api/partitions/my_table?partitionColumn=date"
+
+# Custom partition format
+curl "http://localhost:8080/api/partitions/my_table?partitionFormat=yyyyMMdd"
+
+# Hourly partitions
+curl "http://localhost:8080/api/partitions/my_table?partitionInterval=hourly&partitionFormat=yyyy-MM-dd-HH"
+
+# Custom partition spec (all parameters)
+curl "http://localhost:8080/api/partitions/my_table?partitionColumn=event_date&partitionFormat=yyyy-MM-dd&partitionInterval=daily"
 ```
 
 ## Response Format
@@ -60,7 +69,9 @@ curl "http://localhost:8080/api/partitions/my_table?partitionColumn=date"
 ## Query Parameters
 - `startDate`, `endDate` - Date range filtering
 - `filter.{column}={value}` - Sub-partition filtering  
-- `partitionColumn` - Custom partition column name
+- `partitionColumn` - Custom partition column name (default: "ds")
+- `partitionFormat` - Date format pattern (default: "yyyy-MM-dd")
+- `partitionInterval` - Partition interval: "hourly", "daily", or milliseconds (default: "daily")
 
 ## Integration
 Uses existing Chronon components:
