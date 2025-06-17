@@ -3,18 +3,18 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.api.{Accuracy, DataModel, PartitionSpec, TableDependency, TableInfo, Window}
+import scala.collection.JavaConverters._
 
 object TableDependencies {
 
   def fromStagingQuery(stagingQuery: api.StagingQuery)(implicit spec: PartitionSpec): Seq[TableDependency] = {
-    stagingQuery.tableDependencies
-      .iterator()
-      .toScala
+    Option(stagingQuery.tableDependencies)
+      .map(_.asScala.toSeq)
+      .getOrElse(Seq.empty)
       .map { tableDep =>
         new TableDependency()
           .setTableInfo(tableDep)
       }
-      .toSeq
   }
 
   def fromJoin(join: api.Join)(implicit spec: PartitionSpec): Seq[TableDependency] = {

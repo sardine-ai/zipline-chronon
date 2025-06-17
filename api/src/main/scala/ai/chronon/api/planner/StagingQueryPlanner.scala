@@ -4,7 +4,7 @@ import ai.chronon.api.{StagingQuery, PartitionSpec}
 import ai.chronon.planner.ConfPlan
 import scala.collection.JavaConverters._
 
-class StagingQueryPlanner(stagingQuery: StagingQuery)(implicit outputPartitionSpec: PartitionSpec)
+case class StagingQueryPlanner(stagingQuery: StagingQuery)(implicit outputPartitionSpec: PartitionSpec)
     extends Planner[StagingQuery](stagingQuery)(outputPartitionSpec) {
 
   override def buildPlan: ConfPlan = {
