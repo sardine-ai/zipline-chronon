@@ -7,6 +7,9 @@ import ai.chronon.planner.{Node, NodeContent, SourceWithFilterNode}
 import java.io.File
 import scala.reflect.ClassTag
 import scala.util.Try
+import ai.chronon.api.PartitionSpec
+import ai.chronon.api.Join
+import ai.chronon.api.StagingQuery
 
 object LocalRunner {
 
@@ -37,5 +40,35 @@ object LocalRunner {
     .filterNot(isIgnorableFile)
     .flatMap(tryParsingConf[T])
     .toSeq
+
+  /** bazel build //api:planner_deploy.jar
+    * @param args
+    */
+  def main(args: Array[String]): Unit = {
+
+    if (args.length != 2) {
+      println("Usage: LocalRunner <path_to_conf_subfolder> <conf_type>")
+      System.exit(1)
+    }
+    val confSubfolder = args(0)
+    val confType = args(1)
+    implicit val testPartitionSpec = PartitionSpec.daily
+
+    println("Parsed configurations:")
+    confType match {
+      case "joins" => {
+        val confs = parseConfs[Join](confSubfolder)
+        confs.map((c) => MonolithJoinPlanner(c)).map(_.buildPlan).foreach(println)
+      }
+      case "staging_queries" => {
+        val confs = parseConfs[StagingQuery](confSubfolder)
+        confs.map((c) => new StagingQueryPlanner(c)).map(_.buildPlan).foreach(println)
+      }
+      case _ =>
+        throw new UnsupportedOperationException(
+          s"Unsupported conf type: $confType. Supported types are: joins, staging_queries."
+        )
+    }
+  }
 
 }
