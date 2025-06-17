@@ -103,6 +103,32 @@ scala_library(
     ],
 )
 
+scala_library(
+    name = "partitions_lib",
+    srcs = glob(["src/main/scala/ai/chronon/spark/partitions/*.scala"]),
+    format = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":catalog_lib",
+        "//api:lib",
+        "//api:thrift_java",
+        "//tools/build_rules/spark:spark-exec",
+        maven_artifact("com.fasterxml.jackson.core:jackson-core"),
+        maven_artifact("com.fasterxml.jackson.core:jackson-databind"),
+        maven_artifact_with_suffix("com.fasterxml.jackson.module:jackson-module-scala"),
+        maven_artifact("io.netty:netty-all"),
+        maven_artifact("io.netty:netty-transport"),
+        maven_artifact("io.netty:netty-handler"),
+        maven_artifact("io.netty:netty-buffer"),
+        maven_artifact("io.netty:netty-codec-http"),
+        maven_artifact("io.netty:netty-common"),
+        maven_artifact("io.netty:netty-codec"),
+        maven_artifact("org.slf4j:slf4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-api"),
+        maven_artifact("org.apache.logging.log4j:log4j-core"),
+    ],
+)
+
 test_deps = _SCALA_TEST_DEPS + [
     ":lib",
     "//aggregator:lib",
@@ -218,6 +244,20 @@ scala_test_suite(
 )
 
 scala_test_suite(
+    name = "partitions_test",
+    srcs = glob(["src/test/scala/ai/chronon/spark/test/partitions/*.scala"]),
+    data = glob(["src/test/scripts/*"]),
+    # defined in prelude_bazel file
+    jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
+    tags = ["integration"],
+    visibility = ["//visibility:public"],
+    deps = test_deps + [
+        ":test_lib",
+        ":partitions_lib",
+    ],
+)
+
+scala_test_suite(
     name = "streaming_test",
     srcs = glob(["src/test/scala/ai/chronon/spark/test/streaming/*.scala"]),
     data = glob(["src/test/resources/**/*"]),
@@ -244,6 +284,20 @@ jvm_binary(
     deploy_env = ["//tools/build_rules/spark:spark"],
     main_class = "ai.chronon.spark.Driver",
     runtime_deps = [":lib"],
+)
+
+jvm_binary(
+    name = "partition_listing_service",
+    deploy_env = ["//tools/build_rules/spark:spark"],
+    main_class = "ai.chronon.spark.partitions.PartitionListingService",
+    runtime_deps = [":partitions_lib"],
+)
+
+jvm_binary(
+    name = "test_data_creator",
+    deploy_env = ["//tools/build_rules/spark:spark"],
+    main_class = "ai.chronon.spark.test.partitions.TestDataCreator",
+    runtime_deps = [":partitions_lib", ":test_lib"],
 )
 
 create_shaded_library(
