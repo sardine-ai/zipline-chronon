@@ -57,19 +57,21 @@ class PartitionListingService(sparkSession: SparkSession, port: Int = 8080) {
     }
 
     private def parseQueryParams(uri: String): Map[String, String] = {
-      val queryString = if (uri.contains("?")) uri.split("\\?")(1) else ""
-      queryString.split("&")
-        .filter(_.nonEmpty)
-        .map(_.split("=", 2))
-        .filter(_.length == 2)
-        .map(arr => arr(0) -> java.net.URLDecoder.decode(arr(1), "UTF-8"))
-        .toMap
+      uri.split("\\?", 2) match {
+        case Array(_, queryString) =>
+          queryString.split("&")
+            .filter(_.nonEmpty)
+            .map(_.split("=", 2))
+            .collect { case Array(key, value) => key -> java.net.URLDecoder.decode(value, "UTF-8") }
+            .toMap
+        case _ => Map.empty
+      }
     }
 
     private def listPartitions(tableName: String, queryParams: Map[String, String]): PartitionListResponse = {
       Try {
-        val subPartitionsFilter = queryParams.filterKeys(_.startsWith("filter.")).map {
-          case (key, value) => key.substring(7) -> value
+        val subPartitionsFilter = queryParams.collect {
+          case (key, value) if key.startsWith("filter.") => key.substring(7) -> value
         }
         
         val partitionColumnName = queryParams.getOrElse("partitionColumn", tableUtils.partitionColumn)
@@ -89,22 +91,12 @@ class PartitionListingService(sparkSession: SparkSession, port: Int = 8080) {
           partitionColumnName = partitionColumnName
         )
 
-        PartitionListResponse(
-          tableName = tableName,
-          partitions = partitions,
-          success = true
-        )
-      } match {
-        case Success(response) => response
-        case Failure(exception) =>
+        PartitionListResponse(tableName, partitions, success = true)
+      }.recover {
+        case exception =>
           logger.error(s"Failed to list partitions for table $tableName", exception)
-          PartitionListResponse(
-            tableName = tableName,
-            partitions = List.empty,
-            success = false,
-            message = Some(s"Error: ${exception.getMessage}")
-          )
-      }
+          PartitionListResponse(tableName, List.empty, success = false, Some(s"Error: ${exception.getMessage}"))
+      }.get
     }
 
     override def channelRead0(ctx: ChannelHandlerContext, msg: HttpObject): Unit = {
@@ -118,14 +110,14 @@ class PartitionListingService(sparkSession: SparkSession, port: Int = 8080) {
               (HttpResponseStatus.OK, """{"status": "healthy", "service": "partition-listing"}""")
               
             case u if u.startsWith("/api/partitions/") =>
-              val pathParts = u.split("/")
-              if (pathParts.length >= 4) {
-                val tableName = pathParts(3).split("\\?")(0) // Remove query params from table name
-                val queryParams = if (u.contains("?")) parseQueryParams(u) else Map.empty[String, String]
-                val response = listPartitions(tableName, queryParams)
-                (HttpResponseStatus.OK, mapper.writeValueAsString(response))
-              } else {
-                (HttpResponseStatus.BAD_REQUEST, """{"error": "Invalid table name in path"}""")
+              u.split("/") match {
+                case parts if parts.length >= 4 =>
+                  val tableName = parts(3).split("\\?")(0)
+                  val queryParams = parseQueryParams(u)
+                  val response = listPartitions(tableName, queryParams)
+                  (HttpResponseStatus.OK, mapper.writeValueAsString(response))
+                case _ =>
+                  (HttpResponseStatus.BAD_REQUEST, """{"error": "Invalid table name in path"}""")
               }
               
             case "/api/partitions" =>

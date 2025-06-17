@@ -1,122 +1,69 @@
 # Chronon Partition Listing Service
 
-This module provides an HTTP REST API service that exposes table partition listing functionality for Apache Spark tables.
+HTTP REST API service for listing table partitions across Hive, Iceberg, and Delta Lake tables.
 
 ## Features
+- Multi-format table support with automatic detection
+- Date range and sub-partition filtering
+- RESTful API with JSON responses
 
-- **Multi-format support**: Works with Hive, Iceberg, and Delta Lake tables
-- **Automatic format detection**: Automatically detects table format and uses appropriate partition listing strategy  
-- **Filtering capabilities**: Supports partition range filtering and sub-partition filtering
-- **RESTful API**: HTTP endpoints for easy integration
-- **Spark integration**: Built on Apache Spark for robust table format support
-
-## Components
-
-### PartitionListingService
-Complete HTTP service that provides REST endpoints for partition listing:
-- `GET /health` - Health check endpoint
-- `GET /api/partitions/{tableName}` - List partitions for a table
-- `GET /api/info` - Service information
-- Manages SparkSession lifecycle
-- Built-in Netty HTTP server
-- Command-line argument support
+## Architecture
+- **Service Layer**: HTTP endpoints using Netty
+- **Catalog Layer**: TableUtils for format-agnostic partition listing
+- **Format Layer**: Format-specific implementations via FormatProvider
 
 ## Usage
 
-### Starting the Server
-
+### Start Service
 ```bash
-# Using Bazel (recommended)
 bazel run //spark:partition_listing_service -- 8080
-
-# Custom port
-bazel run //spark:partition_listing_service -- 9090
 ```
 
 ### Programmatic Usage
 ```scala
-val spark = SparkSession.builder()
-  .appName("My App")
-  .master("local[*]")
-  .getOrCreate()
-
 val service = new PartitionListingService(spark, port = 8080)
-service.start() // This will block
+service.start()
 ```
 
-### Environment Variables
-- `PARTITION_HOST` - Host to bind to (default: localhost)  
-- `PARTITION_PORT` - Port for HTTP API (default: 8080)
+## API Endpoints
 
-## API Examples
-
-### Basic partition listing
+### Health Check
 ```bash
-curl http://localhost:15003/api/partitions/my_database.my_table
+curl http://localhost:8080/health
 ```
 
-### With partition column filter
+### List Partitions
 ```bash
-curl "http://localhost:15003/api/partitions/my_table?partitionColumn=date"
-```
+# Basic listing
+curl http://localhost:8080/api/partitions/my_table
 
-### With date range filter
-```bash
-curl "http://localhost:15003/api/partitions/my_table?startDate=2023-01-01&endDate=2023-01-31"
-```
+# With date range
+curl "http://localhost:8080/api/partitions/my_table?startDate=2023-01-01&endDate=2023-01-31"
 
-### With sub-partition filters
-```bash
-curl "http://localhost:15003/api/partitions/my_table?filter.region=us-west&filter.type=events"
+# With filters
+curl "http://localhost:8080/api/partitions/my_table?filter.region=us-west"
+
+# Custom partition column
+curl "http://localhost:8080/api/partitions/my_table?partitionColumn=date"
 ```
 
 ## Response Format
-
 ```json
 {
-  "tableName": "my_database.my_table",
+  "tableName": "my_table",
   "partitions": ["2023-01-01", "2023-01-02", "2023-01-03"],
   "success": true,
   "message": null
 }
 ```
 
-## Error Handling
+## Query Parameters
+- `startDate`, `endDate` - Date range filtering
+- `filter.{column}={value}` - Sub-partition filtering  
+- `partitionColumn` - Custom partition column name
 
-The service handles errors gracefully and returns appropriate HTTP status codes:
-- 200: Success
-- 400: Bad request (invalid table name or parameters)
-- 404: Endpoint not found
-- 500: Internal server error
-
-Error responses include details:
-```json
-{
-  "tableName": "invalid_table",
-  "partitions": [],
-  "success": false,
-  "message": "Error: Table not found"
-}
-```
-
-## Integration with Existing Chronon Infrastructure
-
-This module leverages existing Chronon components:
-- `TableUtils` for partition listing logic
-- `FormatProvider` for automatic table format detection
-- Format-specific implementations (Hive, Iceberg, DeltaLake)
-- Existing partition filtering and range support
-
-## Configuration
-
-The service uses Spark session configuration for partition column defaults:
-```scala
-spark.conf.set("spark.chronon.partition.column", "ds")
-```
-
-## Dependencies
-
-- Apache Spark with Spark Connect support
-- Netty for HTTP server
-- Jackson for JSON serialization
-- Existing Chronon catalog modules
+## Integration
+Uses existing Chronon components:
+- `TableUtils` for partition listing
+- `FormatProvider` for table format detection
+- Existing partition filtering logic
