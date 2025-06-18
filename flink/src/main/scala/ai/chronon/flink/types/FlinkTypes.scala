@@ -18,20 +18,20 @@ import java.util.Objects
   * @param ir the array of partial aggregates
   * @param latestTsMillis timestamp of the current event being processed
   */
-class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long]) {
-  def this() = this(Array(), None)
+class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long], var startProcessingTime: Option[Long]) {
+  def this() = this(Array(), None, None)
 
   override def toString: String =
-    s"TimestampedIR(ir=${ir.mkString(", ")}, latestTsMillis=$latestTsMillis)"
+    s"TimestampedIR(ir=${ir.mkString(", ")}, latestTsMillis=$latestTsMillis), startProcessingTime=$startProcessingTime)"
 
   override def hashCode(): Int =
-    Objects.hash(util.Arrays.deepToString(ir.asInstanceOf[Array[AnyRef]]), latestTsMillis)
+    Objects.hash(util.Arrays.deepToString(ir.asInstanceOf[Array[AnyRef]]), latestTsMillis, startProcessingTime)
 
   override def equals(other: Any): Boolean =
     other match {
       case e: TimestampedIR =>
-        util.Arrays.deepEquals(ir.asInstanceOf[Array[AnyRef]],
-                               e.ir.asInstanceOf[Array[AnyRef]]) && latestTsMillis == e.latestTsMillis
+        util.Arrays.deepEquals(ir.asInstanceOf[Array[AnyRef]], e.ir.asInstanceOf[Array[AnyRef]]) &&
+          latestTsMillis == e.latestTsMillis && startProcessingTime == e.startProcessingTime
       case _ => false
     }
 }
@@ -47,24 +47,31 @@ class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long]) {
   * Changed keys type to Seq[Any] instead of List[Any] otherwise we are running into accessing head of null list
   * runtime error for tests which is very weird and was hard to debug the root cause.
   */
-class TimestampedTile(var keys: util.List[Any], var tileBytes: Array[Byte], var latestTsMillis: Long) {
-  def this() = this(new util.ArrayList[Any](), Array(), 0L)
+class TimestampedTile(var keys: util.List[Any],
+                      var tileBytes: Array[Byte],
+                      var latestTsMillis: Long,
+                      var startProcessingTime: Long) {
+  def this() = this(new util.ArrayList[Any](), Array(), 0L, 0L)
 
   override def toString: String =
     s"TimestampedTile(keys=${keys.iterator().toScala.mkString(", ")}, tileBytes=${java.util.Base64.getEncoder
-      .encodeToString(tileBytes)}, latestTsMillis=$latestTsMillis)"
+      .encodeToString(tileBytes)}, latestTsMillis=$latestTsMillis), startProcessingTime=$startProcessingTime)"
 
   override def hashCode(): Int =
-    Objects.hash(util.Arrays.deepToString(keys.toArray.asInstanceOf[Array[AnyRef]]),
-                 tileBytes,
-                 latestTsMillis.asInstanceOf[java.lang.Long])
+    Objects.hash(
+      util.Arrays.deepToString(keys.toArray.asInstanceOf[Array[AnyRef]]),
+      tileBytes,
+      latestTsMillis.asInstanceOf[java.lang.Long],
+      startProcessingTime.asInstanceOf[java.lang.Long]
+    )
 
   override def equals(other: Any): Boolean =
     other match {
       case e: TimestampedTile =>
         util.Arrays.deepEquals(keys.toArray.asInstanceOf[Array[AnyRef]], e.keys.toArray.asInstanceOf[Array[AnyRef]]) &&
           util.Arrays.equals(tileBytes, e.tileBytes) &&
-          latestTsMillis == e.latestTsMillis
+          latestTsMillis == e.latestTsMillis &&
+          startProcessingTime == e.startProcessingTime
       case _ => false
     }
 }
@@ -72,15 +79,20 @@ class TimestampedTile(var keys: util.List[Any], var tileBytes: Array[Byte], var 
 /** Output emitted by the AvroCodecFn operator. This is fed into the Async KV store writer and objects of this type are persisted
   * while taking checkpoints.
   */
-class AvroCodecOutput(var keyBytes: Array[Byte], var valueBytes: Array[Byte], var dataset: String, var tsMillis: Long) {
-  def this() = this(Array(), Array(), "", 0L)
+class AvroCodecOutput(var keyBytes: Array[Byte],
+                      var valueBytes: Array[Byte],
+                      var dataset: String,
+                      var tsMillis: Long,
+                      var startProcessingTime: Long) {
+  def this() = this(Array(), Array(), "", 0L, 0L)
 
   override def hashCode(): Int =
     Objects.hash(
       keyBytes,
       valueBytes,
       dataset,
-      tsMillis.asInstanceOf[java.lang.Long]
+      tsMillis.asInstanceOf[java.lang.Long],
+      startProcessingTime.asInstanceOf[java.lang.Long]
     )
 
   override def equals(other: Any): Boolean =
@@ -89,7 +101,8 @@ class AvroCodecOutput(var keyBytes: Array[Byte], var valueBytes: Array[Byte], va
         util.Arrays.equals(keyBytes, o.keyBytes) &&
           util.Arrays.equals(valueBytes, o.valueBytes) &&
           dataset == o.dataset &&
-          tsMillis == o.tsMillis
+          tsMillis == o.tsMillis &&
+          startProcessingTime == o.startProcessingTime
       case _ => false
     }
 }
@@ -100,15 +113,19 @@ class WriteResponse(var keyBytes: Array[Byte],
                     var valueBytes: Array[Byte],
                     var dataset: String,
                     var tsMillis: Long,
-                    var status: Boolean) {
-  def this() = this(Array(), Array(), "", 0L, false)
+                    var status: Boolean,
+                    var startProcessingTime: Long) {
+  def this() = this(Array(), Array(), "", 0L, false, 0L)
 
   override def hashCode(): Int =
-    Objects.hash(keyBytes,
-                 valueBytes,
-                 dataset,
-                 tsMillis.asInstanceOf[java.lang.Long],
-                 status.asInstanceOf[java.lang.Boolean])
+    Objects.hash(
+      keyBytes,
+      valueBytes,
+      dataset,
+      tsMillis.asInstanceOf[java.lang.Long],
+      status.asInstanceOf[java.lang.Boolean],
+      startProcessingTime.asInstanceOf[java.lang.Long]
+    )
 
   override def equals(other: Any): Boolean =
     other match {
@@ -117,7 +134,8 @@ class WriteResponse(var keyBytes: Array[Byte],
           util.Arrays.equals(valueBytes, o.valueBytes) &&
           dataset == o.dataset &&
           tsMillis == o.tsMillis &&
-          status == o.status
+          status == o.status &&
+          startProcessingTime == o.startProcessingTime
       case _ => false
     }
 }

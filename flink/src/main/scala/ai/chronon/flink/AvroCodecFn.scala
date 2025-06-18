@@ -6,6 +6,7 @@ import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TilingUtils
 import ai.chronon.api.{StructType => ChrononStructType}
+import ai.chronon.flink.deser.ProjectedEvent
 import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.serde.AvroConversions
@@ -65,7 +66,7 @@ sealed abstract class BaseAvroCodecFn[IN, OUT] extends RichFlatMapFunction[IN, O
   * @param groupByServingInfoParsed The GroupBy we are working with
   */
 case class AvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed)
-    extends BaseAvroCodecFn[Map[String, Any], AvroCodecOutput] {
+    extends BaseAvroCodecFn[ProjectedEvent, AvroCodecOutput] {
 
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
@@ -77,7 +78,7 @@ case class AvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed)
 
   override def close(): Unit = super.close()
 
-  override def flatMap(value: Map[String, Any], out: Collector[AvroCodecOutput]): Unit =
+  override def flatMap(value: ProjectedEvent, out: Collector[AvroCodecOutput]): Unit =
     try {
       out.collect(avroConvertMapToPutRequest(value))
     } catch {
@@ -89,11 +90,12 @@ case class AvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed)
         avroConversionErrorCounter.inc()
     }
 
-  def avroConvertMapToPutRequest(in: Map[String, Any]): AvroCodecOutput = {
+  def avroConvertMapToPutRequest(value: ProjectedEvent): AvroCodecOutput = {
+    val in = value.fields
     val tsMills = in(eventTimeColumn).asInstanceOf[Long]
     val keyBytes = keyToBytes(keyColumns.map(in(_)))
     val valueBytes = valueToBytes(valueColumns.map(in(_)))
-    new AvroCodecOutput(keyBytes, valueBytes, streamingDataset, tsMills)
+    new AvroCodecOutput(keyBytes, valueBytes, streamingDataset, tsMills, value.startProcessingTimeMillis)
   }
 }
 
@@ -146,10 +148,11 @@ case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed, 
         |groupBy=${groupByServingInfoParsed.groupBy.getMetaData.getName} tsMills=$tsMills keys=$keys
         |keyBytes=${java.util.Base64.getEncoder.encodeToString(entityKeyBytes)}
         |valueBytes=${java.util.Base64.getEncoder.encodeToString(valueBytes)}
+        |startProcessingTime=${in.startProcessingTime}
         |streamingDataset=$streamingDataset""".stripMargin
     )
 
     val tileKeyBytes = TilingUtils.serializeTileKey(tileKey)
-    new AvroCodecOutput(tileKeyBytes, valueBytes, streamingDataset, tsMills)
+    new AvroCodecOutput(tileKeyBytes, valueBytes, streamingDataset, tsMills, in.startProcessingTime)
   }
 }

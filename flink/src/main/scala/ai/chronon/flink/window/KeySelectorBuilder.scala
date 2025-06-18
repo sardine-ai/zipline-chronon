@@ -2,6 +2,7 @@ package ai.chronon.flink.window
 
 import ai.chronon.api.GroupBy
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.flink.deser.ProjectedEvent
 import org.apache.flink.api.java.functions.KeySelector
 import org.slf4j.LoggerFactory
 
@@ -22,7 +23,7 @@ object KeySelectorBuilder {
     * Flink SparkExprEval DataStream by color and size, so all events with the same (color, size) are sent to the same
     * operator.
     */
-  def build(groupBy: GroupBy): KeySelector[Map[String, Any], util.List[Any]] = {
+  def build(groupBy: GroupBy): KeySelector[ProjectedEvent, util.List[Any]] = {
     // List uses MurmurHash.seqHash for its .hashCode(), which gives us hashing based on content.
     // (instead of based on the instance, which is the case for Array).
     val groupByKeys: Seq[String] = groupBy.keyColumns.toScala
@@ -30,8 +31,9 @@ object KeySelectorBuilder {
       f"Creating key selection function for Flink app. groupByKeys=$groupByKeys"
     )
     // Create explicit KeySelector instead of lambda
-    new KeySelector[Map[String, Any], util.List[Any]] {
-      override def getKey(sparkEvalOutput: Map[String, Any]): util.List[Any] = {
+    new KeySelector[ProjectedEvent, util.List[Any]] {
+      override def getKey(deSerEvent: ProjectedEvent): util.List[Any] = {
+        val sparkEvalOutput = deSerEvent.fields
         val result = new util.ArrayList[Any](groupByKeys.length)
         groupByKeys.foreach(k => result.add(sparkEvalOutput.get(k).orNull))
         result

@@ -1,5 +1,6 @@
 package ai.chronon.flink.window
 
+import ai.chronon.flink.deser.ProjectedEvent
 import org.apache.flink.api.common.state.ValueState
 import org.apache.flink.api.common.state.ValueStateDescriptor
 import org.apache.flink.streaming.api.windowing.triggers.Trigger
@@ -8,9 +9,9 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 
 /** Custom Flink Trigger that fires on every event received.
   */
-class AlwaysFireOnElementTrigger extends Trigger[Map[String, Any], TimeWindow] {
+class AlwaysFireOnElementTrigger extends Trigger[ProjectedEvent, TimeWindow] {
   override def onElement(
-      element: Map[String, Any],
+      element: ProjectedEvent,
       timestamp: Long,
       window: TimeWindow,
       ctx: Trigger.TriggerContext
@@ -84,7 +85,7 @@ class AlwaysFireOnElementTrigger extends Trigger[Map[String, Any], TimeWindow] {
   *    Timer set for 500ms fires.
   *        we emit the preAggregate [A, B, C].
   */
-class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Map[String, Any], TimeWindow] {
+class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[ProjectedEvent, TimeWindow] {
   // Each pane has its own state. A Flink pane is an actual instance of a defined window for a given key.
   private val nextTimerTimestampStateDescriptor =
     new ValueStateDescriptor[java.lang.Long]("nextTimerTimestampState", classOf[java.lang.Long])
@@ -95,7 +96,7 @@ class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Map[
     * Late events are treated the same way as regular events; they will still get buffered.
     */
   override def onElement(
-      element: Map[String, Any],
+      element: ProjectedEvent,
       timestamp: Long,
       window: TimeWindow,
       ctx: Trigger.TriggerContext

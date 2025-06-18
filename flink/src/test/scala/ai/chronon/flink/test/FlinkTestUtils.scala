@@ -8,6 +8,7 @@ import ai.chronon.api.Operation
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.TimeUnit
 import ai.chronon.api.Window
+import ai.chronon.flink.deser.ProjectedEvent
 import ai.chronon.flink.source.FlinkSource
 import ai.chronon.flink.{AsyncKVStoreWriter, SparkExpressionEvalFn}
 import ai.chronon.flink.types.WriteResponse
@@ -43,7 +44,7 @@ case class E2ETestMutationEvent(id: String,
                                 isBefore: Boolean)
 
 abstract class BaseWatermarkedE2EEventSource[T](mockEvents: Seq[T], sparkExprEvalFn: SparkExpressionEvalFn[T])
-    extends FlinkSource[Map[String, Any]] {
+    extends FlinkSource[ProjectedEvent] {
 
   def watermarkStrategy: WatermarkStrategy[T]
 
@@ -51,11 +52,12 @@ abstract class BaseWatermarkedE2EEventSource[T](mockEvents: Seq[T], sparkExprEva
 
   override def getDataStream(topic: String, groupName: String)(
       env: StreamExecutionEnvironment,
-      parallelism: Int): SingleOutputStreamOperator[Map[String, Any]] = {
+      parallelism: Int): SingleOutputStreamOperator[ProjectedEvent] = {
     env
       .fromCollection(mockEvents.toJava)
       .assignTimestampsAndWatermarks(watermarkStrategy)
       .flatMap(sparkExprEvalFn)
+      .map(e => ProjectedEvent(e, System.currentTimeMillis()))
   }
 }
 

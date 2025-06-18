@@ -1,7 +1,7 @@
 package ai.chronon.flink.test.deser
 
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.flink.deser.{DeserializationSchemaBuilder, SourceProjectionDeserializationSchema}
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, ProjectedEvent, SourceProjectionDeserializationSchema}
 import ai.chronon.flink.test.UserAvroSchema
 import ai.chronon.online.serde.SparkConversions
 import org.apache.flink.api.common.functions.util.ListCollector
@@ -20,7 +20,7 @@ class SourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
         Seq("id == 12345", "isActive == true")
       )
 
-    val resultList = new util.ArrayList[Map[String, Any]]()
+    val resultList = new util.ArrayList[ProjectedEvent]()
     val listCollector = new ListCollector(resultList)
 
     val avroSerdeProvider = new InMemoryAvroDeserializationSchemaProvider(UserAvroSchema.schema)
@@ -50,7 +50,7 @@ class SourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
 
     // sanity check result data
     assert(resultList.size() == 1)
-    val projectedResult = resultList.toScala.head
+    val projectedResult = resultList.toScala.map(_.fields).head
     assert(projectedResult.nonEmpty)
     assert(projectedResult("id") == 12345)
   }
@@ -68,7 +68,7 @@ class SourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
 
     val recordBytes = createDummyRecordBytes(schemaStr)
 
-    val resultList = new util.ArrayList[Map[String, Any]]()
+    val resultList = new util.ArrayList[ProjectedEvent]()
     val listCollector = new ListCollector(resultList)
     deserSchema.deserialize(recordBytes, listCollector)
 
@@ -94,7 +94,7 @@ class SourceProjectionDeSerializationSupportSpec extends AnyFlatSpec {
     // corrupt the record bytes
     recordBytes(0) = 0
 
-    val resultList = new util.ArrayList[Map[String, Any]]()
+    val resultList = new util.ArrayList[ProjectedEvent]()
     val listCollector = new ListCollector(resultList)
 
     deserSchema.deserialize(recordBytes, listCollector)

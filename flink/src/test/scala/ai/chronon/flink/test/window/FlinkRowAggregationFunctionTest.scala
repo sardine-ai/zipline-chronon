@@ -1,6 +1,7 @@
 package ai.chronon.flink.test.window
 
 import ai.chronon.api._
+import ai.chronon.flink.deser.ProjectedEvent
 import ai.chronon.flink.window.FlinkRowAggregationFunction
 import ai.chronon.online.TileCodec
 import org.scalatest.flatspec.AnyFlatSpec
@@ -170,10 +171,11 @@ class FlinkRowAggregationFunctionTest extends AnyFlatSpec {
       "title" -> "A",
       "views" -> 10
     )
+    val outOfOrderRowEvent = ProjectedEvent(outOfOrderRow, 123L)
 
     // If the aggregator fails to fix the order, we'll get a ClassCastException
     Try {
-      acc = aggregateFunc.add(outOfOrderRow, acc)
+      acc = aggregateFunc.add(outOfOrderRowEvent, acc)
     } match {
       case Failure(e) => {
         fail(
@@ -205,11 +207,13 @@ class FlinkRowAggregationFunctionTest extends AnyFlatSpec {
     assert(finalResult sameElements expectedResult)
   }
 
-  def createRow(ts: Long, views: Int, rating: Float, title: String): Map[String, Any] =
-    Map(
+  def createRow(ts: Long, views: Int, rating: Float, title: String): ProjectedEvent = {
+    val row = Map(
       Constants.TimeColumn -> ts,
       "views" -> views,
       "rating" -> rating,
       "title" -> title
     )
+    ProjectedEvent(row, 123L)
+  }
 }

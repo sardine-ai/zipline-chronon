@@ -97,7 +97,12 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
     errorCounter.inc()
     resultFuture.complete(
       util.Arrays.asList[WriteResponse](
-        new WriteResponse(input.keyBytes, input.valueBytes, input.dataset, input.tsMillis, status = false)))
+        new WriteResponse(input.keyBytes,
+                          input.valueBytes,
+                          input.dataset,
+                          input.tsMillis,
+                          status = false,
+                          input.startProcessingTime)))
   }
 
   override def asyncInvoke(input: AvroCodecOutput, resultFuture: ResultFuture[WriteResponse]): Unit = {
@@ -114,7 +119,12 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
         }
         resultFuture.complete(
           util.Arrays.asList[WriteResponse](
-            new WriteResponse(input.keyBytes, input.valueBytes, input.dataset, input.tsMillis, status = succeeded)))
+            new WriteResponse(input.keyBytes,
+                              input.valueBytes,
+                              input.dataset,
+                              input.tsMillis,
+                              succeeded,
+                              input.startProcessingTime)))
       case Failure(exception) =>
         // this should be rare and indicates we have an uncaught exception
         // in the KVStore - we log the exception and skip the object to
@@ -123,7 +133,12 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
         logger.error(s"Caught exception writing to KVStore for object: $input", exception)
         resultFuture.complete(
           util.Arrays.asList[WriteResponse](
-            new WriteResponse(input.keyBytes, input.valueBytes, input.dataset, input.tsMillis, status = false)))
+            new WriteResponse(input.keyBytes,
+                              input.valueBytes,
+                              input.dataset,
+                              input.tsMillis,
+                              status = false,
+                              input.startProcessingTime)))
     }
   }
 }

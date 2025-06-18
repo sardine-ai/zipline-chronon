@@ -14,6 +14,7 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction
 class MetricsSink(groupByName: String) extends RichSinkFunction[WriteResponse] {
 
   @transient private var eventCreatedToSinkTimeHistogram: Histogram = _
+  @transient private var flinkProcessingTimeHistogram: Histogram = _
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -21,16 +22,27 @@ class MetricsSink(groupByName: String) extends RichSinkFunction[WriteResponse] {
       .addGroup("chronon")
       .addGroup("feature_group", groupByName)
 
+    // tune the Dropwizard defaults a bit as they can hold on to samples for a longer time (hence metrics take
+    // longer to come back to normal in low traffic scenarios)
+    // we bump alpha up from 0.015 to 0.05 to make the decay faster
     eventCreatedToSinkTimeHistogram = metricsGroup.histogram(
       "event_created_to_sink_time",
       new DropwizardHistogramWrapper(
-        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir())
+        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir(512, 0.05))
+      )
+    )
+
+    flinkProcessingTimeHistogram = metricsGroup.histogram(
+      "flink_processing_time",
+      new DropwizardHistogramWrapper(
+        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir(512, 0.05))
       )
     )
   }
 
   override def invoke(value: WriteResponse, context: SinkFunction.Context): Unit = {
-    val eventCreatedToSinkTime = System.currentTimeMillis() - value.tsMillis
-    eventCreatedToSinkTimeHistogram.update(eventCreatedToSinkTime)
+    val currentTime = System.currentTimeMillis()
+    eventCreatedToSinkTimeHistogram.update(currentTime - value.tsMillis)
+    flinkProcessingTimeHistogram.update(currentTime - value.startProcessingTime)
   }
 }

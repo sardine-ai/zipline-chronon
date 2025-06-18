@@ -26,7 +26,9 @@ api/python/ai/chronon/fetcher/
 api/python/ai/chronon/hub/
 api/python/ai/chronon/lineage/
 api/python/ai/chronon/orchestration/
+api/python/ai/chronon/planner/
 api/python/ai/chronon/agent/
+api/python/agent/
 api/python/.coverage
 api/python/htmlcov/
 **/derby.log

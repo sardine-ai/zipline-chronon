@@ -6,7 +6,7 @@ import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, DataType}
 import ai.chronon.flink.FlinkJob.watermarkStrategy
-import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider, SourceProjection}
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, ProjectedEvent, FlinkSerDeProvider, SourceProjection}
 import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider, KafkaFlinkSource}
 import ai.chronon.flink.types.{AvroCodecOutput, TimestampedTile, WriteResponse}
 import ai.chronon.flink.validation.ValidationFlinkJob
@@ -40,13 +40,15 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /** Flink job that processes a single streaming GroupBy and writes out the results (in the form of pre-aggregated tiles) to the KV store.
   *
-  * @param eventSrc - Provider of a Flink Datastream[ Map[String, Any] ] for the given topic and groupBy. The Map contains
-  *                    projected columns from the source data based on projections and filters in the GroupBy.
+  * @param eventSrc - Provider of a Flink Datastream[ ProjectedEvent ] for the given topic and groupBy. The event
+  *                    consists of a field Map as well as metadata columns such as processing start time (to track
+  *                    metrics). The Map contains projected columns from the source data based on projections and filters
+  *                    in the GroupBy.
   * @param sinkFn - Async Flink writer function to help us write to the KV store
   * @param groupByServingInfoParsed - The GroupBy we are working with
   * @param parallelism - Parallelism to use for the Flink job
   */
-class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
+class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
                inputSchema: Seq[(String, DataType)],
                sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
                groupByServingInfoParsed: GroupByServingInfoParsed,
@@ -115,13 +117,13 @@ class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
         "Tiling is disabled.")
 
     // we expect parallelism on the source stream to be set by the source provider
-    val sourceSparkProjectedStream: DataStream[Map[String, Any]] =
+    val sourceSparkProjectedStream: DataStream[ProjectedEvent] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
         .uid(s"source-$groupByName")
         .name(s"Source for $groupByName")
 
-    val sparkExprEvalDSWithWatermarks: DataStream[Map[String, Any]] = sourceSparkProjectedStream
+    val sparkExprEvalDSWithWatermarks: DataStream[ProjectedEvent] = sourceSparkProjectedStream
       .assignTimestampsAndWatermarks(watermarkStrategy)
       .uid(s"spark-expr-eval-timestamps-$groupByName")
       .name(s"Spark expression eval with timestamps for $groupByName")
@@ -163,13 +165,13 @@ class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
       ResolutionUtils.getSmallestTailHopMillis(groupByServingInfoParsed.groupBy)
 
     // we expect parallelism on the source stream to be set by the source provider
-    val sourceSparkProjectedStream: DataStream[Map[String, Any]] =
+    val sourceSparkProjectedStream: DataStream[ProjectedEvent] =
       eventSrc
         .getDataStream(topic, groupByName)(env, parallelism)
         .uid(s"source-$groupByName")
         .name(s"Source for $groupByName")
 
-    val sparkExprEvalDSAndWatermarks: DataStream[Map[String, Any]] = sourceSparkProjectedStream
+    val sparkExprEvalDSAndWatermarks: DataStream[ProjectedEvent] = sourceSparkProjectedStream
       .assignTimestampsAndWatermarks(watermarkStrategy)
       .uid(s"spark-expr-eval-timestamps-$groupByName")
       .name(s"Spark expression eval with timestamps for $groupByName")
@@ -177,14 +179,14 @@ class FlinkJob(eventSrc: FlinkSource[Map[String, Any]],
 
     val window = TumblingEventTimeWindows
       .of(Time.milliseconds(tilingWindowSizeInMillis))
-      .asInstanceOf[WindowAssigner[Map[String, Any], TimeWindow]]
+      .asInstanceOf[WindowAssigner[ProjectedEvent, TimeWindow]]
 
     // An alternative to AlwaysFireOnElementTrigger can be used: BufferedProcessingTimeTrigger.
     // The latter will buffer writes so they happen at most every X milliseconds per GroupBy & key.
     val trigger = new AlwaysFireOnElementTrigger()
 
     // We use Flink "Side Outputs" to track any late events that aren't computed.
-    val tilingLateEventsTag = new OutputTag[Map[String, Any]]("tiling-late-events") {}
+    val tilingLateEventsTag = new OutputTag[ProjectedEvent]("tiling-late-events") {}
 
     // The tiling operator works the following way:
     // 1. Input: Spark expression eval (previous operator)
@@ -262,12 +264,12 @@ object FlinkJob {
 
   // We wire up the watermark strategy post the spark expr eval to be able to leverage the user's timestamp column (which is
   // ETLed to Contants.TimeColumn) as the event timestamp and watermark
-  val watermarkStrategy: WatermarkStrategy[Map[String, Any]] = WatermarkStrategy
-    .forBoundedOutOfOrderness[Map[String, Any]](AllowedOutOfOrderness)
+  val watermarkStrategy: WatermarkStrategy[ProjectedEvent] = WatermarkStrategy
+    .forBoundedOutOfOrderness[ProjectedEvent](AllowedOutOfOrderness)
     .withIdleness(IdlenessTimeout)
-    .withTimestampAssigner(new SerializableTimestampAssigner[Map[String, Any]] {
-      override def extractTimestamp(element: Map[String, Any], recordTimestamp: Long): Long = {
-        element.get(Constants.TimeColumn).map(_.asInstanceOf[Long]).getOrElse(recordTimestamp)
+    .withTimestampAssigner(new SerializableTimestampAssigner[ProjectedEvent] {
+      override def extractTimestamp(element: ProjectedEvent, recordTimestamp: Long): Long = {
+        element.fields.get(Constants.TimeColumn).map(_.asInstanceOf[Long]).getOrElse(recordTimestamp)
       }
     })
 

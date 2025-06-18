@@ -64,8 +64,12 @@ class SourceIdentityDeserializationSchema(deserSchemaProvider: SerDe, groupBy: G
   }
 }
 
+/** Tracks the deserialized, projected event with additional metadata such as start processing time.
+  */
+case class ProjectedEvent(fields: Map[String, Any], startProcessingTimeMillis: Long)
+
 class SourceProjectionDeserializationSchema(deserSchemaProvider: SerDe, groupBy: GroupBy)
-    extends BaseDeserializationSchema[Map[String, Any]](deserSchemaProvider, groupBy)
+    extends BaseDeserializationSchema[ProjectedEvent](deserSchemaProvider, groupBy)
     with SourceProjection {
 
   @transient private var evaluator: SparkExpressionEval[Row] = _
@@ -97,7 +101,8 @@ class SourceProjectionDeserializationSchema(deserSchemaProvider: SerDe, groupBy:
     evaluator.initialize(metricsGroup)
   }
 
-  override def deserialize(messageBytes: Array[Byte], out: Collector[Map[String, Any]]): Unit = {
+  override def deserialize(messageBytes: Array[Byte], out: Collector[ProjectedEvent]): Unit = {
+    val startProcessingTimeMillis = System.currentTimeMillis()
     val maybeMutation = doDeserializeMutation(messageBytes)
 
     val mutations = maybeMutation
@@ -106,25 +111,29 @@ class SourceProjectionDeserializationSchema(deserSchemaProvider: SerDe, groupBy:
       }
       .getOrElse(Seq.empty)
 
-    mutations.foreach(row => doSparkExprEval(row, out))
+    mutations.foreach { row =>
+      val evaluatedRows = doSparkExprEval(row)
+      evaluatedRows.foreach { e =>
+        out.collect(ProjectedEvent(e, startProcessingTimeMillis))
+      }
+    }
   }
 
-  override def deserialize(messageBytes: Array[Byte]): Map[String, Any] = {
+  override def deserialize(messageBytes: Array[Byte]): ProjectedEvent = {
     throw new UnsupportedOperationException(
       "Use the deserialize(message: Array[Byte], out: Collector[Map[String, Any]]) method instead.")
   }
 
-  private def doSparkExprEval(inputEvent: Array[Any], out: Collector[Map[String, Any]]): Unit = {
+  private def doSparkExprEval(inputEvent: Array[Any]): Seq[Map[String, Any]] = {
     try {
-      val maybeRow = evaluator.performSql(inputEvent)
-      maybeRow.foreach(out.collect)
-
+      evaluator.performSql(inputEvent)
     } catch {
       case e: Exception =>
         // To improve availability, we don't rethrow the exception. We just drop the event
         // and track the errors in a metric. Alerts should be set up on this metric.
         logger.error("Error evaluating Spark expression", e)
         performSqlErrorCounter.inc()
+        Seq.empty
     }
   }
 }

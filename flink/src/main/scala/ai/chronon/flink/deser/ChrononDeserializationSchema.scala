@@ -32,7 +32,7 @@ object DeserializationSchemaBuilder {
   }
 
   def buildSourceProjectionDeserSchema(provider: SerDe,
-                                       groupBy: GroupBy): ChrononDeserializationSchema[Map[String, Any]] = {
+                                       groupBy: GroupBy): ChrononDeserializationSchema[ProjectedEvent] = {
     new SourceProjectionDeserializationSchema(provider, groupBy)
   }
 }
