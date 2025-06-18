@@ -11,7 +11,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.{Encoder, Encoders, Row}
 import org.slf4j.{Logger, LoggerFactory}
 
-abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe, groupBy: GroupBy)
+abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe, groupBy: GroupBy, enableDebug: Boolean = false)
     extends ChrononDeserializationSchema[T] {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -34,7 +34,17 @@ abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe, groupBy:
 
   protected def doDeserializeMutation(messageBytes: Array[Byte]): Option[Mutation] = {
     try {
-      Some(deserSchemaProvider.fromBytes(messageBytes))
+      val maybeMutation = Some(deserSchemaProvider.fromBytes(messageBytes))
+
+      if (enableDebug) {
+        // Log the deserialized mutation for debugging purposes
+        maybeMutation.foreach { mutation =>
+          val beforeStr = if (mutation.before != null) mutation.before.mkString(",") else "null"
+          val afterStr = if (mutation.after != null) mutation.after.mkString(",") else "null"
+          logger.info(s"Deserialized mutation: before=$beforeStr, after=$afterStr")
+        }
+      }
+      maybeMutation
     } catch {
       case e: Exception =>
         logger.error("Error deserializing message", e)
@@ -44,8 +54,8 @@ abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe, groupBy:
   }
 }
 
-class SourceIdentityDeserializationSchema(deserSchemaProvider: SerDe, groupBy: GroupBy)
-    extends BaseDeserializationSchema[Row](deserSchemaProvider, groupBy) {
+class SourceIdentityDeserializationSchema(deserSchemaProvider: SerDe, groupBy: GroupBy, enableDebug: Boolean = false)
+    extends BaseDeserializationSchema[Row](deserSchemaProvider, groupBy, enableDebug) {
 
   override def deserialize(messageBytes: Array[Byte], out: Collector[Row]): Unit = {
     val maybeMutation = doDeserializeMutation(messageBytes)
@@ -68,8 +78,8 @@ class SourceIdentityDeserializationSchema(deserSchemaProvider: SerDe, groupBy: G
   */
 case class ProjectedEvent(fields: Map[String, Any], startProcessingTimeMillis: Long)
 
-class SourceProjectionDeserializationSchema(deserSchemaProvider: SerDe, groupBy: GroupBy)
-    extends BaseDeserializationSchema[ProjectedEvent](deserSchemaProvider, groupBy)
+class SourceProjectionDeserializationSchema(deserSchemaProvider: SerDe, groupBy: GroupBy, enableDebug: Boolean = false)
+    extends BaseDeserializationSchema[ProjectedEvent](deserSchemaProvider, groupBy, enableDebug)
     with SourceProjection {
 
   @transient private var evaluator: SparkExpressionEval[Row] = _
@@ -114,6 +124,9 @@ class SourceProjectionDeserializationSchema(deserSchemaProvider: SerDe, groupBy:
     mutations.foreach { row =>
       val evaluatedRows = doSparkExprEval(row)
       evaluatedRows.foreach { e =>
+        if (enableDebug) {
+          logger.info(s"Evaluated row: ${e.mkString(",")}")
+        }
         out.collect(ProjectedEvent(e, startProcessingTimeMillis))
       }
     }

@@ -342,7 +342,7 @@ class GcpRunner(Runner):
         elif "deploy" in args:
             user_args["--streaming-mode"] = "deploy"
 
-        flag_args = {"--validate": self.validate}
+        flag_args = {"--validate": self.validate, "--enable-debug": self.enable_debug}
 
         # Set the savepoint deploy strategy
         if self.latest_savepoint:

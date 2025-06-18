@@ -64,7 +64,7 @@ object AsyncKVStoreWriter {
   * @param onlineImpl - Instantiation of the Chronon API to help create KV store objects
   * @param featureGroupName Name of the FG we're writing to
   */
-class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
+class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String, enableDebug: Boolean = false)
     extends RichAsyncFunction[AvroCodecOutput, WriteResponse] {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
@@ -107,6 +107,19 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
 
   override def asyncInvoke(input: AvroCodecOutput, resultFuture: ResultFuture[WriteResponse]): Unit = {
     val putRequest = PutRequest(input.keyBytes, input.valueBytes, input.dataset, Some(input.tsMillis))
+
+    if (enableDebug) {
+      logger.info(
+        s"""
+           |Writing to KVStore with request:
+           |dataset=${putRequest.dataset}
+           |tsMillis=${putRequest.tsMillis}
+           |keyBytes=${java.util.Base64.getEncoder.encodeToString(putRequest.keyBytes)}
+           |valueBytes=${java.util.Base64.getEncoder.encodeToString(putRequest.valueBytes)}
+        """.stripMargin
+      )
+    }
+
     val resultFutureRequested: Future[Seq[Boolean]] = kvStore.multiPut(Seq(putRequest))
     resultFutureRequested.onComplete {
       case Success(l) =>

@@ -105,7 +105,9 @@ case class AvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed)
   * @param groupByServingInfoParsed The GroupBy we are working with
   * @param tilingWindowSizeMs The size of the tiling window in milliseconds
   */
-case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed, tilingWindowSizeMs: Long)
+case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed,
+                            tilingWindowSizeMs: Long,
+                            enableDebug: Boolean = false)
     extends BaseAvroCodecFn[TimestampedTile, AvroCodecOutput] {
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
@@ -142,15 +144,17 @@ case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed, 
 
     val valueBytes = in.tileBytes
 
-    logger.debug(
-      s"""
-        |Avro converting tile to PutRequest - tile=${in}
-        |groupBy=${groupByServingInfoParsed.groupBy.getMetaData.getName} tsMills=$tsMills keys=$keys
-        |keyBytes=${java.util.Base64.getEncoder.encodeToString(entityKeyBytes)}
-        |valueBytes=${java.util.Base64.getEncoder.encodeToString(valueBytes)}
-        |startProcessingTime=${in.startProcessingTime}
-        |streamingDataset=$streamingDataset""".stripMargin
-    )
+    if (enableDebug) {
+      logger.info(
+        s"""
+          |Avro converting tile to PutRequest - tile=${in}
+          |groupBy=${groupByServingInfoParsed.groupBy.getMetaData.getName} tsMills=$tsMills keys=$keys
+          |keyBytes=${java.util.Base64.getEncoder.encodeToString(entityKeyBytes)}
+          |valueBytes=${java.util.Base64.getEncoder.encodeToString(valueBytes)}
+          |startProcessingTime=${in.startProcessingTime}
+          |streamingDataset=$streamingDataset""".stripMargin
+      )
+    }
 
     val tileKeyBytes = TilingUtils.serializeTileKey(tileKey)
     new AvroCodecOutput(tileKeyBytes, valueBytes, streamingDataset, tsMills, in.startProcessingTime)

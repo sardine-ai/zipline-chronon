@@ -35,7 +35,8 @@ import scala.collection.Seq
   */
 class FlinkRowAggregationFunction(
     groupBy: GroupBy,
-    inputSchema: Seq[(String, DataType)]
+    inputSchema: Seq[(String, DataType)],
+    enableDebug: Boolean = false
 ) extends AggregateFunction[ProjectedEvent, TimestampedIR, TimestampedIR] {
   @transient private[flink] var rowAggregator: RowAggregator = _
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -87,16 +88,18 @@ class FlinkRowAggregationFunction(
 
     // Given that the rowAggregator is transient, it may be null when a job is restored from a checkpoint
     if (rowAggregator == null) {
-      logger.debug(
+      logger.info(
         f"The Flink RowAggregator was null for groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills"
       )
       initializeRowAggregator()
     }
 
-    logger.debug(
-      f"Flink pre-aggregates BEFORE adding new element: accumulatorIr=[${accumulatorIr.ir
-        .mkString(", ")}] groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element"
-    )
+    if (enableDebug) {
+      logger.info(
+        f"Flink pre-aggregates BEFORE adding new element: accumulatorIr=[${accumulatorIr.ir
+          .mkString(", ")}] groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element"
+      )
+    }
 
     val partialAggregates = Try {
       val isDelete = isMutation && row.getAs[Boolean](reversalIndex)
@@ -111,10 +114,12 @@ class FlinkRowAggregationFunction(
 
     partialAggregates match {
       case Success(v) => {
-        logger.debug(
-          f"Flink pre-aggregates AFTER adding new element [${v.mkString(", ")}] " +
-            f"groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element"
-        )
+        if (enableDebug) {
+          logger.info(
+            f"Flink pre-aggregates AFTER adding new element [${v.mkString(", ")}] " +
+              f"groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element"
+          )
+        }
         new TimestampedIR(v, Some(tsMills), Some(event.startProcessingTimeMillis))
       }
       case Failure(e) =>
@@ -160,7 +165,8 @@ class FlinkRowAggregationFunction(
 // This process function is only meant to be used downstream of the ChrononFlinkAggregationFunction
 class FlinkRowAggProcessFunction(
     groupBy: GroupBy,
-    inputSchema: Seq[(String, DataType)]
+    inputSchema: Seq[(String, DataType)],
+    enableDebug: Boolean = false
 ) extends ProcessWindowFunction[TimestampedIR, TimestampedTile, java.util.List[Any], TimeWindow] {
 
   @transient private[flink] var tileCodec: TileCodec = _
@@ -194,18 +200,26 @@ class FlinkRowAggProcessFunction(
     val isComplete = context.currentWatermark >= windowEnd
 
     val tileBytes = Try {
-      tileCodec.makeTileIr(irEntry.ir, isComplete)
+      val irBytes = tileCodec.makeTileIr(irEntry.ir, isComplete)
+      if (enableDebug) {
+        val irStr = irEntry.ir.mkString(", ")
+        logger.info(s"""
+             |Flink RowAggProcessFunction created tile IR
+             |keys=${keys.iterator().toScala.mkString(", ")},
+             |groupBy=${groupBy.getMetaData.getName},
+             |tileBytes=${java.util.Base64.getEncoder.encodeToString(irBytes)},
+             |timestamp=${irEntry.latestTsMillis},
+             |startProcessingTime=${irEntry.startProcessingTime},
+             |ir=$irStr,
+             |windowEnd=$windowEnd,
+             |tileAvroSchema=${tileCodec.tileAvroSchema},
+             |""".stripMargin)
+      }
+      irBytes
     }
 
     tileBytes match {
       case Success(v) => {
-        logger.debug(
-          s"""
-             |Flink aggregator processed element irEntry=$irEntry
-             |tileBytes=${java.util.Base64.getEncoder.encodeToString(v)}
-             |windowEnd=$windowEnd groupBy=${groupBy.getMetaData.getName}
-             |keys=$keys isComplete=$isComplete tileAvroSchema=${tileCodec.tileAvroSchema}"""
-        )
         // The timestamp should never be None here.
         out.collect(new TimestampedTile(keys, v, irEntry.latestTsMillis.get, irEntry.startProcessingTime.get))
       }

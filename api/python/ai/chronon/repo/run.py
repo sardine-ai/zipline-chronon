@@ -200,6 +200,7 @@ def validate_additional_jars(ctx, param, value):
     help="Remote artifact URI to install zipline client artifacts necessary for interacting with Zipline infrastructure.",
 )
 @click.option("--disable-cloud-logging", is_flag=True, default=False, help="Disables cloud logging")
+@click.option("--enable-debug", is_flag=True, default=False, help="Enables verbose debug logging in run modes that support it")
 @click.pass_context
 def main(
     ctx,
@@ -238,6 +239,7 @@ def main(
     artifact_prefix,
     disable_cloud_logging,
     additional_jars,
+    enable_debug,
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))

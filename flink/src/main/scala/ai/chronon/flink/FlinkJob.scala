@@ -47,12 +47,14 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
   * @param sinkFn - Async Flink writer function to help us write to the KV store
   * @param groupByServingInfoParsed - The GroupBy we are working with
   * @param parallelism - Parallelism to use for the Flink job
+  * @param enableDebug - If enabled will log additional debug info per processed event
   */
 class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
                inputSchema: Seq[(String, DataType)],
                sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
                groupByServingInfoParsed: GroupByServingInfoParsed,
-               parallelism: Int) {
+               parallelism: Int,
+               enableDebug: Boolean = false) {
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
   val groupByName: String = groupByServingInfoParsed.groupBy.getMetaData.getName
@@ -207,8 +209,8 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
         .sideOutputLateData(tilingLateEventsTag)
         .aggregate(
           // See Flink's "ProcessWindowFunction with Incremental Aggregation"
-          new FlinkRowAggregationFunction(groupByServingInfoParsed.groupBy, inputSchema),
-          new FlinkRowAggProcessFunction(groupByServingInfoParsed.groupBy, inputSchema)
+          new FlinkRowAggregationFunction(groupByServingInfoParsed.groupBy, inputSchema, enableDebug),
+          new FlinkRowAggProcessFunction(groupByServingInfoParsed.groupBy, inputSchema, enableDebug)
         )
         .uid(s"tiling-01-$groupByName")
         .name(s"Tiling for $groupByName")
@@ -223,7 +225,7 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
       .setParallelism(sourceSparkProjectedStream.getParallelism)
 
     val putRecordDS: DataStream[AvroCodecOutput] = tilingDS
-      .flatMap(TiledAvroCodecFn(groupByServingInfoParsed, tilingWindowSizeInMillis))
+      .flatMap(TiledAvroCodecFn(groupByServingInfoParsed, tilingWindowSizeInMillis, enableDebug))
       .uid(s"avro-conversion-01-$groupByName")
       .name(s"Avro conversion for $groupByName")
       .setParallelism(sourceSparkProjectedStream.getParallelism)
@@ -301,6 +303,9 @@ object FlinkJob {
     val streamingManifestPath: ScallopOption[String] =
       opt[String](required = true, descr = "Bucket to write the manifest to")
 
+    val enableDebug: ScallopOption[Boolean] =
+      opt[Boolean](required = false, descr = "Enable debug logging mode", default = Some(false))
+
     verify()
   }
 
@@ -313,6 +318,7 @@ object FlinkJob {
     val validateMode = jobArgs.validate()
     val validateRows = jobArgs.validateRows()
     val maybeParentJobId = jobArgs.parentJobId.toOption
+    val enableDebug = jobArgs.enableDebug()
 
     val propsWithStreamingParams = props ++ Map(
       KafkaFlinkSource.KafkaBootstrap -> kafkaBootstrap.getOrElse("")
@@ -336,7 +342,7 @@ object FlinkJob {
     val flinkJob =
       maybeServingInfo
         .map { servingInfo =>
-          buildFlinkJob(groupByName, propsWithStreamingParams, api, servingInfo)
+          buildFlinkJob(groupByName, propsWithStreamingParams, api, servingInfo, enableDebug)
         }
         .recover { case e: Exception =>
           throw new IllegalArgumentException(s"Unable to lookup serving info for GroupBy: '$groupByName'", e)
@@ -384,14 +390,15 @@ object FlinkJob {
   private def buildFlinkJob(groupByName: String,
                             props: Map[String, String],
                             api: Api,
-                            servingInfo: GroupByServingInfoParsed) = {
+                            servingInfo: GroupByServingInfoParsed,
+                            enableDebug: Boolean = false) = {
     val topicUri = servingInfo.groupBy.streamingSource.get.topic
     val topicInfo = TopicInfo.parse(topicUri)
 
     val schemaProvider = FlinkSerDeProvider.build(topicInfo)
 
     val deserializationSchema =
-      DeserializationSchemaBuilder.buildSourceProjectionDeserSchema(schemaProvider, servingInfo.groupBy)
+      DeserializationSchemaBuilder.buildSourceProjectionDeserSchema(schemaProvider, servingInfo.groupBy, enableDebug)
     require(
       deserializationSchema.isInstanceOf[SourceProjection],
       s"Expect created deserialization schema for groupBy: $groupByName with $topicInfo to mixin SourceProjection. " +
@@ -404,9 +411,10 @@ object FlinkJob {
     new FlinkJob(
       eventSrc = source,
       projectedSchema,
-      sinkFn = new AsyncKVStoreWriter(api, servingInfo.groupBy.metaData.name),
+      sinkFn = new AsyncKVStoreWriter(api, servingInfo.groupBy.metaData.name, enableDebug),
       groupByServingInfoParsed = servingInfo,
-      parallelism = source.parallelism
+      parallelism = source.parallelism,
+      enableDebug = enableDebug
     )
   }
 

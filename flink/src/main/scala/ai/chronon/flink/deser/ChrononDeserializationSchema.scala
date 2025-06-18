@@ -27,12 +27,15 @@ trait SourceProjection {
 }
 
 object DeserializationSchemaBuilder {
-  def buildSourceIdentityDeserSchema(provider: SerDe, groupBy: GroupBy): ChrononDeserializationSchema[Row] = {
-    new SourceIdentityDeserializationSchema(provider, groupBy)
+  def buildSourceIdentityDeserSchema(provider: SerDe,
+                                     groupBy: GroupBy,
+                                     enableDebug: Boolean = false): ChrononDeserializationSchema[Row] = {
+    new SourceIdentityDeserializationSchema(provider, groupBy, enableDebug)
   }
 
   def buildSourceProjectionDeserSchema(provider: SerDe,
-                                       groupBy: GroupBy): ChrononDeserializationSchema[ProjectedEvent] = {
-    new SourceProjectionDeserializationSchema(provider, groupBy)
+                                       groupBy: GroupBy,
+                                       enableDebug: Boolean = false): ChrononDeserializationSchema[ProjectedEvent] = {
+    new SourceProjectionDeserializationSchema(provider, groupBy, enableDebug)
   }
 }
