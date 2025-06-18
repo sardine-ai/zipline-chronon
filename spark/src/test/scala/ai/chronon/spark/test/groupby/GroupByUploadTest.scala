@@ -319,4 +319,106 @@ class GroupByUploadTest extends AnyFlatSpec {
       assertEquals(actual, expected)
     }
   }
+
+  // This test is to ensure that the GroupByUpload can handle a GroupBy with lastK struct and derivations
+  it should "upload groupBy with lastK struct + derivations" in {
+    val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
+    val yesterday = tableUtils.partitionSpec.before(today)
+    tableUtils.createDatabase(namespace)
+    tableUtils.sql(s"USE $namespace")
+
+    val eventsTable = "test_gb_with_derivations"
+
+    // Create test data with the columns needed for the derivations GroupBy
+    import spark.implicits._
+    import org.apache.spark.sql.functions._
+
+    val testData = Seq(
+      ("test_user_123", 100, 42.5, System.currentTimeMillis() - 86400000L), // 1 day ago
+      ("test_user_123", 200, 33.3, System.currentTimeMillis() - 172800000L), // 2 days ago
+      ("test_user_456", 150, 25.0, System.currentTimeMillis() - 86400000L)
+    ).toDF("id", "int_val", "double_val", "ts")
+      .withColumn(tableUtils.partitionColumn, from_unixtime(col("ts") / 1000, tableUtils.partitionFormat))
+
+    testData.save(s"$namespace.$eventsTable")
+
+    val groupByConf = makeDerivationsGroupBy(namespace, eventsTable)
+    GroupByUpload.run(groupByConf, endDs = yesterday)
+  }
+
+  private def makeDerivationsGroupBy(namespace: String, eventsTable: String): GroupBy =
+    Builders.GroupBy(
+      sources = Seq(
+        Builders.Source.events(
+          table = s"$namespace.$eventsTable",
+          topic = "events.my_stream",
+          query = Builders.Query(
+            selects = Map(
+              "id" -> "id",
+              "int_val" -> "int_val",
+              "double_val" -> "double_val",
+              "named_struct" -> "IF(id IS NOT NULL, NAMED_STRUCT('id', id, 'int_val', int_val), NULL)",
+              "another_named_struct" -> "IF(id IS NOT NULL, NAMED_STRUCT('id', id, 'double_val', double_val), NULL)"
+            ),
+            wheres = Seq.empty,
+            timeColumn = "ts",
+            startPartition = "20231106"
+          )
+        )
+      ),
+      keyColumns = Seq("id"),
+      aggregations = Seq(
+        Builders.Aggregation(
+          operation = Operation.SUM,
+          inputColumn = "double_val",
+          windows = Seq(
+            new Window(1, TimeUnit.DAYS)
+          )
+        ),
+        Builders.Aggregation(
+          operation = Operation.LAST_K,
+          inputColumn = "named_struct",
+          windows = Seq(
+            new Window(1, TimeUnit.DAYS),
+            new Window(2, TimeUnit.DAYS)
+          ),
+          argMap = Map("k" -> "2")
+        ),
+        Builders.Aggregation(
+          operation = Operation.LAST_K,
+          inputColumn = "another_named_struct",
+          windows = Seq(
+            new Window(1, TimeUnit.DAYS),
+            new Window(2, TimeUnit.DAYS)
+          ),
+          argMap = Map("k" -> "2")
+        ),
+        Builders.Aggregation(
+          operation = Operation.LAST,
+          inputColumn = "int_val",
+          windows = Seq(
+            new Window(1, TimeUnit.DAYS)
+          )
+        )
+      ),
+      metaData = Builders.MetaData(
+        namespace = namespace,
+        name = "derivations_test_group_by"
+      ),
+      accuracy = Accuracy.TEMPORAL,
+      derivations = Seq(
+        Builders.Derivation(
+          name = "int_val",
+          expression = "int_val_last_1d"
+        ),
+        Builders.Derivation(
+          name = "id_last2_1d",
+          expression = "transform(named_struct_last2_1d, x -> x.id)"
+        ),
+        Builders.Derivation(
+          name = "id2_last2_1d",
+          expression = "transform(another_named_struct_last2_1d, x -> x.id)"
+        )
+      )
+    )
 }

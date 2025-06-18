@@ -152,13 +152,23 @@ object SparkInternalRowConversions {
         val names = fields.map { _.name }
 
         def mapConverter(structMap: Any): Any = {
-          val map = structMap.asInstanceOf[Map[Any, Any]]
-          val valueArr =
-            names.iterator
-              .zip(funcs.iterator)
-              .map { case (name, func) => map.get(name).map(func).orNull }
-              .toArray
-          new GenericInternalRow(valueArr)
+          // structMap can be a Map[Any, Any] or an Array[Any]
+          // we try the Map[Any, Any] first, if it fails we assume it's an Array[Any]
+          structMap match {
+            case map: Map[Any, Any] =>
+              val valueArr =
+                names.iterator
+                  .zip(funcs.iterator)
+                  .map { case (name, func) => map.get(name).map(func).orNull }
+                  .toArray
+              new GenericInternalRow(valueArr)
+            case arr: Array[_] =>
+              arrayConverter(arr)
+            case _ =>
+              throw new IllegalArgumentException(
+                s"Expected Map[Any, Any] or Array[Any] for struct conversion, but got: ${structMap.getClass.getName}"
+              )
+          }
         }
 
         def arrayConverter(structArr: Any): Any = {
