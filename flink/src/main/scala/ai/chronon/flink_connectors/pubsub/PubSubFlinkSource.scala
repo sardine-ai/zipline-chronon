@@ -8,6 +8,8 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.connectors.gcp.pubsub.PubSubSource
 
+import java.time.Duration
+
 /** Chronon Flink source that reads events from Google PubSub. Can be configured on the topic as:
   * pubsub://test-item-event-data/tasks=20/<other-params>
   *
@@ -31,6 +33,12 @@ class PubSubFlinkSource[T](props: Map[String, String],
   implicit val parallelism: Int =
     FlinkSourceProvider.getProperty(TaskParallelism, props, topicInfo).map(_.toInt).getOrElse(DefaultParallelism)
 
+  // Defaults in the Pubsub source are 100 messages per pull, 15s timeout and 3 retries
+  // we lower the timeout to 1s to avoid long delays in processing
+  private val MessagesPerPull: Int = 100
+  private val PullTimeout: Duration = Duration.ofSeconds(1)
+  private val MaxRetries: Int = 3
+
   val projectName: String = getOrThrow(GcpProject, props)
   val subscriptionName: String = FlinkSourceProvider
     .getProperty(SubscriptionName, props, topicInfo)
@@ -43,6 +51,7 @@ class PubSubFlinkSource[T](props: Map[String, String],
       .withDeserializationSchema(deserializationSchema)
       .withProjectName(projectName)
       .withSubscriptionName(subscriptionName)
+      .withPubSubSubscriberFactory(MessagesPerPull, PullTimeout, MaxRetries)
       .build()
 
     // skip watermarks at the source as we derive them post Spark expr eval
