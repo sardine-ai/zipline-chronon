@@ -206,10 +206,12 @@ struct UploadResponse {
 }
 
 struct WorkflowStartRequest {
-    1: optional string nodeName
-    2: optional string branch
-    3: optional string startDate
-    4: optional string endDate
+    1: optional string confName
+    2: optional string mode
+    3: optional string branch
+    4: optional string user
+    5: optional string start
+    6: optional string end
 }
 
 struct WorkflowStartResponse {
