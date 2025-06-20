@@ -34,10 +34,22 @@ class PubSubFlinkSource[T](props: Map[String, String],
     FlinkSourceProvider.getProperty(TaskParallelism, props, topicInfo).map(_.toInt).getOrElse(DefaultParallelism)
 
   // Defaults in the Pubsub source are 100 messages per pull, 15s timeout and 3 retries
-  // we lower the timeout to 1s to avoid long delays in processing
-  private val MessagesPerPull: Int = 100
-  private val PullTimeout: Duration = Duration.ofSeconds(1)
-  private val MaxRetries: Int = 3
+  // we lower the timeout by default to 5s and allow users to override it
+  private val messagesPerPull: Int = FlinkSourceProvider
+    .getProperty(MessagesPerPull, props, topicInfo)
+    .map(_.toInt)
+    .getOrElse(100)
+
+  private val maxRetries: Int = FlinkSourceProvider
+    .getProperty(MaxRetries, props, topicInfo)
+    .map(_.toInt)
+    .getOrElse(3)
+
+  private val pullTimeout: Duration =
+    FlinkSourceProvider
+      .getProperty(PullTimeoutMillis, props, topicInfo)
+      .map(t => Duration.ofMillis(t.toLong))
+      .getOrElse(Duration.ofMillis(5000))
 
   val projectName: String = getOrThrow(GcpProject, props)
   val subscriptionName: String = FlinkSourceProvider
@@ -51,7 +63,7 @@ class PubSubFlinkSource[T](props: Map[String, String],
       .withDeserializationSchema(deserializationSchema)
       .withProjectName(projectName)
       .withSubscriptionName(subscriptionName)
-      .withPubSubSubscriberFactory(MessagesPerPull, PullTimeout, MaxRetries)
+      .withPubSubSubscriberFactory(messagesPerPull, pullTimeout, maxRetries)
       .build()
 
     // skip watermarks at the source as we derive them post Spark expr eval
@@ -68,6 +80,9 @@ object PubSubFlinkSource {
   val GcpProject = "GCP_PROJECT_ID"
   val SubscriptionName = "subscription"
   val TaskParallelism = "tasks"
+  val MessagesPerPull = "messages_per_pull"
+  val MaxRetries = "max_retries"
+  val PullTimeoutMillis = "pull_timeout_ms"
 
   // go with a default //ism of 20 as that gives us some room to handle decent load without
   // too many tasks
