@@ -66,6 +66,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
   private val isBenchmarkMode = sparkSession.conf.get("spark.chronon.backfill.benchmarkMode.enabled", "true").toBoolean
 
+  // For label join job allows you to join sub-day windows to the same day on the join rather than
+  // the default behavior which is using a 1 day offset
+  val roundDownHourOffset: Boolean =
+    sparkSession.conf.get("spark.chronon.join.label_join.round_down_sub_day_windows", "false").toBoolean
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
   // transient because the format provider is not always serializable.
@@ -73,16 +77,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   @transient private lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
 
   val joinPartParallelism: Int = sparkSession.conf.get("spark.chronon.join.part.parallelism", "1").toInt
-  private val aggregationParallelism: Int = sparkSession.conf.get("spark.chronon.group_by.parallelism", "1000").toInt
 
   sparkSession.sparkContext.setLogLevel("ERROR")
-
-  def preAggRepartition(df: DataFrame): DataFrame =
-    if (df.rdd.getNumPartitions < aggregationParallelism) {
-      df.repartition(aggregationParallelism)
-    } else {
-      df
-    }
 
   def tableReachable(tableName: String, ignoreFailure: Boolean = false): Boolean = {
     Try { sparkSession.catalog.getTable(tableName) } match {

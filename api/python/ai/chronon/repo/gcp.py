@@ -342,7 +342,7 @@ class GcpRunner(Runner):
         elif "deploy" in args:
             user_args["--streaming-mode"] = "deploy"
 
-        flag_args = {"--mock-source": self.mock_source, "--validate": self.validate}
+        flag_args = {"--validate": self.validate, "--enable-debug": self.enable_debug}
 
         # Set the savepoint deploy strategy
         if self.latest_savepoint:
@@ -355,6 +355,10 @@ class GcpRunner(Runner):
         # Set version check deploy
         if self.version_check:
             flag_args["--version-check"] = self.version_check
+
+        # Set additional jars
+        if self.additional_jars:
+            user_args["--additional-jars"] = self.additional_jars
 
         user_args_str = " ".join(f"{key}={value}" for key, value in user_args.items() if value)
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)

@@ -93,6 +93,16 @@ def validate_flink_state(ctx, param, value):
         )
     return value
 
+def validate_additional_jars(ctx, param, value):
+    if value:
+        jars = value.split(',')
+        for jar in jars:
+            if not jar.startswith(('gs://', 's3://')):
+                raise click.BadParameter(
+                    f"Additional jars must start with gs://, s3://: {jar}"
+                )
+    return value
+
 @click.command(
     name="run",
     context_settings=dict(allow_extra_args=True, ignore_unknown_options=True),
@@ -106,7 +116,7 @@ def validate_flink_state(ctx, param, value):
     default="dev",
     help="Running environment - default to be dev",
 )
-@click.option("--mode", type=click.Choice([str(k) for k in MODE_ARGS.keys()]), default=RunMode.BACKFILL)
+@click.option("--mode", type=click.Choice([str(k) for k in MODE_ARGS.keys()]), default=str(RunMode.BACKFILL))
 @click.option("--ds", help="the end partition to backfill the data")
 @click.option("--app-name", help="app name. Default to {}".format(APP_NAME_TEMPLATE))
 @click.option(
@@ -173,11 +183,9 @@ def validate_flink_state(ctx, param, value):
 @click.option("--flink-state-uri",
               help="Bucket for storing flink state checkpoints/savepoints and other internal pieces for orchestration.",
               callback=validate_flink_state)
-@click.option(
-    "--mock-source",
-    is_flag=True,
-    help="Use a mocked data source instead of a real source for groupby-streaming Flink.",
-)
+@click.option("--additional-jars",
+              help="Comma separated list of additional jar URIs to be included in the Flink job classpath (e.g. gs://bucket/jar1.jar,gs://bucket/jar2.jar).",
+              callback=validate_additional_jars)
 @click.option(
     "--validate",
     is_flag=True,
@@ -192,6 +200,7 @@ def validate_flink_state(ctx, param, value):
     help="Remote artifact URI to install zipline client artifacts necessary for interacting with Zipline infrastructure.",
 )
 @click.option("--disable-cloud-logging", is_flag=True, default=False, help="Disables cloud logging")
+@click.option("--enable-debug", is_flag=True, default=False, help="Enables verbose debug logging in run modes that support it")
 @click.pass_context
 def main(
     ctx,
@@ -224,12 +233,13 @@ def main(
     no_savepoint,
     version_check,
     flink_state_uri,
-    mock_source,
     validate,
     validate_rows,
     join_part_name,
     artifact_prefix,
-    disable_cloud_logging
+    disable_cloud_logging,
+    additional_jars,
+    enable_debug,
 ):
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))

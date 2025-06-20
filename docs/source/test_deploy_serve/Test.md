@@ -157,7 +157,7 @@ The `sample_percent` param will enable logging during fetching phase, and the `c
 
 The spark job will write the result to a flat Hive table in the pattern of `<output_namespace>.<team_name>_<join_name>_consistency`.
 
-See more details of what it computes [here](https://sourcegraph.d.musta.ch/github.com/airbnb/chronon/-/blob/docs/source/Online_Offline_Consistency.md).
+See more details of what it computes [here](https://sourcegraph.d.musta.ch/github.com/zipline/chronon/-/blob/docs/source/Online_Offline_Consistency.md).
 
 
 ## Useful tips to work with Chronon

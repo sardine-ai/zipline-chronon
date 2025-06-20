@@ -78,44 +78,42 @@ object AvroConversions {
     }
   }
 
-  val RepetitionSuffix = "_REPEATED_NAME_"
-  def fromChrononSchema(dataType: DataType, nameSet: mutable.Set[String] = new mutable.HashSet[String]): Schema = {
-    def addName(name: String): String = {
-      val cleanName = name.replaceAll("[^0-9a-zA-Z_]", "_")
-      val eligibleName = if (!nameSet.contains(cleanName)) {
-        cleanName
-      } else {
-        var i = 0
-        while (nameSet.contains(cleanName + RepetitionSuffix + i.toString)) { i += 1 }
-        cleanName + RepetitionSuffix + i.toString
-      }
-      nameSet.add(eligibleName)
-      eligibleName
-    }
+  def fromChrononSchema(dataType: DataType,
+                        nameSet: mutable.Set[String] = new mutable.HashSet[String],
+                        fieldPath: String = ""): Schema = {
     dataType match {
       case StructType(name, fields) =>
         assert(name != null)
+
+        // Generate unique name based on field path
+        val uniqueName = if (fieldPath.isEmpty) {
+          name
+        } else {
+          s"${fieldPath.replace(".", "_")}_$name"
+        }
+
         Schema.createRecord(
-          addName(name),
+          uniqueName,
           "", // doc
           "ai.chronon.data", // namespace
           false, // isError
           fields
             .map { chrononField =>
               val defaultValue: AnyRef = null
-              new Field(
-                addName(chrononField.name),
-                Schema.createUnion(Schema.create(Schema.Type.NULL), fromChrononSchema(chrononField.fieldType, nameSet)),
-                "",
-                defaultValue)
+              val childPath = if (fieldPath.isEmpty) chrononField.name else s"$fieldPath.${chrononField.name}"
+              new Field(chrononField.name,
+                        Schema.createUnion(Schema.create(Schema.Type.NULL),
+                                           fromChrononSchema(chrononField.fieldType, nameSet, childPath)),
+                        "",
+                        defaultValue)
             }
             .toList
             .asJava
         )
-      case ListType(elementType) => Schema.createArray(fromChrononSchema(elementType, nameSet))
+      case ListType(elementType) => Schema.createArray(fromChrononSchema(elementType, nameSet, fieldPath))
       case MapType(keyType, valueType) => {
         assert(keyType == StringType, "Avro only supports string keys for a map")
-        Schema.createMap(fromChrononSchema(valueType, nameSet))
+        Schema.createMap(fromChrononSchema(valueType, nameSet, fieldPath))
       }
       case StringType    => Schema.create(Schema.Type.STRING)
       case IntType       => Schema.create(Schema.Type.INT)

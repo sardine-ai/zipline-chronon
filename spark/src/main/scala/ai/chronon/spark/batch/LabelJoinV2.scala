@@ -70,11 +70,6 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
 
       assert(Option(jp.groupBy.aggregations).isDefined,
              s"aggregations must be defined for label join ${jp.groupBy.metaData.name}")
-
-      val windows = jp.groupBy.aggregations.asScala.flatMap(_.windows.asScala).filter(_.timeUnit == TimeUnit.DAYS)
-
-      assert(windows.nonEmpty,
-             s"at least one aggregation with a daily window must be defined for label join ${jp.groupBy.metaData.name}")
     }
   }
 
@@ -97,15 +92,20 @@ class LabelJoinV2(joinConf: api.Join, tableUtils: TableUtils, labelDateRange: ap
               // The "backwards" looking window to find the join output to join against for a given day of label data
               // We cannot compute labelJoin for the same day as label data. For example, even for a 2-hour window,
               // events between 22:00-23:59 will not have complete values. So the minimum offset is 1 day.
-              val effectiveLength = w.timeUnit match {
+              val baseWindowLength = w.timeUnit match {
                 case TimeUnit.DAYS    => w.length
                 case TimeUnit.HOURS   => math.ceil(w.length / 24.0).toInt
                 case TimeUnit.MINUTES => math.ceil(w.length / (24.0 * 60)).toInt
               }
 
+              // Round down the 1-day or smaller windows same day if the corresponding flag is set
+              // (this is not suggested as it might ignore labels that land after the midnight boundary).
+              val effectiveWindowLength =
+                if (tableUtils.roundDownHourOffset && (baseWindowLength == 1)) 0 else baseWindowLength
+
               val fullColName = s"${labelJoinPart.fullPrefix}_${aggPart.outputColumnName}"
 
-              (effectiveLength, fullColName, w)
+              (effectiveWindowLength, fullColName, w)
             }
           }
           .groupBy(_._1)

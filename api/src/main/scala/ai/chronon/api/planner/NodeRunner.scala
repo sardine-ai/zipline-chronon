@@ -1,14 +1,11 @@
 package ai.chronon.api.planner
 
-import ai.chronon.api.{PartitionRange, PartitionSpec}
 import ai.chronon.api
+import ai.chronon.api.PartitionRange
+import ai.chronon.planner.NodeContent
+trait NodeRunner {
 
-trait BatchRunContext {
-  def partitionSpec: PartitionSpec
-}
-// run context in our case will be tableUtils
-trait NodeRunner[Conf] {
-  def run(metadata: api.MetaData, conf: Conf, range: PartitionRange, batchContext: BatchRunContext)
+  def run(metadata: api.MetaData, conf: NodeContent, range: Option[PartitionRange]): Unit
 }
 
 object LineageOfflineRunner {

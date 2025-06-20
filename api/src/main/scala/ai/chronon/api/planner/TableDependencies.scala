@@ -3,12 +3,24 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.api.{Accuracy, DataModel, PartitionSpec, TableDependency, TableInfo, Window}
+import scala.collection.JavaConverters._
 
 object TableDependencies {
 
-  def fromJoin(join: api.Join, labelParts: api.LabelParts)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+  def fromStagingQuery(stagingQuery: api.StagingQuery)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+    Option(stagingQuery.tableDependencies)
+      .map(_.asScala.toSeq)
+      .getOrElse(Seq.empty)
+      .map { tableDep =>
+        new TableDependency()
+          .setTableInfo(tableDep)
+      }
+  }
 
-    val joinParts = labelParts.labels.iterator().toScala.toArray.distinct
+  def fromJoin(join: api.Join)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+    val labelParts = Option(join.labelParts)
+
+    val joinParts = labelParts.map(_.labels.iterator().toScala.toArray.distinct).getOrElse(Array.empty)
     joinParts.flatMap { jp =>
       require(
         jp.groupBy.dataModel == DataModel.EVENTS,

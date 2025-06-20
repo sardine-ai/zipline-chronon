@@ -57,6 +57,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
   protected[spark] val tsIndex: Int = inputDf.schema.fieldNames.indexOf(Constants.TimeColumn)
   protected val selectedSchema: Array[(String, api.DataType)] = SparkConversions.toChrononSchema(inputDf.schema)
   implicit private val tableUtils: TableUtils = TableUtils(inputDf.sparkSession)
+
   val keySchema: StructType = StructType(keyColumns.map(inputDf.schema.apply).toArray)
   implicit val sparkSession: SparkSession = inputDf.sparkSession
   // distinct inputs to aggregations - post projection types that needs to match with
@@ -73,10 +74,12 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
         .map(inputDf.schema.apply)
         .toSeq)
   } else {
+
     val values = inputDf.schema
       .map(_.name)
       .filterNot((keyColumns ++ Constants.ReservedColumns(tableUtils.partitionColumn)).contains)
     val valuesIndices = values.map(inputDf.schema.fieldIndex).toArray
+
     StructType(valuesIndices.map(inputDf.schema))
   }
 
@@ -136,9 +139,7 @@ class GroupBy(val aggregations: Seq[api.Aggregation],
         |${preppedInputDf.schema.pretty}
         |""".stripMargin)
 
-    tableUtils
-      .preAggRepartition(preppedInputDf)
-      .rdd
+    preppedInputDf.rdd
       .keyBy(keyBuilder)
       .aggregateByKey(windowAggregator.init)(seqOp = irUpdateFunc, combOp = windowAggregator.merge)
       .map { case (keyWithHash, ir) => keyWithHash.data -> normalizeOrFinalize(ir) }

@@ -2,9 +2,9 @@ package ai.chronon.spark
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.api.DateRange
+import ai.chronon.api.{DateRange, MetaData}
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.orchestration.JoinDerivationNode
+import ai.chronon.planner.JoinDerivationNode
 import ai.chronon.spark.Extensions._
 import org.apache.spark.sql.functions.{coalesce, col, expr}
 
@@ -17,7 +17,8 @@ True left columns are keys, ts, and anything else selected on left source.
 
 Source -> True left table -> Bootstrap table (sourceTable here)
  */
-class JoinDerivationJob(node: JoinDerivationNode, range: DateRange)(implicit tableUtils: TableUtils) {
+class JoinDerivationJob(node: JoinDerivationNode, metaData: MetaData, range: DateRange)(implicit
+    tableUtils: TableUtils) {
   implicit val partitionSpec = tableUtils.partitionSpec
   private val join = node.join
   private val dateRange = range.toPartitionRange
@@ -30,7 +31,7 @@ class JoinDerivationJob(node: JoinDerivationNode, range: DateRange)(implicit tab
   private val baseTable = join.metaData.outputTable
 
   // Output table for this derivation job comes from the metadata
-  private val outputTable = node.metaData.outputTable
+  private val outputTable = metaData.outputTable
 
   def run(): Unit = {
 

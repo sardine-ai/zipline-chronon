@@ -163,6 +163,14 @@ object LoggableResponse {
     responseToBytesFn(responseFields)
   }
 
+  def prependSchemaRegistryBytes(schemaId: Int, bytes: Array[Byte]): Array[Byte] = {
+    val out = new Array[Byte](bytes.length + 5)
+    out(0) = 0x0.toByte // schema registry magic byte
+    ByteBuffer.wrap(out, 1, 4).putInt(schemaId) // schema ID
+    System.arraycopy(bytes, 0, out, 5, bytes.length)
+    out
+  }
+
   def fromAvroBytes(bytes: Array[Byte]): LoggableResponse = {
     val decodedResponse = avroCodec.decode(bytes)
     LoggableResponse(

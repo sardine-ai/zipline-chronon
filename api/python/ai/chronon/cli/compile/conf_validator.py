@@ -18,6 +18,7 @@
 import json
 import logging
 import re
+import textwrap
 from collections import defaultdict
 from typing import Dict, List, Set
 
@@ -29,6 +30,7 @@ from ai.chronon.api.ttypes import (
     ExternalPart,
     GroupBy,
     Join,
+    JoinPart,
     Source,
 )
 from ai.chronon.group_by import get_output_col_names
@@ -377,6 +379,81 @@ class ConfValidator(object):
                     derived_columns.add(derivation.name)
         return errors
 
+    def _validate_join_part_keys(self, join_part: JoinPart, left_cols: List[str]) -> BaseException:
+        keys = []
+
+        key_mapping = join_part.keyMapping if join_part.keyMapping else {}
+        for key in join_part.groupBy.keyColumns:
+            keys.append(key_mapping.get(key, key))
+
+        missing = [k for k in keys if k not in left_cols]
+
+        err_string = ""
+        left_cols_as_str = ", ".join(left_cols)
+        group_by_name = join_part.groupBy.metaData.name
+        if missing:
+            key_mapping_str = f"Key Mapping: {key_mapping}" if key_mapping else ""
+            err_string += textwrap.dedent(f"""
+                - Join is missing keys {missing} on left side. Required for JoinPart: {group_by_name}. 
+                Existing columns on left side: {left_cols_as_str}
+                All required Keys: {join_part.groupBy.keyColumns}
+                {key_mapping_str}
+                Consider renaming a column on the left, or including the key_mapping argument to your join_part.""")
+
+        if key_mapping:
+            # Left side of key mapping should include columns on the left
+            key_map_keys_missing_from_left = [k for k in key_mapping.keys() if k not in left_cols]
+            if key_map_keys_missing_from_left:
+                err_string += f"\n- The following keys in your key_mapping: {str(key_map_keys_missing_from_left)} for JoinPart {group_by_name} are not included in the left side of the join: {left_cols_as_str}"
+
+            # Right side of key mapping should only include keys in GroupBy
+            keys_missing_from_key_map_values = [v for v in key_mapping.values() if v not in join_part.groupBy.keyColumns]
+            if keys_missing_from_key_map_values:
+                err_string += f"\n- The following values in your key_mapping: {str(keys_missing_from_key_map_values)}  for JoinPart {group_by_name} do not cover any group by key columns: {join_part.groupBy.keyColumns}"
+
+            if key_map_keys_missing_from_left or keys_missing_from_key_map_values:
+                err_string += "\n(Key Mapping should be formatted as column_from_left -> group_by_key)"
+
+        if err_string:
+            return ValueError(err_string)
+
+
+    def _validate_keys(self, join: Join) -> List[BaseException]:
+        left = join.left
+
+        left_selects = None
+        if left.events:
+            left_selects = left.events.query.selects
+        elif left.entities:
+            left_selects = left.entities.query.selects
+        elif left.joinSource:
+            left_selects = left.joinSource.query.selects
+            # TODO -- if selects are not selected here, get output cols from join
+
+        left_cols = []
+
+        if left_selects:
+            left_cols = left_selects.keys()
+
+        errors = []
+
+        if left_cols:
+            join_parts = join.joinParts
+
+            # Add label_parts to join_parts to validate if set
+            label_parts = join.labelParts
+            if label_parts:
+                for label_jp in label_parts.labels:
+                    join_parts.append(label_jp)
+
+            # Validate join_parts
+            for join_part in join_parts:
+                join_part_err = self._validate_join_part_keys(join_part, left_cols)
+                if join_part_err:
+                    errors.append(join_part_err)
+
+        return errors
+
     def _validate_join(self, join: Join) -> List[BaseException]:
         """
         Validate join's status with materialized versions of group_bys
@@ -437,6 +514,9 @@ class ConfValidator(object):
                 keys = get_pre_derived_source_keys(join.left)
                 columns = features + keys
             errors.extend(self._validate_derivations(columns, join.derivations))
+
+        errors.extend(self._validate_keys(join))
+
         return errors
 
     def _validate_group_by(self, group_by: GroupBy) -> List[BaseException]:
@@ -515,4 +595,12 @@ class ConfValidator(object):
                         src.events.table
                     ))
                 )
+            elif (
+                src.joinSource
+            ):
+                join_obj = src.joinSource.join
+                if join_obj.metaData.name is None or join_obj.metaData.team is None:
+                    errors.append(
+                        ValueError(f"Join must be defined with team and name: {join_obj}")
+                    )
         return errors

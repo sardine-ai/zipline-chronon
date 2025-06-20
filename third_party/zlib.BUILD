@@ -20,7 +20,10 @@ cc_library(
             "_DARWIN_C_SOURCE",
             "fdopen=my_fdopen_wrapper", # Redefine fdopen to avoid conflicts
         ],
-        "//conditions:default": [],
+        "//conditions:default": [
+            "HAVE_UNISTD_H",
+            "HAVE_STDARG_H",
+        ],
     }),
     copts = select({
         ":macos": [

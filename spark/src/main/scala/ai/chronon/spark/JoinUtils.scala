@@ -21,14 +21,13 @@ import ai.chronon.api._
 import ai.chronon.api.DataModel.EVENTS
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.planner.JoinOfflinePlanner
+import ai.chronon.api.planner.JoinPlanner
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import com.google.gson.Gson
-import org.apache.spark.sql
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.{coalesce, col, lit, udf}
+import org.apache.spark.sql.functions.{coalesce, col, udf}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -106,35 +105,6 @@ object JoinUtils {
     }
 
     Some(result.translatePartitionSpec(effectiveLeftSpec, tableUtils.partitionSpec))
-  }
-
-  def leftDfFromSource(left: ai.chronon.api.Source,
-                       range: PartitionRange,
-                       tableUtils: TableUtils,
-                       allowEmpty: Boolean = false,
-                       limit: Option[Int] = None,
-                       skewFilter: Option[String]): Option[DataFrame] = {
-    val timeProjection = if (left.dataModel == EVENTS) {
-      Seq(Constants.TimeColumn -> Option(left.query).map(_.timeColumn).orNull)
-    } else {
-      Seq()
-    }
-    var df = tableUtils.scanDf(left.query,
-                               left.table,
-                               Some((Map(tableUtils.partitionColumn -> null) ++ timeProjection).toMap),
-                               range = Some(range))
-    limit.foreach(l => df = df.limit(l))
-    val result = skewFilter
-      .map(sf => {
-        logger.info(s"left skew filter: $sf")
-        df.filter(sf)
-      })
-      .getOrElse(df)
-    if (!allowEmpty && result.isEmpty) {
-      logger.info(s"Left side query below produced 0 rows in range $range, and allowEmpty=false.")
-      return None
-    }
-    Some(result)
   }
 
   /** *
@@ -457,25 +427,6 @@ object JoinUtils {
     (nonNullFilters ++ nullFilters).mkString(" AND ")
   }
 
-  def findUnfilledRecords(bootstrapDfWithStats: DfWithStats, coveringSets: Seq[CoveringSet]): Option[DfWithStats] = {
-    val bootstrapDf = bootstrapDfWithStats.df
-    if (coveringSets.isEmpty || !bootstrapDf.columns.contains(Constants.MatchedHashes)) {
-      // this happens whether bootstrapParts is NULL for the JOIN and thus no metadata columns were created
-      return Some(bootstrapDfWithStats)
-    }
-    val filterExpr = CoveringSet.toFilterExpression(coveringSets)
-    logger.info(s"Using covering set filter: $filterExpr")
-    val filteredDf = bootstrapDf.where(filterExpr)
-    val filteredCount = filteredDf.count()
-    if (bootstrapDfWithStats.count == filteredCount) { // counting is faster than computing stats
-      Some(bootstrapDfWithStats)
-    } else if (filteredCount == 0) {
-      None
-    } else {
-      Some(DfWithStats(filteredDf)(bootstrapDfWithStats.partitionSpec))
-    }
-  }
-
   def runSmallMode(tableUtils: TableUtils, leftDf: DataFrame): Boolean = {
     if (tableUtils.smallModelEnabled) {
       val thresholdCount = leftDf.limit(Some(tableUtils.smallModeNumRowsCutoff + 1).get).count()
@@ -490,10 +441,6 @@ object JoinUtils {
     } else {
       false
     }
-  }
-
-  def parseSkewKeys(jmap: java.util.Map[String, java.util.List[String]]): Option[Map[String, Seq[String]]] = {
-    Option(jmap).map(_.toScala.map { case (key, list) => key -> list.asScala }.toMap)
   }
 
   def shiftDays(leftDataModel: DataModel, joinPart: JoinPart, leftRange: PartitionRange): PartitionRange = {
@@ -520,21 +467,11 @@ object JoinUtils {
     rightRange
   }
 
-  def padFields(df: DataFrame, structType: sql.types.StructType): DataFrame = {
-    structType.foldLeft(df) { case (df, field) =>
-      if (df.columns.contains(field.name)) {
-        df
-      } else {
-        df.withColumn(field.name, lit(null).cast(field.dataType))
-      }
-    }
-  }
-
   def computeLeftSourceTableName(join: api.Join)(implicit tableUtils: TableUtils): String = {
-    new JoinOfflinePlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.cleanName
+    new JoinPlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.cleanName
   }
 
   def computeFullLeftSourceTableName(join: api.Join)(implicit tableUtils: TableUtils): String = {
-    new JoinOfflinePlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.outputTable
+    new JoinPlanner(join)(tableUtils.partitionSpec).leftSourceNode.metaData.outputTable
   }
 }

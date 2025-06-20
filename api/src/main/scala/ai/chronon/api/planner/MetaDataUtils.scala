@@ -1,27 +1,9 @@
 package ai.chronon.api.planner
-import ai.chronon.api.Extensions.{MetadataOps, StringOps, WindowUtils}
-import ai.chronon.api.ScalaJavaConversions.{JListOps, MapOps}
-import ai.chronon.api.{
-  ConfigType,
-  Constants,
-  ExecutionInfo,
-  MetaData,
-  PartitionSpec,
-  TableDependency,
-  TableInfo,
-  ThriftJsonCodec
-}
-import ai.chronon.api
-import ai.chronon.api.Constants.{getClass, _}
+import ai.chronon.api.{ExecutionInfo, MetaData, PartitionSpec, TableDependency, TableInfo}
+import ai.chronon.api.Constants._
 import ai.chronon.api.Extensions._
-import ai.chronon.api.thrift.TBase
-import com.google.gson.Gson
-import org.slf4j.{Logger, LoggerFactory}
+import ai.chronon.api.ScalaJavaConversions.JListOps
 
-import java.io.{File, FileReader}
-import java.nio.file.{Files, Paths}
-import scala.reflect.ClassTag
-import scala.util.Try
 import java.util
 import scala.collection.Seq
 

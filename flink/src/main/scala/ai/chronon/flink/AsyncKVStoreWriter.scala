@@ -64,7 +64,7 @@ object AsyncKVStoreWriter {
   * @param onlineImpl - Instantiation of the Chronon API to help create KV store objects
   * @param featureGroupName Name of the FG we're writing to
   */
-class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
+class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String, enableDebug: Boolean = false)
     extends RichAsyncFunction[AvroCodecOutput, WriteResponse] {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
@@ -97,11 +97,29 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
     errorCounter.inc()
     resultFuture.complete(
       util.Arrays.asList[WriteResponse](
-        new WriteResponse(input.keyBytes, input.valueBytes, input.dataset, input.tsMillis, status = false)))
+        new WriteResponse(input.keyBytes,
+                          input.valueBytes,
+                          input.dataset,
+                          input.tsMillis,
+                          status = false,
+                          input.startProcessingTime)))
   }
 
   override def asyncInvoke(input: AvroCodecOutput, resultFuture: ResultFuture[WriteResponse]): Unit = {
     val putRequest = PutRequest(input.keyBytes, input.valueBytes, input.dataset, Some(input.tsMillis))
+
+    if (enableDebug) {
+      logger.info(
+        s"""
+           |Writing to KVStore with request:
+           |dataset=${putRequest.dataset}
+           |tsMillis=${putRequest.tsMillis}
+           |keyBytes=${java.util.Base64.getEncoder.encodeToString(putRequest.keyBytes)}
+           |valueBytes=${java.util.Base64.getEncoder.encodeToString(putRequest.valueBytes)}
+        """.stripMargin
+      )
+    }
+
     val resultFutureRequested: Future[Seq[Boolean]] = kvStore.multiPut(Seq(putRequest))
     resultFutureRequested.onComplete {
       case Success(l) =>
@@ -114,7 +132,12 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
         }
         resultFuture.complete(
           util.Arrays.asList[WriteResponse](
-            new WriteResponse(input.keyBytes, input.valueBytes, input.dataset, input.tsMillis, status = succeeded)))
+            new WriteResponse(input.keyBytes,
+                              input.valueBytes,
+                              input.dataset,
+                              input.tsMillis,
+                              succeeded,
+                              input.startProcessingTime)))
       case Failure(exception) =>
         // this should be rare and indicates we have an uncaught exception
         // in the KVStore - we log the exception and skip the object to
@@ -123,7 +146,12 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String)
         logger.error(s"Caught exception writing to KVStore for object: $input", exception)
         resultFuture.complete(
           util.Arrays.asList[WriteResponse](
-            new WriteResponse(input.keyBytes, input.valueBytes, input.dataset, input.tsMillis, status = false)))
+            new WriteResponse(input.keyBytes,
+                              input.valueBytes,
+                              input.dataset,
+                              input.tsMillis,
+                              status = false,
+                              input.startProcessingTime)))
     }
   }
 }

@@ -15,6 +15,7 @@ struct YarnClusterSpec {
     1: optional string clusterName
     2: optional string hostType
     3: optional i32 hostCount
+    4: optional string masterHostType
 
     // dataproc = x.y.z, emr = x.y.z, etc
     10: optional string yarnOfferingVersion

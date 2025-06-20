@@ -6,9 +6,12 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, Produce
 import org.apache.kafka.common.serialization.{ByteArraySerializer, StringSerializer}
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import java.util.function.Consumer
 
-class KafkaLoggableResponseConsumer(topicInfo: TopicInfo) extends Consumer[LoggableResponse] {
+class KafkaLoggableResponseConsumer(topicInfo: TopicInfo, maybeSchemaRegistryId: Option[Int])
+    extends Consumer[LoggableResponse] {
 
   lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   private val metricsContext: Metrics.Context =
@@ -27,8 +30,18 @@ class KafkaLoggableResponseConsumer(topicInfo: TopicInfo) extends Consumer[Logga
 
   override def accept(response: LoggableResponse): Unit = {
     val avroBytes = LoggableResponse.toAvroBytes(response)
+    val avroBytesWithOptionalPreamble = {
+      // tack on the schema registry magic byte and schema ID if provided
+      // https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/index.html#wire-format
+      maybeSchemaRegistryId
+        .map { schemaId =>
+          LoggableResponse.prependSchemaRegistryBytes(schemaId, avroBytes)
+        }
+        .getOrElse(avroBytes)
+    }
+
     val key = response.joinName
-    val record = new ProducerRecord[String, Array[Byte]](topicInfo.name, key, avroBytes)
+    val record = new ProducerRecord[String, Array[Byte]](topicInfo.name, key, avroBytesWithOptionalPreamble)
 
     try {
       metricsContext.increment("published_records")

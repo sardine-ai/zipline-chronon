@@ -20,7 +20,8 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 
 import scala.collection.Seq
 
-class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
+// Flink Job Integration Test for Event-based GroupBys
+class FlinkJobEventIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
 
   val flinkCluster = new MiniClusterWithClientResource(
     new MiniClusterResourceConfiguration.Builder()
@@ -45,14 +46,14 @@ class FlinkJobIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
       groupByServingInfoParsed.groupBy.keyColumns.toScala.map(record.get(_).toString)
 
     val tsMills = in.tsMillis
-    new TimestampedTile(decodedKeys.map(_.asInstanceOf[Any]).toJava, tileBytes, tsMills)
+    new TimestampedTile(decodedKeys.map(_.asInstanceOf[Any]).toJava, tileBytes, tsMills, in.startProcessingTime)
   }
 
   // Decode a TimestampedTile into a TimestampedIR
   def avroConvertTimestampedTileToTimestampedIR(timestampedTile: TimestampedTile,
                                                 groupByServingInfoParsed: GroupByServingInfoParsed): TimestampedIR = {
     val tileIR = groupByServingInfoParsed.tiledCodec.decodeTileIr(timestampedTile.tileBytes)
-    new TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis))
+    new TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis), Some(timestampedTile.startProcessingTime))
   }
 
   before {

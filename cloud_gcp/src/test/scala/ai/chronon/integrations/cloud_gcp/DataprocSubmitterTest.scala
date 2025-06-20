@@ -36,11 +36,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
                                           conf = SubmitterConf("test-project", "test-region", "test-cluster"))
     val job = submitter.buildFlinkJob(
       mainClass = "ai.chronon.flink.FlinkJob",
-      jarUri = "gs://zipline-jars/cloud-gcp.jar",
+      jarUris = Array("gs://zipline-jars/cloud-gcp.jar"),
       mainJarUri = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
       flinkCheckpointUri = "gs://zl-warehouse/flink-state",
       maybeSavePointUri = Option("gs://zipline-warehouse/flink-state/groupby-name/chk-1"),
-      maybePubSubConnectorJarUri = None,
       jobProperties = Map("key" -> "value"),
       args = List("args1", "args2"): _*
     )
@@ -97,11 +96,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
                                           conf = SubmitterConf("test-project", "test-region", "test-cluster"))
     val job = submitter.buildFlinkJob(
       mainClass = "ai.chronon.flink.FlinkJob",
-      jarUri = "gs://zipline-jars/cloud-gcp.jar",
+      jarUris = Array("gs://zipline-jars/cloud-gcp.jar"),
       mainJarUri = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
       flinkCheckpointUri = "gs://zl-warehouse/flink-state",
       maybeSavePointUri = None,
-      maybePubSubConnectorJarUri = None,
       jobProperties = Map("key" -> "value"),
       args = List("args1", "args2"): _*
     )
@@ -112,14 +110,13 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
   it should "test buildFlinkJob with pubsub connector uri" in {
     val submitter = new DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
-      conf = SubmitterConf("test-project", "test-region", "test-cluster"))
+                                          conf = SubmitterConf("test-project", "test-region", "test-cluster"))
     val job = submitter.buildFlinkJob(
       mainClass = "ai.chronon.flink.FlinkJob",
-      jarUri = "gs://zipline-jars/cloud-gcp.jar",
+      jarUris = Array("gs://zipline-jars/cloud-gcp.jar", "gs://zipline-jars/flink-pubsub-connector.jar"),
       mainJarUri = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar",
       flinkCheckpointUri = "gs://zl-warehouse/flink-state",
       maybeSavePointUri = None,
-      maybePubSubConnectorJarUri = Some("gs://zipline-jars/flink-pubsub-connector.jar"),
       jobProperties = Map("key" -> "value"),
       args = List("args1", "args2"): _*
     )
@@ -300,6 +297,53 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     assertEquals(actual(SavepointUri), userPassedSavepoint)
   }
+
+  it should "test createSubmissionPropsMap for flink job with additional jars" in {
+    val confPath = "chronon/cloud_gcp/src/test/resources/group_bys/team/purchases.v1"
+    val runfilesDir = Option(System.getenv("RUNFILES_DIR")).getOrElse(".")
+    val path = Paths.get(runfilesDir, confPath)
+
+    val manifestBucketPath = "gs://zipline-warehouse/flink-manifest"
+    val groupByName = "quickstart.purchases.v1"
+    val flinkCheckpointUri = "gs://zl-warehouse/flink-state/checkpoints"
+    val ziplineVersion = "0.1.0"
+    val mainClass = "ai.chronon.flink.FlinkJob"
+    val jarURI = "gs://zipline-jars/cloud-gcp.jar"
+    val additionalJars = "gs://zipline-jars/some-jar.jar,gs://zipline-jars/another-jar.jar"
+    val flinkMainJarURI = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar"
+    val pubSubConnectorJarURI = "gs://zipline-jars/flink-pubsub-connector.jar"
+    val userPassedSavepoint = "gs://zl-warehouse/flink-state/1234/chk-12"
+
+    val submitter = mock[DataprocSubmitter]
+
+    val actual = DataprocSubmitter.createSubmissionPropsMap(
+      jobType = submission.FlinkJob,
+      submitter = submitter,
+      args = Array(
+        s"$JarUriArgKeyword=$jarURI",
+        s"$AdditionalJarsUriArgKeyword=$additionalJars",
+        s"$MainClassKeyword=$mainClass",
+        s"$LocalConfPathArgKeyword=${path.toAbsolutePath.toString}",
+        s"$ConfTypeArgKeyword=group_bys",
+        s"$OriginalModeArgKeyword=streaming",
+        s"$ZiplineVersionArgKeyword=$ziplineVersion",
+        s"$FlinkMainJarUriArgKeyword=$flinkMainJarURI",
+        s"$FlinkPubSubJarUriArgKeyword=$pubSubConnectorJarURI",
+        s"$GroupByNameArgKeyword=$groupByName",
+        s"$StreamingManifestPathArgKeyword=$manifestBucketPath",
+        s"$StreamingCustomSavepointArgKeyword=$userPassedSavepoint",
+        s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
+        s"$JobIdArgKeyword=job-id"
+      )
+    )
+
+    assertEquals(actual(MainClass), mainClass)
+    assertEquals(actual(JarURI), jarURI)
+    assertEquals(actual(FlinkMainJarURI), flinkMainJarURI)
+    assertEquals(actual(AdditionalJars), additionalJars)
+    assertEquals(actual(FlinkPubSubConnectorJarURI), pubSubConnectorJarURI)
+  }
+
   it should "test getDataprocFilesArgs when empty" in {
     val actual = DataprocSubmitter.getDataprocFilesArgs()
     assert(actual.isEmpty)
@@ -790,7 +834,11 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     }"""
 
     val clusterName =
-      DataprocSubmitter.getOrCreateCluster("", Option(Map("dataproc.config" -> clusterConfigStr)), projectId, region, mockDataprocClient)
+      DataprocSubmitter.getOrCreateCluster("",
+                                           Option(Map("dataproc.config" -> clusterConfigStr)),
+                                           projectId,
+                                           region,
+                                           mockDataprocClient)
 
     assert(clusterName.startsWith("zipline-"))
     verify(mockDataprocClient).createClusterAsync(any())
@@ -833,7 +881,11 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     }"""
 
     val clusterName =
-      DataprocSubmitter.getOrCreateCluster("test-cluster", Option(Map("dataproc.config" -> clusterConfigStr)), projectId, region, mockDataprocClient)
+      DataprocSubmitter.getOrCreateCluster("test-cluster",
+                                           Option(Map("dataproc.config" -> clusterConfigStr)),
+                                           projectId,
+                                           region,
+                                           mockDataprocClient)
 
     assert(clusterName.equals("test-cluster"))
     verify(mockDataprocClient, never()).createClusterAsync(any())
@@ -999,48 +1051,5 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         "--event-delay-millis=10"
       )
     println(submittedJobId)
-  }
-
-  it should "Used to iterate locally. Do not enable this in CI/CD!" ignore {
-
-    val submitter = DataprocSubmitter()
-    val submittedJobId =
-      submitter.submit(
-        spark.submission.SparkJob,
-        Map(MainClass -> "ai.chronon.spark.Driver",
-            JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
-        Map.empty,
-        List("gs://zipline-jars/training_set.v1",
-             "gs://zipline-jars/dataproc-submitter-conf.yaml",
-             "gs://zipline-jars/additional-confs.yaml"),
-        "join",
-        "--end-date=2024-12-10",
-        "--additional-conf-path=additional-confs.yaml",
-        "--conf-path=training_set.v1"
-      )
-    println(submittedJobId)
-  }
-
-  it should "Used to test GBU bulk load locally. Do not enable this in CI/CD!" ignore {
-
-    val submitter = DataprocSubmitter()
-    val submittedJobId =
-      submitter.submit(
-        spark.submission.SparkJob,
-        Map(MainClass -> "ai.chronon.spark.Driver",
-            JarURI -> "gs://zipline-jars/cloud_gcp-assembly-0.1.0-SNAPSHOT.jar"),
-        Map.empty,
-        List.empty,
-        "groupby-upload-bulk-load",
-        "-ZGCP_PROJECT_ID=bigtable-project-id",
-        "-ZGCP_INSTANCE_ID=bigtable-instance-id",
-        "--online-jar=cloud_gcp-assembly-0.1.0-SNAPSHOT.jar",
-        "--online-class=ai.chronon.integrations.cloud_gcp.GcpApiImpl",
-        "--src-offline-table=data.test_gbu",
-        "--group-by-name=quickstart.purchases.v1",
-        "--partition-string=2024-01-01"
-      )
-    println(submittedJobId)
-    assertEquals(submittedJobId, "mock-job-id")
   }
 }

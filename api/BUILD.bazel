@@ -39,6 +39,15 @@ scala_library(
     ],
 )
 
+jvm_binary(
+    name = "planner",
+    main_class = "ai.chronon.api.planner.LocalRunner",
+    visibility = ["//visibility:public"],
+    runtime_deps = [
+        ":lib",
+    ],
+)
+
 test_deps = _SCALA_TEST_DEPS + [
     ":lib",
     ":thrift_java",
@@ -61,6 +70,7 @@ scala_library(
 scala_test_suite(
     name = "tests",
     srcs = glob(["src/test/**/*.scala"]),
+    data = ["//spark/src/test/resources:test-resources"],
     visibility = ["//visibility:public"],
     deps = test_deps + [":test-lib"],
 )

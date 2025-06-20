@@ -17,7 +17,7 @@ One time steps to get up and running with Chronon.
 ### Setup the chronon repo
 ```shell
 cd ~/repos
-git clone git@github.com:airbnb/chronon.git
+git clone git@github.com:zipline/chronon.git
 export PYTHONPATH=/Users/$USER/repos/chronon/api/python/:/Users/$USER/repos/chronon/api/python/test/sample/:$PYTHONPATH
 ```
 
@@ -82,7 +82,7 @@ There are also a number of other benefits, such as discoverability, feature shar
 
 Because we have a normalized view of the data, a good first step is join things together so that we can get the relevant primary keys onto the click data (specifically things like the user, device and geo information that we want to aggregate clicks by).
 
-To do this, we'll write a simple SQL join, and define it as a Staging Query. You can see the code [here](../../api/python/test/sample/staging_queries/kaggle/outbrain.py).
+To do this, we'll write a simple SQL join, and define it as a Staging Query. You can see the code [here](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/staging_queries/kaggle/outbrain.py).
 
 Sometimes you won't need to create a Staging Query if your data is sufficiently denormalized, and your raw data already has the relevant fields.
 
@@ -117,7 +117,7 @@ As long as you see a log line like `Finished writing to default.kaggle_outbrain_
 
 GroupBys are the primary API for creating features in Chronon. Each one is a set of features that share a data source and a primary key.
 
-You can see the Code for GroupBys [here](../../api/python/test/sample/group_bys/kaggle/outbrain.py).
+You can see the Code for GroupBys [here](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/group_bys/kaggle/outbrain.py).
 
 See detailed documentation on GroupBy [here](https://chronon-ai.pages.dev/Introduction#groupby).
 
@@ -127,7 +127,7 @@ See detailed documentation on GroupBy [here](https://chronon-ai.pages.dev/Introd
 
 As the name suggests, the main purpose of a join is to combine multiple GroupBys together into a single data source.
 
-You can see the Code for the join [here](../../api/python/test/sample/joins/kaggle/outbrain.py).
+You can see the Code for the join [here](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/sample/joins/kaggle/outbrain.py).
 
 See detailed documentation on Join [here](https://chronon-ai.pages.dev/Introduction#join).
 

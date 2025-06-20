@@ -105,7 +105,7 @@ object ThriftJsonCodec {
     if (check) {
       val inputNode: JsonNode = mapper.readTree(jsonStr)
       val reSerializedInput: JsonNode = mapper.readTree(toJsonStr(obj))
-      assert(
+      require(
         inputNode.equals(reSerializedInput),
         message = s"""Parsed Json object isn't reversible.
      Original JSON String:  $jsonStr

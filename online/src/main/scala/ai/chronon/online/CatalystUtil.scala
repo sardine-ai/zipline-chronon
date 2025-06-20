@@ -22,6 +22,7 @@ import ai.chronon.online.Extensions.StructTypeOps
 import ai.chronon.online.serde._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.FunctionAlreadyExistsException
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.{SparkSession, types}
 import org.slf4j.LoggerFactory
 
@@ -47,6 +48,8 @@ object CatalystUtil {
       // The default doesn't seem to be set properly in the scala 2.13 version of spark
       // running into this issue https://github.com/dotnet/spark/issues/435
       .config("spark.driver.bindAddress", "127.0.0.1")
+      .config(SQLConf.DATETIME_JAVA8API_ENABLED.key, true)
+      .config(SQLConf.PARQUET_INFER_TIMESTAMP_NTZ_ENABLED.key, false)
       .enableHiveSupport() // needed to support registering Hive UDFs via CREATE FUNCTION.. calls
       .getOrCreate()
     assert(spark.sessionState.conf.wholeStageEnabled)

@@ -195,6 +195,14 @@ object Row {
           debinarizer(value.asInstanceOf[BinaryType])
         }
 
+      case TimestampType =>
+        guard {
+          // Spark timestamps (which is used to map to the TimestampType are meant to be in micros
+          // thus we multiply by 1000 to work with them
+          case millis: Long => millis * 1000L
+          case value        => value
+        }
+
       case StringType => guard { value: Any => deStringer(value.asInstanceOf[StringType]) }
       case _          => passThroughFunc
     }
@@ -241,6 +249,20 @@ object Row {
               dataType,
               schemaTraverser.map(_.currentNode)
             )
+
+          case map: Map[String, Any] =>
+            composer(
+              fields.iterator
+                .map { field =>
+                  val valueOpt = map.get(field.name)
+                  valueOpt.map { value =>
+                    edit(value, field.fieldType, getFieldSchema(field))
+                  }.orNull
+                },
+              dataType,
+              schemaTraverser.map(_.currentNode)
+            )
+
           case value: Any =>
             assert(extraneousRecord != null, s"No handler for $value of class ${value.getClass}")
             composer(

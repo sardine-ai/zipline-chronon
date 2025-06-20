@@ -1,16 +1,14 @@
 package ai.chronon.integrations.cloud_gcp
-import ai.chronon.spark.submission.JobSubmitterConstants._
+import ai.chronon.api.Builders.MetaData
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.JobSubmitterConstants._
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import com.google.protobuf.util.JsonFormat
 import org.apache.hadoop.fs.Path
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
-import org.slf4j.LoggerFactory
-import org.yaml.snakeyaml.Yaml
 
-import scala.io.Source
 import scala.jdk.CollectionConverters._
 
 case class SubmitterConf(
@@ -167,13 +165,14 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
                                          throw new RuntimeException(s"Missing expected $FlinkCheckpointUri"))
         val maybeSavepointUri = submissionProperties.get(SavepointUri)
         val maybePubSubConnectorJarUri = submissionProperties.get(FlinkPubSubConnectorJarURI)
-
+        val maybeAdditionalJarsUri = submissionProperties.get(AdditionalJars)
+        val additionalJars = maybeAdditionalJarsUri.map(_.split(",")).getOrElse(Array.empty)
+        val jarUris = Array(jarUri) ++ maybePubSubConnectorJarUri.toList ++ additionalJars
         buildFlinkJob(mainClass,
                       mainJarUri,
-                      jarUri,
+                      jarUris,
                       flinkCheckpointPath,
                       maybeSavepointUri,
-                      maybePubSubConnectorJarUri,
                       jobProperties,
                       (args :+ "--parent-job-id" :+ jobId): _*)
     }
@@ -238,10 +237,9 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
 
   private[cloud_gcp] def buildFlinkJob(mainClass: String,
                                        mainJarUri: String,
-                                       jarUri: String,
+                                       jarUris: Array[String],
                                        flinkCheckpointUri: String,
                                        maybeSavePointUri: Option[String],
-                                       maybePubSubConnectorJarUri: Option[String],
                                        jobProperties: Map[String, String],
                                        args: String*): Job.Builder = {
 
@@ -290,7 +288,6 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
         "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
       )
 
-    val jarUris = Array(jarUri) ++ maybePubSubConnectorJarUri.toList
     val flinkJobBuilder = FlinkJob
       .newBuilder()
       .setMainClass(mainClass)
@@ -319,40 +316,12 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
 }
 
 object DataprocSubmitter {
-  def apply(): DataprocSubmitter = {
-    val conf = loadConfig
-    val jobControllerClient = JobControllerClient.create(
-      JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
-    )
-    new DataprocSubmitter(jobControllerClient, GCSClient(), conf)
-  }
 
   def apply(conf: SubmitterConf): DataprocSubmitter = {
     val jobControllerClient = JobControllerClient.create(
       JobControllerSettings.newBuilder().setEndpoint(conf.endPoint).build()
     )
     new DataprocSubmitter(jobControllerClient, GCSClient(projectId = conf.projectId), conf)
-  }
-
-  private[cloud_gcp] def loadConfig: SubmitterConf = {
-    val inputStreamOption = Option(getClass.getClassLoader.getResourceAsStream("dataproc-submitter-conf.yaml"))
-    val yamlLoader = new Yaml()
-    implicit val formats: Formats = DefaultFormats
-    inputStreamOption
-      .map(Source.fromInputStream)
-      .map((is) =>
-        try {
-          is.mkString
-        } finally {
-          is.close
-        })
-      .map(yamlLoader.load(_).asInstanceOf[java.util.Map[String, Any]])
-      .map((jMap) => Extraction.decompose(jMap.asScala.toMap))
-      .map((jVal) => render(jVal))
-      .map(compact)
-      .map(parse(_).extract[SubmitterConf])
-      .getOrElse(throw new IllegalArgumentException("Yaml conf not found or invalid yaml"))
-
   }
 
   private def initializeDataprocSubmitter(clusterName: String,
@@ -383,7 +352,7 @@ object DataprocSubmitter {
       .getArgValue(args, MainClassKeyword)
       .getOrElse(throw new Exception("Missing required argument: " + MainClassKeyword))
 
-    val metadataName = Option(JobSubmitter.getMetadata(args).get.getName).getOrElse("")
+    val metadataName = Option(JobSubmitter.getMetadata(args).getOrElse(MetaData()).getName).getOrElse("")
 
     val jobId = JobSubmitter
       .getArgValue(args, JobIdArgKeyword)
@@ -402,6 +371,8 @@ object DataprocSubmitter {
         // pull the pubsub connector uri if it has been passed
         val maybePubSubJarUri = JobSubmitter
           .getArgValue(args, FlinkPubSubJarUriArgKeyword)
+        // include additional jars if present
+        val additionalJars = JobSubmitter.getArgValue(args, AdditionalJarsUriArgKeyword)
 
         val baseJobProps = Map(
           MainClass -> mainClass,
@@ -410,7 +381,7 @@ object DataprocSubmitter {
           FlinkCheckpointUri -> flinkCheckpointUri,
           MetadataName -> metadataName,
           JobId -> jobId
-        ) ++ maybePubSubJarUri.map(FlinkPubSubConnectorJarURI -> _)
+        ) ++ (maybePubSubJarUri.map(FlinkPubSubConnectorJarURI -> _) ++ additionalJars.map(AdditionalJars -> _))
 
         val groupByName = JobSubmitter
           .getArgValue(args, GroupByNameArgKeyword)
@@ -540,10 +511,11 @@ object DataprocSubmitter {
       try {
         val cluster = dataprocClient.getCluster(projectId, region, clusterName)
         if (
-          cluster != null && Set(ClusterStatus.State.RUNNING, ClusterStatus.State.UPDATING).contains(
-            cluster.getStatus.getState)
+          cluster != null && Set(ClusterStatus.State.RUNNING,
+                                 ClusterStatus.State.UPDATING,
+                                 ClusterStatus.State.CREATING).contains(cluster.getStatus.getState)
         ) {
-          println(s"Dataproc cluster $clusterName already exists and is running.")
+          println(s"Dataproc cluster $clusterName already exists and is healthy.")
           clusterName
         } else if (maybeClusterConfig.isDefined && maybeClusterConfig.get.contains("dataproc.config")) {
           // Print to stderr so that it flushes immediately
@@ -665,9 +637,10 @@ object DataprocSubmitter {
     }
   }
 
-  private[cloud_gcp] def run(args: Array[String],
-                             submitter: DataprocSubmitter,
-                             envMap: Map[String, Option[String]] = Map.empty): Unit = {
+  def run(args: Array[String],
+          submitter: DataprocSubmitter,
+          envMap: Map[String, Option[String]] = Map.empty,
+          maybeConf: Option[Map[String, String]] = None): Unit = {
     // Get the job type
     val jobTypeValue = JobSubmitter
       .getArgValue(args, JobTypeArgKeyword)
@@ -734,7 +707,7 @@ object DataprocSubmitter {
       jobType = jobType,
       submissionProperties =
         createSubmissionPropsMap(jobType = jobType, args = args, submitter = submitter, envMap = envMap),
-      jobProperties = JobSubmitter.getModeConfigProperties(args).getOrElse(Map.empty),
+      jobProperties = maybeConf.getOrElse(JobSubmitter.getModeConfigProperties(args).getOrElse(Map.empty)),
       files = getDataprocFilesArgs(args),
       finalArgs: _*
     )

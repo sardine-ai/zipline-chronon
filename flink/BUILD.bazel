@@ -94,12 +94,20 @@ scala_library(
     visibility = ["//visibility:public"],
     deps = _FLINK_DEPS + [
         "//online:lib",
+        "//api:lib",
         "//flink:lib",
         maven_artifact_with_suffix("org.rogach:scallop"),
         maven_artifact("org.apache.avro:avro"),
         maven_artifact("org.apache.flink:flink-connector-gcp-pubsub"),
         maven_artifact("org.slf4j:slf4j-api"),
         maven_artifact("com.esotericsoftware.kryo:kryo"),
+
+        # Additional deps to be able to look up PubSub schemas
+        maven_artifact("com.google.cloud:google-cloud-pubsub",),
+        maven_artifact("com.google.api.grpc:proto-google-cloud-pubsub-v1"),
+        maven_artifact("com.google.api:gax"),
+        maven_artifact("com.google.api:api-common"),
+        maven_artifact("com.google.protobuf:protobuf-java"),
     ],
 )
 
@@ -129,7 +137,13 @@ scala_test_suite(
     visibility = ["//visibility:public"],
     deps = _FLINK_TEST_DEPS + _SCALA_TEST_DEPS + [
         "//online:lib",
+        "//api:lib",
        ":lib",
        ":pubsub_connectors_lib",
+       maven_artifact("com.google.cloud:google-cloud-pubsub",),
+       maven_artifact("com.google.api.grpc:proto-google-cloud-pubsub-v1"),
+       maven_artifact("com.google.api:gax"),
+       maven_artifact("com.google.api:api-common"),
+       maven_artifact("com.google.protobuf:protobuf-java"),
     ]
 )

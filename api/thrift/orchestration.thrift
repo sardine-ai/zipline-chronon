@@ -173,79 +173,6 @@ struct PhysicalNodeKey {
     2: optional PhysicalNodeType nodeType
 }
 
-// ====================== End of physical node types ======================
-// ====================== Modular Join Spark Job Args ======================
-
-struct SourceWithFilterNode {
-    1: optional api.MetaData metaData
-
-    2: optional api.Source source
-    3: optional map<string,list<string>> excludeKeys
-}
-
-struct JoinBootstrapNode {
-    1: optional api.MetaData metaData
-    2: optional api.Join join
-}
-
-struct JoinMergeNode {
-    1: optional api.MetaData metaData
-    2: optional api.Join join
-}
-
-struct JoinDerivationNode {
-    1: optional api.MetaData metaData
-    2: optional api.Join join
-}
-
-struct JoinPartNode {
-    1: optional api.MetaData metaData
-    2: optional string leftSourceTable
-    3: optional api.DataModel leftDataModel
-    4: optional api.JoinPart joinPart
-    5: optional map<string, list<string>> skewKeys
-}
-
-struct LabelJoinNode {
-    1: optional api.MetaData metaData
-    2: optional api.Join join
-}
-
-struct GroupByBackfillNode {
-    1: optional api.MetaData metaData
-    2: optional api.GroupBy groupBy
-}
-
-struct GroupByUploadNode {
-    1: optional api.MetaData metaData
-    2: optional api.GroupBy groupBy
-}
-
-struct GroupByStreamingNode {
-    1: optional api.MetaData metaData
-    2: optional api.GroupBy groupBy
-}
-
-union NodeUnion {
-    // join nodes
-    1: SourceWithFilterNode sourceWithFilter
-    2: JoinBootstrapNode joinBootstrap
-    3: JoinPartNode joinPart
-    4: JoinMergeNode joinMerge
-    5: JoinDerivationNode joinDerivation
-    6: LabelJoinNode labelJoin
-
-    // groupBy nodes
-    7: GroupByBackfillNode groupByBackfill
-    8: GroupByUploadNode groupByUpload
-    9: GroupByStreamingNode groupByStreaming
-
-    // stagingQuery nodes
-    10: api.StagingQuery stagingQuery
-
-    // TODO: add metrics nodes
-}
-
 enum NodeRunStatus {
     UNKNOWN = 0,
     WAITING = 1,
@@ -253,10 +180,6 @@ enum NodeRunStatus {
     SUCCEEDED = 3,
     FAILED = 4
 }
-
-// ====================== End of Modular Join Spark Job Args ===================
-
-// ====================== Orchestration Service API Types ======================
 
 struct Conf {
     1: optional string name
@@ -283,10 +206,12 @@ struct UploadResponse {
 }
 
 struct WorkflowStartRequest {
-    1: optional string nodeName
-    2: optional string branch
-    3: optional string startDate
-    4: optional string endDate
+    1: optional string confName
+    2: optional string mode
+    3: optional string branch
+    4: optional string user
+    5: optional string start
+    6: optional string end
 }
 
 struct WorkflowStartResponse {

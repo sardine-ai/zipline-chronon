@@ -144,6 +144,7 @@ scala_test_suite(
     srcs = glob([
         "src/test/scala/ai/chronon/spark/test/batch/*.scala",
     ]),
+    data = ["//spark/src/test/resources:test-resources"],
     jvm_flags = _JVM_FLAGS_FOR_ACCESSING_BASE_JAVA_CLASSES,
     tags = ["medium"],
     visibility = ["//visibility:public"],

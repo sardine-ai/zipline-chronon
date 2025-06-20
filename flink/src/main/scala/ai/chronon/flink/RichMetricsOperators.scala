@@ -1,5 +1,6 @@
 package ai.chronon.flink
 
+import ai.chronon.flink.deser.ProjectedEvent
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Counter
@@ -9,7 +10,7 @@ import org.apache.flink.util.Collector
   *
   * This function should consume the Side Output of the main tiling window.
   */
-class LateEventCounter(featureGroupName: String) extends RichFlatMapFunction[Map[String, Any], Map[String, Any]] {
+class LateEventCounter(featureGroupName: String) extends RichFlatMapFunction[ProjectedEvent, ProjectedEvent] {
   @transient private var lateEventCounter: Counter = _
 
   override def open(parameters: Configuration): Unit = {
@@ -19,7 +20,7 @@ class LateEventCounter(featureGroupName: String) extends RichFlatMapFunction[Map
     lateEventCounter = metricsGroup.counter("tiling.late_events")
   }
 
-  override def flatMap(in: Map[String, Any], out: Collector[Map[String, Any]]): Unit = {
+  override def flatMap(in: ProjectedEvent, out: Collector[ProjectedEvent]): Unit = {
     lateEventCounter.inc()
     out.collect(in);
   }

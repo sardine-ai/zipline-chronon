@@ -2,9 +2,9 @@ package ai.chronon.spark.batch
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.ListOps
-import ai.chronon.api.{Constants, DateRange, PartitionRange, PartitionSpec, StructField, StructType}
+import ai.chronon.api.{Constants, DateRange, MetaData, PartitionRange, PartitionSpec, StructField, StructType}
 import ai.chronon.online.serde.SparkConversions
-import ai.chronon.orchestration.JoinBootstrapNode
+import ai.chronon.planner.JoinBootstrapNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils.{coalescedJoin, set_add}
 import ai.chronon.spark.{BootstrapInfo, JoinUtils}
@@ -22,7 +22,7 @@ import scala.collection.Seq
   * Note for orchestrator: This needs to run iff there are bootstraps or external parts to the join (applies additional
   * columns that may be used in derivations). Otherwise, the left source table can be used directly in final join.
   */
-class JoinBootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit tableUtils: TableUtils) {
+class JoinBootstrapJob(node: JoinBootstrapNode, metaData: MetaData, range: DateRange)(implicit tableUtils: TableUtils) {
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
@@ -31,7 +31,7 @@ class JoinBootstrapJob(node: JoinBootstrapNode, range: DateRange)(implicit table
   private val leftSourceTable = JoinUtils.computeFullLeftSourceTableName(join)
 
   // Use the node's metadata output table
-  private val outputTable = node.metaData.outputTable
+  private val outputTable = metaData.outputTable
 
   def run(): Unit = {
     // Runs the bootstrap query and produces an output table specific to the `left` side of the Join

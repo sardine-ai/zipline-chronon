@@ -10,7 +10,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class SparkExpressionEvalFnTest extends AnyFlatSpec {
 
-  it should "basic spark expr eval sanity" in {
+  it should "perform basic spark expr eval checks for event based groupbys" in {
 
     val elements = Seq(
       E2ETestEvent("test1", 12, 1.5, 1699366993123L),
@@ -36,5 +36,35 @@ class SparkExpressionEvalFnTest extends AnyFlatSpec {
     assert(result.size == elements.size, "Expect result sets to include all 3 rows")
     // let's check the id field
     assert(result.map(_.apply("id")).toSet == Set("test1", "test2", "test3"))
+  }
+
+  it should "perform basic spark expr eval checks for entity based groupbys" in {
+
+    val elements = Seq(
+      E2ETestMutationEvent("test1", 12, 1.5, 1699366993123L, 1699366993123L, isBefore = true),
+      E2ETestMutationEvent("test2", 13, 1.6, 1699366993124L, 1699366993124L, isBefore = false),
+      E2ETestMutationEvent("test3", 14, 1.7, 1699366993125L, 1699366993125L, isBefore = true)
+    )
+
+    val groupBy = FlinkTestUtils.makeEntityGroupBy(Seq("id"))
+    val encoder = Encoders.product[E2ETestMutationEvent]
+
+    val sparkExprEval = new SparkExpressionEvalFn[E2ETestMutationEvent](
+      encoder,
+      groupBy
+    )
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+
+    val source: DataStream[E2ETestMutationEvent] = env.fromCollection(elements.toJava)
+    val sparkExprEvalDS = source.flatMap(sparkExprEval)
+
+    val result = sparkExprEvalDS.executeAndCollect().toScala.toSeq
+    // let's check the size
+    assert(result.size == elements.size, "Expect result sets to include all 3 rows")
+    // let's check the id field
+    assert(result.map(_.apply("id")).toSet == Set("test1", "test2", "test3"))
+    // let's check the isBefore field
+    assert(result.map(_.apply("is_before")).toSet == Set(true, false))
   }
 }

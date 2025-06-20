@@ -44,7 +44,7 @@ def create_airflow_dependency(table, partition_column, additional_partitions=Non
         additional_partitions_str = "/" + "/".join(additional_partitions)
 
     return {
-        "name": f"wf_{utils.sanitize(table)}",
+        "name": f"wf_{utils.sanitize(table)}_with_offset_{offset}",
         "spec": f"{table}/{partition_column}={{{{ macros.ds_add(ds, {offset}) }}}}{additional_partitions_str}",
     }
 

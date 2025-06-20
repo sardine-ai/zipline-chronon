@@ -23,19 +23,19 @@ See the [Sources](./Source.md) documentation for more info on the options and wh
 Often, you might want to chain together aggregations (i.e., first run `LAST` then run `SUM` on the output).
 This can be achieved by using the output of one `GroupBy` as the input to the next.
 
-# Aggregations
+## Aggregations
 
-## Supported aggregations
+### Supported aggregations
 
-All supported aggregations are defined [here](https://github.com/airbnb/chronon/blob/main/api/thrift/api.thrift#L51).
+All supported aggregations are defined [here](https://github.com/zipline/chronon/blob/main/api/thrift/api.thrift#L51).
 Chronon supports powerful aggregation patterns and the section below goes into detail of the properties and behaviors
 of aggregations.
 
-## Simple Aggregations
+### Simple Aggregations
 
 `count`, `average`, `variance`, `min`, `max`, `top_k`, `bottom_k` are some self-describing and simple aggreagations.
 
-## Time based Aggregations
+### Time based Aggregations
 
 `last`, `first`, `last_k`, `first_k` aggregations are timed aggregations and require users to define a
 `GroupBy.sources[i].query.time_column` with a valid expression that produces a millisecond-granular timestamp as a Long.
@@ -43,7 +43,7 @@ All windowed aggregations require the user to define the `time_column` as well.
 To accommodate common conventions, when `time_column` is not specified, but required,
 Chronon will look for a `ts` column from the input source.
 
-## Sketching Aggregations
+### Sketching Aggregations
 
 Sketching algorithms are used to approximate the values of an exact aggregation when the aggregation itself is not
 scalable. `unique_count`, `percentile`, and `histogram` aggregations are examples where getting exact value requires storing all raw
@@ -54,7 +54,7 @@ as a parameter to the `Aggregation`. Chronon as a policy doesn't encourage use o
 Internally we leverage [Apache DataSketches](https://datasketches.apache.org/) library as a source of SOTA algorithms
 that implement approximate aggregations with the most efficient performance.
 
-## Reversible Aggregations
+### Reversible Aggregations
 
 Chronon can consume a stream of db mutations to produce read-optimized aggregate views. For example - computing `max`
 `purchase_price` for a `user` from a `user_purchases` source. For user `alice`, if the `max` that is being maintained so
@@ -67,7 +67,7 @@ However during online serving we asynchronously (in the background) batch-correc
 data. So even non-reversible aggregations reflect the right aggregate value **eventually** without sacrificing
 scalability.
 
-## Windowing
+### Windowing
 
 We support arbitrarily large windows with `HOURS`-ly or `DAYS`-ly granularity. Chronon supports what is called a
 **sawtooth window**. To understand sawtooth windows we need to understand **sliding windows** and **hopping windows**.
@@ -91,7 +91,7 @@ in this particular example we will aggregate events between `1:20` - `2:27`.
 
 See the [Realtime Event GroupBy examples](#realtime-event-groupby-examples) for an example of windowed aggregations.
 
-## Bucketing
+### Bucketing
 
 Expanding on the previous example - we now want to compute `average` `purchase_price` of a `user_purchase` source, but
 bucketed by `credit_card_type`. So instead of producing a single double value, bucketing produces a map of `credit_card_type` to
@@ -107,18 +107,18 @@ Here's what the above example looks like modified to include buckets. Note that 
 
 See the [Bucketed Example](#bucketed-groupby-example)
 
-# Flattening
+## Flattening
 
 Chronon can extract values nested in containers and perform aggregations - over lists and maps. See details below for semantics.
 
-## Lists as inputs
+### Lists as inputs
 
 Aggregations can also accept list columns as input. For example if we want `average` `item_price` from a `user_purchase`
 source, which contains `item_prices` as a `list` of values in each row - represented by a single credit card transaction.
 Simply put, `GroupBy.aggregations[i].input_column` can refer to a column name which contains lists as values. In
 traditional SQL this would require an expensive `explode` command and is supported natively in `Chronon`.
 
-## Maps as inputs
+### Maps as inputs
 
 Aggregations over columns of type `Map<String, Value>`. For example - if you have two histograms this will allow for merging those
 histograms using - min, max, avg, sum etc. You can merge maps of any scalar values types using aggregations that operate on scalar values.
@@ -131,7 +131,7 @@ Limitations:
 
 **NOTE: Windowing, Bucketing and Flattening can be flexibly mixed and matched.**
 
-## Table of properties for aggregations
+### Table of properties for aggregations
 
 | aggregation               | input type      | nesting allowed? | output type       | reversible | parameters         | bounded memory |
 |---------------------------|-----------------|------------------|-------------------|------------|--------------------|----------------|
@@ -150,7 +150,7 @@ Limitations:
 | unique_count              | primitive types | list, map        | long              | no         |                    | no             |
 
 
-## Accuracy
+### Accuracy
 
 `accuracy` is a toggle that can be supplied to `GroupBy`. It can be either `SNAPSHOT` or `TEMPORAL`.
 `SNAPSHOT` accuracy means that feature values are computed as of midnight only and refreshed once daily.
@@ -161,7 +161,7 @@ When topic or mutationTopic is specified, we default to `TEMPORAL` otherwise `SN
 **This default is usually the desired behavior, so you rarely need to worry about setting this manually.**
 
 
-## Online/Offline Toggle
+### Online/Offline Toggle
 
 `online` is a toggle to specify if the pipelines necessary to maintain feature views should be scheduled. This is for
 online low-latency serving.
@@ -177,7 +177,7 @@ your_gb = GroupBy(
 > this behavior by deleting the older compiled output. Our recommendation is to create a new version `your_gb_v2` instead.
 
 
-## Tuning
+### Tuning
 
 If you look at the parameters column in the above table - you will see `k`.
 `k` for top_k, bottom_k, first_k, last_k tells Chronon to collect `k` elements.
@@ -190,13 +190,13 @@ for approx_percentile is the first table in [here](https://datasketches.apache.o
 
 For histogram - k keeps the elements with top-k counts. By default we keep everything.
 
-# Examples
+## Examples
 
 The following examples are broken down by source type. We strongly suggest making sure you're using the correct source type for the feature that you want to express as a first step.
 
-## Realtime Event GroupBy examples
+### Realtime Event GroupBy examples
 
-This example is based on the [returns](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py) GroupBy from the quickstart guide that performs various aggregations over the `refund_amt` column over various windows.
+This example is based on the [returns](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py) GroupBy from the quickstart guide that performs various aggregations over the `refund_amt` column over various windows.
 
 ```python
 source = Source(
@@ -237,9 +237,9 @@ v1 = GroupBy(
 )
 ```
 
-## Bucketed GroupBy Example
+### Bucketed GroupBy Example
 
-In this example we take the [Purchases GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py) from the Quickstart tutorial and modify it to include buckets based on a hypothetical `"credit_card_type"` column.
+In this example we take the [Purchases GroupBy](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py) from the Quickstart tutorial and modify it to include buckets based on a hypothetical `"credit_card_type"` column.
 
 ```python
 source = Source(
@@ -284,9 +284,9 @@ v1 = GroupBy(
 ```
 
 
-## Simple Batch Event GroupBy examples
+### Simple Batch Event GroupBy examples
 
-Example GroupBy with windowed aggregations. Taken from [purchases.py](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py).
+Example GroupBy with windowed aggregations. Taken from [purchases.py](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py).
 
 Important things to note about this case relative to the streaming GroupBy:
 * The default accuracy here is `SNAPSHOT` meaning that updates to the online KV store only happen in batch, and also backfills will be midnight accurate rather than intra day accurate.
@@ -330,9 +330,9 @@ v1 = GroupBy(
 )
 ```
 
-### Batch Entity GroupBy examples
+#### Batch Entity GroupBy examples
 
-This is taken from the [Users GroupBy](https://github.com/airbnb/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py) from the quickstart tutorial.
+This is taken from the [Users GroupBy](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py) from the quickstart tutorial.
 
 
 ```python

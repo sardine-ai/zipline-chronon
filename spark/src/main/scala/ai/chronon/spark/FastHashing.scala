@@ -51,6 +51,7 @@ object FastHashing {
     val keySchema = StructType(schema.filter { sf => keys.contains(sf.name) })
     logger.info(s"Generating key builder over keys:\n${keySchema.pretty}\n")
     val keyIndices: Array[Int] = keys.map(schema.fieldIndex)
+    logger.info(s"Key Indices:\n${keyIndices.mkString("Array(", ", ", ")")}\n")
     // the hash function generation won't be in the hot path - so its okay to
     val hashFunctions: Array[(Hasher, Row) => Unit] = keys.zip(keyIndices).map { case (key, index) =>
       val typ = schema.fields(index).dataType
@@ -99,13 +100,25 @@ object FastHashing {
 
     { row: Row =>
       val hasher = Hashing.murmur3_128().newHasher()
+
       for (i <- hashFunctions.indices) {
         if (!row.isNullAt(keyIndices(i))) {
           hashFunctions(i)(hasher, row)
         }
       }
+
       val hashCode = hasher.hash()
-      KeyWithHash(keyIndices.map(row.get), hashCode.asBytes(), hashCode.asInt())
+
+      val keys = Array.fill[Any](keyIndices.length)(null)
+      var i = 0
+      while (i < keyIndices.length) {
+        val index = keyIndices(i)
+        keys.update(i, row.get(index))
+        i += 1
+      }
+
+      KeyWithHash(keys, hashCode.asBytes(), hashCode.asInt())
+
     }
   }
 

@@ -48,7 +48,8 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
     getOptional(FetcherOOCTopicInfo, conf)
       .map(t => TopicInfo.parse(t)) match {
       case Some(topicInfo) if topicInfo.messageBus.toLowerCase == "kafka" =>
-        new KafkaLoggableResponseConsumer(topicInfo)
+        val maybeSchemaRegistryId = getOptional(SchemaRegistryId, conf).map(_.toInt)
+        new KafkaLoggableResponseConsumer(topicInfo, maybeSchemaRegistryId)
       case _ =>
         // fall back to no-op consumer
         logger.info("Falling back to NoOp online/offline response consumer as FETCHER_OOC_TOPIC_INFO isn't configured")
@@ -223,6 +224,7 @@ object GcpApiImpl {
   private[cloud_gcp] val BigTableRpcTimeoutMultiplier = "BIGTABLE_RPC_TIMEOUT_MULTIPLIER"
 
   private[cloud_gcp] val FetcherOOCTopicInfo = "FETCHER_OOC_TOPIC_INFO"
+  private[cloud_gcp] val SchemaRegistryId = "SCHEMA_REGISTRY_ID"
 
   private val DefaultInitialRpcTimeoutDuration = Duration.ofMillis(100L)
   private val DefaultRpcTimeoutMultiplier = 1.25

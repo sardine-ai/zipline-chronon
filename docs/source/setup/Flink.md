@@ -8,13 +8,13 @@ access to Spark Streaming or want to use [The Tiled Architecture](../Tiled_Archi
 ## How to use the Flink connector
 
 The process of integrating Flink will differ among organizations. The overall idea is simple: you need to integrate
-the [FlinkJob](https://github.com/airbnb/chronon/blob/master/flink/src/main/scala/ai/chronon/flink/FlinkJob.scala) so
+the [FlinkJob](https://github.com/zipline/chronon/blob/master/flink/src/main/scala/ai/chronon/flink/FlinkJob.scala) so
 that it reads an event stream (e.g., Kafka) and writes out to a KV store.
 
 There are two versions of the Flink app that you can choose from, tiled and untiled.
 See [The Tiled Architecture](../Tiled_Architecture.md) for an overview of the differences. Briefly, the untiled version
 writes out events to the KV store, whereas the tiled version writes out pre-aggregates.
-In [FlinkJob.scala](https://github.com/airbnb/chronon/blob/master/flink/src/main/scala/ai/chronon/flink/FlinkJob.scala)
+In [FlinkJob.scala](https://github.com/zipline/chronon/blob/master/flink/src/main/scala/ai/chronon/flink/FlinkJob.scala)
 you will find both options.
 
 You will also likely need to modify your `KVStore` implementation while integrating Flink.
@@ -23,7 +23,7 @@ You will also likely need to modify your `KVStore` implementation while integrat
 
 The operators for the tiled and untiled Flink jobs differ slightly. The main difference is that the tiled job is
 stateful and contains a window operator. This section goes over the tiled version.
-See [FlinkJob.scala](https://github.com/airbnb/chronon/blob/master/flink/src/main/scala/ai/chronon/flink/FlinkJob.scala)
+See [FlinkJob.scala](https://github.com/zipline/chronon/blob/master/flink/src/main/scala/ai/chronon/flink/FlinkJob.scala)
 for details on the untiled version.
 
 ### The tiled Flink job

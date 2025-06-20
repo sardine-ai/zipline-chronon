@@ -5,24 +5,21 @@ import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.io.{BinaryDecoder, DecoderFactory}
 import org.apache.avro.specific.SpecificDatumReader
-
+import com.linkedin.avro.fastserde.FastDeserializer
 import java.io.{ByteArrayInputStream, InputStream}
 
 class AvroSerDe(avroSchema: Schema) extends SerDe {
 
-  lazy val chrononSchema = AvroConversions.toChrononSchema(avroSchema).asInstanceOf[StructType]
+  lazy val chrononSchema: StructType = AvroConversions.toChrononSchema(avroSchema).asInstanceOf[StructType]
 
-  @transient lazy val avroToRowConverter = AvroConversions.genericRecordToChrononRowConverter(chrononSchema)
+  @transient private lazy val avroToRowConverter = AvroConversions.genericRecordToChrononRowConverter(chrononSchema)
 
-  private def byteArrayToAvro(avro: Array[Byte], schema: Schema): GenericRecord = {
-    val reader = new SpecificDatumReader[GenericRecord](schema)
-    val input: InputStream = new ByteArrayInputStream(avro)
-    val decoder: BinaryDecoder = DecoderFactory.get().binaryDecoder(input, null)
-    reader.read(null, decoder)
-  }
+  lazy val schemaString: String = avroSchema.toString()
+
+  def avroCodec: ThreadLocal[AvroCodec] = AvroCodec.ofThreaded(schemaString)
 
   override def fromBytes(bytes: Array[Byte]): Mutation = {
-    val avroRecord = byteArrayToAvro(bytes, avroSchema)
+    val avroRecord = avroCodec.get().decode(bytes)
 
     val row: Array[Any] = avroToRowConverter(avroRecord)
 
