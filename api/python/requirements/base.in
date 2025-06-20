@@ -7,5 +7,6 @@ glom
 boto3
 importlib-resources==6.5.2
 rich
+textual
 google-cloud-storage==2.19.0
 google-cloud-bigquery-storage
