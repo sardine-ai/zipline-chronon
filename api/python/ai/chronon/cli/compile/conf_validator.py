@@ -107,8 +107,13 @@ def get_pre_derived_join_internal_features(join: Join) -> List[str]:
             pre_derived_group_by_features, jp.groupBy.derivations
         )
         for col in derived_group_by_features:
-            prefix = jp.prefix + "_" if jp.prefix else ""
-            gb_prefix = jp.groupBy.metaData.name.replace(".", "_")
+            if join.useLongNames:
+                prefix = jp.prefix + "_" if jp.prefix else ""
+                gb_prefix = jp.groupBy.metaData.name.replace(".", "_")
+            else:
+                prefix = jp.prefix + "_" if jp.prefix else ""
+                key_str = "_".join(jp.groupBy.keyColumns)
+                gb_prefix = prefix + key_str
             internal_features.append(prefix + gb_prefix + "_" + col)
     return internal_features
 
@@ -225,7 +230,9 @@ def detect_feature_name_collisions(
     # Build a map of output_column -> set of group_by name
     output_col_to_gbs = {}
     for gb, prefix in group_bys:
-        prefix_str = f"{prefix}_" if prefix else ""
+        jp_prefix_str = f"{prefix}_" if prefix else ""
+        key_str = "_".join(gb.keyColumns)
+        prefix_str = jp_prefix_str + key_str + "_"
         cols = {
             f"{prefix_str}{base_col}"
             for base_col in get_group_by_output_columns(gb, exclude_keys=True)
@@ -501,6 +508,7 @@ class ConfValidator(object):
 
         return errors
 
+
     def _validate_join(self, join: Join) -> List[BaseException]:
         """
         Validate join's status with materialized versions of group_bys
@@ -510,6 +518,7 @@ class ConfValidator(object):
           list of validation errors.
         """
         included_group_bys_and_prefixes = [(rp.groupBy, rp.prefix) for rp in join.joinParts]
+        # TODO: Remove label parts check in future PR that deprecates label_parts
         included_label_parts_and_prefixes = [(lp.groupBy, lp.prefix) for lp in join.labelParts.labels] if join.labelParts else []
         included_group_bys = [tup[0] for tup in included_group_bys_and_prefixes]
 
