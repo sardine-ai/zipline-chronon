@@ -39,6 +39,7 @@ def StagingQuery(
     env_vars: Optional[common.EnvironmentVariables] = None,
     cluster_conf: common.ClusterConfigProperties = None,
     step_days: Optional[int] = None,
+    recompute_days: Optional[int] = None,
 ) -> ttypes.StagingQuery:
     """
     Creates a StagingQuery object for executing arbitrary SQL queries with templated date parameters.
@@ -92,6 +93,12 @@ def StagingQuery(
         List of dependencies for the StagingQuery. Each dependency can be either a TableDependency object
         or a dictionary with 'name' and 'spec' keys.
     :type dependencies: List[Union[TableDependency, Dict]]
+    :param recompute_days:
+        Used by orchestrator to determine how many days are recomputed on each incremental scheduled run. Should be
+        set when the source data is changed in-place (i.e. existing partitions overwritten with new data each day up to
+        X days later) or when you want partially mature aggregations (i.e. a 7 day window, but start computing it from
+        day 1, and refresh it for the next 6 days)
+    :type recompute_days: int
     :return:
         A StagingQuery object
     """
@@ -149,6 +156,7 @@ def StagingQuery(
         setups=setups,
         partitionColumn=partition_column,
         engineType=engine_type,
+        recomputeDays=recompute_days,
     )
 
     return staging_query

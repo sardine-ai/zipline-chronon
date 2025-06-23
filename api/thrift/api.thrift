@@ -92,6 +92,14 @@ struct StagingQuery {
     6: optional EngineType engineType
 
     7: optional list<common.TableInfo> tableDependencies
+
+    /* If specified, will recompute the output of this StagingQuery for the given number of days after initial computation
+    * Should be used in one of two scenarios:
+    * 1: When the source data is changed in-place (i.e. existing partitions overwritten with new data each day up to X days later)
+    * 2: When you want partially mature aggregations (i.e. a 7 day window, but start computing it from day 1, and refresh it for the next 6 days)
+    * Both of these cases are common labeling flows.
+    **/
+    20: optional i32 recomputeDays
 }
 
 struct EventSource {
