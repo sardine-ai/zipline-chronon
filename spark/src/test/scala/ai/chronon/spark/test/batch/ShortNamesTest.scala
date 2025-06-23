@@ -3,6 +3,7 @@ package ai.chronon.spark.test.batch
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.Extensions._
+import ai.chronon.api.ScalaJavaConversions.MapOps
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.batch._
@@ -116,7 +117,7 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val expected =
       s"""
-         | SELECT j.*, gb.time_spent_ms_sum_7d as label__time_spent_ms_sum_7d FROM
+         | SELECT j.*, gb.time_spent_ms_sum_7d as label__item_time_spent_ms_sum_7d FROM
          | (SELECT * FROM $joinOutputTable WHERE ds = "$fortyDaysAgo") as j
          | LEFT OUTER JOIN
          | (SELECT * FROM $labelGbOutputTable WHERE ds = "$thirtyThreeDaysAgo") as gb
@@ -214,7 +215,7 @@ class ShortNamesTest extends AnyFlatSpec {
       sources = Seq(dollarEventSource),
       keyColumns = Seq("user"),
       aggregations = Seq(Builders.Aggregation(operation = Operation.SUM, inputColumn = "amount_dollars")),
-      metaData = Builders.MetaData(name = "unit_test.user_transactions", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "unit_test.user_transactions_1", namespace = namespace, team = "chronon")
     )
 
     val queriesSchema = List(
@@ -229,7 +230,7 @@ class ShortNamesTest extends AnyFlatSpec {
 
     // Make bootstrap part and table
     val bootstrapSourceTable = s"$namespace.bootstrap"
-    val bootstrapCol = "amount_dollars_sum_10d"
+    val bootstrapCol = "user_amount_dollars_sum_10d"
     tableUtils
       .loadTable(queryTable)
       .select(
@@ -249,12 +250,12 @@ class ShortNamesTest extends AnyFlatSpec {
         Builders.Aggregation(operation = Operation.SUM,
                              inputColumn = "amount_dollars",
                              windows = Seq(new Window(10, TimeUnit.DAYS)))),
-      metaData = Builders.MetaData(name = "unit_test.user_transactions", namespace = namespace, team = "chronon")
+      metaData = Builders.MetaData(name = "unit_test.user_transactions2", namespace = namespace, team = "chronon")
     )
 
     val bootstrapPart = Builders.BootstrapPart(
       query = Builders.Query(
-        selects = Builders.Selects("user", "ts", "amount_dollars_sum_10d"),
+        selects = Builders.Selects("user", "ts", "user_amount_dollars_sum_10d"),
         startPartition = start,
         endPartition = today
       ),
@@ -295,13 +296,38 @@ class ShortNamesTest extends AnyFlatSpec {
         joinParts = Seq(jp1, jp2, Builders.JoinPart(groupBy = bootstrapGroupBy).setUseLongNames(false)),
         bootstrapParts = Seq(bootstrapPart), // ext_return_one_number
         derivations = Seq(
-          Builders.Derivation("ratio_derivation", "amount_dollars_sum / (COALESCE(amount_dollars_sum_30d, 0) + 1)"),
+          Builders.Derivation("ratio_derivation",
+                              "user_amount_dollars_sum / (COALESCE(user_user_name_amount_dollars_sum_30d, 0) + 1)"),
           Builders.Derivation("external_coalesce", "COALESCE(ext_return_one_value_number, 1)")
         ),
         externalParts = Seq(Builders.ExternalPart(returnOneSource)),
         metaData = Builders.MetaData(name = "test.user_transaction_features", namespace = namespace, team = "chronon")
       )
       .setUseLongNames(false)
+
+    // test eval
+    val eval = new Eval()(tableUtils)
+    val evalResult = eval.evalJoin(joinConf)
+
+    assertEquals(
+      evalResult.rightPartsSchema.toScala,
+      Map(
+        "user_user_name_amount_dollars_sum_30d" -> "LongType",
+        "user_amount_dollars_sum" -> "LongType",
+        "user_amount_dollars_sum_10d" -> "LongType"
+      )
+    )
+
+    assertEquals(evalResult.derivationsSchema.toScala,
+                 Map(
+                   "ratio_derivation" -> "DoubleType",
+                   "external_coalesce" -> "IntType"
+                 ))
+
+    assertEquals(evalResult.externalPartsSchema.toScala,
+                 Map(
+                   "ext_return_one_value_number" -> "IntType"
+                 ))
 
     val leftSourceWithFilter = new SourceWithFilterNode().setSource(joinConf.left)
 
@@ -372,7 +398,7 @@ class ShortNamesTest extends AnyFlatSpec {
         "user_name",
         "ts_ds",
         "matched_hashes",
-        "amount_dollars_sum_10d",
+        "user_amount_dollars_sum_10d",
         "key_number",
         "ext_return_one_value_number",
         "ds"

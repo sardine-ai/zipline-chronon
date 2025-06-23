@@ -814,7 +814,7 @@ object Extensions {
       groupBy.getKeyColumns.toScala.mkString("_")
     }
     lazy val columnPrefix: String = {
-      val raw = (Option(prefix) ++ gbPrefix).mkString("_")
+      val raw = (Option(prefix) ++ Some(gbPrefix)).mkString("_")
       if (raw.isEmpty) "" else raw + "_"
     }
 
