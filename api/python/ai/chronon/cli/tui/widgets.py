@@ -192,10 +192,23 @@ class ProgressGrid(Static):
             
         return self._get_step_boundaries(node, current_step)
 
+    def _get_current_blocking_steps(self) -> set:
+        """Get all blocking steps for the currently selected step."""
+        current_step = self._get_current_step()
+        if not current_step or not self.steps:
+            return set()
+            
+        current_node, _ = self.steps[self.current_step_index]
+        blocking_list = self._get_blocking_steps(current_node, current_step)
+        
+        # Convert to set of (node, step) for fast lookup
+        return set(blocking_list)
+
     def _create_progress_line(self, node: str) -> Text:
         """Create a progress line for a node with background color highlighting."""
         progress = Text()
         highlight_start, highlight_end = self._get_current_highlight_info(node)
+        blocking_steps = self._get_current_blocking_steps()
         visible_dates = self._get_visible_dates()
         
         # Add dummy space at start of all progress lines for consistent alignment
@@ -207,11 +220,17 @@ class ProgressGrid(Static):
             # Check if this position is highlighted
             is_highlighted = highlight_start is not None and highlight_start <= i <= highlight_end
             
+            # Check if this step is blocking the current selection
+            is_blocking = status_obj and (node, status_obj) in blocking_steps
+            
             if status_obj:
                 color = self._get_status_color(status_obj.status)
                 if is_highlighted:
-                    # Add gray background for highlighted status
+                    # Current selection - gray background
                     progress.append("■", style=f"{color} on bright_black")
+                elif is_blocking:
+                    # Blocking step - red background to show it's blocking
+                    progress.append("■", style=f"{color} on red")
                 else:
                     progress.append("■", style=color)  # Normal filled box
             else:
@@ -292,6 +311,66 @@ class ProgressGrid(Static):
         
         return traverse(self.root)
     
+    def _style_tree_line(self, tree_line: str) -> Text:
+        """Apply styling to a tree line, highlighting the selected node name."""
+        current_step = self._get_current_step()
+        current_node = None
+        if current_step and self.steps:
+            current_node, _ = self.steps[self.current_step_index]
+        
+        # Create styled text
+        styled_text = Text()
+        
+        # Find the node name in the tree line (after tree connectors)
+        # Extract just the node name (last part after connectors)
+        parts = tree_line.split()
+        if parts:
+            node_name = parts[-1]  # Last part should be the node name
+            prefix = tree_line[:tree_line.rfind(node_name)]  # Everything before node name
+            
+            styled_text.append(prefix)
+            if node_name == current_node:
+                styled_text.append(node_name, style="bold yellow")
+            else:
+                styled_text.append(node_name)
+        else:
+            styled_text.append(tree_line)
+        
+        return styled_text
+    
+    def _get_blocking_steps(self, target_node: str, target_step: StepStatus) -> List[Tuple[str, StepStatus]]:
+        """
+        Compute all steps that are blocking the target step by recursively checking dependencies.
+        
+        Returns a list of (node_name, step_status) tuples that are blocking the target step.
+        A step is blocking if it overlaps with a dependency and hasn't finished.
+        """
+        blocking_steps = set()  # Now we can use a set since StepStatus is frozen
+        visited = set()
+        
+        def _find_blocking_recursive(node: str, step: StepStatus):
+            if step in visited:
+                return
+            visited.add(step)
+            
+            # Check dependencies - overlap check handles exact matches too
+            for dep in step.step_dependencies:
+                if dep.node_name in self.node_statuses:
+                    for other_step in self.node_statuses[dep.node_name]:
+                        if (other_step.status != "finished" and 
+                            self._steps_overlap(other_step, dep.start_date, dep.end_date)):
+                            blocking_steps.add((dep.node_name, other_step))
+                            _find_blocking_recursive(dep.node_name, other_step)
+        
+        _find_blocking_recursive(target_node, target_step)
+        
+        # Convert set back to list for consistent API
+        return list(blocking_steps)
+    
+    def _steps_overlap(self, step: StepStatus, dep_start: date, dep_end: date) -> bool:
+        """Check if a step overlaps with a dependency date range."""
+        return not (step.end_date < dep_start or step.start_date > dep_end)
+    
     def _create_date_row(self) -> Text:
         """Create a date row showing week starts (Mondays) in MM/DD format."""
         date_row = Text()
@@ -345,8 +424,8 @@ class ProgressGrid(Static):
         first_col_estimate = max_node_length + 15  # Tree symbols + padding
         
         # Available space for progress column (each day takes ~2 chars)
-        available_width = terminal_width - first_col_estimate - 10  # Border padding
-        new_viewport_width = max(30, available_width // 2)  # Minimum 30 days
+        available_width = terminal_width - first_col_estimate - 15  # More conservative border padding
+        new_viewport_width = max(20, available_width // 2)  # More conservative calculation
         
         # Update viewport width if it changed significantly
         if abs(new_viewport_width - self.viewport_width) > 5:
@@ -370,10 +449,11 @@ class ProgressGrid(Static):
         date_range_styled = Text(date_range_text, style="dim")
         
         table.add_column(date_range_styled, no_wrap=True, width=None)
-        table.add_column(date_row, ratio=1)
+        table.add_column(date_row, no_wrap=True, overflow="ellipsis")
         
         for tree_part, progress_bar in tree_data:
-            table.add_row(tree_part, progress_bar)
+            styled_tree_part = self._style_tree_line(tree_part)
+            table.add_row(styled_tree_part, progress_bar)
         
         # Wrap the table in a Panel titled "Workflow Progress"
         from rich.panel import Panel
@@ -399,7 +479,26 @@ class ProgressGrid(Static):
         
         scroll_info = f"Showing {start_date} - {end_date} ({self.h_scroll_offset + 1}-{self.h_scroll_offset + visible_days} of {total_days})"
         
-        return f"Node: {node}\nStep: {step_index + 1}/{len(self.node_statuses[node])}\nDates: {current_step.start_date} to {current_step.end_date}\nStatus: {current_step.status}\nDetails: {current_step.details}\n\nTimeline: {scroll_info}"
+        # Format step dependencies
+        deps_info = ""
+        if current_step.step_dependencies:
+            deps_info = "\n\nDependencies:"
+            for dep in current_step.step_dependencies:
+                deps_info += f"\n  • {dep.node_name}: {dep.start_date} to {dep.end_date}"
+        else:
+            deps_info = "\n\nDependencies: None"
+        
+        # Format blocking steps
+        blocking_list = self._get_blocking_steps(node, current_step)
+        blocking_info = ""
+        if blocking_list:
+            blocking_info = f"\n\nBlocking Steps ({len(blocking_list)}):"
+            for block_node, block_step in blocking_list:
+                blocking_info += f"\n  🚫 {block_node}: {block_step.details} ({block_step.start_date} to {block_step.end_date}) [{block_step.status}]"
+        else:
+            blocking_info = "\n\nBlocking Steps: None"
+        
+        return f"Node: {node}\nStep: {step_index + 1}/{len(self.node_statuses[node])}\nDates: {current_step.start_date} to {current_step.end_date}\nStatus: {current_step.status}\nDetails: {current_step.details}{deps_info}{blocking_info}\n\nTimeline: {scroll_info}"
     
     async def on_key(self, event: events.Key) -> None:
         """Handle key presses for navigation."""
