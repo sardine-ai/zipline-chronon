@@ -311,7 +311,6 @@ abstract class JoinBase(val joinConfCloned: api.Join,
         rangeToFill,
         Some(Seq(joinConfCloned.left.table)),
         skipFirstHole = skipFirstHole,
-        inputPartitionColumnNames = Seq(joinConfCloned.left.query.partitionSpec(tableUtils.partitionSpec).column),
         inputPartitionSpecs = Seq(joinConfCloned.left.query.partitionSpec(tableUtils.partitionSpec))
       )
       .getOrElse(Seq.empty)

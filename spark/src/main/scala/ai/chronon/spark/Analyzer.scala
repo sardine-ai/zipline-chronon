@@ -270,7 +270,7 @@ class Analyzer(tableUtils: TableUtils,
         joinConf.metaData.outputTable,
         rangeToFill,
         Some(Seq(joinConf.left.table)),
-        inputPartitionColumnNames = Seq(joinConf.left.query.partitionSpec(tableUtils.partitionSpec).column)
+        inputPartitionSpecs = Seq(joinConf.left.query.partitionSpec(tableUtils.partitionSpec))
       )
       .getOrElse(Seq.empty)
 
