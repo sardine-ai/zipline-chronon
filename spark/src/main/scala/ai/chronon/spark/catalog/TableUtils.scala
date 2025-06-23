@@ -176,8 +176,10 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def lastAvailablePartition(tableName: String,
                              partitionRange: Option[PartitionRange] = None,
-                             subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(tableName, subPartitionFilters, partitionRange).reduceOption((x, y) => Ordering[String].max(x, y))
+                             subPartitionFilters: Map[String, String] = Map.empty,
+                             tablePartitionSpec: Option[PartitionSpec] = None): Option[String] =
+    partitions(tableName, subPartitionFilters, partitionRange, tablePartitionSpec = tablePartitionSpec).reduceOption(
+      (x, y) => Ordering[String].max(x, y))
 
   def firstAvailablePartition(tableName: String,
                               partitionSpec: PartitionSpec = partitionSpec,
