@@ -35,21 +35,6 @@ class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: PartitionSp
     toNode(metaData, _.setGroupByBackfill(node), eraseExecutionInfo)
   }
 
-  def uploadNode: Node = {
-
-    val metaData = MetaDataUtils.layer(groupBy.metaData,
-                                       "upload",
-                                       groupBy.metaData.name + "/upload",
-                                       tableDeps,
-                                       Some(effectiveStepDays))
-
-    metaData.executionInfo.unsetOutputTableInfo()
-
-    val node = new GroupByBackfillNode().setGroupBy(eraseExecutionInfo)
-
-    toNode(metaData, _.setGroupByBackfill(node), eraseExecutionInfo)
-  }
-
   override def buildPlan: ConfPlan = {
     val bFillNode = backfillNode
     val terminalNodeNames = Map(

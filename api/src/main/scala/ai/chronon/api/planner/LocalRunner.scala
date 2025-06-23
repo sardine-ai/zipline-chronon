@@ -1,15 +1,10 @@
 package ai.chronon.api.planner
 
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.{Constants, MetaData, ThriftJsonCodec}
-import ai.chronon.planner.{Node, NodeContent, SourceWithFilterNode}
+import ai.chronon.api.{Constants, GroupBy, Join, PartitionSpec, StagingQuery, ThriftJsonCodec}
 
 import java.io.File
 import scala.reflect.ClassTag
-import scala.util.Try
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.Join
-import ai.chronon.api.StagingQuery
 
 object LocalRunner {
 
@@ -41,7 +36,9 @@ object LocalRunner {
     .flatMap(tryParsingConf[T])
     .toSeq
 
-  /** bazel build //api:planner_deploy.jar
+  /** To run:
+    * bazel build //api:planner_deploy.jar
+    * bazel run -- //api:planner <path-to-confs> <conf_type>
     * @param args
     */
   def main(args: Array[String]): Unit = {
@@ -63,6 +60,10 @@ object LocalRunner {
       case "staging_queries" => {
         val confs = parseConfs[StagingQuery](confSubfolder)
         confs.map((c) => new StagingQueryPlanner(c)).map(_.buildPlan).foreach(println)
+      }
+      case "groupby_uploads" => {
+        val confs = parseConfs[GroupBy](confSubfolder)
+        confs.map((c) => GroupByUploadPlanner(c)).map(_.buildPlan).foreach(println)
       }
       case _ =>
         throw new UnsupportedOperationException(

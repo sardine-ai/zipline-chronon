@@ -3,13 +3,14 @@ package ai.chronon.spark.batch
 import ai.chronon.api
 import ai.chronon.api.planner.NodeRunner
 import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
-import ai.chronon.planner.{MonolithJoinNode, NodeContent, StagingQueryNode}
-import ai.chronon.spark.Join
+import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent, StagingQueryNode}
+import ai.chronon.spark.{GroupByUpload, Join}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.submission.SparkSessionBuilder
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
+
 import scala.util.{Failure, Success, Try}
 
 class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
@@ -18,7 +19,7 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
 
   val confPath: ScallopOption[String] = opt[String](required = true, descr = "Path to node configuration file")
   val startDs: ScallopOption[String] = opt[String](
-    required = true,
+    required = false,
     descr = "Start date string in format yyyy-MM-dd, used for partitioning"
   )
   val endDs: ScallopOption[String] = opt[String](
@@ -28,7 +29,7 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
 
   val confType: ScallopOption[String] = choice(
     required = true,
-    choices = Seq("join", "staging_query"),
+    choices = Seq("join", "staging_query", "group_by_upload"),
     descr = "Type of configuration, e.g., 'join', 'staging_query', etc."
   )
 
@@ -54,9 +55,23 @@ object BatchNodeRunner extends NodeRunner {
     conf.getSetField match {
       case NodeContent._Fields.MONOLITH_JOIN =>
         runMonolithJoin(metadata, conf.getMonolithJoin, range, tableUtils)
+      case NodeContent._Fields.GROUP_BY_UPLOAD =>
+        runGroupByUpload(metadata, conf.getGroupByUpload, range, tableUtils)
       case _ =>
         throw new UnsupportedOperationException(s"Unsupported NodeContent type: ${conf.getSetField}")
     }
+  }
+
+  private def runGroupByUpload(metadata: MetaData,
+                               groupByUpload: GroupByUploadNode,
+                               range: PartitionRange,
+                               tableUtils: TableUtils): Unit = {
+    require(groupByUpload.isSetGroupBy, "GroupByUploadNode must have a groupBy set")
+    val groupBy = groupByUpload.groupBy
+    logger.info(s"Running groupBy upload for '${metadata.name}' for day: ${range.end}")
+
+    GroupByUpload.run(groupBy, range.end, Some(tableUtils))
+    logger.info(s"Successfully completed groupBy upload for '${metadata.name}' for day: ${range.end}")
   }
 
   private def runMonolithJoin(metadata: MetaData,
@@ -109,6 +124,13 @@ object BatchNodeRunner extends NodeRunner {
         nodeContent.setStagingQuery(stagingQueryNode)
         (stagingQueryObj.metaData, nodeContent)
 
+      case "group_by_upload" =>
+        val groupByObj = ThriftJsonCodec.fromJsonFile[api.GroupBy](confPath, check = false)
+        val groupByUploadNode = new GroupByUploadNode()
+        groupByUploadNode.setGroupBy(groupByObj)
+        nodeContent.setGroupByUpload(groupByUploadNode)
+        (groupByObj.metaData, nodeContent)
+
       case unsupported =>
         throw new IllegalArgumentException(s"Unsupported config type: $unsupported")
     }
@@ -129,7 +151,10 @@ object BatchNodeRunner extends NodeRunner {
     try {
       val batchArgs = new BatchNodeRunnerArgs(args)
 
-      runFromArgs(batchArgs.confPath(), batchArgs.startDs(), batchArgs.endDs(), batchArgs.confType()) match {
+      runFromArgs(batchArgs.confPath(),
+                  batchArgs.startDs.toOption.orNull,
+                  batchArgs.endDs(),
+                  batchArgs.confType()) match {
         case Success(_) =>
           logger.info("Batch node runner completed successfully")
         case Failure(exception) =>

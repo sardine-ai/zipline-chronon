@@ -1,7 +1,8 @@
 package ai.chronon.spark.batch
 
-import ai.chronon.api.{Accuracy, Builders, Operation, PartitionRange, TimeUnit, Window}
-import ai.chronon.planner.{MonolithJoinNode, NodeContent}
+import ai.chronon.api.Extensions.WindowUtils
+import ai.chronon.api.{Accuracy, Aggregation, Builders, Operation, PartitionRange, TimeUnit, Window}
+import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent}
 import ai.chronon.spark.test.join.BaseJoinTest
 import ai.chronon.spark.Extensions._
 import org.scalatest.matchers.should.Matchers
@@ -43,7 +44,6 @@ class BatchNodeRunnerTest extends BaseJoinTest with Matchers {
 
     val itemQueriesTable = s"$namespace.item_queries_union_temporal"
     val start = tableUtils.partitionSpec.minus(today, new Window(20, TimeUnit.DAYS))
-    val dateRange = PartitionRange(start, today)(tableUtils.partitionSpec)
 
     val joinConf = Builders.Join(
       left = Builders.Source.events(Builders.Query(startPartition = start), table = itemQueriesTable),
@@ -82,6 +82,31 @@ class BatchNodeRunnerTest extends BaseJoinTest with Matchers {
     range.end shouldBe today
   }
 
+  it should "properly set up GroupByUpload configuration for execution" in {
+    val eventsTable = "my_user_events"
+    val aggregations: Seq[Aggregation] = Seq(
+      Builders.Aggregation(Operation.COUNT, "charges", Seq(WindowUtils.Unbounded))
+    )
+    val groupBy = Builders.GroupBy(
+      sources = Seq(Builders.Source.events(Builders.Query(), table = eventsTable)),
+      keyColumns = Seq("user"),
+      aggregations = aggregations,
+      metaData = Builders.MetaData(namespace = "test_namespace", name = "user_charges"),
+      accuracy = Accuracy.TEMPORAL
+    )
+
+    val gbuNode = new GroupByUploadNode().setGroupBy(groupBy)
+    val nodeContent = new NodeContent()
+    nodeContent.setGroupByUpload(gbuNode)
+
+    val range = PartitionRange(null, today)(tableUtils.partitionSpec)
+
+    // Verify configuration is set up correctly without executing
+    nodeContent.isSetGroupByUpload shouldBe true
+    nodeContent.getGroupByUpload.getGroupBy.metaData.name shouldBe "user_charges"
+    range.end shouldBe today
+  }
+
   it should "throw exception for unsupported NodeContent type" in {
     val nodeContent = new NodeContent()
     // Not setting any specific type, should cause unsupported operation
@@ -110,6 +135,14 @@ class BatchNodeRunnerTest extends BaseJoinTest with Matchers {
     metadata.name shouldBe "gcp.training_set.v1_test"
     nodeContent.isSetMonolithJoin shouldBe true
     nodeContent.getMonolithJoin.getJoin.metaData.name shouldBe "gcp.training_set.v1_test"
+  }
+
+  it should "load GroupByUpload configuration correctly" in {
+    val (metadata, nodeContent) = BatchNodeRunner.loadNodeContent(groupByConfigPath, "group_by_upload")
+
+    metadata.name shouldBe "gcp.purchases.v1_test"
+    nodeContent.isSetGroupByUpload shouldBe true
+    nodeContent.getGroupByUpload.getGroupBy.metaData.name shouldBe "gcp.purchases.v1_test"
   }
 
   it should "handle staging query config type validation" in {
