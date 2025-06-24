@@ -4,6 +4,8 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.api.{Accuracy, DataModel, PartitionSpec, TableDependency, TableInfo, Window}
 import scala.collection.JavaConverters._
+import ai.chronon.api.ScalaJavaConversions.IterableOps
+import ai.chronon.api.BootstrapPart
 
 object TableDependencies {
 
@@ -18,73 +20,13 @@ object TableDependencies {
   }
 
   def fromJoin(join: api.Join)(implicit spec: PartitionSpec): Seq[TableDependency] = {
-    val labelParts = Option(join.labelParts)
-
-    val joinParts = labelParts.map(_.labels.iterator().toScala.toArray.distinct).getOrElse(Array.empty)
-    joinParts.flatMap { jp =>
-      require(
-        jp.groupBy.dataModel == DataModel.EVENTS,
-        s"Label GroupBy, ${jp.groupBy.metaData.name}, is not an EventSource. " +
-          s"EntitySources are not yet supported on label parts."
-      )
-
-      val isTemporal = join.left.dataModel == DataModel.EVENTS && jp.groupBy.inferredAccuracy == Accuracy.TEMPORAL
-
-      val windows: Array[Window] = jp.groupBy.allWindows
-
-      require(
-        !windows.contains(null),
-        s"All aggregations must be windowed on EventSource labels. " +
-          s"Label GroupBy, ${jp.groupBy.metaData.name} has an un-windowed aggregation."
-      )
-
-      val minWindow = windows.minBy(_.millis)
-      // a 2hr window will need us to scan input partitions from both ds & ds + 1 - latter for events close to midnight
-      val maxWindow = (windows :+ WindowUtils.Day).maxBy(_.millis)
-
-      val deps: Seq[TableDependency] =
-        if (isTemporal) {
-          // depend on source table directly from [ds, ds + maxWindow]
-          jp.groupBy.sources
-            .iterator()
-            .toScala
-            .map { source =>
-              new TableDependency()
-                .setTableInfo(
-                  new TableInfo()
-                    .setTable(source.table)
-                    .setIsCumulative(source.isCumulative)
-                    .setPartitionColumn(source.query.getPartitionColumn)
-                    .setPartitionFormat(source.query.getPartitionFormat)
-                    .setPartitionInterval(source.query.getPartitionInterval)
-                )
-                .setStartOffset(WindowUtils.zero())
-                .setEndOffset(maxWindow.inverse)
-                .setStartCutOff(source.query.getStartPartition)
-                .setEndCutOff(source.query.getPartitionColumn)
-            }
-            .toSeq
-        } else {
-
-          // snapshots depends on groupBy backfill table from [ds + minWindow, ds + maxWindow]
-          Seq(
-            new TableDependency()
-              .setTableInfo(
-                new TableInfo()
-                  .setTable(jp.groupBy.metaData.outputTable)
-                  .setPartitionColumn(spec.column)
-                  .setPartitionFormat(spec.format)
-                  .setPartitionInterval(WindowUtils.hours(spec.spanMillis))
-              )
-              .setStartOffset(minWindow.inverse)
-              .setEndOffset(maxWindow.inverse)
-          )
-
-        }
-
-      deps
-
-    }
+    val joinParts = Option(join.joinParts).map(_.iterator().toScala.toArray).getOrElse(Array.empty)
+    val joinPartDeps = joinParts.flatMap((jp) => fromGroupBy(jp.groupBy))
+    val leftDep = fromSource(join.left)
+    val bootstrap =
+      scala.Option(join.bootstrapParts).map(_.toScala.toArray[BootstrapPart]).getOrElse(Array.empty[BootstrapPart])
+    val bootstrapDeps = bootstrap.map((bp) => fromTable(bp.table, bp.query))
+    (leftDep.toSeq ++ joinPartDeps.toSeq ++ bootstrapDeps.toSeq)
   }
 
   def fromGroupBy(groupBy: api.GroupBy, leftDataModel: Option[DataModel] = None): Seq[TableDependency] =

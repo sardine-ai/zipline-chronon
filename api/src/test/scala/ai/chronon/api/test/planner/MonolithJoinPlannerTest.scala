@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.nio.file.Paths
 import scala.jdk.CollectionConverters._
+import ai.chronon.api.Builders
 
 class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
@@ -62,12 +63,14 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
   it should "monolith join should avoid metadata when computing semantic hash" in {
     val firstJoin = Join(
       metaData = MetaData(name = "firstJoin", executionInfo = new ExecutionInfo().setStepDays(2)),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.join_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
 
     val secondJoin = Join(
       metaData = MetaData(name = "secondJoin", executionInfo = new ExecutionInfo().setStepDays(1)),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.join_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
@@ -83,6 +86,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
   it should "monolith join planner should create valid terminal node names" in {
     val join = Join(
       metaData = MetaData(name = "testJoin"),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.test_join_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
@@ -99,12 +103,14 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
   it should "monolith join planner should respect step days from execution info" in {
     val joinWithStepDays = Join(
       metaData = MetaData(name = "testJoin", executionInfo = new ExecutionInfo().setStepDays(5)),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.test_join_with_step_days_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
 
     val joinWithoutStepDays = Join(
       metaData = MetaData(name = "testJoin2"),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.test_join_without_step_days_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
@@ -124,6 +130,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
         name = "testJoin1",
         executionInfo = new ExecutionInfo().setStepDays(3)
       ),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.test_join_execution_info_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
@@ -133,6 +140,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
         name = "testJoin2",
         executionInfo = new ExecutionInfo().setStepDays(7)
       ),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.test_join_execution_info_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
@@ -163,6 +171,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
   it should "monolith join planner should create metadata upload node with correct properties" in {
     val join = Join(
       metaData = MetaData(name = "testJoin"),
+      left = Builders.Source.events(Builders.Query(), table = s"test_namespace.test_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
@@ -184,12 +193,14 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
   it should "monolith join planner should skip metadata in semantic hash for both nodes" in {
     val firstJoin = Join(
       metaData = MetaData(name = "firstJoin", executionInfo = new ExecutionInfo().setStepDays(2)),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.join_semantic_hash_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
 
     val secondJoin = Join(
       metaData = MetaData(name = "secondJoin", executionInfo = new ExecutionInfo().setStepDays(1)),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.join_semantic_hash_table"),
       joinParts = Seq.empty,
       bootstrapParts = Seq.empty
     )
