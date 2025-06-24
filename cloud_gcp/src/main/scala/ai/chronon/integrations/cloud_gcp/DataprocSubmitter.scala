@@ -502,11 +502,25 @@ object DataprocSubmitter {
     }
   }
 
-  private[cloud_gcp] def getOrCreateCluster(clusterName: String,
-                                            maybeClusterConfig: Option[Map[String, String]],
-                                            projectId: String,
-                                            region: String,
-                                            dataprocClient: ClusterControllerClient): String = {
+  /** Gets an existing Dataproc cluster or creates a new one if it doesn't exist.
+    *
+    * @param clusterName The name of the cluster to get or create
+    * @param maybeClusterConfig Optional cluster configuration for creation
+    * @param projectId The GCP project ID
+    * @param region The GCP region
+    * @param dataprocClient The Dataproc client for API calls
+    * @return The name of the cluster
+    * @throws IllegalArgumentException if parameters are invalid
+    * @throws Exception if cluster operations fail
+    */
+  def getOrCreateCluster(clusterName: String,
+                         maybeClusterConfig: Option[Map[String, String]],
+                         projectId: String,
+                         region: String,
+                         dataprocClient: ClusterControllerClient): String = {
+    require(projectId.nonEmpty, "projectId cannot be empty")
+    require(region.nonEmpty, "region cannot be empty")
+    require(dataprocClient != null, "dataprocClient cannot be null")
     if (clusterName != "") {
       try {
         val cluster = dataprocClient.getCluster(projectId, region, clusterName)
