@@ -5,7 +5,7 @@ import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, WindowUtils}
 import ai.chronon.planner.{ConfPlan, GroupByBackfillNode, GroupByUploadNode, GroupByUploadToKVNode, Node}
 import scala.collection.JavaConverters._
 
-class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: PartitionSpec)
+case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: PartitionSpec)
     extends ConfPlanner[GroupBy](groupBy)(outputPartitionSpec) {
 
   // execInfo can be heavy - and we don't want to duplicate it
