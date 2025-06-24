@@ -93,7 +93,7 @@ abstract class BaseJoinTest extends AnyFlatSpec {
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = s"$namespace.item_queries"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 100, partitions = 100)
+      .events(spark, itemQueries, 1000, partitions = 100)
     // duplicate the events
     itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
 
