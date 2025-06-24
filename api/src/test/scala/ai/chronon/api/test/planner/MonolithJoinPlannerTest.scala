@@ -4,6 +4,7 @@ import ai.chronon.api.planner.{LocalRunner, MonolithJoinPlanner}
 import ai.chronon.api
 import ai.chronon.api.Builders.{Join, MetaData}
 import ai.chronon.api.{ExecutionInfo, PartitionSpec}
+import ai.chronon.planner.{ConfPlan, Mode}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -12,7 +13,33 @@ import scala.jdk.CollectionConverters._
 
 class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
-  private implicit val testPartitionSpec = PartitionSpec.daily
+  private implicit val testPartitionSpec: PartitionSpec = PartitionSpec.daily
+
+  private def validateJoinPlan(plan: ConfPlan): Unit = {
+    // Should create plan successfully with both backfill and metadata upload nodes
+    plan.nodes.asScala should have size 2
+
+    // Find the backfill node and metadata upload node
+    val backfillNode = plan.nodes.asScala.find(_.content.isSetMonolithJoin)
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload)
+
+    backfillNode should be(defined)
+    metadataUploadNode should be(defined)
+
+    // Backfill node should have content
+    backfillNode.get.content should not be null
+    backfillNode.get.content.getMonolithJoin should not be null
+    backfillNode.get.content.getMonolithJoin.join should not be null
+
+    // Metadata upload node should have content
+    metadataUploadNode.get.content should not be null
+    metadataUploadNode.get.content.getJoinMetadataUpload should not be null
+    metadataUploadNode.get.content.getJoinMetadataUpload.join should not be null
+
+    plan.terminalNodeNames.asScala.size shouldBe 2
+    plan.terminalNodeNames.containsKey(Mode.DEPLOY) shouldBe true
+    plan.terminalNodeNames.containsKey(Mode.BACKFILL) shouldBe true
+  }
 
   it should "monolith join planner plans valid confs without exceptions" in {
 
@@ -27,7 +54,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
       .foreach { planner =>
         noException should be thrownBy {
           val plan = planner.buildPlan
-          plan.terminalNodeNames.asScala.size should be > 0
+          validateJoinPlan(plan)
         }
       }
   }
@@ -64,7 +91,9 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val plan = planner.buildPlan
 
     plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.BACKFILL
+    plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.DEPLOY
     plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.BACKFILL) should equal("testJoin/backfill")
+    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.DEPLOY) should equal("testJoin/metadata_upload")
   }
 
   it should "monolith join planner should respect step days from execution info" in {
@@ -117,7 +146,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     firstSemanticHashes should equal(secondSemanticHashes)
   }
 
-  it should "monolith join planner should produce exactly one node wrapping a Join for canary confs" in {
+  it should "monolith join planner should produce exactly two nodes (backfill and metadata upload) for canary confs" in {
     val runfilesDir = System.getenv("RUNFILES_DIR")
     val rootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/joins")
 
@@ -127,16 +156,54 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
       val planner = MonolithJoinPlanner(joinConf)
       val plan = planner.buildPlan
 
-      // Should have exactly one node
-      plan.nodes.asScala should have size 1
-
-      val node = plan.nodes.asScala.head
-      // Node should have content
-      node.content should not be null
-      // Content should have a monolithJoin set
-      node.content.getMonolithJoin should not be null
-      // The wrapped join should not be null
-      node.content.getMonolithJoin.join should not be null
+      validateJoinPlan(plan)
     }
+  }
+
+  it should "monolith join planner should create metadata upload node with correct properties" in {
+    val join = Join(
+      metaData = MetaData(name = "testJoin"),
+      joinParts = Seq.empty,
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Verify metadata upload node name
+    metadataUploadNode.metaData.name should equal("testJoin/metadata_upload")
+
+    // Verify the wrapped join is correct
+    metadataUploadNode.content.getJoinMetadataUpload.join should equal(join)
+  }
+
+  it should "monolith join planner should skip metadata in semantic hash for both nodes" in {
+    val firstJoin = Join(
+      metaData = MetaData(name = "firstJoin", executionInfo = new ExecutionInfo().setStepDays(2)),
+      joinParts = Seq.empty,
+      bootstrapParts = Seq.empty
+    )
+
+    val secondJoin = Join(
+      metaData = MetaData(name = "secondJoin", executionInfo = new ExecutionInfo().setStepDays(1)),
+      joinParts = Seq.empty,
+      bootstrapParts = Seq.empty
+    )
+
+    val firstPlan = MonolithJoinPlanner(firstJoin).buildPlan
+    val secondPlan = MonolithJoinPlanner(secondJoin).buildPlan
+
+    // Semantic hashes should be identical for both backfill and metadata upload nodes
+    val firstBackfillHash = firstPlan.nodes.asScala.find(_.content.isSetMonolithJoin).get.semanticHash
+    val secondBackfillHash = secondPlan.nodes.asScala.find(_.content.isSetMonolithJoin).get.semanticHash
+    firstBackfillHash should equal(secondBackfillHash)
+
+    val firstMetadataUploadHash = firstPlan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get.semanticHash
+    val secondMetadataUploadHash = secondPlan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get.semanticHash
+    firstMetadataUploadHash should equal(secondMetadataUploadHash)
   }
 }

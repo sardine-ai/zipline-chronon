@@ -2,6 +2,7 @@ package ai.chronon.api.planner
 
 import ai.chronon.api.{Join, PartitionSpec}
 import ai.chronon.planner
+import ai.chronon.planner.Node
 
 import scala.collection.JavaConverters._
 
@@ -29,9 +30,7 @@ class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpe
 
   }
 
-  override def buildPlan: planner.ConfPlan = {
-    val confPlan = new planner.ConfPlan()
-
+  def backfillNode: Node = {
     val tableDeps = TableDependencies.fromJoin(join)
 
     val metaData =
@@ -41,16 +40,30 @@ class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpe
                           tableDeps,
                           Some(effectiveStepDays))
     val node = new planner.MonolithJoinNode().setJoin(join)
-    val finalNode = toNode(metaData, _.setMonolithJoin(node), semanticMonolithJoin(join))
+    toNode(metaData, _.setMonolithJoin(node), semanticMonolithJoin(join))
+  }
 
-    val terminalNodeNames: java.util.Map[planner.Mode, String] = (
-      for {
-        fin <- Option(finalNode)
-        metaData <- Option(fin.metaData)
-        name <- Option(metaData.name)
-      } yield Map(planner.Mode.BACKFILL -> name)
-    ).getOrElse(Map.empty).asJava
-    confPlan.setNodes(List(finalNode).asJava).setTerminalNodeNames(terminalNodeNames)
+  def metadataUploadNode: Node = {
+    val stepDays = 1 // Default step days for metadata upload
+    val metaData =
+      MetaDataUtils.layer(join.metaData,
+                          "metadata_upload",
+                          join.metaData.name + "/metadata_upload",
+                          Seq.empty,
+                          Some(stepDays))
+    val node = new planner.JoinMetadataUpload().setJoin(join)
+    toNode(metaData, _.setJoinMetadataUpload(node), semanticMonolithJoin(join))
+  }
+
+  override def buildPlan: planner.ConfPlan = {
+    val confPlan = new planner.ConfPlan()
+
+    val terminalNodeNames = Map(
+      planner.Mode.BACKFILL -> backfillNode.metaData.name,
+      planner.Mode.DEPLOY -> metadataUploadNode.metaData.name
+    )
+
+    confPlan.setNodes(List(backfillNode, metadataUploadNode).asJava).setTerminalNodeNames(terminalNodeNames.asJava)
   }
 }
 
