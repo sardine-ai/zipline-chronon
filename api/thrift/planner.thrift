@@ -48,6 +48,10 @@ struct GroupByUploadNode {
     2: optional api.GroupBy groupBy
 }
 
+struct GroupByUploadToKVNode {
+    2: optional api.GroupBy groupBy
+}
+
 struct GroupByStreamingNode {
     2: optional api.GroupBy groupBy
 }
@@ -74,6 +78,7 @@ union NodeContent {
     100: GroupByBackfillNode groupByBackfill
     101: GroupByUploadNode groupByUpload
     102: GroupByStreamingNode groupByStreaming
+    103: GroupByUploadToKVNode groupByUploadToKV
 
     // stagingQuery nodes
     200: api.StagingQuery stagingQueryBackfill

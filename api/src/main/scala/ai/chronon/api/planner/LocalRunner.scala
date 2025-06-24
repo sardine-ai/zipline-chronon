@@ -61,9 +61,9 @@ object LocalRunner {
         val confs = parseConfs[StagingQuery](confSubfolder)
         confs.map((c) => new StagingQueryPlanner(c)).map(_.buildPlan).foreach(println)
       }
-      case "groupby_uploads" => {
+      case "groupbys" => {
         val confs = parseConfs[GroupBy](confSubfolder)
-        confs.map((c) => GroupByUploadPlanner(c)).map(_.buildPlan).foreach(println)
+        confs.map((c) => new GroupByPlanner(c)).map(_.buildPlan).foreach(println)
       }
       case _ =>
         throw new UnsupportedOperationException(

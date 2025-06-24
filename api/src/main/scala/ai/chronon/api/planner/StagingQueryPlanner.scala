@@ -6,7 +6,7 @@ import scala.collection.JavaConverters._
 import ai.chronon.planner.StagingQueryNode
 
 case class StagingQueryPlanner(stagingQuery: StagingQuery)(implicit outputPartitionSpec: PartitionSpec)
-    extends Planner[StagingQuery](stagingQuery)(outputPartitionSpec) {
+    extends ConfPlanner[StagingQuery](stagingQuery)(outputPartitionSpec) {
 
   private def semanticStagingQuery(stagingQuery: StagingQuery): StagingQuery = {
     val semanticStagingQuery = stagingQuery.deepCopy()

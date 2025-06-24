@@ -6,7 +6,7 @@ import ai.chronon.planner
 import scala.collection.JavaConverters._
 
 class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
-    extends Planner[Join](join)(outputPartitionSpec) {
+    extends ConfPlanner[Join](join)(outputPartitionSpec) {
 
   private def effectiveStepDays: Int = {
     Option(join.metaData.executionInfo).map(_.stepDays).getOrElse(1)

@@ -9,7 +9,7 @@ import scala.collection.Seq
 import scala.language.{implicitConversions, reflectiveCalls}
 
 class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
-    extends Planner[Join](join)(outputPartitionSpec) {
+    extends ConfPlanner[Join](join)(outputPartitionSpec) {
 
   // will mutate the join in place - use on deepCopy-ied objects only
   private def unsetNestedMetadata(join: Join): Unit = {
