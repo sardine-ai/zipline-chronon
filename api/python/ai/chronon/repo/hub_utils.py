@@ -1,11 +1,9 @@
 import importlib
 import inspect
 import os
-import subprocess
 from dataclasses import dataclass
 
-from ai.chronon.repo import FOLDER_NAME_TO_CLASS, OUTPUT_ROOT
-from ai.chronon.repo.compilev2 import extract_and_convert
+from ai.chronon.repo import FOLDER_NAME_TO_CLASS, OUTPUT_ROOT, gitpython_utils
 from ai.chronon.repo.hub_uploader import compute_and_upload_diffs
 from ai.chronon.utils import get_mod_and_var_name_from_gc
 
@@ -87,32 +85,14 @@ def _get_chronon_root(filepath):
     )
 
 
-def _get_branch(path):
+def get_branch(path):
     """
     Get the git branch for the given path.
     """
-    try:
-        # Get the default branch
-        default_branch = (
-            subprocess.run(
-                ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
-                cwd=os.path.dirname(path),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            .stdout.strip()
-            .split("/")[-1]
-        )
 
-        # Get the git branch by running git command in the directory
-        current_branch = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=os.path.dirname(path),
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
+    try:
+        default_branch = gitpython_utils.get_default_origin_branch(path)
+        current_branch = gitpython_utils.get_current_branch(path)
 
         if current_branch == default_branch:
             raise RuntimeError(
@@ -124,43 +104,20 @@ def _get_branch(path):
             print(f"Identified branch: {current_branch}")
             return current_branch
 
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         raise ValueError(
             f"Failed to get git branch for {path}. Make sure your Chronon directory is in a git repository."
         ) from e
 
 
-def _compile_and_upload_to_branch(zipline_obj):
+def upload_to_branch(chronon_root, zipline_hub):
     """
-    Determines the correct current branch, compiles the repo, uploads the state to the remote branch,
+    Determines the correct current branch, uploads the state to the remote branch,
     and returns the branch name
     """
-    config_details = ConfigDetails(zipline_obj)
-    branch = _get_branch(config_details.chronon_root)
-    extract_and_convert(config_details.chronon_root, zipline_obj, config_details.module)
-    compute_and_upload_diffs(config_details.output_root, branch)
+    branch = get_branch(chronon_root)
+    compute_and_upload_diffs(chronon_root, branch, zipline_hub)
     return branch
-
-
-def backfill(self, start_date, end_date, force_recompute=False, plan=False):
-    """
-    Backfills a Chronon object for a specified date range. Attached to GroupBy, Join and StagingQuery.
-
-    Args:
-        zipline_obj: The Chronon object (GroupBy, Join, StagingQuery) to backfill
-        start_date: Start date for the backfill period
-        end_date: End date for the backfill period
-        force_recompute: If True, recomputes data even if it already exists (default: False)
-        plan: If True, only shows execution plan without running backfill (default: False)
-
-    Returns:
-        None
-
-    Raises:
-        ValueError: If the object cannot be compiled or backfilled
-    """
-    _compile_and_upload_to_branch(self)
-    print("\n\n TODO -- Implement \n\n")
 
 
 def deploy(self, date=None, force_recompute=False, plan=False):
@@ -182,7 +139,7 @@ def deploy(self, date=None, force_recompute=False, plan=False):
     Raises:
         ValueError: If the object cannot be compiled or uploaded
     """
-    _compile_and_upload_to_branch(self)
+    upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
 
 
@@ -201,7 +158,7 @@ def info(self, branch=None):
     Raises:
         ValueError: If the object cannot be compiled or info cannot be retrieved
     """
-    _compile_and_upload_to_branch(self)
+    upload_to_branch(self)
     print("\n\n TODO -- Implement \n\n")
 
 

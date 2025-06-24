@@ -465,3 +465,8 @@ def split_date_range(start_date, end_date, parallelism):
             (split_start.strftime("%Y-%m-%d"), split_end.strftime("%Y-%m-%d"))
         )
     return date_ranges
+
+def get_metadata_name_from_conf(repo_path, conf_path):
+    with open(os.path.join(repo_path, conf_path), "r") as conf_file:
+        data = json.load(conf_file)
+        return data.get("metaData", {}).get("name", None)

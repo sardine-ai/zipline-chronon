@@ -31,7 +31,7 @@ class Runner:
         )  # in case user sets dash instead of underscore
 
         # streaming flink
-        self.conf_metadata_name = self.get_metadata_name_from_conf()
+        self.conf_metadata_name = utils.get_metadata_name_from_conf(self.repo, self.conf)
         self.kafka_bootstrap = args.get("kafka_bootstrap")
         self.latest_savepoint = args.get("latest_savepoint")
         self.custom_savepoint = args.get("custom_savepoint")
@@ -110,10 +110,6 @@ class Runner:
 
         self.disable_cloud_logging = args.get("disable_cloud_logging")
 
-    def get_metadata_name_from_conf(self):
-        with open(os.path.join(self.repo, self.conf), "r") as conf_file:
-            data = json.load(conf_file)
-            return data.get("metaData", {}).get("name", None)
 
     def run_spark_streaming(self):
         # streaming mode
