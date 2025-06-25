@@ -218,6 +218,41 @@ struct WorkflowStartResponse {
     1: optional string workflowId
 }
 
+struct NodeExecutionInfo {
+    1: optional string nodeName
+    2: optional string nodeHash
+    3: optional string startPartition
+    4: optional string endPartition
+    5: optional list<string> dependencies
+    6: optional list<NodeStepRunInfo> stepRuns
+}
+
+struct NodeStepRunInfo {
+    1: optional string runId
+    2: optional string startPartition
+    3: optional string endPartition
+    4: optional string startTime
+    5: optional string endTime
+    6: optional NodeRunStatus status
+}
+
+struct WorkflowStatusResponse {
+    1: optional string workflowId
+    2: optional string confName
+    3: optional string mode
+    4: optional string branch
+    5: optional string user
+    6: optional string status
+    7: optional string startPartition
+    8: optional string endPartition
+    9: optional list<NodeExecutionInfo> nodeExecutions
+    10: optional list<string> terminalNodes
+}
+
+struct WorkflowStatusRequest {
+    1: optional string workflowId
+}
+
 // ====================== End of Orchestration Service API Types ======================
 
 enum CheckResult {
