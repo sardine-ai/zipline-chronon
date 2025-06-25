@@ -124,6 +124,19 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "set nonzero step days" in {
+    val joinWithNonZeroStepDays = Join(
+      metaData = MetaData(name = "testJoin", executionInfo = new ExecutionInfo()),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.test_join_non_zero_step_days_table"),
+      joinParts = Seq.empty,
+      bootstrapParts = Seq.empty
+    )
+
+    val plannerWithNonZeroStepDays = MonolithJoinPlanner(joinWithNonZeroStepDays)
+    val plan = plannerWithNonZeroStepDays.buildPlan
+    plan.nodes.asScala.foreach((node) => node.metaData.executionInfo.stepDays should equal(1))
+  }
+
   it should "monolith join planner should produce same semantic hash with different executionInfo" in {
     val joinWithExecutionInfo1 = Join(
       metaData = MetaData(
