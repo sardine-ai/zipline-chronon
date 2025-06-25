@@ -5,22 +5,24 @@ import ai.chronon.api.Constants
 import ai.chronon.api.DataType
 import ai.chronon.api.GroupBy
 import ai.chronon.api.Row
-import ai.chronon.api.ScalaJavaConversions.{IteratorOps, ListOps}
+import ai.chronon.api.ScalaJavaConversions.IteratorOps
 import ai.chronon.flink.deser.ProjectedEvent
 import ai.chronon.flink.types.TimestampedIR
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.TileCodec
 import ai.chronon.online.serde.ArrayRow
+import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.api.common.functions.AggregateFunction
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.metrics.Counter
+import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
+import org.apache.flink.metrics.{Counter, Histogram}
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import java.{lang, util}
+import java.lang
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
@@ -72,13 +74,15 @@ class FlinkRowAggregationFunction(
 
   override def createAccumulator(): TimestampedIR = {
     initializeRowAggregator()
-    new TimestampedIR(rowAggregator.init, None, None)
+    new TimestampedIR(rowAggregator.init, None, None, None)
   }
 
   override def add(
       event: ProjectedEvent,
       accumulatorIr: TimestampedIR
   ): TimestampedIR = {
+
+    val startAggregationTime = System.currentTimeMillis()
 
     val element = event.fields
     // Most times, the time column is a Long, but it could be a Double.
@@ -111,6 +115,7 @@ class FlinkRowAggregationFunction(
       }
 
     }
+    val rowAggrTime = System.currentTimeMillis() - startAggregationTime
 
     partialAggregates match {
       case Success(v) => {
@@ -120,7 +125,7 @@ class FlinkRowAggregationFunction(
               f"groupBy=${groupBy.getMetaData.getName} tsMills=$tsMills element=$element"
           )
         }
-        new TimestampedIR(v, Some(tsMills), Some(event.startProcessingTimeMillis))
+        new TimestampedIR(v, Some(tsMills), Some(event.startProcessingTimeMillis), Some(rowAggrTime))
       }
       case Failure(e) =>
         logger.error(
@@ -149,7 +154,8 @@ class FlinkRowAggregationFunction(
     new TimestampedIR(
       rowAggregator.merge(aIr.ir, bIr.ir),
       mergeOptionalTs(aIr.latestTsMillis, bIr.latestTsMillis),
-      mergeOptionalTs(aIr.startProcessingTime, bIr.startProcessingTime)
+      mergeOptionalTs(aIr.startProcessingTime, bIr.startProcessingTime),
+      mergeOptionalTs(aIr.rowAggrTime, bIr.rowAggrTime)
     )
   }
 
@@ -173,8 +179,10 @@ class FlinkRowAggProcessFunction(
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   @transient private var rowProcessingErrorCounter: Counter = _
-  @transient private var eventProcessingErrorCounter: Counter =
-    _ // Shared metric for errors across the entire Flink app.
+  // Shared metric for errors across the entire Flink app.
+  @transient private var eventProcessingErrorCounter: Counter = _
+  @transient private var rowAggrTimeHistogram: Histogram = _
+  @transient private var rowTileConvTimeHistogram: Histogram = _
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -185,6 +193,18 @@ class FlinkRowAggProcessFunction(
       .addGroup("feature_group", groupBy.getMetaData.getName)
     rowProcessingErrorCounter = metricsGroup.counter("tiling_process_function_error")
     eventProcessingErrorCounter = metricsGroup.counter("event_processing_error")
+    rowAggrTimeHistogram = metricsGroup.histogram(
+      "row_aggregation_time",
+      new DropwizardHistogramWrapper(
+        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir())
+      )
+    )
+    rowTileConvTimeHistogram = metricsGroup.histogram(
+      "row_tile_conversion_time",
+      new DropwizardHistogramWrapper(
+        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir())
+      )
+    )
   }
 
   /** Process events emitted from the aggregate function.
@@ -195,6 +215,8 @@ class FlinkRowAggProcessFunction(
       context: ProcessWindowFunction[TimestampedIR, TimestampedTile, java.util.List[Any], TimeWindow]#Context,
       elements: lang.Iterable[TimestampedIR],
       out: Collector[TimestampedTile]): Unit = {
+    val startTime = System.currentTimeMillis()
+
     val windowEnd = context.window.getEnd
     val irEntry = elements.iterator.next()
     val isComplete = context.currentWatermark >= windowEnd
@@ -217,6 +239,9 @@ class FlinkRowAggProcessFunction(
       }
       irBytes
     }
+
+    irEntry.rowAggrTime.foreach(rowAggrTime => rowAggrTimeHistogram.update(rowAggrTime))
+    rowTileConvTimeHistogram.update(System.currentTimeMillis() - startTime)
 
     tileBytes match {
       case Success(v) => {

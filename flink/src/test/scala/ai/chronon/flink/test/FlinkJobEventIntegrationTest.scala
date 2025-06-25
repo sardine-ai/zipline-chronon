@@ -53,7 +53,7 @@ class FlinkJobEventIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
   def avroConvertTimestampedTileToTimestampedIR(timestampedTile: TimestampedTile,
                                                 groupByServingInfoParsed: GroupByServingInfoParsed): TimestampedIR = {
     val tileIR = groupByServingInfoParsed.tiledCodec.decodeTileIr(timestampedTile.tileBytes)
-    new TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis), Some(timestampedTile.startProcessingTime))
+    new TimestampedIR(tileIR._1, Some(timestampedTile.latestTsMillis), Some(timestampedTile.startProcessingTime), None)
   }
 
   before {

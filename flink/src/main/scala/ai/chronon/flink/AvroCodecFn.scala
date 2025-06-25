@@ -11,9 +11,11 @@ import ai.chronon.flink.types.AvroCodecOutput
 import ai.chronon.flink.types.TimestampedTile
 import ai.chronon.online.serde.AvroConversions
 import ai.chronon.online.GroupByServingInfoParsed
+import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.metrics.Counter
+import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
+import org.apache.flink.metrics.{Counter, Histogram}
 import org.apache.flink.util.Collector
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -109,6 +111,9 @@ case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed,
                             tilingWindowSizeMs: Long,
                             enableDebug: Boolean = false)
     extends BaseAvroCodecFn[TimestampedTile, AvroCodecOutput] {
+
+  @transient private var tileAvroCodecTimeHistogram: Histogram = _
+
   override def open(configuration: Configuration): Unit = {
     super.open(configuration)
     val metricsGroup = getRuntimeContext.getMetricGroup
@@ -116,6 +121,10 @@ case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed,
       .addGroup("feature_group", groupByServingInfoParsed.groupBy.getMetaData.getName)
     avroConversionErrorCounter = metricsGroup.counter("avro_conversion_errors")
     eventProcessingErrorCounter = metricsGroup.counter("event_processing_error")
+    tileAvroCodecTimeHistogram = metricsGroup.histogram(
+      "tile_avro_codec_time",
+      new DropwizardHistogramWrapper(new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir()))
+    )
   }
   override def close(): Unit = super.close()
 
@@ -132,6 +141,8 @@ case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed,
     }
 
   def avroConvertTileToPutRequest(in: TimestampedTile): AvroCodecOutput = {
+    val startTime = System.currentTimeMillis()
+
     val tsMills = in.latestTsMillis
 
     // 'keys' is a map of (key name in schema -> key value), e.g. Map("card_number" -> "4242-4242-4242-4242")
@@ -157,6 +168,8 @@ case class TiledAvroCodecFn(groupByServingInfoParsed: GroupByServingInfoParsed,
     }
 
     val tileKeyBytes = TilingUtils.serializeTileKey(tileKey)
-    new AvroCodecOutput(tileKeyBytes, valueBytes, streamingDataset, tsMills, in.startProcessingTime)
+    val codecOutput = new AvroCodecOutput(tileKeyBytes, valueBytes, streamingDataset, tsMills, in.startProcessingTime)
+    tileAvroCodecTimeHistogram.update(System.currentTimeMillis() - startTime)
+    codecOutput
   }
 }

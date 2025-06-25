@@ -18,20 +18,27 @@ import java.util.Objects
   * @param ir the array of partial aggregates
   * @param latestTsMillis timestamp of the current event being processed
   */
-class TimestampedIR(var ir: Array[Any], var latestTsMillis: Option[Long], var startProcessingTime: Option[Long]) {
-  def this() = this(Array(), None, None)
+class TimestampedIR(var ir: Array[Any],
+                    var latestTsMillis: Option[Long],
+                    var startProcessingTime: Option[Long],
+                    var rowAggrTime: Option[Long]) {
+  def this() = this(Array(), None, None, None)
 
   override def toString: String =
-    s"TimestampedIR(ir=${ir.mkString(", ")}, latestTsMillis=$latestTsMillis), startProcessingTime=$startProcessingTime)"
+    s"TimestampedIR(ir=${ir.mkString(", ")}, latestTsMillis=$latestTsMillis), startProcessingTime=$startProcessingTime), rowAggrTime=$rowAggrTime)"
 
   override def hashCode(): Int =
-    Objects.hash(util.Arrays.deepToString(ir.asInstanceOf[Array[AnyRef]]), latestTsMillis, startProcessingTime)
+    Objects.hash(util.Arrays.deepToString(ir.asInstanceOf[Array[AnyRef]]),
+                 latestTsMillis,
+                 startProcessingTime,
+                 rowAggrTime)
 
   override def equals(other: Any): Boolean =
     other match {
       case e: TimestampedIR =>
         util.Arrays.deepEquals(ir.asInstanceOf[Array[AnyRef]], e.ir.asInstanceOf[Array[AnyRef]]) &&
-          latestTsMillis == e.latestTsMillis && startProcessingTime == e.startProcessingTime
+          latestTsMillis == e.latestTsMillis && startProcessingTime == e.startProcessingTime &&
+          rowAggrTime == e.rowAggrTime
       case _ => false
     }
 }

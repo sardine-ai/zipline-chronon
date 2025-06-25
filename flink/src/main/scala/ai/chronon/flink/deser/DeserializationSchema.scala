@@ -3,8 +3,10 @@ package ai.chronon.flink.deser
 import ai.chronon.api.{DataType, GroupBy}
 import ai.chronon.flink.SparkExpressionEval
 import ai.chronon.online.serde.{Mutation, SerDe, SparkConversions}
+import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.api.common.serialization.DeserializationSchema
-import org.apache.flink.metrics.Counter
+import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
+import org.apache.flink.metrics.{Counter, Histogram}
 import org.apache.flink.util.Collector
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
@@ -18,6 +20,7 @@ abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe, groupBy:
 
   // these are created on instantiation in the various task manager processes in the open() call
   @transient protected var deserializationErrorCounter: Counter = _
+  @transient private var deserTimeHistogram: Histogram = _
 
   override def sourceProjectionEnabled: Boolean = false
 
@@ -30,11 +33,19 @@ abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe, groupBy:
       .addGroup("chronon")
       .addGroup("group_by", groupBy.getMetaData.getName)
     deserializationErrorCounter = metricsGroup.counter("deserialization_errors")
+    deserTimeHistogram = metricsGroup.histogram(
+      "event_deser_time",
+      new DropwizardHistogramWrapper(
+        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir())
+      )
+    )
   }
 
   protected def doDeserializeMutation(messageBytes: Array[Byte]): Option[Mutation] = {
     try {
+      val startTime = System.currentTimeMillis()
       val maybeMutation = Some(deserSchemaProvider.fromBytes(messageBytes))
+      deserTimeHistogram.update(System.currentTimeMillis() - startTime)
 
       if (enableDebug) {
         // Log the deserialized mutation for debugging purposes
