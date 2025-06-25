@@ -114,3 +114,5 @@ MODULE.bazel*
 /plugins/vscode/node_modules
 
 **/.claude/settings.local.json
+
+**/api/py/ai/chronon/observability/__init__.py

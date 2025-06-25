@@ -234,6 +234,7 @@ class Eval(implicit tableUtils: TableUtils) {
       val gbName = s"${part.groupBy.metaData.name}"
       val prefix = s"${part.fullPrefix}_"
       val partName = s"$prefix$gbName"
+      val columnPrefix = part.columnPrefix
       joinPartEval.setPartName(partName)
 
       // Eval the GB if not seen before, else use existing eval
@@ -241,13 +242,13 @@ class Eval(implicit tableUtils: TableUtils) {
 
       // Get the gbSchemaFormatted and modify name to contain the prefix
       val jpSchemaFormatted = Option(gbEval.getAggSchema).map(_.toScala.map { case (name, dataTypeStr) =>
-        (prefix + name, dataTypeStr)
+        (columnPrefix + name, dataTypeStr)
       }.toMap)
 
       // Also prefix the raw schema for derivation handling
       val jpSchemaRawOpt = gbSchemaRawOpt.map { schema =>
         schema.fields.map { field =>
-          StructField(prefix + field.name, field.fieldType)
+          StructField(columnPrefix + field.name, field.fieldType)
         }
       }
 

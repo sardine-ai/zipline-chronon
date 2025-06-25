@@ -112,10 +112,12 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
         if obj.joinParts:
             for jp in (obj.joinParts or []):
+                jp.useLongNames = obj.useLongNames
                 set_group_by_metadata(jp.groupBy, join_namespace)
 
         if obj.labelParts:
             for lb in (obj.labelParts.labels or []):
+                lb.useLongNames = obj.useLongNames
                 set_group_by_metadata(lb.groupBy, join_namespace)
 
     if metadata.executionInfo is None:

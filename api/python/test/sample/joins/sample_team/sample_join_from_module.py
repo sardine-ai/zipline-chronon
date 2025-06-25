@@ -34,6 +34,7 @@ v1 = Join(
         JoinPart(
             group_by=entity_sample_group_by_from_module.v1,
             key_mapping={"subject": "group_by_subject"},
+            prefix="entity"
         ),
     ],
 )

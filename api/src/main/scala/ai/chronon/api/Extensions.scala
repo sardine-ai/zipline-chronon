@@ -802,10 +802,25 @@ object Extensions {
   }
 
   implicit class JoinPartOps(joinPart: JoinPart) extends JoinPart(joinPart) {
+    // FullPrefix is used for logging
     lazy val fullPrefix: String = (Option(prefix) ++ Some(groupBy.getMetaData.cleanName)).mkString("_")
+
+    // columnPrefix is the "effective" prefix used for output column name generation
+    // For long names, we use the gb name, else for short names we use the keys
+    // We set the default to false in python, however if it's unset in the config, default back to true (legacy)
+    private lazy val gbPrefix: String = if (Option(joinPart.useLongNames).getOrElse(true)) {
+      groupBy.getMetaData.cleanName
+    } else {
+      groupBy.getKeyColumns.toScala.mkString("_")
+    }
+    lazy val columnPrefix: String = {
+      val raw = (Option(prefix) ++ Some(gbPrefix)).mkString("_")
+      if (raw.isEmpty) "" else raw + "_"
+    }
+
     lazy val leftToRight: Map[String, String] = rightToLeft.map { case (key, value) => value -> key }
 
-    def valueColumns: Seq[String] = joinPart.groupBy.valueColumns.map(fullPrefix + "_" + _)
+    def valueColumns: Seq[String] = joinPart.groupBy.valueColumns.map(columnPrefix + _)
 
     def rightToLeft: Map[String, String] = {
       val rightToRight = joinPart.groupBy.keyColumns.toScala.map { key => key -> key }.toMap
@@ -826,7 +841,7 @@ object Extensions {
     }
 
     def constructJoinPartSchema(schemaField: StructField): StructField = {
-      StructField(joinPart.fullPrefix + "_" + schemaField.name, schemaField.fieldType)
+      StructField(joinPart.columnPrefix + schemaField.name, schemaField.fieldType)
     }
   }
 
