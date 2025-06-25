@@ -25,9 +25,16 @@ abstract class ConfPlanner[T](conf: T)(implicit outputPartitionSpec: PartitionSp
     val content = new NodeContent()
     contentSetter(content)
 
-    new Node()
-      .setContent(content)
-      .setMetaData(metaData)
-      .setSemanticHash(hash)
+    val node =
+      new Node()
+        .setContent(content)
+        .setMetaData(metaData)
+        .setSemanticHash(hash)
+
+    content.getSetField match {
+      case NodeContent._Fields.GROUP_BY_STREAMING => node.setIsLongRunning(true)
+      case other                                  => node.setIsLongRunning(false)
+    }
+    node
   }
 }
