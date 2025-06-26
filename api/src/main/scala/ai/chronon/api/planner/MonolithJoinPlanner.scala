@@ -6,7 +6,7 @@ import ai.chronon.planner.Node
 
 import scala.collection.JavaConverters._
 
-class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
+case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
     extends ConfPlanner[Join](join)(outputPartitionSpec) {
 
   private def semanticMonolithJoin(join: Join): Join = {
@@ -56,11 +56,5 @@ class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpe
     )
 
     confPlan.setNodes(List(backfillNode, metadataUploadNode).asJava).setTerminalNodeNames(terminalNodeNames.asJava)
-  }
-}
-
-object MonolithJoinPlanner {
-  def apply(join: Join)(implicit outputPartitionSpec: PartitionSpec): MonolithJoinPlanner = {
-    new MonolithJoinPlanner(join)
   }
 }
