@@ -5,8 +5,10 @@ import ai.chronon.flink.types.WriteResponse
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore
 import ai.chronon.online.KVStore.PutRequest
+import com.codahale.metrics.ExponentiallyDecayingReservoir
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.metrics.Counter
+import org.apache.flink.dropwizard.metrics.DropwizardHistogramWrapper
+import org.apache.flink.metrics.{Counter, Histogram}
 import org.apache.flink.streaming.api.datastream.AsyncDataStream
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.functions.async.ResultFuture
@@ -72,6 +74,7 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String, enableDebug:
 
   @transient private var errorCounter: Counter = _
   @transient private var successCounter: Counter = _
+  @transient private var putTimeHistogram: Histogram = _
 
   // The context used for the future callbacks
   implicit lazy val executor: ExecutionContext = AsyncKVStoreWriter.ExecutionContextInstance
@@ -88,6 +91,12 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String, enableDebug:
       .addGroup("feature_group", featureGroupName)
     errorCounter = group.counter("kvstore_writer.errors")
     successCounter = group.counter("kvstore_writer.successes")
+    putTimeHistogram = group.histogram(
+      "multiput_time",
+      new DropwizardHistogramWrapper(
+        new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir())
+      )
+    )
 
     kvStore = getKVStore
   }
@@ -120,9 +129,11 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String, enableDebug:
       )
     }
 
+    val startTime = System.currentTimeMillis()
     val resultFutureRequested: Future[Seq[Boolean]] = kvStore.multiPut(Seq(putRequest))
     resultFutureRequested.onComplete {
       case Success(l) =>
+        putTimeHistogram.update(System.currentTimeMillis() - startTime)
         val succeeded = l.forall(identity)
         if (succeeded) {
           successCounter.inc()
@@ -142,6 +153,7 @@ class AsyncKVStoreWriter(onlineImpl: Api, featureGroupName: String, enableDebug:
         // this should be rare and indicates we have an uncaught exception
         // in the KVStore - we log the exception and skip the object to
         // not fail the app
+        putTimeHistogram.update(System.currentTimeMillis() - startTime)
         errorCounter.inc()
         logger.error(s"Caught exception writing to KVStore for object: $input", exception)
         resultFuture.complete(
