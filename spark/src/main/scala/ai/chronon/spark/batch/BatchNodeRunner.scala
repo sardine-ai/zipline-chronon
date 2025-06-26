@@ -1,9 +1,8 @@
 package ai.chronon.spark.batch
 
-import ai.chronon.api
-import ai.chronon.api.planner.NodeRunner
 import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
-import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent, StagingQueryNode}
+import ai.chronon.api.planner.NodeRunner
+import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent}
 import ai.chronon.spark.{GroupByUpload, Join}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
@@ -25,12 +24,6 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
   val endDs: ScallopOption[String] = opt[String](
     required = true,
     descr = "End date string in format yyyy-MM-dd, used for partitioning"
-  )
-
-  val confType: ScallopOption[String] = choice(
-    required = true,
-    choices = Seq("join", "staging_query", "group_by_upload"),
-    descr = "Type of configuration, e.g., 'join', 'staging_query', etc."
   )
 
   val confMode: ScallopOption[String] = opt[String](
@@ -106,40 +99,20 @@ object BatchNodeRunner extends NodeRunner {
     run(metadata, conf, range.get, createTableUtils(metadata.name))
   }
 
-  private[batch] def loadNodeContent(confPath: String, confType: String): (MetaData, NodeContent) = {
-    val nodeContent = new NodeContent()
-
-    confType match {
-      case "join" =>
-        val joinObj = ThriftJsonCodec.fromJsonFile[api.Join](confPath, check = false)
-        val monolithJoin = new MonolithJoinNode()
-        monolithJoin.setJoin(joinObj)
-        nodeContent.setMonolithJoin(monolithJoin)
-        (joinObj.metaData, nodeContent)
-
-      case "staging_query" =>
-        val stagingQueryObj = ThriftJsonCodec.fromJsonFile[api.StagingQuery](confPath, check = false)
-        val stagingQueryNode = new StagingQueryNode()
-        stagingQueryNode.setStagingQuery(stagingQueryObj)
-        nodeContent.setStagingQuery(stagingQueryNode)
-        (stagingQueryObj.metaData, nodeContent)
-
-      case "group_by_upload" =>
-        val groupByObj = ThriftJsonCodec.fromJsonFile[api.GroupBy](confPath, check = false)
-        val groupByUploadNode = new GroupByUploadNode()
-        groupByUploadNode.setGroupBy(groupByObj)
-        nodeContent.setGroupByUpload(groupByUploadNode)
-        (groupByObj.metaData, nodeContent)
-
-      case unsupported =>
-        throw new IllegalArgumentException(s"Unsupported config type: $unsupported")
-    }
+  private[batch] def loadNodeContent(confPath: String): (MetaData, NodeContent) = {
+    val nodeContent = ThriftJsonCodec.fromJsonFile[NodeContent](confPath, check = true)
+    (nodeContent.getSetField match {
+       case NodeContent._Fields.MONOLITH_JOIN => nodeContent.getMonolithJoin.join.metaData
+       case NodeContent._Fields.STAGING_QUERY => nodeContent.getStagingQuery.stagingQuery.metaData
+       case other => throw new UnsupportedOperationException(s"NodeContent type ${other} not supported")
+     },
+     nodeContent)
   }
 
-  def runFromArgs(confPath: String, startDs: String, endDs: String, confType: String): Try[Unit] = {
+  def runFromArgs(confPath: String, startDs: String, endDs: String): Try[Unit] = {
     Try {
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
-      val (metadata, nodeContent) = loadNodeContent(confPath, confType)
+      val (metadata, nodeContent) = loadNodeContent(confPath)
 
       logger.info(s"Starting batch node runner for '${metadata.name}'")
       run(metadata, nodeContent, Option(range))
@@ -151,10 +124,7 @@ object BatchNodeRunner extends NodeRunner {
     try {
       val batchArgs = new BatchNodeRunnerArgs(args)
 
-      runFromArgs(batchArgs.confPath(),
-                  batchArgs.startDs.toOption.orNull,
-                  batchArgs.endDs(),
-                  batchArgs.confType()) match {
+      runFromArgs(batchArgs.confPath(), batchArgs.startDs.toOption.orNull, batchArgs.endDs()) match {
         case Success(_) =>
           logger.info("Batch node runner completed successfully")
         case Failure(exception) =>
