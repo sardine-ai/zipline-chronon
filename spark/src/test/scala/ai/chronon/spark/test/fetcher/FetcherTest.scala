@@ -102,8 +102,11 @@ class FetcherTest extends AnyFlatSpec {
       tableUtils.sql(
         s"SELECT * FROM $joinTable WHERE ts >= unix_timestamp('$endDs', '${tableUtils.partitionSpec.format}')")
     }
-    val endDsQueries = endDsEvents.drop(endDsEvents.schema.fieldNames.filter(_.contains("unit_test")): _*)
+    // Keep only left-side columns (keys, ts, ds) and drop all feature columns
     val keys = joinConf.leftKeyCols
+    val leftSideColumns = keys ++ Array(Constants.TimeColumn, tableUtils.partitionColumn)
+    val columnsToKeep = endDsEvents.schema.fieldNames.filter(leftSideColumns.contains)
+    val endDsQueries = endDsEvents.select(columnsToKeep.map(col): _*)
     val keyIndices = keys.map(endDsQueries.schema.fieldIndex)
     val tsIndex = endDsQueries.schema.fieldIndex(Constants.TimeColumn)
     val metadataStore = new fetcher.MetadataStore(FetchContext(inMemoryKvStore))
