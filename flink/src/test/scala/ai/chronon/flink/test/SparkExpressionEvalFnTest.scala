@@ -38,6 +38,32 @@ class SparkExpressionEvalFnTest extends AnyFlatSpec {
     assert(result.map(_.apply("id")).toSet == Set("test1", "test2", "test3"))
   }
 
+  it should "allow groupbys to have null filters" in {
+
+    val elements = Seq(
+      E2ETestEvent("test1", 12, 1.5, 1699366993123L),
+      E2ETestEvent("test2", 13, 1.6, 1699366993124L),
+      E2ETestEvent("test3", 14, 1.7, 1699366993125L)
+    )
+
+    val groupBy = FlinkTestUtils.makeGroupBy(Seq("id"), filters=null)
+
+    val encoder = Encoders.product[E2ETestEvent]
+
+    val sparkExprEval = new SparkExpressionEvalFn[E2ETestEvent](
+      encoder,
+      groupBy
+    )
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+
+    val source: DataStream[E2ETestEvent] = env.fromCollection(elements.toJava)
+    val sparkExprEvalDS = source.flatMap(sparkExprEval)
+
+    val result = sparkExprEvalDS.executeAndCollect().toScala.toSeq
+    assert(result.size == elements.size, "Expect result sets to include all 3 rows")
+  }
+
   it should "perform basic spark expr eval checks for entity based groupbys" in {
 
     val elements = Seq(
