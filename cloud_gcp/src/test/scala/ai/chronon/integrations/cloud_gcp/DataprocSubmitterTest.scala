@@ -388,10 +388,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     assert(
       actual sameElements Array(
-        "--arg1=value1",
-        "--is-gcp",
-        s"--gcp-project-id=${projectId}",
-        s"--gcp-bigtable-instance-id=$gcpBigtableInstanceId"
+        "--arg1=value1"
       ))
   }
   it should "test getApplicationArgs filtering out args for flink job" in {

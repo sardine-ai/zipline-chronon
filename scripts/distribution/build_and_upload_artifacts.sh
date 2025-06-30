@@ -116,9 +116,6 @@ if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
     exit 1
 fi
 
-# Keeping this here to not break any existing users
-OLD_ZIPLINE_WHEEL_NAME="zipline_ai-0.1.0.dev0-py3-none-any.whl"
-cp $EXPECTED_ZIPLINE_WHEEL $OLD_ZIPLINE_WHEEL_NAME
 
 echo "Building jars"
 
@@ -191,7 +188,6 @@ function upload_to_gcp() {
                 gcloud storage cp "$CLOUD_GCP_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-                gcloud storage cp "$OLD_ZIPLINE_WHEEL_NAME" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$FLINK_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$FLINK_PUBSUB_JAR" "$NEW_ELEMENT_JAR_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
               done

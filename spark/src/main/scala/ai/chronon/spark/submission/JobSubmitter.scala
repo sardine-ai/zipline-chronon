@@ -172,6 +172,7 @@ object JobSubmitterConstants {
   val AdditionalJarsUriArgKeyword = "--additional-jars"
   val FilesArgKeyword = "--files"
   val ConfTypeArgKeyword = "--conf-type"
+  val ConfPathArgKeyword = "--conf-path"
   val LocalConfPathArgKeyword = "--local-conf-path"
   val OriginalModeArgKeyword = "--original-mode"
   val ZiplineVersionArgKeyword = "--zipline-version"
