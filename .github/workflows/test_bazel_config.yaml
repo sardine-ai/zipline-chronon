@@ -47,7 +47,5 @@ jobs:
       - name: Run bazel sync
         run: |
           bazel build \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json \
             --nobuild \
             //...

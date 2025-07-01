@@ -38,13 +38,7 @@ jobs:
           export LANG=en_US.UTF-8
           export LC_ALL=en_US.UTF-8
 
-      - name: Setup Bazel cache credentials
-        run: |
-          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
-
       - name: Check Scalafmt
         run: |
           bazel query 'kind("scala_library.*", //...)' | xargs -I {} bazel run \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json \
             {}.format-test

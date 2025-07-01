@@ -97,21 +97,11 @@ jobs:
         id: bazel-build
         run: |
           bazel clean
-          bazel build //flink:flink_assembly_deploy.jar \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json 
-          bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json 
-          bazel build //cloud_aws:cloud_aws_lib_deploy.jar \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json 
-          bazel build //service:service_assembly_deploy.jar \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json
-          bazel build //flink:connectors_pubsub_deploy.jar \
-            --remote_cache=https://storage.googleapis.com/zipline-bazel-cache \
-            --google_credentials=bazel-cache-key.json
+          bazel build //flink:flink_assembly_deploy.jar 
+          bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
+          bazel build //cloud_aws:cloud_aws_lib_deploy.jar
+          bazel build //service:service_assembly_deploy.jar
+          bazel build //flink:connectors_pubsub_deploy.jar
 
       - name: Upload Flink Assembly Jar
         uses: actions/upload-artifact@v4
