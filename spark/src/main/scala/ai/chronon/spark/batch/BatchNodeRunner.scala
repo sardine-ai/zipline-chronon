@@ -26,12 +26,6 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
     descr = "End date string in format yyyy-MM-dd, used for partitioning"
   )
 
-  val confMode: ScallopOption[String] = opt[String](
-    required = true,
-    validate = Set("batch", "streaming").contains(_),
-    descr = "Mode of execution, e.g., 'batch', 'streaming', etc."
-  )
-
   verify()
 }
 

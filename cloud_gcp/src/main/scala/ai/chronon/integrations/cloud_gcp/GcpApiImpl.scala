@@ -24,7 +24,7 @@ import com.google.cloud.bigtable.data.v2.stub.metrics.NoopMetricsProvider
 import java.time.Duration
 import java.util
 import java.util.concurrent.ThreadFactory
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import java.util.function.Consumer
 
 class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
@@ -56,10 +56,33 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
         (_: LoggableResponse) => {}
     }
 
+  // BigTable clients tend to be expensive to create as they spin up a lot of threads and connections. The recommendation
+  // is to create a single client per process and reuse it. This isn't an issue in the fetcher / service context. However,
+  // in Flink jobs we can pack multiple tasks per task manager JVM and we don't want to create a new client per task as well
+  // as avoid creating a new client when the task manager restarts (.open(..) method).
+  override def genKvStore: KVStore = {
+    // Try to get existing shared store first
+    Option(sharedKvStore.get()) match {
+      case Some(existingStore) =>
+        existingStore
+      case None =>
+        kvStoreLock.synchronized {
+          // Double check if another thread created the store while we were waiting for the lock
+          Option(sharedKvStore.get()) match {
+            case Some(existingStore) => existingStore
+            case None =>
+              val newStore = createKVStore()
+              sharedKvStore.set(newStore)
+              newStore
+          }
+        }
+    }
+  }
+
   override def streamDecoder(groupByServingInfoParsed: GroupByServingInfoParsed): SerDe =
     new AvroSerDe(AvroConversions.fromChrononSchema(groupByServingInfoParsed.streamChrononSchema))
 
-  override def genKvStore: KVStore = {
+  private def createKVStore(): KVStore = {
 
     val projectId = getOrElseThrow(GcpProjectId, conf)
     val instanceId = getOrElseThrow(GcpBigTableInstanceId, conf)
@@ -120,6 +143,10 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       BigtableTableAdminClient.create(adminSettings)
     }
 
+    logger.info(
+      s"Creating BigTableStore for $projectId and $instanceId. " +
+        s"Params: profileId: $maybeAppProfileId, adminClientEnabled: $enableUploadClients, " +
+        s"num procs = ${Runtime.getRuntime.availableProcessors()}")
     new BigTableKVStoreImpl(dataClient, maybeAdminClient, maybeBQClient, conf)
   }
 
@@ -231,6 +258,9 @@ object GcpApiImpl {
   private val DefaultMaxRpcTimeoutDuration = Duration.ofMillis(200L)
   private val DefaultTotalTimeoutDuration = Duration.ofMillis(500L)
   private val DefaultMaxAttempts = 2
+
+  private val sharedKvStore = new AtomicReference[KVStore]()
+  private val kvStoreLock = new Object()
 
   private[cloud_gcp] def getOptional(key: String, conf: Map[String, String]): Option[String] =
     sys.env

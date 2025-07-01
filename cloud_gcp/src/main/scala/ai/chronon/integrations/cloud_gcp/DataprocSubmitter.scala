@@ -440,12 +440,7 @@ object DataprocSubmitter {
       case TypeSparkJob => {
         val bigtableInstanceId = envMap(GcpBigtableInstanceIdEnvVar).getOrElse("")
         val projectId = envMap(GcpProjectIdEnvVar).getOrElse(throw new Exception(s"GcpProjectId not set"))
-        val gcpArgsToPass = Array.apply(
-          "--is-gcp",
-          s"--gcp-project-id=${projectId}",
-          s"--gcp-bigtable-instance-id=$bigtableInstanceId"
-        )
-        Array.concat(userArgs, gcpArgsToPass)
+        Array.concat(userArgs)
       }
       case TypeFlinkJob => {
         val additionalArgsToFilterOut = Set(
