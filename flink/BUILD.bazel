@@ -70,9 +70,10 @@ scala_test_suite(
 
 jvm_binary(
     name = "flink_assembly",
-    # To exclude runtime dependencies not needed for flink environment in the cluster
-    # otherwise we run into version conflict errors
-    deploy_env = ["//tools/build_rules/flink:flink"],
+    deploy_env = [
+        "//tools/build_rules/flink:flink",
+        "//tools/build_rules/spark:spark",
+    ],
     main_class = "ai.chronon.flink.FlinkJob",
     runtime_deps = [":lib"],
 )
@@ -113,19 +114,23 @@ scala_library(
 
 jvm_binary(
     name = "connectors_pubsub",
-    deploy_env = ["//tools/build_rules/flink:flink"],
+    deploy_env = ["//tools/build_rules/flink:flink", "//tools/build_rules/spark:spark",],
     main_class = "None",
     runtime_deps = [
         ":pubsub_connectors_lib",
     ],
 )
 
+
 jvm_binary(
     name = "flink_pubsub_assembly",
-    # To exclude runtime dependencies not needed for flink environment in the cluster
-    # otherwise we run into version conflict errors
-    deploy_env = ["//tools/build_rules/flink:flink"],
+    deploy_env = [
+        "//tools/build_rules/flink:flink",
+        "//tools/build_rules/spark:spark",
+    ],
     main_class = "ai.chronon.flink_connectors.pubsub.FlinkPubSubItemEventDriver",
+    # This runtime_deps needs a library that depends on spark-exec
+    # For now, assuming pubsub_connectors_lib has the correct transitive deps.
     runtime_deps = [":pubsub_connectors_lib"],
 )
 
