@@ -309,12 +309,14 @@ object Driver {
       )
 
       if (args.selectedJoinParts.isDefined) {
-        join.computeJoinOpt(args.stepDays.toOption,
-                            args.startPartitionOverride.toOption,
-                            args.useCachedLeft.getOrElse(false))
-        logger.info(
-          s"Backfilling selected join parts: ${args.selectedJoinParts()} is complete. Skipping the final join. Exiting."
-        )
+        val result = join.computeJoinOpt(args.stepDays.toOption,
+                                         args.startPartitionOverride.toOption,
+                                         args.useCachedLeft.getOrElse(false))
+        if (result.isDefined) {
+          logger.info(
+            s"Backfilling selected join parts: ${args.selectedJoinParts()} is complete. Skipping the final join. Exiting."
+          )
+        }
         return
       }
 

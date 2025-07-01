@@ -299,11 +299,11 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     val requested = rangeToFill.partitions
     val fillableRanges = requested.filter(existingLeftRange.contains)
 
-    require(
-      fillableRanges.nonEmpty,
-      s"""No relevant input partitions present in ${joinConfCloned.left.table}
-         |on join.left for the requested range ${rangeToFill.start} - ${rangeToFill.end} """.stripMargin
-    )
+    if (fillableRanges.isEmpty) {
+      logger.info(s"""No relevant input partitions present in join.left table ${joinConfCloned.left.table}
+                   | for the requested range ${rangeToFill.start} - ${rangeToFill.end}. Exiting...""".stripMargin)
+      return None
+    }
 
     val unfilledRanges = tableUtils
       .unfilledRanges(
@@ -317,6 +317,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
       .getOrElse(Seq.empty)
 
     def finalResult: DataFrame = tableUtils.scanDf(null, outputTable, range = Some(rangeToFill))
+
     if (unfilledRanges.isEmpty) {
       logger.info(s"\nThere is no data to compute based on end partition of ${rangeToFill.end}.\n\n Exiting..")
       return Some(finalResult)
