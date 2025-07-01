@@ -505,9 +505,9 @@ object Extensions {
 
     def maxWindow: Option[Window] = {
       val allWindowsOpt = Option(groupBy.aggregations)
-        .flatMap(_.toScala.toSeq.allWindowsOpt)
+        .flatMap(_.toScala.allWindowsOpt)
       allWindowsOpt.flatMap { windows =>
-        if (windows.contains(null)) None
+        if (windows.contains(null) || windows.isEmpty) None
         else Some(windows.maxBy(_.millis))
       }
     }

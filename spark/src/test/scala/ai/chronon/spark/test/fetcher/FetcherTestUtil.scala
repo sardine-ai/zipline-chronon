@@ -440,29 +440,35 @@ object FetcherTestUtil {
     queriesDf.show()
     queriesDf.save(queriesTable)
 
-    val joinConf = Builders.Join(
-      left = Builders.Source.events(Builders.Query(startPartition = today), table = queriesTable),
-      joinParts = Seq(
-        Builders.JoinPart(groupBy = vendorRatingsGroupBy, keyMapping = Map("vendor_id" -> "vendor")),
-        Builders.JoinPart(groupBy = userPaymentsGroupBy, keyMapping = Map("user_id" -> "user")),
-        Builders.JoinPart(groupBy = userBalanceGroupBy, keyMapping = Map("user_id" -> "user")),
-        Builders.JoinPart(groupBy = reviewGroupBy),
-        Builders.JoinPart(groupBy = creditGroupBy, prefix = "b"),
-        Builders.JoinPart(groupBy = creditGroupBy, prefix = "a"),
-        Builders.JoinPart(groupBy = creditDerivationGroupBy, prefix = "c")
-      ),
-      metaData = Builders.MetaData(name = "test.payments_join",
-                                   namespace = namespace,
-                                   team = "chronon",
-                                   consistencySamplePercent = 30),
-      derivations = Seq(
-        Builders.Derivation("*", "*"),
-        Builders.Derivation("hist_3d", "unit_test_vendor_ratings_txn_types_histogram_3d"),
-        Builders.Derivation("payment_variance", "unit_test_user_payments_payment_variance/2"),
-        Builders.Derivation("derived_ds", "from_unixtime(ts/1000, 'yyyy-MM-dd')"),
-        Builders.Derivation("direct_ds", "ds")
+    val joinConf = Builders
+      .Join(
+        left = Builders.Source.events(Builders.Query(startPartition = today), table = queriesTable),
+        joinParts = Seq(
+          Builders
+            .JoinPart(groupBy = vendorRatingsGroupBy, keyMapping = Map("vendor_id" -> "vendor"))
+            .setUseLongNames(false),
+          Builders
+            .JoinPart(groupBy = userPaymentsGroupBy, keyMapping = Map("user_id" -> "user"))
+            .setUseLongNames(false),
+          Builders.JoinPart(groupBy = userBalanceGroupBy, keyMapping = Map("user_id" -> "user")).setUseLongNames(false),
+          Builders.JoinPart(groupBy = reviewGroupBy).setUseLongNames(false),
+          Builders.JoinPart(groupBy = creditGroupBy, prefix = "b").setUseLongNames(false),
+          Builders.JoinPart(groupBy = creditGroupBy, prefix = "a").setUseLongNames(false),
+          Builders.JoinPart(groupBy = creditDerivationGroupBy, prefix = "c").setUseLongNames(false)
+        ),
+        metaData = Builders.MetaData(name = "test.payments_join",
+                                     namespace = namespace,
+                                     team = "chronon",
+                                     consistencySamplePercent = 30),
+        derivations = Seq(
+          Builders.Derivation("*", "*"),
+          Builders.Derivation("hist_3d", "vendor_txn_types_histogram_3d"),
+          Builders.Derivation("payment_variance", "user_payment_variance/2"),
+          Builders.Derivation("derived_ds", "from_unixtime(ts/1000, 'yyyy-MM-dd')"),
+          Builders.Derivation("direct_ds", "ds")
+        )
       )
-    )
+      .setUseLongNames(false)
     joinConf
   }
 

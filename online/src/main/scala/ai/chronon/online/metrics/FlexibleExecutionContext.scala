@@ -37,7 +37,7 @@ object FlexibleExecutionContext {
   lazy val buildExecutor: ThreadPoolExecutor = {
     val cores = Runtime.getRuntime.availableProcessors()
     new InstrumentedThreadPoolExecutor(
-      cores, // corePoolSize
+      cores * 4, // corePoolSize
       cores * 4, // maxPoolSize
       600, // keepAliveTime
       TimeUnit.SECONDS, // keep alive time units

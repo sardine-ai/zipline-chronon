@@ -6,12 +6,8 @@ import ai.chronon.planner.Node
 
 import scala.collection.JavaConverters._
 
-class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
+case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
     extends ConfPlanner[Join](join)(outputPartitionSpec) {
-
-  private def effectiveStepDays: Int = {
-    Option(join.metaData.executionInfo).map(_.stepDays).getOrElse(1)
-  }
 
   private def semanticMonolithJoin(join: Join): Join = {
     val semanticJoin = join.deepCopy()
@@ -34,11 +30,7 @@ class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpe
     val tableDeps = TableDependencies.fromJoin(join)
 
     val metaData =
-      MetaDataUtils.layer(join.metaData,
-                          "backfill",
-                          join.metaData.name + "/backfill",
-                          tableDeps,
-                          Some(effectiveStepDays))
+      MetaDataUtils.layer(join.metaData, "backfill", join.metaData.name + "/backfill", tableDeps)
     val node = new planner.MonolithJoinNode().setJoin(join)
     toNode(metaData, _.setMonolithJoin(node), semanticMonolithJoin(join))
   }
@@ -64,11 +56,5 @@ class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpe
     )
 
     confPlan.setNodes(List(backfillNode, metadataUploadNode).asJava).setTerminalNodeNames(terminalNodeNames.asJava)
-  }
-}
-
-object MonolithJoinPlanner {
-  def apply(join: Join)(implicit outputPartitionSpec: PartitionSpec): MonolithJoinPlanner = {
-    new MonolithJoinPlanner(join)
   }
 }

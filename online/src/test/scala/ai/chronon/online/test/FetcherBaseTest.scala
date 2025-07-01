@@ -211,7 +211,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
         ))
     )
 
-    val result = baseFetcher.parseGroupByResponse("prefix", request, response)
+    val result = baseFetcher.parseGroupByResponse("prefix_", request, response)
     assertEquals(result, Map("prefix_key" -> "value"))
   }
 
@@ -227,7 +227,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
         ))
     )
 
-    val result = baseFetcher.parseGroupByResponse("prefix", request, response)
+    val result = baseFetcher.parseGroupByResponse("prefix_", request, response)
     result shouldBe Map()
   }
 
@@ -243,7 +243,7 @@ class FetcherBaseTest extends AnyFlatSpec with MockitoSugar with Matchers with M
         ))
     )
 
-    val result = baseFetcher.parseGroupByResponse("prefix", request, response)
+    val result = baseFetcher.parseGroupByResponse("prefix_", request, response)
     result.keySet shouldBe Set("prefix_exception")
   }
 

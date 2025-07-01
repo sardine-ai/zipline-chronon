@@ -36,9 +36,3 @@ case class StagingQueryPlanner(stagingQuery: StagingQuery)(implicit outputPartit
       .setTerminalNodeNames(terminalNodeNames.asJava)
   }
 }
-
-object StagingQueryPlanner {
-  def apply(stagingQuery: StagingQuery)(implicit outputPartitionSpec: PartitionSpec): StagingQueryPlanner = {
-    new StagingQueryPlanner(stagingQuery)
-  }
-}

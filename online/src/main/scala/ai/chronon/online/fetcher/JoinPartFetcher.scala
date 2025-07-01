@@ -90,7 +90,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
               val rightKeys = part.leftToRight.map { case (leftKey, rightKey) => rightKey -> request.keys(leftKey) }
               Left(
                 PrefixedRequest(
-                  part.fullPrefix,
+                  part.columnPrefix,
                   Request(part.groupBy.getMetaData.getName, rightKeys, request.atMillis, Some(joinContextInner))))
             }
 
@@ -158,7 +158,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
     response
       .map { valueMap =>
         if (valueMap != null) {
-          valueMap.map { case (aggName, aggValue) => prefix + "_" + aggName -> aggValue }
+          valueMap.map { case (aggName, aggValue) => prefix + aggName -> aggValue }
         } else {
           Map.empty[String, AnyRef]
         }
@@ -169,7 +169,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
           if (fetchContext.debug || Math.random() < 0.001) {
             println(s"Failed to fetch $groupByRequest with \n${ex.traceString}")
           }
-          Map(prefix + "_exception" -> ex.traceString)
+          Map(prefix + "exception" -> ex.traceString)
       }
       .get
   }

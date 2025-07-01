@@ -298,14 +298,20 @@ class GcpRunner(Runner):
 
         elif job_type == JobType.SPARK:
             main_class = "ai.chronon.spark.Driver"
-            return final_args.format(
-                user_args=user_args,
-                jar_uri=jar_uri,
-                job_type=job_type.value,
-                main_class=main_class,
-                zipline_version=self._version,
-                job_id=self.job_id,
-            ) + (f" --files={gcs_file_args}" if gcs_file_args else "")
+            return " ".join([
+                final_args.format(
+                    user_args=user_args,
+                    jar_uri=jar_uri,
+                    job_type=job_type.value,
+                    main_class=main_class,
+                    zipline_version=self._version,
+                    job_id=self.job_id,
+                ), "--is-gcp",
+                        f"--gcp-project-id={GcpRunner.get_gcp_project_id()}",
+                        f"--gcp-bigtable-instance-id={GcpRunner.get_gcp_bigtable_instance_id()}",
+                        f"--files={gcs_file_args}" if gcs_file_args else "",
+                    ]
+                )
         else:
             raise ValueError(f"Invalid job type: {job_type}")
 

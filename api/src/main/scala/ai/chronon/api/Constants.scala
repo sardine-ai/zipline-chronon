@@ -74,7 +74,7 @@ object Constants {
   val FetchTimeout: Duration = Duration(10, concurrent.TimeUnit.MINUTES)
   val DefaultCharset: Charset = Charset.forName("UTF-8")
 
-  val extensionsToIgnore: Array[String] = Array(".class", ".csv", ".java", ".scala", ".py", ".DS_Store")
+  val extensionsToIgnore: Array[String] = Array(".class", ".csv", ".java", ".scala", ".py", ".pyc", ".DS_Store")
   val foldersToIgnore: Array[String] = Array(".git")
 
   // A negative integer within the safe range for both long and double in JavaScript, Java, Scala, Python

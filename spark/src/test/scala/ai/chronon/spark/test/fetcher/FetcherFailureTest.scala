@@ -80,7 +80,7 @@ class FetcherFailureTest extends AnyFlatSpec {
     val request = Request(joinConf.metaData.name, keyMap)
     val (responses, _) = FetcherTestUtil.joinResponses(spark, Array(request), mockApi)
     val responseMap = responses.head.values.get
-    val exceptionKeys = joinConf.joinPartOps.map(jp => jp.fullPrefix + "_exception")
+    val exceptionKeys = joinConf.joinPartOps.map(jp => jp.columnPrefix + "exception")
     exceptionKeys.foreach(k => assertTrue(responseMap.contains(k)))
   }
 
