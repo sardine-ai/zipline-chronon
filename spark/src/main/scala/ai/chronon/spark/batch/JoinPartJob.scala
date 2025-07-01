@@ -9,6 +9,7 @@ import ai.chronon.planner.JoinPartNode
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.{GroupBy, JoinUtils}
+import ai.chronon.spark.join.UnionJoin
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, date_format}
 import org.apache.spark.util.sketch.BloomFilter
@@ -161,7 +162,6 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
       JoinUtils.skewFilter(Option(joinPart.rightToLeft.values.toSeq), skewKeys, joinPart.rightToLeft.values.toSeq)
     // this is the second time we apply skew filter - but this filters only on the keys
     // relevant for this join part.
-    println("leftSkewFilter: " + leftSkewFilter)
     lazy val skewFilteredLeft = leftSkewFilter
       .map { sf =>
         val filtered = statsDf.df.filter(sf)
@@ -205,7 +205,18 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
       case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
         genGroupBy(shiftedPartitionRange).snapshotEvents(shiftedPartitionRange)
       case (EVENTS, EVENTS, Accuracy.TEMPORAL) =>
-        genGroupBy(unfilledPartitionRange).temporalEvents(renamedLeftDf, Some(toTimeRange(unfilledPartitionRange)))
+        val skewFreeMode = tableUtils.sparkSession.conf
+          .get("spark.chronon.join.backfill.mode.skewFree", "false")
+          .toBoolean
+
+        if (skewFreeMode) {
+          // Use UnionJoin for skewFree mode - it will handle column selection internally
+          logger.info(s"Using UnionJoin for TEMPORAL events join part: ${joinPart.groupBy.metaData.name}")
+          UnionJoin.computeJoinPart(renamedLeftDf, joinPart, unfilledPartitionRange, produceFinalJoinOutput = false)
+        } else {
+          // Use traditional temporalEvents approach
+          genGroupBy(unfilledPartitionRange).temporalEvents(renamedLeftDf, Some(toTimeRange(unfilledPartitionRange)))
+        }
 
       case (EVENTS, ENTITIES, Accuracy.SNAPSHOT) => genGroupBy(shiftedPartitionRange).snapshotEntities
 
@@ -213,6 +224,7 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
         // Snapshots and mutations are partitioned with ds holding data between <ds 00:00> and ds <23:59>.
         genGroupBy(shiftedPartitionRange).temporalEntities(renamedLeftDf)
     }
+
     val rightDfWithDerivations = if (joinPart.groupBy.hasDerivations) {
       val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(rightDf.columns).toSeq
       val result = rightDf.select(finalOutputColumns: _*)

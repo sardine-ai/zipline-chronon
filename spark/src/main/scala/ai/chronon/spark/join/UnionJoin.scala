@@ -109,29 +109,34 @@ object UnionJoin {
     UnionDf(result, leftStructType, rightStructType)
   }
 
-  def computeJoinAndSave(joinConf: api.Join, dateRange: PartitionRange)(implicit tableUtils: TableUtils): Unit = {
+  def computeJoinPart(leftDf: DataFrame,
+                      joinPart: api.JoinPart,
+                      dateRange: PartitionRange,
+                      produceFinalJoinOutput: Boolean)(implicit tableUtils: TableUtils): DataFrame = {
 
     val disclaimer = "Support is landing soon."
-    require(joinConf.left.isSetEvents, s"Only events sources are supported on the left side of the join. $disclaimer")
-    require(!joinConf.isSetBootstrapParts, s"Bootstraps on fast mode are not supported yet. $disclaimer")
-    require(!joinConf.isSetLabelParts, s"Label Parts on fast mode are not supported yet. $disclaimer")
-    require(joinConf.getJoinParts.size() == 1, s"Only one join-part is supported on fast mode. $disclaimer")
-
-    val joinPart = joinConf.getJoinParts.get(0)
     val groupBy = joinPart.groupBy
 
     require(groupBy.inferredAccuracy == Accuracy.TEMPORAL,
             s"Only realtime accurate GroupBy's are supported for now. $disclaimer")
 
-    val leftDf = JoinUtils.leftDf(joinConf, dateRange, tableUtils).get
+    // Select only relevant columns early when not including all left columns
+    val selectedLeftDf = if (produceFinalJoinOutput) {
+      leftDf
+    } else {
+      val keyColumns = joinPart.leftToRight.keys.toSeq :+ Constants.TimeColumn :+ tableUtils.partitionColumn
+      val existingColumns = leftDf.columns.toSet
+      val columnsToSelect = keyColumns.filter(existingColumns.contains)
+      leftDf.select(columnsToSelect.map(F.col): _*).dropDuplicates(keyColumns)
+    }
 
     val rightDf = ai.chronon.spark.GroupBy.inputDf(groupBy, dateRange, tableUtils)
 
     val unionDf = unionJoin(
-      leftDf,
+      selectedLeftDf,
       rightDf,
       joinPart.leftToRight,
-      leftTimeCol = Constants.TimeColumn, // already a column due to JoinUtils.leftDf
+      leftTimeCol = Constants.TimeColumn,
       rightTimeCol = Constants.TimeColumn
     )
 
@@ -173,25 +178,46 @@ object UnionJoin {
     val baseResultDf = tableUtils.sparkSession.createDataFrame(outputRdd, outputSchema)
 
     // Apply GroupBy derivations to the aggregated results
-    val groupByDerivedDf = if (groupBy.hasDerivations) {
+    if (groupBy.hasDerivations) {
       val finalOutputColumns = groupBy.derivationsScala.finalOutputColumn(baseResultDf.columns)
       baseResultDf.select(finalOutputColumns: _*)
     } else {
       baseResultDf
     }
+  }
+
+  def computeJoin(joinConf: api.Join, dateRange: PartitionRange, includeAllLeftColumns: Boolean = true)(implicit
+      tableUtils: TableUtils): DataFrame = {
+
+    val disclaimer = "Support is coming soon."
+    require(joinConf.left.isSetEvents, s"Only events sources are supported on the left side of the join. $disclaimer")
+    require(!joinConf.isSetBootstrapParts, s"Bootstraps on fast mode are not supported yet. $disclaimer")
+    require(!joinConf.isSetLabelParts, s"Label Parts on fast mode are not supported yet. $disclaimer")
+
+    // For multi-join-part case, only validate single join part when includeAllLeftColumns is true
+    if (includeAllLeftColumns) {
+      require(joinConf.getJoinParts.size() == 1, s"Only one join-part is supported on fast mode. $disclaimer")
+    }
+
+    val joinPart = joinConf.getJoinParts.get(0)
+    val leftDf = JoinUtils.leftDf(joinConf, dateRange, tableUtils).get
+
+    val groupByDerivedDf = computeJoinPart(leftDf, joinPart, dateRange, includeAllLeftColumns)
 
     // Apply Join derivations if they exist
-    val finalResultDf = if (joinConf.isSetDerivations && !joinConf.derivations.isEmpty()) {
+    if (joinConf.isSetDerivations && !joinConf.derivations.isEmpty()) {
       val derivations = joinConf.derivations.toScala
-      val projections = derivations.derivationProjection(groupByDerivedDf.columns)
       val finalOutputColumns = derivations.finalOutputColumn(groupByDerivedDf.columns)
       groupByDerivedDf.select(finalOutputColumns: _*)
     } else {
       groupByDerivedDf
     }
+  }
 
+  def computeJoinAndSave(joinConf: api.Join, dateRange: PartitionRange)(implicit tableUtils: TableUtils): Unit = {
+    val resultDf = computeJoin(joinConf, dateRange, includeAllLeftColumns = true)
     logger.info(s"Saving output to ${joinConf.metaData.outputTable}")
-    finalResultDf.save(joinConf.metaData.outputTable)
+    resultDf.save(joinConf.metaData.outputTable)
   }
 
 }
