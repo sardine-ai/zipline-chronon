@@ -234,6 +234,7 @@ struct NodeStepRunInfo {
     4: optional string startTime
     5: optional string endTime
     6: optional NodeRunStatus status
+    7: optional list<string> dependentStepRunIds
 }
 
 struct WorkflowStatusResponse {
