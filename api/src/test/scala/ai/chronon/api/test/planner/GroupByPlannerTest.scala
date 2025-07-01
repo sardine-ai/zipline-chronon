@@ -1,9 +1,9 @@
 package ai.chronon.api.test.planner
 
+import ai.chronon.api.{Accuracy, Aggregation, Builders, EnvironmentVariables, GroupBy, Operation, PartitionSpec}
 import ai.chronon.api.Extensions.{MetadataOps, WindowUtils}
 import ai.chronon.api.planner.{GroupByPlanner, LocalRunner}
 import ai.chronon.api.test.planner.GroupByPlannerTest.buildGroupBy
-import ai.chronon.api.{Accuracy, Aggregation, Builders, EnvironmentVariables, GroupBy, Operation, PartitionSpec}
 import ai.chronon.planner.{ConfPlan, Mode}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -46,6 +46,13 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     plan.terminalNodeNames.asScala.size shouldBe 2
     plan.terminalNodeNames.containsKey(Mode.DEPLOY) shouldBe true
     plan.terminalNodeNames.containsKey(Mode.BACKFILL) shouldBe true
+  }
+
+  it should "always plan nonzero step days" in {
+    val groupBy = buildGroupBy()
+    val plannerWithNonZeroStepDays = GroupByPlanner(groupBy)
+    val plan = plannerWithNonZeroStepDays.buildPlan
+    plan.nodes.asScala.foreach((node) => node.metaData.executionInfo.stepDays shouldNot be(0))
   }
 
   it should "GB planner handles valid confs" in {

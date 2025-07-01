@@ -19,14 +19,14 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
 
   def backfillNode: Node = {
     val defaultStepDays = if (groupBy.dataModel == DataModel.EVENTS) 15 else 1
-    val configuredStepDaysOpt = Option(groupBy.metaData.executionInfo).flatMap(e => Option(e.stepDays))
-    val effectiveStepDays = configuredStepDaysOpt.getOrElse(defaultStepDays)
+    val effectiveStepDays =
+      Option(groupBy.metaData.executionInfo).filter(_.isSetStepDays).map(_.stepDays).getOrElse(defaultStepDays)
 
     val metaData = MetaDataUtils.layer(groupBy.metaData,
                                        "backfill",
                                        groupBy.metaData.name + "/backfill",
                                        groupByTableDeps,
-                                       Some(effectiveStepDays))
+                                       Option(effectiveStepDays))
 
     val node = new GroupByBackfillNode().setGroupBy(eraseExecutionInfo)
 
