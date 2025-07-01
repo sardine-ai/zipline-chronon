@@ -33,7 +33,7 @@ abstract class ConfPlanner[T](conf: T)(implicit outputPartitionSpec: PartitionSp
 
     content.getSetField match {
       case NodeContent._Fields.GROUP_BY_STREAMING => node.setIsLongRunning(true)
-      case other                                  => node.setIsLongRunning(false)
+      case _                                      => node.setIsLongRunning(false)
     }
     node
   }

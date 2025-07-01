@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.file.Paths
 import scala.jdk.CollectionConverters._
 import ai.chronon.api.Builders
+import ai.chronon.api.Extensions.MetadataOps
 
 class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
@@ -229,5 +230,144 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val firstMetadataUploadHash = firstPlan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get.semanticHash
     val secondMetadataUploadHash = secondPlan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get.semanticHash
     firstMetadataUploadHash should equal(secondMetadataUploadHash)
+  }
+
+  it should "metadata upload node should depend on streaming GroupBy nodes when join parts have streaming sources" in {
+    import ai.chronon.api.Builders._
+
+    // Create a streaming GroupBy (has topic)
+    val streamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.events_table", topic = "events_topic")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.COUNT, "event_count")),
+      metaData = MetaData(namespace = "test_namespace", name = "streaming_gb")
+    )
+
+    val joinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(streamingGroupBy)
+
+    val join = Join(
+      metaData = MetaData(name = "testJoinWithStreaming"),
+      left = Source.events(Query(), table = "test_namespace.left_table"),
+      joinParts = Seq(joinPart),
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have dependencies on streaming GroupBy node
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps should not be empty
+    val streamingDep = tableDeps.head
+    streamingDep.tableInfo.table should equal(streamingGroupBy.metaData.outputTable + "_streaming")
+  }
+
+  it should "metadata upload node should depend on uploadToKV GroupBy nodes when join parts have non-streaming sources" in {
+    import ai.chronon.api.Builders._
+
+    // Create a non-streaming GroupBy (no topic)
+    val nonStreamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.events_table")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.COUNT, "event_count")),
+      metaData = MetaData(namespace = "test_namespace", name = "non_streaming_gb")
+    )
+
+    val joinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(nonStreamingGroupBy)
+
+    val join = Join(
+      metaData = MetaData(name = "testJoinWithNonStreaming"),
+      left = Source.events(Query(), table = "test_namespace.left_table"),
+      joinParts = Seq(joinPart),
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have dependencies on uploadToKV GroupBy node
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps should not be empty
+    val uploadToKVDep = tableDeps.head
+    uploadToKVDep.tableInfo.table should equal(nonStreamingGroupBy.metaData.outputTable + "_uploadToKV")
+  }
+
+  it should "metadata upload node should handle mixed streaming and non-streaming GroupBy dependencies" in {
+    import ai.chronon.api.Builders._
+
+    // Create a streaming GroupBy
+    val streamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.streaming_events", topic = "streaming_topic")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.COUNT, "stream_count")),
+      metaData = MetaData(namespace = "test_namespace", name = "mixed_streaming_gb")
+    )
+
+    // Create a non-streaming GroupBy
+    val nonStreamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.batch_events")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.SUM, "batch_sum")),
+      metaData = MetaData(namespace = "test_namespace", name = "mixed_batch_gb")
+    )
+
+    val streamingJoinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(streamingGroupBy)
+
+    val nonStreamingJoinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(nonStreamingGroupBy)
+
+    val join = Join(
+      metaData = MetaData(name = "testJoinMixed"),
+      left = Source.events(Query(), table = "test_namespace.left_table"),
+      joinParts = Seq(streamingJoinPart, nonStreamingJoinPart),
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have dependencies on both streaming and uploadToKV nodes
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps should not be empty
+    tableDeps should have size 2
+
+    val depTables = tableDeps.map(_.tableInfo.table).toSet
+    depTables should contain(streamingGroupBy.metaData.outputTable + "_streaming")
+    depTables should contain(nonStreamingGroupBy.metaData.outputTable + "_uploadToKV")
+  }
+
+  it should "metadata upload node should have no GroupBy dependencies when join has no join parts" in {
+    val join = Join(
+      metaData = MetaData(name = "testJoinNoJoinParts"),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.left_only_table"),
+      joinParts = Seq.empty,
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have no GroupBy dependencies
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps.size should be(0)
   }
 }

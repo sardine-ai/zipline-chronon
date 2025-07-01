@@ -1,6 +1,7 @@
 package ai.chronon.api.planner
 
-import ai.chronon.api.{Join, PartitionSpec}
+import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, WindowUtils}
+import ai.chronon.api.{Join, PartitionSpec, TableDependency, TableInfo}
 import ai.chronon.planner
 import ai.chronon.planner.Node
 
@@ -37,11 +38,34 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
 
   def metadataUploadNode: Node = {
     val stepDays = 1 // Default step days for metadata upload
+
+    // Create table dependencies to GroupBy nodes (either uploadToKV or streaming)
+    val joinPartDeps = Option(join.joinParts).map(_.asScala).getOrElse(Seq.empty).flatMap { joinPart =>
+      val groupBy = joinPart.groupBy
+      val hasStreamingSource = groupBy.streamingSource.isDefined
+
+      val tableName = if (hasStreamingSource) {
+        groupBy.metaData.outputTable + s"_${GroupByPlanner.Streaming}"
+      } else {
+        groupBy.metaData.outputTable + s"_${GroupByPlanner.UploadToKV}"
+      }
+
+      val tableDep = new TableDependency()
+        .setTableInfo(
+          new TableInfo()
+            .setTable(tableName)
+        )
+        .setStartOffset(WindowUtils.zero())
+        .setEndOffset(WindowUtils.zero())
+
+      Some(tableDep)
+    }
+
     val metaData =
       MetaDataUtils.layer(join.metaData,
                           "metadata_upload",
                           join.metaData.name + "/metadata_upload",
-                          Seq.empty,
+                          joinPartDeps,
                           Some(stepDays))
     val node = new planner.JoinMetadataUpload().setJoin(join)
     toNode(metaData, _.setJoinMetadataUpload(node), semanticMonolithJoin(join))

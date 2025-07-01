@@ -2,7 +2,14 @@ package ai.chronon.api.planner
 
 import ai.chronon.api.{DataModel, GroupBy, PartitionSpec, TableDependency, TableInfo}
 import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, WindowUtils}
-import ai.chronon.planner.{ConfPlan, GroupByBackfillNode, GroupByUploadNode, GroupByUploadToKVNode, Node}
+import ai.chronon.planner.{
+  ConfPlan,
+  GroupByBackfillNode,
+  GroupByUploadNode,
+  GroupByUploadToKVNode,
+  GroupByStreamingNode,
+  Node
+}
 import scala.collection.JavaConverters._
 
 case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: PartitionSpec)
@@ -67,8 +74,8 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
 
     val metaData =
       MetaDataUtils.layer(groupBy.metaData,
-                          "uploadToKV",
-                          groupBy.metaData.name + "/uploadToKV",
+                          GroupByPlanner.UploadToKV,
+                          groupBy.metaData.name + s"/${GroupByPlanner.UploadToKV}",
                           uploadToKVTableDeps,
                           None)
 
@@ -76,14 +83,48 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
     toNode(metaData, _.setGroupByUploadToKV(node), semanticGroupBy(groupBy))
   }
 
+  def streamingNode: Option[Node] = {
+    groupBy.streamingSource.map { _ =>
+      // Streaming node has table dependency on the upload to KV
+      val tableDep = new TableDependency()
+        .setTableInfo(
+          new TableInfo()
+            .setTable(groupBy.metaData.outputTable + s"_${GroupByPlanner.UploadToKV}")
+        )
+        .setStartOffset(WindowUtils.zero())
+        .setEndOffset(WindowUtils.zero())
+      val streamingTableDeps = Seq(tableDep)
+
+      val metaData =
+        MetaDataUtils.layer(groupBy.metaData,
+                            GroupByPlanner.Streaming,
+                            groupBy.metaData.name + s"/${GroupByPlanner.Streaming}",
+                            streamingTableDeps,
+                            None)
+
+      val node = new GroupByStreamingNode().setGroupBy(eraseExecutionInfo)
+      toNode(metaData, _.setGroupByStreaming(node), semanticGroupBy(groupBy))
+    }
+  }
+
   override def buildPlan: ConfPlan = {
+    val allNodes = Seq(backfillNode, uploadNode, uploadToKVNode) ++ streamingNode.toSeq
+
+    val deployTerminalNode = streamingNode.map(_.metaData.name).getOrElse(uploadToKVNode.metaData.name)
+
     val terminalNodeNames = Map(
       ai.chronon.planner.Mode.BACKFILL -> backfillNode.metaData.name,
-      ai.chronon.planner.Mode.DEPLOY -> uploadToKVNode.metaData.name
+      ai.chronon.planner.Mode.DEPLOY -> deployTerminalNode
     )
+
     val confPlan = new ConfPlan()
-      .setNodes(List(backfillNode, uploadNode, uploadToKVNode).asJava)
+      .setNodes(allNodes.asJava)
       .setTerminalNodeNames(terminalNodeNames.asJava)
     confPlan
   }
+}
+
+object GroupByPlanner {
+  val Streaming = "streaming"
+  val UploadToKV = "uploadToKV"
 }
