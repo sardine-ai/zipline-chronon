@@ -64,6 +64,8 @@ gcp = Team(
             "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "ENABLE_PUBSUB": "true",
+            "ARTIFACT_PREFIX": "gs://zipline-artifacts-dev",
+            "CHRONON_ONLINE_ARGS": " -Ztasks=4",
         },
         modeEnvironments={
             RunMode.UPLOAD: {

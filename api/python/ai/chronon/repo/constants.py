@@ -156,3 +156,4 @@ GCP = "GCP"
 # arg keywords
 ONLINE_CLASS_ARG = "online_class"
 ONLINE_JAR_ARG = "online_jar"
+ONLINE_ARGS = "online_args"

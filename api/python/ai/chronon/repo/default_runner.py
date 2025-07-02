@@ -6,6 +6,7 @@ import os
 from ai.chronon.repo import utils
 from ai.chronon.repo.constants import (
     MODE_ARGS,
+    ONLINE_ARGS,
     ONLINE_CLASS_ARG,
     ONLINE_JAR_ARG,
     ONLINE_MODES,
@@ -25,6 +26,7 @@ class Runner:
         self.mode = args["mode"]
         self.online_jar = args.get(ONLINE_JAR_ARG)
         self.online_class = args.get(ONLINE_CLASS_ARG)
+        self.online_args = args.get(ONLINE_ARGS)
 
         self.conf_type = (args.get("conf_type") or "").replace(
             "-", "_"
