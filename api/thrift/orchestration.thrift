@@ -294,6 +294,11 @@ struct GroupByEvalResult {
     7: optional map<string, string> derivationsSchema
 }
 
+struct StagingQueryEvalResult {
+    1: optional BaseEvalResult queryCheck
+    2: optional map<string, string> outputSchema
+}
+
 /**
 * -- Phase 0 plan -- (same as chronon oss)
 * StagingQuery::query - [deps.table] >> query
