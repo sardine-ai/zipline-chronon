@@ -112,16 +112,9 @@ struct Submission {
     21: optional common.DateRange dateRange
 }
 
-enum ConfType{
-   STAGING_QUERY = 1
-   GROUP_BY = 2
-   JOIN = 3
-   MODEL = 4
-}
-
 struct ConfRequest {
    1: optional string confName
-   2: optional ConfType confType
+   2: optional orchestration.ConfType confType
    
    // one of either branch or version are set - otherwise we will pull conf for main branch
    3: optional string branch 
@@ -132,7 +125,7 @@ struct ConfRequest {
   * lists all confs of the specified type
   */
 struct ConfListRequest {
-  1: optional ConfType confType
+  1: optional orchestration.ConfType confType
   
   // if not specified we will pull conf list for main branch
   2: optional string branch

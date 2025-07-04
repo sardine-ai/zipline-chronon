@@ -7,12 +7,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import ai.chronon.cli.compile.display.compiled_obj
 import ai.chronon.cli.compile.parse_configs as parser
 import ai.chronon.cli.logger as logger
-from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.cli.compile import serializer
 from ai.chronon.cli.compile.compile_context import CompileContext, ConfigInfo
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 from ai.chronon.cli.compile.display.console import console
 from ai.chronon.cli.compile.parse_teams import merge_team_execution_info
+from ai.chronon.orchestration.ttypes import ConfType
 from ai.chronon.types import MetaData
 
 logger = logger.get_logger()
@@ -30,7 +30,7 @@ class Compiler:
     def __init__(self, compile_context: CompileContext):
         self.compile_context = compile_context
 
-    def compile(self) -> Dict[ConfigType, CompileResult]:
+    def compile(self) -> Dict[ConfType, CompileResult]:
 
         config_infos = self.compile_context.config_infos
 

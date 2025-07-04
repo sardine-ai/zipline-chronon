@@ -6,7 +6,7 @@ import os
 from ai.chronon.orchestration.ttypes import Conf
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,
-    FOLDER_NAME_TO_LOGICAL_TYPE,
+    FOLDER_NAME_TO_CONF_TYPE,
 )
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
@@ -58,12 +58,12 @@ def _build_local_repo_hashmap(root_dir: str):
 
                 md5_hash = hashlib.md5(thrift_json.encode()).hexdigest()
                 # md5_hash = hashlib.md5(thrift_json.encode()).hexdigest() + "123"
-                # results[name] = (binary, md5_hash, FOLDER_NAME_TO_LOGICAL_TYPE[folder_name])
+                # results[name] = (binary, md5_hash, FOLDER_NAME_TO_CONF_TYPE[folder_name])
                 results[name] = Conf(name=name,
                                           hash=md5_hash,
                                           # contents=binary,
                                           contents=thrift_json,
-                                          logicalType=FOLDER_NAME_TO_LOGICAL_TYPE[folder_name])
+                                          confType=FOLDER_NAME_TO_CONF_TYPE[folder_name])
 
             except Exception as e:
                 exceptions.append(f"{json_file} - {e}")

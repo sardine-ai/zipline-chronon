@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
 import ai.chronon.cli.compile.parse_teams as teams
-from ai.chronon.api.common.ttypes import ConfigType
 from ai.chronon.api.ttypes import GroupBy, Join, MetaData, Model, StagingQuery, Team
 from ai.chronon.cli.compile.conf_validator import ConfValidator
 from ai.chronon.cli.compile.display.compile_status import CompileStatus
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
 from ai.chronon.cli.compile.serializer import file2thrift
 from ai.chronon.cli.logger import get_logger, require
+from ai.chronon.orchestration.ttypes import ConfType
 
 logger = get_logger()
 
@@ -18,7 +18,7 @@ logger = get_logger()
 class ConfigInfo:
     folder_name: str
     cls: Type
-    config_type: Optional[ConfigType]
+    config_type: Optional[ConfType]
 
 
 @dataclass
@@ -30,18 +30,18 @@ class CompileContext:
         self.compile_dir: str = "compiled"
 
         self.config_infos: List[ConfigInfo] = [
-            ConfigInfo(folder_name="joins", cls=Join, config_type=ConfigType.JOIN),
+            ConfigInfo(folder_name="joins", cls=Join, config_type=ConfType.JOIN),
             ConfigInfo(
                 folder_name="group_bys",
                 cls=GroupBy,
-                config_type=ConfigType.GROUP_BY,
+                config_type=ConfType.GROUP_BY,
             ),
             ConfigInfo(
                 folder_name="staging_queries",
                 cls=StagingQuery,
-                config_type=ConfigType.STAGING_QUERY,
+                config_type=ConfType.STAGING_QUERY,
             ),
-            ConfigInfo(folder_name="models", cls=Model, config_type=ConfigType.MODEL),
+            ConfigInfo(folder_name="models", cls=Model, config_type=ConfType.MODEL),
             ConfigInfo(folder_name="teams_metadata", cls=MetaData, config_type=None), # only for team metadata
         ]
 

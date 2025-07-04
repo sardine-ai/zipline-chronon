@@ -11,6 +11,13 @@ enum TabularDataType {
     // SCD2 = 4,
 }
 
+enum ConfType {
+   STAGING_QUERY = 1
+   GROUP_BY = 2
+   JOIN = 3
+   MODEL = 4
+}
+
 /**
 * Represents a group of structured data assets that the same data flows through
 * just a normalized version of Events + Entity sources.
@@ -30,19 +37,10 @@ union LogicalNode {
     5: TabularData tabularData
 }
 
-
-enum LogicalType {
-    GROUP_BY = 0,
-    JOIN = 1,
-    STAGING_QUERY = 2,
-    MODEL = 3,
-    TABULAR_DATA = 4
-}
-
 struct NodeKey {
     1: optional string name
 
-    2: optional LogicalType logicalType
+    2: optional ConfType logicalType
     3: optional PhysicalNodeType physicalType
 }
 
@@ -185,7 +183,7 @@ struct Conf {
     1: optional string name
     2: optional string hash
     3: optional string contents
-    4: optional LogicalType logicalType
+    4: optional ConfType confType
 }
 
 struct DiffRequest {

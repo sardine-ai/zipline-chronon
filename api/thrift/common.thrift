@@ -13,13 +13,6 @@ struct Window {
     2: TimeUnit timeUnit
 }
 
-enum ConfigType {
-    STAGING_QUERY = 1
-    GROUP_BY = 2
-    JOIN = 3
-    MODEL = 4
-}
-
 struct DateRange {
     1: string startDate
     2: string endDate
