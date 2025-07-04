@@ -250,7 +250,7 @@ struct WorkflowStatusResponse {
     3: optional string mode
     4: optional string branch
     5: optional string user
-    6: optional string status
+    6: optional WorkflowStatus status
     7: optional string startPartition
     8: optional string endPartition
     9: optional list<NodeExecutionInfo> nodeExecutions
@@ -281,6 +281,10 @@ struct WorkflowResponse {
     7: optional string startPartition
     8: optional string endPartition
     10: optional list<string> terminalNodes
+}
+
+struct WorkflowListRequest {
+    1: optional i32 numOfWorkflows
 }
 
 struct WorkflowListResponse {
