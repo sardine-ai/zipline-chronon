@@ -37,7 +37,7 @@ object MetaDataUtils {
     }
     // fully qualified: namespace + outputTable
     copy.executionInfo.outputTableInfo
-      .setTable(copy.outputTable)
+      .setTable(baseMetadata.outputTable)
       .setPartitionColumn(partitionSpec.column)
       .setPartitionFormat(partitionSpec.format)
       .setPartitionInterval(WindowUtils.hours(partitionSpec.spanMillis))
