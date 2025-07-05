@@ -177,8 +177,9 @@ object UnionJoin {
 
     val baseResultDf = tableUtils.sparkSession.createDataFrame(outputRdd, outputSchema)
 
-    // Apply GroupBy derivations to the aggregated results
-    if (groupBy.hasDerivations) {
+    // Apply GroupBy derivations to the aggregated results if we're producing final join output
+    // Else, it gets applied later in the JoinPartJob
+    if (groupBy.hasDerivations && produceFinalJoinOutput) {
       val finalOutputColumns = groupBy.derivationsScala.finalOutputColumn(baseResultDf.columns)
       baseResultDf.select(finalOutputColumns: _*)
     } else {
