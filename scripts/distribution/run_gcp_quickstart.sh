@@ -130,14 +130,14 @@ DATAPROC_SUBMITTER_ID_STR="Dataproc submitter job id"
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
 zipline compile --chronon-root=$CHRONON_ROOT
 
-#echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
-#if [[ "$ENVIRONMENT" == "canary" ]]; then
-#  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test --start-ds 2023-11-01 --end-ds 2023-12-01
-#else
-#  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev --start-ds 2023-11-01 --end-ds 2023-12-01
-#fi
+echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
+if [[ "$ENVIRONMENT" == "canary" ]]; then
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test --start-ds 2023-11-01 --end-ds 2023-12-01
+else
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev --start-ds 2023-11-01 --end-ds 2023-12-01
+fi
 
-#fail_if_bash_failed $?
+fail_if_bash_failed $?
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL-JOIN.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
