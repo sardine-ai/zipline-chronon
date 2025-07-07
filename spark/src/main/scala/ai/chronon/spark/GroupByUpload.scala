@@ -286,12 +286,12 @@ object GroupByUpload {
     val metricRow =
       kvDfReloaded.selectExpr("sum(bit_length(key_bytes))/8", "sum(bit_length(value_bytes))/8", "count(*)").collect()
 
-    if (metricRow.length > 0) {
+    if (metricRow.length > 0 && metricRow(0).getLong(2) > 0) {
       context.gauge(Metrics.Name.KeyBytes, metricRow(0).getDouble(0).toLong)
       context.gauge(Metrics.Name.ValueBytes, metricRow(0).getDouble(1).toLong)
       context.gauge(Metrics.Name.RowCount, metricRow(0).getLong(2))
     } else {
-      throw new RuntimeException("GroupBy upload resulted in zero rows.")
+      logger.warn("GroupBy upload resulted in zero rows.")
     }
 
     context.gauge(Metrics.Name.LatencyMinutes, (System.currentTimeMillis() - startTs) / (60 * 1000))
