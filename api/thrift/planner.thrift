@@ -60,7 +60,7 @@ struct JoinMetadataUpload {
     2: optional api.Join join
 }
 
-struct ExternalSourceNode {
+struct ExternalSourceSensorNode {
     1: optional api.MetaData metaData
     2: optional string sourceName
 }
@@ -76,7 +76,7 @@ union NodeContent {
     8: StagingQueryNode stagingQuery
 
     10: JoinMetadataUpload joinMetadataUpload
-    11: ExternalSourceNode externalSource
+    11: ExternalSourceSensorNode externalSourceSensor
 
 
     // groupBy nodes
