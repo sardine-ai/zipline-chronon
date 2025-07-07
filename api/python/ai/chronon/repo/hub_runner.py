@@ -55,7 +55,7 @@ def backfill(repo,
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
-    zipline_hub.call_workflow_start_api(
+    response_json = zipline_hub.call_workflow_start_api(
         conf_name=conf_name,
         mode=RunMode.BACKFILL.value,
         branch=hub_utils.get_branch(repo),  # Get the current branch
@@ -63,6 +63,8 @@ def backfill(repo,
         start=start_ds,
         end=end_ds
     )
+
+    print(response_json)
 
 if __name__ == "__main__":
     hub()
