@@ -11,11 +11,12 @@ enum TabularDataType {
     // SCD2 = 4,
 }
 
+// This has to be 0-indexed for Java usage
 enum ConfType {
-   STAGING_QUERY = 1
-   GROUP_BY = 2
-   JOIN = 3
-   MODEL = 4
+    GROUP_BY = 0,
+    JOIN = 1,
+    STAGING_QUERY = 2,
+    MODEL = 3,
 }
 
 /**
