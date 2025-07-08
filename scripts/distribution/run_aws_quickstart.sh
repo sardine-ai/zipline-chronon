@@ -183,7 +183,7 @@ touch tmp_backfill.out
 if [ "$create_cluster" = true ]; then
   echo "Creating a new EMR cluster"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 --version candidate 2>&1 | tee tmp_backfill.out
+    zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
   else
     zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 --create-cluster --cluster-instance-count=2 --cluster-idle-timeout=60 2>&1 | tee tmp_backfill.out
   fi
@@ -197,7 +197,7 @@ else
   CLUSTER_ID=$CANARY_CLUSTER_ID
   echo "Using existing EMR cluster $CLUSTER_ID"
   if [[ "$ENVIRONMENT" == "canary" ]]; then
-    EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 --version candidate 2>&1 | tee tmp_backfill.out
+    EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_test --end-ds 20250220 2>&1 | tee tmp_backfill.out
   else
     EMR_CLUSTER_ID=$CLUSTER_ID zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/aws/purchases.v1_dev --end-ds 20250220 2>&1 | tee tmp_backfill.out
   fi
