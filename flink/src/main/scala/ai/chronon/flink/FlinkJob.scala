@@ -6,7 +6,7 @@ import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, DataType}
 import ai.chronon.flink.FlinkJob.watermarkStrategy
-import ai.chronon.flink.deser.{DeserializationSchemaBuilder, ProjectedEvent, FlinkSerDeProvider, SourceProjection}
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider, ProjectedEvent, SourceProjection}
 import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider, KafkaFlinkSource}
 import ai.chronon.flink.types.{AvroCodecOutput, TimestampedTile, WriteResponse}
 import ai.chronon.flink.validation.ValidationFlinkJob
@@ -20,6 +20,7 @@ import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.online.{Api, GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
 import org.apache.flink.api.common.functions.RichMapFunction
+import org.apache.flink.api.common.restartstrategy.RestartStrategies
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.core.fs.FileSystem
 import org.apache.flink.streaming.api.CheckpointingMode
@@ -366,6 +367,14 @@ object FlinkJob {
     // post orchestrator, we will trigger savepoints on deploys and we can switch to delete on cancel
     checkpointConfig.setExternalizedCheckpointCleanup(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
 
+    // Flink default is to restart indefinitely on failure. We want to cap this to be able to
+    // bubble up errors to the orchestrator
+    env.setRestartStrategy(
+      RestartStrategies.fixedDelayRestart(
+        20,
+        30.seconds.toMillis
+      ))
+
     val config = new Configuration()
 
     env.setMaxParallelism(MaxParallelism)
@@ -412,7 +421,16 @@ object FlinkJob {
       s"Expect created deserialization schema for groupBy: $groupByName with $topicInfo to mixin SourceProjection. " +
         s"We got: ${deserializationSchema.getClass.getSimpleName}"
     )
-    val projectedSchema = deserializationSchema.asInstanceOf[SourceProjection].projectedSchema
+
+    val projectedSchema =
+      try {
+        deserializationSchema.asInstanceOf[SourceProjection].projectedSchema
+      } catch {
+        case _: Exception =>
+          throw new RuntimeException(
+            s"Failed to perform projection via Spark SQL eval for groupBy: $groupByName. Retrieved event schema: \n${schemaProvider.schema}\n" +
+              s"Make sure the Spark SQL expressions are valid (e.g. column names match the source event schema).")
+      }
 
     val source = FlinkSourceProvider.build(props, deserializationSchema, topicInfo)
 

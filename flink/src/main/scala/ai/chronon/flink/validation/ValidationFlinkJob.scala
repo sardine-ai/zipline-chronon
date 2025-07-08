@@ -16,12 +16,14 @@ import org.apache.spark.sql.{Encoder, Row}
 import org.slf4j.LoggerFactory
 
 import java.lang
-import scala.collection.mutable
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.flink.FlinkJob.CheckPointInterval
 import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider}
 import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider}
+import org.apache.flink.api.common.restartstrategy.RestartStrategies
 import org.apache.flink.streaming.api.CheckpointingMode
+
+import scala.concurrent.duration.DurationInt
 
 case class EventRecord(recordId: String, event: Row)
 case class ValidationStats(totalRecords: Int,
@@ -53,7 +55,15 @@ class SparkDFVsCatalystComparisonFn(sparkExpressionEvalFn: SparkExpressionEvalFn
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     sparkExpressionEvalFn.setRuntimeContext(this.getRuntimeContext)
-    sparkExpressionEvalFn.open(parameters)
+    try {
+      sparkExpressionEvalFn.open(parameters)
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to initialize SparkExpressionEval function - ${e.getMessage}")
+        throw new RuntimeException(
+          s"Failed to initialize SparkExpressionEval function. " +
+            s"Make sure the Spark SQL expressions are valid (e.g. column names match the source event schema).")
+    }
   }
 
   override def apply(window: GlobalWindow, input: lang.Iterable[EventRecord], out: Collector[ValidationStats]): Unit = {
@@ -168,6 +178,12 @@ object ValidationFlinkJob {
       .enableForceKryo() // use kryo for complex types that Flink's default ser system doesn't support (e.g case classes)
     env.getConfig.enableGenericTypes() // more permissive type checks
     env.enableCheckpointing(CheckPointInterval.toMillis, CheckpointingMode.AT_LEAST_ONCE)
+    // cap to 3 restarts in the validation job to surface errors quickly
+    env.setRestartStrategy(
+      RestartStrategies.fixedDelayRestart(
+        3,
+        30.seconds.toMillis
+      ))
 
     val jobDatastream = validationJob.runValidationJob(env)
 
