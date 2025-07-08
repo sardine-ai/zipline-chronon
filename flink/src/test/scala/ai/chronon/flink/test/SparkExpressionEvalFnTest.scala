@@ -46,7 +46,7 @@ class SparkExpressionEvalFnTest extends AnyFlatSpec {
       E2ETestEvent("test3", 14, 1.7, 1699366993125L)
     )
 
-    val groupBy = FlinkTestUtils.makeGroupBy(Seq("id"), filters=null)
+    val groupBy = FlinkTestUtils.makeGroupBy(Seq("id"), filters = null)
 
     val encoder = Encoders.product[E2ETestEvent]
 
