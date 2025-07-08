@@ -306,6 +306,30 @@ struct WorkflowListResponse {
     1: optional list<WorkflowResponse> workflows
 }
 
+/**
+  * lists all confs of the specified type
+  */
+struct ConfListRequest {
+    1: optional ConfType confType
+
+    // if not specified we will pull conf list for main branch
+    2: optional string branch
+}
+
+/**
+  * Response for listing configurations of a specific type
+  */
+struct ConfListItemResponse {
+    1: optional string confName
+    2: optional ConfType confType
+    3: optional string confHash
+}
+
+struct ConfListResponse {
+    1: optional list<ConfListItemResponse> confs
+}
+
+
 // ====================== End of Orchestration Service API Types ======================
 
 enum CheckResult {
