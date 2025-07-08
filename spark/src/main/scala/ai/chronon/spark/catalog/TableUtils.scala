@@ -80,6 +80,8 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   sparkSession.sparkContext.setLogLevel("ERROR")
 
+  sparkSession.conf.set("viewsEnabled","true")
+
   def tableReachable(tableName: String, ignoreFailure: Boolean = false): Boolean = {
     Try { sparkSession.catalog.getTable(tableName) } match {
       case Success(_) => true
