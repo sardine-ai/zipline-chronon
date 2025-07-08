@@ -272,6 +272,18 @@ struct NodeStatusResponse {
     1: optional list<NodeExecutionInfo> nodeExecutions
 }
 
+struct ConfStatusRequest {
+    1: optional string confName
+    2: optional string start
+    3: optional string end
+    // TODO: To remove this after adding logic to pull latest hash
+    4: optional string confHash
+}
+
+struct ConfStatusResponse {
+    1: optional list<NodeExecutionInfo> nodeExecutions
+}
+
 struct WorkflowResponse {
     1: optional string workflowId
     2: optional string confName
@@ -285,7 +297,9 @@ struct WorkflowResponse {
 }
 
 struct WorkflowListRequest {
-    1: optional i32 numOfWorkflows
+    1: optional i32 limit
+    // TODO: To remove this after migrating to above limit field
+    2: optional i32 numOfWorkflows
 }
 
 struct WorkflowListResponse {
