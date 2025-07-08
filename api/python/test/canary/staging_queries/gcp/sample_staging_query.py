@@ -5,12 +5,7 @@ from ai.chronon.utils import get_join_output_table_name
 
 query = f"""
 SELECT
-    id_listing,
-    place_id,
-    S2_CELL(lat, lng, 12) AS s2CellId,
-    impressed_unique_count_1d,
-    viewed_unique_count_1d,
-    ds
+    *
 FROM {get_join_output_table_name(training_set.v1_test, True)}
 WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
