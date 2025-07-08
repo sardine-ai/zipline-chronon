@@ -198,44 +198,11 @@
     },
     {
       "inputColumn": "purchase_price",
-      "operation": 9,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "purchase_price",
       "operation": 13,
       "argMap": {
         "k": "10"
       }
     }
   ],
-  "backfillStartDate": "2023-11-01",
-  "derivations": [
-    {
-      "name": "*",
-      "expression": "*"
-    },
-    {
-      "name": "purchase_price_sum_non_decimal_3d",
-      "expression": "CAST(ROUND(purchase_price_sum_3d) AS INT)"
-    },
-    {
-      "name": "purchase_price_stdev_3d",
-      "expression": "SQRT(purchase_price_variance_3d)"
-    }
-  ]
+  "backfillStartDate": "2023-11-01"
 }

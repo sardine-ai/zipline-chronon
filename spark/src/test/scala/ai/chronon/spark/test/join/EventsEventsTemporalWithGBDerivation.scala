@@ -146,7 +146,7 @@ class EventsEventsTemporalWithGBDerivation extends BaseJoinTest {
         Builders.Aggregation(operation = Operation.MAX, inputColumn = "ts")
       ),
       derivations = Seq(
-        Builders.Derivation(name = "*", expression = "*"), // Include all base aggregations
+        Builders.Derivation(name = "*"), // Include all base aggregations
         Builders.Derivation(name = "time_spent_mins", expression = "time_spent_ms_average / 60000"),
         Builders.Derivation(name = "session_duration", expression = "ts_max - ts_min"),
         Builders.Derivation(name = "session_hours", expression = "(ts_max - ts_min) / 3600000")

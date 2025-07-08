@@ -1,4 +1,4 @@
-from ai.chronon.api.ttypes import Derivation, EventSource, Source
+from ai.chronon.api.ttypes import EventSource, Source
 from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
 from ai.chronon.query import Query, selects
 
@@ -22,66 +22,54 @@ window_sizes = [Window(length=day, time_unit=TimeUnit.DAYS) for day in [3, 14, 3
 v1_dev = GroupBy(
     backfill_start_date="2023-11-01",
     sources=[source],
-    keys=["user_id"],  # We are aggregating by user
+    keys=["user_id"], # We are aggregating by user
     online=True,
-    aggregations=[
+    aggregations=[Aggregation(
+        input_column="purchase_price",
+        operation=Operation.SUM,
+        windows=window_sizes
+    ), # The sum of purchases prices in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.SUM, windows=window_sizes
-        ),  # The sum of purchases prices in various windows
+            input_column="purchase_price",
+            operation=Operation.COUNT,
+            windows=window_sizes
+        ), # The count of purchases in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.COUNT, windows=window_sizes
-        ),  # The count of purchases in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.AVERAGE, windows=window_sizes
-        ),  # The average purchases by user in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.VARIANCE, windows=window_sizes
-        ),
+            input_column="purchase_price",
+            operation=Operation.AVERAGE,
+            windows=window_sizes
+        ), # The average purchases by user in various windows
         Aggregation(
             input_column="purchase_price",
             operation=Operation.LAST_K(10),
         ),
-    ],
-    derivations=[
-        Derivation(name="*", expression="*"),  #  Include all base aggregations
-        Derivation(
-            name="purchase_price_sum_non_decimal_3d",
-            expression="CAST(ROUND(purchase_price_sum_3d) AS INT)",
-        ),
-        Derivation(name="purchase_price_stdev_3d", expression="SQRT(purchase_price_variance_3d)"),
     ],
 )
 
 v1_test = GroupBy(
     backfill_start_date="2023-11-01",
     sources=[source],
-    keys=["user_id"],  # We are aggregating by user
+    keys=["user_id"], # We are aggregating by user
     online=True,
-    aggregations=[
+    aggregations=[Aggregation(
+        input_column="purchase_price",
+        operation=Operation.SUM,
+        windows=window_sizes
+    ), # The sum of purchases prices in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.SUM, windows=window_sizes
-        ),  # The sum of purchases prices in various windows
+            input_column="purchase_price",
+            operation=Operation.COUNT,
+            windows=window_sizes
+        ), # The count of purchases in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.COUNT, windows=window_sizes
-        ),  # The count of purchases in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.AVERAGE, windows=window_sizes
-        ),  # The average purchases by user in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.VARIANCE, windows=window_sizes
-        ),
+            input_column="purchase_price",
+            operation=Operation.AVERAGE,
+            windows=window_sizes
+        ), # The average purchases by user in various windows
         Aggregation(
             input_column="purchase_price",
             operation=Operation.LAST_K(10),
         ),
-    ],
-    derivations=[
-        Derivation(name="*", expression="*"),  #  Include all base aggregations
-        Derivation(
-            name="purchase_price_sum_non_decimal_3d",
-            expression="CAST(ROUND(purchase_price_sum_3d) AS INT)",
-        ),
-        Derivation(name="purchase_price_stdev_3d", expression="SQRT(purchase_price_variance_3d)"),
     ],
 )
 
@@ -100,66 +88,54 @@ source_notds = Source(
 v1_test_notds = GroupBy(
     backfill_start_date="2023-11-01",
     sources=[source_notds],
-    keys=["user_id"],  # We are aggregating by user
+    keys=["user_id"], # We are aggregating by user
     online=True,
-    aggregations=[
+    aggregations=[Aggregation(
+        input_column="purchase_price",
+        operation=Operation.SUM,
+        windows=window_sizes
+    ), # The sum of purchases prices in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.SUM, windows=window_sizes
-        ),  # The sum of purchases prices in various windows
+            input_column="purchase_price",
+            operation=Operation.COUNT,
+            windows=window_sizes
+        ), # The count of purchases in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.COUNT, windows=window_sizes
-        ),  # The count of purchases in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.AVERAGE, windows=window_sizes
-        ),  # The average purchases by user in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.VARIANCE, windows=window_sizes
-        ),
+            input_column="purchase_price",
+            operation=Operation.AVERAGE,
+            windows=window_sizes
+        ), # The average purchases by user in various windows
         Aggregation(
             input_column="purchase_price",
             operation=Operation.LAST_K(10),
         ),
-    ],
-    derivations=[
-        Derivation(name="*", expression="*"),  #  Include all base aggregations
-        Derivation(
-            name="purchase_price_sum_non_decimal_3d",
-            expression="CAST(ROUND(purchase_price_sum_3d) AS INT)",
-        ),
-        Derivation(name="purchase_price_stdev_3d", expression="SQRT(purchase_price_variance_3d)"),
     ],
 )
 
 v1_dev_notds = GroupBy(
     backfill_start_date="2023-11-01",
     sources=[source_notds],
-    keys=["user_id"],  # We are aggregating by user
+    keys=["user_id"], # We are aggregating by user
     online=True,
-    aggregations=[
+    aggregations=[Aggregation(
+        input_column="purchase_price",
+        operation=Operation.SUM,
+        windows=window_sizes
+    ), # The sum of purchases prices in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.SUM, windows=window_sizes
-        ),  # The sum of purchases prices in various windows
+            input_column="purchase_price",
+            operation=Operation.COUNT,
+            windows=window_sizes
+        ), # The count of purchases in various windows
         Aggregation(
-            input_column="purchase_price", operation=Operation.COUNT, windows=window_sizes
-        ),  # The count of purchases in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.AVERAGE, windows=window_sizes
-        ),  # The average purchases by user in various windows
-        Aggregation(
-            input_column="purchase_price", operation=Operation.VARIANCE, windows=window_sizes
-        ),
+            input_column="purchase_price",
+            operation=Operation.AVERAGE,
+            windows=window_sizes
+        ), # The average purchases by user in various windows
         Aggregation(
             input_column="purchase_price",
             operation=Operation.LAST_K(10),
         ),
-    ],
-    derivations=[
-        Derivation(name="*", expression="*"),  #  Include all base aggregations
-        Derivation(
-            name="purchase_price_sum_non_decimal_3d",
-            expression="CAST(ROUND(purchase_price_sum_3d) AS INT)",
-        ),
-        Derivation(name="purchase_price_stdev_3d", expression="SQRT(purchase_price_variance_3d)"),
     ],
 )
 
