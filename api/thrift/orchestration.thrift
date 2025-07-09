@@ -336,6 +336,17 @@ struct ConfListResponse {
     1: optional list<ConfListItemResponse> confs
 }
 
+struct ConfGetRequest {
+    1: optional string confName
+}
+
+struct ConfGetResponse {
+    1: optional string confName
+    2: optional string confHash
+    3: optional ConfType confType
+    4: optional LogicalNode confContents
+}
+
 // ====================== End of Orchestration Service API Types ======================
 
 enum CheckResult {
