@@ -234,6 +234,12 @@ struct NodeExecutionInfo {
     6: optional list<NodeStepRunInfo> stepRuns
 }
 
+struct JobTrackingInfo {
+    1: optional string jobUrl
+    2: optional string sparkUrl
+    3: optional string flinkUrl
+}
+
 struct NodeStepRunInfo {
     1: optional string runId
     2: optional string startPartition
@@ -243,6 +249,7 @@ struct NodeStepRunInfo {
     6: optional NodeRunStatus status
     7: optional list<string> dependentStepRunIds
     8: optional string workflowId
+    9: optional JobTrackingInfo jobTrackingInfo
 }
 
 struct WorkflowStatusResponse {
@@ -328,7 +335,6 @@ struct ConfListItemResponse {
 struct ConfListResponse {
     1: optional list<ConfListItemResponse> confs
 }
-
 
 // ====================== End of Orchestration Service API Types ======================
 
