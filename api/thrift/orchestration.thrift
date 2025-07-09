@@ -338,6 +338,7 @@ struct ConfListResponse {
 
 struct ConfGetRequest {
     1: optional string confName
+    2: optional ConfType confType
 }
 
 struct ConfGetResponse {
