@@ -289,6 +289,7 @@ struct ConfStatusRequest {
 
 struct ConfStatusResponse {
     1: optional list<NodeExecutionInfo> nodeExecutions
+    2: optional list<string> terminalNodes
 }
 
 struct WorkflowResponse {
