@@ -101,13 +101,20 @@ scala_library(
         maven_artifact("org.apache.flink:flink-connector-gcp-pubsub"),
         maven_artifact("org.slf4j:slf4j-api"),
         maven_artifact("com.esotericsoftware.kryo:kryo"),
+        maven_artifact("io.dropwizard.metrics:metrics-core"),
 
-        # Additional deps to be able to look up PubSub schemas
+        # Additional deps for Pub/Sub
         maven_artifact("com.google.cloud:google-cloud-pubsub",),
         maven_artifact("com.google.api.grpc:proto-google-cloud-pubsub-v1"),
+        maven_artifact("com.google.api.grpc:grpc-google-cloud-pubsub-v1"),
         maven_artifact("com.google.api:gax"),
         maven_artifact("com.google.api:api-common"),
         maven_artifact("com.google.protobuf:protobuf-java"),
+        maven_artifact("com.google.auth:google-auth-library-credentials"),
+        maven_artifact("io.grpc:grpc-netty-shaded"),
+        maven_artifact("io.grpc:grpc-auth"),
+        maven_artifact("io.grpc:grpc-api"),
+        maven_artifact("io.grpc:grpc-stub"),
     ],
 )
 
@@ -140,10 +147,15 @@ scala_test_suite(
         "//api:lib",
        ":lib",
        ":pubsub_connectors_lib",
+       maven_artifact("org.apache.flink:flink-connector-gcp-pubsub"),
        maven_artifact("com.google.cloud:google-cloud-pubsub",),
+       maven_artifact("com.google.api.grpc:grpc-google-cloud-pubsub-v1"),
        maven_artifact("com.google.api.grpc:proto-google-cloud-pubsub-v1"),
        maven_artifact("com.google.api:gax"),
        maven_artifact("com.google.api:api-common"),
        maven_artifact("com.google.protobuf:protobuf-java"),
+       maven_artifact("io.grpc:grpc-auth"),
+       maven_artifact("io.grpc:grpc-api"),
+       maven_artifact("io.grpc:grpc-stub"),
     ]
 )
