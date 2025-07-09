@@ -215,7 +215,9 @@ object SparkExpressionEval {
       case DataModel.EVENTS   => Seq(s"$timeColumn is NOT NULL")
     }
 
-    val baseFilters = query.getWheres.toScala
+    val baseFilters: Seq[String] = Option(query.getWheres)
+      .map(_.toScala.toSeq)
+      .getOrElse(Seq.empty[String])
 
     val filters: Seq[String] = baseFilters ++ timeFilters
 
