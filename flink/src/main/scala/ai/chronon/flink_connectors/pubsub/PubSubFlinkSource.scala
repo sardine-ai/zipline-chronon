@@ -1,5 +1,6 @@
 package ai.chronon.flink_connectors.pubsub
 
+import ai.chronon.flink.FlinkUtils
 import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider}
 import ai.chronon.online.TopicInfo
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
@@ -31,28 +32,28 @@ class PubSubFlinkSource[T](props: Map[String, String],
   import PubSubFlinkSource._
 
   implicit val parallelism: Int =
-    FlinkSourceProvider.getProperty(TaskParallelism, props, topicInfo).map(_.toInt).getOrElse(DefaultParallelism)
+    FlinkUtils.getProperty(TaskParallelism, props, topicInfo).map(_.toInt).getOrElse(DefaultParallelism)
 
   // Defaults in the Pubsub source are 100 messages per pull, 15s timeout and 3 retries
   // we lower the timeout by default to 5s and allow users to override it
-  private val messagesPerPull: Int = FlinkSourceProvider
+  private val messagesPerPull: Int = FlinkUtils
     .getProperty(MessagesPerPull, props, topicInfo)
     .map(_.toInt)
     .getOrElse(100)
 
-  private val maxRetries: Int = FlinkSourceProvider
+  private val maxRetries: Int = FlinkUtils
     .getProperty(MaxRetries, props, topicInfo)
     .map(_.toInt)
     .getOrElse(3)
 
   private val pullTimeout: Duration =
-    FlinkSourceProvider
+    FlinkUtils
       .getProperty(PullTimeoutMillis, props, topicInfo)
       .map(t => Duration.ofMillis(t.toLong))
       .getOrElse(Duration.ofMillis(5000))
 
   val projectName: String = getOrThrow(GcpProject, props)
-  val subscriptionName: String = FlinkSourceProvider
+  val subscriptionName: String = FlinkUtils
     .getProperty(SubscriptionName, props, topicInfo)
     .getOrElse(throw new IllegalArgumentException(s"Missing required property: $SubscriptionName"))
 

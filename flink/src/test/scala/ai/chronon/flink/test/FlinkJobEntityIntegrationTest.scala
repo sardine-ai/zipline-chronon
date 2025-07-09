@@ -5,7 +5,7 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.GroupBy
 import ai.chronon.flink.{FlinkJob, SparkExpressionEval, SparkExpressionEvalFn}
 import ai.chronon.online.serde.SparkConversions
-import ai.chronon.online.{Api, GroupByServingInfoParsed}
+import ai.chronon.online.{Api, GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource
@@ -91,6 +91,14 @@ class FlinkJobEntityIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
       FlinkTestUtils.makeTestGroupByServingInfoParsed(groupBy, encoder.schema, outputSchema)
     val mockApi = mock[Api](withSettings().serializable())
     val writerFn = new MockAsyncKVStoreWriter(Seq(true), mockApi, groupBy.metaData.name)
-    (new FlinkJob(source, outputSchemaDataTypes, writerFn, groupByServingInfoParsed, 2), groupByServingInfoParsed)
+    val topicInfo = TopicInfo.parse("kafka://test-topic")
+    (new FlinkJob(source,
+                  outputSchemaDataTypes,
+                  writerFn,
+                  groupByServingInfoParsed,
+                  2,
+                  props = Map.empty,
+                  topicInfo = topicInfo),
+     groupByServingInfoParsed)
   }
 }

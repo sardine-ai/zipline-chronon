@@ -1,5 +1,6 @@
 package ai.chronon.flink.source
 
+import ai.chronon.flink.FlinkUtils
 import ai.chronon.online.{TopicChecker, TopicInfo}
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.serialization.DeserializationSchema
@@ -16,7 +17,7 @@ class KafkaFlinkSource[T](props: Map[String, String],
   import KafkaFlinkSource._
   val bootstrap: String = {
     // we first check props for the bootstrap server and fallback to topicInfo if not found
-    FlinkSourceProvider
+    FlinkUtils
       .getProperty(KafkaBootstrap, props, topicInfo)
       .orElse(getBootstrapFromHostPort(topicInfo.params.get("host"), topicInfo.params.get("port")))
       .getOrElse(throw new IllegalArgumentException("No bootstrap servers provided"))
