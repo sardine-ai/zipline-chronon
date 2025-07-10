@@ -31,7 +31,7 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
 
     val metaData = MetaDataUtils.layer(groupBy.metaData,
                                        "backfill",
-                                       groupBy.metaData.name + "/backfill",
+                                       groupBy.metaData.name + "__backfill",
                                        groupByTableDeps,
                                        Option(effectiveStepDays))
 
@@ -51,7 +51,7 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
     val metaData =
       MetaDataUtils.layer(groupBy.metaData,
                           "upload",
-                          groupBy.metaData.name + "/upload",
+                          groupBy.metaData.name + "__upload",
                           groupByTableDeps,
                           Some(stepDays))
 
@@ -75,7 +75,7 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
     val metaData =
       MetaDataUtils.layer(groupBy.metaData,
                           GroupByPlanner.UploadToKV,
-                          groupBy.metaData.name + s"/${GroupByPlanner.UploadToKV}",
+                          groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}",
                           uploadToKVTableDeps,
                           None)
 
@@ -89,7 +89,7 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
       val tableDep = new TableDependency()
         .setTableInfo(
           new TableInfo()
-            .setTable(groupBy.metaData.outputTable + s"_${GroupByPlanner.UploadToKV}")
+            .setTable(groupBy.metaData.outputTable + s"__${GroupByPlanner.UploadToKV}")
         )
         .setStartOffset(WindowUtils.zero())
         .setEndOffset(WindowUtils.zero())
@@ -98,7 +98,7 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
       val metaData =
         MetaDataUtils.layer(groupBy.metaData,
                             GroupByPlanner.Streaming,
-                            groupBy.metaData.name + s"/${GroupByPlanner.Streaming}",
+                            groupBy.metaData.name + s"__${GroupByPlanner.Streaming}",
                             streamingTableDeps,
                             None)
 

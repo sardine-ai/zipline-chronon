@@ -19,7 +19,7 @@ case class StagingQueryPlanner(stagingQuery: StagingQuery)(implicit outputPartit
     val metaData = MetaDataUtils.layer(
       stagingQuery.metaData,
       "backfill",
-      stagingQuery.metaData.name + "/backfill",
+      stagingQuery.metaData.name + "__backfill",
       TableDependencies.fromStagingQuery(stagingQuery),
       Some(1) // Default step days for staging queries
     )

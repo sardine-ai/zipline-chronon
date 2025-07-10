@@ -62,6 +62,14 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     plan.terminalNodeNames.asScala.size shouldBe 2
     plan.terminalNodeNames.containsKey(Mode.DEPLOY) shouldBe true
     plan.terminalNodeNames.containsKey(Mode.BACKFILL) shouldBe true
+
+    // Validate that no node names contain forward slashes
+    plan.nodes.asScala.foreach { node =>
+      val nodeName = node.metaData.name
+      withClue(s"Node name '$nodeName' contains forward slash") {
+        nodeName should not contain "/"
+      }
+    }
   }
 
   it should "always plan nonzero step days" in {

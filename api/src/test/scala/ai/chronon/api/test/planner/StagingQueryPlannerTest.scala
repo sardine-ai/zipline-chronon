@@ -29,6 +29,14 @@ class StagingQueryPlannerTest extends AnyFlatSpec with Matchers {
         noException should be thrownBy {
           val plan = planner.buildPlan
           plan.terminalNodeNames.asScala.size should be > 0
+
+          // Validate that no node names contain forward slashes
+          plan.nodes.asScala.foreach { node =>
+            val nodeName = node.metaData.name
+            withClue(s"Node name '$nodeName' contains forward slash") {
+              nodeName should not contain "/"
+            }
+          }
         }
       }
   }
@@ -49,6 +57,14 @@ class StagingQueryPlannerTest extends AnyFlatSpec with Matchers {
       val plan = planner.buildPlan
       plan.nodes.asScala should not be empty
       plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.BACKFILL
+
+      // Validate that no node names contain forward slashes
+      plan.nodes.asScala.foreach { node =>
+        val nodeName = node.metaData.name
+        withClue(s"Node name '$nodeName' contains forward slash") {
+          nodeName should not contain "/"
+        }
+      }
     }
   }
 

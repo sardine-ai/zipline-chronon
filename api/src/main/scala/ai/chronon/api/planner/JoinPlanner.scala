@@ -57,7 +57,7 @@ class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
       .setJoin(joinWithoutExecutionInfo)
 
     // bootstrap tables are unfortunately unique to the join - can't be re-used if a new join part is added
-    val bootstrapNodeName = join.metaData.name + "/boostrap"
+    val bootstrapNodeName = join.metaData.name + "__bootstrap"
 
     val tableDeps = bootstrapParts.toScala.map { bp =>
       TableDependencies.fromTable(bp.table, bp.query)
