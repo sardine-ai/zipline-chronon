@@ -48,14 +48,17 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
       logger.error(s"Couldn't fetch GroupByServingInfo for ${request.name}", ex)
       request.context.foreach(_.incrementException(ex))
       throw ex
+
     }
     .map { groupByServingInfo =>
       val context =
         request.context.getOrElse(
           metrics.Metrics.Context(metrics.Metrics.Environment.GroupByFetching, groupByServingInfo.groupBy))
       context.increment("group_by_request.count")
+
       var batchKeyBytes: Array[Byte] = null
       var streamingKeyBytes: Array[Byte] = null
+
       try {
         // The formats of key bytes for batch requests and key bytes for streaming requests may differ based
         // on the KVStore implementation, so we encode each distinctly.
@@ -65,17 +68,19 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
         streamingKeyBytes = fetchContext.kvStore.createKeyBytes(request.keys,
                                                                 groupByServingInfo,
                                                                 groupByServingInfo.groupByOps.streamingDataset)
+
       } catch {
+
         // TODO: only gets hit in cli path - make this code path just use avro schema to decode keys directly in cli
         // TODO: Remove this code block
         case ex: Exception =>
-          val castedKeys = groupByServingInfo.keyChrononSchema.fields.map { case StructField(name, typ) =>
-            name -> ColumnAggregator.castTo(request.keys.getOrElse(name, null), typ)
-          }.toMap
+          val castedKeys = groupByServingInfo.keyChrononSchema.cast(request.keys)
+
           try {
             batchKeyBytes = fetchContext.kvStore.createKeyBytes(castedKeys,
                                                                 groupByServingInfo,
                                                                 groupByServingInfo.groupByOps.batchDataset)
+
             streamingKeyBytes = fetchContext.kvStore.createKeyBytes(castedKeys,
                                                                     groupByServingInfo,
                                                                     groupByServingInfo.groupByOps.streamingDataset)
@@ -84,6 +89,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
               exInner.addSuppressed(ex)
               throw new RuntimeException("Couldn't encode request keys or casted keys", exInner)
           }
+
       }
 
       val batchRequest = GetRequest(batchKeyBytes, groupByServingInfo.groupByOps.batchDataset)
@@ -114,8 +120,12 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
 
         // no further aggregation is required - the value in KvStore is good as is
         case Accuracy.SNAPSHOT => None
+
       }
-      LambdaKvRequest(groupByServingInfo, batchRequest, streamingRequestOpt, request.atMillis, context)
+
+      val castedRequest = request.copy(keys = groupByServingInfo.keyChrononSchema.cast(request.keys))
+      LambdaKvRequest(groupByServingInfo, castedRequest, batchRequest, streamingRequestOpt, request.atMillis, context)
+
     }
 
   private def attemptDerivations(request: Fetcher.Request,
@@ -129,32 +139,10 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
     derivedMapTry match {
       case Success(derivedMap) =>
         derivedMap
-      // If the derivation failed we want to return the exception map and rename only derivation
       case Failure(exception) =>
         requestContext.metricsContext.incrementException(exception)
-
-        val derivedExceptionMap =
-          Map("derivation_fetch_exception" -> exception.traceString.asInstanceOf[AnyRef])
-        val renameOnlyDeriveFunction =
-          buildRenameOnlyDerivationFunction(requestContext.servingInfo.groupBy.derivationsScala)
-
-        val renameOnlyDerivedMapTry: Try[Map[String, AnyRef]] = Try {
-          renameOnlyDeriveFunction(request.keys, responseMap)
-            .mapValues(_.asInstanceOf[AnyRef])
-            .toMap
-        }
-
-        // if the rename only derivation also failed we want to return the exception map
-        val renameOnlyDerivedMap: Map[String, AnyRef] = renameOnlyDerivedMapTry match {
-          case Success(renameOnlyDerivedMap) =>
-            renameOnlyDerivedMap
-          case Failure(exception) =>
-            requestContext.metricsContext.incrementException(exception)
-            Map("derivation_rename_exception" -> exception.traceString.asInstanceOf[AnyRef])
-        }
-
-        renameOnlyDerivedMap ++ derivedExceptionMap
-
+        logger.error(s"Failed to derive values for request: ${request.name}@${request.keys}", exception)
+        Map("derivation_exception" -> exception.traceString.asInstanceOf[AnyRef])
     }
   }
 
@@ -185,7 +173,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
       LRUCache.collectCaffeineCacheMetrics(caffeineMetricsContext, cache.cache, cache.cacheName))
 
     val allRequestsToFetch: Seq[GetRequest] = groupByRequestToKvRequest.flatMap {
-      case (_, Success(LambdaKvRequest(_, batchRequest, streamingRequestOpt, _, _))) =>
+      case (_, Success(LambdaKvRequest(_, _, batchRequest, streamingRequestOpt, _, _))) =>
         // If a batch request is cached, don't include it in the list of requests to fetch because the batch IRs already cached
         if (cachedRequests.contains(batchRequest)) streamingRequestOpt else Some(batchRequest) ++ streamingRequestOpt
 
@@ -216,7 +204,8 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
 
         val responses: Seq[Response] = groupByRequestToKvRequest.iterator.map { case (request, requestMetaTry) =>
           val responseMapTry: Try[Map[String, AnyRef]] = requestMetaTry.map { requestMeta =>
-            val LambdaKvRequest(groupByServingInfo, batchRequest, streamingRequestOpt, _, context) = requestMeta
+            val LambdaKvRequest(groupByServingInfo, castedRequest, batchRequest, streamingRequestOpt, _, context) =
+              requestMeta
 
             context.count("multi_get.batch.size", allRequestsToFetch.length)
             context.distribution("multi_get.bytes", totalResponseValueBytes)
@@ -266,11 +255,13 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
               }
 
             if (groupByServingInfo.groupBy.hasDerivations) {
-              attemptDerivations(request, groupByResponse, requestContext = requestContext)
+              attemptDerivations(castedRequest, groupByResponse, requestContext = requestContext)
             } else {
               groupByResponse
             }
+
           }
+
           Response(request, responseMapTry)
         }.toList
         responses
@@ -342,6 +333,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
 }
 
 case class LambdaKvRequest(groupByServingInfoParsed: GroupByServingInfoParsed,
+                           castedGroupByRequest: Fetcher.Request,
                            batchRequest: GetRequest,
                            streamingRequestOpt: Option[GetRequest],
                            endTs: Option[Long],

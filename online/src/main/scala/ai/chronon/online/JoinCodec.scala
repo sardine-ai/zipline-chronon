@@ -65,7 +65,7 @@ case class JoinCodec(conf: JoinOps,
   @transient lazy val deriveFunc: DerivationFunc =
     buildDerivationFunction(conf.derivationsScala, keySchema, baseValueSchema)
 
-  @transient lazy val renameOnlyDeriveFunc: (Map[String, Any], Map[String, Any]) => Map[String, Any] =
+  @transient lazy val renameOnlyDeriveFunc: DerivationFunc =
     buildRenameOnlyDerivationFunction(conf.derivationsScala)
 
   @transient lazy val valueCodec: AvroCodec = AvroCodec.of(AvroConversions.fromChrononSchema(valueSchema).toString)

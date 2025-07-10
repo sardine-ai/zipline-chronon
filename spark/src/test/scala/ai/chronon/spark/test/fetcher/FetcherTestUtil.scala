@@ -2,6 +2,7 @@ package ai.chronon.spark.test.fetcher
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
+import ai.chronon.api.Builders.Derivation
 import ai.chronon.api.{
   Accuracy,
   BooleanType,
@@ -62,6 +63,7 @@ object FetcherTestUtil {
             .map(r =>
               r.copy(keys = r.keys.mapValues { v =>
                 if (v.isInstanceOf[java.lang.Long]) v.toString else v
+              // v
               }.toMap))
           val responses = if (useJavaFetcher) {
             // Converting to java request and using the toScalaRequest functionality to test conversion
@@ -268,6 +270,143 @@ object FetcherTestUtil {
       left = leftSource,
       joinParts = Seq(Builders.JoinPart(groupBy = groupBy)),
       metaData = Builders.MetaData(name = "unit_test.fetcher_mutations_join", namespace = namespace, team = "chronon")
+    )
+    joinConf
+  }
+
+  def generateMutationDataWithUniqueTopK(namespace: String, tableUtils: TableUtils, spark: SparkSession): api.Join = {
+    tableUtils.createDatabase(namespace)
+    def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)
+
+    // Create manual struct data for UniqueTopK testing
+    val eventData = Seq(
+      Row(1L, toTs("2021-04-10 09:00:00"), "2021-04-10"),
+      Row(2L, toTs("2021-04-10 23:00:00"), "2021-04-10")
+    )
+
+    val structData = Seq(
+      Row(1L, toTs("2021-04-04 00:30:00"), Row("z", 1L, 100), "2021-04-09"),
+      Row(1L, toTs("2021-04-05 00:30:00"), Row("y", 2L, 200), "2021-04-09"),
+      Row(1L, toTs("2021-04-06 00:30:00"), Row("x", 3L, 300), "2021-04-09"),
+      Row(1L, toTs("2021-04-07 00:30:00"), Row("w", 4L, 500), "2021-04-08"),
+      Row(2L, toTs("2021-04-04 01:30:00"), Row("a", 5L, 150), "2021-04-08"),
+      Row(2L, toTs("2021-04-05 01:30:00"), Row("b", 6L, 250), "2021-04-08"),
+      Row(1L, toTs("2021-04-04 00:30:00"), Row("z", 1L, 100), "2021-04-10"),
+      Row(1L, toTs("2021-04-05 00:30:00"), Row("y", 2L, 200), "2021-04-10"),
+      Row(1L, toTs("2021-04-06 00:30:00"), Row("x", 3L, 300), "2021-04-10"),
+      Row(1L, toTs("2021-04-07 00:30:00"), Row("w", 4L, 500), "2021-04-10"),
+      Row(2L, toTs("2021-04-04 01:30:00"), Row("a", 5L, 150), "2021-04-10"),
+      Row(2L, toTs("2021-04-05 01:30:00"), Row("b", 6L, 250), "2021-04-10")
+    )
+
+    val mutationData = Seq(
+      Row(1L,
+          toTs("2021-04-08 00:30:00"),
+          Row("z", 1L, 400),
+          "2021-04-09",
+          toTs("2021-04-08 00:30:00"),
+          false
+      ), // duplicate unique_id
+      Row(1L, toTs("2021-04-09 00:30:00"), Row("v", 7L, 600), "2021-04-09", toTs("2021-04-09 00:30:00"), false)
+    )
+
+    // Event schema
+    val eventSchema = StructType(
+      "listing_events_struct",
+      Array(StructField("listing_id", LongType), StructField("ts", LongType), StructField("ds", StringType))
+    )
+
+    // Struct snapshot schema
+    val structSnapshotSchema = StructType(
+      "listing_struct_snapshot",
+      Array(
+        StructField("listing_id", LongType),
+        StructField("ts", LongType),
+        StructField("rating_struct",
+                    StructType("RatingStruct",
+                               Array(
+                                 StructField("sort_key", StringType),
+                                 StructField("unique_id", LongType),
+                                 StructField("value", IntType)
+                               ))),
+        StructField("ds", StringType)
+      )
+    )
+
+    // Struct mutation schema
+    val structMutationSchema = StructType(
+      "listing_struct_mutation",
+      Array(
+        StructField("listing_id", LongType),
+        StructField("ts", LongType),
+        StructField("rating_struct",
+                    StructType("RatingStruct",
+                               Array(
+                                 StructField("sort_key", StringType),
+                                 StructField("unique_id", LongType),
+                                 StructField("value", IntType)
+                               ))),
+        StructField("ds", StringType),
+        StructField("mutation_time", LongType),
+        StructField("is_before_reversal", BooleanType)
+      )
+    )
+
+    spark
+      .createDataFrame(eventData.toJava, SparkConversions.fromChrononSchema(eventSchema))
+      .save(s"$namespace.${eventSchema.name}")
+
+    spark
+      .createDataFrame(structData.toJava, SparkConversions.fromChrononSchema(structSnapshotSchema))
+      .save(s"$namespace.${structSnapshotSchema.name}")
+
+    spark
+      .createDataFrame(mutationData.toJava, SparkConversions.fromChrononSchema(structMutationSchema))
+      .save(s"$namespace.${structMutationSchema.name}")
+
+    val structSource = Builders.Source.entities(
+      query = Builders.Query(
+        selects = Map("listing_id" -> "listing_id", "ts" -> "ts", "rating_struct" -> "rating_struct"),
+        startPartition = "2021-04-01",
+        endPartition = "2021-04-10",
+        mutationTimeColumn = "mutation_time",
+        reversalColumn = "is_before_reversal"
+      ),
+      snapshotTable = s"$namespace.${structSnapshotSchema.name}",
+      mutationTable = s"$namespace.${structMutationSchema.name}",
+      mutationTopic = "blank"
+    )
+
+    val leftSource = Builders.Source.events(
+      query = Builders.Query(
+        selects = Builders.Selects("listing_id", "ts"),
+        startPartition = "2021-04-01"
+      ),
+      table = s"$namespace.${eventSchema.name}"
+    )
+
+    val groupBy = Builders.GroupBy(
+      sources = Seq(structSource),
+      keyColumns = Seq("listing_id"),
+      aggregations = Seq(
+        Builders.Aggregation(
+          operation = Operation.UNIQUE_TOP_K,
+          inputColumn = "rating_struct",
+          argMap = Map("k" -> "3"),
+          windows = null
+        )
+      ),
+      derivations = Seq(
+        Derivation("ids", "transform(rating_struct_unique_top3, x -> x.unique_id)")
+      ),
+      accuracy = Accuracy.TEMPORAL,
+      metaData = Builders.MetaData(name = "unit_test.struct_unique_topk_gb", namespace = namespace, team = "chronon")
+    )
+
+    val joinConf = Builders.Join(
+      left = leftSource,
+      joinParts = Seq(Builders.JoinPart(groupBy = groupBy)),
+      metaData = Builders.MetaData(name = "unit_test.struct_unique_topk_join", namespace = namespace, team = "chronon")
     )
     joinConf
   }

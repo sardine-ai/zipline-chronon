@@ -252,16 +252,7 @@ class Fetcher(val kvStore: KVStore,
                    codec: AvroCodec,
                    dataMap: Map[String, AnyRef],
                    cast: Boolean = false): Array[Byte] = {
-      val data = schema.fields.map { case StructField(name, typ) =>
-        val elem = dataMap.getOrElse(name, null)
-        // handle cases where a join contains keys of the same name but different types
-        // e.g. `listing` is a long in one groupby, but a string in another groupby
-        if (cast) {
-          ColumnAggregator.castTo(elem, typ)
-        } else {
-          elem
-        }
-      }
+      val data = schema.castArr(dataMap)
       val avroRecord =
         AvroConversions.fromChrononRow(data, schema, codec.schema).asInstanceOf[GenericRecord]
       codec.encodeBinary(avroRecord)

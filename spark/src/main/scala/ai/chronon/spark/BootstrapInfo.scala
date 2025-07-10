@@ -83,7 +83,7 @@ object BootstrapInfo {
     implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
     // Enrich each join part with the expected output schema
     logger.info(s"\nCreating BootstrapInfo for GroupBys for Join ${joinConf.metaData.name}")
-    var joinParts: Seq[JoinPartMetadata] = Option(joinConf.joinParts.toScala)
+    var joinPartMetadataSeq: Seq[JoinPartMetadata] = Option(joinConf.joinParts.toScala)
       .getOrElse(Seq.empty)
       .map(part => {
         val gb = GroupBy.from(part.groupBy, range, tableUtils, computeDependency = true)
@@ -97,15 +97,21 @@ object BootstrapInfo {
         // we need to revisit logic for the logging part to make sure the derived columns are also logged
         // to make bootstrap continue to work
         val outputSchema = if (part.groupBy.hasDerivations) {
-          val sparkSchema = {
-            StructType(SparkConversions.fromChrononSchema(gb.outputSchema).fields ++ keyAndPartitionFields)
-          }
+
+          val sparkSchema = StructType(
+            SparkConversions.fromChrononSchema(gb.outputSchema).fields ++
+              keyAndPartitionFields
+          )
+
           val dummyOutputDf = tableUtils.sparkSession
             .createDataFrame(tableUtils.sparkSession.sparkContext.parallelize(immutable.Seq[Row]()), sparkSchema)
+
           val finalOutputColumns = part.groupBy.derivationsScala.finalOutputColumn(dummyOutputDf.columns).toSeq
           val derivedDummyOutputDf = dummyOutputDf.select(finalOutputColumns: _*)
+
           val columns = SparkConversions.toChrononSchema(
             StructType(derivedDummyOutputDf.schema.filterNot(keyAndPartitionFields.contains)))
+
           api.StructType("", columns.map(tup => api.StructField(tup._1, tup._2)))
         } else {
           gb.outputSchema
@@ -128,13 +134,14 @@ object BootstrapInfo {
       .map(schema => SparkConversions.toChrononSchema(schema))
       .map(_.map(field => StructField(field._1, field._2)))
       .getOrElse(Array.empty[StructField])
-    val baseFields = joinParts.flatMap(_.valueSchema) ++ externalParts.flatMap(_.valueSchema) ++ leftFields
+    val baseFields = joinPartMetadataSeq.flatMap(_.valueSchema) ++ externalParts.flatMap(_.valueSchema) ++ leftFields
     val sparkSchema = StructType(SparkConversions.fromChrononSchema(api.StructType("", baseFields.toArray)))
 
     val baseDf = tableUtils.sparkSession.createDataFrame(
       tableUtils.sparkSession.sparkContext.parallelize(immutable.Seq[Row]()),
       sparkSchema
     )
+
     val derivedSchema = if (joinConf.hasDerivations) {
       val projections = joinConf.derivationsScala.derivationProjection(baseDf.columns)
       val projectionMap = projections.toMap
@@ -267,10 +274,11 @@ object BootstrapInfo {
       }
     }
 
-    joinParts = joinParts.map { part =>
+    joinPartMetadataSeq = joinPartMetadataSeq.map { part =>
       part.copy(derivationDependencies = findDerivationDependencies(part))
     }
-    val bootstrapInfo = BootstrapInfo(joinConf, joinParts, externalParts, derivedSchema.map(_._1), hashToSchema)
+    val bootstrapInfo =
+      BootstrapInfo(joinConf, joinPartMetadataSeq, externalParts, derivedSchema.map(_._1), hashToSchema)
 
     // validate that all selected fields except keys from (non-log) bootstrap tables match with
     // one of defined fields in join parts or external parts
@@ -308,7 +316,7 @@ object BootstrapInfo {
     }
 
     logger.info(s"\n======= Finalized Bootstrap Info ${joinConf.metaData.name} =======\n")
-    joinParts.foreach { metadata =>
+    joinPartMetadataSeq.foreach { metadata =>
       logger.info(s"""Bootstrap Info for Join Part `${metadata.joinPart.groupBy.metaData.name}`
            |Key Schema:
            |${stringify(metadata.keySchema)}

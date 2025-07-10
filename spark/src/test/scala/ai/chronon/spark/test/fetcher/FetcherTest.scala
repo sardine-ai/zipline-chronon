@@ -204,6 +204,12 @@ class FetcherTest extends AnyFlatSpec {
     compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
   }
 
+  it should "test temporal fetch join deterministic with UniqueTopK struct" in {
+    val namespace = "deterministic_unique_topk_fetch"
+    val joinConf = FetcherTestUtil.generateMutationDataWithUniqueTopK(namespace, tableUtils, spark)
+    compareTemporalFetch(joinConf, "2021-04-10", namespace, consistencyCheck = false, dropDsOnWrite = true)
+  }
+
   it should "test temporal fetch join generated" in {
     val namespace = "generated_fetch"
     val joinConf = FetcherTestUtil.generateRandomData(namespace, tableUtils, spark, topic, today, yesterday)

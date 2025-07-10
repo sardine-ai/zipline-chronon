@@ -37,6 +37,7 @@ import java.util
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
+import org.apache.spark.sql.Row
 
 class Sum[I: Numeric](inputType: DataType) extends SimpleAggregator[I, I, I] {
   private val numericImpl = implicitly[Numeric[I]]
@@ -757,4 +758,153 @@ class Skew extends MomentAggregator {
 class Kurtosis extends MomentAggregator {
   override def finalize(ir: MomentsIR): Double =
     if (ir.n < 4 || ir.m2 == 0) Double.NaN else ir.n * ir.m4 / (ir.m2 * ir.m2) - 3
+}
+
+class UniqueTopKHelper[T](inputType: DataType, k: Int, maxSizeOpt: Option[Int] = None) {
+
+  private val maxSize: Int = maxSizeOpt.getOrElse(2 * k)
+
+  // Define the order type and create operator based on input type
+  val (operator, stateProvider) = inputType match {
+    case IntType =>
+      val getOrderKeyInt = (x: T) => x.asInstanceOf[Int]
+      val getIdInt = (x: T) => x.asInstanceOf[Int].toLong
+      val op = UniqueOrderByLimit.Operator[T, Int](getOrderKeyInt, getIdInt, k, maxSize, topK = true)
+      val provider = new StateProvider[T, Int]
+      (op, provider)
+
+    case LongType =>
+      val getOrderKeyLong = (x: T) => x.asInstanceOf[Long]
+      val getIdLong = (x: T) => x.asInstanceOf[Long]
+      val op = UniqueOrderByLimit.Operator[T, Long](getOrderKeyLong, getIdLong, k, maxSize, topK = true)
+      val provider = new StateProvider[T, Long]
+      (op, provider)
+
+    case StringType =>
+      val getOrderKeyString = (x: T) => x.asInstanceOf[String]
+      val getIdString = (x: T) => x.asInstanceOf[String].hashCode.toLong
+      val op = UniqueOrderByLimit.Operator[T, String](getOrderKeyString, getIdString, k, maxSize, topK = true)
+      val provider = new StateProvider[T, String]
+      (op, provider)
+
+    case structType: StructType =>
+      val sortKeyField = structType.fields.find(_.name == "sort_key")
+      val uniqueIdField = structType.fields.find(_.name == "unique_id")
+
+      require(sortKeyField.isDefined && sortKeyField.get.fieldType == StringType,
+              "Struct must have 'sort_key' field of type String")
+      require(uniqueIdField.isDefined && uniqueIdField.get.fieldType == LongType,
+              "Struct must have 'unique_id' field of type Long")
+
+      val sortKeyIndex = structType.fields.indexWhere(_.name == "sort_key")
+      val uniqueIdIndex = structType.fields.indexWhere(_.name == "unique_id")
+
+      val getOrderKeyStruct = (x: T) =>
+        x match {
+          case arr: Array[Any]               => arr(sortKeyIndex).asInstanceOf[String]
+          case row: org.apache.spark.sql.Row => row.getString(sortKeyIndex)
+        }
+
+      val getIdStruct = (x: T) =>
+        x match {
+          case arr: Array[Any]               => arr(uniqueIdIndex).asInstanceOf[Long]
+          case row: org.apache.spark.sql.Row => row.getLong(uniqueIdIndex)
+        }
+
+      val op = UniqueOrderByLimit.Operator[T, String](getOrderKeyStruct, getIdStruct, k, maxSize, topK = true)
+      val provider = new StateProvider[T, String]
+      (op, provider)
+
+    case _ =>
+      throw new IllegalArgumentException(
+        s"Unsupported input type for UniqueTopK: $inputType. " +
+          s"Use one of Int, Long, String or Struct(... sort_key: String, unique_id: Long)."
+      )
+  }
+
+  // Helper class to handle type erasure
+  class StateProvider[T, OrderType] {
+    def initState(): Any = UniqueOrderByLimit.initState[T, OrderType]
+
+    def insert(elem: T, state: Any): Unit =
+      operator
+        .asInstanceOf[UniqueOrderByLimit.Operator[T, OrderType]]
+        .insert(elem, state.asInstanceOf[UniqueOrderByLimit.State[T, OrderType]])
+
+    def merge(state1: Any, state2: Any): Any = {
+
+      val s1 = state1.asInstanceOf[UniqueOrderByLimit.State[T, OrderType]]
+      val s2 = state2.asInstanceOf[UniqueOrderByLimit.State[T, OrderType]]
+
+      val it = s2.elems.iterator()
+      while (it.hasNext) {
+        val elem = it.next()
+        operator.asInstanceOf[UniqueOrderByLimit.Operator[T, OrderType]].insert(elem, s1)
+      }
+
+      s1
+    }
+
+    def finalize(state: Any): util.ArrayList[T] = {
+      val s = state.asInstanceOf[UniqueOrderByLimit.State[T, OrderType]]
+      operator.asInstanceOf[UniqueOrderByLimit.Operator[T, OrderType]].sortAndPrune(s)
+      s.elems
+    }
+
+    def clone(state: Any): Any = {
+      val s = state.asInstanceOf[UniqueOrderByLimit.State[T, OrderType]]
+      val clonedElems = new util.ArrayList[T](s.elems)
+      val clonedIds = new util.HashSet[Long](s.ids)
+      UniqueOrderByLimit.State[T, OrderType](clonedElems, clonedIds, s.orderWaterMark)
+    }
+    def normalize(state: Any): Any = {
+      state.asInstanceOf[UniqueOrderByLimit.State[T, OrderType]].elems
+    }
+    def denormalize(elems: Any): Any = {
+      operator
+        .asInstanceOf[UniqueOrderByLimit.Operator[T, OrderType]]
+        .buildStateFromElems(elems.asInstanceOf[util.ArrayList[T]])
+    }
+  }
+}
+
+class UniqueTopKAggregator[T](inputType: DataType, k: Int, maxSizeOpt: Option[Int] = None)
+    extends SimpleAggregator[T, Any, util.ArrayList[T]] {
+
+  private val uniqueTopK = new UniqueTopKHelper[T](inputType, k, maxSizeOpt)
+
+  override def outputType: DataType = ListType(inputType)
+
+  override def irType: DataType = ListType(inputType)
+
+  override def prepare(input: T): Any = {
+    val state = uniqueTopK.stateProvider.initState()
+    uniqueTopK.stateProvider.insert(input, state)
+    state
+  }
+
+  override def update(ir: Any, input: T): Any = {
+    uniqueTopK.stateProvider.insert(input, ir)
+    ir
+  }
+
+  override def merge(ir1: Any, ir2: Any): Any = {
+    uniqueTopK.stateProvider.merge(ir1, ir2)
+  }
+
+  override def finalize(ir: Any): util.ArrayList[T] = {
+    uniqueTopK.stateProvider.finalize(ir)
+  }
+
+  override def clone(ir: Any): Any = {
+    uniqueTopK.stateProvider.clone(ir)
+  }
+
+  override def normalize(ir: Any): Any = {
+    uniqueTopK.stateProvider.normalize(ir)
+  }
+
+  override def denormalize(normalized: Any): Any = {
+    uniqueTopK.stateProvider.denormalize(normalized)
+  }
 }

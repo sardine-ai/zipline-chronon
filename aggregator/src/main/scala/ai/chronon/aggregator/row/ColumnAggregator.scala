@@ -134,39 +134,6 @@ case class ColumnIndices(input: Int, output: Int)
 
 object ColumnAggregator {
 
-  private def toJLong(l: Long): java.lang.Long = java.lang.Long.valueOf(l)
-  private def toJDouble(d: Double): java.lang.Double = java.lang.Double.valueOf(d)
-
-  def castToLong(value: AnyRef): AnyRef =
-    value match {
-      case i: java.lang.Integer => toJLong(i.longValue())
-      case i: java.lang.Short   => toJLong(i.longValue())
-      case i: java.lang.Byte    => toJLong(i.longValue())
-      case i: java.lang.Double  => toJLong(i.longValue())
-      case i: java.lang.Float   => toJLong(i.longValue())
-      case i: java.lang.String  => toJLong(java.lang.Long.parseLong(i))
-      case _                    => value
-    }
-
-  def castToDouble(value: AnyRef): AnyRef =
-    value match {
-      case i: java.lang.Integer => toJDouble(i.doubleValue())
-      case i: java.lang.Short   => toJDouble(i.doubleValue())
-      case i: java.lang.Byte    => toJDouble(i.doubleValue())
-      case i: java.lang.Float   => toJDouble(i.doubleValue())
-      case i: java.lang.Long    => toJDouble(i.doubleValue())
-      case i: java.lang.String  => toJDouble(java.lang.Double.parseDouble(i))
-      case _                    => value
-    }
-
-  def castTo(value: AnyRef, typ: DataType): AnyRef =
-    typ match {
-      // TODO this might need more type handling
-      case LongType   => castToLong(value)
-      case DoubleType => castToDouble(value)
-      case _          => value
-    }
-
   private def cast[T](any: Any): T = any.asInstanceOf[T]
 
   // does null checks and up casts types to feed into typed aggregators
@@ -421,6 +388,16 @@ object ColumnAggregator {
           case FloatType  => simple(new BottomK[Float](inputType, k))
           case StringType => simple(new BottomK[String](inputType, k))
           case _          => mismatchException
+        }
+
+      case Operation.UNIQUE_TOP_K =>
+        val k = aggregationPart.getInt("k")
+        inputType match {
+          case IntType        => simple(new UniqueTopKAggregator[Int](inputType, k))
+          case LongType       => simple(new UniqueTopKAggregator[Long](inputType, k))
+          case StringType     => simple(new UniqueTopKAggregator[String](inputType, k))
+          case st: StructType => simple(new UniqueTopKAggregator[Array[Any]](inputType, k))
+          case _              => mismatchException
         }
 
       case Operation.FIRST   => timed(new First(inputType))

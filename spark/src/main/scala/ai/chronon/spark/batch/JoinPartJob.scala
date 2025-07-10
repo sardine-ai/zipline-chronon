@@ -3,6 +3,7 @@ package ai.chronon.spark.batch
 import ai.chronon.api.DataModel.{ENTITIES, EVENTS}
 import ai.chronon.api.Extensions.{DateRangeOps, DerivationOps, GroupByOps, JoinPartOps, MetadataOps}
 import ai.chronon.api.PartitionRange.toTimeRange
+import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.api._
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.planner.JoinPartNode
@@ -11,7 +12,7 @@ import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.{GroupBy, JoinUtils}
 import ai.chronon.spark.join.UnionJoin
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, date_format}
+import org.apache.spark.sql.functions.{col, column, date_format}
 import org.apache.spark.util.sketch.BloomFilter
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -86,10 +87,12 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
     // Can kill the option after we deprecate monolith join job
     jobContext.leftDf.foreach { leftDf =>
       try {
+
         val start = System.currentTimeMillis()
         val prunedLeft = leftDf.prunePartitions(leftRange) // We can kill this after we deprecate monolith join job
         val filledDf =
           computeJoinPart(prunedLeft, joinPart, jobContext.joinLevelBloomMapOpt, skipBloom = jobContext.runSmallMode)
+
         // Cache join part data into intermediate table
         if (filledDf.isDefined) {
           logger.info(s"Writing to join part table: $partTable for partition range $rightRange")
@@ -97,6 +100,7 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
         } else {
           logger.info(s"Skipping $partTable because no data in computed joinPart.")
         }
+
         val elapsedMins = (System.currentTimeMillis() - start) / 60000
         partMetrics.gauge(Metrics.Name.LatencyMinutes, elapsedMins)
         logger.info(s"Wrote to join part table: $partTable in $elapsedMins minutes")
@@ -226,16 +230,24 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
     }
 
     val rightDfWithDerivations = if (joinPart.groupBy.hasDerivations) {
-      val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(rightDf.columns).toSeq
+
+      val finalOutputColumns = joinPart.groupBy.derivationsScala.finalOutputColumn(
+        rightDf.columns,
+        ensureKeys = joinPart.groupBy.keys(tableUtils.partitionColumn)
+      )
+
       val result = rightDf.select(finalOutputColumns: _*)
       result
+
     } else {
       rightDf
     }
+
     if (showDf) {
       logger.info(s"printing results for joinPart: ${joinPart.groupBy.metaData.name}")
       rightDfWithDerivations.prettyPrint()
     }
+
     Some(rightDfWithDerivations)
   }
 }
