@@ -67,6 +67,19 @@ object MetaDataUtils {
       result.conf.unsetModeConfigs()
     }
 
+    if (executionInfo.clusterConf != null) {
+      val clusterMerged = new util.HashMap[String, String]()
+      if (executionInfo.clusterConf.common != null) clusterMerged.putAll(executionInfo.clusterConf.common)
+      if (executionInfo.clusterConf.modeClusterConfigs != null) {
+        val modeConf = executionInfo.clusterConf.modeClusterConfigs.get(mode)
+        if (modeConf != null) clusterMerged.putAll(modeConf)
+      }
+
+      result.clusterConf.setCommon(clusterMerged)
+      result.clusterConf.unsetModeClusterConfigs()
+
+    }
+
     if (executionInfo.env != null) {
       val merged = new util.HashMap[String, String]()
 

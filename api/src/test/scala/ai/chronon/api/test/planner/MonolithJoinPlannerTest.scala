@@ -105,8 +105,8 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
     plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.BACKFILL
     plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.DEPLOY
-    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.BACKFILL) should equal("testJoin/backfill")
-    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.DEPLOY) should equal("testJoin/metadata_upload")
+    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.BACKFILL) should equal("testJoin__backfill")
+    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.DEPLOY) should equal("testJoin__metadata_upload")
   }
 
   it should "monolith join planner should respect step days from execution info" in {
@@ -206,7 +206,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
 
     // Verify metadata upload node name
-    metadataUploadNode.metaData.name should equal("testJoin/metadata_upload")
+    metadataUploadNode.metaData.name should equal("testJoin__metadata_upload")
 
     // Verify the wrapped join is correct
     metadataUploadNode.content.getJoinMetadataUpload.join should equal(join)

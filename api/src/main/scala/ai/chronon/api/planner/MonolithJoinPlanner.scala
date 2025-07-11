@@ -64,7 +64,7 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
     val metaData =
       MetaDataUtils.layer(join.metaData,
                           "metadata_upload",
-                          join.metaData.name + "/metadata_upload",
+                          join.metaData.name + "__metadata_upload",
                           joinPartDeps,
                           Some(stepDays))
     val node = new planner.JoinMetadataUpload().setJoin(join)

@@ -105,8 +105,8 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     noException should be thrownBy {
       val plan = planner.buildPlan
       validateGBPlan(planner.groupBy, plan)
-      plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges/uploadToKV")
-      plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges/backfill")
+      plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges__uploadToKV")
+      plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges__backfill")
     }
   }
 
@@ -186,8 +186,8 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     validateGBPlan(gb, plan)
 
     // DEPLOY mode should now point to streaming node
-    plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges/streaming")
-    plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges/backfill")
+    plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges__streaming")
+    plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges__backfill")
 
     // Verify streaming node has correct table dependencies (same as uploadToKV)
     val streamingNode = plan.nodes.asScala.find(_.content.isSetGroupByStreaming).get
@@ -196,7 +196,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
     tableDeps should have size 1
     val tableDep = tableDeps.head
-    tableDep.tableInfo.table should equal(gb.metaData.outputTable + "_uploadToKV")
+    tableDep.tableInfo.table should equal(gb.metaData.outputTable + "__uploadToKV")
   }
 }
 
