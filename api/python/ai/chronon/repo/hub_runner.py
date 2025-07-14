@@ -51,7 +51,7 @@ def backfill(repo,
     - Call the actual run API
     """
     zipline_hub = ZiplineHub(base_url=hub_url)
-    hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub)
+    uploaded_diffs = hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub)
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
@@ -61,7 +61,8 @@ def backfill(repo,
         branch=hub_utils.get_branch(repo),  # Get the current branch
         user=os.environ.get('USER'),
         start=start_ds,
-        end=end_ds
+        end=end_ds,
+        conf_hash=uploaded_diffs[conf_name].hash,
     )
 
     print(response_json)

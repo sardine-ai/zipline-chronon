@@ -116,8 +116,7 @@ def upload_to_branch(chronon_root, zipline_hub):
     and returns the branch name
     """
     branch = get_branch(chronon_root)
-    compute_and_upload_diffs(chronon_root, branch, zipline_hub)
-    return branch
+    return compute_and_upload_diffs(chronon_root, branch, zipline_hub)
 
 
 def deploy(self, date=None, force_recompute=False, plan=False):

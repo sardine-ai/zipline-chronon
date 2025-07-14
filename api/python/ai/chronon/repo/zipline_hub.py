@@ -29,7 +29,7 @@ class ZiplineHub:
 
         upload_request = {
             'diffConfs': diff_confs,
-            'branch': branch
+            'branch': branch,
         }
 
         try:
@@ -40,16 +40,17 @@ class ZiplineHub:
             print(f"Error calling upload API: {e}")
             raise e
 
-    def call_workflow_start_api(self, conf_name, mode, branch, user, start, end):
+    def call_workflow_start_api(self, conf_name, mode, branch, user, start, end, conf_hash):
         url = f"{self.base_url}/workflow/start"
 
         workflow_request = {
             'confName': conf_name,
+            'confHash': conf_hash,
             'mode': mode,
             'branch': branch,
             'user': user,
             'start': start,
-            'end': end
+            'end': end,
         }
 
         try:

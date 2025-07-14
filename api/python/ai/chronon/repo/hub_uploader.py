@@ -11,19 +11,6 @@ from ai.chronon.repo import (
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
 
-def _get_diffed_entities(root_dir: str, branch: str, zipline_hub: ZiplineHub):
-    compiled_dir = os.path.join(root_dir, "compiled")
-    local_repo_entities = _build_local_repo_hashmap(compiled_dir)
-
-    # Call Zipline hub with `names_and_hashes` as the argument to get back
-    names_and_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
-    changed_entity_names = zipline_hub.call_diff_api(names_and_hashes)
-
-    # a list of names for diffed hashes on branch
-    return {k: local_repo_entities[k] for k in changed_entity_names}
-
-
-
 def _build_local_repo_hashmap(root_dir: str):
     # Returns a map of name -> (tbinary, file_hash)
     results = {}
@@ -81,7 +68,17 @@ def _build_local_repo_hashmap(root_dir: str):
 
 
 def compute_and_upload_diffs(root_dir: str, branch: str, zipline_hub: ZiplineHub):
-    diffed_entities = _get_diffed_entities(root_dir, branch, zipline_hub)
+    # Determine which confs are different from the ZiplineHub
+    compiled_dir = os.path.join(root_dir, "compiled")
+    local_repo_entities = _build_local_repo_hashmap(compiled_dir)
+
+    # Call Zipline hub with `names_and_hashes` as the argument to get back
+    names_and_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
+    changed_entity_names = zipline_hub.call_diff_api(names_and_hashes)
+
+    # a list of names for diffed hashes on branch
+    diffed_entities =  {k: local_repo_entities[k] for k in changed_entity_names}
+
     entity_keys_str = "\n".join(diffed_entities.keys())
     log_str = "\n\nUploading:\n{entity_keys}".format(entity_keys=entity_keys_str)
     print(log_str)
@@ -92,4 +89,4 @@ def compute_and_upload_diffs(root_dir: str, branch: str, zipline_hub: ZiplineHub
 
     # Make PUT request to ZiplineHub
     zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs)
-    return
+    return diffed_entities
