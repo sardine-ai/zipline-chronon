@@ -11,6 +11,7 @@ import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.{Failure, Success, Try}
+import ai.chronon.online.Api
 
 class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
 
@@ -25,6 +26,12 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
     required = true,
     descr = "End date string in format yyyy-MM-dd, used for partitioning"
   )
+
+  val onlineClass = opt[String](required = true,
+                                descr =
+                                  "Fully qualified Online.Api based class. We expect the jar to be on the class path")
+
+  val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API Store")
 
   verify()
 }
@@ -103,9 +110,11 @@ object BatchNodeRunner extends NodeRunner {
      nodeContent)
   }
 
-  def runFromArgs(confPath: String, startDs: String, endDs: String): Try[Unit] = {
+  def runFromArgs(api: Api, confPath: String, startDs: String, endDs: String): Try[Unit] = {
     Try {
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
+      // TODO(tchow): implement partition listing
+      val kvStore = api.genKvStore
       val (metadata, nodeContent) = loadNodeContent(confPath)
 
       logger.info(s"Starting batch node runner for '${metadata.name}'")
@@ -114,13 +123,22 @@ object BatchNodeRunner extends NodeRunner {
     }
   }
 
+  def instantiateApi(onlineClass: String, props: Map[String, String]): Api = {
+    val cl = Thread.currentThread().getContextClassLoader
+    val cls = cl.loadClass(onlineClass)
+    val constructor = cls.getConstructors.apply(0)
+    val onlineImpl = constructor.newInstance(props)
+    onlineImpl.asInstanceOf[Api]
+  }
+
   def main(args: Array[String]): Unit = {
     try {
       val batchArgs = new BatchNodeRunnerArgs(args)
-
-      runFromArgs(batchArgs.confPath(), batchArgs.startDs.toOption.orNull, batchArgs.endDs()) match {
+      val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
+      runFromArgs(api, batchArgs.confPath(), batchArgs.startDs(), batchArgs.endDs()) match {
         case Success(_) =>
           logger.info("Batch node runner completed successfully")
+          System.exit(0)
         case Failure(exception) =>
           logger.error("Batch node runner failed", exception)
           System.exit(1)
