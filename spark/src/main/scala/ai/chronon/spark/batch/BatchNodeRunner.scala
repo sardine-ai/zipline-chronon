@@ -2,7 +2,7 @@ package ai.chronon.spark.batch
 
 import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
 import ai.chronon.api.planner.NodeRunner
-import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent}
+import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent, StagingQueryNode}
 import ai.chronon.spark.{GroupByUpload, Join}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
@@ -51,9 +51,29 @@ object BatchNodeRunner extends NodeRunner {
         runMonolithJoin(metadata, conf.getMonolithJoin, range, tableUtils)
       case NodeContent._Fields.GROUP_BY_UPLOAD =>
         runGroupByUpload(metadata, conf.getGroupByUpload, range, tableUtils)
+      case NodeContent._Fields.STAGING_QUERY =>
+        runStagingQuery(metadata, conf.getStagingQuery, range, tableUtils)
       case _ =>
         throw new UnsupportedOperationException(s"Unsupported NodeContent type: ${conf.getSetField}")
     }
+  }
+
+  private def runStagingQuery(metaData: MetaData,
+                              stagingQuery: StagingQueryNode,
+                              range: PartitionRange,
+                              tableUtils: TableUtils): Unit = {
+    require(stagingQuery.isSetStagingQuery, "StagingQueryNode must have a stagingQuery set")
+    logger.info(s"Running staging query for '${metaData.name}'")
+    val stagingQueryConf = stagingQuery.stagingQuery
+    val sq = new StagingQuery(stagingQueryConf, range.end, tableUtils)
+    sq.computeStagingQuery(
+      stepDays = Option(metaData.executionInfo.stepDays),
+      enableAutoExpand = Some(true),
+      overrideStartPartition = Option(range.start),
+      forceOverwrite = true
+    )
+
+    logger.info(s"Successfully completed staging query for '${metaData.name}'")
   }
 
   private def runGroupByUpload(metadata: MetaData,
