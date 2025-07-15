@@ -119,29 +119,6 @@ def upload_to_branch(chronon_root, zipline_hub):
     return compute_and_upload_diffs(chronon_root, branch, zipline_hub)
 
 
-def deploy(self, date=None, force_recompute=False, plan=False):
-    """
-    Computes and uploads values for a Zipline for the specified date.
-    If there's also a stream job(s) assocaited with the entity, then runs those as well once batch upload succeeds.
-    Attached to GroupBy and Join.
-
-    Args:
-        zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then
-          runs upload for all JoinParts.
-        date: The date to upload data for (default: 2 days ago UTC)
-        force_recompute: If True, recomputes data even if it already exists (default: False)
-        plan: If True, only shows execution plan without running upload (default: False)
-
-    Returns:
-        None
-
-    Raises:
-        ValueError: If the object cannot be compiled or uploaded
-    """
-    upload_to_branch(self)
-    print("\n\n TODO -- Implement \n\n")
-
-
 def info(self, branch=None):
     """
     Prints information about a zipline object, including a link to the ZiplineHub page which

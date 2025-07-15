@@ -8,6 +8,7 @@ class RunMode(str, Enum):
     BACKFILL = "backfill"
     BACKFILL_LEFT = "backfill-left"
     BACKFILL_FINAL = "backfill-final"
+    DEPLOY = "deploy"
     UPLOAD = "upload"
     UPLOAD_TO_KV = "upload-to-kv"
     STATS_SUMMARY = "stats-summary"

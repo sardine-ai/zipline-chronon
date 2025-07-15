@@ -45,10 +45,10 @@ def backfill(repo,
              start_ds,
              end_ds):
     """
-    - Call diff API to get the diff of the repo.
+    - Submit a backfill job to Zipline.
     Response should contain a list of confs that are different from what's on remote.
     - Call upload API to upload the conf contents for the list of confs that were different.
-    - Call the actual run API
+    - Call the actual run API with mode set to backfill.
     """
     zipline_hub = ZiplineHub(base_url=hub_url)
     uploaded_diffs = hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub)
@@ -61,6 +61,38 @@ def backfill(repo,
         branch=hub_utils.get_branch(repo),  # Get the current branch
         user=os.environ.get('USER'),
         start=start_ds,
+        end=end_ds,
+        conf_hash=uploaded_diffs[conf_name].hash,
+    )
+
+    print(response_json)
+
+# zipline hub deploy --conf=compiled/joins/join
+# currently only supports one-off deploy node submission
+@hub.command()
+@common_options
+@end_ds_option
+def deploy(repo,
+           hub_url,
+           conf,
+           end_ds):
+    """
+    - Submit a one-off deploy job to Zipline.
+    Response should contain a list of confs that are different from what's on remote.
+    - Call upload API to upload the conf contents for the list of confs that were different.
+    - Call the actual run API with mode set to deploy
+    """
+    zipline_hub = ZiplineHub(base_url=hub_url)
+    uploaded_diffs = hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub)
+
+    # get conf name
+    conf_name = utils.get_metadata_name_from_conf(repo, conf)
+    response_json = zipline_hub.call_workflow_start_api(
+        conf_name=conf_name,
+        mode=RunMode.DEPLOY.value,
+        branch=hub_utils.get_branch(repo),  # Get the current branch
+        user=os.environ.get('USER'),
+        start=end_ds,  # Deploy covers just 1 day, so we use end_ds as start
         end=end_ds,
         conf_hash=uploaded_diffs[conf_name].hash,
     )
