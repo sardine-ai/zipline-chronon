@@ -1,6 +1,8 @@
 from typing import Optional
 
+import google.auth
 import requests
+from google.auth.transport.requests import Request
 
 
 class ZiplineHub:
@@ -8,6 +10,11 @@ class ZiplineHub:
         if not base_url:
             raise ValueError("Base URL for ZiplineHub cannot be empty.")
         self.base_url = base_url
+        if self.base_url.startswith("https") and self.base_url.endswith(".app"):
+            print("Using Google Cloud authentication for ZiplineHub.")
+            credentials, project_id = google.auth.default()
+            credentials.refresh(Request())
+            self.id_token = credentials.id_token
 
     def call_diff_api(self, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
         url = f"{self.base_url}/upload/v1/diff"
@@ -15,8 +22,11 @@ class ZiplineHub:
         diff_request = {
             'namesToHashes': names_to_hashes
         }
+        headers = {'Content-Type': 'application/json'}
+        if hasattr(self, 'id_token'):
+            headers['Authorization'] = f'Bearer {self.id_token}'
         try:
-            response = requests.get(url, json=diff_request)
+            response = requests.post(url, json=diff_request, headers=headers)
             response.raise_for_status()
             diff_response = response.json()
             return diff_response['diff']
@@ -31,9 +41,12 @@ class ZiplineHub:
             'diffConfs': diff_confs,
             'branch': branch,
         }
+        headers = {'Content-Type': 'application/json'}
+        if hasattr(self, 'id_token'):
+            headers['Authorization'] = f'Bearer {self.id_token}'
 
         try:
-            response = requests.post(url, json=upload_request)
+            response = requests.post(url, json=upload_request, headers=headers)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -52,12 +65,14 @@ class ZiplineHub:
             'start': start,
             'end': end,
         }
+        headers = {'Content-Type': 'application/json'}
+        if hasattr(self, 'id_token'):
+            headers['Authorization'] = f'Bearer {self.id_token}'
 
         try:
-            response = requests.post(url, json=workflow_request)
+            response = requests.post(url, json=workflow_request, headers=headers)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             print(f"Error calling workflow start API: {e}")
             raise e
-
