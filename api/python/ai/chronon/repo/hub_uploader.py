@@ -11,13 +11,14 @@ from ai.chronon.repo import (
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
 
-def _build_local_repo_hashmap(root_dir: str):
+def build_local_repo_hashmap(root_dir: str):
+    compiled_dir =  os.path.join(root_dir, "compiled")
     # Returns a map of name -> (tbinary, file_hash)
     results = {}
 
     # Iterate through each object type folder (staging_queries, group_bys, joins etc)
     for folder_name, _ in FOLDER_NAME_TO_CLASS.items():
-        folder_path = os.path.join(root_dir, folder_name)
+        folder_path = os.path.join(compiled_dir, folder_name)
         if not os.path.exists(folder_path):
             continue
 
@@ -67,11 +68,9 @@ def _build_local_repo_hashmap(root_dir: str):
     return results
 
 
-def compute_and_upload_diffs(root_dir: str, branch: str, zipline_hub: ZiplineHub):
-    # Determine which confs are different from the ZiplineHub
-    compiled_dir = os.path.join(root_dir, "compiled")
-    local_repo_entities = _build_local_repo_hashmap(compiled_dir)
 
+def compute_and_upload_diffs(branch: str, zipline_hub: ZiplineHub, local_repo_entities: dict[str, Conf]):
+    # Determine which confs are different from the ZiplineHub
     # Call Zipline hub with `names_and_hashes` as the argument to get back
     names_and_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
     changed_entity_names = zipline_hub.call_diff_api(names_and_hashes)

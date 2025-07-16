@@ -2,7 +2,7 @@ import os
 
 import click
 
-from ai.chronon.repo import hub_utils, utils
+from ai.chronon.repo import hub_uploader, hub_utils, utils
 from ai.chronon.repo.constants import RunMode
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
@@ -51,7 +51,8 @@ def backfill(repo,
     - Call the actual run API with mode set to backfill.
     """
     zipline_hub = ZiplineHub(base_url=hub_url)
-    uploaded_diffs = hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub)
+    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
+    hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub, local_repo_entities= conf_name_to_hash_dict)
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
@@ -62,7 +63,7 @@ def backfill(repo,
         user=os.environ.get('USER'),
         start=start_ds,
         end=end_ds,
-        conf_hash=uploaded_diffs[conf_name].hash,
+        conf_hash=conf_name_to_hash_dict[conf_name].hash,
     )
 
     print(response_json)
@@ -83,7 +84,9 @@ def deploy(repo,
     - Call the actual run API with mode set to deploy
     """
     zipline_hub = ZiplineHub(base_url=hub_url)
-    uploaded_diffs = hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub)
+    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
+
+    hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub, local_repo_entities= conf_name_to_hash_dict)
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
@@ -94,7 +97,7 @@ def deploy(repo,
         user=os.environ.get('USER'),
         start=end_ds,  # Deploy covers just 1 day, so we use end_ds as start
         end=end_ds,
-        conf_hash=uploaded_diffs[conf_name].hash,
+        conf_hash=conf_name_to_hash_dict[conf_name].hash,
     )
 
     print(response_json)

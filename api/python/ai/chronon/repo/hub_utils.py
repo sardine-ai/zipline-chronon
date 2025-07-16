@@ -3,6 +3,7 @@ import inspect
 import os
 from dataclasses import dataclass
 
+from ai.chronon.orchestration.ttypes import Conf
 from ai.chronon.repo import FOLDER_NAME_TO_CLASS, OUTPUT_ROOT, gitpython_utils
 from ai.chronon.repo.hub_uploader import compute_and_upload_diffs
 from ai.chronon.utils import get_mod_and_var_name_from_gc
@@ -110,13 +111,13 @@ def get_branch(path):
         ) from e
 
 
-def upload_to_branch(chronon_root, zipline_hub):
+def upload_to_branch(chronon_root, zipline_hub, local_repo_entities: dict[str, Conf]):
     """
     Determines the correct current branch, uploads the state to the remote branch,
     and returns the branch name
     """
     branch = get_branch(chronon_root)
-    return compute_and_upload_diffs(chronon_root, branch, zipline_hub)
+    return compute_and_upload_diffs(branch, zipline_hub, local_repo_entities)
 
 
 def info(self, branch=None):
