@@ -17,7 +17,7 @@
 package ai.chronon.spark
 
 import ai.chronon.api
-import ai.chronon.api.{Constants, DateRange, PartitionRange, ThriftJsonCodec}
+import ai.chronon.api.{Constants, DateRange, PartitionRange, PartitionSpec, ThriftJsonCodec}
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{GroupByOps, JoinPartOps, MetadataOps, SourceOps}
 import ai.chronon.api.planner.RelevantLeftForJoinPart
@@ -1045,7 +1045,10 @@ object Driver {
 
       val isAllPartitionsPresent = tablesToPartitionSpec.forall { case (tbl, spec) =>
         val containsSpec = if (tableUtils.tableReachable(tbl)) {
-          val partList = tableUtils.partitions(tbl, spec.tail.toMap, partitionColumnName = spec.head._1)
+          val partColumnName = spec.head._1
+          val partitionSpec =
+            PartitionSpec(partColumnName, tableUtils.partitionSpec.format, tableUtils.partitionSpec.spanMillis)
+          val partList = tableUtils.partitions(tbl, spec.tail.toMap, tablePartitionSpec = Option(partitionSpec))
           logger.info(
             s"Checking for presence of partition: ${spec.head} for table: ${tbl} with subpartitions: ${spec.tail}")
           partList.contains(spec.head._2)
