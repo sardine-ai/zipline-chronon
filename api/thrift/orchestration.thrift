@@ -303,6 +303,7 @@ struct WorkflowResponse {
     7: optional string startPartition
     8: optional string endPartition
     10: optional list<string> terminalNodes
+    11: optional ConfType confType
 }
 
 struct WorkflowListRequest {
