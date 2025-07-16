@@ -180,7 +180,10 @@ object UnionJoin {
     // Apply GroupBy derivations to the aggregated results if we're producing final join output
     // Else, it gets applied later in the JoinPartJob
     if (groupBy.hasDerivations && produceFinalJoinOutput) {
-      val finalOutputColumns = groupBy.derivationsScala.finalOutputColumn(baseResultDf.columns)
+      // In the case that we're producing final join output correctly, we don't want the derivations to erase base
+      // left DF columns. So we leverage the `ensureKeys` functionality on finalOutputCols to ensure that they are preserved
+      val finalOutputColumns =
+        groupBy.derivationsScala.finalOutputColumn(baseResultDf.columns, ensureKeys = leftDf.columns.toSeq)
       baseResultDf.select(finalOutputColumns: _*)
     } else {
       baseResultDf
