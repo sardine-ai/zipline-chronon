@@ -64,14 +64,12 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val viewParts =
       tableUtils.partitions(viewName,
                             partitionRange =
-                              Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)),
-                            partitionColumnName = "ds")
+                              Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)))
     assertEquals(30, viewParts.size)
     val nativeParts =
       tableUtils.partitions(nativeName,
                             partitionRange =
-                              Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)),
-                            partitionColumnName = "ds")
+                              Option(PartitionRange("2023-11-01", "2023-11-30")(tableUtils.partitionSpec)))
     assertEquals(30, nativeParts.size)
 
     assertEquals(nativeParts.toSet, viewParts.toSet)
@@ -84,14 +82,12 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     val viewTruncated =
       tableUtils.partitions(viewName,
                             partitionRange =
-                              Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)),
-                            partitionColumnName = "ds")
+                              Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)))
     assertEquals(3, viewTruncated.size)
     val nativeTruncated =
       tableUtils.partitions(nativeName,
                             partitionRange =
-                              Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)),
-                            partitionColumnName = "ds")
+                              Option(PartitionRange("2023-11-28", "2023-11-30")(tableUtils.partitionSpec)))
     assertEquals(3, nativeTruncated.size)
 
     assertEquals(nativeTruncated.toSet, viewTruncated.toSet)
