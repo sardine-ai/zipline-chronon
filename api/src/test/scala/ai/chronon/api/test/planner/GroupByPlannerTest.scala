@@ -176,6 +176,14 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     // Validate offsets are set to zero for upload scenarios
     tableDep.startOffset should not be null
     tableDep.endOffset should not be null
+
+    // Validate output table info is properly set
+    val outputTableInfo = uploadToKVNode.metaData.executionInfo.outputTableInfo
+    outputTableInfo should not be null
+    outputTableInfo.table should equal(gb.metaData.name + "__uploadToKV")
+    outputTableInfo.partitionColumn should equal(testPartitionSpec.column)
+    outputTableInfo.partitionFormat should equal(testPartitionSpec.format)
+    outputTableInfo.partitionInterval should not be null
   }
 
   it should "GB planner should create streaming node when streamingSource is present" in {
@@ -196,7 +204,15 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
     tableDeps should have size 1
     val tableDep = tableDeps.head
-    tableDep.tableInfo.table should equal(gb.metaData.outputTable + "__uploadToKV")
+    tableDep.tableInfo.table should equal(gb.metaData.name + "__uploadToKV")
+
+    // Verify streaming node has correct output table info
+    val streamingOutputTableInfo = streamingNode.metaData.executionInfo.outputTableInfo
+    streamingOutputTableInfo should not be null
+    streamingOutputTableInfo.table should equal(gb.metaData.name + "__streaming")
+    streamingOutputTableInfo.partitionColumn should equal(testPartitionSpec.column)
+    streamingOutputTableInfo.partitionFormat should equal(testPartitionSpec.format)
+    streamingOutputTableInfo.partitionInterval should not be null
   }
 }
 

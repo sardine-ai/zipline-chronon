@@ -123,8 +123,9 @@ object BatchNodeRunner extends NodeRunner {
   private[batch] def loadNodeContent(confPath: String): (MetaData, NodeContent) = {
     val nodeContent = ThriftJsonCodec.fromJsonFile[NodeContent](confPath, check = true)
     (nodeContent.getSetField match {
-       case NodeContent._Fields.MONOLITH_JOIN => nodeContent.getMonolithJoin.join.metaData
-       case NodeContent._Fields.STAGING_QUERY => nodeContent.getStagingQuery.stagingQuery.metaData
+       case NodeContent._Fields.MONOLITH_JOIN   => nodeContent.getMonolithJoin.join.metaData
+       case NodeContent._Fields.STAGING_QUERY   => nodeContent.getStagingQuery.stagingQuery.metaData
+       case NodeContent._Fields.GROUP_BY_UPLOAD => nodeContent.getGroupByUpload.groupBy.metaData
        case other => throw new UnsupportedOperationException(s"NodeContent type ${other} not supported")
      },
      nodeContent)

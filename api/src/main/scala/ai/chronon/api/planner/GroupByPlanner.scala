@@ -53,7 +53,8 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
                           "upload",
                           groupBy.metaData.name + "__upload",
                           groupByTableDeps,
-                          Some(stepDays))
+                          Some(stepDays),
+                          Some(groupBy.metaData.uploadTable))
 
     val node = new GroupByUploadNode().setGroupBy(eraseExecutionInfo)
     toNode(metaData, _.setGroupByUpload(node), semanticGroupBy(groupBy))
@@ -73,11 +74,14 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
     val uploadToKVTableDeps = Seq(tableDep)
 
     val metaData =
-      MetaDataUtils.layer(groupBy.metaData,
-                          GroupByPlanner.UploadToKV,
-                          groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}",
-                          uploadToKVTableDeps,
-                          None)
+      MetaDataUtils.layer(
+        groupBy.metaData,
+        GroupByPlanner.UploadToKV,
+        groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}",
+        uploadToKVTableDeps,
+        None,
+        Some(groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}")
+      )
 
     val node = new GroupByUploadToKVNode().setGroupBy(eraseExecutionInfo)
     toNode(metaData, _.setGroupByUploadToKV(node), semanticGroupBy(groupBy))
@@ -89,18 +93,21 @@ case class GroupByPlanner(groupBy: GroupBy)(implicit outputPartitionSpec: Partit
       val tableDep = new TableDependency()
         .setTableInfo(
           new TableInfo()
-            .setTable(groupBy.metaData.outputTable + s"__${GroupByPlanner.UploadToKV}")
+            .setTable(groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}")
         )
         .setStartOffset(WindowUtils.zero())
         .setEndOffset(WindowUtils.zero())
       val streamingTableDeps = Seq(tableDep)
 
       val metaData =
-        MetaDataUtils.layer(groupBy.metaData,
-                            GroupByPlanner.Streaming,
-                            groupBy.metaData.name + s"__${GroupByPlanner.Streaming}",
-                            streamingTableDeps,
-                            None)
+        MetaDataUtils.layer(
+          groupBy.metaData,
+          GroupByPlanner.Streaming,
+          groupBy.metaData.name + s"__${GroupByPlanner.Streaming}",
+          streamingTableDeps,
+          None,
+          Some(groupBy.metaData.name + s"__${GroupByPlanner.Streaming}")
+        )
 
       val node = new GroupByStreamingNode().setGroupBy(eraseExecutionInfo)
       toNode(metaData, _.setGroupByStreaming(node), semanticGroupBy(groupBy))

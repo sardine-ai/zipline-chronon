@@ -170,6 +170,7 @@ object JobSubmitterConstants {
   val FlinkMainJarUriArgKeyword = "--flink-main-jar-uri"
   val FlinkPubSubJarUriArgKeyword = "--flink-pubsub-jar-uri"
   val AdditionalJarsUriArgKeyword = "--additional-jars"
+  val FlinkGroupByNameArgKeyword = "--groupby-name"
   val FilesArgKeyword = "--files"
   val ConfTypeArgKeyword = "--conf-type"
   val ConfPathArgKeyword = "--conf-path"

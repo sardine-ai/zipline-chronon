@@ -45,9 +45,9 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
       val hasStreamingSource = groupBy.streamingSource.isDefined
 
       val tableName = if (hasStreamingSource) {
-        groupBy.metaData.outputTable + s"_${GroupByPlanner.Streaming}"
+        groupBy.metaData.name + s"__${GroupByPlanner.Streaming}"
       } else {
-        groupBy.metaData.outputTable + s"_${GroupByPlanner.UploadToKV}"
+        groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}"
       }
 
       val tableDep = new TableDependency()
