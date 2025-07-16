@@ -2,7 +2,7 @@ package ai.chronon.spark.batch
 
 import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
 import ai.chronon.api.planner.NodeRunner
-import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, NodeContent, StagingQueryNode}
+import ai.chronon.planner.{GroupByUploadNode, MonolithJoinNode, Node, NodeContent, StagingQueryNode}
 import ai.chronon.spark.{GroupByUpload, Join}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
@@ -120,27 +120,16 @@ object BatchNodeRunner extends NodeRunner {
     run(metadata, conf, range.get, createTableUtils(metadata.name))
   }
 
-  private[batch] def loadNodeContent(confPath: String): (MetaData, NodeContent) = {
-    val nodeContent = ThriftJsonCodec.fromJsonFile[NodeContent](confPath, check = true)
-    (nodeContent.getSetField match {
-       case NodeContent._Fields.MONOLITH_JOIN   => nodeContent.getMonolithJoin.join.metaData
-       case NodeContent._Fields.STAGING_QUERY   => nodeContent.getStagingQuery.stagingQuery.metaData
-       case NodeContent._Fields.GROUP_BY_UPLOAD => nodeContent.getGroupByUpload.groupBy.metaData
-       case other => throw new UnsupportedOperationException(s"NodeContent type ${other} not supported")
-     },
-     nodeContent)
-  }
-
   def runFromArgs(api: Api, confPath: String, startDs: String, endDs: String): Try[Unit] = {
     Try {
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
       // TODO(tchow): implement partition listing
       val kvStore = api.genKvStore
-      val (metadata, nodeContent) = loadNodeContent(confPath)
+      val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = true)
 
-      logger.info(s"Starting batch node runner for '${metadata.name}'")
-      run(metadata, nodeContent, Option(range))
-      logger.info(s"Successfully completed batch node runner for '${metadata.name}'")
+      logger.info(s"Starting batch node runner for '${node.metaData.name}'")
+      run(node.metaData, node.content, Option(range))
+      logger.info(s"Successfully completed batch node runner for '${node.metaData.name}'")
     }
   }
 

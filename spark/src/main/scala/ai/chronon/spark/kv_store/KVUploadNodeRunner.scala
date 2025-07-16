@@ -6,7 +6,7 @@ import ai.chronon.api.planner.NodeRunner
 import ai.chronon.api._
 import ai.chronon.online.Api
 import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
-import ai.chronon.planner.NodeContent
+import ai.chronon.planner.{Node, NodeContent}
 import org.rogach.scallop.ScallopConf
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -124,8 +124,8 @@ object KVUploadNodeRunner {
 
   def runFromArgs(confPath: String, endDs: String, onlineClass: String, props: Map[String, String]): Try[Unit] = {
     Try {
-      val nodeContent = loadNodeContent(confPath)
-      val metadata = extractMetadata(nodeContent)
+      val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = true)
+      val metadata = node.metaData
 
       val api = instantiateApi(onlineClass, props)
 
@@ -133,22 +133,7 @@ object KVUploadNodeRunner {
       val range = Some(PartitionRange(null, endDs))
 
       val runner = new KVUploadNodeRunner(api)
-      runner.run(metadata, nodeContent, range)
-    }
-  }
-
-  private def loadNodeContent(confPath: String): NodeContent = {
-    ThriftJsonCodec.fromJsonFile[NodeContent](confPath, check = true)
-  }
-
-  private def extractMetadata(nodeContent: NodeContent): MetaData = {
-    nodeContent.getSetField match {
-      case NodeContent._Fields.GROUP_BY_UPLOAD_TO_KV =>
-        nodeContent.getGroupByUploadToKV.groupBy.metaData
-      case NodeContent._Fields.JOIN_METADATA_UPLOAD =>
-        nodeContent.getJoinMetadataUpload.join.metaData
-      case other =>
-        throw new IllegalArgumentException(s"Unsupported node type: $other")
+      runner.run(metadata, node.content, range)
     }
   }
 }
