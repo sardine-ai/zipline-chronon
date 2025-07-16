@@ -13,6 +13,7 @@ on:
       - 'service_commons/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
+      - 'spark/**'
       - '.github/workflows/test_scala_2_12_non_spark.yaml'
   pull_request:
     branches:
@@ -26,6 +27,7 @@ on:
       - 'service_commons/**'
       - 'cloud_aws/**'
       - 'cloud_gcp/**'
+      - 'spark/**'
       - '.github/workflows/test_scala_2_12_non_spark.yaml'
 
 concurrency:
