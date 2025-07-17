@@ -6,12 +6,13 @@ import ai.chronon.api.Extensions.{GroupByOps, SourceOps}
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.{Constants, DataType}
 import ai.chronon.flink.FlinkJob.watermarkStrategy
-import ai.chronon.flink.deser.{DeserializationSchemaBuilder, ProjectedEvent, FlinkSerDeProvider, SourceProjection}
+import ai.chronon.flink.deser.{DeserializationSchemaBuilder, FlinkSerDeProvider, ProjectedEvent, SourceProjection}
 import ai.chronon.flink.source.{FlinkSource, FlinkSourceProvider, KafkaFlinkSource}
 import ai.chronon.flink.types.{AvroCodecOutput, TimestampedTile, WriteResponse}
 import ai.chronon.flink.validation.ValidationFlinkJob
 import ai.chronon.flink.window.{
   AlwaysFireOnElementTrigger,
+  BufferedProcessingTimeTrigger,
   FlinkRowAggProcessFunction,
   FlinkRowAggregationFunction,
   KeySelectorBuilder
@@ -20,6 +21,7 @@ import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.online.{Api, GroupByServingInfoParsed, TopicInfo}
 import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
 import org.apache.flink.api.common.functions.RichMapFunction
+import org.apache.flink.api.common.restartstrategy.RestartStrategies
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.core.fs.FileSystem
 import org.apache.flink.streaming.api.CheckpointingMode
@@ -29,6 +31,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction
 import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, WindowAssigner}
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.triggers.Trigger
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.OutputTag
 import org.rogach.scallop.{ScallopConf, ScallopOption, Serialization}
@@ -54,6 +57,8 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
                sinkFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
                groupByServingInfoParsed: GroupByServingInfoParsed,
                parallelism: Int,
+               props: Map[String, String],
+               topicInfo: TopicInfo,
                enableDebug: Boolean = false) {
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
@@ -65,6 +70,11 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
       s"Invalid groupBy: $groupByName. No streaming source"
     )
   }
+
+  private val kvStoreCapacity = FlinkUtils
+    .getProperty("kv_concurrency", props, topicInfo)
+    .map(_.toInt)
+    .getOrElse(AsyncKVStoreWriter.kvStoreConcurrency)
 
   // The source of our Flink application is a  topic
   val topic: String = groupByServingInfoParsed.groupBy.streamingSource.get.topic
@@ -140,7 +150,8 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
     AsyncKVStoreWriter.withUnorderedWaits(
       putRecordDS,
       sinkFn,
-      groupByName
+      groupByName,
+      capacity = kvStoreCapacity
     )
   }
 
@@ -183,9 +194,10 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
       .of(Time.milliseconds(tilingWindowSizeInMillis))
       .asInstanceOf[WindowAssigner[ProjectedEvent, TimeWindow]]
 
-    // An alternative to AlwaysFireOnElementTrigger can be used: BufferedProcessingTimeTrigger.
-    // The latter will buffer writes so they happen at most every X milliseconds per GroupBy & key.
-    val trigger = new AlwaysFireOnElementTrigger()
+    // We default to the AlwaysFireOnElementTrigger which will cause the window to "FIRE" on every element.
+    // An alternative is the BufferedProcessingTimeTrigger (trigger=buffered in topic info
+    // or properties) which will buffer writes and only "FIRE" every X milliseconds per GroupBy & key.
+    val trigger = getTrigger()
 
     // We use Flink "Side Outputs" to track any late events that aren't computed.
     val tilingLateEventsTag = new OutputTag[ProjectedEvent]("tiling-late-events") {}
@@ -233,8 +245,21 @@ class FlinkJob(eventSrc: FlinkSource[ProjectedEvent],
     AsyncKVStoreWriter.withUnorderedWaits(
       putRecordDS,
       sinkFn,
-      groupByName
+      groupByName,
+      capacity = kvStoreCapacity
     )
+  }
+
+  private def getTrigger(): Trigger[ProjectedEvent, TimeWindow] = {
+    FlinkUtils
+      .getProperty("trigger", props, topicInfo)
+      .map {
+        case "always_fire" => new AlwaysFireOnElementTrigger()
+        case "buffered"    => new BufferedProcessingTimeTrigger(100L)
+        case t =>
+          throw new IllegalArgumentException(s"Unsupported trigger type: $t. Supported: 'always_fire', 'buffered'")
+      }
+      .getOrElse(new AlwaysFireOnElementTrigger())
   }
 }
 
@@ -366,6 +391,14 @@ object FlinkJob {
     // post orchestrator, we will trigger savepoints on deploys and we can switch to delete on cancel
     checkpointConfig.setExternalizedCheckpointCleanup(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
 
+    // Flink default is to restart indefinitely on failure. We want to cap this to be able to
+    // bubble up errors to the orchestrator
+    env.setRestartStrategy(
+      RestartStrategies.fixedDelayRestart(
+        20,
+        30.seconds.toMillis
+      ))
+
     val config = new Configuration()
 
     env.setMaxParallelism(MaxParallelism)
@@ -412,7 +445,16 @@ object FlinkJob {
       s"Expect created deserialization schema for groupBy: $groupByName with $topicInfo to mixin SourceProjection. " +
         s"We got: ${deserializationSchema.getClass.getSimpleName}"
     )
-    val projectedSchema = deserializationSchema.asInstanceOf[SourceProjection].projectedSchema
+
+    val projectedSchema =
+      try {
+        deserializationSchema.asInstanceOf[SourceProjection].projectedSchema
+      } catch {
+        case _: Exception =>
+          throw new RuntimeException(
+            s"Failed to perform projection via Spark SQL eval for groupBy: $groupByName. Retrieved event schema: \n${schemaProvider.schema}\n" +
+              s"Make sure the Spark SQL expressions are valid (e.g. column names match the source event schema).")
+      }
 
     val source = FlinkSourceProvider.build(props, deserializationSchema, topicInfo)
 
@@ -422,6 +464,8 @@ object FlinkJob {
       sinkFn = new AsyncKVStoreWriter(api, servingInfo.groupBy.metaData.name, enableDebug),
       groupByServingInfoParsed = servingInfo,
       parallelism = source.parallelism,
+      props = props,
+      topicInfo = topicInfo,
       enableDebug = enableDebug
     )
   }

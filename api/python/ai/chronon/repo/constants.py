@@ -8,6 +8,7 @@ class RunMode(str, Enum):
     BACKFILL = "backfill"
     BACKFILL_LEFT = "backfill-left"
     BACKFILL_FINAL = "backfill-final"
+    DEPLOY = "deploy"
     UPLOAD = "upload"
     UPLOAD_TO_KV = "upload-to-kv"
     STATS_SUMMARY = "stats-summary"
@@ -156,3 +157,4 @@ GCP = "GCP"
 # arg keywords
 ONLINE_CLASS_ARG = "online_class"
 ONLINE_JAR_ARG = "online_jar"
+ONLINE_ARGS = "online_args"

@@ -43,6 +43,16 @@ public final class StringUtils {
   }
 
   /**
+   * Check if a CharSequence is empty (null or length 0).
+   *
+   * @param cs the CharSequence to check.
+   * @return true if the CharSequence is null or has length 0, false otherwise.
+   */
+  public static boolean isEmpty(final CharSequence cs) {
+    return cs == null || cs.length() == 0;
+  }
+
+  /**
    * Stringify a portion of the byte array.
    *
    * @param bytes byte array.

@@ -133,6 +133,61 @@ object DataType {
       case UnknownType(_) => throw new RuntimeException("Cannot convert unknown type")
     }
   }
+
+  private def toJLong(l: Long): java.lang.Long = java.lang.Long.valueOf(l)
+  private def toJDouble(d: Double): java.lang.Double = java.lang.Double.valueOf(d)
+  private def toJInt(i: Int): java.lang.Integer = java.lang.Integer.valueOf(i)
+
+  def castToLong(value: AnyRef): AnyRef =
+    value match {
+      case i: java.lang.Long    => i
+      case i: java.lang.Integer => toJLong(i.longValue())
+      case i: java.lang.Short   => toJLong(i.longValue())
+      case i: java.lang.Byte    => toJLong(i.longValue())
+      case i: java.lang.Double  => toJLong(i.longValue())
+      case i: java.lang.Float   => toJLong(i.longValue())
+      case i: java.lang.String  => toJLong(java.lang.Long.parseLong(i))
+      case _                    => value
+    }
+
+  def castToInt(value: AnyRef): AnyRef =
+    value match {
+      case i: java.lang.Integer => i
+      case i: java.lang.Long    => toJInt(i.intValue())
+      case i: java.lang.Short   => toJInt(i.intValue())
+      case i: java.lang.Byte    => toJInt(i.intValue())
+      case i: java.lang.Double  => toJInt(i.intValue())
+      case i: java.lang.Float   => toJInt(i.intValue())
+      case i: java.lang.String  => toJInt(java.lang.Integer.parseInt(i))
+      case _                    => value
+    }
+
+  def castToDouble(value: AnyRef): AnyRef =
+    value match {
+      case i: java.lang.Double  => i
+      case i: java.lang.Integer => toJDouble(i.doubleValue())
+      case i: java.lang.Short   => toJDouble(i.doubleValue())
+      case i: java.lang.Byte    => toJDouble(i.doubleValue())
+      case i: java.lang.Float   => toJDouble(i.doubleValue())
+      case i: java.lang.Long    => toJDouble(i.doubleValue())
+      case i: java.lang.String  => toJDouble(java.lang.Double.parseDouble(i))
+      case _                    => value
+    }
+
+  def castTo(value: AnyRef, typ: DataType): AnyRef = {
+    if (value == null) {
+      return null
+    }
+
+    typ match {
+      case LongType   => castToLong(value)
+      case DoubleType => castToDouble(value)
+      case IntType    => castToInt(value)
+      case StringType => if (value.isInstanceOf[String]) value else value.toString
+      case _          => value
+    }
+
+  }
 }
 
 case object IntType extends DataType
@@ -187,6 +242,24 @@ case class StructType(name: String, fields: Array[StructField])
   override def iterator: Iterator[StructField] = fields.iterator
   override def stringPrefix: String = this.getClass.getSimpleName
   def typeOf(name: String): Option[DataType] = fields.find(_.name == name).map(_.fieldType)
+
+  def castArr(valueMap: Map[String, AnyRef]): Array[AnyRef] = {
+    fields.map { case StructField(name, typ) =>
+      val elem = valueMap.getOrElse(name, null)
+      // handle cases where a join contains keys of the same name but different types
+      // e.g. `listing` is a long in one groupby, but a string in another groupby
+      DataType.castTo(elem, typ)
+    }
+  }
+
+  def cast(valueMap: Map[String, AnyRef]): Map[String, AnyRef] = {
+    fields.map { case StructField(name, typ) =>
+      val elem = valueMap.getOrElse(name, null)
+      // handle cases where a join contains keys of the same name but different types
+      // e.g. `listing` is a long in one groupby, but a string in another groupby
+      name -> DataType.castTo(elem, typ)
+    }.toMap
+  }
 }
 
 object StructType {

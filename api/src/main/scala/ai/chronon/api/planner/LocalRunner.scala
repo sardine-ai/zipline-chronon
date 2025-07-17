@@ -23,19 +23,9 @@ object LocalRunner {
     Constants.foldersToIgnore.exists(file.getPath.split("/").contains(_))
   }
 
-  private def tryParsingConf[T <: TBase[_, _]: Manifest: ClassTag](file: String): Option[T] =
-    try {
-      val res = Some(ThriftJsonCodec.fromJsonFile[T](file, check = true))
-      res
-    } catch {
-      case ex: Exception =>
-        throw new RuntimeException(s"Failed to parse file: $file", ex)
-    }
-
   def parseConfs[T <: TBase[_, _]: Manifest: ClassTag](confSubfolder: String): Seq[T] = listFiles(confSubfolder)
     .filterNot(isIgnorableFile)
-    .flatMap(tryParsingConf[T])
-    .toSeq
+    .map(ThriftJsonCodec.fromJsonFile(_, check = true))
 
   def processConfigurations(confSubfolder: String, confType: String)(implicit
       partitionSpec: PartitionSpec): Seq[ConfPlan] = {

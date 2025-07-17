@@ -1,14 +1,12 @@
-from ai.chronon.staging_query import StagingQuery, TableDependency
+from joins.gcp import training_set
 
-query = """
+from ai.chronon.staging_query import StagingQuery, TableDependency
+from ai.chronon.utils import get_join_output_table_name
+
+query = f"""
 SELECT
-    id_listing,
-    place_id,
-    S2_CELL(lat, lng, 12) AS s2CellId,
-    impressed_unique_count_1d,
-    viewed_unique_count_1d,
-    ds
-FROM sample_namespace.sample_table
+    *
+FROM {get_join_output_table_name(training_set.v1_test, True)}
 WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
 """
 
@@ -22,6 +20,6 @@ v1 = StagingQuery(
     output_namespace="sample_namespace",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
     dependencies=[
-        TableDependency(table="sample_namespace.sample_table", partition_column="ds", additional_partitions=["_HR=23:00"], offset=1)
+        TableDependency(table=get_join_output_table_name(training_set.v1_test, True), partition_column="ds", additional_partitions=["_HR=23:00"], offset=1)
     ],
 )

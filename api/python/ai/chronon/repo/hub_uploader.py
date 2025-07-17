@@ -6,31 +6,19 @@ import os
 from ai.chronon.orchestration.ttypes import Conf
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,
-    FOLDER_NAME_TO_LOGICAL_TYPE,
+    FOLDER_NAME_TO_CONF_TYPE,
 )
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
 
-def _get_diffed_entities(root_dir: str, branch: str, zipline_hub: ZiplineHub):
-    compiled_dir = os.path.join(root_dir, "compiled")
-    local_repo_entities = _build_local_repo_hashmap(compiled_dir)
-
-    # Call Zipline hub with `names_and_hashes` as the argument to get back
-    names_and_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
-    changed_entity_names = zipline_hub.call_diff_api(names_and_hashes)
-
-    # a list of names for diffed hashes on branch
-    return {k: local_repo_entities[k] for k in changed_entity_names}
-
-
-
-def _build_local_repo_hashmap(root_dir: str):
+def build_local_repo_hashmap(root_dir: str):
+    compiled_dir =  os.path.join(root_dir, "compiled")
     # Returns a map of name -> (tbinary, file_hash)
     results = {}
 
     # Iterate through each object type folder (staging_queries, group_bys, joins etc)
     for folder_name, _ in FOLDER_NAME_TO_CLASS.items():
-        folder_path = os.path.join(root_dir, folder_name)
+        folder_path = os.path.join(compiled_dir, folder_name)
         if not os.path.exists(folder_path):
             continue
 
@@ -58,12 +46,12 @@ def _build_local_repo_hashmap(root_dir: str):
 
                 md5_hash = hashlib.md5(thrift_json.encode()).hexdigest()
                 # md5_hash = hashlib.md5(thrift_json.encode()).hexdigest() + "123"
-                # results[name] = (binary, md5_hash, FOLDER_NAME_TO_LOGICAL_TYPE[folder_name])
+                # results[name] = (binary, md5_hash, FOLDER_NAME_TO_CONF_TYPE[folder_name])
                 results[name] = Conf(name=name,
                                           hash=md5_hash,
                                           # contents=binary,
                                           contents=thrift_json,
-                                          logicalType=FOLDER_NAME_TO_LOGICAL_TYPE[folder_name])
+                                          confType=FOLDER_NAME_TO_CONF_TYPE[folder_name])
 
             except Exception as e:
                 exceptions.append(f"{json_file} - {e}")
@@ -80,8 +68,16 @@ def _build_local_repo_hashmap(root_dir: str):
     return results
 
 
-def compute_and_upload_diffs(root_dir: str, branch: str, zipline_hub: ZiplineHub):
-    diffed_entities = _get_diffed_entities(root_dir, branch, zipline_hub)
+
+def compute_and_upload_diffs(branch: str, zipline_hub: ZiplineHub, local_repo_entities: dict[str, Conf]):
+    # Determine which confs are different from the ZiplineHub
+    # Call Zipline hub with `names_and_hashes` as the argument to get back
+    names_and_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
+    changed_entity_names = zipline_hub.call_diff_api(names_and_hashes)
+
+    # a list of names for diffed hashes on branch
+    diffed_entities =  {k: local_repo_entities[k] for k in changed_entity_names}
+
     entity_keys_str = "\n".join(diffed_entities.keys())
     log_str = "\n\nUploading:\n{entity_keys}".format(entity_keys=entity_keys_str)
     print(log_str)
@@ -92,4 +88,4 @@ def compute_and_upload_diffs(root_dir: str, branch: str, zipline_hub: ZiplineHub
 
     # Make PUT request to ZiplineHub
     zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs)
-    return
+    return diffed_entities

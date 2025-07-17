@@ -17,15 +17,6 @@ object FlinkSourceProvider {
     }
   }
 
-  def getProperty(key: String, props: Map[String, String], topicInfo: TopicInfo): Option[String] = {
-    props
-      .get(key)
-      .filter(_.nonEmpty)
-      .orElse {
-        topicInfo.params.get(key)
-      }
-  }
-
   // Pubsub source is loaded via reflection as we don't want the Flink module to depend on the PubSub connector
   // module as we don't want to pull in Gcp deps in contexts such as running in Aws
   private def loadPubsubSource[T](props: Map[String, String],

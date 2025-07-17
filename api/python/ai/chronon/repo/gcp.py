@@ -367,6 +367,10 @@ class GcpRunner(Runner):
             user_args["--additional-jars"] = self.additional_jars
 
         user_args_str = " ".join(f"{key}={value}" for key, value in user_args.items() if value)
+        # if online args are set we add them to the user_args_str
+        if self.online_args:
+            user_args_str += " " + self.online_args
+
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
         dataproc_args = self.generate_dataproc_submitter_args(
             job_type=JobType.FLINK,

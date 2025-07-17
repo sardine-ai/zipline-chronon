@@ -14,6 +14,7 @@ scala_library(
         maven_artifact("org.apache.commons:commons-lang3"),
         maven_artifact("org.slf4j:slf4j-api"),
         maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
+        "//tools/build_rules/spark:spark-exec",
     ],
 )
 

@@ -438,6 +438,51 @@ class Eval(implicit tableUtils: TableUtils) {
     evalResult
   }
 
+  def evalStagingQuery(stagingQueryConf: api.StagingQuery): StagingQueryEvalResult = {
+    val evalResult = new StagingQueryEvalResult()
+
+    try {
+      // Run SQL environment setups such as UDFs and JARs
+      Option(stagingQueryConf.setups).foreach(_.toScala.foreach(tableUtils.sql))
+
+      // Use 2 days ago as a dummy date range for schema evaluation - doesn't need real data
+      val dummyRange = twoDaysAgo
+
+      // Render the query with dummy dates to evaluate schema without computation
+      val renderedQuery = StagingQuery.substitute(
+        tableUtils,
+        stagingQueryConf.query,
+        dummyRange.start,
+        dummyRange.end,
+        dummyRange.end
+      )
+
+      // Get the query schema by creating a dummy dataframe with limit 0 (no data, just schema)
+      val queryDf = tableUtils.sql(s"SELECT * FROM ($renderedQuery) LIMIT 0")
+
+      // Convert schema to Chronon format for consistency
+      val outputSchemaFormatted = toChrononSchema(queryDf.schema).map { case (name, dataType) =>
+        (name, dataType.toString)
+      }.toMap
+
+      evalResult.setOutputSchema(outputSchemaFormatted.toJava)
+
+      // Set success result
+      val queryCheck = new BaseEvalResult()
+      queryCheck.setCheckResult(CheckResult.SUCCESS)
+      evalResult.setQueryCheck(queryCheck)
+
+    } catch {
+      case e: Throwable =>
+        val queryCheck = new BaseEvalResult()
+        queryCheck.setCheckResult(CheckResult.FAILURE)
+        queryCheck.setMessage(s"Failed to evaluate staging query: ${getFullStackTrace(e)}")
+        evalResult.setQueryCheck(queryCheck)
+    }
+
+    evalResult
+  }
+
   def runTimestampChecks(sources: Seq[api.Source], df: DataFrame): BaseEvalResult = {
     // Initialize check with status true, set to false below if conditions are met
     val evalResult = new BaseEvalResult()

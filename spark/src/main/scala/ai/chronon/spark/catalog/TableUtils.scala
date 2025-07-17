@@ -122,12 +122,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def partitions(tableName: String,
                  subPartitionsFilter: Map[String, String] = Map.empty,
                  partitionRange: Option[PartitionRange] = None,
-                 partitionColumnName: String = partitionColumn,
                  tablePartitionSpec: Option[PartitionSpec] = None): List[String] = {
     if (!tableReachable(tableName)) return List.empty[String]
     val rangeWheres = andPredicates(partitionRange.map(_.whereClauses).getOrElse(Seq.empty))
 
-    val effectivePartColumn = tablePartitionSpec.map(_.column).getOrElse(partitionColumnName)
+    val effectivePartColumn = tablePartitionSpec.map(_.column).getOrElse(partitionSpec.column)
 
     val partitions = tableFormatProvider
       .readFormat(tableName)
@@ -189,7 +188,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       tableName,
       subPartitionFilters,
       partitionRange.map(_.translate(partitionSpec)),
-      partitionColumnName = partitionSpec.column,
       tablePartitionSpec = Some(partitionSpec)
     ).reduceOption((x, y) => Ordering[String].min(x, y))
 
@@ -341,7 +339,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                      inputTableToSubPartitionFiltersMap: Map[String, Map[String, String]] = Map.empty,
                      inputToOutputShift: Int = 0,
                      skipFirstHole: Boolean = true,
-                     inputPartitionColumnNames: Seq[String] = Seq(partitionColumn),
                      inputPartitionSpecs: Seq[PartitionSpec] = Seq(partitionSpec)
 
                      // ------- TODO: CLEANUP --------
@@ -389,14 +386,12 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     val existingInputPartitions =
       for (
         inputTables <- inputTables.toSeq;
-        inputPartitionColumnName <- inputPartitionColumnNames;
         inputPartitionSpec <- inputPartitionSpecs;
         table <- inputTables;
         subPartitionFilters = inputTableToSubPartitionFiltersMap.getOrElse(table, Map.empty);
         partitionStr <- partitions(table,
                                    subPartitionFilters,
                                    Option(outputPartitionRange),
-                                   inputPartitionColumnName,
                                    tablePartitionSpec = Some(inputPartitionSpec))
       ) yield {
         partitionSpec.shift(partitionStr, inputToOutputShift)

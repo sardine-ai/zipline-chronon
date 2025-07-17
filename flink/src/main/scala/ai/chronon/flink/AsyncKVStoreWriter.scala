@@ -25,8 +25,8 @@ import scala.util.Success
 import scala.collection.Seq
 
 object AsyncKVStoreWriter {
-  private val kvStoreConcurrency = 10
-  private val defaultTimeoutMillis = 1000L
+  val kvStoreConcurrency = 10
+  val defaultTimeoutMillis = 1000L
 
   def withUnorderedWaits(inputDS: DataStream[AvroCodecOutput],
                          kvStoreWriterFn: RichAsyncFunction[AvroCodecOutput, WriteResponse],
@@ -43,7 +43,8 @@ object AsyncKVStoreWriter {
         capacity
       )
       .uid(s"kvstore-writer-async-$featureGroupName")
-      .name(s"async kvstore writes for $featureGroupName")
+      .name(
+        s"async kvstore writes for $featureGroupName(concurrency per task = $capacity, timeout = $timeoutMillis ms)")
       .setParallelism(inputDS.getParallelism)
   }
 

@@ -3,6 +3,7 @@ package ai.chronon.api.test.planner
 import ai.chronon.api.{GroupBy, Join, PartitionSpec, StagingQuery}
 import ai.chronon.api.planner.LocalRunner
 import ai.chronon.planner.ConfPlan
+import com.fasterxml.jackson.core.JsonParseException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -133,11 +134,11 @@ class LocalRunnerTest extends AnyFlatSpec with Matchers {
     try {
       Files.write(invalidFile, "{ invalid json }".getBytes)
 
-      an[RuntimeException] should be thrownBy {
+      an[JsonParseException] should be thrownBy {
         LocalRunner.parseConfs[Join](tempDir.toString)
       }
 
-      an[RuntimeException] should be thrownBy {
+      an[JsonParseException] should be thrownBy {
         LocalRunner.processConfigurations(tempDir.toString, "joins")
       }
     } finally {
@@ -243,11 +244,11 @@ class LocalRunnerTest extends AnyFlatSpec with Matchers {
       Files.write(validFile, validJson.getBytes)
       Files.write(invalidFile, "{ malformed json".getBytes)
 
-      an[RuntimeException] should be thrownBy {
+      an[JsonParseException] should be thrownBy {
         LocalRunner.parseConfs[GroupBy](tempDir.toString)
       }
 
-      an[RuntimeException] should be thrownBy {
+      an[JsonParseException] should be thrownBy {
         LocalRunner.processConfigurations(tempDir.toString, "groupbys")
       }
 

@@ -312,6 +312,110 @@ class EvalTest extends AnyFlatSpec {
                  Map("user_name" -> "StringType", "user" -> "StringType", "ts" -> "LongType", "ds" -> "StringType"))
   }
 
+  it should "evaluate staging query schema successfully" in {
+    val namespace = "testeval_staging_query"
+    tableUtils.createDatabase(namespace)
+
+    // Create a source table
+    val sourceData = List(
+      Column("user_id", api.StringType, 10),
+      Column("amount", api.LongType, 1000),
+      Column("category", api.StringType, 5)
+    )
+
+    val sourceTable = s"$namespace.transactions"
+    spark.sql(s"DROP TABLE IF EXISTS $sourceTable")
+
+    val df = DataFrameGen.events(spark, sourceData, 100, partitions = 10)
+    df.save(sourceTable)
+
+    // Create StagingQuery configuration
+    val stagingQueryConf = Builders.StagingQuery(
+      query = s"""
+        SELECT 
+          user_id,
+          SUM(amount) as total_amount,
+          COUNT(*) as transaction_count,
+          FIRST(category) as primary_category
+        FROM $sourceTable 
+        WHERE ds = "{{ ds }}"
+        GROUP BY user_id
+      """,
+      metaData = Builders.MetaData(
+        name = "user_daily_summary",
+        namespace = namespace,
+        team = "chronon"
+      ),
+      startPartition = yearAgo
+    )
+
+    // Evaluate the StagingQuery
+    val result = eval.evalStagingQuery(stagingQueryConf)
+
+    // Verify that the evaluation completed successfully
+    assertNotNull(result)
+    val queryCheck = result.getQueryCheck
+    assertNotNull(queryCheck)
+    assertEquals(CheckResult.SUCCESS, queryCheck.getCheckResult)
+
+    // Verify the output schema
+    val outputSchema = result.getOutputSchema
+    assertNotNull(outputSchema)
+    assertEquals(4, outputSchema.size())
+
+    // Check specific schema fields
+    assertEquals("StringType", outputSchema.get("user_id"))
+    assertEquals("LongType", outputSchema.get("total_amount"))
+    assertEquals("LongType", outputSchema.get("transaction_count"))
+    assertEquals("StringType", outputSchema.get("primary_category"))
+  }
+
+  it should "detect bad query expression in staging query" in {
+    val namespace = "testeval_staging_query_bad"
+    tableUtils.createDatabase(namespace)
+
+    // Create a source table
+    val sourceData = List(
+      Column("user_id", api.StringType, 10),
+      Column("amount", api.LongType, 1000)
+    )
+
+    val sourceTable = s"$namespace.transactions"
+    spark.sql(s"DROP TABLE IF EXISTS $sourceTable")
+
+    val df = DataFrameGen.events(spark, sourceData, 100, partitions = 10)
+    df.save(sourceTable)
+
+    // Create StagingQuery configuration with bad expression
+    val stagingQueryConf = Builders.StagingQuery(
+      query = s"""
+        SELECT 
+          user_id,
+          SUM(non_existent_column) as total_amount
+        FROM $sourceTable 
+        WHERE ds = "{{ ds }}"
+        GROUP BY user_id
+      """,
+      metaData = Builders.MetaData(
+        name = "user_daily_summary_bad",
+        namespace = namespace,
+        team = "chronon"
+      ),
+      startPartition = yearAgo
+    )
+
+    // Evaluate the StagingQuery
+    val result = eval.evalStagingQuery(stagingQueryConf)
+
+    // Verify that the evaluation failed
+    assertNotNull(result)
+    val queryCheck = result.getQueryCheck
+    assertNotNull(queryCheck)
+    assertEquals(CheckResult.FAILURE, queryCheck.getCheckResult)
+    assertNotNull(queryCheck.getMessage)
+    assertTrue(queryCheck.getMessage.contains("non_existent_column"))
+  }
+
   def createAndSetupJoin(namespace: String,
                          badLeftSourceTimestamp: Boolean = false,
                          badLeftSourceExpression: Boolean = false,

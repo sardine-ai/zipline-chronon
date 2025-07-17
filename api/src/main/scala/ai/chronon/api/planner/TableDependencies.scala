@@ -1,21 +1,20 @@
 package ai.chronon.api.planner
 import ai.chronon.api
+import ai.chronon.api.{Accuracy, BootstrapPart, DataModel, TableDependency, TableInfo, Window}
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ScalaJavaConversions.IteratorOps
-import ai.chronon.api.{Accuracy, DataModel, PartitionSpec, TableDependency, TableInfo, Window}
+import ai.chronon.api.ScalaJavaConversions.{IterableOps, IteratorOps}
+
 import scala.collection.JavaConverters._
-import ai.chronon.api.ScalaJavaConversions.IterableOps
-import ai.chronon.api.BootstrapPart
 
 object TableDependencies {
 
-  def fromStagingQuery(stagingQuery: api.StagingQuery)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+  def fromStagingQuery(stagingQuery: api.StagingQuery): Seq[TableDependency] = {
     Option(stagingQuery.tableDependencies)
       .map(_.asScala.toSeq)
       .getOrElse(Seq.empty)
   }
 
-  def fromJoin(join: api.Join)(implicit spec: PartitionSpec): Seq[TableDependency] = {
+  def fromJoin(join: api.Join): Seq[TableDependency] = {
     val joinParts = Option(join.joinParts).map(_.iterator().toScala.toArray).getOrElse(Array.empty)
     val joinPartDeps = joinParts.flatMap((jp) => fromGroupBy(jp.groupBy))
     val leftDep = fromSource(join.left)
@@ -59,7 +58,7 @@ object TableDependencies {
     val endCutOff = Option(source.query).map(_.getEndPartition).orNull
 
     val lagOpt = Option(WindowUtils.plus(source.query.getPartitionLag, shift.orNull))
-    val endOffset = lagOpt.orNull
+    val endOffset = lagOpt.getOrElse(WindowUtils.zero())
 
     // we don't care if the source is cumulative YET.
     // Downstream partitionRange calculation logic will need to look at tableInfo and use that

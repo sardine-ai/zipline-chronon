@@ -224,11 +224,12 @@ object Extensions {
 
     private def opSuffix =
       aggregationPart.operation match {
-        case LAST_K   => s"last${getInt("k")}"
-        case FIRST_K  => s"first${getInt("k")}"
-        case TOP_K    => s"top${getInt("k")}"
-        case BOTTOM_K => s"bottom${getInt("k")}"
-        case other    => other.stringified
+        case LAST_K       => s"last${getInt("k")}"
+        case FIRST_K      => s"first${getInt("k")}"
+        case TOP_K        => s"top${getInt("k")}"
+        case BOTTOM_K     => s"bottom${getInt("k")}"
+        case UNIQUE_TOP_K => s"unique_top${getInt("k")}"
+        case other        => other.stringified
       }
 
     private def bucketSuffix = Option(aggregationPart.bucket).map("_by_" + _).getOrElse("")
@@ -1176,6 +1177,16 @@ object Extensions {
     def prettyInline: String = strs.mkString("[", ",", "]")
   }
 
+  implicit class TableInfoOps(ti: TableInfo) {
+    def partitionSpec(defaultSpec: PartitionSpec): PartitionSpec = {
+      val column = Option(ti).flatMap((q) => Option(q.partitionColumn)).getOrElse(defaultSpec.column)
+      val format = Option(ti).flatMap((q) => Option(q.partitionFormat)).getOrElse(defaultSpec.format)
+      val interval = Option(ti).flatMap((q) => Option(q.partitionInterval)).getOrElse(WindowUtils.Day)
+      PartitionSpec(column, format, interval.millis)
+    }
+
+  }
+
   implicit class QueryOps(query: Query) {
     def setupsSeq: Seq[String] = {
       Option(query.setups)
@@ -1230,25 +1241,36 @@ object Extensions {
       derivationsWithoutStar.filter(d => JoinOps.isIdentifier(d.expression))
 
     // Used during offline spark job and this method preserves ordering of derivations
-    def derivationProjection(baseColumns: Seq[String]): Seq[(String, String)] = {
-      val wildcardDerivations = if (derivationsContainStar) { // select all baseColumns except renamed ones
+    def derivationProjection(baseColumns: Seq[String], ensureKeys: Seq[String] = Seq.empty): Seq[(String, String)] = {
+
+      val wildcardDerivations = if (derivationsContainStar) {
+        // select all baseColumns except renamed ones
         val expressions = derivations.iterator.map(_.expression).toSet
         baseColumns.filterNot(expressions)
       } else {
         Seq.empty
       }
 
-      derivations.iterator.flatMap { d =>
+      // expand wildcard derivations
+      val expandedDerivations = derivations.iterator.flatMap { d =>
         if (d.name == "*") {
           wildcardDerivations.map(c => c -> c)
         } else {
           Seq(d.name -> d.expression)
         }
       }.toSeq
+
+      val expandedDerivationCols = expandedDerivations.map(_._1).toSet
+
+      val missingKeys = ensureKeys
+        .filterNot(expandedDerivationCols.contains)
+        .map { key => key -> key }
+
+      missingKeys ++ expandedDerivations
     }
 
-    def finalOutputColumn(baseColumns: Seq[String]): Seq[Column] = {
-      val projections = derivationProjection(baseColumns)
+    def finalOutputColumn(baseColumns: Seq[String], ensureKeys: Seq[String] = Seq.empty): Seq[Column] = {
+      val projections = derivationProjection(baseColumns, ensureKeys)
       val finalOutputColumns = projections
         .flatMap { case (name, expression) =>
           Some(expr(expression).as(name))

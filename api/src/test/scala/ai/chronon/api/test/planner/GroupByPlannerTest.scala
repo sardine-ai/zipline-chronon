@@ -1,9 +1,9 @@
 package ai.chronon.api.test.planner
 
-import ai.chronon.api.Extensions.{MetadataOps, WindowUtils}
+import ai.chronon.api.{Accuracy, Aggregation, Builders, EnvironmentVariables, GroupBy, Operation, PartitionSpec}
+import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, WindowUtils}
 import ai.chronon.api.planner.{GroupByPlanner, LocalRunner}
 import ai.chronon.api.test.planner.GroupByPlannerTest.buildGroupBy
-import ai.chronon.api.{Accuracy, Aggregation, Builders, EnvironmentVariables, GroupBy, Operation, PartitionSpec}
 import ai.chronon.planner.{ConfPlan, Mode}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,18 +15,27 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
   private implicit val testPartitionSpec: PartitionSpec = PartitionSpec.daily
 
-  private def validateGBPlan(plan: ConfPlan): Unit = {
-    // Should create plan successfully with backfill, upload, and uploadToKV nodes
-    plan.nodes.asScala should have size 3
+  private def validateGBPlan(groupBy: GroupBy, plan: ConfPlan): Unit = {
+    // Should create plan successfully with expected number of nodes
+    val hasStreaming = groupBy.streamingSource.isDefined
+    val expectedNodeCount = if (hasStreaming) 4 else 3
+    plan.nodes.asScala should have size expectedNodeCount
 
-    // Find the upload node, backfill node, and uploadToKV node
+    // Find the nodes
     val uploadNode = plan.nodes.asScala.find(_.content.isSetGroupByUpload)
     val backfillNode = plan.nodes.asScala.find(_.content.isSetGroupByBackfill)
     val uploadToKVNode = plan.nodes.asScala.find(_.content.isSetGroupByUploadToKV)
+    val streamingNode = plan.nodes.asScala.find(_.content.isSetGroupByStreaming)
 
     uploadNode should be(defined)
     backfillNode should be(defined)
     uploadToKVNode should be(defined)
+
+    if (hasStreaming) {
+      streamingNode should be(defined)
+    } else {
+      streamingNode should not be defined
+    }
 
     // Upload node should have content
     uploadNode.get.content should not be null
@@ -43,9 +52,31 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     uploadToKVNode.get.content.getGroupByUploadToKV should not be null
     uploadToKVNode.get.content.getGroupByUploadToKV.groupBy should not be null
 
+    // Streaming node should have content if present
+    if (hasStreaming) {
+      streamingNode.get.content should not be null
+      streamingNode.get.content.getGroupByStreaming should not be null
+      streamingNode.get.content.getGroupByStreaming.groupBy should not be null
+    }
+
     plan.terminalNodeNames.asScala.size shouldBe 2
     plan.terminalNodeNames.containsKey(Mode.DEPLOY) shouldBe true
     plan.terminalNodeNames.containsKey(Mode.BACKFILL) shouldBe true
+
+    // Validate that no node names contain forward slashes
+    plan.nodes.asScala.foreach { node =>
+      val nodeName = node.metaData.name
+      withClue(s"Node name '$nodeName' contains forward slash") {
+        nodeName should not contain "/"
+      }
+    }
+  }
+
+  it should "always plan nonzero step days" in {
+    val groupBy = buildGroupBy()
+    val plannerWithNonZeroStepDays = GroupByPlanner(groupBy)
+    val plan = plannerWithNonZeroStepDays.buildPlan
+    plan.nodes.asScala.foreach((node) => node.metaData.executionInfo.stepDays shouldNot be(0))
   }
 
   it should "GB planner handles valid confs" in {
@@ -61,7 +92,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
       .foreach { planner =>
         noException should be thrownBy {
           val plan = planner.buildPlan
-          validateGBPlan(plan)
+          validateGBPlan(planner.groupBy, plan)
         }
       }
   }
@@ -73,9 +104,9 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
     noException should be thrownBy {
       val plan = planner.buildPlan
-      validateGBPlan(plan)
-      plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges/uploadToKV")
-      plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges/backfill")
+      validateGBPlan(planner.groupBy, plan)
+      plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges__uploadToKV")
+      plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges__backfill")
     }
   }
 
@@ -125,7 +156,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     val gb = buildGroupBy()
     val planner = new GroupByPlanner(gb)
     val plan = planner.buildPlan
-    validateGBPlan(plan)
+    validateGBPlan(gb, plan)
 
     val uploadToKVNode = plan.nodes.asScala.find(_.content.isSetGroupByUploadToKV).get
     val executionInfo = uploadToKVNode.metaData.executionInfo
@@ -145,17 +176,61 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     // Validate offsets are set to zero for upload scenarios
     tableDep.startOffset should not be null
     tableDep.endOffset should not be null
+
+    // Validate output table info is properly set
+    val outputTableInfo = uploadToKVNode.metaData.executionInfo.outputTableInfo
+    outputTableInfo should not be null
+    outputTableInfo.table should equal(gb.metaData.name + "__uploadToKV")
+    outputTableInfo.partitionColumn should equal(testPartitionSpec.column)
+    outputTableInfo.partitionFormat should equal(testPartitionSpec.format)
+    outputTableInfo.partitionInterval should not be null
+  }
+
+  it should "GB planner should create streaming node when streamingSource is present" in {
+    val gb = buildGroupBy(includeTopic = true)
+    val planner = GroupByPlanner(gb)
+    val plan = planner.buildPlan
+
+    validateGBPlan(gb, plan)
+
+    // DEPLOY mode should now point to streaming node
+    plan.terminalNodeNames.asScala(Mode.DEPLOY) should equal("user_charges__streaming")
+    plan.terminalNodeNames.asScala(Mode.BACKFILL) should equal("user_charges__backfill")
+
+    // Verify streaming node has correct table dependencies (same as uploadToKV)
+    val streamingNode = plan.nodes.asScala.find(_.content.isSetGroupByStreaming).get
+    val executionInfo = streamingNode.metaData.executionInfo
+    val tableDeps = executionInfo.tableDependencies.asScala
+
+    tableDeps should have size 1
+    val tableDep = tableDeps.head
+    tableDep.tableInfo.table should equal(gb.metaData.name + "__uploadToKV")
+
+    // Verify streaming node has correct output table info
+    val streamingOutputTableInfo = streamingNode.metaData.executionInfo.outputTableInfo
+    streamingOutputTableInfo should not be null
+    streamingOutputTableInfo.table should equal(gb.metaData.name + "__streaming")
+    streamingOutputTableInfo.partitionColumn should equal(testPartitionSpec.column)
+    streamingOutputTableInfo.partitionFormat should equal(testPartitionSpec.format)
+    streamingOutputTableInfo.partitionInterval should not be null
   }
 }
 
 object GroupByPlannerTest {
-  def buildGroupBy(): GroupBy = {
+  def buildGroupBy(includeTopic: Boolean = false): GroupBy = {
     val eventsTable = "my_user_events"
     val aggregations: Seq[Aggregation] = Seq(
       Builders.Aggregation(Operation.COUNT, "charges", Seq(WindowUtils.Unbounded))
     )
+    val source = Builders.Source.events(Builders.Query(), table = eventsTable)
+    val sourceWithTopic = if (includeTopic) {
+      Builders.Source.events(Builders.Query(), table = eventsTable, topic = "my_user_events_topic")
+    } else {
+      source
+    }
+
     Builders.GroupBy(
-      sources = Seq(Builders.Source.events(Builders.Query(), table = eventsTable)),
+      sources = Seq(sourceWithTopic),
       keyColumns = Seq("user"),
       aggregations = aggregations,
       metaData = Builders.MetaData(namespace = "test_namespace", name = "user_charges"),

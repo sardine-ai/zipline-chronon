@@ -3,6 +3,7 @@ import inspect
 import os
 from dataclasses import dataclass
 
+from ai.chronon.orchestration.ttypes import Conf
 from ai.chronon.repo import FOLDER_NAME_TO_CLASS, OUTPUT_ROOT, gitpython_utils
 from ai.chronon.repo.hub_uploader import compute_and_upload_diffs
 from ai.chronon.utils import get_mod_and_var_name_from_gc
@@ -110,37 +111,13 @@ def get_branch(path):
         ) from e
 
 
-def upload_to_branch(chronon_root, zipline_hub):
+def upload_to_branch(chronon_root, zipline_hub, local_repo_entities: dict[str, Conf]):
     """
     Determines the correct current branch, uploads the state to the remote branch,
     and returns the branch name
     """
     branch = get_branch(chronon_root)
-    compute_and_upload_diffs(chronon_root, branch, zipline_hub)
-    return branch
-
-
-def deploy(self, date=None, force_recompute=False, plan=False):
-    """
-    Computes and uploads values for a Zipline for the specified date.
-    If there's also a stream job(s) assocaited with the entity, then runs those as well once batch upload succeeds.
-    Attached to GroupBy and Join.
-
-    Args:
-        zipline_obj: The Chronon object (GroupBy, Join) to upload. If join is provided, then
-          runs upload for all JoinParts.
-        date: The date to upload data for (default: 2 days ago UTC)
-        force_recompute: If True, recomputes data even if it already exists (default: False)
-        plan: If True, only shows execution plan without running upload (default: False)
-
-    Returns:
-        None
-
-    Raises:
-        ValueError: If the object cannot be compiled or uploaded
-    """
-    upload_to_branch(self)
-    print("\n\n TODO -- Implement \n\n")
+    return compute_and_upload_diffs(branch, zipline_hub, local_repo_entities)
 
 
 def info(self, branch=None):

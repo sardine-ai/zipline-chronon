@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.file.Paths
 import scala.jdk.CollectionConverters._
 import ai.chronon.api.Builders
+import ai.chronon.api.Extensions.MetadataOps
 
 class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
@@ -40,6 +41,14 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     plan.terminalNodeNames.asScala.size shouldBe 2
     plan.terminalNodeNames.containsKey(Mode.DEPLOY) shouldBe true
     plan.terminalNodeNames.containsKey(Mode.BACKFILL) shouldBe true
+
+    // Validate that no node names contain forward slashes
+    plan.nodes.asScala.foreach { node =>
+      val nodeName = node.metaData.name
+      withClue(s"Node name '$nodeName' contains forward slash") {
+        nodeName should not contain "/"
+      }
+    }
   }
 
   it should "monolith join planner plans valid confs without exceptions" in {
@@ -96,8 +105,8 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
     plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.BACKFILL
     plan.terminalNodeNames.asScala should contain key ai.chronon.planner.Mode.DEPLOY
-    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.BACKFILL) should equal("testJoin/backfill")
-    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.DEPLOY) should equal("testJoin/metadata_upload")
+    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.BACKFILL) should equal("testJoin__backfill")
+    plan.terminalNodeNames.asScala(ai.chronon.planner.Mode.DEPLOY) should equal("testJoin__metadata_upload")
   }
 
   it should "monolith join planner should respect step days from execution info" in {
@@ -197,7 +206,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
 
     // Verify metadata upload node name
-    metadataUploadNode.metaData.name should equal("testJoin/metadata_upload")
+    metadataUploadNode.metaData.name should equal("testJoin__metadata_upload")
 
     // Verify the wrapped join is correct
     metadataUploadNode.content.getJoinMetadataUpload.join should equal(join)
@@ -229,5 +238,144 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val firstMetadataUploadHash = firstPlan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get.semanticHash
     val secondMetadataUploadHash = secondPlan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get.semanticHash
     firstMetadataUploadHash should equal(secondMetadataUploadHash)
+  }
+
+  it should "metadata upload node should depend on streaming GroupBy nodes when join parts have streaming sources" in {
+    import ai.chronon.api.Builders._
+
+    // Create a streaming GroupBy (has topic)
+    val streamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.events_table", topic = "events_topic")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.COUNT, "event_count")),
+      metaData = MetaData(namespace = "test_namespace", name = "streaming_gb")
+    )
+
+    val joinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(streamingGroupBy)
+
+    val join = Join(
+      metaData = MetaData(name = "testJoinWithStreaming"),
+      left = Source.events(Query(), table = "test_namespace.left_table"),
+      joinParts = Seq(joinPart),
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have dependencies on streaming GroupBy node
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps should not be empty
+    val streamingDep = tableDeps.head
+    streamingDep.tableInfo.table should equal(streamingGroupBy.metaData.name + "__streaming")
+  }
+
+  it should "metadata upload node should depend on uploadToKV GroupBy nodes when join parts have non-streaming sources" in {
+    import ai.chronon.api.Builders._
+
+    // Create a non-streaming GroupBy (no topic)
+    val nonStreamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.events_table")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.COUNT, "event_count")),
+      metaData = MetaData(namespace = "test_namespace", name = "non_streaming_gb")
+    )
+
+    val joinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(nonStreamingGroupBy)
+
+    val join = Join(
+      metaData = MetaData(name = "testJoinWithNonStreaming"),
+      left = Source.events(Query(), table = "test_namespace.left_table"),
+      joinParts = Seq(joinPart),
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have dependencies on uploadToKV GroupBy node
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps should not be empty
+    val uploadToKVDep = tableDeps.head
+    uploadToKVDep.tableInfo.table should equal(nonStreamingGroupBy.metaData.name + "__uploadToKV")
+  }
+
+  it should "metadata upload node should handle mixed streaming and non-streaming GroupBy dependencies" in {
+    import ai.chronon.api.Builders._
+
+    // Create a streaming GroupBy
+    val streamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.streaming_events", topic = "streaming_topic")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.COUNT, "stream_count")),
+      metaData = MetaData(namespace = "test_namespace", name = "mixed_streaming_gb")
+    )
+
+    // Create a non-streaming GroupBy
+    val nonStreamingGroupBy = GroupBy(
+      sources = Seq(Source.events(Query(), table = "test_namespace.batch_events")),
+      keyColumns = Seq("user_id"),
+      aggregations = Seq(Aggregation(ai.chronon.api.Operation.SUM, "batch_sum")),
+      metaData = MetaData(namespace = "test_namespace", name = "mixed_batch_gb")
+    )
+
+    val streamingJoinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(streamingGroupBy)
+
+    val nonStreamingJoinPart = new ai.chronon.api.JoinPart()
+      .setGroupBy(nonStreamingGroupBy)
+
+    val join = Join(
+      metaData = MetaData(name = "testJoinMixed"),
+      left = Source.events(Query(), table = "test_namespace.left_table"),
+      joinParts = Seq(streamingJoinPart, nonStreamingJoinPart),
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have dependencies on both streaming and uploadToKV nodes
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps should not be empty
+    tableDeps should have size 2
+
+    val depTables = tableDeps.map(_.tableInfo.table).toSet
+    depTables should contain(streamingGroupBy.metaData.name + "__streaming")
+    depTables should contain(nonStreamingGroupBy.metaData.name + "__uploadToKV")
+  }
+
+  it should "metadata upload node should have no GroupBy dependencies when join has no join parts" in {
+    val join = Join(
+      metaData = MetaData(name = "testJoinNoJoinParts"),
+      left = Builders.Source.events(Builders.Query(), table = "test_namespace.left_only_table"),
+      joinParts = Seq.empty,
+      bootstrapParts = Seq.empty
+    )
+
+    val planner = MonolithJoinPlanner(join)
+    val plan = planner.buildPlan
+
+    validateJoinPlan(plan)
+
+    val metadataUploadNode = plan.nodes.asScala.find(_.content.isSetJoinMetadataUpload).get
+
+    // Should have no GroupBy dependencies
+    val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
+    tableDeps.size should be(0)
   }
 }

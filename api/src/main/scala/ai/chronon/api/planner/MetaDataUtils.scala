@@ -1,6 +1,5 @@
 package ai.chronon.api.planner
 import ai.chronon.api.{ExecutionInfo, MetaData, PartitionSpec, TableDependency, TableInfo}
-import ai.chronon.api.Constants._
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.JListOps
 
@@ -13,7 +12,8 @@ object MetaDataUtils {
             modeName: String,
             nodeName: String,
             tableDependencies: Seq[TableDependency],
-            stepDays: Option[Int] = None)(implicit partitionSpec: PartitionSpec): MetaData = {
+            stepDays: Option[Int] = None,
+            outputTableOverride: Option[String] = None)(implicit partitionSpec: PartitionSpec): MetaData = {
 
     val copy = baseMetadata.deepCopy()
     val newName = nodeName
@@ -35,9 +35,17 @@ object MetaDataUtils {
     if (copy.executionInfo.outputTableInfo == null) {
       copy.executionInfo.setOutputTableInfo(new TableInfo())
     }
-    // fully qualified: namespace + outputTable
-    copy.executionInfo.outputTableInfo
-      .setTable(copy.outputTable)
+
+    val tableInfo =
+      if (outputTableOverride.isDefined) {
+        copy.executionInfo.outputTableInfo.setTable(outputTableOverride.get)
+      } else {
+        // if output table is not set, use the base metadata's output table
+        // fully qualified: namespace + outputTable
+        copy.executionInfo.outputTableInfo.setTable(baseMetadata.outputTable)
+      }
+
+    tableInfo
       .setPartitionColumn(partitionSpec.column)
       .setPartitionFormat(partitionSpec.format)
       .setPartitionInterval(WindowUtils.hours(partitionSpec.spanMillis))
@@ -65,6 +73,19 @@ object MetaDataUtils {
 
       result.conf.setCommon(merged)
       result.conf.unsetModeConfigs()
+    }
+
+    if (executionInfo.clusterConf != null) {
+      val clusterMerged = new util.HashMap[String, String]()
+      if (executionInfo.clusterConf.common != null) clusterMerged.putAll(executionInfo.clusterConf.common)
+      if (executionInfo.clusterConf.modeClusterConfigs != null) {
+        val modeConf = executionInfo.clusterConf.modeClusterConfigs.get(mode)
+        if (modeConf != null) clusterMerged.putAll(modeConf)
+      }
+
+      result.clusterConf.setCommon(clusterMerged)
+      result.clusterConf.unsetModeClusterConfigs()
+
     }
 
     if (executionInfo.env != null) {

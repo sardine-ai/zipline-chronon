@@ -13,7 +13,7 @@
 #     limitations under the License.
 
 from ai.chronon.api.ttypes import GroupBy, Join, Model, StagingQuery
-from ai.chronon.orchestration.ttypes import LogicalType
+from ai.chronon.orchestration.ttypes import ConfType
 
 JOIN_FOLDER_NAME = "joins"
 GROUP_BY_FOLDER_NAME = "group_bys"
@@ -32,9 +32,9 @@ FOLDER_NAME_TO_CLASS = {
     MODEL_FOLDER_NAME: Model,
 }
 
-FOLDER_NAME_TO_LOGICAL_TYPE = {
-    GROUP_BY_FOLDER_NAME: LogicalType.GROUP_BY,
-    JOIN_FOLDER_NAME: LogicalType.JOIN,
-    STAGING_QUERY_FOLDER_NAME: LogicalType.STAGING_QUERY,
-    MODEL_FOLDER_NAME: LogicalType.MODEL,
+FOLDER_NAME_TO_CONF_TYPE = {
+    GROUP_BY_FOLDER_NAME: ConfType.GROUP_BY,
+    JOIN_FOLDER_NAME: ConfType.JOIN,
+    STAGING_QUERY_FOLDER_NAME: ConfType.STAGING_QUERY,
+    MODEL_FOLDER_NAME: ConfType.MODEL,
 }

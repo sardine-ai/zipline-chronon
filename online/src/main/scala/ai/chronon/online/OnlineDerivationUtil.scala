@@ -51,13 +51,20 @@ object OnlineDerivationUtil {
       keySchema: StructType,
       baseValueSchema: StructType
   ): DerivationFunc = {
+
     if (derivationsScala.isEmpty) {
+
       { case (_, values: Map[String, Any]) => values }
+
     } else if (derivationsScala.areDerivationsRenameOnly) {
+
       buildRenameOnlyDerivationFunction(derivationsScala)
+
     } else {
+
       val catalystUtil = buildCatalystUtil(derivationsScala, keySchema, baseValueSchema)
       buildDerivationFunctionWithSql(catalystUtil)
+
     }
   }
 
@@ -66,20 +73,24 @@ object OnlineDerivationUtil {
       request: Fetcher.Request,
       baseMap: Map[String, AnyRef]
   ): Map[String, AnyRef] = {
+
     val requestTs = request.atMillis.getOrElse(System.currentTimeMillis())
     val requestDs = TsUtils.toStr(requestTs).substring(0, 10)
+
     // used for derivation based on ts/ds
     val tsDsMap: Map[String, AnyRef] = {
       Map("ts" -> (requestTs).asInstanceOf[AnyRef], "ds" -> (requestDs).asInstanceOf[AnyRef])
     }
+
     val derivedMap: Map[String, AnyRef] = deriveFunc(request.keys, Option(baseMap).getOrElse(Map.empty) ++ tsDsMap)
       .mapValues(_.asInstanceOf[AnyRef])
       .toMap
+
     val derivedMapCleaned = derivedMap -- tsDsMap.keys
     derivedMapCleaned
   }
 
-  def buildCatalystUtil(
+  private def buildCatalystUtil(
       derivationsScala: List[Derivation],
       keySchema: StructType,
       baseValueSchema: StructType

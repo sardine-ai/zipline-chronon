@@ -106,6 +106,7 @@ class ChrononKryoRegistrator extends KryoRegistrator {
     val names = Seq(
       "ai.chronon.aggregator.base.ApproxHistogramIr",
       "ai.chronon.aggregator.base.MomentsIR",
+      "ai.chronon.aggregator.base.UniqueOrderByLimit$State",
       "ai.chronon.aggregator.windowing.BatchIr",
       "ai.chronon.aggregator.windowing.FinalBatchIr",
       "ai.chronon.api.Row",

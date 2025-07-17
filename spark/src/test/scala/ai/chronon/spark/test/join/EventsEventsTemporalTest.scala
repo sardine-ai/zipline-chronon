@@ -21,10 +21,18 @@ import ai.chronon.api
 import ai.chronon.api.{Builders, Operation, TimeUnit, Window}
 import ai.chronon.spark._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.test.DataFrameGen
+import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
+import org.apache.spark.sql.SparkSession
 import org.junit.Assert._
 
 class EventsEventsTemporalTest extends BaseJoinTest {
+
+  val sparkSkewFree: SparkSession = submission.SparkSessionBuilder.build(
+    "JoinTest",
+    local = true,
+    additionalConfig = Option(Map("spark.chronon.join.backfill.mode.skewFree" -> "true"))
+  )
+  protected implicit val tableUtilsSkewFree: TableTestUtils = TableTestUtils(sparkSkewFree)
 
   it should "test events events temporal" in {
     val joinConf = getEventsEventsTemporal("temporal")
@@ -35,7 +43,9 @@ class EventsEventsTemporalTest extends BaseJoinTest {
     )
 
     val viewsTable = s"$namespace.view_temporal"
-    DataFrameGen.events(spark, viewsSchema, count = 100, partitions = 200).save(viewsTable, Map("tblProp1" -> "1"))
+    DataFrameGen
+      .events(sparkSkewFree, viewsSchema, count = 100, partitions = 200)
+      .save(viewsTable, Map("tblProp1" -> "1"))
 
     val viewsSource = Builders.Source.events(
       table = viewsTable,
@@ -56,17 +66,17 @@ class EventsEventsTemporalTest extends BaseJoinTest {
     val itemQueries = List(Column("item", api.StringType, 10))
     val itemQueriesTable = s"$namespace.item_queries"
     val itemQueriesDf = DataFrameGen
-      .events(spark, itemQueries, 100, partitions = 100)
+      .events(sparkSkewFree, itemQueries, 100, partitions = 100)
     // duplicate the events
     itemQueriesDf.union(itemQueriesDf).save(itemQueriesTable) // .union(itemQueriesDf)
 
-    val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
-    (new Analyzer(tableUtils, joinConf, monthAgo, today)).run()
-    val join = new Join(joinConf = joinConf, endPartition = dayAndMonthBefore, tableUtils)
+    val start = tableUtilsSkewFree.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
+    (new Analyzer(tableUtilsSkewFree, joinConf, monthAgo, today)).run()
+    val join = new Join(joinConf = joinConf, endPartition = dayAndMonthBefore, tableUtilsSkewFree)
     val computed = join.computeJoin(Some(100))
     computed.show()
 
-    val expected = tableUtils.sql(s"""
+    val expected = tableUtilsSkewFree.sql(s"""
                                      |WITH
                                      |   queries AS (SELECT item, ts, ds from $itemQueriesTable where ds >= '$start' and ds <= '$dayAndMonthBefore')
                                      | SELECT queries.item, queries.ts, queries.ds, part.user_unit_test_item_views_ts_min, part.user_unit_test_item_views_ts_max, part.user_unit_test_item_views_time_spent_ms_average
@@ -87,7 +97,8 @@ class EventsEventsTemporalTest extends BaseJoinTest {
 
     val diff = Comparison.sideBySide(computed, expected, List("item", "ts", "ds"))
     val queriesBare =
-      tableUtils.sql(s"SELECT item, ts, ds from $itemQueriesTable where ds >= '$start' and ds <= '$dayAndMonthBefore'")
+      tableUtilsSkewFree.sql(
+        s"SELECT item, ts, ds from $itemQueriesTable where ds >= '$start' and ds <= '$dayAndMonthBefore'")
     assertEquals(queriesBare.count(), computed.count())
     if (diff.count() > 0) {
       println(s"Diff count: ${diff.count()}")

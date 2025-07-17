@@ -41,6 +41,12 @@ class ConfPlannerTest extends AnyFlatSpec with Matchers {
     node.semanticHash should not be empty
     node.isSetIsLongRunning shouldBe true
     node.isLongRunning shouldBe false
+
+    // Validate that node name does not contain forward slashes
+    val nodeName = node.metaData.name
+    withClue(s"Node name '$nodeName' contains forward slash") {
+      nodeName should not contain "/"
+    }
   }
 
   it should "set isLongRunning to true for GROUP_BY_STREAMING content" in {
