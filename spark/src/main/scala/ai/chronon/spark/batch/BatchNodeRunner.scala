@@ -114,7 +114,10 @@ object BatchNodeRunner extends NodeRunner {
       logger.info(s"Successfully wrote range: $range")
     } else {
       val join = new Join(joinConf, range.end, tableUtils)
-      val df = join.computeJoin(overrideStartPartition = Option(range.start))
+      val stepDays = for {
+        executionInfo <- Option(metadata.executionInfo)
+      } yield executionInfo.stepDays
+      val df = join.computeJoin(stepDays = stepDays, overrideStartPartition = Option(range.start))
 
       df.show(numRows = 3, truncate = 0, vertical = true)
       logger.info(s"\nShowing three rows of output above.\nQuery table '$joinName' for more.\n")

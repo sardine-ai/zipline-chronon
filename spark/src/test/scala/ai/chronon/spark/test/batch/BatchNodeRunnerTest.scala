@@ -77,7 +77,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val query = new Query().setPartitionColumn(partitionColumn).setPartitionFormat(partitionFormat)
     val tableDependency = TableDependencies.fromTable(inputTable, query)
     val executionInfo = new ExecutionInfo(
-    ).setTableDependencies(Seq(tableDependency).asJava).setOutputTableInfo(outputTableInfo)
+    ).setStepDays(1).setTableDependencies(Seq(tableDependency).asJava).setOutputTableInfo(outputTableInfo)
     new MetaData()
       .setName("test_batch_node")
       .setExecutionInfo(executionInfo)
