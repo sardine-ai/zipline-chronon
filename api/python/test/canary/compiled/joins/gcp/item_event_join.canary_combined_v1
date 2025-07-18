@@ -143,6 +143,12 @@
           "outputNamespace": "data",
           "online": 1,
           "executionInfo": {
+            "env": {
+              "common": {
+                "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092"
+              },
+              "modeEnvironments": {}
+            },
             "conf": {
               "common": {
                 "spark.chronon.partition.column": "_DATE"

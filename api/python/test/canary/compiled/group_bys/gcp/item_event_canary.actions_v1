@@ -13,7 +13,7 @@
           "JOB_MODE": "local[*]",
           "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
           "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-          "CHRONON_ONLINE_ARGS": " -Ztasks=4",
+          "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
           "PARTITION_COLUMN": "ds",
           "PARTITION_FORMAT": "yyyy-MM-dd",
           "CUSTOMER_ID": "dev",
@@ -32,7 +32,7 @@
             "JOB_MODE": "local[*]",
             "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
             "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-            "CHRONON_ONLINE_ARGS": " -Ztasks=4",
+            "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
             "PARTITION_COLUMN": "ds",
             "PARTITION_FORMAT": "yyyy-MM-dd",
             "CUSTOMER_ID": "dev",
@@ -124,7 +124,7 @@
     {
       "events": {
         "table": "data.item_events_parquet_compat",
-        "topic": "kafka://test-item-event-data/provider_class=ai.chronon.flink.deser.MockCustomSchemaProvider/schema_name=item_event/security.protocol=SASL_SSL/sasl.mechanism=OAUTHBEARER/sasl.login.callback.handler.class=com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler/sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;",
+        "topic": "kafka://test-item-event-data/serde=custom/provider_class=ai.chronon.flink.deser.MockCustomSchemaProvider/schema_name=item_event/security.protocol=SASL_SSL/sasl.mechanism=OAUTHBEARER/sasl.login.callback.handler.class=com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler/sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;",
         "query": {
           "selects": {
             "listing_id": "EXPLODE(TRANSFORM(SPLIT(COALESCE(attributes['sold_listing_ids'], attributes['listing_id']), ','), e -> CAST(e AS LONG)))",

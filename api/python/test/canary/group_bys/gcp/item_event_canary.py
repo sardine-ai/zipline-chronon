@@ -1,7 +1,7 @@
 from ai.chronon.api.ttypes import EventSource, Source
 from ai.chronon.group_by import Aggregation, GroupBy, Operation
 from ai.chronon.query import Query, selects
-from ai.chronon.types import ConfigProperties
+from ai.chronon.types import ConfigProperties, EnvironmentVariables
 
 _action_events = [
     "backend_add_to_cart",
@@ -49,11 +49,16 @@ def build_actions_groupby(source: Source) -> GroupBy:
                 "spark.chronon.partition.column": "_DATE",
             }
         ),
+        env_vars=EnvironmentVariables(
+            common={
+                "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
+            }
+        ),
     )
 
 # GCP Kafka clusters require TLS
 google_kafka_cfgs = "security.protocol=SASL_SSL/sasl.mechanism=OAUTHBEARER/sasl.login.callback.handler.class=com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler/sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;"
-schema_provider_cfgs = "provider_class=ai.chronon.flink.deser.MockCustomSchemaProvider/schema_name=item_event"
+schema_provider_cfgs = "serde=custom/provider_class=ai.chronon.flink.deser.MockCustomSchemaProvider/schema_name=item_event"
 kafka_topic = f"kafka://test-item-event-data/{schema_provider_cfgs}/{google_kafka_cfgs}"
 kafka_source = build_source(kafka_topic)
 
