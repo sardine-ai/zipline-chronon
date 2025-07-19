@@ -27,6 +27,7 @@ from ai.chronon.api.ttypes import (
     Accuracy,
     Aggregation,
     Derivation,
+    EventSource,
     ExternalPart,
     GroupBy,
     Join,
@@ -36,6 +37,7 @@ from ai.chronon.api.ttypes import (
 from ai.chronon.group_by import get_output_col_names
 from ai.chronon.logger import get_logger
 from ai.chronon.repo.serializer import thrift_simple_json
+from ai.chronon.utils import get_query, get_root_source
 
 # Fields that indicate status of the entities.
 SKIPPED_FIELDS = frozenset(["metaData"])
@@ -587,6 +589,7 @@ class ConfValidator(object):
                 errors.append(label_part_collisions)
 
         return errors
+    
 
 
     def _validate_group_by(self, group_by: GroupBy) -> List[BaseException]:
@@ -620,6 +623,35 @@ class ConfValidator(object):
                            f"hourly windows. "
                            )
             )
+
+        def _validate_bounded_event_source():
+            if group_by.aggregations is None:
+                return
+            
+            unbounded_event_sources = [
+                src 
+                for src in group_by.sources 
+                if isinstance(get_root_source(src), EventSource) and get_query(src).startPartition is None
+            ]
+
+            if not unbounded_event_sources:
+                return
+            
+            unwindowed_aggregations = [agg for agg in group_by.aggregations if agg.windows is None]
+
+            if not unwindowed_aggregations:
+                return
+            
+            nln = "\n"
+
+            errors.append(
+                ValueError(
+                    f"""group_by {group_by.metaData.name} uses unwindowed aggregations [{nln}{f",{nln}".join(unwindowed_aggregations)}{nln}] 
+                    on unbounded event sources: [{nln}{f",{nln}".join(unbounded_event_sources)}{nln}]. 
+                    Please set a start_partition on the source, or a window on the aggregation.""")
+                )
+            
+        _validate_bounded_event_source()
 
         # group by that are marked explicitly offline should not be present in
         # materialized online joins.
