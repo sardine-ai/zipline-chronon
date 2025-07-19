@@ -629,7 +629,7 @@ class ConfValidator(object):
                 return
             
             unbounded_event_sources = [
-                src 
+                str(src)
                 for src in group_by.sources 
                 if isinstance(get_root_source(src), EventSource) and get_query(src).startPartition is None
             ]
@@ -637,7 +637,7 @@ class ConfValidator(object):
             if not unbounded_event_sources:
                 return
             
-            unwindowed_aggregations = [agg for agg in group_by.aggregations if agg.windows is None]
+            unwindowed_aggregations = [str(agg) for agg in group_by.aggregations if agg.windows is None]
 
             if not unwindowed_aggregations:
                 return

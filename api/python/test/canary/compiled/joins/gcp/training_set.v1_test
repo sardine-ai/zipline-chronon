@@ -129,6 +129,7 @@
           "user_id": "user_id",
           "ts": "ts"
         },
+        "startPartition": "2023-11-01",
         "timeColumn": "ts"
       }
     }
@@ -155,6 +156,7 @@
                   "user_id": "user_id",
                   "purchase_price": "purchase_price"
                 },
+                "startPartition": "2023-11-01",
                 "timeColumn": "ts"
               }
             }

@@ -15,6 +15,7 @@ source = Source(
             selects=selects(
                 "user_id"
             ),  # The primary key used to join various GroupBys together
+            start_partition="2023-11-01",
             time_column="ts",
         ),  # The event time used to compute feature values as-of
     )
