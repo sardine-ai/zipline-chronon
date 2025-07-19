@@ -132,13 +132,13 @@ object BatchNodeRunner extends NodeRunner {
 
   def runFromArgs(api: Api, confPath: String, startDs: String, endDs: String): Try[Unit] = {
     Try {
-      val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
-      val kvStore = api.genKvStore
       val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = true)
       val metadata = node.metaData
+      val tableUtils = createTableUtils(metadata.name)
+      val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
+      val kvStore = api.genKvStore
 
       logger.info(s"Starting batch node runner for '${metadata.name}'")
-      val tableUtils = createTableUtils(metadata.name)
       val inputTablesToRange = Option(metadata.executionInfo.getTableDependencies)
         .map(_.asScala.toArray)
         .getOrElse(Array.empty)
