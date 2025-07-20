@@ -1,11 +1,19 @@
 {
   "metaData": {
-    "name": "gcp.purchases.v1_test",
+    "name": "gcp.item_event_canary.actions_v1__0",
     "team": "gcp",
+    "version": "0",
     "outputNamespace": "data",
+    "columnHashes": {
+      "add_cart_sum_1d": "3c180358278cc2dec7ea7be21d871db2",
+      "view_sum_1d": "bea255a29addb98190f3a85fa8663c3c",
+      "purchase_sum_7d": "2bd47a20836c8c670ec55a1982277971",
+      "favorite_sum_1d": "eae02e9471de432e166873af33cd5179",
+      "listing_id": "95061d1fc05c177b96ec5c19e8410402"
+    },
     "online": 1,
-    "sourceFile": "group_bys/gcp/purchases.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_purchases_with_offset_0\", \"spec\": \"data.purchases/ds={{ macros.ds_add(ds, 0) }}\"}]}",
+    "sourceFile": "group_bys/gcp/item_event_canary.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_item_events_parquet_compat_with_offset_0\", \"spec\": \"data.item_events_parquet_compat/_DATE={{ macros.ds_add(ds, 0) }}\"}]}",
     "executionInfo": {
       "env": {
         "common": {
@@ -13,7 +21,7 @@
           "JOB_MODE": "local[*]",
           "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
           "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-          "CHRONON_ONLINE_ARGS": " -Ztasks=4",
+          "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
           "PARTITION_COLUMN": "ds",
           "PARTITION_FORMAT": "yyyy-MM-dd",
           "CUSTOMER_ID": "dev",
@@ -32,7 +40,7 @@
             "JOB_MODE": "local[*]",
             "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
             "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-            "CHRONON_ONLINE_ARGS": " -Ztasks=4",
+            "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
             "PARTITION_COLUMN": "ds",
             "PARTITION_FORMAT": "yyyy-MM-dd",
             "CUSTOMER_ID": "dev",
@@ -49,7 +57,7 @@
       },
       "conf": {
         "common": {
-          "spark.chronon.partition.column": "ds",
+          "spark.chronon.partition.column": "_DATE",
           "spark.chronon.cloud_provider": "gcp",
           "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
           "spark.chronon.partition.format": "yyyy-MM-dd",
@@ -78,7 +86,7 @@
         },
         "modeConfigs": {
           "backfill": {
-            "spark.chronon.partition.column": "ds",
+            "spark.chronon.partition.column": "_DATE",
             "spark.chronon.cloud_provider": "gcp",
             "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
             "spark.chronon.partition.format": "yyyy-MM-dd",
@@ -123,86 +131,71 @@
   "sources": [
     {
       "events": {
-        "table": "data.purchases",
+        "table": "data.item_events_parquet_compat",
+        "topic": "kafka://test-item-event-data/serde=custom/provider_class=ai.chronon.flink.deser.MockCustomSchemaProvider/schema_name=item_event/security.protocol=SASL_SSL/sasl.mechanism=OAUTHBEARER/sasl.login.callback.handler.class=com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler/sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;",
         "query": {
           "selects": {
-            "user_id": "user_id",
-            "purchase_price": "purchase_price"
+            "listing_id": "EXPLODE(TRANSFORM(SPLIT(COALESCE(attributes['sold_listing_ids'], attributes['listing_id']), ','), e -> CAST(e AS LONG)))",
+            "add_cart": "IF(event_type = 'backend_add_to_cart', 1, 0)",
+            "view": "IF(event_type = 'view_listing', 1, 0)",
+            "purchase": "IF(event_type = 'backend_cart_payment', 1, 0)",
+            "favorite": "IF(event_type = 'backend_favorite_item2', 1, 0)"
           },
-          "startPartition": "2023-11-01",
-          "timeColumn": "ts"
+          "wheres": [
+            "event_type in ('backend_add_to_cart', 'view_listing', 'backend_cart_payment', 'backend_favorite_item2')"
+          ],
+          "timeColumn": "timestamp"
         }
       }
     }
   ],
   "keyColumns": [
-    "user_id"
+    "listing_id"
   ],
   "aggregations": [
     {
-      "inputColumn": "purchase_price",
+      "inputColumn": "add_cart",
       "operation": 7,
       "argMap": {},
       "windows": [
         {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
+          "length": 1,
           "timeUnit": 1
         }
       ]
     },
     {
-      "inputColumn": "purchase_price",
-      "operation": 6,
+      "inputColumn": "view",
+      "operation": 7,
       "argMap": {},
       "windows": [
         {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
+          "length": 1,
           "timeUnit": 1
         }
       ]
     },
     {
-      "inputColumn": "purchase_price",
-      "operation": 8,
+      "inputColumn": "purchase",
+      "operation": 7,
       "argMap": {},
       "windows": [
         {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
+          "length": 7,
           "timeUnit": 1
         }
       ]
     },
     {
-      "inputColumn": "purchase_price",
-      "operation": 13,
-      "argMap": {
-        "k": "10"
-      }
+      "inputColumn": "favorite",
+      "operation": 7,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 1,
+          "timeUnit": 1
+        }
+      ]
     }
-  ],
-  "backfillStartDate": "2023-11-01"
+  ]
 }

@@ -1,8 +1,22 @@
 {
   "metaData": {
-    "name": "gcp.purchases.v1_test_notds",
+    "name": "gcp.purchases.v1_dev_notds__0",
     "team": "gcp",
+    "version": "0",
     "outputNamespace": "data",
+    "columnHashes": {
+      "purchase_price_sum_3d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_sum_14d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_sum_30d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_count_3d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_count_14d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_count_30d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_average_3d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_average_14d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_average_30d": "da634937507b662e72ba6e65a7dbc5ae",
+      "purchase_price_last10": "da634937507b662e72ba6e65a7dbc5ae",
+      "user_id": "8168060cd2596194d5a1132ce4fd7a84"
+    },
     "online": 1,
     "sourceFile": "group_bys/gcp/purchases.py",
     "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_purchases_notds_with_offset_0\", \"spec\": \"data.purchases_notds/notds={{ macros.ds_add(ds, 0) }}\"}]}",

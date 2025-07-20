@@ -1,8 +1,22 @@
 {
   "metaData": {
-    "name": "gcp.purchases.v1_dev",
+    "name": "gcp.purchases.v1_test__0",
     "team": "gcp",
+    "version": "0",
     "outputNamespace": "data",
+    "columnHashes": {
+      "purchase_price_sum_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_sum_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_sum_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_count_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_count_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_count_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_average_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_average_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_average_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "purchase_price_last10": "50b9729a1f8ccdf67aa78fd61a86cd40",
+      "user_id": "9fad95bded671ff91134aaca67b4828a"
+    },
     "online": 1,
     "sourceFile": "group_bys/gcp/purchases.py",
     "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_purchases_with_offset_0\", \"spec\": \"data.purchases/ds={{ macros.ds_add(ds, 0) }}\"}]}",

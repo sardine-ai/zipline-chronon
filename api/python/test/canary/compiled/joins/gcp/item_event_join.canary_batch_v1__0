@@ -1,12 +1,28 @@
 {
   "metaData": {
-    "name": "gcp.training_set.v1_test",
+    "name": "gcp.item_event_join.canary_batch_v1__0",
     "team": "gcp",
+    "version": "0",
     "outputNamespace": "data",
-    "online": 0,
+    "columnHashes": {
+      "user_id_purchase_price_sum_3d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_sum_14d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_sum_30d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_count_3d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_count_14d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_count_30d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_average_3d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_average_14d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_average_30d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_last10": "5609e04d61a47a8cafc67970785a3a59",
+      "listing_id": "f2f6c814b8ae1521176b22a1ae7f2d0d",
+      "user_id": "493d3df28f80664abd11b19fcd33b6e6",
+      "ts": "ad9fd4c611e20ad833819a4ce9d752bf"
+    },
+    "online": 1,
     "production": 0,
-    "sourceFile": "joins/gcp/training_set.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_checkouts_with_offset_0\", \"spec\": \"data.checkouts/ds={{ macros.ds_add(ds, 0) }}\"}, {\"name\": \"wf_data_purchases_with_offset_0\", \"spec\": \"data.purchases/ds={{ macros.ds_add(ds, 0) }}\"}], \"label_join\": false}",
+    "sourceFile": "joins/gcp/item_event_join.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_item_events_parquet_compat_with_offset_0\", \"spec\": \"data.item_events_parquet_compat/ds={{ macros.ds_add(ds, 0) }}\"}, {\"name\": \"wf_data_purchases_with_offset_0\", \"spec\": \"data.purchases/ds={{ macros.ds_add(ds, 0) }}\"}], \"label_join\": false}",
     "samplePercent": 100.0,
     "executionInfo": {
       "env": {
@@ -123,14 +139,14 @@
   },
   "left": {
     "events": {
-      "table": "data.checkouts",
+      "table": "data.item_events_parquet_compat",
       "query": {
         "selects": {
-          "user_id": "user_id",
-          "ts": "ts"
+          "listing_id": "EXPLODE(TRANSFORM(SPLIT(COALESCE(attributes['sold_listing_ids'], attributes['listing_id']), ','), e -> CAST(e AS LONG)))",
+          "user_id": "attributes['user_id']",
+          "ts": "timestamp"
         },
-        "startPartition": "2023-11-01",
-        "timeColumn": "ts"
+        "timeColumn": "timestamp"
       }
     }
   },
@@ -138,9 +154,23 @@
     {
       "groupBy": {
         "metaData": {
-          "name": "gcp.purchases.v1_test",
+          "name": "gcp.purchases.v1_test__0",
           "team": "gcp",
+          "version": "0",
           "outputNamespace": "data",
+          "columnHashes": {
+            "purchase_price_sum_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_sum_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_sum_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_count_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_count_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_count_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_average_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_average_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_average_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_last10": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "user_id": "9fad95bded671ff91134aaca67b4828a"
+          },
           "online": 1,
           "executionInfo": {
             "scheduleCron": "@daily",
@@ -235,6 +265,9 @@
       },
       "useLongNames": 0
     }
+  ],
+  "rowIds": [
+    "listing_id"
   ],
   "useLongNames": 0
 }

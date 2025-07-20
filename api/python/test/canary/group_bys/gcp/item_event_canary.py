@@ -38,6 +38,7 @@ def build_actions_groupby(source: Source) -> GroupBy:
         sources=[source],
         keys=["listing_id"],
         online=True,
+        version=0,
         aggregations=[
             Aggregation(input_column="add_cart", operation=Operation.SUM, windows=["1d"]),
             Aggregation(input_column="view", operation=Operation.SUM, windows=["1d"]),

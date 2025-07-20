@@ -1,11 +1,14 @@
 {
   "metaData": {
-    "name": "gcp.item_event_canary.actions_pubsub_v2",
+    "name": "gcp.sample_staging_query.v1__0",
     "team": "gcp",
-    "outputNamespace": "data",
-    "online": 1,
-    "sourceFile": "group_bys/gcp/item_event_canary.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_item_events_parquet_compat_with_offset_0\", \"spec\": \"data.item_events_parquet_compat/_DATE={{ macros.ds_add(ds, 0) }}\"}]}",
+    "version": "0",
+    "outputNamespace": "sample_namespace",
+    "tableProperties": {
+      "sample_config_json": "{\"sample_key\": \"sample value\"}"
+    },
+    "sourceFile": "staging_queries/gcp/sample_staging_query.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_training_set_v1_test__0_with_offset_1\", \"spec\": \"data.gcp_training_set_v1_test__0/ds={{ macros.ds_add(ds, 1) }}/_HR=23:00\"}]}",
     "executionInfo": {
       "env": {
         "common": {
@@ -13,7 +16,7 @@
           "JOB_MODE": "local[*]",
           "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
           "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-          "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
+          "CHRONON_ONLINE_ARGS": " -Ztasks=4",
           "PARTITION_COLUMN": "ds",
           "PARTITION_FORMAT": "yyyy-MM-dd",
           "CUSTOMER_ID": "dev",
@@ -32,7 +35,7 @@
             "JOB_MODE": "local[*]",
             "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
             "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-            "CHRONON_ONLINE_ARGS": "-Ztasks=4 -Zbootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
+            "CHRONON_ONLINE_ARGS": " -Ztasks=4",
             "PARTITION_COLUMN": "ds",
             "PARTITION_FORMAT": "yyyy-MM-dd",
             "CUSTOMER_ID": "dev",
@@ -49,7 +52,7 @@
       },
       "conf": {
         "common": {
-          "spark.chronon.partition.column": "_DATE",
+          "spark.chronon.partition.column": "ds",
           "spark.chronon.cloud_provider": "gcp",
           "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
           "spark.chronon.partition.format": "yyyy-MM-dd",
@@ -78,7 +81,7 @@
         },
         "modeConfigs": {
           "backfill": {
-            "spark.chronon.partition.column": "_DATE",
+            "spark.chronon.partition.column": "ds",
             "spark.chronon.cloud_provider": "gcp",
             "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
             "spark.chronon.partition.format": "yyyy-MM-dd",
@@ -116,78 +119,28 @@
           }
         }
       },
-      "scheduleCron": "@daily",
-      "historicalBackfill": 0
+      "scheduleCron": "@daily"
     }
   },
-  "sources": [
+  "query": "\nSELECT\n    *\nFROM data.gcp_training_set_v1_test__0\nWHERE ds BETWEEN '{ start_date }' AND '{ end_date }'\n",
+  "startPartition": "2020-03-01",
+  "setups": [
+    "CREATE TEMPORARY FUNCTION S2_CELL AS 'com.sample.hive.udf.S2CellId'"
+  ],
+  "tableDependencies": [
     {
-      "events": {
-        "table": "data.item_events_parquet_compat",
-        "topic": "pubsub://test-item-event-data/serde=pubsub_schema/project=canary-443022/schemaId=item-event/tasks=4/subscription=test-item-event-data-sub",
-        "query": {
-          "selects": {
-            "listing_id": "EXPLODE(TRANSFORM(SPLIT(COALESCE(attributes['sold_listing_ids'], attributes['listing_id']), ','), e -> CAST(e AS LONG)))",
-            "add_cart": "IF(event_type = 'backend_add_to_cart', 1, 0)",
-            "view": "IF(event_type = 'view_listing', 1, 0)",
-            "purchase": "IF(event_type = 'backend_cart_payment', 1, 0)",
-            "favorite": "IF(event_type = 'backend_favorite_item2', 1, 0)"
-          },
-          "wheres": [
-            "event_type in ('backend_add_to_cart', 'view_listing', 'backend_cart_payment', 'backend_favorite_item2')"
-          ],
-          "timeColumn": "timestamp"
-        }
+      "tableInfo": {
+        "table": "data.gcp_training_set_v1_test__0",
+        "partitionColumn": "ds"
+      },
+      "startOffset": {
+        "length": 1,
+        "timeUnit": 1
+      },
+      "endOffset": {
+        "length": 1,
+        "timeUnit": 1
       }
-    }
-  ],
-  "keyColumns": [
-    "listing_id"
-  ],
-  "aggregations": [
-    {
-      "inputColumn": "add_cart",
-      "operation": 7,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 1,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "view",
-      "operation": 7,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 1,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "purchase",
-      "operation": 7,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 7,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "favorite",
-      "operation": 7,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 1,
-          "timeUnit": 1
-        }
-      ]
     }
   ]
 }

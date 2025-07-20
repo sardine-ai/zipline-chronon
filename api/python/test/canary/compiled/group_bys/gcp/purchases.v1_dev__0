@@ -1,13 +1,25 @@
 {
   "metaData": {
-    "name": "gcp.sample_staging_query.v1",
+    "name": "gcp.purchases.v1_dev__0",
     "team": "gcp",
-    "outputNamespace": "sample_namespace",
-    "tableProperties": {
-      "sample_config_json": "{\"sample_key\": \"sample value\"}"
+    "version": "0",
+    "outputNamespace": "data",
+    "columnHashes": {
+      "purchase_price_sum_3d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_sum_14d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_sum_30d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_count_3d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_count_14d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_count_30d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_average_3d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_average_14d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_average_30d": "2c42b925d5a6a06963a6c662690cc685",
+      "purchase_price_last10": "2c42b925d5a6a06963a6c662690cc685",
+      "user_id": "6f8238329684939675059c835732a008"
     },
-    "sourceFile": "staging_queries/gcp/sample_staging_query.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_training_set_v1_test_with_offset_1\", \"spec\": \"data.gcp_training_set_v1_test/ds={{ macros.ds_add(ds, 1) }}/_HR=23:00\"}]}",
+    "online": 1,
+    "sourceFile": "group_bys/gcp/purchases.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_purchases_with_offset_0\", \"spec\": \"data.purchases/ds={{ macros.ds_add(ds, 0) }}\"}]}",
     "executionInfo": {
       "env": {
         "common": {
@@ -118,28 +130,93 @@
           }
         }
       },
-      "scheduleCron": "@daily"
+      "scheduleCron": "@daily",
+      "historicalBackfill": 0
     }
   },
-  "query": "\nSELECT\n    *\nFROM data.gcp_training_set_v1_test\nWHERE ds BETWEEN '{ start_date }' AND '{ end_date }'\n",
-  "startPartition": "2020-03-01",
-  "setups": [
-    "CREATE TEMPORARY FUNCTION S2_CELL AS 'com.sample.hive.udf.S2CellId'"
-  ],
-  "tableDependencies": [
+  "sources": [
     {
-      "tableInfo": {
-        "table": "data.gcp_training_set_v1_test",
-        "partitionColumn": "ds"
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
+      "events": {
+        "table": "data.purchases",
+        "query": {
+          "selects": {
+            "user_id": "user_id",
+            "purchase_price": "purchase_price"
+          },
+          "startPartition": "2023-11-01",
+          "timeColumn": "ts"
+        }
       }
     }
-  ]
+  ],
+  "keyColumns": [
+    "user_id"
+  ],
+  "aggregations": [
+    {
+      "inputColumn": "purchase_price",
+      "operation": 7,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "purchase_price",
+      "operation": 6,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "purchase_price",
+      "operation": 8,
+      "argMap": {},
+      "windows": [
+        {
+          "length": 3,
+          "timeUnit": 1
+        },
+        {
+          "length": 14,
+          "timeUnit": 1
+        },
+        {
+          "length": 30,
+          "timeUnit": 1
+        }
+      ]
+    },
+    {
+      "inputColumn": "purchase_price",
+      "operation": 13,
+      "argMap": {
+        "k": "10"
+      }
+    }
+  ],
+  "backfillStartDate": "2023-11-01"
 }
