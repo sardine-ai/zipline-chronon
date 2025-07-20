@@ -142,7 +142,7 @@ fail_if_bash_failed $?
 echo -e "${GREEN}<<<<<.....................................BACKFILL-JOIN.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
   zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_test__0 --start-ds 2023-11-01 --end-ds 2023-12-01
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_test__0_notds --start-ds 2023-11-01 --end-ds 2023-12-01
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev_notds__0 --start-ds 2023-11-01 --end-ds 2023-12-01
 
 else
   zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev__0 --start-ds 2023-11-01 --end-ds 2023-12-01
