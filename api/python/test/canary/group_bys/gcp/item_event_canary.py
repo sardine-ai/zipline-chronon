@@ -17,7 +17,7 @@ def build_source(topic: str) -> Source:
         events=EventSource(
             # This source table contains a custom struct ('attributes') that enables
             # attributes['key'] style access pattern in a BQ native table.
-            table="data.item_events_parquet_compat",
+            table="data.item_events_parquet_compat_partitioned",
             topic=topic,
             query=Query(
                 selects=selects(
@@ -42,7 +42,7 @@ def build_actions_groupby(source: Source) -> GroupBy:
         aggregations=[
             Aggregation(input_column="add_cart", operation=Operation.SUM, windows=["1d"]),
             Aggregation(input_column="view", operation=Operation.SUM, windows=["1d"]),
-            Aggregation(input_column="purchase", operation=Operation.SUM, windows=["7d"]),
+            Aggregation(input_column="purchase", operation=Operation.SUM, windows=["1d"]),
             Aggregation(input_column="favorite", operation=Operation.SUM, windows=["1d"]),
         ],
         conf=ConfigProperties(

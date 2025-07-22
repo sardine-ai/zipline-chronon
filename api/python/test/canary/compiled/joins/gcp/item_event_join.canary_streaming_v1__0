@@ -5,10 +5,10 @@
     "version": "0",
     "outputNamespace": "data",
     "columnHashes": {
-      "listing_id_add_cart_sum_1d": "01b6c586165184450e5e41b1f50160bb",
-      "listing_id_view_sum_1d": "b572f63fe6ac82b4f8d4489b4ee91fc2",
-      "listing_id_purchase_sum_7d": "0d8de7e27c5b99231d71f8ba7f8d1fd6",
-      "listing_id_favorite_sum_1d": "47c3bb35fefdc68545b8412381227cec",
+      "listing_id_add_cart_sum_1d": "6b9c42bf45158c93b823dcf0b5bea7ab",
+      "listing_id_view_sum_1d": "c92a7a66f21979b327788447d063fe2b",
+      "listing_id_purchase_sum_1d": "12f0cd5674381064326148e7eb352a40",
+      "listing_id_favorite_sum_1d": "bb07e39a4b7ea81aca5baf027fd8f555",
       "listing_id": "f2f6c814b8ae1521176b22a1ae7f2d0d",
       "user_id": "493d3df28f80664abd11b19fcd33b6e6",
       "ts": "ad9fd4c611e20ad833819a4ce9d752bf"
@@ -16,7 +16,7 @@
     "online": 1,
     "production": 0,
     "sourceFile": "joins/gcp/item_event_join.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_item_events_parquet_compat_with_offset_0\", \"spec\": \"data.item_events_parquet_compat/ds={{ macros.ds_add(ds, 0) }}\"}, {\"name\": \"wf_data_item_events_parquet_compat_with_offset_0\", \"spec\": \"data.item_events_parquet_compat/ds={{ macros.ds_add(ds, 0) }}\"}], \"label_join\": false}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_item_events_parquet_compat_with_offset_0\", \"spec\": \"data.item_events_parquet_compat/ds={{ macros.ds_add(ds, 0) }}\"}, {\"name\": \"wf_data_item_events_parquet_compat_partitioned_with_offset_0\", \"spec\": \"data.item_events_parquet_compat_partitioned/ds={{ macros.ds_add(ds, 0) }}\"}], \"label_join\": false}",
     "samplePercent": 100.0,
     "executionInfo": {
       "env": {
@@ -153,11 +153,11 @@
           "version": "0",
           "outputNamespace": "data",
           "columnHashes": {
-            "add_cart_sum_1d": "bb100dd59a6482a3dc49e9c45b6c769b",
-            "view_sum_1d": "74f9df51d8e3a6347e54f03e7de11444",
-            "purchase_sum_7d": "add3089ada1674ae92b69edca264ac70",
-            "favorite_sum_1d": "0f37825000b694dce52744683d2c62a9",
-            "listing_id": "ae27be6774c908e7081a3e2cd695e619"
+            "add_cart_sum_1d": "ed104cb5e34d9ac3c193cda31fec5db4",
+            "view_sum_1d": "d4bc995b2e1955c153a0d1d78927f07c",
+            "purchase_sum_1d": "8461cac7c35b38bae99562beb4060578",
+            "favorite_sum_1d": "ecce467f5cef9f4f6742ce4a0650499b",
+            "listing_id": "63b9f4d87c1cc4fb39f6f5230ae29034"
           },
           "online": 1,
           "executionInfo": {
@@ -180,7 +180,7 @@
         "sources": [
           {
             "events": {
-              "table": "data.item_events_parquet_compat",
+              "table": "data.item_events_parquet_compat_partitioned",
               "topic": "pubsub://test-item-event-data/serde=pubsub_schema/project=canary-443022/schemaId=item-event/tasks=4/subscription=test-item-event-data-sub",
               "query": {
                 "selects": {
@@ -230,7 +230,7 @@
             "argMap": {},
             "windows": [
               {
-                "length": 7,
+                "length": 1,
                 "timeUnit": 1
               }
             ]
