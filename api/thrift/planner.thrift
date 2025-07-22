@@ -67,6 +67,8 @@ struct JoinMetadataUpload {
 struct ExternalSourceSensorNode {
     1: optional api.MetaData metaData
     2: optional string sourceName
+    3: optional i64 retryCount
+    4: optional i64 retryIntervalMin
 }
 union NodeContent {
     // join nodes
