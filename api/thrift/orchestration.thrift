@@ -186,7 +186,10 @@ enum WorkflowStatus {
     SUBMITTED = 1,
     RUNNING = 2,
     SUCCEEDED = 3,
-    FAILED = 4
+    FAILED = 4,
+    WAITING = 5
+
+    // workflow status progression: SUBMITTED -> WAITING -> RUNNING -> SUCCEEDED/FAILED
 }
 
 struct Conf {
