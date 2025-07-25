@@ -7,6 +7,7 @@ import ai.chronon.api.{Builders, ExecutionInfo, PartitionSpec}
 import ai.chronon.planner.{ConfPlan, Mode}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import ai.chronon.api.Extensions._
 
 import java.nio.file.Paths
 import scala.jdk.CollectionConverters._
@@ -270,7 +271,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
     tableDeps should not be empty
     val streamingDep = tableDeps.head
-    streamingDep.tableInfo.table should equal(streamingGroupBy.metaData.name + "__streaming")
+    streamingDep.tableInfo.table should equal(streamingGroupBy.metaData.outputTable + "__streaming")
   }
 
   it should "metadata upload node should depend on uploadToKV GroupBy nodes when join parts have non-streaming sources" in {
@@ -305,7 +306,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     val tableDeps = metadataUploadNode.metaData.executionInfo.tableDependencies.asScala
     tableDeps should not be empty
     val uploadToKVDep = tableDeps.head
-    uploadToKVDep.tableInfo.table should equal(nonStreamingGroupBy.metaData.name + "__uploadToKV")
+    uploadToKVDep.tableInfo.table should equal(nonStreamingGroupBy.metaData.outputTable + "__uploadToKV")
   }
 
   it should "metadata upload node should handle mixed streaming and non-streaming GroupBy dependencies" in {
@@ -353,8 +354,8 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
     tableDeps should have size 2
 
     val depTables = tableDeps.map(_.tableInfo.table).toSet
-    depTables should contain(streamingGroupBy.metaData.name + "__streaming")
-    depTables should contain(nonStreamingGroupBy.metaData.name + "__uploadToKV")
+    depTables should contain(streamingGroupBy.metaData.outputTable + "__streaming")
+    depTables should contain(nonStreamingGroupBy.metaData.outputTable + "__uploadToKV")
   }
 
   it should "metadata upload node should have no GroupBy dependencies when join has no join parts" in {

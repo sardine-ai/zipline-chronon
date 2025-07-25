@@ -18,7 +18,7 @@ package ai.chronon.spark.test.batch
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.api.planner.TableDependencies
+import ai.chronon.api.planner.{MetaDataUtils, TableDependencies}
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner.{ExternalSourceSensorNode, MonolithJoinNode, Node, NodeContent}
 import ai.chronon.spark.batch.BatchNodeRunner
@@ -72,17 +72,23 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
                          outputTable: String,
                          partitionColumn: String = "ds",
                          partitionFormat: String = "yyyy-MM-dd"): MetaData = {
-    val outputTableInfo = new TableInfo(
-    ).setTable(outputTable).setPartitionColumn(partitionColumn).setPartitionFormat(partitionFormat)
+    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+
     val query = new Query().setPartitionColumn(partitionColumn).setPartitionFormat(partitionFormat)
     val tableDependency = TableDependencies.fromTable(inputTable, query)
-    val executionInfo = new ExecutionInfo(
-    ).setStepDays(1).setTableDependencies(Seq(tableDependency).asJava).setOutputTableInfo(outputTableInfo)
-    new MetaData()
-      .setName("test_batch_node")
-      .setExecutionInfo(executionInfo)
+
+    val baseMetadata = new MetaData()
       .setOutputNamespace("test_db")
       .setTeam("test_team")
+
+    MetaDataUtils.layer(
+      baseMetadata = baseMetadata,
+      modeName = "test_mode",
+      nodeName = "test_batch_node",
+      tableDependencies = Seq(tableDependency),
+      stepDays = Some(1),
+      outputTableOverride = Some(outputTable)
+    )
   }
 
   def createTestNodeContent(inputTable: String = "test_db.input_table",
@@ -188,6 +194,14 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   }
 
   override def beforeEach(): Unit = {
+    // Drop all test tables to ensure fresh start
+    spark.sql("DROP TABLE IF EXISTS test_db.input_table")
+    spark.sql("DROP TABLE IF EXISTS test_db.left_table")
+    spark.sql("DROP TABLE IF EXISTS test_db.output_table")
+    spark.sql("DROP TABLE IF EXISTS test_db.input_table_alt")
+    spark.sql("DROP TABLE IF EXISTS test_db.output_table_alt")
+    spark.sql("DROP TABLE IF EXISTS test_db.left_table_alt")
+
     setupTestTables()
     mockKVStore.reset()
   }
