@@ -6,6 +6,7 @@ import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner._
+import ai.chronon.spark.batch.BatchNodeRunner.DefaultTablePartitionsDataset
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.submission.SparkSessionBuilder
@@ -38,6 +39,10 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
                                   "Fully qualified Online.Api based class. We expect the jar to be on the class path")
 
   val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API Store")
+
+  val tablePartitionsDataset = opt[String](required = true,
+                                           descr = "Name of table in kv store to use to keep track of partitions",
+                                           default = Option(DefaultTablePartitionsDataset))
 
   verify()
 }
@@ -177,7 +182,11 @@ object BatchNodeRunner extends NodeRunner {
     run(metadata, conf, range.get, createTableUtils(metadata.name))
   }
 
-  def runFromArgs(api: Api, confPath: String, startDs: String, endDs: String): Try[Unit] = {
+  def runFromArgs(api: Api,
+                  confPath: String,
+                  startDs: String,
+                  endDs: String,
+                  tablePartitionsDataset: String): Try[Unit] = {
     Try {
       val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = true)
       val metadata = node.metaData
@@ -218,7 +227,7 @@ object BatchNodeRunner extends NodeRunner {
       }
       val kvStoreUpdates = kvStore.multiPut(allInputTablePartitions.map { case (tableName, allPartitions) =>
         val partitionsJson = PartitionRange.collapsedPrint(allPartitions)(range.partitionSpec)
-        PutRequest(tableName.getBytes, partitionsJson.getBytes, TablePartitionsDataset)
+        PutRequest(tableName.getBytes, partitionsJson.getBytes, tablePartitionsDataset)
       }.toSeq)
 
       Await.result(kvStoreUpdates, Duration.Inf)
@@ -250,7 +259,7 @@ object BatchNodeRunner extends NodeRunner {
         val outputTablePartitionsJson = PartitionRange.collapsedPrint(allOutputTablePartitions)(range.partitionSpec)
         val putRequest = PutRequest(metadata.executionInfo.outputTableInfo.table.getBytes,
                                     outputTablePartitionsJson.getBytes,
-                                    TablePartitionsDataset)
+                                    tablePartitionsDataset)
         val kvStoreUpdates = kvStore.put(putRequest)
         Await.result(kvStoreUpdates, Duration.Inf)
         logger.info(s"Successfully completed batch node runner for '${metadata.name}'")
@@ -270,7 +279,11 @@ object BatchNodeRunner extends NodeRunner {
     try {
       val batchArgs = new BatchNodeRunnerArgs(args)
       val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
-      runFromArgs(api, batchArgs.confPath(), batchArgs.startDs(), batchArgs.endDs()) match {
+      runFromArgs(api,
+                  batchArgs.confPath(),
+                  batchArgs.startDs(),
+                  batchArgs.endDs(),
+                  batchArgs.tablePartitionsDataset()) match {
         case Success(_) =>
           logger.info("Batch node runner completed successfully")
           System.exit(0)
@@ -284,4 +297,6 @@ object BatchNodeRunner extends NodeRunner {
         System.exit(1)
     }
   }
+
+  //  override def tablePartitionsDataset(): String = tablePartitionsDataset
 }

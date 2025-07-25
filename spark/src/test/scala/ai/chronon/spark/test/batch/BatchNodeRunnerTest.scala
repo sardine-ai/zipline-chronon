@@ -22,6 +22,7 @@ import ai.chronon.api.planner.{MetaDataUtils, TableDependencies}
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner.{ExternalSourceSensorNode, MonolithJoinNode, Node, NodeContent}
 import ai.chronon.spark.batch.BatchNodeRunner
+import ai.chronon.spark.batch.BatchNodeRunner.DefaultTablePartitionsDataset
 import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.test.{MockKVStore, TableTestUtils}
 import ai.chronon.spark.utils.MockApi
@@ -210,7 +211,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val configPath = createTestConfigFile(twoDaysAgo, yesterday)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday)
+    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday, DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -227,7 +228,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
         // Verify dataset name
         assertTrue("Should use TABLE_PARTITIONS dataset",
-                   mockKVStore.putRequests.forall(_.dataset == "TABLE_PARTITIONS"))
+                   mockKVStore.putRequests.forall(_.dataset == DefaultTablePartitionsDataset))
 
       case Failure(exception) =>
         fail(s"runFromArgs should have succeeded but failed with: ${exception.getMessage}")
@@ -238,7 +239,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val configPath = createTestConfigFile(twoDaysAgo, today) // today's partition doesn't exist
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, today)
+    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, today, DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -271,7 +272,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val configPath = createTestConfigFile(twoDaysAgo, yesterday)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday)
+    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday, DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -299,7 +300,8 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val configPath = createTestConfigFile(futureDate1, futureDate2)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, futureDate1, futureDate2)
+    val result =
+      BatchNodeRunner.runFromArgs(mockApi, configPath, futureDate1, futureDate2, DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -333,7 +335,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val threeDaysAgo = tableUtils.partitionSpec.before(twoDaysAgo)
     val configPath = createTestConfigFile(threeDaysAgo, today)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, threeDaysAgo, today)
+    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, threeDaysAgo, today, DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -415,7 +417,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
       partitionFormat = "yyyyMMdd"
     )
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday)
+    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday, DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
