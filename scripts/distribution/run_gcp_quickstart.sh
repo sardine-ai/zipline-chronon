@@ -125,8 +125,6 @@ function fail_if_bash_failed() {
 CHRONON_ROOT=`pwd`/api/python/test/canary
 export PYTHONPATH="$CHRONON_ROOT" ARTIFACT_PREFIX="gs://zipline-artifacts-$ENVIRONMENT" CUSTOMER_ID=$ENVIRONMENT
 
-DATAPROC_SUBMITTER_ID_STR="Dataproc submitter job id"
-
 echo -e "${GREEN}<<<<<.....................................COMPILE.....................................>>>>>\033[0m"
 zipline compile --chronon-root=$CHRONON_ROOT
 
