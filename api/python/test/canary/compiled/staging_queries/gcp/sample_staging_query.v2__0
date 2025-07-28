@@ -3,7 +3,7 @@
     "name": "gcp.sample_staging_query.v2__0",
     "team": "gcp",
     "version": "0",
-    "outputNamespace": "sample_namespace",
+    "outputNamespace": "data",
     "tableProperties": {
       "sample_config_json": "{\"sample_key\": \"sample value\"}"
     },

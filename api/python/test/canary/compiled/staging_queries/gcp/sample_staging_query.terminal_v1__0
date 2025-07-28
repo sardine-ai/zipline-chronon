@@ -3,12 +3,12 @@
     "name": "gcp.sample_staging_query.terminal_v1__0",
     "team": "gcp",
     "version": "0",
-    "outputNamespace": "sample_namespace",
+    "outputNamespace": "data",
     "tableProperties": {
       "sample_config_json": "{\"sample_key\": \"sample value\"}"
     },
     "sourceFile": "staging_queries/gcp/sample_staging_query.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_sample_namespace_gcp_sample_staging_query_v1__0_with_offset_1\", \"spec\": \"sample_namespace.gcp_sample_staging_query_v1__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_sample_namespace_gcp_sample_staging_query_v2__0_with_offset_1\", \"spec\": \"sample_namespace.gcp_sample_staging_query_v2__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_sample_namespace_gcp_sample_staging_query_v3__0_with_offset_1\", \"spec\": \"sample_namespace.gcp_sample_staging_query_v3__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_sample_namespace_gcp_sample_staging_query_v4__0_with_offset_1\", \"spec\": \"sample_namespace.gcp_sample_staging_query_v4__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_sample_namespace_gcp_sample_staging_query_v5__0_with_offset_1\", \"spec\": \"sample_namespace.gcp_sample_staging_query_v5__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_sample_namespace_gcp_sample_staging_query_v6__0_with_offset_1\", \"spec\": \"sample_namespace.gcp_sample_staging_query_v6__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_sample_staging_query_v1__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_v1__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_v2__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_v2__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_v3__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_v3__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_v4__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_v4__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_v5__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_v5__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_v6__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_v6__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
     "executionInfo": {
       "env": {
         "common": {
@@ -127,7 +127,7 @@
   "tableDependencies": [
     {
       "tableInfo": {
-        "table": "sample_namespace.gcp_sample_staging_query_v1__0",
+        "table": "data.gcp_sample_staging_query_v1__0",
         "partitionColumn": "ds"
       },
       "startOffset": {
@@ -141,7 +141,7 @@
     },
     {
       "tableInfo": {
-        "table": "sample_namespace.gcp_sample_staging_query_v2__0",
+        "table": "data.gcp_sample_staging_query_v2__0",
         "partitionColumn": "ds"
       },
       "startOffset": {
@@ -155,7 +155,7 @@
     },
     {
       "tableInfo": {
-        "table": "sample_namespace.gcp_sample_staging_query_v3__0",
+        "table": "data.gcp_sample_staging_query_v3__0",
         "partitionColumn": "ds"
       },
       "startOffset": {
@@ -169,7 +169,7 @@
     },
     {
       "tableInfo": {
-        "table": "sample_namespace.gcp_sample_staging_query_v4__0",
+        "table": "data.gcp_sample_staging_query_v4__0",
         "partitionColumn": "ds"
       },
       "startOffset": {
@@ -183,7 +183,7 @@
     },
     {
       "tableInfo": {
-        "table": "sample_namespace.gcp_sample_staging_query_v5__0",
+        "table": "data.gcp_sample_staging_query_v5__0",
         "partitionColumn": "ds"
       },
       "startOffset": {
@@ -197,7 +197,7 @@
     },
     {
       "tableInfo": {
-        "table": "sample_namespace.gcp_sample_staging_query_v6__0",
+        "table": "data.gcp_sample_staging_query_v6__0",
         "partitionColumn": "ds"
       },
       "startOffset": {

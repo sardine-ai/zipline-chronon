@@ -15,7 +15,7 @@ def get_staging_query():
         query=query,
         start_partition="2020-03-01",
         name="sample_staging_query",
-        output_namespace="sample_namespace",
+        output_namespace="data",
         table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
         dependencies=[
             TableDependency(table=get_join_output_table_name(training_set.v1_test, True), partition_column="ds", offset=1)
@@ -35,7 +35,7 @@ terminal_v1 = StagingQuery(
     start_partition="2020-03-01",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
     name="terminal_staging_query",
-    output_namespace="sample_namespace",
+    output_namespace="data",
     dependencies=[
         TableDependency(table=get_staging_query_output_table_name(v1, True), partition_column="ds", offset=1),
         TableDependency(table=get_staging_query_output_table_name(v2, True), partition_column="ds", offset=1),
