@@ -191,10 +191,10 @@ if [[ "$ENVIRONMENT" == "canary" ]]; then
 else
   zipline run --repo=$CHRONON_ROOT --version $VERSION --mode fetch --conf=compiled/group_bys/gcp/purchases.v1_dev__0  -k '{"user_id":"5"}' --name gcp.purchases.v1_dev__0 2>&1 | tee tmp_fetch.out
 fi
-cat tmp_fetch.out | grep purchase_price_average_14d
+cat tmp_fetch.out | grep purchase_price_average_7d
 # check if exit code of previous is 0
 if [ $? -ne 0 ]; then
-  echo "Failed to find purchase_price_average_14d"
+  echo "Failed to find purchase_price_average_7d"
   exit 1
 fi
 
