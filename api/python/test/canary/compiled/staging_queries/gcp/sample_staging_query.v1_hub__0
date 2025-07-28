@@ -1,25 +1,14 @@
 {
   "metaData": {
-    "name": "gcp.purchases.v1_dev_notds__0",
+    "name": "gcp.sample_staging_query.v1_hub__0",
     "team": "gcp",
     "version": "0",
     "outputNamespace": "data",
-    "columnHashes": {
-      "purchase_price_sum_1d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_sum_3d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_sum_7d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_count_1d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_count_3d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_count_7d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_average_1d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_average_3d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_average_7d": "da634937507b662e72ba6e65a7dbc5ae",
-      "purchase_price_last10": "da634937507b662e72ba6e65a7dbc5ae",
-      "user_id": "8168060cd2596194d5a1132ce4fd7a84"
+    "tableProperties": {
+      "sample_config_json": "{\"sample_key\": \"sample value\"}"
     },
-    "online": 1,
-    "sourceFile": "group_bys/gcp/purchases.py",
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_purchases_notds_with_offset_0\", \"spec\": \"data.purchases_notds/notds={{ macros.ds_add(ds, 0) }}\"}]}",
+    "sourceFile": "staging_queries/gcp/sample_staging_query.py",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_training_set_v1_hub__0_with_offset_1\", \"spec\": \"data.gcp_training_set_v1_hub__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
     "executionInfo": {
       "env": {
         "common": {
@@ -130,94 +119,25 @@
           }
         }
       },
-      "scheduleCron": "@daily",
-      "historicalBackfill": 0
+      "scheduleCron": "@daily"
     }
   },
-  "sources": [
+  "query": "\nSELECT\n    *\nFROM data.gcp_training_set_v1_hub__0\nWHERE ds BETWEEN '{ start_date }' AND '{ end_date }'\n",
+  "startPartition": "2020-03-01",
+  "tableDependencies": [
     {
-      "events": {
-        "table": "data.purchases_notds",
-        "query": {
-          "selects": {
-            "user_id": "user_id",
-            "purchase_price": "purchase_price"
-          },
-          "startPartition": "2023-11-01",
-          "timeColumn": "ts",
-          "partitionColumn": "notds"
-        }
+      "tableInfo": {
+        "table": "data.gcp_training_set_v1_hub__0",
+        "partitionColumn": "ds"
+      },
+      "startOffset": {
+        "length": 1,
+        "timeUnit": 1
+      },
+      "endOffset": {
+        "length": 1,
+        "timeUnit": 1
       }
     }
-  ],
-  "keyColumns": [
-    "user_id"
-  ],
-  "aggregations": [
-    {
-      "inputColumn": "purchase_price",
-      "operation": 7,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 1,
-          "timeUnit": 1
-        },
-        {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 7,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "purchase_price",
-      "operation": 6,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 1,
-          "timeUnit": 1
-        },
-        {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 7,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "purchase_price",
-      "operation": 8,
-      "argMap": {},
-      "windows": [
-        {
-          "length": 1,
-          "timeUnit": 1
-        },
-        {
-          "length": 3,
-          "timeUnit": 1
-        },
-        {
-          "length": 7,
-          "timeUnit": 1
-        }
-      ]
-    },
-    {
-      "inputColumn": "purchase_price",
-      "operation": 13,
-      "argMap": {
-        "k": "10"
-      }
-    }
-  ],
-  "backfillStartDate": "2023-11-01"
+  ]
 }

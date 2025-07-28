@@ -5,15 +5,15 @@
     "version": "0",
     "outputNamespace": "data",
     "columnHashes": {
+      "user_id_purchase_price_sum_1d": "5609e04d61a47a8cafc67970785a3a59",
       "user_id_purchase_price_sum_3d": "5609e04d61a47a8cafc67970785a3a59",
-      "user_id_purchase_price_sum_14d": "5609e04d61a47a8cafc67970785a3a59",
-      "user_id_purchase_price_sum_30d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_sum_7d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_count_1d": "5609e04d61a47a8cafc67970785a3a59",
       "user_id_purchase_price_count_3d": "5609e04d61a47a8cafc67970785a3a59",
-      "user_id_purchase_price_count_14d": "5609e04d61a47a8cafc67970785a3a59",
-      "user_id_purchase_price_count_30d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_count_7d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_average_1d": "5609e04d61a47a8cafc67970785a3a59",
       "user_id_purchase_price_average_3d": "5609e04d61a47a8cafc67970785a3a59",
-      "user_id_purchase_price_average_14d": "5609e04d61a47a8cafc67970785a3a59",
-      "user_id_purchase_price_average_30d": "5609e04d61a47a8cafc67970785a3a59",
+      "user_id_purchase_price_average_7d": "5609e04d61a47a8cafc67970785a3a59",
       "user_id_purchase_price_last10": "5609e04d61a47a8cafc67970785a3a59",
       "listing_id": "f2f6c814b8ae1521176b22a1ae7f2d0d",
       "user_id": "493d3df28f80664abd11b19fcd33b6e6",
@@ -159,15 +159,15 @@
           "version": "0",
           "outputNamespace": "data",
           "columnHashes": {
+            "purchase_price_sum_1d": "50b9729a1f8ccdf67aa78fd61a86cd40",
             "purchase_price_sum_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
-            "purchase_price_sum_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
-            "purchase_price_sum_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_sum_7d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_count_1d": "50b9729a1f8ccdf67aa78fd61a86cd40",
             "purchase_price_count_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
-            "purchase_price_count_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
-            "purchase_price_count_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_count_7d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_average_1d": "50b9729a1f8ccdf67aa78fd61a86cd40",
             "purchase_price_average_3d": "50b9729a1f8ccdf67aa78fd61a86cd40",
-            "purchase_price_average_14d": "50b9729a1f8ccdf67aa78fd61a86cd40",
-            "purchase_price_average_30d": "50b9729a1f8ccdf67aa78fd61a86cd40",
+            "purchase_price_average_7d": "50b9729a1f8ccdf67aa78fd61a86cd40",
             "purchase_price_last10": "50b9729a1f8ccdf67aa78fd61a86cd40",
             "user_id": "9fad95bded671ff91134aaca67b4828a"
           },
@@ -202,15 +202,15 @@
             "argMap": {},
             "windows": [
               {
+                "length": 1,
+                "timeUnit": 1
+              },
+              {
                 "length": 3,
                 "timeUnit": 1
               },
               {
-                "length": 14,
-                "timeUnit": 1
-              },
-              {
-                "length": 30,
+                "length": 7,
                 "timeUnit": 1
               }
             ]
@@ -221,15 +221,15 @@
             "argMap": {},
             "windows": [
               {
+                "length": 1,
+                "timeUnit": 1
+              },
+              {
                 "length": 3,
                 "timeUnit": 1
               },
               {
-                "length": 14,
-                "timeUnit": 1
-              },
-              {
-                "length": 30,
+                "length": 7,
                 "timeUnit": 1
               }
             ]
@@ -240,15 +240,15 @@
             "argMap": {},
             "windows": [
               {
+                "length": 1,
+                "timeUnit": 1
+              },
+              {
                 "length": 3,
                 "timeUnit": 1
               },
               {
-                "length": 14,
-                "timeUnit": 1
-              },
-              {
-                "length": 30,
+                "length": 7,
                 "timeUnit": 1
               }
             ]

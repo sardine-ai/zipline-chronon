@@ -17,7 +17,7 @@ source = Source(
             time_column="ts") # The event time
     ))
 
-window_sizes = [Window(length=day, time_unit=TimeUnit.DAYS) for day in [3, 14, 30]] # Define some window sizes to use below
+window_sizes = [Window(length=day, time_unit=TimeUnit.DAYS) for day in [1, 3, 7]] # Define some window sizes to use below
 
 v1_dev = GroupBy(
     backfill_start_date="2023-11-01",

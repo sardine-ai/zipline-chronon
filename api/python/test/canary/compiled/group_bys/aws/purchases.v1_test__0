@@ -5,15 +5,15 @@
     "version": "0",
     "outputNamespace": "data",
     "columnHashes": {
+      "purchase_price_sum_1d": "5814df4e6a1e2eb06b9fab89e70ea97d",
       "purchase_price_sum_3d": "5814df4e6a1e2eb06b9fab89e70ea97d",
-      "purchase_price_sum_14d": "5814df4e6a1e2eb06b9fab89e70ea97d",
-      "purchase_price_sum_30d": "5814df4e6a1e2eb06b9fab89e70ea97d",
+      "purchase_price_sum_7d": "5814df4e6a1e2eb06b9fab89e70ea97d",
+      "purchase_price_count_1d": "5814df4e6a1e2eb06b9fab89e70ea97d",
       "purchase_price_count_3d": "5814df4e6a1e2eb06b9fab89e70ea97d",
-      "purchase_price_count_14d": "5814df4e6a1e2eb06b9fab89e70ea97d",
-      "purchase_price_count_30d": "5814df4e6a1e2eb06b9fab89e70ea97d",
+      "purchase_price_count_7d": "5814df4e6a1e2eb06b9fab89e70ea97d",
+      "purchase_price_average_1d": "5814df4e6a1e2eb06b9fab89e70ea97d",
       "purchase_price_average_3d": "5814df4e6a1e2eb06b9fab89e70ea97d",
-      "purchase_price_average_14d": "5814df4e6a1e2eb06b9fab89e70ea97d",
-      "purchase_price_average_30d": "5814df4e6a1e2eb06b9fab89e70ea97d",
+      "purchase_price_average_7d": "5814df4e6a1e2eb06b9fab89e70ea97d",
       "purchase_price_last10": "5814df4e6a1e2eb06b9fab89e70ea97d",
       "user_id": "dec6601a613992b4b6cdc50ac8014a29"
     },
@@ -75,15 +75,15 @@
       "argMap": {},
       "windows": [
         {
+          "length": 1,
+          "timeUnit": 1
+        },
+        {
           "length": 3,
           "timeUnit": 1
         },
         {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
+          "length": 7,
           "timeUnit": 1
         }
       ]
@@ -94,15 +94,15 @@
       "argMap": {},
       "windows": [
         {
+          "length": 1,
+          "timeUnit": 1
+        },
+        {
           "length": 3,
           "timeUnit": 1
         },
         {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
+          "length": 7,
           "timeUnit": 1
         }
       ]
@@ -113,15 +113,15 @@
       "argMap": {},
       "windows": [
         {
+          "length": 1,
+          "timeUnit": 1
+        },
+        {
           "length": 3,
           "timeUnit": 1
         },
         {
-          "length": 14,
-          "timeUnit": 1
-        },
-        {
-          "length": 30,
+          "length": 7,
           "timeUnit": 1
         }
       ]
