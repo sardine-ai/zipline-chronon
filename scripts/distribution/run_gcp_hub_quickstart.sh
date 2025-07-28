@@ -78,7 +78,7 @@ set -xo pipefail
 # Delete output table
 # TODO: update this new conf
 bq rm -f -t canary-443022:data.gcp_training_set_v1_hub__0
-bq rm -f -t canary-443022.data.gcp_sample_staging_query_v1__0
+bq rm -f -t canary-443022.data.gcp_sample_staging_query_v1_hub__0
 
 # Every one gets their own name spaced TABLE_PARTITIONS bigtable
 export TABLE_PARTITIONS_DATASET="TABLE_PARTITIONS_CI"
