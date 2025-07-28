@@ -1,6 +1,6 @@
 {
   "metaData": {
-    "name": "gcp.sample_staging_query.v1__0",
+    "name": "gcp.sample_staging_query.v5__0",
     "team": "gcp",
     "version": "0",
     "outputNamespace": "sample_namespace",
