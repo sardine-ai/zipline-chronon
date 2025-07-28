@@ -30,6 +30,15 @@ v1_test = Join(
     version=0,
 )
 
+v1_hub = Join(
+    left=source,
+    row_ids="user_id",
+    right_parts=[
+        JoinPart(group_by=purchases.v1_test)
+    ],
+    version=0,
+)
+
 v1_dev = Join(
     left=source,
     row_ids="user_id",

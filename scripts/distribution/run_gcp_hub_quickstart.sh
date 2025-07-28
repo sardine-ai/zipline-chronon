@@ -77,7 +77,8 @@ set -xo pipefail
 
 # Delete output table
 # TODO: update this new conf
-bq rm -f -t canary-443022:data.gcp_training_set_v1_test__0
+bq rm -f -t canary-443022:data.gcp_training_set_v1_hub__0
+bq rm -f -t canary-443022.data.gcp_sample_staging_query_v1__0
 
 # Every one gets their own name spaced TABLE_PARTITIONS bigtable
 export TABLE_PARTITIONS_DATASET="TABLE_PARTITIONS_CI"
@@ -188,7 +189,9 @@ zipline compile --chronon-root=$CHRONON_ROOT
 
 touch tmp_backfill.out
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
-zipline hub backfill --repo=$CHRONON_ROOT --hub_url $HUB_URL --conf compiled/joins/gcp/training_set.v1_test__0 --start-ds 2023-11-30 --end-ds 2023-11-30 | tee tmp_backfill.out
+zipline hub backfill --repo=$CHRONON_ROOT --hub_url $HUB_URL --conf compiled/staging_queries/gcp/sample_staging_query.v1_hub__0 --start-ds 2023-12-01 --end-ds 2023-12-01 | tee tmp_backfill.out
+
+
 fail_if_bash_failed $?
 WORKFLOW_ID=$(extract_workflow_id cat tmp_backfill.out)
 check_workflow_id_not_empty $WORKFLOW_ID
