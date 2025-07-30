@@ -10,7 +10,7 @@ import ai.chronon.spark.batch.BatchNodeRunner.DefaultTablePartitionsDataset
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.{GroupByUpload, Join}
+import ai.chronon.spark.{GroupBy, GroupByUpload, Join}
 import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -100,6 +100,15 @@ object BatchNodeRunner extends NodeRunner {
         runMonolithJoin(metadata, conf.getMonolithJoin, range, tableUtils)
       case NodeContent._Fields.GROUP_BY_UPLOAD =>
         runGroupByUpload(metadata, conf.getGroupByUpload, range, tableUtils)
+      case NodeContent._Fields.GROUP_BY_BACKFILL =>
+        logger.info(s"Running groupBy backfill for '${metadata.name}' for range: [${range.start}, ${range.end}]")
+        GroupBy.computeBackfill(
+          conf.getGroupByBackfill.groupBy,
+          range.end,
+          tableUtils,
+          overrideStartPartition = Option(range.start)
+        )
+        logger.info(s"Successfully completed groupBy backfill for '${metadata.name}'")
       case NodeContent._Fields.STAGING_QUERY =>
         runStagingQuery(metadata, conf.getStagingQuery, range, tableUtils)
       case NodeContent._Fields.EXTERNAL_SOURCE_SENSOR => {
