@@ -134,7 +134,7 @@ check_workflow_status() {
     local attempt=1
 
     if [ -z "$hub_url" ]; then
-        echo "Set the "
+        echo "Set the hub url"
         return 1
     fi
 
@@ -142,7 +142,11 @@ check_workflow_status() {
         echo "Attempt $attempt/$max_attempts: Checking workflow status..."
 
         # Make the curl request and extract status
-        response=$(curl -s -X GET "$hub_url")
+        if [[ -z "$GCP_ID_TOKEN" ]]; then
+          response=$(curl -s -X GET "$hub_url")
+        else
+          response=$(curl -s -X GET "$hub_url" -H "Authorization: Bearer $GCP_ID_TOKEN")
+        fi
         echo "Workflow response: $response"
         status=$(echo "$response" | grep -o '"status":[0-9]*' | head -n1 | cut -d':' -f2 | tr -d ' \n\r')
 
@@ -178,7 +182,7 @@ check_workflow_status() {
     done
 
     echo "Maximum attempts ($max_attempts) reached. Workflow did not reach status 3."
-    return 0
+    return 1
 }
 
 CHRONON_ROOT=`pwd`/api/python/test/canary

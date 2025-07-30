@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import google.auth
@@ -12,9 +13,17 @@ class ZiplineHub:
         self.base_url = base_url
         if self.base_url.startswith("https") and self.base_url.endswith(".app"):
             print("Using Google Cloud authentication for ZiplineHub.")
-            credentials, project_id = google.auth.default()
-            credentials.refresh(Request())
-            self.id_token = credentials.id_token
+
+            # First try to get ID token from environment (GitHub Actions)
+            self.id_token = os.getenv('GCP_ID_TOKEN')
+            if self.id_token:
+                print("Using ID token from environment")
+            else:
+                # Fallback to Google Cloud authentication
+                print("Generating ID token from default credentials")
+                credentials, project_id = google.auth.default()
+                credentials.refresh(Request())
+                self.id_token = credentials.id_token
 
     def call_diff_api(self, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
         url = f"{self.base_url}/upload/v1/diff"
