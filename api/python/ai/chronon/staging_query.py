@@ -23,7 +23,9 @@ class TableDependency:
     offset: Optional[int] = None
 
     def to_thrift(self):
-        offset_window = common.Window(length = self.offset, timeUnit= common.TimeUnit.DAYS) if self.offset is not None else None
+        if self.offset is None:
+            raise ValueError(f"Dependency offset for table {self.table} must be specified.")
+        offset_window = common.Window(length = self.offset, timeUnit= common.TimeUnit.DAYS)
         return common.TableDependency(
             tableInfo=common.TableInfo(
                 table=self.table, 
