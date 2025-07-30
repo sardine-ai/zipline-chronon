@@ -76,7 +76,6 @@ maven_repository = repository(
         "org.json4s:json4s-core_2.12:3.7.0-M11",
         "org.json4s:json4s-ast_2.12:3.7.0-M11",
         "io.delta:delta-spark_2.12:3.2.0",
-        "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1",
         "org.apache.hudi:hudi-spark3.5-bundle_2.12:1.0.0",
 
         # grpc

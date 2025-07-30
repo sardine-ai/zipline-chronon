@@ -43,6 +43,7 @@ scala_library(
         maven_artifact("org.apache.thrift:libthrift"),
         maven_artifact("org.apache.hadoop:hadoop-common"),
         maven_artifact("org.apache.hadoop:hadoop-client-api"),
+        maven_artifact_with_suffix("org.apache.iceberg:iceberg-spark-runtime-3.5"),
     ],
 )
 
@@ -84,7 +85,7 @@ scala_library(
 
 scala_library(
     name = "batch_lib",
-    srcs = glob(["src/main/scala/ai/chronon/spark/batch/*.scala"]),
+    srcs = glob(["src/main/scala/ai/chronon/spark/batch/**/*.scala"]),
     format = True,
     visibility = ["//visibility:public"],
     deps = [
@@ -102,6 +103,7 @@ scala_library(
         maven_artifact("org.apache.logging.log4j:log4j-core"),
         maven_artifact_with_suffix("org.rogach:scallop"),
         maven_artifact("com.google.code.gson:gson"),
+        maven_artifact_with_suffix("org.apache.iceberg:iceberg-spark-runtime-3.5"),
     ],
 )
 
@@ -154,6 +156,7 @@ scala_test_suite(
     deps = test_deps + [
         "test_lib",
         ":batch_lib",
+        maven_artifact_with_suffix("org.apache.iceberg:iceberg-spark-runtime-3.5"),
     ],
 )
 
