@@ -4,13 +4,6 @@ namespace java ai.chronon.orchestration
 include "common.thrift"
 include "api.thrift"
 
-enum TabularDataType {
-    EVENT = 1,
-    ENTITY = 2,
-    CUMULATIVE_EVENTS = 3,
-    // SCD2 = 4,
-}
-
 // This has to be 0-indexed for Java usage
 enum ConfType {
     GROUP_BY = 0,
@@ -19,157 +12,11 @@ enum ConfType {
     MODEL = 3,
 }
 
-/**
-* Represents a group of structured data assets that the same data flows through
-* just a normalized version of Events + Entity sources.
-**/
-struct TabularData {
-    1: optional string table
-    2: optional string topic
-    3: optional string mutationTable
-    4: optional TabularDataType type
-}
-
 union LogicalNode {
     1: api.StagingQuery stagingQuery
     2: api.Join join
     3: api.GroupBy groupBy
     4: api.Model model
-    5: TabularData tabularData
-}
-
-struct NodeKey {
-    1: optional string name
-
-    2: optional ConfType logicalType
-    3: optional PhysicalNodeType physicalType
-}
-
-struct NodeInfo {
-    /**
-    * represents the computation that a node does
-    * direct changes to conf that change output will affect semantic hash
-    * changing spark params etc shouldn't affect this
-    **/
-    11: optional string semanticHash
-
-    /**
-    * simple hash of the entire conf (that is TSimpleJsonProtocol serialized),
-    * computed by cli and used to check if new conf_json need to be pushed from user's machine
-    **/
-    12: optional string confHash
-
-    /**
-    * when new/updated conf's are pushed the branch is also set from the cli
-    * upon merging the branch will be unset
-    **/
-    20: optional string branch
-
-    /**
-    * will be set to the author of the last semantic change to node
-    * (non-semantic changes like code-mods or spark params don't affect this)
-    **/
-    21: optional string author
-
-    /**
-    * contents of the conf itself
-    **/
-    30: optional LogicalNode conf
-}
-
-
-
-struct NodeConnections {
-    1: optional list<NodeKey> parents
-    2: optional list<NodeKey> children
-}
-
-struct NodeGraph {
-    1: optional map<NodeKey, NodeConnections> connections
-    2: optional map<NodeKey, NodeInfo> infoMap
-}
-
-
-// TODO deprecate
-// ====================== physical node types ======================
-enum GroupByNodeType {
-    PARTIAL_IR = 1,  // useful only for events - a day's worth of irs
-    SAWTOOTH_IR = 2, // realtime features: useful for join backfills & uploads
-    SNAPSHOT = 3,    // batch features: useful for join backfills and uploads
-
-    // online nodes
-    PREPARE_UPLOAD = 10,
-    UPLOAD = 11,
-    STREAMING = 12,
-}
-
-enum JoinNodeType{
-    LEFT_SOURCE = 1
-    BOOTSTRAP = 2,
-    RIGHT_PART = 3,
-    MERGE = 4,
-    DERIVE = 5,
-    LABEL_PART = 6,
-    LABEL_JOIN = 7,
-
-    // online nodes
-    METADATA_UPLOAD = 20,
-
-    // observability nodes
-    PREPARE_LOGS = 21,
-    SUMMARIZE = 40,
-    DRIFT = 41,
-    DRIFT_UPLOAD = 42,
-}
-
-enum StagingQueryNodeType {
-    BACKFILL = 1
-}
-
-enum ModelNodeType {
-    TRAINING = 300
-    BULK_INFERENCE = 301
-}
-
-enum TableNodeType {
-    MATERIALIZED = 1,
-    VIEW = 2
-}
-
-union PhysicalNodeType {
-    1: GroupByNodeType groupByNodeType
-    2: JoinNodeType joinNodeType
-    3: StagingQueryNodeType stagingNodeType
-    4: ModelNodeType modelNodeType
-    5: TableNodeType tableNodeType
-}
-
-struct PhysicalNode {
-    1: optional string name
-    2: optional PhysicalNodeType nodeType
-    3: optional LogicalNode logicalNode
-    4: optional string confHash
-    100: optional list<common.TableDependency> tableDependencies
-    101: optional list<string> outputColumns
-    102: optional string outputTable
-}
-
-struct PhysicalGraph {
-    1: optional PhysicalNode node,
-    2: optional list<PhysicalGraph> dependencies
-    3: optional common.DateRange range
-}
-
-// ====================== End of physical node types ======================
-
-/**
-* Multiple logical nodes could share the same physical node
-* For that reason we don't have a 1-1 mapping between logical and physical nodes
-* TODO -- kill this (typescript dependency)
-**/
-struct PhysicalNodeKey {
-    1: optional string name
-    2: optional PhysicalNodeType nodeType
 }
 
 enum NodeRunStatus {

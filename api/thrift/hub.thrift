@@ -23,11 +23,6 @@ struct LineageRequest {
 
 }
 
-struct LineageResponse {
-    1: optional orchestration.NodeGraph nodeGraph
-    2: optional orchestration.NodeKey mainNode // Same as the node in the LineageRequest
-}
-
 struct JobTrackerRequest {
    1: optional string name
    2: optional string type
@@ -37,7 +32,6 @@ struct JobTrackerRequest {
 
 struct JobTrackerResponse {
    1: optional list<TaskInfo> tasks // Date ranges can overlap for tasks (reruns, retries etc). Need to render latest per day.
-   2: optional orchestration.NodeKey mainNode // Same as the node in the JobTrackerRequest
 }
 
 // Submissions are used to render user's recent jobs on their homepage
@@ -106,7 +100,6 @@ enum Status {
 }
 
 struct Submission {
-    1: optional orchestration.NodeKey node
     10: optional i64 submittedTs
     20: optional i64 finishedTs
     21: optional common.DateRange dateRange

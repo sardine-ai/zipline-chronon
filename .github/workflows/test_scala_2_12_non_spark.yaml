@@ -4,31 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'flink/**'
-      - 'aggregator/**'
-      - 'online/**'
-      - 'api/**'
-      - 'service/**'
-      - 'service_commons/**'
-      - 'cloud_aws/**'
-      - 'cloud_gcp/**'
-      - 'spark/**'
-      - '.github/workflows/test_scala_2_12_non_spark.yaml'
   pull_request:
     branches:
       - main
-    paths:
-      - 'flink/**'
-      - 'aggregator/**'
-      - 'online/**'
-      - 'api/**'
-      - 'service/**'
-      - 'service_commons/**'
-      - 'cloud_aws/**'
-      - 'cloud_gcp/**'
-      - 'spark/**'
-      - '.github/workflows/test_scala_2_12_non_spark.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

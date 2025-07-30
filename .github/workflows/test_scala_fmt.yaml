@@ -4,15 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '**/*.scala'
-      - '.github/workflows/test_scala_fmt.yaml'
   pull_request:
     branches:
       - main
-    paths:
-      - '**/*.scala'
-      - '.github/workflows/test_scala_fmt.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
