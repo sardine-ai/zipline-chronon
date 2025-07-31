@@ -18,11 +18,10 @@ package ai.chronon.spark.test.batch
 
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.api.planner.{MetaDataUtils, TableDependencies}
+import ai.chronon.api.planner.{MetaDataUtils, NodeRunner, TableDependencies}
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner.{ExternalSourceSensorNode, MonolithJoinNode, Node, NodeContent}
 import ai.chronon.spark.batch.BatchNodeRunner
-import ai.chronon.spark.batch.BatchNodeRunner.DefaultTablePartitionsDataset
 import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.test.{MockKVStore, TableTestUtils}
 import ai.chronon.spark.utils.MockApi
@@ -155,17 +154,27 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Insert test data for available partitions
     spark.sql(
       s"""
-         |INSERT INTO test_db.input_table VALUES
-         |(1, 'value1', '$yesterday'),
-         |(2, 'value2', '$twoDaysAgo')
+         |INSERT OVERWRITE test_db.input_table PARTITION (ds='$yesterday') VALUES
+         |(1, 'value1')
+         |""".stripMargin
+    )
+    spark.sql(
+      s"""
+         |INSERT OVERWRITE test_db.input_table PARTITION (ds='$twoDaysAgo') VALUES
+         |(2, 'value2')
          |""".stripMargin
     )
 
     spark.sql(
       s"""
-         |INSERT INTO test_db.left_table VALUES
-         |(1, '$yesterday'),
-         |(2, '$twoDaysAgo')
+         |INSERT OVERWRITE test_db.left_table PARTITION (ds='$yesterday') VALUES
+         |(1)
+         |""".stripMargin
+    )
+    spark.sql(
+      s"""
+         |INSERT OVERWRITE test_db.left_table PARTITION (ds='$twoDaysAgo') VALUES
+         |(2)
          |""".stripMargin
     )
   }
@@ -210,8 +219,10 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   "BatchNodeRunner.runFromArgs" should "calculate input table partitions and write them to kvStore" in {
 
     val configPath = createTestConfigFile(twoDaysAgo, yesterday)
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday, DefaultTablePartitionsDataset)
+    val result = runner.runFromArgs(mockApi, twoDaysAgo, yesterday, NodeRunner.DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -228,7 +239,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
         // Verify dataset name
         assertTrue("Should use TABLE_PARTITIONS dataset",
-                   mockKVStore.putRequests.forall(_.dataset == DefaultTablePartitionsDataset))
+                   mockKVStore.putRequests.forall(_.dataset == NodeRunner.DefaultTablePartitionsDataset))
 
       case Failure(exception) =>
         fail(s"runFromArgs should have succeeded but failed with: ${exception.getMessage}")
@@ -238,8 +249,10 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   it should "short circuit and throw exception when missing partitions are present" in {
 
     val configPath = createTestConfigFile(twoDaysAgo, today) // today's partition doesn't exist
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, today, DefaultTablePartitionsDataset)
+    val result = runner.runFromArgs(mockApi, twoDaysAgo, today, NodeRunner.DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -264,15 +277,22 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Insert some data into output table to simulate successful execution
     spark.sql(
       s"""
-         |INSERT INTO test_db.output_table VALUES
-         |(1, 'output1', '$yesterday'),
-         |(2, 'output2', '$twoDaysAgo')
+         |INSERT OVERWRITE test_db.output_table PARTITION (ds='$yesterday') VALUES
+         |(1, 'output1')
+         |""".stripMargin
+    )
+    spark.sql(
+      s"""
+         |INSERT OVERWRITE test_db.output_table PARTITION (ds='$twoDaysAgo') VALUES
+         |(2, 'output2')
          |""".stripMargin
     )
 
     val configPath = createTestConfigFile(twoDaysAgo, yesterday)
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday, DefaultTablePartitionsDataset)
+    val result = runner.runFromArgs(mockApi, twoDaysAgo, yesterday, NodeRunner.DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -299,9 +319,10 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val futureDate2 = tableUtils.partitionSpec.after(futureDate1)
 
     val configPath = createTestConfigFile(futureDate1, futureDate2)
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result =
-      BatchNodeRunner.runFromArgs(mockApi, configPath, futureDate1, futureDate2, DefaultTablePartitionsDataset)
+    val result = runner.runFromArgs(mockApi, futureDate1, futureDate2, NodeRunner.DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -317,15 +338,15 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Add one more partition to test partial availability
     spark.sql(
       s"""
-         |INSERT INTO test_db.input_table VALUES
-         |(3, 'value3', '$today')
+         |INSERT OVERWRITE test_db.input_table PARTITION (ds='$today') VALUES
+         |(3, 'value3')
          |""".stripMargin
     )
 
     spark.sql(
       s"""
-         |INSERT INTO test_db.left_table VALUES
-         |(3, '$today')
+         |INSERT OVERWRITE test_db.left_table PARTITION (ds='$today') VALUES
+         |(3)
          |""".stripMargin
     )
 
@@ -334,8 +355,10 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Request a range that includes both available and missing partitions
     val threeDaysAgo = tableUtils.partitionSpec.before(twoDaysAgo)
     val configPath = createTestConfigFile(threeDaysAgo, today)
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, threeDaysAgo, today, DefaultTablePartitionsDataset)
+    val result = runner.runFromArgs(mockApi, threeDaysAgo, today, NodeRunner.DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -393,17 +416,27 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Insert data with different partition format
     spark.sql(
       s"""
-         |INSERT INTO test_db.input_table_alt VALUES
-         |(1, 'value1', '$yesterdayAlt'),
-         |(2, 'value2', '$twoDaysAgoAlt')
+         |INSERT OVERWRITE test_db.input_table_alt PARTITION (partition_date='$yesterdayAlt') VALUES
+         |(1, 'value1')
+         |""".stripMargin
+    )
+    spark.sql(
+      s"""
+         |INSERT OVERWRITE test_db.input_table_alt PARTITION (partition_date='$twoDaysAgoAlt') VALUES
+         |(2, 'value2')
          |""".stripMargin
     )
 
     spark.sql(
       s"""
-         |INSERT INTO test_db.left_table_alt VALUES
-         |(1, '$yesterdayAlt'),
-         |(2, '$twoDaysAgoAlt')
+         |INSERT OVERWRITE test_db.left_table_alt PARTITION (partition_date='$yesterdayAlt') VALUES
+         |(1)
+         |""".stripMargin
+    )
+    spark.sql(
+      s"""
+         |INSERT OVERWRITE test_db.left_table_alt PARTITION (partition_date='$twoDaysAgoAlt') VALUES
+         |(2)
          |""".stripMargin
     )
 
@@ -416,8 +449,10 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
       partitionColumn = "partition_date",
       partitionFormat = "yyyyMMdd"
     )
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.runFromArgs(mockApi, configPath, twoDaysAgo, yesterday, DefaultTablePartitionsDataset)
+    val result = runner.runFromArgs(mockApi, twoDaysAgo, yesterday, NodeRunner.DefaultTablePartitionsDataset)
 
     result match {
       case Success(_) =>
@@ -454,8 +489,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val metadata = createTestMetadata("test_db.input_table", "test_db.output_table")
     val range = PartitionRange(twoDaysAgo, yesterday)(tableUtils.partitionSpec)
+    val configPath = createTestConfigFile(twoDaysAgo, yesterday)
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.checkPartitions(sensorNode, metadata, tableUtils, range)
+    val result = runner.checkPartitions(sensorNode, metadata, range)
 
     result match {
       case Success(_) =>
@@ -473,8 +511,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val metadata = createTestMetadata("test_db.external_table", "test_db.output_table")
     val range = PartitionRange(today, today)(tableUtils.partitionSpec) // today's partition doesn't exist
+    val configPath = createTestConfigFile(today, today, "test_db.external_table")
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.checkPartitions(sensorNode, metadata, tableUtils, range)
+    val result = runner.checkPartitions(sensorNode, metadata, range)
 
     result match {
       case Success(_) =>
@@ -493,14 +534,17 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val metadata = createTestMetadata("test_db.external_table", "test_db.output_table")
     val range = PartitionRange(today, today)(tableUtils.partitionSpec) // today's partition doesn't exist
+    val configPath = createTestConfigFile(today, today, "test_db.external_table")
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.checkPartitions(sensorNode, metadata, tableUtils, range)
+    val result = runner.checkPartitions(sensorNode, metadata, range)
 
     result match {
       case Success(_) =>
         fail("checkPartitions should have failed due to missing partitions")
       case Failure(exception) =>
-        // Should fail immediately with default retry count of 0
+        // Should fail with default retry count (3) and retry interval (3 minutes)
         assertTrue("Exception should mention missing partitions", exception.getMessage.contains("missing partitions"))
     }
   }
@@ -513,9 +557,12 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val metadata = createTestMetadata("test_db.external_table", "test_db.output_table")
     val range = PartitionRange(today, today)(tableUtils.partitionSpec) // today's partition doesn't exist
+    val configPath = createTestConfigFile(today, today, "test_db.external_table")
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
     val startTime = System.currentTimeMillis()
-    val result = BatchNodeRunner.checkPartitions(sensorNode, metadata, tableUtils, range)
+    val result = runner.checkPartitions(sensorNode, metadata, range)
     val endTime = System.currentTimeMillis()
 
     result match {
@@ -536,8 +583,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
 
     val metadata = createTestMetadata("test_db.nonexistent_table", "test_db.output_table")
     val range = PartitionRange(yesterday, yesterday)(tableUtils.partitionSpec)
+    val configPath = createTestConfigFile(yesterday, yesterday, "test_db.nonexistent_table")
+    val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
+    val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = BatchNodeRunner.checkPartitions(sensorNode, metadata, tableUtils, range)
+    val result = runner.checkPartitions(sensorNode, metadata, range)
 
     result match {
       case Success(_) =>

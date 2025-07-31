@@ -6,7 +6,6 @@ import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner._
-import ai.chronon.spark.batch.BatchNodeRunner.DefaultTablePartitionsDataset
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.submission.SparkSessionBuilder
@@ -42,19 +41,15 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
 
   val tablePartitionsDataset = opt[String](required = true,
                                            descr = "Name of table in kv store to use to keep track of partitions",
-                                           default = Option(DefaultTablePartitionsDataset))
+                                           default = Option(NodeRunner.DefaultTablePartitionsDataset))
 
   verify()
 }
 
-object BatchNodeRunner extends NodeRunner {
-
+class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def checkPartitions(conf: ExternalSourceSensorNode,
-                      metadata: MetaData,
-                      tableUtils: TableUtils,
-                      range: PartitionRange): Try[Unit] = {
+  def checkPartitions(conf: ExternalSourceSensorNode, metadata: MetaData, range: PartitionRange): Try[Unit] = {
     val tableName = conf.sourceName
     val retryCount = if (conf.isSetRetryCount) conf.retryCount else 3L
     val retryIntervalMin = if (conf.isSetRetryIntervalMin) conf.retryIntervalMin else 3L
@@ -88,47 +83,7 @@ object BatchNodeRunner extends NodeRunner {
     retry(0)
   }
 
-  private def createTableUtils(name: String): TableUtils = {
-    val spark = SparkSessionBuilder.build(s"batch-node-runner-${name}")
-    TableUtils(spark)
-  }
-
-  private[batch] def run(metadata: MetaData, conf: NodeContent, range: PartitionRange, tableUtils: TableUtils): Unit = {
-
-    conf.getSetField match {
-      case NodeContent._Fields.MONOLITH_JOIN =>
-        runMonolithJoin(metadata, conf.getMonolithJoin, range, tableUtils)
-      case NodeContent._Fields.GROUP_BY_UPLOAD =>
-        runGroupByUpload(metadata, conf.getGroupByUpload, range, tableUtils)
-      case NodeContent._Fields.GROUP_BY_BACKFILL =>
-        logger.info(s"Running groupBy backfill for '${metadata.name}' for range: [${range.start}, ${range.end}]")
-        GroupBy.computeBackfill(
-          conf.getGroupByBackfill.groupBy,
-          range.end,
-          tableUtils,
-          overrideStartPartition = Option(range.start)
-        )
-        logger.info(s"Successfully completed groupBy backfill for '${metadata.name}'")
-      case NodeContent._Fields.STAGING_QUERY =>
-        runStagingQuery(metadata, conf.getStagingQuery, range, tableUtils)
-      case NodeContent._Fields.EXTERNAL_SOURCE_SENSOR => {
-
-        checkPartitions(conf.getExternalSourceSensor, metadata, tableUtils, range) match {
-          case Success(_) => System.exit(0)
-          case Failure(exception) =>
-            logger.error(s"ExternalSourceSensor check failed.", exception)
-            System.exit(1)
-        }
-      }
-      case _ =>
-        throw new UnsupportedOperationException(s"Unsupported NodeContent type: ${conf.getSetField}")
-    }
-  }
-
-  private def runStagingQuery(metaData: MetaData,
-                              stagingQuery: StagingQueryNode,
-                              range: PartitionRange,
-                              tableUtils: TableUtils): Unit = {
+  private def runStagingQuery(metaData: MetaData, stagingQuery: StagingQueryNode, range: PartitionRange): Unit = {
     require(stagingQuery.isSetStagingQuery, "StagingQueryNode must have a stagingQuery set")
     logger.info(s"Running staging query for '${metaData.name}'")
     val stagingQueryConf = stagingQuery.stagingQuery
@@ -143,22 +98,16 @@ object BatchNodeRunner extends NodeRunner {
     logger.info(s"Successfully completed staging query for '${metaData.name}'")
   }
 
-  private def runGroupByUpload(metadata: MetaData,
-                               groupByUpload: GroupByUploadNode,
-                               range: PartitionRange,
-                               tableUtils: TableUtils): Unit = {
+  private def runGroupByUpload(metadata: MetaData, groupByUpload: GroupByUploadNode, range: PartitionRange): Unit = {
     require(groupByUpload.isSetGroupBy, "GroupByUploadNode must have a groupBy set")
     val groupBy = groupByUpload.groupBy
     logger.info(s"Running groupBy upload for '${metadata.name}' for day: ${range.end}")
 
-    GroupByUpload.run(groupBy, range.end, Some(tableUtils))
+    GroupByUpload.run(groupBy, range.end, Option(tableUtils))
     logger.info(s"Successfully completed groupBy upload for '${metadata.name}' for day: ${range.end}")
   }
 
-  private def runMonolithJoin(metadata: MetaData,
-                              monolithJoin: MonolithJoinNode,
-                              range: PartitionRange,
-                              tableUtils: TableUtils): Unit = {
+  private def runMonolithJoin(metadata: MetaData, monolithJoin: MonolithJoinNode, range: PartitionRange): Unit = {
     require(monolithJoin.isSetJoin, "MonolithJoinNode must have a join set")
 
     val joinConf = monolithJoin.join
@@ -185,21 +134,47 @@ object BatchNodeRunner extends NodeRunner {
     }
   }
 
-  override def run(metadata: MetaData, conf: NodeContent, range: Option[PartitionRange]): Unit = {
-    require(range.isDefined, "Partition range must be defined for batch node runner")
+  override def run(metadata: MetaData, conf: NodeContent, maybeRange: Option[PartitionRange]): Unit = {
+    require(maybeRange.isDefined, "Partition range must be defined for batch node runner")
+    val range = maybeRange.get
+    conf.getSetField match {
+      case NodeContent._Fields.MONOLITH_JOIN =>
+        runMonolithJoin(metadata, conf.getMonolithJoin, range)
+      case NodeContent._Fields.GROUP_BY_UPLOAD =>
+        runGroupByUpload(metadata, conf.getGroupByUpload, range)
+      case NodeContent._Fields.GROUP_BY_BACKFILL =>
+        logger.info(s"Running groupBy backfill for '${metadata.name}' for range: [${range.start}, ${range.end}]")
+        GroupBy.computeBackfill(
+          conf.getGroupByBackfill.groupBy,
+          range.end,
+          tableUtils,
+          overrideStartPartition = Option(range.start)
+        )
+        logger.info(s"Successfully completed groupBy backfill for '${metadata.name}'")
+      case NodeContent._Fields.STAGING_QUERY =>
+        runStagingQuery(metadata, conf.getStagingQuery, range)
+      case NodeContent._Fields.EXTERNAL_SOURCE_SENSOR => {
 
-    run(metadata, conf, range.get, createTableUtils(metadata.name))
+        checkPartitions(conf.getExternalSourceSensor, metadata, range) match {
+          case Success(_) => System.exit(0)
+          case Failure(exception) =>
+            logger.error(s"ExternalSourceSensor check failed.", exception)
+            System.exit(1)
+        }
+      }
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported NodeContent type: ${conf.getSetField}")
+    }
   }
 
-  def runFromArgs(api: Api,
-                  confPath: String,
-                  startDs: String,
-                  endDs: String,
-                  tablePartitionsDataset: String): Try[Unit] = {
+  def runFromArgs(
+      api: Api,
+      startDs: String,
+      endDs: String,
+      tablePartitionsDataset: String
+  ): Try[Unit] = {
     Try {
-      val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = true)
       val metadata = node.metaData
-      val tableUtils = createTableUtils(metadata.name)
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
       val kvStore = api.genKvStore
 
@@ -275,6 +250,29 @@ object BatchNodeRunner extends NodeRunner {
       }
     }
   }
+}
+
+object BatchNodeRunner {
+
+  def main(args: Array[String]): Unit = {
+    val batchArgs = new BatchNodeRunnerArgs(args)
+    val node = ThriftJsonCodec.fromJsonFile[Node](batchArgs.confPath(), check = true)
+    val tableUtils = TableUtils(SparkSessionBuilder.build(s"batch-node-runner-${node.metaData.name}"))
+    val runner = new BatchNodeRunner(node, tableUtils)
+    val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
+    val exitCode = {
+      runner.runFromArgs(api, batchArgs.startDs(), batchArgs.endDs(), batchArgs.tablePartitionsDataset()) match {
+        case Success(_) =>
+          println("Batch node runner succeeded")
+          0
+        case Failure(exception) =>
+          println("Batch node runner failed", exception)
+          1
+      }
+    }
+    tableUtils.sparkSession.stop()
+    System.exit(exitCode)
+  }
 
   def instantiateApi(onlineClass: String, props: Map[String, String]): Api = {
     val cl = Thread.currentThread().getContextClassLoader
@@ -283,29 +281,4 @@ object BatchNodeRunner extends NodeRunner {
     val onlineImpl = constructor.newInstance(props)
     onlineImpl.asInstanceOf[Api]
   }
-
-  def main(args: Array[String]): Unit = {
-    try {
-      val batchArgs = new BatchNodeRunnerArgs(args)
-      val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
-      runFromArgs(api,
-                  batchArgs.confPath(),
-                  batchArgs.startDs(),
-                  batchArgs.endDs(),
-                  batchArgs.tablePartitionsDataset()) match {
-        case Success(_) =>
-          logger.info("Batch node runner completed successfully")
-          System.exit(0)
-        case Failure(exception) =>
-          logger.error("Batch node runner failed", exception)
-          System.exit(1)
-      }
-    } catch {
-      case e: Exception =>
-        logger.error("Failed to parse arguments or initialize runner", e)
-        System.exit(1)
-    }
-  }
-
-  //  override def tablePartitionsDataset(): String = tablePartitionsDataset
 }

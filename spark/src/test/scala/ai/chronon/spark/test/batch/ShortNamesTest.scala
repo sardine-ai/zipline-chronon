@@ -5,16 +5,16 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.MapOps
 import ai.chronon.api._
+import ai.chronon.planner._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.batch._
 import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.test.{DataFrameGen, TableTestUtils}
-import ai.chronon.spark.{GroupBy, Join, _}
+import ai.chronon.spark.{Join, _}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, rand}
 import org.junit.Assert.assertEquals
 import org.scalatest.flatspec.AnyFlatSpec
-import ai.chronon.planner.{JoinBootstrapNode, JoinDerivationNode, JoinMergeNode, JoinPartNode, SourceWithFilterNode}
 import org.slf4j.LoggerFactory
 
 class ShortNamesTest extends AnyFlatSpec {

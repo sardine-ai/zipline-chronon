@@ -2,12 +2,11 @@ package ai.chronon.spark.kv_store
 
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.planner.NodeRunner
 import ai.chronon.api._
+import ai.chronon.api.planner.NodeRunner
 import ai.chronon.online.Api
 import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.planner.{Node, NodeContent}
-import ai.chronon.spark.batch.BatchNodeRunner.DefaultTablePartitionsDataset
 import org.rogach.scallop.ScallopConf
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -82,7 +81,6 @@ class KVUploadNodeRunner(api: Api) extends NodeRunner {
     }
   }
 
-  //  override def tablePartitionsDataset(): String = tablePartitionsDataset
 }
 
 object KVUploadNodeRunner {
@@ -96,7 +94,7 @@ object KVUploadNodeRunner {
     val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API Store")
     val tablePartitionsDataset = opt[String](required = true,
                                              descr = "Name of table in kv store to use to keep track of partitions",
-                                             default = Option(DefaultTablePartitionsDataset))
+                                             default = Option(NodeRunner.DefaultTablePartitionsDataset))
     verify()
   }
 
