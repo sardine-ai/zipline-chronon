@@ -25,7 +25,8 @@ enum NodeRunStatus {
     RUNNING = 2,
     SUCCEEDED = 3,
     FAILED = 4,
-    CANCELLED = 5
+    CANCELLED = 5,
+    ALREADY_EXISTS = 6
 }
 
 enum WorkflowStatus {
