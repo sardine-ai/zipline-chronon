@@ -62,6 +62,24 @@ class ZiplineHub:
             print(f"Error calling upload API: {e}")
             raise e
 
+    def call_sync_api(self, branch: str, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
+        url = f"{self.base_url}/upload/v1/sync"
+
+        sync_request = {
+            "namesToHashes": names_to_hashes,
+            "branch": branch,
+        }
+        headers = {'Content-Type': 'application/json'}
+        if hasattr(self, 'id_token'):
+            headers['Authorization'] = f'Bearer {self.id_token}'
+        try:
+            response = requests.post(url, json=sync_request, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Error calling diff API: {e}")
+            raise e
+
     def call_workflow_start_api(self, conf_name, mode, branch, user, start, end, conf_hash):
         url = f"{self.base_url}/workflow/start"
 

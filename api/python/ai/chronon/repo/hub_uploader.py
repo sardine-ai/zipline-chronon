@@ -72,8 +72,8 @@ def build_local_repo_hashmap(root_dir: str):
 def compute_and_upload_diffs(branch: str, zipline_hub: ZiplineHub, local_repo_entities: dict[str, Conf]):
     # Determine which confs are different from the ZiplineHub
     # Call Zipline hub with `names_and_hashes` as the argument to get back
-    names_and_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
-    changed_entity_names = zipline_hub.call_diff_api(names_and_hashes)
+    names_to_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
+    changed_entity_names = zipline_hub.call_diff_api(names_to_hashes)
 
     # a list of names for diffed hashes on branch
     diffed_entities =  {k: local_repo_entities[k] for k in changed_entity_names}
@@ -88,4 +88,6 @@ def compute_and_upload_diffs(branch: str, zipline_hub: ZiplineHub, local_repo_en
 
     # Make PUT request to ZiplineHub
     zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs)
+
+    zipline_hub.call_sync_api(branch=branch, names_to_hashes=names_to_hashes)
     return diffed_entities

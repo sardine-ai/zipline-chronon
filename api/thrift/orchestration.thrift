@@ -63,6 +63,15 @@ struct UploadResponse {
     1: optional string message
 }
 
+struct SyncRequest {
+    1: optional map<string, string> namesToHashes
+    2: string branch
+}
+
+struct SyncResponse {
+    1: optional string message
+}
+
 struct WorkflowStartRequest {
     1: optional string confName
     2: optional string mode
@@ -214,15 +223,6 @@ enum CheckResult {
 struct BaseEvalResult {
     1: optional CheckResult checkResult
     2: optional string message
-}
-
-struct SyncRequest {
-    1: optional map<string, string> namesToHashes
-    2: string branch
-}
-
-struct SyncResponse {
-    1: optional string message
 }
 
 struct JoinPartEvalResult {
