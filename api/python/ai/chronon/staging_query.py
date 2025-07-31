@@ -19,6 +19,7 @@ class EngineType:
 class TableDependency:
     table: str
     partition_column: Optional[str] = None
+    partition_format: Optional[str] = None
     additional_partitions: Optional[List[str]] = None
     offset: Optional[int] = None
 
@@ -30,6 +31,8 @@ class TableDependency:
             tableInfo=common.TableInfo(
                 table=self.table, 
                 partitionColumn=self.partition_column,
+                partitionFormat=self.partition_format,
+                partitionInterval=common.Window(1, common.TimeUnit.DAYS)
             ),
             startOffset=offset_window,
             endOffset=offset_window,
@@ -45,7 +48,6 @@ def StagingQuery(
     start_partition: Optional[str] = None,
     table_properties: Optional[Dict[str, str]] = None,
     setups: Optional[List[str]] = None,
-    partition_column: Optional[str] = None,
     engine_type: Optional[EngineType] = None,
     dependencies: Optional[List[Union[TableDependency, Dict]]] = None,
     tags: Optional[Dict[str, str]] = None,
@@ -76,8 +78,6 @@ def StagingQuery(
     :param setups:
         Spark SQL setup statements. Used typically to register UDFs.
     :type setups: List[str]
-    :param partition_column:
-        Only needed for `max_date` template
     :type partition_column: str
     :param engine_type:
         By default, spark is the compute engine. You can specify an override (eg. bigquery, etc.)
@@ -177,7 +177,6 @@ def StagingQuery(
         query=query,
         startPartition=start_partition,
         setups=setups,
-        partitionColumn=partition_column,
         engineType=engine_type,
         tableDependencies=thrift_deps,
         recomputeDays=recompute_days,

@@ -82,16 +82,11 @@ struct StagingQuery {
     4: optional list<string> setups
 
     /**
-    * Only needed for `max_date` template
-    **/
-    5: optional string partitionColumn
-
-    /**
     * By default, spark is the compute engine. You can specify an override (eg. bigquery, etc.)
     **/
-    6: optional EngineType engineType
+    5: optional EngineType engineType
 
-    7: optional list<common.TableDependency> tableDependencies
+    6: optional list<common.TableDependency> tableDependencies
 
     /* If specified, will recompute the output of this StagingQuery for the given number of days after initial computation
     * Should be used in one of two scenarios:
