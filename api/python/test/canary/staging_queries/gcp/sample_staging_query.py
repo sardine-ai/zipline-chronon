@@ -7,7 +7,7 @@ query = f"""
 SELECT
     *
 FROM {get_join_output_table_name(training_set.v1_test, True)}
-WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'
+WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
 """
 
 def get_staging_query():

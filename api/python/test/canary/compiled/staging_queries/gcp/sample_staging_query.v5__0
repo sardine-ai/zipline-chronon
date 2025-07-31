@@ -122,7 +122,7 @@
       "scheduleCron": "@daily"
     }
   },
-  "query": "\nSELECT\n    *\nFROM data.gcp_training_set_v1_test__0\nWHERE ds BETWEEN '{ start_date }' AND '{ end_date }'\n",
+  "query": "\nSELECT\n    *\nFROM data.gcp_training_set_v1_test__0\nWHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n",
   "startPartition": "2020-03-01",
   "tableDependencies": [
     {
