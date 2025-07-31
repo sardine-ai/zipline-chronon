@@ -216,6 +216,15 @@ struct BaseEvalResult {
     2: optional string message
 }
 
+struct SyncRequest {
+    1: optional map<string, string> namesToHashes
+    2: string branch
+}
+
+struct SyncResponse {
+    1: optional string message
+}
+
 struct JoinPartEvalResult {
     1: optional string partName
     2: optional GroupByEvalResult gbEvalResult
