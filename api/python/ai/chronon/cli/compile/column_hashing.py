@@ -36,7 +36,6 @@ def compute_group_by_columns_hashes(group_by: GroupBy, exclude_keys: bool = Fals
 
     if exclude_keys:
         output = {k: v for k, v in output_to_hash.items() if k not in group_by.keyColumns}
-        print(output)
     else:
         output = output_to_hash
     if group_by.derivations:

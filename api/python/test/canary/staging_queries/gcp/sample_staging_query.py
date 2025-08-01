@@ -30,8 +30,15 @@ fourth = get_staging_query()
 fifth = get_staging_query()
 sixth = get_staging_query()
 
+terminal_query = f"""
+SELECT
+    *
+FROM {get_join_output_table_name(training_set.v1_test, True)}
+WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
+"""
+
 terminal = StagingQuery(
-    query=query,
+    query=terminal_query,
     start_partition="2020-03-01",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
     name="terminal_staging_query",

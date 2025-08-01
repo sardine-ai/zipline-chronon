@@ -12,15 +12,15 @@ class ZiplineHub:
             raise ValueError("Base URL for ZiplineHub cannot be empty.")
         self.base_url = base_url
         if self.base_url.startswith("https") and self.base_url.endswith(".app"):
-            print("Using Google Cloud authentication for ZiplineHub.")
+            print("\n 🔐 Using Google Cloud authentication for ZiplineHub.")
 
             # First try to get ID token from environment (GitHub Actions)
             self.id_token = os.getenv('GCP_ID_TOKEN')
             if self.id_token:
-                print("Using ID token from environment")
+                print(" 🔑 Using ID token from environment")
             else:
                 # Fallback to Google Cloud authentication
-                print("Generating ID token from default credentials")
+                print(" 🔑 Generating ID token from default credentials")
                 credentials, project_id = google.auth.default()
                 credentials.refresh(Request())
                 self.id_token = credentials.id_token
@@ -40,7 +40,7 @@ class ZiplineHub:
             diff_response = response.json()
             return diff_response['diff']
         except requests.RequestException as e:
-            print(f"Error calling diff API: {e}")
+            print(f" ❌ Error calling diff API: {e}")
             raise e
 
     def call_upload_api(self, diff_confs, branch: str):
@@ -59,7 +59,7 @@ class ZiplineHub:
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            print(f"Error calling upload API: {e}")
+            print(f" ❌ Error calling upload API: {e}")
             raise e
 
     def call_sync_api(self, branch: str, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
@@ -77,7 +77,7 @@ class ZiplineHub:
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            print(f"Error calling diff API: {e}")
+            print(f" ❌ Error calling diff API: {e}")
             raise e
 
     def call_workflow_start_api(self, conf_name, mode, branch, user, start, end, conf_hash):
@@ -101,5 +101,5 @@ class ZiplineHub:
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            print(f"Error calling workflow start API: {e}")
+            print(f" ❌ Error calling workflow start API: {e}")
             raise e

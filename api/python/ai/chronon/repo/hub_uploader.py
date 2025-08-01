@@ -12,7 +12,7 @@ from ai.chronon.repo.zipline_hub import ZiplineHub
 
 
 def build_local_repo_hashmap(root_dir: str):
-    compiled_dir =  os.path.join(root_dir, "compiled")
+    compiled_dir = os.path.join(root_dir, "compiled")
     # Returns a map of name -> (tbinary, file_hash)
     results = {}
 
@@ -47,47 +47,62 @@ def build_local_repo_hashmap(root_dir: str):
                 md5_hash = hashlib.md5(thrift_json.encode()).hexdigest()
                 # md5_hash = hashlib.md5(thrift_json.encode()).hexdigest() + "123"
                 # results[name] = (binary, md5_hash, FOLDER_NAME_TO_CONF_TYPE[folder_name])
-                results[name] = Conf(name=name,
-                                          hash=md5_hash,
-                                          # contents=binary,
-                                          contents=thrift_json,
-                                          confType=FOLDER_NAME_TO_CONF_TYPE[folder_name])
+                results[name] = Conf(
+                    name=name,
+                    hash=md5_hash,
+                    # contents=binary,
+                    contents=thrift_json,
+                    confType=FOLDER_NAME_TO_CONF_TYPE[folder_name],
+                )
 
             except Exception as e:
                 exceptions.append(f"{json_file} - {e}")
 
         if exceptions:
             error_msg = (
-                    "The following files had exceptions during upload: \n"
-                    + "\n".join(exceptions)
-                    + "\n\n Consider deleting the files (safe operation) and checking "
-                    + "your thrift version before rerunning your command."
+                "The following files had exceptions during upload: \n"
+                + "\n".join(exceptions)
+                + "\n\n Consider deleting the files (safe operation) and checking "
+                + "your thrift version before rerunning your command."
             )
             raise RuntimeError(error_msg)
 
     return results
 
 
-
-def compute_and_upload_diffs(branch: str, zipline_hub: ZiplineHub, local_repo_entities: dict[str, Conf]):
+def compute_and_upload_diffs(
+    branch: str, zipline_hub: ZiplineHub, local_repo_confs: dict[str, Conf]
+):
     # Determine which confs are different from the ZiplineHub
     # Call Zipline hub with `names_and_hashes` as the argument to get back
-    names_to_hashes = {name: local_conf.hash for name, local_conf in local_repo_entities.items()}
-    changed_entity_names = zipline_hub.call_diff_api(names_to_hashes)
+    names_to_hashes = {name: local_conf.hash for name, local_conf in local_repo_confs.items()}
+    print(f"\n 🧮 Computed hashes for {len(names_to_hashes)} local files.")
 
-    # a list of names for diffed hashes on branch
-    diffed_entities =  {k: local_repo_entities[k] for k in changed_entity_names}
+    changed_conf_names = zipline_hub.call_diff_api(names_to_hashes)
 
-    entity_keys_str = "\n".join(diffed_entities.keys())
-    log_str = "\n\nUploading:\n{entity_keys}".format(entity_keys=entity_keys_str)
-    print(log_str)
+    if not changed_conf_names:
+        print(f" ✅ Remote contains all local files. No need to upload '{branch}'.")
+        diffed_confs = {}
+    else:
+        unchanged = len(names_to_hashes) - len(changed_conf_names)
+        print(
+            f" 🔍 Detected {len(changed_conf_names)} changes on local branch '{branch}'. {unchanged} unchanged."
+        )
 
-    diff_confs = []
-    for _, conf in diffed_entities.items():
-        diff_confs.append(conf.__dict__)
+        # a list of names for diffed hashes on branch
+        diffed_confs = {k: local_repo_confs[k] for k in changed_conf_names}
+        conf_names_str = "\n    - ".join(diffed_confs.keys())
+        print(f"    - {conf_names_str}")
 
-    # Make PUT request to ZiplineHub
-    zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs)
+        diff_confs = []
+        for _, conf in diffed_confs.items():
+            diff_confs.append(conf.__dict__)
+
+        # Make PUT request to ZiplineHub
+        zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs)
+        print(f" ⬆️ Uploaded {len(diffed_confs)} changed confs to branch '{branch}'.")
 
     zipline_hub.call_sync_api(branch=branch, names_to_hashes=names_to_hashes)
-    return diffed_entities
+
+    print(f" ✅ {len(names_to_hashes)} hashes updated on branch '{branch}'.\n")
+    return diffed_confs

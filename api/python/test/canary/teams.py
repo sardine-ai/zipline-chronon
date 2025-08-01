@@ -27,6 +27,8 @@ default = Team(
             "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "FLINK_STATE_URI": "gs://zipline-warehouse-canary/flink-state",
+            "FRONTEND_URL": "https://canary.zipline.ai/",
+            "HUB_URL": "https://zipline-orchestration-703996152583.us-central1.run.app",
         },
     ),
 )

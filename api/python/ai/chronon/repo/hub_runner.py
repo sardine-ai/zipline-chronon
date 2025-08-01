@@ -1,8 +1,13 @@
+import json
 import os
+from datetime import datetime
+from urllib.parse import quote_plus
 
 import click
+from attr import dataclass
 
-from ai.chronon.repo import hub_uploader, hub_utils, utils
+from ai.chronon.cli.git_utils import get_current_branch
+from ai.chronon.repo import hub_uploader, utils
 from ai.chronon.repo.constants import RunMode
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
@@ -11,11 +16,11 @@ from ai.chronon.repo.zipline_hub import ZiplineHub
 def hub():
     pass
 
+
 #### Common click options
 def common_options(func):
     func = click.option("--repo", help="Path to chronon repo", default=".")(func)
     func = click.option("--conf", required=True, help="Conf param - required for every mode")(func)
-    func = click.option("--hub_url", help="The URL of the Zipline hub to use", envvar="ZIPLINE_HUB")(func)
     return func
 
 def ds_option(func):
@@ -28,8 +33,47 @@ def start_ds_option(func):
     "It only supports staging query, group by backfill and join jobs. "
     "It could leave holes in your final output table due to the override date range.",)(func)
 
+
 def end_ds_option(func):
     return click.option("--end-ds", help="the end ds for a range backfill")(func)
+
+
+def submit_workflow(repo,
+                    conf,
+                    mode,
+                    start_ds,
+                    end_ds):
+
+    hub_conf = get_hub_conf(conf)
+    zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
+    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
+    branch = get_current_branch()
+
+    hub_uploader.compute_and_upload_diffs(branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict)
+
+    # get conf name
+    conf_name = utils.get_metadata_name_from_conf(repo, conf)
+
+
+    response_json = zipline_hub.call_workflow_start_api(
+        conf_name=conf_name,
+        mode=mode,
+        branch=branch,  # Get the current branch
+        user=os.environ.get('USER'),
+        start=start_ds,
+        end=end_ds,
+        conf_hash=conf_name_to_hash_dict[conf_name].hash,
+    )
+
+    print(" 🆔 Workflow Id:", response_json.get("workflowId", "N/A"))
+    print_wf_url(
+        conf=conf,
+        conf_name=conf_name,
+        mode=RunMode.BACKFILL.value,
+        start_ds=start_ds,
+        end_ds=end_ds,
+        branch=branch
+    )
 
 
 # zipline hub backfill --conf=compiled/joins/join
@@ -39,9 +83,7 @@ def end_ds_option(func):
 @start_ds_option
 @end_ds_option
 def backfill(repo,
-             hub_url,
              conf,
-             # mode,
              start_ds,
              end_ds):
     """
@@ -50,23 +92,9 @@ def backfill(repo,
     - Call upload API to upload the conf contents for the list of confs that were different.
     - Call the actual run API with mode set to backfill.
     """
-    zipline_hub = ZiplineHub(base_url=hub_url)
-    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
-    hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub, local_repo_entities= conf_name_to_hash_dict)
+    submit_workflow(repo, conf, RunMode.BACKFILL.value, start_ds, end_ds)
 
-    # get conf name
-    conf_name = utils.get_metadata_name_from_conf(repo, conf)
-    response_json = zipline_hub.call_workflow_start_api(
-        conf_name=conf_name,
-        mode=RunMode.BACKFILL.value,
-        branch=hub_utils.get_branch(repo),  # Get the current branch
-        user=os.environ.get('USER'),
-        start=start_ds,
-        end=end_ds,
-        conf_hash=conf_name_to_hash_dict[conf_name].hash,
-    )
 
-    print(response_json)
 
 # zipline hub deploy --conf=compiled/joins/join
 # currently only supports one-off deploy node submission
@@ -74,7 +102,6 @@ def backfill(repo,
 @common_options
 @end_ds_option
 def deploy(repo,
-           hub_url,
            conf,
            end_ds):
     """
@@ -83,24 +110,60 @@ def deploy(repo,
     - Call upload API to upload the conf contents for the list of confs that were different.
     - Call the actual run API with mode set to deploy
     """
-    zipline_hub = ZiplineHub(base_url=hub_url)
-    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
+    submit_workflow(repo, conf, RunMode.DEPLOY.value, end_ds, end_ds)
 
-    hub_utils.upload_to_branch(chronon_root=repo, zipline_hub=zipline_hub, local_repo_entities= conf_name_to_hash_dict)
 
-    # get conf name
-    conf_name = utils.get_metadata_name_from_conf(repo, conf)
-    response_json = zipline_hub.call_workflow_start_api(
-        conf_name=conf_name,
-        mode=RunMode.DEPLOY.value,
-        branch=hub_utils.get_branch(repo),  # Get the current branch
-        user=os.environ.get('USER'),
-        start=end_ds,  # Deploy covers just 1 day, so we use end_ds as start
-        end=end_ds,
-        conf_hash=conf_name_to_hash_dict[conf_name].hash,
-    )
+def get_common_env_map(file_path):
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    common_env_map = data['metaData']['executionInfo']['env']['common']
+    return common_env_map
 
-    print(response_json)
+
+@dataclass
+class HubConfig:
+    hub_url: str
+    frontend_url: str
+
+
+def get_hub_conf(conf_path):
+    common_env_map = get_common_env_map(conf_path)
+    hub_url = common_env_map.get("HUB_URL", os.environ.get("HUB_URL"))
+    frontend_url = common_env_map.get("FRONTEND_URL", os.environ.get("FRONTEND_URL"))
+    return HubConfig(hub_url=hub_url, frontend_url=frontend_url)
+
+
+def print_wf_url(conf, conf_name, mode, start_ds, end_ds, branch):
+
+    hub_conf = get_hub_conf(conf)
+    frontend_url = hub_conf.frontend_url
+
+    if "compiled/joins" in conf:
+        hub_conf_type = "joins"
+    elif "compiled/staging_queries" in conf:
+        hub_conf_type = "stagingqueries"
+    elif "compiled/group_by" in conf:
+        hub_conf_type = "groupby"
+    elif "compiled/models" in conf:
+        hub_conf_type = "models"
+    else:
+        raise ValueError(f"Unsupported conf type: {conf}")
+
+    # TODO: frontend uses localtime to create the millis, we should make it use UTC and make this align
+    def _millis(date_str):
+        return int(datetime.strptime(date_str, "%Y-%m-%d").timestamp() * 1000)
+
+    def _mode_string(mode):
+        if mode == "backfill":
+            return "offline"
+        elif mode == "deploy":
+            return "online"
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
+
+    workflow_url = f"{frontend_url.rstrip('/')}/{hub_conf_type}/{conf_name}/{_mode_string(mode)}?start={_millis(start_ds)}&end={_millis(end_ds)}&branch={quote_plus(branch)}"
+
+    print(" 🔗 Workflow : " + workflow_url + "\n")
 
 if __name__ == "__main__":
     hub()

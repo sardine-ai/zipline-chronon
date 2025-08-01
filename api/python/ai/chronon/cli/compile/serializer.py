@@ -112,4 +112,4 @@ def thrift_simple_json(obj):
         obj, protocol_factory=TSimpleJSONProtocolFactory()
     )
     parsed = json.loads(simple)
-    return json.dumps(parsed, indent=2)
+    return json.dumps(parsed, indent=2, sort_keys=True)
