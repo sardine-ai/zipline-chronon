@@ -59,6 +59,7 @@ class CompileContext:
             output_root=self.compile_dir,
             existing_gbs=self.existing_confs[GroupBy],
             existing_joins=self.existing_confs[Join],
+            existing_staging_queries=self.existing_confs[StagingQuery],
         )
 
     def input_dir(self, cls: type) -> str:

@@ -177,6 +177,7 @@ class ConfValidator(object):
         output_root,
         existing_gbs,
         existing_joins,
+        existing_staging_queries,
         log_level=logging.INFO,
     ):
 
@@ -192,8 +193,10 @@ class ConfValidator(object):
         self.old_objs = defaultdict(dict)
         self.old_group_bys = existing_gbs
         self.old_joins = existing_joins
+        self.old_staging_queries = existing_staging_queries
         self.old_objs["GroupBy"] = self.old_group_bys
         self.old_objs["Join"] = self.old_joins
+        self.old_objs["StagingQuery"] = self.old_staging_queries
 
     def _get_old_obj(self, obj_class: type, obj_name: str) -> object:
         """
@@ -623,7 +626,7 @@ class ConfValidator(object):
         for result in results:
             if result.errors:
                 continue  # Skip results with errors
-            if result.obj_type not in ["GroupBy", "Join"]:
+            if result.obj_type not in ["GroupBy", "Join", "StagingQuery"]:
                 continue  # Skip non-GroupBy/Join objects
             valid_results.append(result)
         
@@ -663,7 +666,7 @@ class ConfValidator(object):
             base_name, version = self._parse_name_and_version(obj_name)
             current_base_names[(obj_type, base_name)] = (obj_name, result.obj)
         
-        for obj_type in ["GroupBy", "Join"]:
+        for obj_type in ["GroupBy", "Join", "StagingQuery"]:
             old_objs = self.old_objs.get(obj_type, {})
             for obj_name, old_obj in old_objs.items():
                 if (obj_type, obj_name) not in current_objects:
