@@ -3,17 +3,18 @@ from joins.gcp import training_set
 from ai.chronon.staging_query import StagingQuery, TableDependency
 from ai.chronon.utils import get_join_output_table_name, get_staging_query_output_table_name
 
-query = f"""
-SELECT
-    *
-FROM {get_join_output_table_name(training_set.v1_test, True)}
-WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
-"""
 
-def get_staging_query():
+def get_staging_query(category_name):
+    query = f"""
+        SELECT
+            *,
+            {category_name} as category_name
+        FROM {get_join_output_table_name(training_set.v1_test, True)}
+        WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
+    """
     return StagingQuery(
         query=query,
-        start_partition="2020-03-01",
+        start_partition="2025-07-01",
         name="sample_staging_query",
         output_namespace="data",
         table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
@@ -23,33 +24,51 @@ def get_staging_query():
         version=0,
     )
 
-first = get_staging_query()
-second = get_staging_query()
-third = get_staging_query()
-fourth = get_staging_query()
-fifth = get_staging_query()
-sixth = get_staging_query()
+cart = get_staging_query("cart")
+user = get_staging_query("user")
+item = get_staging_query("item")
+order = get_staging_query("order")
+payment = get_staging_query("payment")
+shipping = get_staging_query("shipping")
 
-terminal_query = f"""
-SELECT
-    *
-FROM {get_join_output_table_name(training_set.v1_test, True)}
-WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
-"""
+
+def terminal_query(staging_queries):
+    full_query =  "\nUNION ALL\n".join([f"""SELECT
+                *
+            FROM {get_staging_query_output_table_name(staging_query, True)}
+            WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}""" for staging_query in staging_queries])
+    print(full_query)
+    return full_query
+
 
 terminal = StagingQuery(
-    query=terminal_query,
-    start_partition="2020-03-01",
+    query=terminal_query([cart, user, item, order, payment, shipping]),
+    start_partition="2025-07-01",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
     name="terminal_staging_query",
     output_namespace="data",
     dependencies=[
-        TableDependency(table=get_staging_query_output_table_name(first, True), partition_column="ds", offset=1),
-        TableDependency(table=get_staging_query_output_table_name(second, True), partition_column="ds", offset=1),
-        TableDependency(table=get_staging_query_output_table_name(third, True), partition_column="ds", offset=1),
-        TableDependency(table=get_staging_query_output_table_name(fourth, True), partition_column="ds", offset=1),
-        TableDependency(table=get_staging_query_output_table_name(fifth, True), partition_column="ds", offset=1),
-        TableDependency(table=get_staging_query_output_table_name(sixth, True), partition_column="ds", offset=1),
+        TableDependency(table=get_staging_query_output_table_name(cart, True), partition_column="ds", offset=1),
+        TableDependency(table=get_staging_query_output_table_name(user, True), partition_column="ds", offset=1),
+        TableDependency(table=get_staging_query_output_table_name(item, True), partition_column="ds", offset=1),
+        TableDependency(table=get_staging_query_output_table_name(order, True), partition_column="ds", offset=1),
+        TableDependency(table=get_staging_query_output_table_name(payment, True), partition_column="ds", offset=1),
+        TableDependency(table=get_staging_query_output_table_name(shipping, True), partition_column="ds", offset=1),
+    ],
+    version=0,
+)
+
+purchases_labels = StagingQuery(
+    query=f"""SELECT 
+                *,
+                case when rand() < 0.5 then 0 else 1 end as label
+              FROM {get_join_output_table_name(training_set.v1_test, True)}""",
+    start_partition="2025-07-01",
+    table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
+    name="purchases_labels",
+    output_namespace="data",
+    dependencies=[
+        TableDependency(table=get_join_output_table_name(training_set.v1_test, True), partition_column="ds", offset=0),
     ],
     version=0,
 )
@@ -63,7 +82,7 @@ WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
 
 v1_hub = StagingQuery(
     query=query_hub,
-    start_partition="2020-03-01",
+    start_partition="2025-07-01",
     name="sample_staging_query",
     output_namespace="data",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},

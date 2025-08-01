@@ -1,6 +1,6 @@
 {
   "metaData": {
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_sample_staging_query_cart__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_cart__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_user__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_user__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_item__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_item__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_order__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_order__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_payment__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_payment__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_shipping__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_shipping__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_training_set_v1_test__0_with_offset_1\", \"spec\": \"data.gcp_training_set_v1_test__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
     "executionInfo": {
       "clusterConf": {
         "common": {},
@@ -117,7 +117,7 @@
       },
       "scheduleCron": "@daily"
     },
-    "name": "gcp.sample_staging_query.terminal__0",
+    "name": "gcp.sample_staging_query.shipping__0",
     "outputNamespace": "data",
     "sourceFile": "staging_queries/gcp/sample_staging_query.py",
     "tableProperties": {
@@ -126,7 +126,7 @@
     "team": "gcp",
     "version": "0"
   },
-  "query": "SELECT\n                *\n            FROM data.gcp_sample_staging_query_cart__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_user__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_item__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_order__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_payment__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_shipping__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
+  "query": "\n        SELECT\n            *,\n            shipping as category_name\n        FROM data.gcp_training_set_v1_test__0\n        WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "startPartition": "2025-07-01",
   "tableDependencies": [
     {
@@ -144,97 +144,7 @@
           "length": 1,
           "timeUnit": 1
         },
-        "table": "data.gcp_sample_staging_query_cart__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_user__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_item__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_order__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_payment__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_shipping__0"
+        "table": "data.gcp_training_set_v1_test__0"
       }
     }
   ]

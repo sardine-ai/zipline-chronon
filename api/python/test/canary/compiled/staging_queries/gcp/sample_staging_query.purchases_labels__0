@@ -1,6 +1,6 @@
 {
   "metaData": {
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_training_set_v1_test__0_with_offset_1\", \"spec\": \"data.gcp_training_set_v1_test__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_training_set_v1_test__0_with_offset_0\", \"spec\": \"data.gcp_training_set_v1_test__0/ds={{ macros.ds_add(ds, 0) }}\"}]}",
     "executionInfo": {
       "clusterConf": {
         "common": {},
@@ -117,7 +117,7 @@
       },
       "scheduleCron": "@daily"
     },
-    "name": "gcp.sample_staging_query.third__0",
+    "name": "gcp.sample_staging_query.purchases_labels__0",
     "outputNamespace": "data",
     "sourceFile": "staging_queries/gcp/sample_staging_query.py",
     "tableProperties": {
@@ -126,16 +126,16 @@
     "team": "gcp",
     "version": "0"
   },
-  "query": "\nSELECT\n    *\nFROM data.gcp_training_set_v1_test__0\nWHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n",
-  "startPartition": "2020-03-01",
+  "query": "SELECT \n                *,\n                case when rand() < 0.5 then 0 else 1 end as label\n              FROM data.gcp_training_set_v1_test__0",
+  "startPartition": "2025-07-01",
   "tableDependencies": [
     {
       "endOffset": {
-        "length": 1,
+        "length": 0,
         "timeUnit": 1
       },
       "startOffset": {
-        "length": 1,
+        "length": 0,
         "timeUnit": 1
       },
       "tableInfo": {

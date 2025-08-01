@@ -13,7 +13,7 @@ source = Source(
         topic=None, # See the 'returns' GroupBy for an example that has a streaming source configured. In this case, this would be the streaming source topic that can be listened to for realtime events
         query=Query(
             selects=selects("user_id","purchase_price"), # Select the fields we care about
-            start_partition="2023-11-01",
+            start_partition="2025-07-01",
             time_column="ts") # The event time
     ))
 
@@ -84,7 +84,7 @@ source_notds = Source(
         query=Query(
             selects=selects("user_id","purchase_price"), # Select the fields we care about
             time_column="ts",
-            start_partition="2023-11-01",
+            start_partition="2025-07-01",
             partition_column="notds"
         ) # The event time
     ))
