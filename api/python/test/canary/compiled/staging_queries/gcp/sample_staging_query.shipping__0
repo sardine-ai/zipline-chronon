@@ -126,7 +126,7 @@
     "team": "gcp",
     "version": "0"
   },
-  "query": "\n        SELECT\n            *,\n            shipping as category_name\n        FROM data.gcp_training_set_v1_test__0\n        WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
+  "query": "\n        SELECT\n            *,\n            'shipping' as category_name\n        FROM data.gcp_training_set_v1_test__0\n        WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "startPartition": "2025-07-01",
   "tableDependencies": [
     {

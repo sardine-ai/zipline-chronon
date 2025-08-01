@@ -8,7 +8,7 @@ def get_staging_query(category_name):
     query = f"""
         SELECT
             *,
-            {category_name} as category_name
+            '{category_name}' as category_name
         FROM {get_join_output_table_name(training_set.v1_test, True)}
         WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
     """
