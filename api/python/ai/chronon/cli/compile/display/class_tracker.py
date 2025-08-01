@@ -78,12 +78,6 @@ class ClassTracker:
                 f"  Parsed {len(self.existing_objs)} previously compiled objects.\n"
             )
 
-        if self.files_to_obj:
-            text.append("  Compiled ")
-            text.append(f"{len(self.new_objs)} ", style="bold green")
-            text.append("objects from ")
-            text.append(f"{len(self.files_to_obj)} ", style="bold green")
-            text.append("files.\n")
 
         if self.files_to_errors:
             text.append("  Failed to compile ")

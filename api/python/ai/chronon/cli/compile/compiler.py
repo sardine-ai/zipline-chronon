@@ -35,16 +35,24 @@ class Compiler:
         config_infos = self.compile_context.config_infos
 
         compile_results = {}
+        all_compiled_objects = []  # Collect all compiled objects for change validation
 
         for config_info in config_infos:
-            configs = self._compile_class_configs(config_info)
-
+            configs, compiled_objects = self._compile_class_configs(config_info)
             compile_results[config_info.config_type] = configs
+            
+            # Collect compiled objects for change validation
+            all_compiled_objects.extend(compiled_objects)
+        
+        # Validate changes once after all classes have been processed
+        self.compile_context.validator.validate_changes(all_compiled_objects)
+        
         self._compile_team_metadata()
 
         # check if staging_output_dir exists
         staging_dir = self.compile_context.staging_output_dir()
         if os.path.exists(staging_dir):
+            
             # replace staging_output_dir to output_dir
             output_dir = self.compile_context.output_dir()
             if os.path.exists(output_dir):
@@ -55,7 +63,7 @@ class Compiler:
                 f"Staging directory {staging_dir} does not exist. "
                 "Happens when every chronon config fails to compile or when no chronon configs exist."
             )
-
+        
         # TODO: temporarily just print out the final results of the compile until live fix is implemented:
         #  https://github.com/Textualize/rich/pull/3637
         console.print(self.compile_context.compile_status.render())
@@ -87,7 +95,7 @@ class Compiler:
         # Done writing team metadata, close the class
         self.compile_context.compile_status.close_cls(MetaData.__name__)
 
-    def _compile_class_configs(self, config_info: ConfigInfo) -> CompileResult:
+    def _compile_class_configs(self, config_info: ConfigInfo) -> Tuple[CompileResult, List[CompiledObj]]:
 
         compile_result = CompileResult(
             config_info=config_info, obj_dict={}, error_dict={}
@@ -109,7 +117,7 @@ class Compiler:
 
         self.compile_context.compile_status.close_cls(config_info.cls.__name__)
 
-        return compile_result
+        return compile_result, compiled_objects
 
     def _write_objects_in_folder(
         self,

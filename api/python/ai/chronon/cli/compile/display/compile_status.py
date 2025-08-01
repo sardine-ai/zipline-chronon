@@ -67,6 +67,10 @@ class CompileStatus:
         text = Text(overflow="fold", no_wrap=False)
 
         for obj_type, tracker in self.cls_to_tracker.items():
+            # Skip MetaData section
+            if obj_type == "MetaData":
+                continue
+                
             text.append(f"\n{obj_type}-s:\n", style="cyan")
 
             status = tracker.to_status()

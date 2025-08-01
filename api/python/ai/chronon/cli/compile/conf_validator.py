@@ -18,8 +18,10 @@
 import json
 import logging
 import re
+import sys
 import textwrap
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import ai.chronon.api.common.ttypes as common
@@ -40,6 +42,7 @@ from ai.chronon.cli.compile.column_hashing import (
     get_pre_derived_join_features,
     get_pre_derived_source_keys,
 )
+from ai.chronon.cli.compile.version_utils import is_version_change
 from ai.chronon.logger import get_logger
 from ai.chronon.repo.serializer import thrift_simple_json
 from ai.chronon.utils import get_query, get_root_source
@@ -47,6 +50,19 @@ from ai.chronon.utils import get_query, get_root_source
 # Fields that indicate status of the entities.
 SKIPPED_FIELDS = frozenset(["metaData"])
 EXTERNAL_KEY = "onlineExternalParts"
+
+
+@dataclass
+class ConfigChange:
+    """Represents a change to a compiled config object."""
+    name: str
+    obj_type: str
+    online: bool = False
+    production: bool = False
+    base_name: str = None
+    old_version: int = None
+    new_version: int = None
+    is_version_change: bool = False
 
 
 def _filter_skipped_fields_from_join(json_obj: Dict, skipped_fields):
@@ -257,6 +273,7 @@ class ConfValidator(object):
         if isinstance(obj, Join):
             _filter_skipped_fields_from_join(new_json, skipped_fields)
             _filter_skipped_fields_from_join(old_json, skipped_fields)
+
         return new_json != old_json
 
     def safe_to_overwrite(self, obj: object) -> bool:
@@ -375,7 +392,7 @@ class ConfValidator(object):
         errors = []
 
         if left_cols:
-            join_parts = join.joinParts
+            join_parts = list(join.joinParts)  # Create a copy to avoid modifying the original
 
             # Add label_parts to join_parts to validate if set
             label_parts = join.labelParts
@@ -588,3 +605,244 @@ class ConfValidator(object):
                         ValueError(f"Join must be defined with team and name: {join_obj}")
                     )
         return errors
+
+    def validate_changes(self, results):
+        """
+        Validate changes in compiled objects against existing materialized objects.
+        
+        Args:
+            results: List of CompiledObj from parse_configs
+            
+        Returns:
+            None (exits on user cancellation)
+        """
+        from ai.chronon.cli.compile.display.console import console
+        
+        # Filter out results with errors and only process GroupBy/Join
+        valid_results = []
+        for result in results:
+            if result.errors:
+                continue  # Skip results with errors
+            if result.obj_type not in ["GroupBy", "Join"]:
+                continue  # Skip non-GroupBy/Join objects
+            valid_results.append(result)
+        
+        # Categorize changes with version awareness
+        changed_objects = {
+            'changed': [],
+            'deleted': [],
+            'added': [],
+            'version_bumped': []
+        }
+        
+        # Process each valid result
+        for result in valid_results:
+            obj_name = result.obj.metaData.name
+            obj_type = result.obj_type
+            
+            # Check if object exists in old objects
+            old_obj = self._get_old_obj(type(result.obj), obj_name)
+            
+            if old_obj is None:
+                # New object
+                change = self._create_config_change(result.obj, obj_type)
+                changed_objects['added'].append(change)
+            elif self._has_diff(result.obj, old_obj):
+                # Modified object
+                change = self._create_config_change(result.obj, obj_type)
+                changed_objects['changed'].append(change)
+        
+        # Check for deleted objects and detect version changes
+        current_objects = {(result.obj_type, result.obj.metaData.name) for result in valid_results}
+        current_base_names = {}  # Maps (obj_type, base_name) -> (obj_name, obj)
+        
+        # Build mapping of current base names
+        for result in valid_results:
+            obj_name = result.obj.metaData.name
+            obj_type = result.obj_type
+            base_name, version = self._parse_name_and_version(obj_name)
+            current_base_names[(obj_type, base_name)] = (obj_name, result.obj)
+        
+        for obj_type in ["GroupBy", "Join"]:
+            old_objs = self.old_objs.get(obj_type, {})
+            for obj_name, old_obj in old_objs.items():
+                if (obj_type, obj_name) not in current_objects:
+                    # Check if this is a version change
+                    old_base_name, old_version = self._parse_name_and_version(obj_name)
+                    
+                    if (obj_type, old_base_name) in current_base_names:
+                        # This is a version change
+                        new_obj_name, new_obj = current_base_names[(obj_type, old_base_name)]
+                        _, new_version = self._parse_name_and_version(new_obj_name)
+                        
+                        change = self._create_version_change(old_obj, new_obj, obj_type, old_base_name, old_version, new_version)
+                        changed_objects['version_bumped'].append(change)
+                        
+                        # Remove from added list if it was there
+                        changed_objects['added'] = [
+                            c for c in changed_objects['added'] 
+                            if c.name != new_obj_name
+                        ]
+                    else:
+                        # Object was deleted
+                        change = self._create_config_change(old_obj, obj_type)
+                        changed_objects['deleted'].append(change)
+        
+        # Report changes
+        self._report_changed_objects(changed_objects)
+        
+        # Check if we need user confirmation (only for non-version-bump changes)
+        non_version_changes = self._filter_non_version_changes(
+            changed_objects['changed'] + changed_objects['deleted'],
+            changed_objects['added']
+        )
+        
+        if non_version_changes:
+            if not self._prompt_user_confirmation():
+                console.print("❌ Compilation cancelled by user.")
+                sys.exit(1)
+    
+    def _parse_name_and_version(self, name: str) -> Tuple[str, int]:
+        """Parse config name to extract base name and version.
+        
+        Args:
+            name: Config name (e.g., 'config_name__1' or 'config_name')
+            
+        Returns:
+            Tuple of (base_name, version) where version is None if no version suffix
+        """
+        if '__' in name:
+            parts = name.rsplit('__', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                return parts[0], int(parts[1])
+        return name, None
+    
+    def _filter_non_version_changes(self, existing_changes, added_changes):
+        """Filter out version changes from existing changes.
+        
+        Returns list of changes that are NOT version bumps and require confirmation.
+        """
+        added_names = {change.name for change in added_changes}
+        non_version_changes = []
+        
+        for change in existing_changes:
+            # Check if this deleted config has a corresponding added config that represents a version bump
+            is_version_bump = any(
+                is_version_change(change.name, added_name) 
+                for added_name in added_names
+            )
+            
+            if not is_version_bump:
+                non_version_changes.append(change)
+        
+        return non_version_changes
+    
+    def _create_config_change(self, obj, obj_type):
+        """Create a ConfigChange object from a thrift object."""
+        base_name, version = self._parse_name_and_version(obj.metaData.name)
+        return ConfigChange(
+            name=obj.metaData.name,
+            obj_type=obj_type,
+            online=obj.metaData.online if obj.metaData.online else False,
+            production=obj.metaData.production if obj.metaData.production else False,
+            base_name=base_name,
+            old_version=version,
+            new_version=version
+        )
+    
+    def _create_version_change(self, old_obj, new_obj, obj_type, base_name, old_version, new_version):
+        """Create a ConfigChange object for a version bump."""
+        return ConfigChange(
+            name=f"{base_name} (v{old_version} -> v{new_version})",
+            obj_type=obj_type,
+            online=new_obj.metaData.online if new_obj.metaData.online else False,
+            production=new_obj.metaData.production if new_obj.metaData.production else False,
+            base_name=base_name,
+            old_version=old_version,
+            new_version=new_version,
+            is_version_change=True
+        )
+    
+    def _report_changed_objects(self, changed_objects):
+        """Report categorized changed objects to the user."""
+        from ai.chronon.cli.compile.display.console import console
+        
+        total_existing_changes = len(changed_objects['changed']) + len(changed_objects['deleted'])
+        total_new_objects = len(changed_objects['added'])
+        total_version_changes = len(changed_objects['version_bumped'])
+        
+        if total_existing_changes == 0 and total_new_objects == 0 and total_version_changes == 0:
+            console.print("\n✅ No changes detected in compiled objects.")
+            return
+        
+        # Helper function to format config name with flags
+        def format_config_name(change: ConfigChange) -> str:
+            name = f"[{change.obj_type}] {change.name}"
+            flags = []
+            if change.online:
+                flags.append("[bold red][ONLINE][/bold red]")
+            if change.production:
+                flags.append("[bold magenta][PRODUCTION][/bold magenta]")
+            if flags:
+                return f"{name} {' '.join(flags)}"
+            return name
+        
+        # Report changed objects
+        if changed_objects['changed']:
+            console.print(f"\n🔄 [bold yellow]CHANGED configs ({len(changed_objects['changed'])} objects):[/bold yellow]")
+            for change in changed_objects['changed']:
+                console.print(f"  • {format_config_name(change)}")
+        
+        # Report deleted objects
+        if changed_objects['deleted']:
+            console.print(f"\n🗑️  [bold red]DELETED configs ({len(changed_objects['deleted'])} objects):[/bold red]")
+            for change in changed_objects['deleted']:
+                console.print(f"  • {format_config_name(change)}")
+        
+        # Report added objects
+        if changed_objects['added']:
+            console.print(f"\n➕ [bold green]ADDED configs ({len(changed_objects['added'])} objects):[/bold green]")
+            for change in changed_objects['added']:
+                console.print(f"  • {format_config_name(change)}")
+        
+        # Store version changes to report later
+        self._version_changes = changed_objects['version_bumped']
+    
+    def report_version_changes(self):
+        """Report version changes at the end of compilation."""
+        from ai.chronon.cli.compile.display.console import console
+        
+        if hasattr(self, '_version_changes') and self._version_changes:
+            # Helper function to format config name with flags
+            def format_config_name(change: ConfigChange) -> str:
+                name = f"[{change.obj_type}] {change.name}"
+                flags = []
+                if change.online:
+                    flags.append("[bold red][ONLINE][/bold red]")
+                if change.production:
+                    flags.append("[bold magenta][PRODUCTION][/bold magenta]")
+                if flags:
+                    return f"{name} {' '.join(flags)}"
+                return name
+            
+            console.print(f"\n🔄 [bold blue]VERSION BUMPED configs ({len(self._version_changes)} objects):[/bold blue]")
+            for change in self._version_changes:
+                console.print(f"  • {format_config_name(change)}")
+    
+    def _prompt_user_confirmation(self) -> bool:
+        """
+        Prompt user for Y/N confirmation to proceed with overwriting existing configs.
+        Returns True if user confirms, False otherwise.
+        """
+        from ai.chronon.cli.compile.display.console import console
+        
+        console.print("\n❓ [bold]Do you want to proceed with overwriting these existing compiled configs?[/bold]")
+        console.print("[dim](Version bumps above do not require confirmation and will proceed automatically)[/dim]")
+        console.print("[bold]Continue? (y/N):[/bold]", end=" ")
+        
+        try:
+            response = input().strip().lower()
+            return response in ['y', 'yes']
+        except (EOFError, KeyboardInterrupt):
+            console.print("\n❌ Compilation cancelled.")
+            return False
