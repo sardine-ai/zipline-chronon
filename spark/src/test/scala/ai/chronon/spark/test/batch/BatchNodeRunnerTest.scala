@@ -154,27 +154,17 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Insert test data for available partitions
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.input_table PARTITION (ds='$yesterday') VALUES
-         |(1, 'value1')
-         |""".stripMargin
-    )
-    spark.sql(
-      s"""
-         |INSERT OVERWRITE test_db.input_table PARTITION (ds='$twoDaysAgo') VALUES
-         |(2, 'value2')
+         |INSERT INTO test_db.input_table VALUES
+         |(1, 'value1', '$yesterday'),
+         |(2, 'value2', '$twoDaysAgo')
          |""".stripMargin
     )
 
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.left_table PARTITION (ds='$yesterday') VALUES
-         |(1)
-         |""".stripMargin
-    )
-    spark.sql(
-      s"""
-         |INSERT OVERWRITE test_db.left_table PARTITION (ds='$twoDaysAgo') VALUES
-         |(2)
+         |INSERT INTO test_db.left_table VALUES
+         |(1, '$yesterday'),
+         |(2, '$twoDaysAgo')
          |""".stripMargin
     )
   }
@@ -277,14 +267,9 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Insert some data into output table to simulate successful execution
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.output_table PARTITION (ds='$yesterday') VALUES
-         |(1, 'output1')
-         |""".stripMargin
-    )
-    spark.sql(
-      s"""
-         |INSERT OVERWRITE test_db.output_table PARTITION (ds='$twoDaysAgo') VALUES
-         |(2, 'output2')
+         |INSERT INTO test_db.output_table VALUES
+         |(1, 'output1', '$yesterday'),
+         |(2, 'output2', '$twoDaysAgo')
          |""".stripMargin
     )
 
@@ -338,15 +323,15 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Add one more partition to test partial availability
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.input_table PARTITION (ds='$today') VALUES
-         |(3, 'value3')
+         |INSERT INTO test_db.input_table VALUES
+         |(3, 'value3', '$today')
          |""".stripMargin
     )
 
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.left_table PARTITION (ds='$today') VALUES
-         |(3)
+         |INSERT INTO test_db.left_table VALUES
+         |(3, '$today')
          |""".stripMargin
     )
 
@@ -416,27 +401,17 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     // Insert data with different partition format
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.input_table_alt PARTITION (partition_date='$yesterdayAlt') VALUES
-         |(1, 'value1')
-         |""".stripMargin
-    )
-    spark.sql(
-      s"""
-         |INSERT OVERWRITE test_db.input_table_alt PARTITION (partition_date='$twoDaysAgoAlt') VALUES
-         |(2, 'value2')
+         |INSERT INTO test_db.input_table_alt VALUES
+         |(1, 'value1', '$yesterdayAlt'),
+         |(2, 'value2', '$twoDaysAgoAlt')
          |""".stripMargin
     )
 
     spark.sql(
       s"""
-         |INSERT OVERWRITE test_db.left_table_alt PARTITION (partition_date='$yesterdayAlt') VALUES
-         |(1)
-         |""".stripMargin
-    )
-    spark.sql(
-      s"""
-         |INSERT OVERWRITE test_db.left_table_alt PARTITION (partition_date='$twoDaysAgoAlt') VALUES
-         |(2)
+         |INSERT INTO test_db.left_table_alt VALUES
+         |(1, '$yesterdayAlt'),
+         |(2, '$twoDaysAgoAlt')
          |""".stripMargin
     )
 

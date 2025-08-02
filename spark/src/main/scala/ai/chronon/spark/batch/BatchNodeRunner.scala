@@ -266,7 +266,7 @@ object BatchNodeRunner {
           println("Batch node runner succeeded")
           0
         case Failure(exception) =>
-          println("Batch node runner failed", exception)
+          println(s"Batch node runner failed: ${exception.traceString}")
           1
       }
     }
