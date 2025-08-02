@@ -127,7 +127,7 @@
     "version": "0"
   },
   "query": "\n        SELECT\n            *,\n            'order' as category_name\n        FROM data.gcp_training_set_v1_test__0\n        WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
-  "startPartition": "2025-07-01",
+  "startPartition": "2023-11-01",
   "tableDependencies": [
     {
       "endOffset": {

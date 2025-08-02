@@ -14,7 +14,7 @@ def get_staging_query(category_name):
     """
     return StagingQuery(
         query=query,
-        start_partition="2025-07-01",
+        start_partition="2023-11-01",
         name="sample_staging_query",
         output_namespace="data",
         table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
@@ -42,7 +42,7 @@ def terminal_query(staging_queries):
 
 terminal = StagingQuery(
     query=terminal_query([cart, user, item, order, payment, shipping]),
-    start_partition="2025-07-01",
+    start_partition="2023-11-01",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
     name="terminal_staging_query",
     output_namespace="data",
@@ -65,7 +65,7 @@ SELECT
 FROM {get_join_output_table_name(training_set.v1_test, True)}
 WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
 """,
-    start_partition="2025-07-01",
+    start_partition="2023-11-01",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},
     name="purchases_labels",
     output_namespace="data",
@@ -84,7 +84,7 @@ WHERE ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
 
 v1_hub = StagingQuery(
     query=query_hub,
-    start_partition="2025-07-01",
+    start_partition="2023-11-01",
     name="sample_staging_query",
     output_namespace="data",
     table_properties={"sample_config_json": """{"sample_key": "sample value"}"""},

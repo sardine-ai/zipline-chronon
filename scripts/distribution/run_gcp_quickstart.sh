@@ -122,6 +122,9 @@ function fail_if_bash_failed() {
   fi
 }
 
+START_DS="2023-11-01"
+END_DS="2023-11-30"
+
 CHRONON_ROOT=`pwd`/api/python/test/canary
 export PYTHONPATH="$CHRONON_ROOT" ARTIFACT_PREFIX="gs://zipline-artifacts-$ENVIRONMENT" CUSTOMER_ID=$ENVIRONMENT
 
@@ -130,27 +133,27 @@ zipline compile --chronon-root=$CHRONON_ROOT
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test__0 --start-ds 2023-11-01 --end-ds 2023-12-01
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_test__0 --start-ds $START_DS --end-ds $END_DS
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev__0 --start-ds 2023-11-01 --end-ds 2023-12-01
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/group_bys/gcp/purchases.v1_dev__0 --start-ds $START_DS --end-ds $END_DS
 fi
 
 fail_if_bash_failed $?
 
 echo -e "${GREEN}<<<<<.....................................BACKFILL-JOIN.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_test__0 --start-ds 2023-11-01 --end-ds 2023-12-01
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev_notds__0 --start-ds 2023-11-01 --end-ds 2023-12-01
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_test__0 --start-ds $START_DS --end-ds $END_DS
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev_notds__0 --start-ds $START_DS --end-ds $END_DS
 
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev__0 --start-ds 2023-11-01 --end-ds 2023-12-01
-  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev_notds__0 --start-ds 2023-11-01 --end-ds 2023-12-01
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev__0 --start-ds $START_DS --end-ds $END_DS
+  zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode backfill --conf compiled/joins/gcp/training_set.v1_dev_notds__0 --start-ds $START_DS --end-ds $END_DS
 fi
 fail_if_bash_failed $?
 
 
 echo -e "${GREEN}<<<<<.....................................CHECK-PARTITIONS.....................................>>>>>\033[0m"
-EXPECTED_PARTITION="2023-11-30"
+EXPECTED_PARTITION=$END_DS
 if [[ "$ENVIRONMENT" == "canary" ]]; then
   zipline run --repo=$CHRONON_ROOT  --version $VERSION --mode metastore check-partitions --partition-names=data.gcp_purchases_v1_test__0/ds=$EXPECTED_PARTITION --conf compiled/teams_metadata/gcp/gcp_team_metadata
 else
@@ -160,18 +163,18 @@ fail_if_bash_failed $?
 
 echo -e "${GREEN}<<<<<.....................................GROUP-BY-UPLOAD.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_test__0 --ds  2023-12-01
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_test__0 --ds $END_DS
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev__0 --ds  2023-12-01
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload --conf compiled/group_bys/gcp/purchases.v1_dev__0 --ds $END_DS
 fi
 fail_if_bash_failed
 
 # Need to wait for upload to finish
 echo -e "${GREEN}<<<<<.....................................UPLOAD-TO-KV.....................................>>>>>\033[0m"
 if [[ "$ENVIRONMENT" == "canary" ]]; then
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_test__0 --partition-string=2023-12-01
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_test__0 --partition-string=$END_DS
 else
-  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_dev__0 --partition-string=2023-12-01
+  zipline run --repo=$CHRONON_ROOT --version $VERSION --mode upload-to-kv --conf compiled/group_bys/gcp/purchases.v1_dev__0 --partition-string=$END_DS
 fi
 fail_if_bash_failed
 

@@ -217,7 +217,7 @@
             "purchase_price": "purchase_price",
             "user_id": "user_id"
           },
-          "startPartition": "2025-07-01",
+          "startPartition": "2023-11-01",
           "timeColumn": "ts"
         },
         "table": "data.purchases_notds"
