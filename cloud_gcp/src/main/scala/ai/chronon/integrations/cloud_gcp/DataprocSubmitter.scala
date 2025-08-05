@@ -1,7 +1,7 @@
 package ai.chronon.integrations.cloud_gcp
 import ai.chronon.api.Builders.MetaData
-import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import ai.chronon.spark.submission.JobSubmitterConstants._
+import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import com.google.protobuf.util.JsonFormat

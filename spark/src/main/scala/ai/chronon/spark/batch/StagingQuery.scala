@@ -23,7 +23,8 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
 
   private val partitionCols: Seq[String] =
     Seq(tableUtils.partitionColumn) ++
-      (Option(stagingQueryConf.metaData.additionalOutputPartitionColumns.toScala)
+      (Option(stagingQueryConf.metaData.additionalOutputPartitionColumns)
+        .map(_.toScala)
         .getOrElse(Seq.empty))
 
   def computeStagingQuery(stepDays: Option[Int] = None,
@@ -69,12 +70,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
           stepRanges.zipWithIndex.foreach { case (range, index) =>
             val progress = s"| [${index + 1}/${stepRanges.size}]"
             logger.info(s"Computing staging query for range: $range  $progress")
-            val renderedQuery =
-              StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
-            logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
-            val df = tableUtils.sql(renderedQuery)
-            df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
-            logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
+            compute(range, Seq.empty[String], enableAutoExpand)
           }
           logger.info(s"Finished writing Staging Query data to $outputTable")
         } catch {
@@ -93,6 +89,17 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
         throw new Exception(fullMessage)
       }
     }
+  }
+
+  def compute(range: PartitionRange, setups: Seq[String], enableAutoExpand: Option[Boolean]): Unit = {
+    Option(setups).foreach(_.foreach(tableUtils.sql))
+    val renderedQuery =
+      StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
+    logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
+    val df = tableUtils.sql(renderedQuery)
+    df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
+    logger.info(s"Wrote to table $outputTable, into partitions: $range")
+    logger.info(s"Finished writing Staging Query data to $outputTable")
   }
 }
 

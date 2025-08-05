@@ -88,11 +88,10 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     logger.info(s"Running staging query for '${metaData.name}'")
     val stagingQueryConf = stagingQuery.stagingQuery
     val sq = new StagingQuery(stagingQueryConf, range.end, tableUtils)
-    sq.computeStagingQuery(
-      stepDays = Option(metaData.executionInfo.stepDays),
-      enableAutoExpand = Some(true),
-      overrideStartPartition = Option(range.start),
-      forceOverwrite = true
+    sq.compute(
+      range,
+      Option(stagingQuery.stagingQuery.setups).map(_.asScala).getOrElse(Seq.empty),
+      Option(true)
     )
 
     logger.info(s"Successfully completed staging query for '${metaData.name}'")
