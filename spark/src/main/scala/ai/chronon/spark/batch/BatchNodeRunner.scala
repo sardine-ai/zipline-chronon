@@ -87,7 +87,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     require(stagingQuery.isSetStagingQuery, "StagingQueryNode must have a stagingQuery set")
     logger.info(s"Running staging query for '${metaData.name}'")
     val stagingQueryConf = stagingQuery.stagingQuery
-    val sq = new StagingQuery(stagingQueryConf, range.end, tableUtils)
+    val sq = StagingQuery.from(stagingQueryConf, range.end, tableUtils)
     sq.compute(
       range,
       Option(stagingQuery.stagingQuery.setups).map(_.asScala).getOrElse(Seq.empty),
