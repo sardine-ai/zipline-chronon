@@ -65,6 +65,7 @@ maven_repository = repository(
         "net.sf.py4j:py4j:0.10.9.9",
         "org.apache.commons:commons-lang3:3.12.0",
         "org.apache.commons:commons-math3:3.6.1",
+        "org.apache.commons:commons-pool2:2.12.1",
         "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1",
 
         # Add other dependencies - for scala 2.12

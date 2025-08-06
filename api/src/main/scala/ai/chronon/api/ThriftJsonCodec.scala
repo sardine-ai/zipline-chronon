@@ -46,6 +46,11 @@ object ThriftJsonCodec {
     override def initialValue(): TSerializer = new TSerializer(new TSimpleJSONProtocol.Factory())
   }
 
+  private val mapper = {
+    val mapper = new ObjectMapper()
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  }
+
   def serializer: TSerializer = serializerThreaded.get()
 
   def toJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
@@ -99,17 +104,23 @@ object ThriftJsonCodec {
   }
 
   def fromJsonStr[T <: TBase[_, _]: Manifest](jsonStr: String, check: Boolean = true, clazz: Class[_ <: T]): T = {
-    val mapper = new ObjectMapper()
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     val obj: T = mapper.readValue(jsonStr, clazz)
     if (check) {
       val inputNode: JsonNode = mapper.readTree(jsonStr)
       val reSerializedInput: JsonNode = mapper.readTree(toJsonStr(obj))
       require(
         inputNode.equals(reSerializedInput),
-        message = s"""Parsed Json object isn't reversible.
-     Original JSON String:  $jsonStr
-     JSON produced by serializing object: $reSerializedInput"""
+        message = s"""
+               |Parsed Json object isn't reversible.
+               |Original JSON String:
+               |
+               |$jsonStr
+               |-----------------------------------
+               |JSON produced by serializing object:
+               |
+               |$reSerializedInput
+               |------------------------------------
+               |""".stripMargin
       )
     }
     obj
