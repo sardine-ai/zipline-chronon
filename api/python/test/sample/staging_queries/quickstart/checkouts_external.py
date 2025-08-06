@@ -32,8 +32,6 @@ query = """
 
 checkouts_query = StagingQuery(
     query=query,
-    start_partition="2023-10-31",
-    name='checkouts_staging_query',
     output_namespace="data",
     dependencies=[
         TableDependency(table="data.purchases", partition_column="ds"),

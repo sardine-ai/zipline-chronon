@@ -63,7 +63,7 @@ class CompileStatus:
         if self.use_live:
             self.live.stop()
 
-    def render(self) -> Text:
+    def render(self, ignore_python_errors: bool = False) -> Text:
         text = Text(overflow="fold", no_wrap=False)
 
         for obj_type, tracker in self.cls_to_tracker.items():
@@ -81,7 +81,7 @@ class CompileStatus:
             if errors:
                 text.append(errors)
 
-            diff = tracker.diff()
+            diff = tracker.diff(ignore_python_errors)
             if diff:
                 text.append(diff)
 

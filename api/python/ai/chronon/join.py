@@ -475,6 +475,10 @@ def Join(
     if isinstance(row_ids, str):
         row_ids = [row_ids]
 
+    assert isinstance(version, int), (
+        f"Version must be an integer, but found {type(version).__name__}"
+    )
+
     # create a deep copy for case: multiple LeftOuterJoin use the same left,
     # validation will fail after the first iteration
     updated_left = copy.deepcopy(left)

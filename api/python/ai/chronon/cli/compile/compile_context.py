@@ -24,10 +24,11 @@ class ConfigInfo:
 @dataclass
 class CompileContext:
 
-    def __init__(self):
+    def __init__(self, ignore_python_errors: bool = False):
         self.chronon_root: str = os.getenv("CHRONON_ROOT", os.getcwd())
         self.teams_dict: Dict[str, Team] = teams.load_teams(self.chronon_root)
         self.compile_dir: str = "compiled"
+        self.ignore_python_errors: bool = ignore_python_errors
 
         self.config_infos: List[ConfigInfo] = [
             ConfigInfo(folder_name="joins", cls=Join, config_type=ConfType.JOIN),

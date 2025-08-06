@@ -15,7 +15,13 @@ from ai.chronon.cli.compile.display.console import console
     help="Path to the root chronon folder",
     default=os.getcwd(),
 )
-def compile(chronon_root):
+@click.option(
+    "--ignore-python-errors",
+    is_flag=True,
+    default=False,
+    help="Allow compilation to proceed even with Python errors (useful for testing)",
+)
+def compile(chronon_root, ignore_python_errors):
 
     print()
 
@@ -29,10 +35,10 @@ def compile(chronon_root):
             f"[cyan italic]{chronon_root}[/cyan italic] already on python path."
         )
 
-    return __compile(chronon_root)
+    return __compile(chronon_root, ignore_python_errors)
 
 
-def __compile(chronon_root):
+def __compile(chronon_root, ignore_python_errors=False):
     if chronon_root:
         chronon_root_path = os.path.expanduser(chronon_root)
         os.chdir(chronon_root_path)
@@ -46,7 +52,7 @@ def __compile(chronon_root):
             )
         )
 
-    compile_context = CompileContext()
+    compile_context = CompileContext(ignore_python_errors=ignore_python_errors)
     compiler = Compiler(compile_context)
     results = compiler.compile()
     return results

@@ -32,6 +32,11 @@ class Compiler:
 
     def compile(self) -> Dict[ConfType, CompileResult]:
 
+        # Clean staging directory at the start to ensure fresh compilation
+        staging_dir = self.compile_context.staging_output_dir()
+        if os.path.exists(staging_dir):
+            shutil.rmtree(staging_dir)
+
         config_infos = self.compile_context.config_infos
 
         compile_results = {}
@@ -47,28 +52,44 @@ class Compiler:
         # Validate changes once after all classes have been processed
         self.compile_context.validator.validate_changes(all_compiled_objects)
         
-        self._compile_team_metadata()
-
-        # check if staging_output_dir exists
-        staging_dir = self.compile_context.staging_output_dir()
-        if os.path.exists(staging_dir):
-            
-            # replace staging_output_dir to output_dir
-            output_dir = self.compile_context.output_dir()
-            if os.path.exists(output_dir):
-                shutil.rmtree(output_dir)
-            shutil.move(staging_dir, output_dir)
-        else:
-            print(
-                f"Staging directory {staging_dir} does not exist. "
-                "Happens when every chronon config fails to compile or when no chronon configs exist."
-            )
+        # Show the nice display first
+        console.print(self.compile_context.compile_status.render(self.compile_context.ignore_python_errors))
         
-        # TODO: temporarily just print out the final results of the compile until live fix is implemented:
-        #  https://github.com/Textualize/rich/pull/3637
-        console.print(self.compile_context.compile_status.render())
+        # Check for confirmation before finalizing files
+        self.compile_context.validator.check_pending_changes_confirmation(self.compile_context.compile_status)
+        
+        # Only proceed with file operations if there are no compilation errors
+        if not self._has_compilation_errors() or self.compile_context.ignore_python_errors:
+            self._compile_team_metadata()
+
+            # check if staging_output_dir exists
+            staging_dir = self.compile_context.staging_output_dir()
+            if os.path.exists(staging_dir):
+                
+                # replace staging_output_dir to output_dir
+                output_dir = self.compile_context.output_dir()
+                if os.path.exists(output_dir):
+                    shutil.rmtree(output_dir)
+                shutil.move(staging_dir, output_dir)
+            else:
+                print(
+                    f"Staging directory {staging_dir} does not exist. "
+                    "Happens when every chronon config fails to compile or when no chronon configs exist."
+                )
+        else:
+            # Clean up staging directory when there are errors (don't move to output)
+            staging_dir = self.compile_context.staging_output_dir()
+            if os.path.exists(staging_dir):
+                shutil.rmtree(staging_dir)
 
         return compile_results
+
+    def _has_compilation_errors(self):
+        """Check if there are any compilation errors across all class trackers."""
+        for tracker in self.compile_context.compile_status.cls_to_tracker.values():
+            if tracker.files_to_errors:
+                return True
+        return False
 
     def _compile_team_metadata(self):
         """

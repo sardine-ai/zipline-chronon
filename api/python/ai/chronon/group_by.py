@@ -585,6 +585,10 @@ def GroupBy(
     """
     assert sources, "Sources are not specified"
 
+    assert isinstance(version, int), (
+        f"Version must be an integer, but found {type(version).__name__}"
+    )
+
     agg_inputs = []
     if aggregations is not None:
         agg_inputs = [agg.inputColumn for agg in aggregations]

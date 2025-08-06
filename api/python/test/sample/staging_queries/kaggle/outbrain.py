@@ -16,7 +16,6 @@
 from ai.chronon.staging_query import StagingQuery, TableDependency
 
 base_table = StagingQuery(
-    name='outbrain_left',
     query="""
         SELECT
             clicks_train.display_id,

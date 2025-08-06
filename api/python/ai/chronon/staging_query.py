@@ -41,26 +41,22 @@ class TableDependency:
         )
     
 def Import(
-        name: str,
         query: str,
         version: int,
         output_namespace: Optional[str] = None,
-        start_partition: Optional[str] = None,
         engine_type: Optional[EngineType] = None,
         dependencies: Optional[List[Union[TableDependency, Dict]]] = None,
         conf: Optional[common.ConfigProperties] = None,
         env_vars: Optional[common.EnvironmentVariables] = None,
         offline_schedule: str = "@daily",
 ):
-    assert dependencies is not None and len(dependencies) == 1, f"Import {name} must specify exactly one table dependency. Got: {dependencies}"
-    assert dependencies[0].partition_column is not None, f"Import {name} must specify a partition column for the table dependency. Got: {dependencies[0].partition_column}"
+    assert dependencies is not None and len(dependencies) == 1, f"Import must specify exactly one table dependency. Got: {dependencies}"
+    assert dependencies[0].partition_column is not None, f"Import must specify a partition column for the table dependency. Got: {dependencies[0].partition_column}"
 
     return StagingQuery(
-        name=name,
         query=query,
         version=version,
         output_namespace=output_namespace,
-        start_partition=start_partition,
         dependencies=dependencies,
         conf=conf,
         env_vars=env_vars,
@@ -69,11 +65,9 @@ def Import(
     )
 
 def StagingQuery(
-    name: str,
     query: str,
     version: int,
     output_namespace: Optional[str] = None,
-    start_partition: Optional[str] = None,
     table_properties: Optional[Dict[str, str]] = None,
     setups: Optional[List[str]] = None,
     engine_type: Optional[EngineType] = None,
@@ -92,17 +86,13 @@ def StagingQuery(
 
     :param query:
         Arbitrary spark query that should be written with template parameters:
-        - `{{ start_date }}`: Initial run uses start_partition, future runs use latest partition + 1 day
+        - `{{ start_date }}`: Initial run uses start_date, future runs use latest partition + 1 day
         - `{{ end_date }}`: The end partition of the computing range
         - `{{ latest_date }}`: End partition independent of the computing range (for cumulative sources)
         - `{{ max_date(table=namespace.my_table) }}`: Max partition available for a given table
         These parameters can be modified with offset and bounds:
         - `{{ start_date(offset=-10, lower_bound='2023-01-01', upper_bound='2024-01-01') }}`
     :type query: str
-    :param start_partition:
-        On the first run, `{{ start_date }}` will be set to this user provided start date,
-        future incremental runs will set it to the latest existing partition + 1 day.
-    :type start_partition: str
     :param setups:
         Spark SQL setup statements. Used typically to register UDFs.
     :type setups: List[str]
@@ -149,6 +139,10 @@ def StagingQuery(
     # Get caller's filename to assign team
     team = inspect.stack()[1].filename.split("/")[-2]
 
+    assert isinstance(version, int), (
+        f"Version must be an integer, but found {type(version).__name__}"
+    )
+
     # Create execution info
     exec_info = common.ExecutionInfo(
         scheduleCron=offline_schedule,
@@ -183,7 +177,6 @@ def StagingQuery(
 
     # Create metadata
     meta_data = ttypes.MetaData(
-        name=name,
         outputNamespace=output_namespace,
         team=team,
         executionInfo=exec_info,
@@ -203,7 +196,6 @@ def StagingQuery(
     staging_query = ttypes.StagingQuery(
         metaData=meta_data,
         query=query,
-        startPartition=start_partition,
         setups=setups,
         engineType=engine_type,
         tableDependencies=thrift_deps,

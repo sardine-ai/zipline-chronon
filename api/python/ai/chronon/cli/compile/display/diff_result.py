@@ -65,7 +65,7 @@ class DiffResult:
             return Text("➕ Added", style="dim green")
 
         def updated_signage():
-            return Text("🔄 Changed", style="dim yellow")
+            return Text("❗ Changed in place (no version change)", style="dim yellow")
 
         def deleted_signage():
             return Text("🗑️ Deleted", style="red")
@@ -78,13 +78,21 @@ class DiffResult:
         version_bumped = [(version_bumped_signage(), f"{base_name} (v{old_ver} -> v{new_ver})") 
                          for base_name, old_ver, new_ver in self.version_bumped]
 
-        result_order = added + updated + version_bumped
+        # Put version changes and additions first, changed items at the bottom
+        # Sort each group separately to maintain grouping
+        version_bumped_sorted = sorted(version_bumped, key=lambda t: t[1])
+        added_sorted = sorted(added, key=lambda t: t[1])
+        updated_sorted = sorted(updated, key=lambda t: t[1])
+        
+        result_order = version_bumped_sorted + added_sorted
 
         if remaining_deleted:
             deleted = [(deleted_signage(), name) for name in remaining_deleted]
-            result_order += deleted
-
-        result_order = sorted(result_order, key=lambda t: t[1])
+            deleted_sorted = sorted(deleted, key=lambda t: t[1])
+            result_order += deleted_sorted
+        
+        # Add updated (changed in place) at the very end
+        result_order += updated_sorted
 
         text = Text(overflow="fold", no_wrap=False)
         for signage, name in result_order:

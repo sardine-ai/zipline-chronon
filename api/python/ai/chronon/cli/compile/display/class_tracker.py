@@ -102,5 +102,8 @@ class ClassTracker:
         return text
 
     # doesn't make sense to show deletes until the very end of compilation
-    def diff(self) -> Text:
+    def diff(self, ignore_python_errors: bool = False) -> Text:
+        # Don't show diff if there are compile errors - it's confusing
+        if self.files_to_errors and not ignore_python_errors:
+            return Text("\n❗Please fix python errors then retry compilation.\n", style="dim cyan")
         return self.diff_result.render(deleted_names=self.deleted_names)
