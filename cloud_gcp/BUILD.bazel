@@ -14,6 +14,7 @@ shared_deps = [
     maven_artifact_with_suffix("org.scala-lang.modules:scala-collection-compat"),
     maven_artifact_with_suffix("org.rogach:scallop"),
     maven_artifact("com.google.cloud:google-cloud-core"),
+    maven_artifact("com.google.cloud:google-cloud-core-http"),
     maven_artifact("com.google.cloud:google-cloud-bigquery"),
     maven_artifact("com.google.cloud:google-cloud-bigtable"),
     maven_artifact("com.google.cloud:google-cloud-pubsub"),

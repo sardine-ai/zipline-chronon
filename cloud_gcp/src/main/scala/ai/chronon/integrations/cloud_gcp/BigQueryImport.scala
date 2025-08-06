@@ -14,7 +14,8 @@ import com.google.cloud.bigquery.{
   HivePartitioningOptions,
   JobInfo,
   QueryJobConfiguration,
-  TableInfo
+  TableInfo,
+  BigQueryException
 }
 
 class BigQueryImport(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils)
@@ -109,7 +110,11 @@ class BigQueryImport(stagingQueryConf: api.StagingQuery, endPartition: String, t
         case Success(table) =>
           logger.info(s"Wrote to table ${table.getTableId}, into partition: ${range.partitionSpec.column}=${currPart}")
         case Failure(exception) =>
-          throw exception
+          exception match {
+            case b: BigQueryException if (b.getMessage.contains("Already Exists")) =>
+              bigQueryClient.getTable(SparkBQUtils.toTableId(outputTable)(tableUtils.sparkSession))
+            case _ => throw exception
+          }
       }
     }
 
