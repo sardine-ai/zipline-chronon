@@ -1,7 +1,5 @@
 import json
 import os
-from datetime import datetime
-from urllib.parse import quote_plus
 
 import click
 from attr import dataclass
@@ -65,14 +63,13 @@ def submit_workflow(repo,
         conf_hash=conf_name_to_hash_dict[conf_name].hash,
     )
 
-    print(" 🆔 Workflow Id:", response_json.get("workflowId", "N/A"))
+    workflow_id = response_json.get("workflowId", "N/A")
+    print(" 🆔 Workflow Id:", workflow_id)
     print_wf_url(
         conf=conf,
         conf_name=conf_name,
         mode=RunMode.BACKFILL.value,
-        start_ds=start_ds,
-        end_ds=end_ds,
-        branch=branch
+        workflow_id=workflow_id
     )
 
 
@@ -133,7 +130,7 @@ def get_hub_conf(conf_path):
     return HubConfig(hub_url=hub_url, frontend_url=frontend_url)
 
 
-def print_wf_url(conf, conf_name, mode, start_ds, end_ds, branch):
+def print_wf_url(conf, conf_name, mode, workflow_id):
 
     hub_conf = get_hub_conf(conf)
     frontend_url = hub_conf.frontend_url
@@ -149,11 +146,7 @@ def print_wf_url(conf, conf_name, mode, start_ds, end_ds, branch):
     else:
         raise ValueError(f"Unsupported conf type: {conf}")
 
-    # TODO: frontend uses localtime to create the millis, we should make it use UTC and make this align
-    def _millis(date_str):
-        return int(datetime.strptime(date_str, "%Y-%m-%d").timestamp() * 1000)
-
-    def _mode_string(mode):
+    def _mode_string():
         if mode == "backfill":
             return "offline"
         elif mode == "deploy":
@@ -161,7 +154,7 @@ def print_wf_url(conf, conf_name, mode, start_ds, end_ds, branch):
         else:
             raise ValueError(f"Unsupported mode: {mode}")
 
-    workflow_url = f"{frontend_url.rstrip('/')}/{hub_conf_type}/{conf_name}/{_mode_string(mode)}?start={_millis(start_ds)}&end={_millis(end_ds)}&branch={quote_plus(branch)}"
+    workflow_url = f"{frontend_url.rstrip('/')}/{hub_conf_type}/{conf_name}/{_mode_string()}?workflowId={workflow_id}"
 
     print(" 🔗 Workflow : " + workflow_url + "\n")
 
