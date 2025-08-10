@@ -115,6 +115,64 @@ struct NodeStepRunInfo {
     9: optional JobTrackingInfo jobTrackingInfo
 }
 
+// ====================== Start Orchestration Scheduling ======================
+struct ScheduleDeployRequest {
+    1: optional string branch
+    2: optional string mode
+    3: optional Conf conf
+}
+
+struct ScheduleDeployResponse {
+    1: optional string scheduleId
+}
+
+struct ScheduleCancelRequest {
+    1: optional string scheduleId
+}
+
+struct ScheduleCancelResponse {
+    1: optional string scheduleId
+    2: optional string branch
+    3: optional string confName
+    4: optional string mode
+}
+
+struct ScheduleDeleteRequest {
+    1: optional string scheduleId
+}
+
+struct ScheduleDeleteResponse {
+    1: optional string scheduleId
+    2: optional string branch
+    3: optional string confName
+    4: optional string mode
+}
+
+struct ScheduleListRequest {
+    1: optional i32 limit
+    2: optional i32 offset
+    3: optional string branch
+}
+
+struct ScheduleListDescription {
+    1: optional string scheduleId
+    2: optional string confName
+    3: optional string branch
+    4: optional string mode
+    5: optional string scheduleInterval
+    6: optional bool isActive
+
+}
+
+struct ScheduleListResponse {
+    1: optional list<ScheduleListDescription> schedules
+
+
+    10: optional i32 totalCount // For pagination
+}
+
+// ====================== End Orchestration Scheduling ======================
+
 struct WorkflowStatusResponse {
     1: optional string workflowId
     2: optional string confName
