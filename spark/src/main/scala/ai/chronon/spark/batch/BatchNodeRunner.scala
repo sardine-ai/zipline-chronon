@@ -255,7 +255,7 @@ object BatchNodeRunner {
 
   def main(args: Array[String]): Unit = {
     val batchArgs = new BatchNodeRunnerArgs(args)
-    val node = ThriftJsonCodec.fromJsonFile[Node](batchArgs.confPath(), check = true)
+    val node = ThriftJsonCodec.fromJsonFile[Node](batchArgs.confPath(), check = false)
     val tableUtils = TableUtils(SparkSessionBuilder.build(s"batch-node-runner-${node.metaData.name}"))
     val runner = new BatchNodeRunner(node, tableUtils)
     val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
