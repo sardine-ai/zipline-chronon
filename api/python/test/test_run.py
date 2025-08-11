@@ -127,10 +127,6 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["env"] = "production"
     ctx.params["online_jar"] = test_conf_location
     run.set_runtime_env_v3(ctx.params, test_conf_location)
-    # from team env.
-    assert os.environ["EXECUTOR_CORES"] == "2"
-    # from default env.
-    assert os.environ["DRIVER_MEMORY"] == "15G"
     # from common env.
     assert os.environ["VERSION"] == "latest"
     # derived from args.
@@ -148,10 +144,6 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["online_jar"] = test_conf_location
     run.set_runtime_env_v3(ctx.params, test_conf_location)
 
-    assert os.environ["EXECUTOR_CORES"] == "2"
-    assert os.environ["DRIVER_MEMORY"] == "15G"
-    assert os.environ["EXECUTOR_MEMORY"] == "9G"
-
     # Check conf set environment overrides most.
     reset_env(default_environment)
     ctx = context()
@@ -161,8 +153,6 @@ def test_environment(teams_json, repo, test_conf_location):
     ctx.params["env"] = "production"
     run.set_runtime_env_v3(ctx.params, test_conf_location)
     assert os.environ['APP_NAME'] == 'chronon_joins_backfill_production_sample_team.sample_online_join.v1__0'
-    # from conf env.
-    assert os.environ["EXECUTOR_MEMORY"] == "9G"
 
     # Check metadata export run.py
     reset_env(default_environment)

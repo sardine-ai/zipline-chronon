@@ -34,10 +34,6 @@ default = Team(
     ),
     env=EnvironmentVariables(
         common={
-            "JOB_MODE": "local[*]",
-            "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
-            "CHRONON_ONLINE_ARGS": "[ONLINE-TODO]args prefixed with -Z become constructor map for your implementation of ai.chronon.online.Api, -Zkv-host=<YOUR_HOST> -Zkv-port=<YOUR_PORT>",
-
             # TODO: Please fill in the following values
             "CUSTOMER_ID": "<customer_id>",
             "GCP_PROJECT_ID": "<project-id>",

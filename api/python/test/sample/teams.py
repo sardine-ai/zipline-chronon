@@ -14,10 +14,6 @@ default = Team(
     env=EnvironmentVariables(
         common={
             "VERSION": "latest",
-            "SERDE_CLASS": "your.serde.class",  # TODO : To decode data from kafka
-            "SERDE_ARGS": "-Zkey1=<value1> -Zkey2=<value2>",  # TODO:will be passed to the constructor of your Serde Implmentation
-            "PARTITION_COLUMN": "ds",
-            "PARTITION_FORMAT": "yyyy-MM-dd",
             "CUSTOMER_ID": "canary",  # TODO: Customer ID
             "GCP_PROJECT_ID": "canary-443022",  # TODO: GCP Project ID
             "GCP_REGION": "us-central1",  # TODO: GCP Region
@@ -26,20 +22,10 @@ default = Team(
         },
         modeEnvironments={
             RunMode.BACKFILL: {
-                "EXECUTOR_CORES": "2",
-                "DRIVER_MEMORY": "15G",
-                "EXECUTOR_MEMORY": "4G",
-                "PARALLELISM": "4",
-                "MAX_EXECUTORS": "4",
             },
             RunMode.UPLOAD: {
-                "PARALLELISM": "2",
-                "MAX_EXECUTORS": "4",
             },
             RunMode.STREAMING: {
-                "EXECUTOR_CORES": "2",
-                "EXECUTOR_MEMORY": "4G",
-                "PARTITIONS_PER_EXECUTOR": "2",
             },
         },
     ),
@@ -87,15 +73,8 @@ sample_team = Team(
         },
         modeEnvironments={
             RunMode.BACKFILL: {
-                "EXECUTOR_CORES": "2",
-                "DRIVER_MEMORY": "15G",
-                "EXECUTOR_MEMORY": "4G",
-                "PARALLELISM": "4",
-                "MAX_EXECUTORS": "4",
             },
             RunMode.UPLOAD: {
-                "PARALLELISM": "2",
-                "MAX_EXECUTORS": "4",
             },
         },
     ),
