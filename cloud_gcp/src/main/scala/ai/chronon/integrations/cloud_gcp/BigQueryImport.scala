@@ -60,6 +60,7 @@ class BigQueryImport(stagingQueryConf: api.StagingQuery, endPartition: String, t
   override def compute(range: PartitionRange, setups: Seq[String], enableAutoExpand: Option[Boolean]): Unit = {
     setups.foreach(tableUtils.sql)
 
+    // Export data for all partitions sequentially
     range.partitions.foreach { currPart =>
       val renderedQuery =
         StagingQuery.substitute(
@@ -85,40 +86,49 @@ class BigQueryImport(stagingQueryConf: api.StagingQuery, endPartition: String, t
         }
       }
 
-      // After exporting the data
-      // Create the table in bigquery catalog if not exists. Not as iceberg.
-
-      exportJobTry
-        .map { _ =>
-          val formatOptions = FormatOptions.of(formatStr.toUpperCase)
-          val hivePartitioningOptions =
-            HivePartitioningOptions
-              .newBuilder()
-              .setSourceUriPrefix(basePrefix)
-              .setMode("STRINGS")
-              .setRequirePartitionFilter(true)
-              .build()
-          val tableDefinition = ExternalTableDefinition
-            .of(sourcePrefix, formatOptions)
-            .toBuilder
-            .setAutodetect(true)
-            .setHivePartitioningOptions(hivePartitioningOptions)
-            .build
-          val tableInfo = TableInfo.of(SparkBQUtils.toTableId(outputTable)(tableUtils.sparkSession), tableDefinition)
-          bigQueryClient.create(tableInfo)
-        } match {
-        case Success(table) =>
-          logger.info(s"Wrote to table ${table.getTableId}, into partition: ${range.partitionSpec.column}=${currPart}")
+      exportJobTry match {
+        case Success(_) =>
+          logger.info(s"Successfully exported partition: ${range.partitionSpec.column}=${currPart}")
         case Failure(exception) =>
-          exception match {
-            case b: BigQueryException if (b.getMessage.contains("Already Exists")) =>
-              bigQueryClient.getTable(SparkBQUtils.toTableId(outputTable)(tableUtils.sparkSession))
-            case _ => throw exception
-          }
+          throw exception
       }
     }
 
-    logger.info(s"Wrote to table $outputTable, into partitions: $range")
+    // Create the table in bigquery catalog once at the end after all partitions are exported
+    val createTableTry = Try {
+      val formatOptions = FormatOptions.of(formatStr.toUpperCase)
+      val hivePartitioningOptions =
+        HivePartitioningOptions
+          .newBuilder()
+          .setSourceUriPrefix(basePrefix)
+          .setMode("AUTO")
+          .setRequirePartitionFilter(true)
+          .build()
+      val tableDefinition = ExternalTableDefinition
+        .of(sourcePrefix, formatOptions)
+        .toBuilder
+        .setAutodetect(true)
+        .setHivePartitioningOptions(hivePartitioningOptions)
+        .build
+      val tableInfo = TableInfo.of(SparkBQUtils.toTableId(outputTable)(tableUtils.sparkSession), tableDefinition)
+      bigQueryClient.create(tableInfo)
+    }
+
+    val existingTable = createTableTry match {
+      case Success(table) =>
+        logger.info(s"Created table ${table.getTableId} with all partitions: $range")
+        table
+      case Failure(exception) =>
+        exception match {
+          case b: BigQueryException if (b.getMessage.contains("Already Exists")) =>
+            logger.info(s"Table already exists: $outputTable")
+            bigQueryClient.getTable(SparkBQUtils.toTableId(outputTable)(tableUtils.sparkSession))
+          case _ => throw exception
+        }
+    }
+
+    logger.info(
+      s"Wrote to table $outputTable as bigquery table ${existingTable.getTableId.toString}, into partitions: $range")
     logger.info(s"Finished writing Staging Query data to $outputTable")
   }
 

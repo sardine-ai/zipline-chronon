@@ -161,9 +161,9 @@ class BigQueryImportTest extends AnyFlatSpec with MockitoSugar {
 
     bigQueryStagingQuery.compute(range, setups, Some(true))
 
-    // Verify BigQuery client was called for each partition (3 times for export, 3 times for table creation)
+    // Verify BigQuery client was called for each partition (3 times for export, 1 times for table creation)
     verify(mockClient, org.mockito.Mockito.times(3)).create(any[JobInfo])
-    verify(mockClient, org.mockito.Mockito.times(3)).create(any[TableInfo])
+    verify(mockClient, org.mockito.Mockito.times(1)).create(any[TableInfo])
   }
 
   it should "handle BigQuery job errors gracefully" in {
