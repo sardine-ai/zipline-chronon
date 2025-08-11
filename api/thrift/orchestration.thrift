@@ -161,6 +161,7 @@ struct ScheduleListDescription {
     4: optional string mode
     5: optional string scheduleInterval
     6: optional bool isActive
+    7: optional string hash
 
 }
 
