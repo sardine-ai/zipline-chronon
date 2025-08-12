@@ -81,6 +81,7 @@ struct WorkflowStartRequest {
     5: optional string start
     6: optional string end
     7: optional string confHash
+    8: optional bool forceRecompute
 }
 
 struct WorkflowStartResponse {
