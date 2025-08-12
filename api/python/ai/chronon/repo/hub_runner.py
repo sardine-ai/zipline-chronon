@@ -72,6 +72,32 @@ def submit_workflow(repo,
         workflow_id=workflow_id
     )
 
+def submit_schedule(repo,
+                    conf,
+                    mode,
+):
+    
+    hub_conf = get_hub_conf(conf)
+    zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
+    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
+    branch = get_current_branch()
+
+    hub_uploader.compute_and_upload_diffs(branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict)
+
+    # get conf name
+    conf_name = utils.get_metadata_name_from_conf(repo, conf)
+
+
+    response_json = zipline_hub.call_schedule_api(
+        mode=mode,
+        branch=branch,
+        conf_name=conf_name,
+        conf_hash=conf_name_to_hash_dict[conf_name],
+    )
+
+    schedule_id = response_json.get("scheduleId", "N/A")
+    print(" 🆔 Schedule Id:", schedule_id)
+
 
 # zipline hub backfill --conf=compiled/joins/join
 # adhoc backfills

@@ -120,7 +120,8 @@ struct NodeStepRunInfo {
 struct ScheduleDeployRequest {
     1: optional string branch
     2: optional string mode
-    3: optional Conf conf
+    3: optional string confName
+    4: optional string confHash
 }
 
 struct ScheduleDeployResponse {
