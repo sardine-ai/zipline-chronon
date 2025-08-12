@@ -92,8 +92,16 @@ maven_repository = repository(
         "com.google.protobuf:protobuf-java:3.25.1",
 
         # Avro
-        "org.apache.avro:avro:1.11.3",
+        "org.apache.avro:avro:1.11.4",
         "com.linkedin.avroutil1:avro-fastserde:0.4.25",
+        
+        # Parquet - Force upgrade to 1.15.1 to address CVE in 1.13.1
+        "org.apache.parquet:parquet-column:1.15.1",
+        "org.apache.parquet:parquet-common:1.15.1",
+        "org.apache.parquet:parquet-encoding:1.15.1",
+        "org.apache.parquet:parquet-format-structures:1.15.1",
+        "org.apache.parquet:parquet-hadoop:1.15.1",
+        "org.apache.parquet:parquet-jackson:1.15.1",
 
         # Hive
         "org.apache.hive:hive-metastore:2.3.9",
@@ -222,6 +230,11 @@ maven_repository = repository(
         # Exclude scala artifacts as right versions are pulled from scala repository
         "org.scala-lang:scala-library",
         "org.scala-lang:scala-reflect",
+        # Exclude vulnerable log4j 1.2.17 - using reload4j 1.2.25 as a secure replacement
+        "log4j:log4j",
     ],
-    overrides = {},
+    overrides = {
+        # Force reload4j as a replacement for vulnerable log4j 1.2.17
+        "log4j:log4j": "ch.qos.reload4j:reload4j:1.2.25",
+    },
 )
