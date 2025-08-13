@@ -228,6 +228,26 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
   }
 
+  def forceComputeRangeAndSave(range: PartitionRange): Option[DataFrame] = {
+
+    Option(joinConfCloned.setups).foreach(_.foreach(tableUtils.sql))
+    val leftDfInRange = leftDf(joinConfCloned, range, tableUtils)
+
+    if (leftDfInRange.isEmpty) return None
+
+    val bootstrapInfo = BootstrapInfo.from(joinConfCloned.deepCopy(), range, tableUtils, leftDfInRange.map(_.schema))
+
+    val dfOpt = computeRange(leftDfInRange.get, range, bootstrapInfo)
+    dfOpt.map { df =>
+      val table = joinMetaData.outputTable
+
+      tableUtils.archiveTableOnSchemaChange(table, df)
+      df.save(table)
+
+      tableUtils.loadTable(table, range.whereClauses)
+    }
+  }
+
   def computeJoin(stepDays: Option[Int] = None, overrideStartPartition: Option[String] = None): DataFrame = {
     computeJoinOpt(stepDays, overrideStartPartition).get
   }

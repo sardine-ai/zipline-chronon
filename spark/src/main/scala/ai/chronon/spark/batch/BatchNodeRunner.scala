@@ -123,13 +123,18 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
       logger.info(s"Successfully wrote range: $range")
     } else {
       val join = new Join(joinConf, range.end, tableUtils)
-      val stepDays = for {
-        executionInfo <- Option(metadata.executionInfo)
-      } yield executionInfo.stepDays
-      val df = join.computeJoin(stepDays = stepDays, overrideStartPartition = Option(range.start))
+      val result = join.forceComputeRangeAndSave(range)
 
-      df.show(numRows = 3, truncate = 0, vertical = true)
-      logger.info(s"\nShowing three rows of output above.\nQuery table '$joinName' for more.\n")
+      result match {
+        case Some(df) =>
+          logger.info(s"\nShowing three rows of output above.\nQuery table '$joinName' for more.\n")
+          df.show(numRows = 3, truncate = 0, vertical = true)
+
+        case None =>
+          throw new IllegalArgumentException(
+            s"Join produced no results for range $range. Ensure that the input data is all present"
+          )
+      }
     }
   }
 

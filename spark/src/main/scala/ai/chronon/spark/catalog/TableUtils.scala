@@ -476,6 +476,62 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
+  def archiveTableOnSchemaChange(tableName: String, incomingDf: DataFrame): Unit = {
+    if (!tableReachable(tableName)) return
+
+    val existingSchema = loadTable(tableName).schema
+    val existingSchemaMap = existingSchema
+      .map(f => f.name -> f.dataType)
+      .toMap
+
+    val incomingSchemaMap = incomingDf.schema
+      .map(f => f.name -> f.dataType)
+      .toMap
+
+    val existingCols = existingSchemaMap.keySet
+    val incomingCols = incomingDf.columns.toSet
+
+    val addedCols = incomingCols -- existingCols
+    val removedCols = existingCols -- incomingCols
+
+    val updatedCols = incomingCols
+      .intersect(existingCols)
+      .flatMap { col =>
+        val existingType = existingSchemaMap(col)
+        val incomingType = incomingSchemaMap(col)
+
+        if (existingType != incomingType) {
+          Some(s"$col: ${existingType.catalogString}  -->  ${incomingType.catalogString}")
+        } else {
+          None
+        }
+
+      }
+      .toSeq
+
+    logger.info(s"""
+         |--- Table Archival Check ----
+         |
+         |incoming schema:
+         |  ${incomingDf.schema.catalogString}
+         |existing schema:
+         |  ${existingSchema.catalogString}
+         |
+         |added columns:
+         |  $addedCols
+         |removed columns:
+         |  $removedCols
+         |updated columns:
+         |  ${updatedCols.mkString("\n  ")}
+         |
+         |""".stripMargin)
+
+    if (addedCols.nonEmpty || removedCols.nonEmpty || updatedCols.nonEmpty) {
+      archiveTableIfExists(tableName, None)
+    }
+
+  }
+
   /*
    * This method detects new columns that appear in newSchema but not in current table,
    * and append those new columns at the end of the existing table. This allows continuous evolution
