@@ -127,16 +127,16 @@ def backfill(repo,
 
 
 
-# zipline hub deploy --conf=compiled/joins/join
+# zipline hub run-adhoc --conf=compiled/joins/join
 # currently only supports one-off deploy node submission
 @hub.command()
 @common_options
 @end_ds_option
-def deploy(repo,
+def run_adhoc(repo,
            conf,
            end_ds):
     """
-    - Submit a one-off deploy job to Zipline.
+    - Submit a one-off deploy job to Zipline. This submits the various jobs to allow your conf to be tested online.
     Response should contain a list of confs that are different from what's on remote.
     - Call upload API to upload the conf contents for the list of confs that were different.
     - Call the actual run API with mode set to deploy
