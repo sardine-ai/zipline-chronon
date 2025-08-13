@@ -103,7 +103,7 @@ class ZiplineHub:
             print(f" ❌ Error calling diff API: {e}")
             raise e
 
-    def call_workflow_start_api(self, conf_name, mode, branch, user, start, end, conf_hash):
+    def call_workflow_start_api(self, conf_name, mode, branch, user, start, end, conf_hash, force_recompute=False):
         url = f"{self.base_url}/workflow/start"
 
         workflow_request = {
@@ -114,6 +114,7 @@ class ZiplineHub:
             'user': user,
             'start': start,
             'end': end,
+            'forceRecompute': force_recompute
         }
         headers = {'Content-Type': 'application/json'}
         if hasattr(self, 'id_token'):
