@@ -117,35 +117,24 @@ struct NodeStepRunInfo {
 // ====================== Start Orchestration Scheduling ======================
 struct ScheduleDeployRequest {
     1: optional string branch
-    2: optional string mode
-    3: optional string confName
-    4: optional string confHash
+    2: optional string confName
+    3: optional string confHash
 }
 
 struct ScheduleDeployResponse {
-    1: optional string scheduleId
-}
-
-struct ScheduleCancelRequest {
-    1: optional string scheduleId
-}
-
-struct ScheduleCancelResponse {
-    1: optional string scheduleId
-    2: optional string branch
-    3: optional string confName
-    4: optional string mode
+    1: optional list<string> scheduleIds
 }
 
 struct ScheduleDeleteRequest {
-    1: optional string scheduleId
+    1: optional string branch
+    2: optional string confName
+    3: optional string confHash
 }
 
 struct ScheduleDeleteResponse {
-    1: optional string scheduleId
-    2: optional string branch
-    3: optional string confName
-    4: optional string mode
+    1: optional string branch
+    2: optional string confName
+    3: optional string confHash
 }
 
 struct ScheduleListRequest {
@@ -167,7 +156,6 @@ struct ScheduleListDescription {
 
 struct ScheduleListResponse {
     1: optional list<ScheduleListDescription> schedules
-
 
     10: optional i32 totalCount // For pagination
 }
