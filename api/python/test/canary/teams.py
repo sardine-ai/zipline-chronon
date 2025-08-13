@@ -15,16 +15,20 @@ default = Team(
     env=EnvironmentVariables(
         common={
             "VERSION": "latest",
+            "JOB_MODE": "local[*]",
+            "HADOOP_DIR": "[STREAMING-TODO]/path/to/folder/containing",
+            "CHRONON_ONLINE_CLASS": "[ONLINE-TODO]your.online.class",
+            "CHRONON_ONLINE_ARGS": "[ONLINE-TODO]args prefixed with -Z become constructor map for your implementation of ai.chronon.online.Api, -Zkv-host=<YOUR_HOST> -Zkv-port=<YOUR_PORT>",
+            "PARTITION_COLUMN": "ds",
+            "PARTITION_FORMAT": "yyyy-MM-dd",
             "CUSTOMER_ID": "dev",
             "GCP_PROJECT_ID": "canary-443022",
             "GCP_REGION": "us-central1",
             "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "FLINK_STATE_URI": "gs://zipline-warehouse-canary/flink-state",
-            "FRONTEND_URL": "http://localhost:5173",
-            # "FRONTEND_URL": https://34.111.151.47.nip.io/", # canary frontend URL
-            "HUB_URL": "http://localhost:3903",
-            # "HUB_URL": "http://34.133.227.246:3903/", # canary hub URL
+            "FRONTEND_URL": "http://localhost:5173", # "https://34.111.151.47.nip.io",
+            "HUB_URL": "http://localhost:3903" #"http://34.133.227.246:3903",
         },
     ),
 )
@@ -37,8 +41,15 @@ test = Team(
         },
         modeEnvironments={
             RunMode.BACKFILL: {
+                "EXECUTOR_CORES": "2",
+                "DRIVER_MEMORY": "15G",
+                "EXECUTOR_MEMORY": "4G",
+                "PARALLELISM": "4",
+                "MAX_EXECUTORS": "4",
             },
             RunMode.UPLOAD: {
+                "PARALLELISM": "2",
+                "MAX_EXECUTORS": "4",
             }
         }
     ),
@@ -71,6 +82,9 @@ gcp = Team(
             "spark.chronon.partition.format": "yyyy-MM-dd",
             "spark.chronon.table.gcs.temporary_gcs_bucket": "zipline-warehouse-canary",
             "spark.chronon.partition.column": "ds",
+            "spark.chronon.table.gcs.connector_output_dataset": "data",
+            "spark.chronon.table.gcs.connector_output_project": "canary-443022",
+            "spark.chronon.table_write.prefix": "gs://zipline-warehouse-canary/data/tables/",
             "spark.chronon.table_write.format": "iceberg",
             "spark.sql.catalog.spark_catalog.warehouse": "gs://zipline-warehouse-canary/data/tables/",
             "spark.sql.catalog.spark_catalog.gcp_location": "us-central1",
@@ -92,6 +106,7 @@ gcp = Team(
         },
         modeConfigs={
             RunMode.BACKFILL: {
+                "spark.chronon.backfill_cloud_provider": "gcp",  # dummy test config
             }
         }
     ),

@@ -1,6 +1,7 @@
 {
+  "engineType": 1,
   "metaData": {
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_sample_staging_query_cart__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_cart__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_user__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_user__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_item__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_item__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_order__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_order__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_payment__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_payment__0/ds={{ macros.ds_add(ds, 1) }}\"}, {\"name\": \"wf_data_gcp_sample_staging_query_shipping__0_with_offset_1\", \"spec\": \"data.gcp_sample_staging_query_shipping__0/ds={{ macros.ds_add(ds, 1) }}\"}]}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_demo__dim_merchants__with_offset_0\", \"spec\": \"demo.`dim_merchants`/ds={{ macros.ds_add(ds, 0) }}\"}]}",
     "executionInfo": {
       "clusterConf": {
         "common": {},
@@ -117,24 +118,21 @@
       },
       "scheduleCron": "@daily"
     },
-    "name": "gcp.sample_staging_query.terminal__0",
+    "name": "gcp.exports.dim_merchants__0",
     "outputNamespace": "data",
-    "sourceFile": "staging_queries/gcp/sample_staging_query.py",
-    "tableProperties": {
-      "sample_config_json": "{\"sample_key\": \"sample value\"}"
-    },
+    "sourceFile": "staging_queries/gcp/exports.py",
     "team": "gcp",
     "version": "0"
   },
-  "query": "SELECT\n                *\n            FROM data.gcp_sample_staging_query_cart__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_user__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_item__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_order__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_payment__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\nUNION ALL\nSELECT\n                *\n            FROM data.gcp_sample_staging_query_shipping__0\n            WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}",
+  "query": "\n    SELECT \n        * \n    FROM demo.`dim_merchants`\n    WHERE \n    TIMESTAMP_TRUNC(ds, DAY) BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "tableDependencies": [
     {
       "endOffset": {
-        "length": 1,
+        "length": 0,
         "timeUnit": 1
       },
       "startOffset": {
-        "length": 1,
+        "length": 0,
         "timeUnit": 1
       },
       "tableInfo": {
@@ -143,97 +141,7 @@
           "length": 1,
           "timeUnit": 1
         },
-        "table": "data.gcp_sample_staging_query_cart__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_user__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_item__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_order__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_payment__0"
-      }
-    },
-    {
-      "endOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "startOffset": {
-        "length": 1,
-        "timeUnit": 1
-      },
-      "tableInfo": {
-        "partitionColumn": "ds",
-        "partitionInterval": {
-          "length": 1,
-          "timeUnit": 1
-        },
-        "table": "data.gcp_sample_staging_query_shipping__0"
+        "table": "demo.`dim_merchants`"
       }
     }
   ]
