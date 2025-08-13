@@ -85,10 +85,10 @@ def submit_schedule(repo,
 
     hub_conf = get_hub_conf(conf)
     zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
-    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
+    conf_name_to_obj_dict = hub_uploader.build_local_repo_hashmap(root_dir= repo)
     branch = get_current_branch()
 
-    hub_uploader.compute_and_upload_diffs(branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict)
+    hub_uploader.compute_and_upload_diffs(branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_obj_dict)
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
@@ -98,7 +98,7 @@ def submit_schedule(repo,
         mode=mode,
         branch=branch,
         conf_name=conf_name,
-        conf_hash=conf_name_to_hash_dict[conf_name],
+        conf_hash=conf_name_to_obj_dict[conf_name].hash,
     )
 
     schedule_id = response_json.get("scheduleId", "N/A")
