@@ -31,13 +31,11 @@ enum NodeRunStatus {
 
 enum WorkflowStatus {
     UNKNOWN = 0,
-    SUBMITTED = 1,
+    WAITING = 1,
     RUNNING = 2,
     SUCCEEDED = 3,
     FAILED = 4,
-    WAITING = 5
-
-    // workflow status progression: SUBMITTED -> WAITING -> RUNNING -> SUCCEEDED/FAILED
+    CANCELLED = 5
 }
 
 struct Conf {
