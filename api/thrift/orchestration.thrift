@@ -3,6 +3,7 @@ namespace java ai.chronon.orchestration
 
 include "common.thrift"
 include "api.thrift"
+include "planner.thrift"
 
 // This has to be 0-indexed for Java usage
 enum ConfType {
@@ -119,6 +120,7 @@ struct ScheduleDeployRequest {
     1: optional string branch
     2: optional string confName
     3: optional string confHash
+    4: optional map<planner.Mode, string> modeSchedules
 }
 
 struct ScheduleDeployResponse {
@@ -251,6 +253,7 @@ struct ConfListItemResponse {
     1: optional string confName
     2: optional ConfType confType
     3: optional string confHash
+    4: optional map<planner.Mode, string> modeSchedules
 }
 
 struct ConfListResponse {
@@ -267,6 +270,7 @@ struct ConfGetResponse {
     2: optional string confHash
     3: optional ConfType confType
     4: optional LogicalNode confContents
+    5: optional map<planner.Mode, string> modeSchedules
 }
 
 // ====================== End of Orchestration Service API Types ======================
