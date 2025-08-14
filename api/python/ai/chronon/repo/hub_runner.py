@@ -5,6 +5,7 @@ import click
 from attr import dataclass
 
 from ai.chronon.cli.git_utils import get_current_branch
+from ai.chronon.planner.ttypes import Mode
 from ai.chronon.repo import hub_uploader, utils
 from ai.chronon.repo.constants import RunMode
 from ai.chronon.repo.zipline_hub import ZiplineHub
@@ -105,8 +106,9 @@ def submit_schedule(repo,
         conf_hash=conf_name_to_obj_dict[conf_name].hash,
     )
 
-    schedule_ids = response_json.get("scheduleIds", "N/A")
-    print(" 🆔 Schedule Ids:", schedule_ids)
+    schedules = response_json.get("schedules", "N/A")
+    readable_schedules = {Mode._VALUES_TO_NAMES[int(k)]: v for k,v in schedules.items()}
+    print(" 🗓️ Schedules Deployed:", readable_schedules)
 
 
 # zipline hub backfill --conf=compiled/joins/join
