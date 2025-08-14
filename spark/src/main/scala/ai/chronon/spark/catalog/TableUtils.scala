@@ -476,7 +476,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
   }
 
-  def archiveTableOnSchemaChange(tableName: String, incomingDf: DataFrame): Unit = {
+  def dropTableOnSchemaChange(tableName: String, incomingDf: DataFrame): Unit = {
     if (!tableReachable(tableName)) return
 
     val existingSchema = loadTable(tableName).schema
@@ -527,7 +527,7 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
          |""".stripMargin)
 
     if (addedCols.nonEmpty || removedCols.nonEmpty || updatedCols.nonEmpty) {
-      archiveTableIfExists(tableName, None)
+      dropTableIfExists(tableName)
     }
 
   }

@@ -241,7 +241,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
     dfOpt.map { df =>
       val table = joinMetaData.outputTable
 
-      tableUtils.archiveTableOnSchemaChange(table, df)
+      tableUtils.dropTableOnSchemaChange(table, df)
       df.save(table)
 
       tableUtils.loadTable(table, range.whereClauses)
