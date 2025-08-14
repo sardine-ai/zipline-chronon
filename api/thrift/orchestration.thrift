@@ -124,7 +124,7 @@ struct ScheduleDeployRequest {
 }
 
 struct ScheduleDeployResponse {
-    1: optional list<string> scheduleIds
+    1: optional map<planner.Mode, ScheduleStateResponse> schedules
 }
 
 struct ScheduleDeleteRequest {
@@ -139,25 +139,35 @@ struct ScheduleDeleteResponse {
     3: optional string confHash
 }
 
+/**
+  * Various states a schedule can be in
+  */
+enum ScheduleState {
+    NONE = 0,
+    ACTIVE = 1,
+    PAUSED = 2
+}
+
+/**
+  * Tracks the status of a schedule from the captured user intent (in the schedule string) to the status of the schedule
+  */
+struct ScheduleStateResponse {
+    1: optional string scheduleInterval
+    2: optional ScheduleState state
+    3: optional string confName
+    4: optional string branch
+    5: optional planner.Mode mode
+    6: optional string hash
+}
+
 struct ScheduleListRequest {
     1: optional i32 limit
     2: optional i32 offset
     3: optional string branch
 }
 
-struct ScheduleListDescription {
-    1: optional string scheduleId
-    2: optional string confName
-    3: optional string branch
-    4: optional string mode
-    5: optional string scheduleInterval
-    6: optional bool isActive
-    7: optional string hash
-
-}
-
 struct ScheduleListResponse {
-    1: optional list<ScheduleListDescription> schedules
+    1: optional list<ScheduleStateResponse> schedules
 
     10: optional i32 totalCount // For pagination
 }
@@ -244,23 +254,6 @@ struct ConfListRequest {
 
     // if not specified we will pull conf list for main branch
     2: optional string branch
-}
-
-/**
-  * Various states a schedule can be in
-  */
-enum ScheduleState {
-    NONE = 0,
-    ACTIVE = 1,
-    PAUSED = 2
-}
-
-/**
-  * Tracks the status of a schedule from the captured user intent (in the schedule string) to the status of the schedule
-  */
-struct ScheduleStateResponse {
-    1: optional string scheduleInterval
-    2: optional ScheduleState state
 }
 
 /**
