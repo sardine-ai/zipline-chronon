@@ -247,13 +247,30 @@ struct ConfListRequest {
 }
 
 /**
+  * Various states a schedule can be in
+  */
+enum ScheduleState {
+    NONE = 0,
+    ACTIVE = 1,
+    PAUSED = 2
+}
+
+/**
+  * Tracks the status of a schedule from the captured user intent (in the schedule string) to the status of the schedule
+  */
+struct ScheduleStateResponse {
+    1: optional string scheduleInterval
+    2: optional ScheduleState state
+}
+
+/**
   * Response for listing configurations of a specific type
   */
 struct ConfListItemResponse {
     1: optional string confName
     2: optional ConfType confType
     3: optional string confHash
-    4: optional map<planner.Mode, string> modeSchedules
+    4: optional map<planner.Mode, ScheduleStateResponse> modeSchedules
 }
 
 struct ConfListResponse {
@@ -270,7 +287,7 @@ struct ConfGetResponse {
     2: optional string confHash
     3: optional ConfType confType
     4: optional LogicalNode confContents
-    5: optional map<planner.Mode, string> modeSchedules
+    5: optional map<planner.Mode, ScheduleStateResponse> modeSchedules
 }
 
 // ====================== End of Orchestration Service API Types ======================
