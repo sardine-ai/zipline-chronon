@@ -79,8 +79,7 @@ def submit_workflow(repo,
     )
 
 def submit_schedule(repo,
-                    conf,
-                    mode,
+                    conf
 ):
 
     hub_conf = get_hub_conf(conf)
@@ -92,17 +91,22 @@ def submit_schedule(repo,
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
-
+    schedule_modes = get_schedule_modes(conf)
+    # create a dict for RunMode.BACKFILL.value and RunMode.DEPLOY.value to schedule_modes.offline_schedule and schedule_modes.online
+    modes = {
+        RunMode.BACKFILL.value.upper(): schedule_modes.offline_schedule,
+        RunMode.DEPLOY.value.upper(): schedule_modes.online
+    }
 
     response_json = zipline_hub.call_schedule_api(
-        mode=mode,
+        modes=modes,
         branch=branch,
         conf_name=conf_name,
         conf_hash=conf_name_to_obj_dict[conf_name].hash,
     )
 
-    schedule_id = response_json.get("scheduleId", "N/A")
-    print(" 🆔 Schedule Id:", schedule_id)
+    schedule_ids = response_json.get("scheduleIds", "N/A")
+    print(" 🆔 Schedule Ids:", schedule_ids)
 
 
 # zipline hub backfill --conf=compiled/joins/join
@@ -143,11 +147,27 @@ def run_adhoc(repo,
     """
     submit_workflow(repo, conf, RunMode.DEPLOY.value, end_ds, end_ds)
 
+# zipline hub schedule --conf=compiled/joins/join
+@hub.command()
+@common_options
+def schedule(repo, conf):
+    """
+    - Deploys a schedule for the specified conf to Zipline. This allows your conf to have various associated jobs run on a schedule.
+    This verb will introspect your conf to determine which of its jobs need to be scheduled (or paused if turned off) based on the
+    'offline_schedule' and 'online' fields.
+    """
+    submit_schedule(repo, conf)
 
-def get_common_env_map(file_path):
+
+def get_metadata_map(file_path):
     with open(file_path, 'r') as f:
         data = json.load(f)
-    common_env_map = data['metaData']['executionInfo']['env']['common']
+    metadata_map = data['metaData']
+    return metadata_map
+
+def get_common_env_map(file_path):
+    metadata_map = get_metadata_map(file_path)
+    common_env_map = metadata_map['executionInfo']['env']['common']
     return common_env_map
 
 
@@ -156,6 +176,10 @@ class HubConfig:
     hub_url: str
     frontend_url: str
 
+@dataclass
+class ScheduleModes:
+    online: str
+    offline_schedule: str
 
 def get_hub_conf(conf_path):
     common_env_map = get_common_env_map(conf_path)
@@ -163,6 +187,18 @@ def get_hub_conf(conf_path):
     frontend_url = common_env_map.get("FRONTEND_URL", os.environ.get("FRONTEND_URL"))
     return HubConfig(hub_url=hub_url, frontend_url=frontend_url)
 
+def get_schedule_modes(conf_path):
+    metadata_map = get_metadata_map(conf_path)
+    online_value = metadata_map.get("online", False)
+    online = "true" if bool(online_value) else "false"
+    offline_schedule = metadata_map['executionInfo'].get('scheduleCron', None)
+
+    # check if offline_schedule is null or 'None' or '@daily' else throw an error
+    valid_schedules = {None, "None", "@daily"}
+    if offline_schedule not in valid_schedules:
+        raise ValueError(f"Unsupported offline_schedule: {offline_schedule}. Only null, 'None', or '@daily' are supported.")
+    offline_schedule = offline_schedule or "None"
+    return ScheduleModes(online=online, offline_schedule=offline_schedule)
 
 def print_wf_url(conf, conf_name, mode, workflow_id):
 

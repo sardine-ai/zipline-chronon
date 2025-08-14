@@ -62,15 +62,16 @@ class ZiplineHub:
             print(f" ❌ Error calling upload API: {e}")
             raise e
 
-    def call_schedule_api(self,  mode, branch, conf_name, conf_hash):
+    def call_schedule_api(self, modes, branch, conf_name, conf_hash):
         url = f"{self.base_url}/schedule/v1/schedules"
 
         schedule_request = {
-            'mode': mode,
+            'modeSchedules': modes,
             'branch': branch,
             'confName': conf_name,
             'confHash': conf_hash,
         }
+
         headers = {'Content-Type': 'application/json'}
         if hasattr(self, 'id_token'):
             headers['Authorization'] = f'Bearer {self.id_token}'
