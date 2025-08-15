@@ -113,6 +113,7 @@ struct NodeStepRunInfo {
     7: optional list<string> dependentStepRunIds
     8: optional string workflowId
     9: optional JobTrackingInfo jobTrackingInfo
+    10: optional string additionalNotes
 }
 
 // ====================== Start Orchestration Scheduling ======================
