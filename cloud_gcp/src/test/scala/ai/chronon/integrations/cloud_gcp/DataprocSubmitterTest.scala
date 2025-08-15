@@ -44,8 +44,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     assertEquals(job.getTypeJobCase, Job.TypeJobCase.FLINK_JOB)
 
     val flinkJob = job.getFlinkJob
-//    TODO: getMainClass returns empty in tests but not in prod
-//    assert(flinkJob.getMainClass == "ai.chronon.flink.FlinkJob")
+    //    TODO: getMainClass returns empty in tests but not in prod
+    //    assert(flinkJob.getMainClass == "ai.chronon.flink.FlinkJob")
 
     assertEquals(flinkJob.getJarFileUrisList.size(), 1)
     assertEquals(flinkJob.getJarFileUrisList.get(0), "gs://zipline-jars/cloud-gcp.jar")
@@ -589,6 +589,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       submissionProperties = any(),
       jobProperties = any(),
       files = any(),
+      labels = any(),
       any()
     )
     // No longer needed as region and projectId are accessed directly
@@ -650,6 +651,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       submissionProperties = any(),
       jobProperties = any(),
       files = any(),
+      labels = any(),
       any()
     )
     verify(submitter).getLatestFlinkCheckpoint(groupByName = groupByName,
@@ -707,6 +709,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       submissionProperties = any(),
       jobProperties = any(),
       files = any(),
+      labels = any(),
       any()
     )
     // No longer needed as region and projectId are accessed directly
@@ -753,7 +756,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
           ClusterName -> "test-cluster"
         ),
         Map.empty,
-        List.empty
+        List.empty,
+        Map.empty
       )
     assertEquals(submittedJobId, jobId)
   }
@@ -1121,6 +1125,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         ),
         Map.empty,
         List.empty,
+        Map.empty,
         "--kafka-bootstrap=bootstrap.zipline-kafka-cluster.us-central1.managedkafka.canary-443022.cloud.goog:9092",
         "--kafka-topic=test-item-event-data",
         "--data-file-name=gs://zl-warehouse/canary_item_events/events-output.avro",
@@ -1154,6 +1159,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         ),
         Map.empty,
         List.empty,
+        Map.empty,
         "--gcp-project=canary-443022",
         "--topic=test-item-event-data",
         "--data-file-name=gs://zl-warehouse/canary_item_events/events-output.avro",
