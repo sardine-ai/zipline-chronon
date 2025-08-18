@@ -127,7 +127,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
 
       result match {
         case Some(df) =>
-          logger.info(s"\nShowing three rows of output above.\nQuery table '$joinName' for more.\n")
+          logger.info(s"\nShowing three rows of output above.\nQuery table '${metadata.outputTable}' for more.\n")
           df.show(numRows = 3, truncate = 0, vertical = true)
 
         case None =>
