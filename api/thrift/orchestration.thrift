@@ -28,6 +28,7 @@ enum NodeRunStatus {
     FAILED = 4,
     CANCELLED = 5,
     ALREADY_EXISTS = 6
+    SKIPPED = 7
 }
 
 enum WorkflowStatus {
@@ -81,6 +82,7 @@ struct WorkflowStartRequest {
     6: optional string end
     7: optional string confHash
     8: optional bool forceRecompute
+    9: optional bool skipLongRunningNodes
 }
 
 struct WorkflowStartResponse {

@@ -67,7 +67,8 @@ def submit_workflow(repo,
         start=start_ds,
         end=end_ds,
         conf_hash=conf_name_to_hash_dict[conf_name].hash,
-        force_recompute=force_recompute
+        force_recompute=force_recompute,
+        skip_long_running=False,
     )
 
     workflow_id = response_json.get("workflowId", "N/A")
