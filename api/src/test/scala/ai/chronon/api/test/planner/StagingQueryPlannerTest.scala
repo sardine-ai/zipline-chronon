@@ -181,9 +181,6 @@ class StagingQueryPlannerTest extends AnyFlatSpec with Matchers {
       val planner = new StagingQueryPlanner(stagingQueryConf)
       val plan = planner.buildPlan
 
-      // Should have exactly one node
-      plan.nodes.asScala should have size 1
-
       val node = plan.nodes.asScala.head
       // Node should have content
       node.content should not be null

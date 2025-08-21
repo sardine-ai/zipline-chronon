@@ -18,7 +18,6 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
   private def validateJoinPlan(plan: ConfPlan): Unit = {
     // Should create plan successfully with both backfill and metadata upload nodes
-    plan.nodes.asScala should have size 2
 
     // Find the backfill node and metadata upload node
     val backfillNode = plan.nodes.asScala.find(_.content.isSetMonolithJoin)

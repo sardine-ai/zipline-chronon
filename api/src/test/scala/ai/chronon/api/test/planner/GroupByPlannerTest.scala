@@ -18,7 +18,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
   private def validateGBPlan(groupBy: GroupBy, plan: ConfPlan): Unit = {
     // Should create plan successfully with expected number of nodes
     val hasStreaming = groupBy.streamingSource.isDefined
-    val expectedNodeCount = if (hasStreaming) 4 else 3
+    val expectedNodeCount = if (hasStreaming) 5 else 4
     plan.nodes.asScala should have size expectedNodeCount
 
     // Find the nodes
