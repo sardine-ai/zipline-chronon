@@ -41,7 +41,7 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
 
           // Verify sensor structure
           sensor should not be null
-          sensor.getSourceName should not be empty
+          sensor.getSourceTableDependency.tableInfo.table should not be empty
           sensor.metaData should not be null
 
           // Verify sensor metadata follows expected naming pattern
@@ -52,7 +52,8 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
           sensor.metaData.executionInfo.tableDependencies should be(empty)
 
           // Verify sensor output table matches source name
-          sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+          sensor.metaData.executionInfo.outputTableInfo.table should equal(
+            sensor.getSourceTableDependency.tableInfo.table)
         }
 
         // Verify sensor count matches table dependency count
@@ -83,7 +84,7 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
 
           // Verify sensor structure
           sensor should not be null
-          sensor.getSourceName should not be empty
+          sensor.getSourceTableDependency.tableInfo.table should not be empty
           sensor.metaData should not be null
 
           // Verify sensor metadata follows expected naming pattern
@@ -94,7 +95,8 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
           sensor.metaData.executionInfo.tableDependencies should be(empty)
 
           // Verify sensor output table matches source name
-          sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+          sensor.metaData.executionInfo.outputTableInfo.table should equal(
+            sensor.getSourceTableDependency.tableInfo.table)
         }
       }
     }
@@ -121,7 +123,7 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
 
           // Verify sensor structure
           sensor should not be null
-          sensor.getSourceName should not be empty
+          sensor.getSourceTableDependency.tableInfo.table should not be empty
           sensor.metaData should not be null
 
           // Verify sensor metadata follows expected naming pattern
@@ -132,7 +134,8 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
           sensor.metaData.executionInfo.tableDependencies should be(empty)
 
           // Verify sensor output table matches source name
-          sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+          sensor.metaData.executionInfo.outputTableInfo.table should equal(
+            sensor.getSourceTableDependency.tableInfo.table)
         }
 
         // Verify sensor count matches table dependency count
@@ -172,7 +175,8 @@ class PlannerSensorIntegrationTest extends AnyFlatSpec with Matchers {
             sensor.metaData.executionInfo.outputTableInfo.table should not be empty
 
             // Verify sensor output table matches source name
-            sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+            sensor.metaData.executionInfo.outputTableInfo.table should equal(
+              sensor.getSourceTableDependency.tableInfo.table)
 
             // Verify sensor has empty table dependencies
             Option(sensor.metaData.executionInfo.tableDependencies).foreach { deps =>

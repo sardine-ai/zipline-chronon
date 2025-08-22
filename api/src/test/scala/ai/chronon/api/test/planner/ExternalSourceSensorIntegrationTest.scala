@@ -56,8 +56,10 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
     // Find sensor nodes in the plan
     val sensorNodes = plan.nodes.asScala.filter(_.content.isSetExternalSourceSensor)
 
-    val purchasesSensor = sensorNodes.find(_.content.getExternalSourceSensor.getSourceName == "data.purchases")
-    val eventsSensor = sensorNodes.find(_.content.getExternalSourceSensor.getSourceName == "data.user_events")
+    val purchasesSensor =
+      sensorNodes.find(_.content.getExternalSourceSensor.sourceTableDependency.tableInfo.table == "data.purchases")
+    val eventsSensor =
+      sensorNodes.find(_.content.getExternalSourceSensor.sourceTableDependency.tableInfo.table == "data.user_events")
 
     purchasesSensor should be(defined)
     eventsSensor should be(defined)
@@ -67,7 +69,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
 
       // Verify sensor structure
       sensor should not be null
-      sensor.getSourceName should not be empty
+      sensor.sourceTableDependency.tableInfo.table should not be empty
       sensor.metaData should not be null
 
       // Verify sensor metadata follows expected naming pattern
@@ -78,7 +80,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
       sensor.metaData.executionInfo.tableDependencies should be(empty)
 
       // Verify sensor output table matches source name
-      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.sourceTableDependency.tableInfo.table)
     }
   }
 
@@ -105,7 +107,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
 
       // Verify sensor structure
       sensor should not be null
-      sensor.getSourceName should not be empty
+      sensor.sourceTableDependency.tableInfo.table should not be empty
       sensor.metaData should not be null
 
       // Verify sensor metadata follows expected naming pattern
@@ -116,7 +118,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
       sensor.metaData.executionInfo.tableDependencies should be(empty)
 
       // Verify sensor output table matches source name
-      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.sourceTableDependency.tableInfo.table)
     }
   }
 
@@ -166,7 +168,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
 
       // Verify sensor structure
       sensor should not be null
-      sensor.getSourceName should not be empty
+      sensor.sourceTableDependency.tableInfo.table should not be empty
       sensor.metaData should not be null
 
       // Verify sensor metadata follows expected naming pattern
@@ -177,7 +179,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
       sensor.metaData.executionInfo.tableDependencies should be(empty)
 
       // Verify sensor output table matches source name
-      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.sourceTableDependency.tableInfo.table)
     }
   }
 
@@ -225,7 +227,7 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
           sensor.metaData.executionInfo.outputTableInfo.table should not be empty
 
           // Verify sensor output table matches source name
-          sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+          sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.sourceTableDependency.tableInfo.table)
 
           // Verify sensor has empty table dependencies
           Option(sensor.metaData.executionInfo.tableDependencies).foreach { deps =>
@@ -261,14 +263,14 @@ class ExternalSourceSensorIntegrationTest extends AnyFlatSpec with Matchers {
       "warehouse.raw.transaction_logs"
     )
 
-    val actualTables = sensorNodes.map(_.getSourceName).toSet
+    val actualTables = sensorNodes.map(_.sourceTableDependency.tableInfo.table).toSet
     actualTables should equal(expectedTables)
 
     // Verify each sensor has unique and correctly formatted metadata
     sensorNodes.foreach { sensor =>
       sensor.metaData.name should startWith("complex_entity.v2_production__")
       sensor.metaData.name should endWith("__sensor__backfill")
-      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.getSourceName)
+      sensor.metaData.executionInfo.outputTableInfo.table should equal(sensor.sourceTableDependency.tableInfo.table)
       sensor.metaData.executionInfo.tableDependencies should be(empty)
     }
 

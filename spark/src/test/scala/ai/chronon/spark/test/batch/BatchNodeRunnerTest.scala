@@ -29,7 +29,6 @@ import org.apache.spark.sql.SparkSession
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
-import org.slf4j.LoggerFactory
 
 import scala.collection.Seq
 import scala.concurrent.Future
@@ -56,8 +55,6 @@ class MockKVStoreWithTracking extends MockKVStore {
 }
 
 class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with BeforeAndAfterEach {
-
-  @transient private lazy val logger = LoggerFactory.getLogger(getClass)
 
   private val spark: SparkSession = SparkSessionBuilder.build("BatchNodeRunnerTest", local = true)
   private val tableUtils = TableTestUtils(spark)
@@ -457,8 +454,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   }
 
   "BatchNodeRunner.checkPartitions" should "succeed when all partitions are available" in {
+    val tableDependency =
+      TableDependencies.fromTable("test_db.input_table",
+                                  new Query().setPartitionColumn("ds").setPartitionFormat("yyyy-MM-dd"))
     val sensorNode = new ExternalSourceSensorNode()
-      .setSourceName("test_db.input_table")
+      .setSourceTableDependency(tableDependency)
       .setRetryCount(0L)
       .setRetryIntervalMin(1L)
 
@@ -468,7 +468,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
     val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = runner.checkPartitions(sensorNode, metadata, range)
+    val result = runner.checkPartitions(sensorNode, range)
 
     result match {
       case Success(_) =>
@@ -479,8 +479,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   }
 
   it should "fail when partitions are missing and no retries configured" in {
+    val tableDependency =
+      TableDependencies.fromTable("test_db.external_table",
+                                  new Query().setPartitionColumn("ds").setPartitionFormat("yyyy-MM-dd"))
     val sensorNode = new ExternalSourceSensorNode()
-      .setSourceName("test_db.external_table")
+      .setSourceTableDependency(tableDependency)
       .setRetryCount(0L)
       .setRetryIntervalMin(1L)
 
@@ -490,7 +493,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
     val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = runner.checkPartitions(sensorNode, metadata, range)
+    val result = runner.checkPartitions(sensorNode, range)
 
     result match {
       case Success(_) =>
@@ -503,8 +506,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   }
 
   it should "use default retry values when not set" in {
+    val tableDependency =
+      TableDependencies.fromTable("test_db.external_table",
+                                  new Query().setPartitionColumn("ds").setPartitionFormat("yyyy-MM-dd"))
     val sensorNode = new ExternalSourceSensorNode()
-      .setSourceName("test_db.external_table")
+      .setSourceTableDependency(tableDependency)
     // Not setting retryCount and retryIntervalMin to test defaults
 
     val metadata = createTestMetadata("test_db.external_table", "test_db.output_table")
@@ -513,7 +519,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
     val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = runner.checkPartitions(sensorNode, metadata, range)
+    val result = runner.checkPartitions(sensorNode, range)
 
     result match {
       case Success(_) =>
@@ -525,8 +531,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   }
 
   it should "retry when configured but eventually fail if partitions never appear" in {
+    val tableDependency =
+      TableDependencies.fromTable("test_db.external_table",
+                                  new Query().setPartitionColumn("ds").setPartitionFormat("yyyy-MM-dd"))
     val sensorNode = new ExternalSourceSensorNode()
-      .setSourceName("test_db.external_table")
+      .setSourceTableDependency(tableDependency)
       .setRetryCount(2L) // Will try 3 times total (initial + 2 retries)
       .setRetryIntervalMin(0L) // Set to 0 to avoid actual delays in test
 
@@ -537,7 +546,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val runner = new BatchNodeRunner(node, tableUtils)
 
     val startTime = System.currentTimeMillis()
-    val result = runner.checkPartitions(sensorNode, metadata, range)
+    val result = runner.checkPartitions(sensorNode, range)
     val endTime = System.currentTimeMillis()
 
     result match {
@@ -551,8 +560,11 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
   }
 
   it should "handle non-existent table gracefully" in {
+    val tableDependency =
+      TableDependencies.fromTable("test_db.nonexistent_table",
+                                  new Query().setPartitionColumn("ds").setPartitionFormat("yyyy-MM-dd"))
     val sensorNode = new ExternalSourceSensorNode()
-      .setSourceName("test_db.nonexistent_table")
+      .setSourceTableDependency(tableDependency)
       .setRetryCount(0L)
       .setRetryIntervalMin(1L)
 
@@ -562,7 +574,7 @@ class BatchNodeRunnerTest extends AnyFlatSpec with BeforeAndAfterAll with Before
     val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
     val runner = new BatchNodeRunner(node, tableUtils)
 
-    val result = runner.checkPartitions(sensorNode, metadata, range)
+    val result = runner.checkPartitions(sensorNode, range)
 
     result match {
       case Success(_) =>

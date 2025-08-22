@@ -49,20 +49,19 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
 class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def checkPartitions(conf: ExternalSourceSensorNode, metadata: MetaData, range: PartitionRange): Try[Unit] = {
-    val tableName = conf.sourceName
+  def checkPartitions(conf: ExternalSourceSensorNode, range: PartitionRange): Try[Unit] = {
+    val tableName = conf.sourceTableDependency.tableInfo.table
     val retryCount = if (conf.isSetRetryCount) conf.retryCount else 3L
     val retryIntervalMin = if (conf.isSetRetryIntervalMin) conf.retryIntervalMin else 3L
 
-    val spec = metadata.executionInfo.tableDependencies.asScala
-      .find(_.tableInfo.table == tableName)
-      .map(_.tableInfo.partitionSpec(tableUtils.partitionSpec))
+    val spec = Option(conf.sourceTableDependency).map(_.tableInfo.partitionSpec(tableUtils.partitionSpec))
+    val inputRange = DependencyResolver.computeInputRange(range, conf.sourceTableDependency)
 
     @tailrec
     def retry(attempt: Long): Try[Unit] = {
       val result = Try {
         val partitionsInRange =
-          tableUtils.partitions(tableName, partitionRange = Option(range), tablePartitionSpec = spec)
+          tableUtils.partitions(tableName, partitionRange = inputRange, tablePartitionSpec = spec)
         val missingPartitions = range.partitions.diff(partitionsInRange)
         if (missingPartitions.nonEmpty) {
           throw new RuntimeException(
@@ -159,7 +158,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
         runStagingQuery(metadata, conf.getStagingQuery, range)
       case NodeContent._Fields.EXTERNAL_SOURCE_SENSOR => {
 
-        checkPartitions(conf.getExternalSourceSensor, metadata, range) match {
+        checkPartitions(conf.getExternalSourceSensor, range) match {
           case Success(_) => System.exit(0)
           case Failure(exception) =>
             logger.error(s"ExternalSourceSensor check failed.", exception)

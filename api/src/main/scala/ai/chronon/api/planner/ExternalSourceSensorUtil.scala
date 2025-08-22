@@ -27,9 +27,13 @@ object ExternalSourceSensorUtil {
           outputTableOverride =
             Option(td.tableInfo.table) // The input table and the output table are the same for sensors.
         )(tdSpec)
+        val retryInterval = 15 // minutes
+        val retryCount = 96
         new ExternalSourceSensorNode()
-          .setSourceName(td.tableInfo.table)
+          .setSourceTableDependency(td)
           .setMetaData(sensorMd)
+          .setRetryCount(retryCount)
+          .setRetryIntervalMin(retryInterval)
       })
       .toList
   }

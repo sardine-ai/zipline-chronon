@@ -18,13 +18,16 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
       .setTeam("test_team")
       .setVersion("1")
 
+    val td = new TableDependency()
+      .setTableInfo(new TableInfo().setTable("test_table"))
+
     val sensorNode = new ExternalSourceSensorNode()
-      .setSourceName("test_table")
+      .setSourceTableDependency(td)
       .setMetaData(originalMetaData)
 
     val semanticSensor = ExternalSourceSensorUtil.semanticExternalSourceSensor(sensorNode)
 
-    semanticSensor.getSourceName should equal("test_table")
+    semanticSensor.sourceTableDependency.tableInfo.table should equal("test_table")
     semanticSensor.metaData should be(null)
     semanticSensor should not be theSameInstanceAs(sensorNode)
   }
@@ -56,8 +59,8 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
 
     sensorNodes should have size 2
 
-    val purchasesSensor = sensorNodes.find(_.getSourceName == "data.purchases")
-    val checkoutsSensor = sensorNodes.find(_.getSourceName == "data.checkouts")
+    val purchasesSensor = sensorNodes.find(_.sourceTableDependency.tableInfo.table == "data.purchases")
+    val checkoutsSensor = sensorNodes.find(_.sourceTableDependency.tableInfo.table == "data.checkouts")
 
     purchasesSensor should be(defined)
     checkoutsSensor should be(defined)
@@ -158,8 +161,8 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
 
     sensorNodes should have size 2
 
-    val sensor1 = sensorNodes.find(_.getSourceName == "namespace.complex_table_name")
-    val sensor2 = sensorNodes.find(_.getSourceName == "other_namespace.another_table")
+    val sensor1 = sensorNodes.find(_.sourceTableDependency.tableInfo.table == "namespace.complex_table_name")
+    val sensor2 = sensorNodes.find(_.sourceTableDependency.tableInfo.table == "other_namespace.another_table")
 
     sensor1 should be(defined)
     sensor2 should be(defined)
@@ -203,7 +206,7 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
       sensor.metaData.executionInfo.tableDependencies should be(empty)
 
       // Sensor output table should match the source table
-      val expectedTable = sensor.getSourceName
+      val expectedTable = sensor.getSourceTableDependency.tableInfo.table
       sensor.metaData.executionInfo.outputTableInfo.table should equal(expectedTable)
 
       // Sensor name should follow the expected pattern
