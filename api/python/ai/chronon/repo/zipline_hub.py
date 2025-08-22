@@ -11,7 +11,7 @@ class ZiplineHub:
         if not base_url:
             raise ValueError("Base URL for ZiplineHub cannot be empty.")
         self.base_url = base_url
-        if self.base_url.startswith("https") and self.base_url.endswith(".app"):
+        if self.base_url.startswith("https"):
             print("\n 🔐 Using Google Cloud authentication for ZiplineHub.")
 
             # First try to get ID token from environment (GitHub Actions)
