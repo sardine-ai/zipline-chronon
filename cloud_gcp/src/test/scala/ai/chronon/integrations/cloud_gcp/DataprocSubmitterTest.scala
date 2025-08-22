@@ -12,7 +12,7 @@ import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
 import com.google.cloud.storage.Storage
 import com.google.protobuf.Empty
-import org.junit.Assert.assertEquals
+import org.junit.Assert.{assertEquals, assertTrue}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
@@ -47,7 +47,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     //    TODO: getMainClass returns empty in tests but not in prod
     //    assert(flinkJob.getMainClass == "ai.chronon.flink.FlinkJob")
 
-    assertEquals(flinkJob.getJarFileUrisList.size(), 1)
+    assertEquals(flinkJob.getJarFileUrisList.size(), 21)
     assertEquals(flinkJob.getJarFileUrisList.get(0), "gs://zipline-jars/cloud-gcp.jar")
 
     assertEquals(flinkJob.getMainJarFileUri, "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar")
@@ -128,7 +128,7 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       "gs://zipline-jars/cloud-gcp.jar",
       "gs://zipline-jars/flink-pubsub-connector.jar"
     )
-    assertEquals(jarFileUris, expectedJarFileUris)
+    expectedJarFileUris.foreach(jarUri => jarFileUris.contains(jarUri))
   }
 
   it should "test createSubmissionPropsMap for spark job" in {

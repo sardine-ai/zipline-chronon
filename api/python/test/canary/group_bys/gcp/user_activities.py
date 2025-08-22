@@ -14,8 +14,8 @@ with last_k, sum, and average aggregations over multiple time windows.
 source = Source(
     events=EventSource(
         # This will be the BigQuery table that receives the PubSub data
-        table=get_staging_query_output_table_name(exports.user_activities, True), 
-        topic="pubsub://user-activities-v0/project=canary-443022/subscription=user-activities-streaming-sub/serde=pubsub_schema/schemaId=user-activities",
+        table=get_staging_query_output_table_name(exports.user_activities, True),
+        topic="pubsub://user-activities-v2/project=canary-443022/subscription=user-activities-v2-sub/serde=pubsub_schema/schemaId=user-activities",
         query=Query(
             selects=selects(
                 user_id="user_id",

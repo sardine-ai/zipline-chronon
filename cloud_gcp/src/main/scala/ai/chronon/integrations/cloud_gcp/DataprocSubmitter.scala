@@ -205,11 +205,12 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
                             files: List[String],
                             jobProperties: Map[String, String],
                             args: String*): Job.Builder = {
+    val jarFileUris = Array(jarUri) ++ DataprocAdditionalJars.additionalSparkJobJars
     val sparkJob = SparkJob
       .newBuilder()
       .putAllProperties(jobProperties.asJava)
       .setMainClass(mainClass)
-      .addJarFileUris(jarUri)
+      .addAllJarFileUris(jarFileUris.toIterable.asJava)
       .addAllFileUris(files.asJava)
       .addAllArgs(args.toIterable.asJava)
       .build()
@@ -269,12 +270,14 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
         "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
       )
 
+    val updatedJarUris = jarUris ++ DataprocAdditionalJars.additionalFlinkJobJars
+
     val flinkJobBuilder = FlinkJob
       .newBuilder()
       .setMainClass(mainClass)
       .setMainJarFileUri(mainJarUri)
       .putAllProperties((envProps ++ jobProperties).asJava)
-      .addAllJarFileUris(jarUris.toIterable.asJava)
+      .addAllJarFileUris(updatedJarUris.toIterable.asJava)
       .addAllArgs(args.toIterable.asJava)
 
     val updatedFlinkJobBuilder =
