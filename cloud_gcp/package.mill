@@ -21,17 +21,6 @@ object `package` extends build.BaseModule {
     mvn"com.google.cloud.spark:spark-3.5-bigquery:0.42.0",
   )
 
-  // Merge strategy for assembly
-  def assemblyRules = Seq(
-    Assembly.Rule.Append("reference.conf", separator = "\n"),
-//    Assembly.Rule.Exclude(JarFile.MANIFEST_NAME),
-    Assembly.Rule.ExcludePattern(".*\\.[sS][fF]"),
-    Assembly.Rule.ExcludePattern(".*\\.[dD][sS][aA]"),
-    Assembly.Rule.ExcludePattern(".*\\.[rR][sS][aA]")
-  ) ++ Seq(
-    Assembly.Rule.Append("META-INF/services/*") // concat service files
-  )
-
 //  val googleBigdataVersion = "2.2.26"
   def mvnDeps = build.Constants.commonDeps ++
     build.Constants.loggingDeps ++
