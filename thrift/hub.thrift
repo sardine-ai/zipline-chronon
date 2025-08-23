@@ -80,12 +80,6 @@ struct TaskResources {
   2: optional i64 megaByteSeconds
   3: optional i64 cumulativeDiskWriteBytes
   4: optional i64 cumulativeDiskReadBytes
- }
-
-
-enum Mode {
-    ADHOC = 0,
-    SCHEDULED = 1
 }
 
 enum Status {
