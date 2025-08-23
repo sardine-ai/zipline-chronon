@@ -4,7 +4,6 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.planner.{DependencyResolver, NodeRunner}
 import ai.chronon.api.{MetaData, PartitionRange, PartitionSpec, ThriftJsonCodec}
 import ai.chronon.online.Api
-import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.join.UnionJoin
@@ -15,8 +14,6 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
 class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
@@ -50,33 +47,43 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
   @transient private lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def checkPartitions(conf: ExternalSourceSensorNode, range: PartitionRange): Try[Unit] = {
-    val tableName = conf.sourceTableDependency.tableInfo.table
+    val tableName = Option(conf.sourceTableDependency)
+      .map(_.tableInfo)
+      .map(_.table)
+      .getOrElse(
+        throw new IllegalArgumentException("ExternalSourceSensorNode must have a sourceTableDependency defined")
+      )
     val retryCount = if (conf.isSetRetryCount) conf.retryCount else 3L
     val retryIntervalMin = if (conf.isSetRetryIntervalMin) conf.retryIntervalMin else 3L
 
     val spec = Option(conf.sourceTableDependency).map(_.tableInfo.partitionSpec(tableUtils.partitionSpec))
-    val inputRange = DependencyResolver.computeInputRange(range, conf.sourceTableDependency)
+    val inputRange = DependencyResolver
+      .computeInputRange(range, conf.sourceTableDependency)
+      .map(_.translate(conf.sourceTableDependency.tableInfo.partitionSpec(range.partitionSpec)))
 
     @tailrec
     def retry(attempt: Long): Try[Unit] = {
       val result = Try {
         val partitionsInRange =
           tableUtils.partitions(tableName, partitionRange = inputRange, tablePartitionSpec = spec)
-        val missingPartitions = range.partitions.diff(partitionsInRange)
-        if (missingPartitions.nonEmpty) {
-          throw new RuntimeException(
-            s"Input table ${tableName} is missing partitions: ${missingPartitions.mkString(", ")}")
-        } else {
-          logger.info(s"Input table ${tableName} has the requested range present: ${range}.")
-        }
+        inputRange.map(_.partitions).getOrElse(Seq.empty).diff(partitionsInRange)
       }
+
       result match {
-        case Success(value) => Success(value)
-        case Failure(exception) if attempt < retryCount =>
-          logger.warn(s"Attempt ${attempt + 1} failed, retrying in ${retryIntervalMin} minutes", exception)
+        case Success(missingPartitions) if missingPartitions.isEmpty =>
+          logger.info(s"Input table ${tableName} has the requested range present: ${range}.")
+          Success(())
+        case Success(missingPartitions) if attempt < retryCount =>
+          logger.warn(
+            s"Attempt ${attempt + 1} failed: Input table ${tableName} is missing partitions: ${missingPartitions
+                .mkString(", ")}. Retrying in ${retryIntervalMin} minutes")
           Thread.sleep(retryIntervalMin * 60 * 1000)
           retry(attempt + 1)
-        case failure => failure
+        case Success(missingPartitions) =>
+          Failure(new RuntimeException(
+            s"Sensor timed out after ${retryIntervalMin * attempt} minutes. Input table ${tableName} is missing partitions: ${missingPartitions
+                .mkString(", ")}"))
+        case Failure(e) => Failure(e)
       }
     }
     retry(0)
