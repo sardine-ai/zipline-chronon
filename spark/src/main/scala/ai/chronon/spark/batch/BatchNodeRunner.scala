@@ -179,7 +179,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     Try {
       val metadata = node.metaData
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
-      val kvStore = api.genKvStore
+//      val kvStore = api.genKvStore
 
       logger.info(s"Starting batch node runner for '${metadata.name}'")
       val inputTablesToRange = Option(metadata.executionInfo.getTableDependencies)
@@ -212,12 +212,12 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
           })
         }
       }
-      val kvStoreUpdates = kvStore.multiPut(allInputTablePartitions.map { case (tableName, allPartitions) =>
-        val partitionsJson = PartitionRange.collapsedPrint(allPartitions)(range.partitionSpec)
-        PutRequest(tableName.getBytes, partitionsJson.getBytes, tablePartitionsDataset)
-      }.toSeq)
-
-      Await.result(kvStoreUpdates, Duration.Inf)
+//      val kvStoreUpdates = kvStore.multiPut(allInputTablePartitions.map { case (tableName, allPartitions) =>
+//        val partitionsJson = PartitionRange.collapsedPrint(allPartitions)(range.partitionSpec)
+//        PutRequest(tableName.getBytes, partitionsJson.getBytes, tablePartitionsDataset)
+//      }.toSeq)
+//
+//      Await.result(kvStoreUpdates, Duration.Inf)
 
       val missingPartitions = maybeMissingPartitions.collect {
         case (tableName, Some(missing)) if missing.nonEmpty =>
@@ -234,21 +234,21 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
         )
       } else {
         run(metadata, node.content, Option(range))
-        val outputTablePartitionSpec = (for {
-          meta <- Option(metadata)
-          executionInfo <- Option(meta.executionInfo)
-          outputTableInfo <- Option(executionInfo.outputTableInfo)
-          definedSpec = outputTableInfo.partitionSpec(tableUtils.partitionSpec)
-        } yield definedSpec).getOrElse(tableUtils.partitionSpec)
-        val allOutputTablePartitions = tableUtils.partitions(metadata.executionInfo.outputTableInfo.table,
-                                                             tablePartitionSpec = Option(outputTablePartitionSpec))
-
-        val outputTablePartitionsJson = PartitionRange.collapsedPrint(allOutputTablePartitions)(range.partitionSpec)
-        val putRequest = PutRequest(metadata.executionInfo.outputTableInfo.table.getBytes,
-                                    outputTablePartitionsJson.getBytes,
-                                    tablePartitionsDataset)
-        val kvStoreUpdates = kvStore.put(putRequest)
-        Await.result(kvStoreUpdates, Duration.Inf)
+//        val outputTablePartitionSpec = (for {
+//          meta <- Option(metadata)
+//          executionInfo <- Option(meta.executionInfo)
+//          outputTableInfo <- Option(executionInfo.outputTableInfo)
+//          definedSpec = outputTableInfo.partitionSpec(tableUtils.partitionSpec)
+//        } yield definedSpec).getOrElse(tableUtils.partitionSpec)
+//        val allOutputTablePartitions = tableUtils.partitions(metadata.executionInfo.outputTableInfo.table,
+//                                                             tablePartitionSpec = Option(outputTablePartitionSpec))
+//
+//        val outputTablePartitionsJson = PartitionRange.collapsedPrint(allOutputTablePartitions)(range.partitionSpec)
+//        val putRequest = PutRequest(metadata.executionInfo.outputTableInfo.table.getBytes,
+//                                    outputTablePartitionsJson.getBytes,
+//                                    tablePartitionsDataset)
+//        val kvStoreUpdates = kvStore.put(putRequest)
+//        Await.result(kvStoreUpdates, Duration.Inf)
         logger.info(s"Successfully completed batch node runner for '${metadata.name}'")
       }
     }

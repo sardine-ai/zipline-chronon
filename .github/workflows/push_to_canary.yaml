@@ -30,9 +30,7 @@ jobs:
           distribution: corretto
           java-version: 17
 
-      - name: Setup Bazel cache credentials
-        run: |
-          echo "${{ secrets.BAZEL_CACHE_CREDENTIALS }}" | base64 -d > bazel-cache-key.json
+      # Bazel cache credentials removed - using Mill now
 
       - name: Install Thrift
         env:
@@ -74,12 +72,9 @@ jobs:
         run: |
           set -eo pipefail
           echo "Building wheel"
-          python3 -m pip install --upgrade pip
-          python3 -m pip install --upgrade setuptools wheel
+          ./mill python.wheel ${{ env.VERSION }}
           
-          ./scripts/distribution/build_wheel.sh ${{ env.VERSION }}
-          
-          EXPECTED_ZIPLINE_WHEEL="zipline_ai-${{ env.VERSION }}-py3-none-any.whl"
+          EXPECTED_ZIPLINE_WHEEL="out/python/wheel.dest/dist/zipline_ai-${{ env.VERSION }}-py3-none-any.whl"
           if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
             echo "$EXPECTED_ZIPLINE_WHEEL not found"
             exit 1
@@ -93,45 +88,46 @@ jobs:
           name: zipline-ai-wheel
           path: ${{ steps.build-wheel.outputs.wheel_file }}
 
-      - name: Build Bazel Project
-        id: bazel-build
+
+      - name: Build Mill Project
+        id: mill-build
         run: |
-          bazel clean
-          bazel build //flink:flink_assembly_deploy.jar 
-          bazel build //cloud_gcp:cloud_gcp_lib_deploy.jar
-          bazel build //cloud_aws:cloud_aws_lib_deploy.jar
-          bazel build //service:service_assembly_deploy.jar
-          bazel build //flink:connectors_pubsub_deploy.jar
+          ./mill clean
+          ./mill flink.assembly
+          ./mill cloud_gcp.assembly
+          ./mill cloud_aws.assembly
+          ./mill service.assembly
+          ./mill flink_connectors.assembly
 
       - name: Upload Flink Assembly Jar
         uses: actions/upload-artifact@v4
         with:
           name: flink-assembly-jar
-          path: bazel-bin/flink/flink_assembly_deploy.jar
+          path: out/flink/assembly.dest/out.jar
 
       - name: Upload Cloud AWS Jar
         uses: actions/upload-artifact@v4
         with:
           name: cloud-aws-jar
-          path: bazel-bin/cloud_aws/cloud_aws_lib_deploy.jar
+          path: out/cloud_aws/assembly.dest/out.jar
 
       - name: Upload Cloud GCP Jar
         uses: actions/upload-artifact@v4
         with:
           name: cloud-gcp-jar
-          path: bazel-bin/cloud_gcp/cloud_gcp_lib_deploy.jar
+          path: out/cloud_gcp/assembly.dest/out.jar
 
       - name: Upload Service Assembly Jar
         uses: actions/upload-artifact@v4
         with:
           name: service-assembly-jar
-          path: bazel-bin/service/service_assembly_deploy.jar
+          path: out/service/assembly.dest/out.jar
 
       - name: Upload PubSub Jar
         uses: actions/upload-artifact@v4
         with:
           name: pubsub-jar
-          path: bazel-bin/flink/connectors_pubsub_deploy.jar
+          path: out/flink_connectors/assembly.dest/out.jar
     outputs:
       wheel_file: ${{ steps.build-wheel.outputs.wheel_file }}
       version: ${{ steps.build-wheel.outputs.version }}
@@ -165,6 +161,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: service-assembly-jar
+
+      - name: Rename JAR files to expected names
+        run: |
+          # The artifacts are downloaded into directories named after the artifact
+          # We need to move them to the current directory with the expected names
+          mv flink-assembly-jar/out.jar flink_assembly_deploy.jar
+          mv cloud-aws-jar/out.jar cloud_aws_lib_deploy.jar
+          mv service-assembly-jar/out.jar service_assembly_deploy.jar
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -217,6 +221,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pubsub-jar
+
+      - name: Rename JAR files to expected names
+        run: |
+          # The artifacts are downloaded into directories named after the artifact
+          # We need to move them to the current directory with the expected names
+          mv flink-assembly-jar/out.jar flink_assembly_deploy.jar
+          mv cloud-gcp-jar/out.jar cloud_gcp_lib_deploy.jar
+          mv service-assembly-jar/out.jar service_assembly_deploy.jar
+          mv pubsub-jar/out.jar connectors_pubsub_deploy.jar
 
       - name: Configure GCP Credentials
         uses: google-github-actions/auth@v2
@@ -373,6 +386,14 @@ jobs:
         with:
           name: service-assembly-jar
 
+      - name: Rename JAR files to expected names
+        run: |
+          # The artifacts are downloaded into directories named after the artifact
+          # We need to move them to the current directory with the expected names
+          mv flink-assembly-jar/out.jar flink_assembly_deploy.jar
+          mv cloud-aws-jar/out.jar cloud_aws_lib_deploy.jar
+          mv service-assembly-jar/out.jar service_assembly_deploy.jar
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -424,6 +445,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pubsub-jar
+
+      - name: Rename JAR files to expected names
+        run: |
+          # The artifacts are downloaded into directories named after the artifact
+          # We need to move them to the current directory with the expected names
+          mv flink-assembly-jar/out.jar flink_assembly_deploy.jar
+          mv cloud-gcp-jar/out.jar cloud_gcp_lib_deploy.jar
+          mv service-assembly-jar/out.jar service_assembly_deploy.jar
+          mv pubsub-jar/out.jar connectors_pubsub_deploy.jar
 
       - name: Configure GCP Credentials
         uses: google-github-actions/auth@v2

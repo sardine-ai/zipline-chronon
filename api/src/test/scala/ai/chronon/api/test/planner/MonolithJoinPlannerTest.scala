@@ -51,8 +51,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
 
   it should "monolith join planner plans valid confs without exceptions" in {
 
-    val runfilesDir = System.getenv("RUNFILES_DIR")
-    val rootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/joins")
+    val rootDir = Paths.get(getClass.getClassLoader.getResource("canary/compiled/joins").getPath)
 
     val joinConfs = LocalRunner.parseConfs[api.Join](rootDir.toString)
 
@@ -175,8 +174,7 @@ class MonolithJoinPlannerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "monolith join planner should produce exactly two nodes (backfill and metadata upload) for canary confs" in {
-    val runfilesDir = System.getenv("RUNFILES_DIR")
-    val rootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/joins")
+    val rootDir = Paths.get(getClass.getClassLoader.getResource("canary/compiled/joins").getPath)
 
     val joinConfs = LocalRunner.parseConfs[api.Join](rootDir.toString)
 

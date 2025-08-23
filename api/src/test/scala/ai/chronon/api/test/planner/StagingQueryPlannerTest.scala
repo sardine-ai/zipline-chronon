@@ -17,8 +17,7 @@ class StagingQueryPlannerTest extends AnyFlatSpec with Matchers {
 
   it should "staging query planner plans valid confs without exceptions" in {
 
-    val runfilesDir = System.getenv("RUNFILES_DIR")
-    val stagingQueryRootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/staging_queries")
+    val stagingQueryRootDir = Paths.get(getClass.getClassLoader.getResource("canary/compiled/staging_queries").getPath)
 
     val stagingQueryConfs = LocalRunner.parseConfs[ai.chronon.api.StagingQuery](stagingQueryRootDir.toString)
 
@@ -172,8 +171,7 @@ class StagingQueryPlannerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "staging query planner should produce exactly one node wrapping a StagingQuery for canary confs" in {
-    val runfilesDir = System.getenv("RUNFILES_DIR")
-    val stagingQueryRootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/staging_queries")
+    val stagingQueryRootDir = Paths.get(getClass.getClassLoader.getResource("canary/compiled/staging_queries").getPath)
 
     val stagingQueryConfs = LocalRunner.parseConfs[ai.chronon.api.StagingQuery](stagingQueryRootDir.toString)
 

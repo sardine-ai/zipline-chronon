@@ -84,8 +84,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
   it should "GB planner handles valid confs" in {
 
-    val runfilesDir = System.getenv("RUNFILES_DIR")
-    val gbRootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/group_bys")
+    val gbRootDir = Paths.get(getClass.getClassLoader.getResource("canary/compiled/group_bys").getPath)
 
     val gbConfs = LocalRunner.parseConfs[ai.chronon.api.GroupBy](gbRootDir.toString)
 
