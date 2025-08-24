@@ -57,16 +57,13 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     val retryIntervalMin = if (conf.isSetRetryIntervalMin) conf.retryIntervalMin else 3L
 
     val spec = Option(conf.sourceTableDependency).map(_.tableInfo.partitionSpec(tableUtils.partitionSpec))
-    val inputRange = DependencyResolver
-      .computeInputRange(range, conf.sourceTableDependency)
-      .map(_.translate(conf.sourceTableDependency.tableInfo.partitionSpec(range.partitionSpec)))
 
     @tailrec
     def retry(attempt: Long): Try[Unit] = {
       val result = Try {
         val partitionsInRange =
-          tableUtils.partitions(tableName, partitionRange = inputRange, tablePartitionSpec = spec)
-        inputRange.map(_.partitions).getOrElse(Seq.empty).diff(partitionsInRange)
+          tableUtils.partitions(tableName, partitionRange = Option(range), tablePartitionSpec = spec)
+        Option(range).map(_.partitions).getOrElse(Seq.empty).diff(partitionsInRange)
       }
 
       result match {
