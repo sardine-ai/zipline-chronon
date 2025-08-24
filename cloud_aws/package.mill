@@ -34,4 +34,6 @@ object `package` extends build.BaseModule {
       "-Dspark.sql.hive.convertMetastoreParquet=false"
     )
   }
+
+  def prependShellScript = ""
 }
