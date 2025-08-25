@@ -84,6 +84,7 @@ struct WorkflowStartRequest {
     7: optional string confHash
     8: optional bool forceRecompute
     9: optional bool skipLongRunningNodes
+    10: optional bool isScheduled
 }
 
 struct WorkflowStartResponse {
