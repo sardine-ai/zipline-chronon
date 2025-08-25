@@ -22,7 +22,7 @@ object ExternalSourceSensorUtil {
         val sensorMd = MetaDataUtils.layer(
           metaData,
           "backfill",
-          metaData.name + "__" + td.tableInfo.table + "__sensor__backfill",
+          f"wait_for_sensor__${td.tableInfo.table}__backfill",
           Seq(), // No table dependencies for sensors
           outputTableOverride =
             Option(td.tableInfo.table) // The input table and the output table are the same for sensors.

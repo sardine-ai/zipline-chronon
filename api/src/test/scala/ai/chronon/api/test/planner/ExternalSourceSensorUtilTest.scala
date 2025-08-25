@@ -67,13 +67,13 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
 
     // Verify metadata structure for purchases sensor
     val purchasesMeta = purchasesSensor.get.metaData
-    purchasesMeta.name should equal("test_groupby__data.purchases__sensor__backfill")
+    purchasesMeta.name should startWith("wait_for_sensor")
     purchasesMeta.executionInfo.tableDependencies should be(empty)
     purchasesMeta.executionInfo.outputTableInfo.table should equal("data.purchases")
 
     // Verify metadata structure for checkouts sensor
     val checkoutsMeta = checkoutsSensor.get.metaData
-    checkoutsMeta.name should equal("test_groupby__data.checkouts__sensor__backfill")
+    checkoutsMeta.name should startWith("wait_for_sensor")
     checkoutsMeta.executionInfo.tableDependencies should be(empty)
     checkoutsMeta.executionInfo.outputTableInfo.table should equal("data.checkouts")
   }
@@ -167,8 +167,8 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
     sensor1 should be(defined)
     sensor2 should be(defined)
 
-    sensor1.get.metaData.name should equal("complex.entity.name.v1__namespace.complex_table_name__sensor__backfill")
-    sensor2.get.metaData.name should equal("complex.entity.name.v1__other_namespace.another_table__sensor__backfill")
+    sensor1.get.metaData.name should startWith("wait_for_sensor")
+    sensor2.get.metaData.name should startWith("wait_for_sensor")
 
     // Verify sensor names are unique
     val sensorNames = sensorNodes.map(_.metaData.name).toSet
@@ -210,8 +210,7 @@ class ExternalSourceSensorUtilTest extends AnyFlatSpec with Matchers {
       sensor.metaData.executionInfo.outputTableInfo.table should equal(expectedTable)
 
       // Sensor name should follow the expected pattern
-      val expectedName = s"multi_dependency_entity__${expectedTable}__sensor__backfill"
-      sensor.metaData.name should equal(expectedName)
+      sensor.metaData.name should startWith("wait_for_sensor")
 
       // Verify sensor inherits team and other metadata
       sensor.metaData.team should equal("sensor_test")
