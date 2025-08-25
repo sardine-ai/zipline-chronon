@@ -106,11 +106,10 @@ if [[ $EXPECTED_MINIMUM_MINOR_PYTHON_VERSION -gt $MINOR_PYTHON_VERSION ]] ; then
     exit 1
 fi
 
-WHEEL_VERSION="0.1.0+dev.$USER"
+export ZIPLINE_VERSION="0.1.0+dev.$USER"
+./mill python.wheel # we need ZIPLINE_VERSION set to build the wheel with specific version here
 
-bash scripts/distribution/build_wheel.sh $WHEEL_VERSION
-
-EXPECTED_ZIPLINE_WHEEL="zipline_ai-$WHEEL_VERSION-py3-none-any.whl"
+EXPECTED_ZIPLINE_WHEEL="./out/python/wheel.dest//dist/zipline_ai-$ZIPLINE_VERSION-py3-none-any.whl"
 if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
     echo "$EXPECTED_ZIPLINE_WHEEL not found"
     exit 1
@@ -185,8 +184,8 @@ function upload_to_gcp() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/$WHEEL_VERSION/jars
-                NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/$WHEEL_VERSION/wheels/
+                NEW_ELEMENT_JAR_PATH=gs://zipline-artifacts-$element/release/$ZIPLINE_VERSION/jars
+                NEW_ELEMENT_WHEEL_PATH=gs://zipline-artifacts-$element/release/$ZIPLINE_VERSION/wheels/
                 gcloud storage cp "$SRC_CLOUD_GCP_JAR" "$NEW_ELEMENT_JAR_PATH/$CLOUD_GCP_JAR" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$SRC_SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH/$SERVICE_JAR" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 gcloud storage cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --custom-metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
@@ -213,8 +212,8 @@ function upload_to_aws() {
               set -euxo pipefail
               for element in "${customer_ids_to_upload[@]}"
               do
-                NEW_ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/$WHEEL_VERSION/jars
-                NEW_ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/$WHEEL_VERSION/wheels/
+                NEW_ELEMENT_JAR_PATH=s3://zipline-artifacts-$element/release/$ZIPLINE_VERSION/jars
+                NEW_ELEMENT_WHEEL_PATH=s3://zipline-artifacts-$element/release/$ZIPLINE_VERSION/wheels/
                 aws s3 cp "$SRC_CLOUD_AWS_JAR" "$NEW_ELEMENT_JAR_PATH/$CLOUD_AWS_JAR" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$SRC_SERVICE_JAR" "$NEW_ELEMENT_JAR_PATH/$SERVICE_JAR" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
                 aws s3 cp "$EXPECTED_ZIPLINE_WHEEL" "$NEW_ELEMENT_WHEEL_PATH" --metadata="zipline_user=$USER,updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
@@ -251,6 +250,6 @@ if [ "$BUILD_GCP" = true ]; then
 fi
 
 # Cleanup wheel stuff
-rm ./*.whl
+rm ./*.whl || true
 
-echo "Built and uploaded $WHEEL_VERSION"
+echo "Built and uploaded $ZIPLINE_VERSION"
