@@ -166,9 +166,12 @@ struct ScheduleStateResponse {
 }
 
 struct ScheduleListRequest {
+    // pagination and sorting
     1: optional i32 limit
     2: optional i32 offset
-    3: optional string branch
+    3: optional string sort
+
+    4: optional string branch
 }
 
 struct ScheduleListResponse {
@@ -234,13 +237,21 @@ struct WorkflowResponse {
 }
 
 struct WorkflowListRequest {
+    // pagination and sorting
     1: optional i32 limit
-    // TODO: To remove this after migrating to above limit field
-    2: optional i32 numOfWorkflows
+    2: optional i32 offset
+    3: optional string sort
+
+    // filters
+    4: optional string search
+    5: optional list<WorkflowStatus> status
+    6: optional list<string> user
 }
 
 struct WorkflowListResponse {
     1: optional list<WorkflowResponse> workflows
+
+    10: optional i32 totalCount // For pagination
 }
 
 struct WorkflowCancelRequest {
@@ -259,6 +270,14 @@ struct ConfListRequest {
 
     // if not specified we will pull conf list for main branch
     2: optional string branch
+
+    // pagination and sorting
+    3: optional i32 limit
+    4: optional i32 offset
+    5: optional string sort
+
+    // filters
+    6: optional string search
 }
 
 /**
@@ -273,6 +292,8 @@ struct ConfListItemResponse {
 
 struct ConfListResponse {
     1: optional list<ConfListItemResponse> confs
+
+    10: optional i32 totalCount // For pagination
 }
 
 struct ConfGetRequest {
