@@ -225,7 +225,9 @@ def _merge_mode_maps(
             current_mode = current_modes.get(mode, {}) if current_modes else {}
 
             # if the incoming_mode is not found, we NEED to default to incoming_common
-            incoming_mode = incoming_modes.get(mode, incoming_common) if incoming_modes else incoming_common
+            incoming_mode = (
+                incoming_modes.get(mode, incoming_common) if incoming_modes else incoming_common
+            )
 
             # first to last with later ones overriding the earlier ones
             # common -> current mode level -> incoming mode level

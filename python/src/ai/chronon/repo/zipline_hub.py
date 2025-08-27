@@ -1,4 +1,5 @@
 import os
+from datetime import date, timedelta
 from typing import Optional
 
 import google.auth
@@ -64,15 +65,15 @@ class ZiplineHub:
         url = f"{self.base_url}/schedule/v1/schedules"
 
         schedule_request = {
-            'modeSchedules': modes,
-            'branch': branch,
-            'confName': conf_name,
-            'confHash': conf_hash,
+            "modeSchedules": modes,
+            "branch": branch,
+            "confName": conf_name,
+            "confHash": conf_hash,
         }
 
-        headers = {'Content-Type': 'application/json'}
-        if hasattr(self, 'id_token'):
-            headers['Authorization'] = f'Bearer {self.id_token}'
+        headers = {"Content-Type": "application/json"}
+        if hasattr(self, "id_token"):
+            headers["Authorization"] = f"Bearer {self.id_token}"
         try:
             response = requests.post(url, json=schedule_request, headers=headers)
             response.raise_for_status()
@@ -99,20 +100,31 @@ class ZiplineHub:
             print(f" ❌ Error calling diff API: {e}")
             raise e
 
-
-    def call_workflow_start_api(self, conf_name, mode, branch, user, start, end, conf_hash, force_recompute=False, skip_long_running=False):
+    def call_workflow_start_api(
+        self,
+        conf_name,
+        mode,
+        branch,
+        user,
+        conf_hash,
+        start=None,
+        end=None,
+        force_recompute=False,
+        skip_long_running=False,
+    ):
         url = f"{self.base_url}/workflow/start"
-
+        end_dt = end if end else str(date.today())
+        start_dt = start if start else str(date.today() - timedelta(days=14))
         workflow_request = {
-            'confName': conf_name,
-            'confHash': conf_hash,
-            'mode': mode,
-            'branch': branch,
-            'user': user,
-            'start': start,
-            'end': end,
-            'forceRecompute': force_recompute,
-            'skipLongRunningNodes': skip_long_running
+            "confName": conf_name,
+            "confHash": conf_hash,
+            "mode": mode,
+            "branch": branch,
+            "user": user,
+            "start": start_dt,
+            "end": end_dt,
+            "forceRecompute": force_recompute,
+            "skipLongRunningNodes": skip_long_running,
         }
         headers = {"Content-Type": "application/json"}
         if hasattr(self, "id_token"):

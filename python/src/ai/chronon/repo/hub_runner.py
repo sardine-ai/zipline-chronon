@@ -143,6 +143,7 @@ def run_adhoc(repo, conf, end_ds):
     """
     submit_workflow(repo, conf, RunMode.DEPLOY.value, end_ds, end_ds)
 
+
 # zipline hub schedule --conf=compiled/joins/join
 @hub.command()
 @common_options
@@ -173,6 +174,7 @@ class HubConfig:
     hub_url: str
     frontend_url: str
 
+
 @dataclass
 class ScheduleModes:
     online: str
@@ -185,16 +187,19 @@ def get_hub_conf(conf_path):
     frontend_url = common_env_map.get("FRONTEND_URL", os.environ.get("FRONTEND_URL"))
     return HubConfig(hub_url=hub_url, frontend_url=frontend_url)
 
+
 def get_schedule_modes(conf_path):
     metadata_map = get_metadata_map(conf_path)
     online_value = metadata_map.get("online", False)
     online = "true" if bool(online_value) else "false"
-    offline_schedule = metadata_map['executionInfo'].get('scheduleCron', None)
+    offline_schedule = metadata_map["executionInfo"].get("scheduleCron", None)
 
     # check if offline_schedule is null or 'None' or '@daily' else throw an error
     valid_schedules = {None, "None", "@daily"}
     if offline_schedule not in valid_schedules:
-        raise ValueError(f"Unsupported offline_schedule: {offline_schedule}. Only null, 'None', or '@daily' are supported.")
+        raise ValueError(
+            f"Unsupported offline_schedule: {offline_schedule}. Only null, 'None', or '@daily' are supported."
+        )
     offline_schedule = offline_schedule or "None"
     return ScheduleModes(online=online, offline_schedule=offline_schedule)
 
