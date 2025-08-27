@@ -13,8 +13,7 @@
       "conf": {
         "common": {
           "spark.chronon.partition.column": "_DATE"
-        },
-        "modeConfigs": {}
+        }
       },
       "env": {
         "common": {

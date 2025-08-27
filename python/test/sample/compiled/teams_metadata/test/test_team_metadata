@@ -3,8 +3,7 @@
     "conf": {
       "common": {
         "spark.chronon.partition.column": "_test_column"
-      },
-      "modeConfigs": {}
+      }
     },
     "env": {
       "common": {
