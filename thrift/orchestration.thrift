@@ -30,6 +30,7 @@ enum NodeRunStatus {
     ALREADY_EXISTS = 6
     SKIPPED = 7
     FAILED_RETRYING = 8
+    UPSTREAM_FAILED = 9
 }
 
 enum WorkflowStatus {
