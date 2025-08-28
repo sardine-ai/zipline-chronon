@@ -23,8 +23,7 @@ case class StagingQueryPlanner(stagingQuery: StagingQuery)(implicit outputPartit
       "backfill",
       stagingQuery.metaData.name + "__backfill",
       tableDependencies,
-      Some(1), // Default step days for staging queries
-      Some(stagingQuery.metaData.outputTable)
+      outputTableOverride = Some(stagingQuery.metaData.outputTable)
     )
 
     val node = new StagingQueryNode().setStagingQuery(stagingQuery)

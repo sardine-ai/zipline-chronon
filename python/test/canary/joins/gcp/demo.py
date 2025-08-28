@@ -52,5 +52,6 @@ v1 = Join(
     ],
     version=0,
     online=True,
-    output_namespace="data"
+    output_namespace="data",
+    step_days=2,
 )

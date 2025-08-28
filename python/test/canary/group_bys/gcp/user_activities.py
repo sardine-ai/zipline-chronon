@@ -77,4 +77,5 @@ v1 = GroupBy(
     online=True,
     version=0,
     aggregations=aggregations,
+    step_days=4,
 )

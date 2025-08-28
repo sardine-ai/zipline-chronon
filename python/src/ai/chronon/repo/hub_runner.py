@@ -213,7 +213,7 @@ def print_wf_url(conf, conf_name, mode, workflow_id):
     elif "compiled/staging_queries" in conf:
         hub_conf_type = "stagingqueries"
     elif "compiled/group_by" in conf:
-        hub_conf_type = "groupby"
+        hub_conf_type = "groupbys"
     elif "compiled/models" in conf:
         hub_conf_type = "models"
     else:

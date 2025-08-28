@@ -436,7 +436,7 @@
           "CUSTOMER_ID": "dev",
           "ENABLE_PUBSUB": "true",
           "FLINK_STATE_URI": "gs://zipline-warehouse-canary/flink-state",
-          "FRONTEND_URL": "http://localhost:5173",
+          "FRONTEND_URL": "http://localhost:3000",
           "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
           "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
           "GCP_PROJECT_ID": "canary-443022",
@@ -450,7 +450,8 @@
         }
       },
       "historicalBackfill": 0,
-      "scheduleCron": "@daily"
+      "scheduleCron": "@daily",
+      "stepDays": 4
     },
     "name": "gcp.user_activities.v1__0",
     "online": 1,
@@ -479,7 +480,7 @@
           "timeColumn": "event_time_ms"
         },
         "table": "data.gcp_exports_user_activities__0",
-        "topic": "pubsub://user-activities-v0/project=canary-443022/subscription=user-activities-streaming-sub/serde=pubsub_schema/schemaId=user-activities"
+        "topic": "pubsub://user-activities-v2/project=canary-443022/subscription=user-activities-v2-sub/serde=pubsub_schema/schemaId=user-activities"
       }
     }
   ]

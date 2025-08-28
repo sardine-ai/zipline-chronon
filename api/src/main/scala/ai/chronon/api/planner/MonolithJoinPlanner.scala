@@ -36,8 +36,7 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
                           "backfill",
                           join.metaData.name + "__backfill",
                           tableDeps,
-                          None,
-                          Some(join.metaData.outputTable))
+                          outputTableOverride = Some(join.metaData.outputTable))
     val node = new planner.MonolithJoinNode().setJoin(join)
     toNode(metaData, _.setMonolithJoin(node), semanticMonolithJoin(join))
   }
