@@ -101,7 +101,7 @@ struct Submission {
 
 struct ConfRequest {
    1: optional string confName
-   2: optional orchestration.ConfType confType
+   2: optional api.ConfType confType
    
    // one of either branch or version are set - otherwise we will pull conf for main branch
    3: optional string branch 

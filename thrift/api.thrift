@@ -331,6 +331,21 @@ struct MetaData {
     204: optional common.ExecutionInfo executionInfo
 }
 
+// This has to be 0-indexed for Java usage
+enum ConfType {
+    GROUP_BY = 0,
+    JOIN = 1,
+    STAGING_QUERY = 2,
+    MODEL = 3,
+}
+
+struct Conf {
+    1: optional string name
+    2: optional string hash
+    3: optional string contents
+    4: optional ConfType confType
+}
+
 // Equivalent to a FeatureSet in chronon terms
 struct GroupBy {
     1: optional MetaData metaData

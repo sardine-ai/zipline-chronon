@@ -7,7 +7,7 @@ import ai.chronon.api
 import ai.chronon.api._
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.{IterableOps, MapOps}
-import ai.chronon.orchestration.CheckResult
+import ai.chronon.eval.CheckResult
 import ai.chronon.spark._
 import ai.chronon.spark.batch._
 import ai.chronon.spark.Extensions._

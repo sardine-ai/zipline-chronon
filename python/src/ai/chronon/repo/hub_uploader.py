@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 
-from gen_thrift.orchestration.ttypes import Conf
+from gen_thrift.api.ttypes import Conf
 
 from ai.chronon.repo import (
     FOLDER_NAME_TO_CLASS,

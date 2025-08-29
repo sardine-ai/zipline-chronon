@@ -2,8 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type
 
-from gen_thrift.api.ttypes import GroupBy, Join, MetaData, Model, StagingQuery, Team
-from gen_thrift.orchestration.ttypes import ConfType
+from gen_thrift.api.ttypes import ConfType, GroupBy, Join, MetaData, Model, StagingQuery, Team
 
 import ai.chronon.cli.compile.parse_teams as teams
 from ai.chronon.cli.compile.conf_validator import ConfValidator

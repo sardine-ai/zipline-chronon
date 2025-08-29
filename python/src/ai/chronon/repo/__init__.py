@@ -12,8 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-from gen_thrift.api.ttypes import GroupBy, Join, Model, StagingQuery
-from gen_thrift.orchestration.ttypes import ConfType
+from gen_thrift.api.ttypes import ConfType, GroupBy, Join, Model, StagingQuery
 
 JOIN_FOLDER_NAME = "joins"
 GROUP_BY_FOLDER_NAME = "group_bys"

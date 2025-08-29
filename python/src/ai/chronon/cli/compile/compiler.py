@@ -4,7 +4,7 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from gen_thrift.orchestration.ttypes import ConfType
+from gen_thrift.api.ttypes import ConfType
 
 import ai.chronon.cli.compile.display.compiled_obj
 import ai.chronon.cli.compile.parse_configs as parser
