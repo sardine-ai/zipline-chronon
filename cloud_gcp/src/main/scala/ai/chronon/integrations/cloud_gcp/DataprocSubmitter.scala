@@ -6,7 +6,6 @@ import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.storage.{Storage, StorageOptions}
 import com.google.protobuf.util.JsonFormat
-import org.apache.hadoop.fs.Path
 
 import scala.jdk.CollectionConverters._
 
@@ -64,8 +63,8 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
                                flinkCheckpointUri: String): Option[String] = {
     val manifestFileName = "manifest.txt"
 
-    val groupByCheckpointPath = new Path(manifestBucketPath, groupByName)
-    val manifestObjectPath = new Path(groupByCheckpointPath, manifestFileName).toString
+    val groupByCheckpointPath = s"$manifestBucketPath/$groupByName"
+    val manifestObjectPath = s"$groupByCheckpointPath/$manifestFileName"
     println(s"Checking for manifest file at $manifestObjectPath")
 
     if (!gcsClient.fileExists(manifestObjectPath)) {
@@ -80,7 +79,8 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
       .map(_.split("=")(1))
       .getOrElse(throw new RuntimeException("Flink job id not found in manifest file."))
 
-    val matchedFiles = gcsClient.listFiles(new Path(flinkCheckpointUri, flinkJobId).toString).toList
+    val flinkJobIdCheckpointPath = s"$flinkCheckpointUri/$flinkJobId"
+    val matchedFiles = gcsClient.listFiles(flinkJobIdCheckpointPath).toList
     val allCheckpoints = matchedFiles
       .filter(_.split("/").exists(_.startsWith("chk-")))
       .map(_.split("/").find(_.startsWith("chk-")).get)
@@ -91,8 +91,7 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
     val latestCheckpoint = allCheckpoints.headOption
     val latestCheckpointUri = latestCheckpoint
       .map(chk => {
-        val flinkJobPath = new Path(flinkCheckpointUri, flinkJobId)
-        new Path(flinkJobPath, chk).toString
+        s"$flinkJobIdCheckpointPath/$chk"
       })
 
     if (latestCheckpointUri.isEmpty) {
@@ -342,18 +341,18 @@ object DataprocSubmitter {
         // include additional jars if present
         val additionalJars = JobSubmitter.getArgValue(args, AdditionalJarsUriArgKeyword)
 
+        val groupByName = JobSubmitter
+          .getArgValue(args, GroupByNameArgKeyword)
+          .getOrElse(throw new Exception("Missing required argument: " + GroupByNameArgKeyword))
+
         val baseJobProps = Map(
           MainClass -> mainClass,
           JarURI -> jarUri,
           FlinkMainJarURI -> flinkMainJarUri,
           FlinkCheckpointUri -> flinkCheckpointUri,
-          MetadataName -> metadataName,
+          MetadataName -> groupByName,
           JobId -> jobId
         ) ++ (maybePubSubJarUri.map(FlinkPubSubConnectorJarURI -> _) ++ additionalJars.map(AdditionalJars -> _))
-
-        val groupByName = JobSubmitter
-          .getArgValue(args, GroupByNameArgKeyword)
-          .getOrElse(throw new Exception("Missing required argument: " + GroupByNameArgKeyword))
 
         val userPassedSavepoint = JobSubmitter
           .getArgValue(args, StreamingCustomSavepointArgKeyword)
@@ -448,7 +447,7 @@ object DataprocSubmitter {
     println(
       s"Local Zipline version: $localZiplineVersion. " +
         s"Remote Zipline version for Dataproc job $jobId: $remoteZiplineVersion")
-    return localZiplineVersion == remoteZiplineVersion
+    localZiplineVersion == remoteZiplineVersion
   }
 
   private def findRunningFlinkJobId(groupByName: String, submitter: DataprocSubmitter): Option[String] = {
@@ -690,7 +689,7 @@ object DataprocSubmitter {
           envMap: Map[String, Option[String]] = Map.empty,
           maybeConf: Option[Map[String, String]] = None,
           clusterName: String,
-          labels: Map[String, String] = Map.empty): Unit = {
+          labels: Map[String, String] = Map.empty): String = {
     // Get the job type
     val jobTypeValue = JobSubmitter
       .getArgValue(args, JobTypeArgKeyword)
@@ -721,13 +720,13 @@ object DataprocSubmitter {
           )
         } else {
           println(s"One running Flink job found for GroupBy name $groupByName. Job id = ${maybeJobId.get}")
-          return
+          return maybeJobId.get
         }
       } else if (StreamingDeploy.equals(streamingMode)) {
         if (args.contains(StreamingVersionCheckDeploy) && maybeJobId.isDefined) {
           if (compareZiplineVersionOfRunningFlinkJob(args, submitter, maybeJobId.get)) {
             println(s"Local Zipline version matches running Flink app's Zipline version. Exiting")
-            return
+            return maybeJobId.get
           } else {
             println(s"Local Zipline version does not match remote Zipline version. Proceeding with deployment.")
           }
@@ -768,6 +767,7 @@ object DataprocSubmitter {
     println("Dataproc submitter job id: " + jobId)
     println(
       s"Safe to exit. Follow the job status at: https://console.cloud.google.com/dataproc/jobs/${jobId}/configuration?region=${submitter.region}&project=${submitter.projectId}")
+    jobId
   }
 
   def main(args: Array[String]): Unit = {
@@ -792,7 +792,8 @@ object DataprocSubmitter {
       GcpBigtableInstanceIdEnvVar -> sys.env.get(GcpBigtableInstanceIdEnvVar),
       GcpProjectIdEnvVar -> sys.env.get(GcpProjectIdEnvVar)
     )
-    DataprocSubmitter.run(args = args, submitter = submitter, envMap = envMap, clusterName = submitterClusterName)
+    val jobId =
+      DataprocSubmitter.run(args = args, submitter = submitter, envMap = envMap, clusterName = submitterClusterName)
   }
 
 }

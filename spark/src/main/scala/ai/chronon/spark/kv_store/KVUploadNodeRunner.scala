@@ -10,6 +10,8 @@ import ai.chronon.planner.{Node, NodeContent}
 import org.rogach.scallop.ScallopConf
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
 class KVUploadNodeRunner(api: Api) extends NodeRunner {
@@ -40,8 +42,8 @@ class KVUploadNodeRunner(api: Api) extends NodeRunner {
     try {
       val fetchContext = createFetchContext()
       val metadataStore = new MetadataStore(fetchContext)
-      metadataStore.putJoinConf(join)
-
+      val putRequest = metadataStore.putJoinConf(join)
+      Await.result(putRequest, 1.hour)
       val duration = (System.currentTimeMillis() - startTime) / 1000
       logger.info(s"Successfully uploaded Join metadata for Join: $joinName in $duration seconds")
 

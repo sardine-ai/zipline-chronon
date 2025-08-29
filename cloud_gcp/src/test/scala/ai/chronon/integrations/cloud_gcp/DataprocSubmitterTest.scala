@@ -446,7 +446,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       List("job-id-1")
     )
 
-    DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    assertEquals(jobId, "job-id-1")
 
     verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
   }
@@ -475,7 +476,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       formattedZiplineVersion
     )
 
-    DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    assertEquals(jobId, "job-id-1")
 
     verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
     verify(submitter).formatDataprocLabel(localZiplineVersion)
@@ -567,8 +569,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     when(submitter.region).thenReturn("test-region")
     when(submitter.projectId).thenReturn("test-project")
+    when(submitter.submit(any(), any(), any(), any(), any(), any())).thenReturn("new-job-id")
 
-    DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    assertEquals(jobId, "new-job-id")
 
     verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
     verify(submitter).kill("job-id-1")
@@ -627,8 +631,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         manifestBucketPath = manifestBucketPath,
         flinkCheckpointUri = flinkCheckpointUri
       )).thenReturn(Some("gs://zl-warehouse/flink-state/1234/chk-12"))
+    when(submitter.submit(any(), any(), any(), any(), any(), any())).thenReturn("new-job-id")
 
-    DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    assertEquals(jobId, "new-job-id")
 
     verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
     verify(submitter).kill("job-id-1")
@@ -683,8 +689,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     when(submitter.region).thenReturn("test-region")
     when(submitter.projectId).thenReturn("test-project")
+    when(submitter.submit(any(), any(), any(), any(), any(), any())).thenReturn("new-job-id")
 
-    DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    assertEquals(jobId, "new-job-id")
 
     verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
     verify(submitter).kill("job-id-1")
