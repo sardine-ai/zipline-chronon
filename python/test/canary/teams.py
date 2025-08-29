@@ -1,4 +1,5 @@
 from gen_thrift.api.ttypes import Team
+
 from ai.chronon.repo.cluster import generate_dataproc_cluster_config
 from ai.chronon.repo.constants import RunMode
 from ai.chronon.types import ClusterConfigProperties, ConfigProperties, EnvironmentVariables

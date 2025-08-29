@@ -12,9 +12,9 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+from gen_thrift.api.ttypes import EventSource, Source
 from staging_queries.kaggle.outbrain import base_table
 
-from gen_thrift.api.ttypes import EventSource, Source
 from ai.chronon.group_by import (
     Accuracy,
     Aggregation,
@@ -22,7 +22,6 @@ from ai.chronon.group_by import (
     Operation,
 )
 from ai.chronon.query import Query, selects
-from ai.chronon.utils import get_staging_query_output_table_name
 
 """
 This GroupBy aggregates clicks by the ad_id primary key, and it is setup to resemble a streaming GroupBy.
@@ -43,9 +42,7 @@ the fields that we care about (`ad_id`, `clicked`, and `ts` columns), it will mi
 
 source = Source(
     events=EventSource(
-        table=get_staging_query_output_table_name(
-            base_table
-        ),  # Here we use the staging query output table because it has the necessary fields, but for a true streaming source we would likely use a log table
+        table=base_table.table,  # Here we use the staging query output table because it has the necessary fields, but for a true streaming source we would likely use a log table
         topic="some_topic",  # You would set your streaming source topic here
         query=Query(selects=selects("ad_id", "clicked"), time_column="ts"),
     )

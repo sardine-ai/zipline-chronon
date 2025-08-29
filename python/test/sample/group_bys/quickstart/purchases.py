@@ -13,6 +13,7 @@
 #     limitations under the License.
 
 from gen_thrift.api.ttypes import EventSource, Source
+
 from ai.chronon.group_by import Aggregation, GroupBy, Operation
 from ai.chronon.query import Query, selects
 

@@ -16,7 +16,6 @@ from staging_queries.sample_team import sample_staging_query
 
 from ai.chronon.query import Query, selects
 from ai.chronon.types import EntitySource, EventSource
-from ai.chronon.utils import get_staging_query_output_table_name
 
 
 def basic_event_source(table):
@@ -88,9 +87,7 @@ sq_v1_selects = selects(
 
 # Sample Entity Source derived from a staging query.
 staging_entities = EntitySource(
-    snapshot_table="sample_namespace.{}".format(
-        get_staging_query_output_table_name(sample_staging_query.v1)
-    ),
+    snapshot_table=sample_staging_query.v1.table,
     query=Query(
         start_partition="2021-03-01",
         selects=sq_v1_selects,

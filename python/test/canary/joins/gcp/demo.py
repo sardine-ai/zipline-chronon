@@ -4,7 +4,6 @@ from staging_queries.gcp import exports
 from ai.chronon.join import Join, JoinPart
 from ai.chronon.query import Query, selects
 from ai.chronon.source import EventSource
-from ai.chronon.utils import get_staging_query_output_table_name
 
 """
 This Join combines user activity events with:
@@ -20,7 +19,7 @@ Right parts:
 # Left side: Raw user activity events from PubSub export
 source = EventSource(
     # This will be the BigQuery table that receives the PubSub data
-    table=get_staging_query_output_table_name(exports.user_activities, True),
+    table=exports.user_activities.table,
     query=Query(
         selects=selects(
             user_id="user_id",

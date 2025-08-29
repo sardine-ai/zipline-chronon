@@ -24,6 +24,7 @@ from gen_thrift.api.ttypes import (
     Query,
     Source,
 )
+
 from ai.chronon.cli.compile.column_hashing import (
     _extract_source_semantic_info,
     compute_group_by_columns_hashes,

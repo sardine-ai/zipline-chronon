@@ -13,6 +13,7 @@
 #     limitations under the License.
 
 from gen_thrift.api.ttypes import EntitySource, Source
+
 from ai.chronon.group_by import (
     GroupBy,
 )

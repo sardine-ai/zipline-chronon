@@ -2,6 +2,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 from gen_thrift.api.ttypes import GroupBy, MetaData
+
 from ai.chronon.cli.compile import parse_configs
 from ai.chronon.cli.compile.compile_context import CompileContext
 from ai.chronon.repo.compile import __compile

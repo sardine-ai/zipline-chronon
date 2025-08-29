@@ -1,8 +1,6 @@
 """
 Tests for the parse_teams module.
 """
-from gen_thrift.common.ttypes import ConfigProperties
-
 #     Copyright (C) 2023 The Chronon Authors.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +15,8 @@ from gen_thrift.common.ttypes import ConfigProperties
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 from gen_thrift.api.ttypes import GroupBy, Join, JoinPart, LabelParts, MetaData, Team
+from gen_thrift.common.ttypes import ConfigProperties
+
 from ai.chronon.cli.compile import parse_teams
 from ai.chronon.repo.constants import RunMode
 from ai.chronon.types import EnvironmentVariables, ExecutionInfo

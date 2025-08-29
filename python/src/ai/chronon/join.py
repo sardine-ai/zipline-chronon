@@ -24,8 +24,25 @@ import gen_thrift.common.ttypes as common
 
 import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
+from ai.chronon.cli.compile import parse_teams
 
 logging.basicConfig(level=logging.INFO)
+
+
+def _get_output_table_name(join: api.Join, full_name: bool = False):
+    """generate output table name for join backfill job"""
+    # join sources could also be created inline alongside groupBy file
+    # so we specify fallback module as group_bys
+    if isinstance(join, api.Join):
+        utils.__set_name(join, api.Join, "joins")
+    # set output namespace
+    if not join.metaData.outputNamespace:
+        team_name = join.metaData.name.split(".")[0]
+        namespace = (
+            parse_teams.load_teams(utils.chronon_root_path, print=False).get(team_name).outputNamespace
+        )
+        join.metaData.outputNamespace = namespace
+    return utils.output_table_name(join, full_name=full_name)
 
 
 def JoinPart(
@@ -554,5 +571,8 @@ def Join(
         derivations=derivations,
         useLongNames=use_long_names,
     )
+
+    # Add the table property that calls the private function
+    join.__class__.table = property(lambda self: _get_output_table_name(self, full_name=True))
 
     return join

@@ -13,11 +13,11 @@
 #     limitations under the License.
 
 
-import pytest
-
 import gen_thrift.common.ttypes as common
-from ai.chronon import group_by, query
+import pytest
 from gen_thrift.api import ttypes
+
+from ai.chronon import group_by, query
 
 
 @pytest.fixture

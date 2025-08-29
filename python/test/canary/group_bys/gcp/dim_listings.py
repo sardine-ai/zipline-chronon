@@ -3,7 +3,6 @@ from staging_queries.gcp import exports
 from ai.chronon.group_by import GroupBy
 from ai.chronon.query import Query, selects
 from ai.chronon.source import EntitySource
-from ai.chronon.utils import get_staging_query_output_table_name
 
 """
 This GroupBy creates a simple passthrough transformation on the dim_listings table.
@@ -13,7 +12,7 @@ providing a clean interface to listing attributes for joins and feature engineer
 
 source = EntitySource(
     # BigQuery table written directly by the batch process
-    snapshot_table=get_staging_query_output_table_name(exports.dim_listings, True),
+    snapshot_table=exports.dim_listings.table,
     query=Query(
         selects=selects(
             listing_id="listing_id",

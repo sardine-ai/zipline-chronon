@@ -20,7 +20,7 @@ from ai.chronon import utils
 from ai.chronon.group_by import Aggregation, GroupBy, Operation
 
 v1 = GroupBy(
-    sources=test_sources.basic_event_source(utils.group_by_output_table_name(require_backfill, True)),
+    sources=test_sources.basic_event_source(require_backfill.table),
     keys=["s2CellId", "place_id"],
     aggregations=[
         Aggregation(input_column="impressed_unique_count_1d_sum", operation=Operation.LAST),

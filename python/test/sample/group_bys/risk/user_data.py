@@ -1,4 +1,5 @@
 from gen_thrift.api.ttypes import EntitySource, Source
+
 from ai.chronon.group_by import GroupBy
 from ai.chronon.query import Query, selects
 

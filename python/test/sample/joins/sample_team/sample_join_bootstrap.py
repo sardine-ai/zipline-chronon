@@ -24,7 +24,6 @@ from group_bys.sample_team import (
 from sources import test_sources
 
 from ai.chronon.types import BootstrapPart, Join, JoinPart, Query, selects
-from ai.chronon.utils import get_join_output_table_name
 
 v1_join_parts = [
     JoinPart(
@@ -74,7 +73,7 @@ v2 = Join(
     bootstrap_from_log=True,
     bootstrap_parts=[
         BootstrapPart(
-            table=get_join_output_table_name(v1, full_name=True),
+            table=v1.table,
             query=Query(end_partition="2023-01-01"),
         )
     ],

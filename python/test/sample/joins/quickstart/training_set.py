@@ -12,11 +12,11 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+from gen_thrift.api.ttypes import EventSource, Source
 from group_bys.quickstart.purchases import v1 as purchases_v1
 from group_bys.quickstart.returns import v1 as returns_v1
 from group_bys.quickstart.users import v1 as users
 
-from gen_thrift.api.ttypes import EventSource, Source
 from ai.chronon.join import Join, JoinPart
 from ai.chronon.query import Query, selects
 

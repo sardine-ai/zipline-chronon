@@ -1,6 +1,6 @@
+from gen_thrift.api.ttypes import EventSource, Source
 from group_bys.gcp import item_event_canary, purchases
 
-from gen_thrift.api.ttypes import EventSource, Source
 from ai.chronon.join import Join, JoinPart
 from ai.chronon.query import Query, selects
 

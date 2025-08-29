@@ -1,4 +1,5 @@
 from gen_thrift.api.ttypes import DataKind, EventSource, Source, TDataType
+
 from ai.chronon.model import Model, ModelType
 from ai.chronon.query import Query, selects
 

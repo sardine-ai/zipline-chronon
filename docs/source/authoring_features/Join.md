@@ -292,7 +292,7 @@ v1 = Join(
   # driver table can be either output of an staging_query or custom hive table
   left=HiveEventSource(
     namespace="db_name",
-    table=get_staging_query_output_table_name(driver_table.v1),
+    table=driver_table.v1.table,
     query=Query(...)
   )
   # all group_bys for the model for both backfill & serving
@@ -365,7 +365,7 @@ v1 = Join(
   # it's important to use the SAME staging query before and after.
   left=HiveEventSource(
     namespace="db_name",
-    table=get_staging_query_output_table_name(driver_table.v1),
+    table=driver_table.v1.table,
     query=Query(...)
   ),
   # all group_bys for the model for both backfill & serving
@@ -395,7 +395,7 @@ v2 = Join(
   # if you must use a different driver table
   left=HiveEventSource(
     namespace="db_name",
-    table=get_staging_query_output_table_name(driver_table.v2),
+    table=driver_table.v2.table,
     query=Query(...)
   ),
   # carry over all other parameters from v1 join
@@ -417,7 +417,7 @@ right_parts_production = [...]
 right_parts_experimental = [...]
 driver_table = HiveEventSource(
   namespace="db_name",
-  table=get_staging_query_output_table_name(driver_table.v1),
+  table=driver_table.v1.table,
   query=Query(wheres=downsampling_filters)
 )
 # config for existing model in production
@@ -433,7 +433,7 @@ v2 = Join(
   ...
   # include production join as a bootstrap_part
   bootstrap_parts=[
-    BootstrapPart(table=get_join_output_table_name(v1, full_name=True))
+    BootstrapPart(table=v1.table)
   ]
 )
 ```
@@ -463,7 +463,7 @@ v2 = StagingQuery(
 right_parts = [...]
 driver_table = HiveEventSource(
   namespace="db_name",
-  table=get_staging_query_output_table_name(driver_table.v1),
+  table=driver_table.v1.table,
   query=Query(wheres=downsampling_filters)
 )
 # config for existing model in production
@@ -479,7 +479,7 @@ v2 = Join(
   ...
   # include production join as a bootstrap_part
   bootstrap_parts=[
-    BootstrapPart(table=get_join_output_table_name(v1, full_name=True))
+    BootstrapPart(table=v1.table)
   ]
 )
 ```
@@ -494,12 +494,12 @@ Goal:
 v1 = Join(...)
 # ml_models/zipline/joins/team_name_b/model_b.py
 from joins.team_name_a import model_a
-from ai.chronon.utils import get_join_output_table_name
+
 v2 = Join(
 ...,
 bootstrap_parts=[
 	BootstrapPart(
-        table=get_join_output_table_name(model_a.v1, full_name=True),
+        table=model_a.v1.table,
         query=Query(
             # select the list of features to reuse
             selects=select(
@@ -598,7 +598,7 @@ v1 = Join(
   # driver table with union history
   left=HiveEventSource(
     namespace="db_name",
-    table=get_staging_query_output_table_name(driver_table.v1),
+    table=driver_table.v1.table,
     query=Query(...)
   ),
   right_parts=...
@@ -623,7 +623,7 @@ Goal
 backfill_2023_05_01 = Join(
    left=HiveEventSource(
       namespace="db_name",
-      table=get_staging_query_output_table_name(driver_table.v1),
+      table=driver_table.v1.table,
       query=Query(
          start_partition="2023-05-01",
          end_partition="2023-05-01"
@@ -636,8 +636,7 @@ backfill_2023_05_01 = Join(
 v1 = Join(
    ...,
    bootstrap_parts=[
-      BootstrapPart(table=get_join_output_table_name(
-         backfill_2023_05_01, full_name=True))
+      BootstrapPart(table=backfill_2023_05_01.table)
    ]
 )
 ```

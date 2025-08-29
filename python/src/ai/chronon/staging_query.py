@@ -7,7 +7,14 @@ import gen_thrift.api.ttypes as ttypes
 import gen_thrift.common.ttypes as common
 
 import ai.chronon.airflow_helpers as airflow_helpers
+from ai.chronon import utils
 from ai.chronon.constants import AIRFLOW_DEPENDENCIES_KEY
+
+
+def _get_output_table_name(staging_query: ttypes.StagingQuery, full_name: bool = False):
+    """generate output table name for staging query job"""
+    utils.__set_name(staging_query, ttypes.StagingQuery, "staging_queries")
+    return utils.output_table_name(staging_query, full_name=full_name)
 
 
 # Wrapper for EngineType
@@ -208,5 +215,8 @@ def StagingQuery(
         tableDependencies=thrift_deps,
         recomputeDays=recompute_days,
     )
+
+    # Add the table property that calls the private function
+    staging_query.__class__.table = property(lambda self: _get_output_table_name(self, full_name=True))
 
     return staging_query

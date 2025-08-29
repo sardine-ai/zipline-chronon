@@ -26,6 +26,16 @@ import ai.chronon.windows as window_utils
 
 OperationType = int  # type(zthrift.Operation.FIRST)
 
+
+def _get_output_table_name(obj, full_name: bool = False):
+    """
+    Group by backfill output table name
+    To be synced with api.Extensions.scala
+    """
+    if not obj.metaData.name:
+        utils.__set_name(obj, ttypes.GroupBy, "group_bys")
+    return utils.output_table_name(obj, full_name)
+
 #  The GroupBy's default online/production status is None and it will inherit
 # online/production status from the Joins it is included.
 # If it is included in multiple joins, it is considered online/production
@@ -674,5 +684,8 @@ def GroupBy(
         derivations=derivations,
     )
     validate_group_by(group_by)
+
+    # Add the table property that calls the private function
+    group_by.__class__.table = property(lambda self: _get_output_table_name(self, full_name=True))
 
     return group_by

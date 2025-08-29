@@ -1,9 +1,8 @@
+from gen_thrift.api.ttypes import EventSource, Source
 from staging_queries.gcp import exports
 
-from gen_thrift.api.ttypes import EventSource, Source
 from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
 from ai.chronon.query import Query, selects
-from ai.chronon.utils import get_staging_query_output_table_name
 
 """
 This GroupBy aggregates user activity metrics from the user-activities-v0 topic.
@@ -14,7 +13,7 @@ with last_k, sum, and average aggregations over multiple time windows.
 source = Source(
     events=EventSource(
         # This will be the BigQuery table that receives the PubSub data
-        table=get_staging_query_output_table_name(exports.user_activities, True),
+        table=exports.user_activities.table,
         topic="pubsub://user-activities-v2/project=canary-443022/subscription=user-activities-v2-sub/serde=pubsub_schema/schemaId=user-activities",
         query=Query(
             selects=selects(

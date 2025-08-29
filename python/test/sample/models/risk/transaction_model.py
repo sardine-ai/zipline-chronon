@@ -1,6 +1,6 @@
+from gen_thrift.api.ttypes import DataKind, JoinSource, Source, TDataType
 from joins.risk import user_transactions
 
-from gen_thrift.api.ttypes import DataKind, JoinSource, Source, TDataType
 from ai.chronon.model import Model, ModelType
 from ai.chronon.query import Query, selects
 

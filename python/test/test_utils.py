@@ -14,9 +14,9 @@
 
 import os
 
+import gen_thrift.api.ttypes as api
 import pytest
 
-import gen_thrift.api.ttypes as api
 from ai.chronon import utils
 from ai.chronon.repo.serializer import file2thrift, json2thrift
 
@@ -301,7 +301,8 @@ def test_group_by_table_names(repo, materialized_group_by, table_name):
         os.path.join(repo, "production/group_bys/sample_team", materialized_group_by),
         api.GroupBy,
     )
-    assert utils.group_by_output_table_name(gb, True) == table_name
+    from ai.chronon.group_by import _get_output_table_name
+    assert _get_output_table_name(gb, True) == table_name
 
 
 @pytest.mark.parametrize(

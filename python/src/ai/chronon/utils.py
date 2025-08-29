@@ -26,7 +26,6 @@ from typing import List, Optional, Union, cast
 import gen_thrift.api.ttypes as api
 
 import ai.chronon.repo.extract_objects as eo
-from ai.chronon.cli.compile import parse_teams
 from ai.chronon.repo import FOLDER_NAME_TO_CLASS
 
 ChrononJobTypes = Union[api.GroupBy, api.Join, api.StagingQuery]
@@ -149,7 +148,8 @@ def get_table(source: api.Source) -> str:
     elif source.events:
         table = source.events.table
     else:
-        table = get_join_output_table_name(source.joinSource.join, True)
+        from ai.chronon.join import _get_output_table_name
+        table = _get_output_table_name(source.joinSource.join, True)
     return table.split("/")[0]
 
 
@@ -288,24 +288,12 @@ def join_part_output_table_name(join, jp, full_name: bool = False):
     )
 
 
-def group_by_output_table_name(obj, full_name: bool = False):
-    """
-    Group by backfill output table name
-    To be synced with api.Extensions.scala
-    """
-    if not obj.metaData.name:
-        __set_name(obj, api.GroupBy, "group_bys")
-    return output_table_name(obj, full_name)
 
 
 def log_table_name(obj, full_name: bool = False):
     return output_table_name(obj, full_name=full_name) + "_logged"
 
 
-def get_staging_query_output_table_name(staging_query: api.StagingQuery, full_name: bool = False):
-    """generate output table name for staging query job"""
-    __set_name(staging_query, api.StagingQuery, "staging_queries")
-    return output_table_name(staging_query, full_name=full_name)
 
 
 def get_team_conf_from_py(team, key):
@@ -313,20 +301,6 @@ def get_team_conf_from_py(team, key):
     return getattr(team_module, key)
 
 
-def get_join_output_table_name(join: api.Join, full_name: bool = False):
-    """generate output table name for join backfill job"""
-    # join sources could also be created inline alongside groupBy file
-    # so we specify fallback module as group_bys
-    if isinstance(join, api.Join):
-        __set_name(join, api.Join, "joins")
-    # set output namespace
-    if not join.metaData.outputNamespace:
-        team_name = join.metaData.name.split(".")[0]
-        namespace = (
-            parse_teams.load_teams(chronon_root_path, print=False).get(team_name).outputNamespace
-        )
-        join.metaData.outputNamespace = namespace
-    return output_table_name(join, full_name=full_name)
 
 
 def wait_for_simple_schema(table, lag, start, end):
