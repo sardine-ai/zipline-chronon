@@ -27,6 +27,7 @@ object `package` extends build.BaseModule {
     mvn"io.opentelemetry:opentelemetry-sdk:1.49.0",
     mvn"io.opentelemetry:opentelemetry-exporter-prometheus:1.49.0-alpha",
     mvn"io.opentelemetry:opentelemetry-exporter-otlp:1.49.0",
+    mvn"org.apache.spark::spark-sql-api:${build.Constants.sparkVersion}",
     // Additional from Bazel
     mvn"net.jodah:typetools:0.6.3",
     mvn"com.datadoghq:java-dogstatsd-client:4.4.0"

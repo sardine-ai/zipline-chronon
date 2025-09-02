@@ -78,6 +78,8 @@ object Constants {
     mvn"org.apache.flink:flink-clients:$flinkVersion",
   )
   
+  val protobufVersion = "3.25.5"
+  
   // Common JVM arguments for all test modules
   def commonTestForkArgs = Seq(
     "--add-opens=java.base/java.lang=ALL-UNNAMED",
