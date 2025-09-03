@@ -10,6 +10,7 @@ from ai.chronon.repo import hub_uploader, utils
 from ai.chronon.repo.constants import RunMode
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
+ALLOWED_DATE_FORMATS = ["%Y-%m-%d"]
 
 @click.group()
 def hub():
@@ -24,12 +25,13 @@ def common_options(func):
 
 
 def ds_option(func):
-    return click.option("--ds", help="the end partition to backfill the data")(func)
+    return click.option("--ds", help="the end partition to backfill the data", type=click.DateTime(formats=ALLOWED_DATE_FORMATS))(func)
 
 
 def start_ds_option(func):
     return click.option(
         "--start-ds",
+        type=click.DateTime(formats=ALLOWED_DATE_FORMATS),
         help="override the original start partition for a range backfill. "
         "It only supports staging query, group by backfill and join jobs. "
         "It could leave holes in your final output table due to the override date range.",
@@ -37,7 +39,7 @@ def start_ds_option(func):
 
 
 def end_ds_option(func):
-    return click.option("--end-ds", help="the end ds for a range backfill")(func)
+    return click.option("--end-ds", help="the end ds for a range backfill", type=click.DateTime(formats=ALLOWED_DATE_FORMATS))(func)
 
 
 def force_recompute_option(func):
