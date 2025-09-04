@@ -3,14 +3,8 @@ FROM debian:trixie-slim
 # Install Amazon Corretto 17 and curl for healthcheck
 RUN apt-get update && \
     apt-get install -y curl gnupg ca-certificates procps && \
-    export GNUPGHOME="$(mktemp -d)" && \
-    curl -fL https://apt.corretto.aws/corretto.key -o corretto.key && \
-    echo '5fdaed0a262b975776b1d5c0170d2e86b1be1e98b27ef97114b04ec9ac7f011d *corretto.key' | sha256sum -c - && \
-    gpg --batch --import corretto.key && \
-    rm corretto.key && \
-    gpg --batch --export '6DC3636DAE534049C8B94623A122542AB04F24E3' > /usr/share/keyrings/corretto.gpg && \
-    unset GNUPGHOME && \
-    echo "deb [signed-by=/usr/share/keyrings/corretto.gpg] https://apt.corretto.aws stable main" > /etc/apt/sources.list.d/corretto.list && \
+    curl -fsSL https://apt.corretto.aws/corretto.key | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" > /etc/apt/sources.list.d/corretto.list && \
     apt-get update && \
     apt-get install -y java-17-amazon-corretto-jdk && \
     apt-get remove --purge --autoremove -y gnupg && \
