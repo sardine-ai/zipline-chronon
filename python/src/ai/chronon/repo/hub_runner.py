@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import date, timedelta
 
 import click
 from attr import dataclass
@@ -39,7 +40,7 @@ def start_ds_option(func):
 
 
 def end_ds_option(func):
-    return click.option("--end-ds", help="the end ds for a range backfill", type=click.DateTime(formats=ALLOWED_DATE_FORMATS))(func)
+    return click.option("--end-ds", help="the end ds for a range backfill", type=click.DateTime(formats=ALLOWED_DATE_FORMATS), default=str(date.today() - timedelta(days=2)))(func)
 
 
 def force_recompute_option(func):
