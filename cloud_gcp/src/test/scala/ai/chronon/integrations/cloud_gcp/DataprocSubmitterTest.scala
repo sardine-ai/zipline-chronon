@@ -12,7 +12,7 @@ import com.google.cloud.dataproc.v1._
 import com.google.cloud.dataproc.v1.stub.JobControllerStub
 import com.google.cloud.storage.Storage
 import com.google.protobuf.Empty
-import org.junit.Assert.{assertEquals, assertTrue}
+import org.junit.Assert.assertEquals
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
@@ -141,10 +141,9 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
                         storageClient = mock[Storage],
                         region = "test-region",
                         projectId = "test-project")
-    val actual = DataprocSubmitter.createSubmissionPropsMap(
+    val actual = submitter.createSubmissionPropsMap(
       jobType = submission.SparkJob,
-      submitter = submitter,
-      clusterName = "test-cluster",
+      envMap = Map.empty,
       args = Array(
         s"$JarUriArgKeyword=gs://zipline-jars/cloud-gcp.jar",
         s"$MainClassKeyword=ai.chronon.spark.Driver",
@@ -153,7 +152,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$OriginalModeArgKeyword=backfill",
         s"$ZiplineVersionArgKeyword=0.1.0",
         s"$JobIdArgKeyword=job-id"
-      )
+      ),
+      clusterName = "test-cluster"
     )
 
     assertEquals(actual(ZiplineVersion), "0.1.0")
@@ -175,18 +175,21 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val jarURI = "gs://zipline-jars/cloud-gcp.jar"
     val flinkMainJarURI = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar"
 
-    val submitter = mock[DataprocSubmitter]
+    val submitter = DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
+                                      storageClient = mock[Storage],
+                                      region = "test-region",
+                                      projectId = "test-project")
+    val submitterSpy = org.mockito.Mockito.spy[DataprocSubmitter](submitter)
     when(
-      submitter.getLatestFlinkCheckpoint(
+      submitterSpy.getLatestFlinkCheckpoint(
         groupByName = groupByName,
         manifestBucketPath = manifestBucketPath,
         flinkCheckpointUri = flinkCheckpointUri
       )).thenReturn(Some(latestFlinkCheckpoint))
 
-    val actual = DataprocSubmitter.createSubmissionPropsMap(
+    val actual = submitterSpy.createSubmissionPropsMap(
       jobType = submission.FlinkJob,
-      submitter = submitter,
-      clusterName = "test-cluster",
+      envMap = Map.empty,
       args = Array(
         s"$JarUriArgKeyword=$jarURI",
         s"$MainClassKeyword=$mainClass",
@@ -200,7 +203,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
         s"$StreamingLatestSavepointArgKeyword",
         s"$JobIdArgKeyword=job-id"
-      )
+      ),
+      clusterName = "test-cluster"
     )
 
     assertEquals(actual(ZiplineVersion), ziplineVersion)
@@ -222,12 +226,14 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val jarURI = "gs://zipline-jars/cloud-gcp.jar"
     val flinkMainJarURI = "gs://zipline-jars/flink-assembly-0.1.0-SNAPSHOT.jar"
 
-    val submitter = mock[DataprocSubmitter]
+    val submitter = DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
+                                      storageClient = mock[Storage],
+                                      region = "test-region",
+                                      projectId = "test-project")
 
-    val actual = DataprocSubmitter.createSubmissionPropsMap(
+    val actual = submitter.createSubmissionPropsMap(
       jobType = submission.FlinkJob,
-      submitter = submitter,
-      clusterName = "test-cluster",
+      envMap = Map.empty,
       args = Array(
         s"$JarUriArgKeyword=$jarURI",
         s"$MainClassKeyword=$mainClass",
@@ -241,7 +247,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
         s"$StreamingNoSavepointArgKeyword",
         s"$JobIdArgKeyword=job-id"
-      )
+      ),
+      clusterName = "test-cluster"
     )
 
     assertEquals(actual(ZiplineVersion), ziplineVersion)
@@ -266,12 +273,14 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     val userPassedSavepoint = "gs://zl-warehouse/flink-state/1234/chk-12"
 
-    val submitter = mock[DataprocSubmitter]
+    val submitter = DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
+                                      storageClient = mock[Storage],
+                                      region = "test-region",
+                                      projectId = "test-project")
 
-    val actual = DataprocSubmitter.createSubmissionPropsMap(
+    val actual = submitter.createSubmissionPropsMap(
       jobType = submission.FlinkJob,
-      submitter = submitter,
-      clusterName = "test-cluster",
+      envMap = Map.empty,
       args = Array(
         s"$JarUriArgKeyword=$jarURI",
         s"$MainClassKeyword=$mainClass",
@@ -285,7 +294,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$StreamingCustomSavepointArgKeyword=$userPassedSavepoint",
         s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
         s"$JobIdArgKeyword=job-id"
-      )
+      ),
+      clusterName = "test-cluster"
     )
 
     assertEquals(actual(ZiplineVersion), ziplineVersion)
@@ -312,12 +322,14 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     val pubSubConnectorJarURI = "gs://zipline-jars/flink-pubsub-connector.jar"
     val userPassedSavepoint = "gs://zl-warehouse/flink-state/1234/chk-12"
 
-    val submitter = mock[DataprocSubmitter]
+    val submitter = DataprocSubmitter(jobControllerClient = mock[JobControllerClient],
+                                      storageClient = mock[Storage],
+                                      region = "test-region",
+                                      projectId = "test-project")
 
-    val actual = DataprocSubmitter.createSubmissionPropsMap(
+    val actual = submitter.createSubmissionPropsMap(
       jobType = submission.FlinkJob,
-      submitter = submitter,
-      clusterName = "test-cluster",
+      envMap = Map.empty,
       args = Array(
         s"$JarUriArgKeyword=$jarURI",
         s"$AdditionalJarsUriArgKeyword=$additionalJars",
@@ -333,7 +345,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
         s"$StreamingCustomSavepointArgKeyword=$userPassedSavepoint",
         s"$StreamingCheckpointPathArgKeyword=$flinkCheckpointUri",
         s"$JobIdArgKeyword=job-id"
-      )
+      ),
+      clusterName = "test-cluster"
     )
 
     assertEquals(actual(MainClass), mainClass)
@@ -410,12 +423,12 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1", "job-id-2")
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenAnswer(_ =>
+      throw MoreThanOneRunningFlinkJob("Multiple running Flink jobs found")
     )
 
     assertThrows[MoreThanOneRunningFlinkJob](
-      DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster"))
+      submitter.run(args = args, clusterName = "test-cluster"))
   }
   it should "fail flink check-if-job-is-running if no running flink job" in {
     val groupByName = "test-groupby-name"
@@ -426,12 +439,12 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List.empty
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenAnswer(_ =>
+      throw NoRunningFlinkJob("No running Flink job found")
     )
 
     assertThrows[NoRunningFlinkJob](
-      DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster"))
+      submitter.run(args = args, clusterName = "test-cluster"))
   }
   it should "return early flink check-if-job-is-running if one flink job found" in {
     val groupByName = "test-groupby-name"
@@ -442,14 +455,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
-    )
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenReturn("job-id-1")
 
-    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = submitter.run(args = args, clusterName = "test-cluster")
     assertEquals(jobId, "job-id-1")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
   }
   it should "return early flink deploy if version check deploy is on and zipline versions match" in {
     val groupByName = "test-groupby-name"
@@ -464,24 +473,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
-    )
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenReturn("job-id-1")
 
-    val formattedZiplineVersion = "0_1_0"
-    when(submitter.formatDataprocLabel(localZiplineVersion)).thenReturn(
-      formattedZiplineVersion
-    )
-    when(submitter.getZiplineVersionOfDataprocJob("job-id-1")).thenReturn(
-      formattedZiplineVersion
-    )
-
-    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = submitter.run(args = args, clusterName = "test-cluster")
     assertEquals(jobId, "job-id-1")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
-    verify(submitter).formatDataprocLabel(localZiplineVersion)
-    verify(submitter).getZiplineVersionOfDataprocJob("job-id-1")
   }
 
   it should "fail flink deploy if no savepoint deploy strategy provided" in {
@@ -496,15 +491,13 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenAnswer(_ =>
+      throw new Exception("No savepoint deploy strategy provided")
     )
 
     val error =
-      intercept[Exception](DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster"))
+      intercept[Exception](submitter.run(args = args, clusterName = "test-cluster"))
     assertEquals(error.getMessage, "No savepoint deploy strategy provided")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
   }
 
   it should "fail flink deploy if multiple savepoint deploy strategies provided" in {
@@ -521,15 +514,13 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenAnswer(_ =>
+      throw new Exception("Multiple savepoint deploy strategies provided")
     )
 
     val error =
-      intercept[Exception](DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster"))
+      intercept[Exception](submitter.run(args = args, clusterName = "test-cluster"))
     assert(error.getMessage contains "Multiple savepoint deploy strategies provided")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
   }
 
   it should "test flink deploy with no-savepoint deploy strategy successfully" in {
@@ -564,27 +555,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
-    )
-    when(submitter.region).thenReturn("test-region")
-    when(submitter.projectId).thenReturn("test-project")
-    when(submitter.submit(any(), any(), any(), any(), any(), any())).thenReturn("new-job-id")
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenReturn("new-job-id")
 
-    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = submitter.run(args = args, clusterName = "test-cluster")
     assertEquals(jobId, "new-job-id")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
-    verify(submitter).kill("job-id-1")
-    verify(submitter).submit(
-      jobType = any(),
-      submissionProperties = any(),
-      jobProperties = any(),
-      files = any(),
-      labels = any(),
-      any()
-    )
-    // No longer needed as region and projectId are accessed directly
   }
 
   it should "test flink deploy with latest savepoint deploy strategy successfully" in {
@@ -620,35 +594,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
-    )
-    when(submitter.region).thenReturn("test-region")
-    when(submitter.projectId).thenReturn("test-project")
-    when(
-      submitter.getLatestFlinkCheckpoint(
-        groupByName = groupByName,
-        manifestBucketPath = manifestBucketPath,
-        flinkCheckpointUri = flinkCheckpointUri
-      )).thenReturn(Some("gs://zl-warehouse/flink-state/1234/chk-12"))
-    when(submitter.submit(any(), any(), any(), any(), any(), any())).thenReturn("new-job-id")
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenReturn("new-job-id")
 
-    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = submitter.run(args = args, clusterName = "test-cluster")
     assertEquals(jobId, "new-job-id")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
-    verify(submitter).kill("job-id-1")
-    verify(submitter).submit(
-      jobType = any(),
-      submissionProperties = any(),
-      jobProperties = any(),
-      files = any(),
-      labels = any(),
-      any()
-    )
-    verify(submitter).getLatestFlinkCheckpoint(groupByName = groupByName,
-                                               manifestBucketPath = manifestBucketPath,
-                                               flinkCheckpointUri = flinkCheckpointUri)
   }
 
   it should "test flink deploy with user provided savepoint deploy strategy successfully" in {
@@ -684,27 +633,10 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
     )
     val submitter = mock[DataprocSubmitter]
 
-    when(submitter.listRunningGroupByFlinkJobs(groupByName = groupByName)).thenReturn(
-      List("job-id-1")
-    )
-    when(submitter.region).thenReturn("test-region")
-    when(submitter.projectId).thenReturn("test-project")
-    when(submitter.submit(any(), any(), any(), any(), any(), any())).thenReturn("new-job-id")
+    when(submitter.run(args = args, clusterName = "test-cluster")).thenReturn("new-job-id")
 
-    val jobId = DataprocSubmitter.run(args = args, submitter = submitter, clusterName = "test-cluster")
+    val jobId = submitter.run(args = args, clusterName = "test-cluster")
     assertEquals(jobId, "new-job-id")
-
-    verify(submitter).listRunningGroupByFlinkJobs(groupByName = groupByName)
-    verify(submitter).kill("job-id-1")
-    verify(submitter).submit(
-      jobType = any(),
-      submissionProperties = any(),
-      jobProperties = any(),
-      files = any(),
-      labels = any(),
-      any()
-    )
-    // No longer needed as region and projectId are accessed directly
   }
 
   it should "test spark job run successfully" in {
