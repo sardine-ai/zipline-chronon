@@ -12,7 +12,11 @@ object `package` extends build.BaseModule {
       mvn"io.vertx:vertx-web:4.5.10",
       mvn"io.micrometer:micrometer-registry-otlp:1.13.6".exclude("com.google.protobuf" -> "protobuf-java"),
       mvn"io.micrometer:micrometer-registry-prometheus:1.10.13".exclude("com.google.protobuf" -> "protobuf-java"),
-      mvn"io.netty:netty-all:4.1.111.Final",
+      mvn"io.netty:netty-all:4.1.115.Final",
+      // Explicitly add Netty versions that fix CVEs
+      mvn"io.netty:netty-handler:4.1.118.Final",
+      mvn"io.netty:netty-common:4.1.118.Final",
+      mvn"io.netty:netty-codec-http2:4.1.124.Final",
       mvn"org.scala-lang:scala-reflect:${scalaVersion()}",
       mvn"org.scala-lang:scala-compiler:${scalaVersion()}",
       // add the version of protobuf that is compatible with our cloud deps 
@@ -24,7 +28,9 @@ object `package` extends build.BaseModule {
   )
   
   def mainClass = Some("ai.chronon.service.ChrononServiceLauncher")
-  
+
+  def prependShellScript = ""
+
   object test extends build.BaseJUnit4TestModule {
     def moduleDeps = Seq(build.service)
     def mvnDeps = Seq(

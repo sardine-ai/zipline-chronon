@@ -16,7 +16,6 @@ object `package` extends build.BaseModule {
     mvn"software.amazon.awssdk:auth:2.30.13",
     mvn"software.amazon.awssdk:url-connection-client:2.30.13",
     mvn"software.amazon.awssdk:identity-spi:2.30.13",
-    mvn"com.amazonaws:DynamoDBLocal:1.25.1",
     mvn"org.apache.hudi::hudi-spark3.5-bundle:1.0.0",
     mvn"io.circe:circe-core_2.12:0.14.9",
     mvn"io.circe:circe-generic_2.12:0.14.9",
@@ -26,6 +25,10 @@ object `package` extends build.BaseModule {
   
   object test extends build.BaseTestModule {
     def moduleDeps = Seq(build.cloud_aws, build.spark.test)
+    def mvnDeps = Seq(
+      mvn"org.testcontainers:testcontainers:1.19.3",
+      mvn"org.testcontainers:junit-jupiter:1.19.3"
+    )
     override def testFramework = "org.scalatest.tools.Framework"
     def forkArgs = build.Constants.commonTestForkArgs ++ Seq(
       "-Dspark.sql.adaptive.enabled=false",

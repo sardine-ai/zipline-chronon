@@ -1,6 +1,26 @@
-# Build from a base image with Java 17. We use a Debian based image as we have seen some netty related .so
-# failures on other distros like Alpine.
-FROM public.ecr.aws/docker/library/eclipse-temurin:17-jdk
+FROM debian:trixie-slim
+
+# Install Amazon Corretto 17 and curl for healthcheck
+RUN apt-get update && \
+    apt-get install -y curl gnupg ca-certificates procps && \
+    export GNUPGHOME="$(mktemp -d)" && \
+    curl -fL https://apt.corretto.aws/corretto.key -o corretto.key && \
+    echo '5fdaed0a262b975776b1d5c0170d2e86b1be1e98b27ef97114b04ec9ac7f011d *corretto.key' | sha256sum -c - && \
+    gpg --batch --import corretto.key && \
+    rm corretto.key && \
+    gpg --batch --export '6DC3636DAE534049C8B94623A122542AB04F24E3' > /usr/share/keyrings/corretto.gpg && \
+    unset GNUPGHOME && \
+    echo "deb [signed-by=/usr/share/keyrings/corretto.gpg] https://apt.corretto.aws stable main" > /etc/apt/sources.list.d/corretto.list && \
+    apt-get update && \
+    apt-get install -y java-17-amazon-corretto-jdk && \
+    apt-get remove --purge --autoremove -y gnupg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set Java environment and encoding
+ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+ENV PATH=$PATH:$JAVA_HOME/bin
+ENV LANG=C.UTF-8
 
 # We expect jars to be copied to the build_output directory as docker can't read from bazel-bin as that's a symlink
 # https://stackoverflow.com/questions/31881904/docker-follow-symlink-outside-context
@@ -11,17 +31,11 @@ ENV FETCHER_LAUNCH_SCRIPT=docker/fetcher/start.sh
 ENV GCP_ONLINE_CLASS=ai.chronon.integrations.cloud_gcp.GcpApiImpl
 ENV AWS_ONLINE_CLASS=ai.chronon.integrations.aws.AwsApiImpl
 
-# Update package lists and install necessary tools
-RUN apt-get update && apt-get install -y \
-    curl \
-    vim \
-    wget \
-    procps
-
 # Install Google Cloud Profiler
 RUN mkdir -p /opt/cprof && \
-  wget -q -O- https://storage.googleapis.com/cloud-profiler/java/latest/profiler_java_agent.tar.gz \
+  curl -s https://storage.googleapis.com/cloud-profiler/java/latest/profiler_java_agent.tar.gz \
   | tar xzv -C /opt/cprof
+
 
 WORKDIR /srv/zipline
 
@@ -30,7 +44,8 @@ ENV CLOUD_GCP_JAR=${CLOUD_GCP_JAR:-"/srv/zipline/cloud_gcp/cloud_gcp.jar"}
 ENV FETCHER_JAR=${FETCHER_JAR:-"/srv/zipline/fetcher/service.jar"}
 ENV LOG_PATH=${LOG_PATH:-"/srv/zipline/fetcher/logs"}
 
-COPY $CLOUD_AWS_JAR_PATH "$CLOUD_AWS_JAR"
+# Skip aws jar till we fix cves
+#COPY $CLOUD_AWS_JAR_PATH "$CLOUD_AWS_JAR"
 COPY $CLOUD_GCP_JAR_PATH "$CLOUD_GCP_JAR"
 COPY $FETCHER_SVC_JAR_PATH "$FETCHER_JAR"
 COPY $FETCHER_LAUNCH_SCRIPT /srv/zipline/fetcher/start.sh

@@ -1,7 +1,7 @@
 from group_bys.gcp import dim_listings, dim_merchants, user_activities
 from staging_queries.gcp import exports
 
-from ai.chronon.join import Join, JoinPart
+from ai.chronon.join import Derivation, Join, JoinPart
 from ai.chronon.query import Query, selects
 from ai.chronon.source import EventSource
 
@@ -48,6 +48,37 @@ v1 = Join(
             group_by=dim_merchants.v1,
             prefix="merchant_"
         ),
+    ],
+    version=0,
+    online=True,
+    output_namespace="data",
+    step_days=2,
+)
+
+# Example join with some derivations
+derivations_v1 = Join(
+    left=source,
+    row_ids=["event_id"], # TODO -- kill this once the SPJ API change goes through
+    right_parts=[
+        # Listing dimension attributes (point-in-time lookup)
+        JoinPart(
+            group_by=dim_listings.v1,
+        ),
+    ],
+    derivations=[
+        Derivation(
+            name="is_listing_heavy",
+            expression="IF(listing_id_weight_grams > 1000, 1, 0)"
+        ),
+        # with a built-in Spark fn
+        Derivation(
+            name="is_item_handmade",
+            expression="array_contains(split(listing_id_tags, ','), 'handmade')"
+        ),
+        Derivation(
+            name="*",
+            expression="*"
+        )
     ],
     version=0,
     online=True,
