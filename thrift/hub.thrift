@@ -3,7 +3,6 @@ namespace java ai.chronon.hub
 
 include "common.thrift"
 include "api.thrift"
-include "orchestration.thrift"
 
 
 /*
