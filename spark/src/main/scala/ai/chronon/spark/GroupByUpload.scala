@@ -291,7 +291,7 @@ object GroupByUpload {
       context.gauge(Metrics.Name.ValueBytes, metricRow(0).getDouble(1).toLong)
       context.gauge(Metrics.Name.RowCount, metricRow(0).getLong(2))
     } else {
-      logger.warn("GroupBy upload resulted in zero rows.")
+      throw new RuntimeException("GroupBy upload resulted in zero rows.")
     }
 
     context.gauge(Metrics.Name.LatencyMinutes, (System.currentTimeMillis() - startTs) / (60 * 1000))
