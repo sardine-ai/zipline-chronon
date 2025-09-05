@@ -66,7 +66,7 @@ Bootstrap table is a precomputed table which contains precomputed feature values
 ENTITY_KEYS = ['guest', 'host', 'listing']
 
 v1_source = EventSource(
-	table=get_staging_query_output_table_name(payments_driver.v1),
+	table=payments_driver.v1.table,
 	query=Query(
 		selects=select(
 			rng='rng',
@@ -115,7 +115,7 @@ Note: `rng` is an example for a column that clients can include in the StagingQu
 
 ```python
 v2_dev_source = EventSource(
-    table=get_join_output_table_name(v1),
+    table=v1.table,
     query=Query(
          wheres=['label = 1 OR rng < 0.05'],
     )
@@ -133,7 +133,7 @@ v2_dev = Join(
 	right_parts=V1_FEATURES+V2_FEATURES,
 	bootstrap_parts=[
 		BootstrapPart(
-			table=get_join_output_table_name(v1, full_name=True)
+			table=v1.table
 		)
 	]
 )
@@ -144,7 +144,7 @@ Similar to `v1_source`, we create a `v2_source` based on a new StagingQuery `pay
 
 ```python
 v2_source = EventSource(
-	table=get_staging_query_output_table_name(payments_driver.v2),
+	table=payments_driver.v2.table,
 	query=Query(
 		selects=select(
 			rng='rng',
@@ -158,8 +158,8 @@ v2_source = EventSource(
 `v2` is the join to serve the updated feature set (containing v1 and v2 features)
 Note it has 3 bootstrapping component:
 - `bootstrap_from_log` will populating ongoing data from logging table
-- `get_join_output_table_name(v1)` will carry-over production features data from v1
-- `get_join_output_table_name(v2_dev)` will carry-over partially backfilled v2 features
+- `v1.table` will carry-over production features data from v1
+- `v2_dev.table` will carry-over partially backfilled v2 features
 during experimentation on 5% of downsampled data. The rest of 95% of data will be automatically backfilled when this join is run for the first time. This behavior is called “automatic hole filling”. 
 
 ```python
@@ -170,10 +170,10 @@ v2 = Join(
 	bootstrap_from_log=True,
 	bootstrap_parts=[
 		BootstrapPart(
-			table=get_join_output_table_name(v1, full_name=True)
+			table=v1.table
 		),
 		BootstrapPart(
-			table=get_join_output_table_name(v2_dev, full_name=True)
+			table=v2_dev.table
 		)
 	]
 )

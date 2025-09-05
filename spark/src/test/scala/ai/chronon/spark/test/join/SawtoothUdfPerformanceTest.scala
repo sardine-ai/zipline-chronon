@@ -1,12 +1,12 @@
 package ai.chronon.spark.test.join
 
 import ai.chronon.aggregator.row.RowAggregator
+import ai.chronon.spark.test.utils.DataFrameGen
 import ai.chronon.aggregator.test.{Column, NaiveAggregator, Timer, TestRow => TRow}
 import ai.chronon.aggregator.windowing.FiveMinuteResolution
 import ai.chronon.api.Extensions.AggregationOps
 import ai.chronon.api._
 import ai.chronon.spark.join.{AggregationInfo, CGenericRow, SawtoothUdf, UnionJoin}
-import ai.chronon.spark.test.DataFrameGen
 import org.apache.spark.sql.{DataFrame, types}
 import org.scalatest.matchers.should.Matchers
 import org.slf4j.{Logger, LoggerFactory}
@@ -45,8 +45,8 @@ class SawtoothUdfPerformanceTest extends BaseJoinTest with Matchers {
     // Generate right dataframe
     val rightDf = DataFrameGen
       .gen(spark, rightColumns, numItems)
-      .orderBy(Constants.TimeColumn) // Sort by timestamp
       .dropDuplicates(Constants.TimeColumn)
+      .orderBy(Constants.TimeColumn) // Sort by timestamp
       .cache()
 
     // Convert to SparkRows for the test
@@ -155,9 +155,9 @@ class SawtoothUdfPerformanceTest extends BaseJoinTest with Matchers {
     }
 
     // Sample some results to verify (checking all would be too verbose)
-    val sampleIndices = (0 until math.min(10, result.size)).toList
+//    val sampleIndices = (0 until math.min(10, result.size)).toList
 
-    for (i <- sampleIndices) {
+    for (i <- result.indices) {
       val sawtoothItems = extractLastKItems(result(i))
       val naiveItems = naiveItemLists(i)
 
@@ -170,13 +170,17 @@ class SawtoothUdfPerformanceTest extends BaseJoinTest with Matchers {
       // Both should be limited to k or less
       sawtoothItems.size should be <= k
 
-      val extra = sawtoothItems.toSet -- naiveItems.asScala.toSet
-      val missing = naiveItems.asScala.toSet -- sawtoothItems.toSet
+      val computedStr = sawtoothItems.mkString(", ")
+      val expectedStr = naiveItems.asScala.mkString(", ")
 
-      // Check that all items in sawtooth result are also in naive result
-      // TODO: There is a non-deterministic off by one error here - I think it always existed from before
-      extra.size should be <= 1
-      missing.size should be <= 1
+      if (computedStr != expectedStr) {
+        println("--")
+        println(computedStr)
+        println(expectedStr)
+        print("--")
+      }
+
+      computedStr shouldEqual expectedStr
     }
 
     timer.publish("Result verification")

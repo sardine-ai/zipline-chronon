@@ -1,6 +1,7 @@
 package ai.chronon.api.planner
 
-import ai.chronon.api.Extensions.{GroupByOps, MetadataOps, WindowUtils}
+import ai.chronon.api.Extensions.{GroupByOps, WindowUtils}
+import ai.chronon.api.Extensions._
 import ai.chronon.api.{Join, PartitionSpec, TableDependency, TableInfo}
 import ai.chronon.planner
 import ai.chronon.planner.Node
@@ -31,7 +32,11 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
     val tableDeps = TableDependencies.fromJoin(join)
 
     val metaData =
-      MetaDataUtils.layer(join.metaData, "backfill", join.metaData.name + "__backfill", tableDeps)
+      MetaDataUtils.layer(join.metaData,
+                          "backfill",
+                          join.metaData.name + "__backfill",
+                          tableDeps,
+                          outputTableOverride = Some(join.metaData.outputTable))
     val node = new planner.MonolithJoinNode().setJoin(join)
     toNode(metaData, _.setMonolithJoin(node), semanticMonolithJoin(join))
   }
@@ -45,9 +50,9 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
       val hasStreamingSource = groupBy.streamingSource.isDefined
 
       val tableName = if (hasStreamingSource) {
-        groupBy.metaData.name + s"__${GroupByPlanner.Streaming}"
+        groupBy.metaData.outputTable + s"__${GroupByPlanner.Streaming}"
       } else {
-        groupBy.metaData.name + s"__${GroupByPlanner.UploadToKV}"
+        groupBy.metaData.outputTable + s"__${GroupByPlanner.UploadToKV}"
       }
 
       val tableDep = new TableDependency()
@@ -74,11 +79,19 @@ case class MonolithJoinPlanner(join: Join)(implicit outputPartitionSpec: Partiti
   override def buildPlan: planner.ConfPlan = {
     val confPlan = new planner.ConfPlan()
 
+    val backfill = backfillNode
+    val sensorNodes = ExternalSourceSensorUtil
+      .sensorNodes(backfill.metaData)
+      .map((es) =>
+        toNode(es.metaData, _.setExternalSourceSensor(es), ExternalSourceSensorUtil.semanticExternalSourceSensor(es)))
+
     val terminalNodeNames = Map(
-      planner.Mode.BACKFILL -> backfillNode.metaData.name,
+      planner.Mode.BACKFILL -> backfill.metaData.name,
       planner.Mode.DEPLOY -> metadataUploadNode.metaData.name
     )
 
-    confPlan.setNodes(List(backfillNode, metadataUploadNode).asJava).setTerminalNodeNames(terminalNodeNames.asJava)
+    confPlan
+      .setNodes((List(backfill, metadataUploadNode) ++ sensorNodes).asJava)
+      .setTerminalNodeNames(terminalNodeNames.asJava)
   }
 }

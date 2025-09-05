@@ -157,7 +157,20 @@ object Extensions {
   implicit class MetadataOps(metaData: MetaData) {
     def cleanName: String = metaData.name.sanitize
 
-    def outputTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}"
+    def cleanNameWithoutVersion: String = {
+      val clean = metaData.name.sanitize
+      clean.replaceAll("__v\\d+$", "")
+    }
+
+    def outputTable: String = {
+      (for {
+        metaData <- Option(metaData)
+        executionInfo <- Option(metaData.executionInfo)
+        outputTableInfo <- Option(executionInfo.outputTableInfo)
+        tableInfo <- Option(outputTableInfo)
+        table <- Option(tableInfo.table)
+      } yield table).getOrElse(s"${metaData.outputNamespace}.${metaData.cleanName}")
+    }
 
     // legacy way of generating label info - we might end-up doing views again, but probably with better names
     def outputLabelTable: String = s"${metaData.outputNamespace}.${metaData.cleanName}_labels"
@@ -181,7 +194,7 @@ object Extensions {
     def consistencyTable: String = s"${outputTable}_consistency"
     def consistencyUploadTable: String = s"${consistencyTable}_upload"
 
-    def uploadTable: String = s"${outputTable}_upload"
+    def uploadTable: String = s"${outputTable}__upload"
 
     def copyForVersioningComparison: MetaData = {
       // Changing name results in column rename, therefore schema change, other metadata changes don't effect output table
@@ -810,7 +823,7 @@ object Extensions {
     // For long names, we use the gb name, else for short names we use the keys
     // We set the default to false in python, however if it's unset in the config, default back to true (legacy)
     private lazy val gbPrefix: String = if (Option(joinPart.useLongNames).getOrElse(true)) {
-      groupBy.getMetaData.cleanName
+      groupBy.getMetaData.cleanNameWithoutVersion
     } else {
       groupBy.getKeyColumns.toScala.mkString("_")
     }

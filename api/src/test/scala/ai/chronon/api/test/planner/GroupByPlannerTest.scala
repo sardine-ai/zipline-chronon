@@ -18,7 +18,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
   private def validateGBPlan(groupBy: GroupBy, plan: ConfPlan): Unit = {
     // Should create plan successfully with expected number of nodes
     val hasStreaming = groupBy.streamingSource.isDefined
-    val expectedNodeCount = if (hasStreaming) 4 else 3
+    val expectedNodeCount = if (hasStreaming) 5 else 4
     plan.nodes.asScala should have size expectedNodeCount
 
     // Find the nodes
@@ -41,6 +41,9 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     uploadNode.get.content should not be null
     uploadNode.get.content.getGroupByUpload should not be null
     uploadNode.get.content.getGroupByUpload.groupBy should not be null
+    // upload node should use the daily partition spec
+    uploadNode.get.metaData.executionInfo.outputTableInfo.partitionColumn should equal(PartitionSpec.daily.column)
+    uploadNode.get.metaData.executionInfo.outputTableInfo.partitionFormat should equal(PartitionSpec.daily.format)
 
     // Backfill node should have content
     backfillNode.get.content should not be null
@@ -81,8 +84,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
   it should "GB planner handles valid confs" in {
 
-    val runfilesDir = System.getenv("RUNFILES_DIR")
-    val gbRootDir = Paths.get(runfilesDir, "chronon/spark/src/test/resources/canary/compiled/group_bys")
+    val gbRootDir = Paths.get(getClass.getClassLoader.getResource("canary/compiled/group_bys").getPath)
 
     val gbConfs = LocalRunner.parseConfs[ai.chronon.api.GroupBy](gbRootDir.toString)
 
@@ -180,7 +182,7 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
     // Validate output table info is properly set
     val outputTableInfo = uploadToKVNode.metaData.executionInfo.outputTableInfo
     outputTableInfo should not be null
-    outputTableInfo.table should equal(gb.metaData.name + "__uploadToKV")
+    outputTableInfo.table should equal(gb.metaData.outputTable + "__uploadToKV")
     outputTableInfo.partitionColumn should equal(testPartitionSpec.column)
     outputTableInfo.partitionFormat should equal(testPartitionSpec.format)
     outputTableInfo.partitionInterval should not be null
@@ -204,12 +206,12 @@ class GroupByPlannerTest extends AnyFlatSpec with Matchers {
 
     tableDeps should have size 1
     val tableDep = tableDeps.head
-    tableDep.tableInfo.table should equal(gb.metaData.name + "__uploadToKV")
+    tableDep.tableInfo.table should equal(gb.metaData.outputTable + "__uploadToKV")
 
     // Verify streaming node has correct output table info
     val streamingOutputTableInfo = streamingNode.metaData.executionInfo.outputTableInfo
     streamingOutputTableInfo should not be null
-    streamingOutputTableInfo.table should equal(gb.metaData.name + "__streaming")
+    streamingOutputTableInfo.table should equal(gb.metaData.outputTable + "__streaming")
     streamingOutputTableInfo.partitionColumn should equal(testPartitionSpec.column)
     streamingOutputTableInfo.partitionFormat should equal(testPartitionSpec.format)
     streamingOutputTableInfo.partitionInterval should not be null

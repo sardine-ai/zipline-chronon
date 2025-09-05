@@ -277,7 +277,7 @@ object GroupByUpload {
     kvDf
       .union(metaDf)
       .withColumn("ds", lit(endDs))
-      .save(groupByConf.metaData.uploadTable, groupByConf.metaData.tableProps, partitionColumns = List.empty)
+      .save(groupByConf.metaData.uploadTable, groupByConf.metaData.tableProps, partitionColumns = List("ds"))
 
     val kvDfReloaded = tableUtils
       .loadTable(groupByConf.metaData.uploadTable)
@@ -286,7 +286,7 @@ object GroupByUpload {
     val metricRow =
       kvDfReloaded.selectExpr("sum(bit_length(key_bytes))/8", "sum(bit_length(value_bytes))/8", "count(*)").collect()
 
-    if (metricRow.length > 0) {
+    if (metricRow.length > 0 && metricRow(0).getLong(2) > 0) {
       context.gauge(Metrics.Name.KeyBytes, metricRow(0).getDouble(0).toLong)
       context.gauge(Metrics.Name.ValueBytes, metricRow(0).getDouble(1).toLong)
       context.gauge(Metrics.Name.RowCount, metricRow(0).getLong(2))
@@ -294,6 +294,8 @@ object GroupByUpload {
       throw new RuntimeException("GroupBy upload resulted in zero rows.")
     }
 
-    context.gauge(Metrics.Name.LatencyMinutes, (System.currentTimeMillis() - startTs) / (60 * 1000))
+    val jobDuration = (System.currentTimeMillis() - startTs) / 1000
+    context.gauge(Metrics.Name.LatencyMinutes, (jobDuration / 60))
+    logger.info(s"GroupBy upload completed in $jobDuration seconds")
   }
 }

@@ -16,14 +16,15 @@ import scala.reflect.ClassTag
 class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tableUtils: TableUtils) {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
   assert(Option(stagingQueryConf.metaData.outputNamespace).nonEmpty, "output namespace could not be empty or null")
-  private val outputTable = stagingQueryConf.metaData.outputTable
+  protected val outputTable = stagingQueryConf.metaData.outputTable
   private val tableProps = Option(stagingQueryConf.metaData.tableProperties)
     .map(_.toScala.toMap)
     .orNull
 
   private val partitionCols: Seq[String] =
     Seq(tableUtils.partitionColumn) ++
-      (Option(stagingQueryConf.metaData.additionalOutputPartitionColumns.toScala)
+      (Option(stagingQueryConf.metaData.additionalOutputPartitionColumns)
+        .map(_.toScala)
         .getOrElse(Seq.empty))
 
   def computeStagingQuery(stepDays: Option[Int] = None,
@@ -69,12 +70,7 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
           stepRanges.zipWithIndex.foreach { case (range, index) =>
             val progress = s"| [${index + 1}/${stepRanges.size}]"
             logger.info(s"Computing staging query for range: $range  $progress")
-            val renderedQuery =
-              StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
-            logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
-            val df = tableUtils.sql(renderedQuery)
-            df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
-            logger.info(s"Wrote to table $outputTable, into partitions: $range $progress")
+            compute(range, Seq.empty[String], enableAutoExpand)
           }
           logger.info(s"Finished writing Staging Query data to $outputTable")
         } catch {
@@ -93,6 +89,17 @@ class StagingQuery(stagingQueryConf: api.StagingQuery, endPartition: String, tab
         throw new Exception(fullMessage)
       }
     }
+  }
+
+  def compute(range: PartitionRange, setups: Seq[String], enableAutoExpand: Option[Boolean]): Unit = {
+    Option(setups).foreach(_.foreach(tableUtils.sql))
+    val renderedQuery =
+      StagingQuery.substitute(tableUtils, stagingQueryConf.query, range.start, range.end, endPartition)
+    logger.info(s"Rendered Staging Query to run is:\n$renderedQuery")
+    val df = tableUtils.sql(renderedQuery)
+    df.save(outputTable, tableProps, partitionCols, autoExpand = enableAutoExpand.get)
+    logger.info(s"Wrote to table $outputTable, into partitions: $range")
+    logger.info(s"Finished writing Staging Query data to $outputTable")
   }
 }
 
@@ -150,5 +157,33 @@ object StagingQuery {
         SparkSessionBuilder.build(s"staging_query_${stagingQueryConf.metaData.name}", enforceKryoSerializer = false))
     )
     stagingQueryJob.computeStagingQuery(parsedArgs.stepDays.toOption)
+  }
+
+  def from(stagingQueryConf: api.StagingQuery, endDate: String, tableUtils: TableUtils): StagingQuery = {
+    scala.Option(stagingQueryConf.engineType) match {
+      case Some(EngineType.BIGQUERY) =>
+        createBigQueryImport(stagingQueryConf, endDate, tableUtils)
+      case Some(EngineType.SPARK) =>
+        new StagingQuery(stagingQueryConf, endDate, tableUtils)
+      case None => new StagingQuery(stagingQueryConf, endDate, tableUtils) // default to spark
+    }
+  }
+
+  private def createBigQueryImport(stagingQueryConf: api.StagingQuery,
+                                   endDate: String,
+                                   tableUtils: TableUtils): StagingQuery = {
+    val bigQueryClass = "ai.chronon.integrations.cloud_gcp.BigQueryImport"
+    try {
+      val constructor = Class
+        .forName(bigQueryClass)
+        .getDeclaredConstructor(classOf[api.StagingQuery], classOf[String], classOf[TableUtils])
+      constructor.newInstance(stagingQueryConf, endDate, tableUtils).asInstanceOf[StagingQuery]
+    } catch {
+      case _: ClassNotFoundException =>
+        throw new UnsupportedOperationException(
+          s"BigQuery support not available. Make sure cloud_gcp module is on the classpath.")
+      case ex: Exception =>
+        throw new RuntimeException(s"Failed to create BigQuery staging query: ${ex.getMessage}", ex)
+    }
   }
 }

@@ -3,8 +3,9 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.spark.catalog.Format
 import com.google.cloud.bigquery._
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder
-import org.apache.spark.sql.execution.FileSourceScanExec
+import org.apache.spark.sql.execution.{ExplainMode, FileSourceScanExec, ProjectExec, SimpleMode}
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{Encoders, Row, SparkSession}
 
 import scala.jdk.CollectionConverters._
@@ -61,21 +62,32 @@ case object BigQueryExternal extends Format {
     val df = sparkSession.read
       .format(formatOptions.getType)
       .load(uri)
+
     val finalDf = if (partitionFilters.isEmpty) {
       df
     } else {
       df.where(partitionFilters)
     }
-    val partitionSpec = finalDf.queryExecution.sparkPlan
-      .asInstanceOf[FileSourceScanExec]
-      .relation
-      .location
+
+    val plan = finalDf.queryExecution.sparkPlan
+    val scanExecOpt = plan.find(_.isInstanceOf[FileSourceScanExec])
+
+    scanExecOpt match {
+      case Some(scanNode) =>
+        extractPartitionsFromFileSourceScanExec(sparkSession, scanNode.asInstanceOf[FileSourceScanExec])
+      case _ =>
+        val explainString = finalDf.queryExecution.explainString(ExplainMode.fromString(SimpleMode.name))
+        throw new IllegalStateException(s"Cannot extract partition columns from plan \n$explainString\n")
+    }
+
+  }
+
+  private def extractPartitionsFromFileSourceScanExec(sparkSession: SparkSession, fse: FileSourceScanExec) = {
+    val partitionSpec = fse.relation.location
       .asInstanceOf[PartitioningAwareFileIndex] // Punch through the layers!!
       .partitionSpec
-
     val partitionColumns = partitionSpec.partitionColumns
     val partitions = partitionSpec.partitions.map(_.values)
-
     val deserializer =
       try {
         Encoders.row(partitionColumns).asInstanceOf[ExpressionEncoder[Row]].resolveAndBind().createDeserializer()

@@ -45,8 +45,7 @@ class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
       join.metaData,
       "left_source",
       outputTableName,
-      TableDependencies.fromSource(join.left).toSeq,
-      stepDays = Some(1)
+      TableDependencies.fromSource(join.left).toSeq
     )
 
     toNode(metaData, _.setSourceWithFilter(result), result)
@@ -67,8 +66,7 @@ class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
       join.metaData,
       "bootstrap",
       bootstrapNodeName,
-      tableDeps,
-      stepDays = Some(1)
+      tableDeps
     )
 
     val content = new NodeContent()
@@ -151,8 +149,7 @@ class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
         join.metaData,
         "merge",
         mergeNodeName,
-        deps,
-        stepDays = Some(1)
+        deps
       )
 
     val copy = result.deepCopy()
@@ -174,8 +171,7 @@ class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
         join.metaData,
         "derive",
         derivationNodeName,
-        Seq(TableDependencies.fromTable(mergeNode.metaData.outputTable)),
-        stepDays = Some(1)
+        Seq(TableDependencies.fromTable(mergeNode.metaData.outputTable))
       )
 
     val copy = result.deepCopy()
@@ -213,8 +209,7 @@ class JoinPlanner(join: Join)(implicit outputPartitionSpec: PartitionSpec)
         join.metaData,
         "label_join",
         labelNodeName,
-        labelPartDeps,
-        stepDays = Some(1)
+        labelPartDeps
       )
 
     val copy = result.deepCopy()

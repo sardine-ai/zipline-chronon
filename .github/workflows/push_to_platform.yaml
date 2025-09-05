@@ -53,3 +53,25 @@ jobs:
 
       - name: Push changes to platform
         run: git push origin main
+
+  on_fail_notify_slack:
+    needs: [ subtree-pull]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Failure Notification
+        uses: slackapi/slack-github-action@v1
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TESTS_WEBHOOK_URL }}
+        with:
+          payload: |
+            {
+              "text": "Merging to Platform Failed\n\n There was an error merging to platform on commit <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.sha }}> on branch ${{ github.ref }}. Please check the logs for more details.",
+              "attachments": [
+                {
+                  "text": "",
+                  "color": "#ff0000"
+                }
+              ]
+            }

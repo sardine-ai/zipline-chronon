@@ -1,0 +1,5 @@
+ignore:
+  # Ignore CVE-2025-58050 in libpcre2-8-0 - marked as "won't fix" with very low EPSS score
+  - vulnerability: "CVE-2025-58050"
+    package:
+      name: "libpcre2-8-0"

@@ -40,8 +40,6 @@ import org.apache.spark.sql.streaming.StreamingQueryListener.{
   QueryStartedEvent,
   QueryTerminatedEvent
 }
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
 import org.rogach.scallop.{ScallopConf, ScallopOption, Subcommand}
 import org.slf4j.{Logger, LoggerFactory}
 import org.yaml.snakeyaml.Yaml
@@ -149,8 +147,6 @@ object Driver {
     protected def isLocal: Boolean = localTableMapping.nonEmpty || localDataPath.isDefined
 
     protected def buildSparkSession(): SparkSession = {
-      implicit val formats: Formats = DefaultFormats
-      val yamlLoader = new Yaml()
 
       // We use the KryoSerializer for group bys and joins since we serialize the IRs.
       // But since staging query is fairly freeform, it's better to stick to the java serializer.
@@ -412,35 +408,6 @@ object Driver {
       if (args.shouldPerformValidate()) {
         val df = tableUtils.loadTable(args.groupByConf.metaData.outputTable)
         args.validateResult(df, args.groupByConf.keys(tableUtils.partitionColumn).toSeq, tableUtils)
-      }
-    }
-  }
-
-  object LabelJoin {
-    class Args extends Subcommand("label-join") with OfflineSubcommand with LocalExportTableAbility {
-      lazy val joinConf: api.Join = parseConf[api.Join](confPath())
-      override def subcommandName(): String = s"label_join_${joinConf.metaData.name}"
-    }
-
-    def run(args: Args): Unit = {
-      val tableUtils = args.buildTableUtils()
-
-      // Use startPartitionOverride if provided, otherwise use endDate for both (single day)
-      val startDate = args.startPartitionOverride.toOption.getOrElse(args.endDate())
-      val endDate = args.endDate()
-
-      // Create a DateRange with start and end dates
-      val dateRange = new api.DateRange(startDate, endDate)
-
-      val labelJoin = new LabelJoinV2(
-        args.joinConf,
-        tableUtils,
-        dateRange
-      )
-      labelJoin.compute()
-
-      if (args.shouldExport()) {
-        args.exportTableToLocal(args.joinConf.metaData.outputLabelTable, tableUtils)
       }
     }
   }
@@ -1160,8 +1127,6 @@ object Driver {
     addSubcommand(JoinBackfillLeftArgs)
     object JoinBackfillFinalArgs extends JoinBackfillFinal.Args
     addSubcommand(JoinBackfillFinalArgs)
-    object LabelJoinArgs extends LabelJoin.Args
-    addSubcommand(LabelJoinArgs)
     object CreateStatsTableArgs extends CreateSummaryDataset.Args
     addSubcommand(CreateStatsTableArgs)
     object SummarizeAndUploadArgs extends SummarizeAndUpload.Args
@@ -1210,7 +1175,6 @@ object Driver {
           case args.CompareJoinQueryArgs   => CompareJoinQuery.run(args.CompareJoinQueryArgs)
           case args.AnalyzerArgs           => Analyzer.run(args.AnalyzerArgs)
           case args.MetadataExportArgs     => MetadataExport.run(args.MetadataExportArgs)
-          case args.LabelJoinArgs          => LabelJoin.run(args.LabelJoinArgs)
           case args.JoinBackfillLeftArgs   => JoinBackfillLeft.run(args.JoinBackfillLeftArgs)
           case args.JoinBackfillFinalArgs  => JoinBackfillFinal.run(args.JoinBackfillFinalArgs)
           case args.CreateStatsTableArgs   => CreateSummaryDataset.run(args.CreateStatsTableArgs)
