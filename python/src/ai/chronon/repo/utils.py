@@ -1,3 +1,4 @@
+import functools
 import json
 import os
 import re
@@ -6,6 +7,8 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from enum import Enum
+
+from click import style
 
 from ai.chronon.cli.compile.parse_teams import EnvOrConfigAttribute
 from ai.chronon.logger import get_logger
@@ -446,3 +449,29 @@ def get_metadata_name_from_conf(repo_path, conf_path):
     with open(os.path.join(repo_path, conf_path), "r") as conf_file:
         data = json.load(conf_file)
         return data.get("metaData", {}).get("name", None)
+
+
+def handle_conf_not_found(log_error=True, callback=None):
+    def wrapper(func):
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except FileNotFoundError as e:
+                if log_error:
+                    print(style(f"File not found in {func.__name__}: {e}", fg='red'))
+                if callback:
+                    callback(*args, **kwargs)
+                return 
+        return wrapped
+    return wrapper
+
+def print_possible_confs(conf, repo, *args, **kwargs):
+    conf_location = os.path.join(repo, conf)
+    conf_dirname = os.path.dirname(conf_location)   
+    if os.path.exists(conf_dirname):
+        print(f"Possible confs from {style(conf_dirname, fg='yellow')}: \n -", 
+        '\n - '.join([name for name in os.listdir(conf_dirname)]))
+    else:
+        print(f"Directory does not exist: {style(conf_dirname, fg='yellow')}")
+    

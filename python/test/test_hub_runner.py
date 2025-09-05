@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from ai.chronon.repo.hub_runner import hub  
+from ai.chronon.repo.hub_runner import hub
 
 
 class TestHubRunner:
@@ -31,7 +31,7 @@ class TestHubRunner:
     @patch('requests.post')
     @patch('ai.chronon.repo.hub_runner.get_current_branch')
     def test_backfill_end_to_end_post_request(
-        self, 
+        self,
         mock_get_current_branch,
         mock_post,
         canary,
@@ -40,7 +40,7 @@ class TestHubRunner:
         """Test end-to-end that the actual POST request contains the right date parameters."""
         # Mock get_current_branch to return a test branch name
         mock_get_current_branch.return_value = "test-branch"
-        
+
         # Run backfill command
         runner = CliRunner()
         result = runner.invoke(hub, [
@@ -51,16 +51,16 @@ class TestHubRunner:
             '--end-ds', '2024-02-15',
             '--force-recompute'
         ])
-        
+
         assert result.exit_code == 0
-        
+
         # Verify the actual POST request was made with correct parameters
         mock_post.assert_called()
         call_args = mock_post.call_args
-        
+
         # Check URL
         assert call_args[0][0].endswith("/workflow/start")
-        
+
         # Check JSON payload
         json_payload = call_args[1]['json']
         assert json_payload['confName'] == ".".join(online_join_conf.split("/")[-2:])
@@ -69,7 +69,7 @@ class TestHubRunner:
         assert json_payload['end'] == "2024-02-15"
         assert json_payload['forceRecompute'] == True
         assert json_payload['branch'] == "test-branch"
-        
+
         # Check headers
         headers = call_args[1]['headers']
         assert headers['Content-Type'] == "application/json"
@@ -77,7 +77,7 @@ class TestHubRunner:
     @patch('requests.post')
     @patch('ai.chronon.repo.hub_runner.get_current_branch')
     def test_adhoc_end_to_end_post_request(
-        self, 
+        self,
         mock_get_current_branch,
         mock_post,
         canary,
@@ -86,7 +86,7 @@ class TestHubRunner:
         """Test end-to-end that the actual POST request contains the right date parameters."""
         # Mock get_current_branch to return a test branch name
         mock_get_current_branch.return_value = "test-branch"
-        
+
         # Run backfill command
         runner = CliRunner()
         result = runner.invoke(hub, [
@@ -97,7 +97,7 @@ class TestHubRunner:
             '--end-ds', '2024-02-15',
             '--force-recompute'
         ])
-        
+
         # start-ds is not supported
         assert result.exit_code != 0
         result = runner.invoke(hub, [
@@ -107,21 +107,21 @@ class TestHubRunner:
             '--end-ds', '2024-02-15',
         ])
         assert result.exit_code == 0
-        
+
         # Verify the actual POST request was made with correct parameters
         mock_post.assert_called()
         call_args = mock_post.call_args
-        
+
         # Check URL
         assert call_args[0][0].endswith("/workflow/start")
-        
+
         # Check JSON payload
         json_payload = call_args[1]['json']
         assert json_payload['confName'] == ".".join(online_join_conf.split("/")[-2:])
         assert json_payload['mode'] == "deploy"
         assert json_payload['end'] == "2024-02-15"
         assert json_payload['branch'] == "test-branch"
-        
+
         # Check headers
         headers = call_args[1]['headers']
         assert headers['Content-Type'] == "application/json"
@@ -129,7 +129,7 @@ class TestHubRunner:
     @patch('requests.post')
     @patch('ai.chronon.repo.hub_runner.get_current_branch')
     def test_schedule_end_to_end_post_request(
-        self, 
+        self,
         mock_get_current_branch,
         mock_post,
         canary,
@@ -138,7 +138,7 @@ class TestHubRunner:
         """Test end-to-end that the actual POST request contains the right date parameters."""
         # Mock get_current_branch to return a test branch name
         mock_get_current_branch.return_value = "test-branch"
-        
+
         # Run backfill command
         runner = CliRunner(catch_exceptions=False)
         result = runner.invoke(hub, [
@@ -147,20 +147,20 @@ class TestHubRunner:
             '--conf', online_join_conf,
         ])
         assert result.exit_code == 0
-        
+
         # Verify the actual POST request was made with correct parameters
         mock_post.assert_called()
         call_args = mock_post.call_args
-        
+
         # Check URL
         assert call_args[0][0].endswith("/schedule/v1/schedules")
-        
+
         # Check JSON payload
         json_payload = call_args[1]['json']
         assert json_payload['confName'] == ".".join(online_join_conf.split("/")[-2:])
         assert json_payload['branch'] == "test-branch"
         assert json_payload['modeSchedules'] == {"BACKFILL": "@daily", "DEPLOY": "true"}
-        
+
         # Check headers
         headers = call_args[1]['headers']
         assert headers['Content-Type'] == "application/json"

@@ -1,14 +1,15 @@
 import json
 import os
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 import click
-from attr import dataclass
 from gen_thrift.planner.ttypes import Mode
 
 from ai.chronon.cli.git_utils import get_current_branch
 from ai.chronon.repo import hub_uploader, utils
 from ai.chronon.repo.constants import RunMode
+from ai.chronon.repo.utils import handle_conf_not_found, print_possible_confs
 from ai.chronon.repo.zipline_hub import ZiplineHub
 
 ALLOWED_DATE_FORMATS = ["%Y-%m-%d"]
@@ -122,6 +123,7 @@ def submit_schedule(repo, conf):
 @start_ds_option
 @end_ds_option
 @force_recompute_option
+@handle_conf_not_found(log_error=True, callback=print_possible_confs)
 def backfill(repo, conf, start_ds, end_ds, force_recompute):
     """
     - Submit a backfill job to Zipline.
@@ -137,6 +139,7 @@ def backfill(repo, conf, start_ds, end_ds, force_recompute):
 @hub.command()
 @common_options
 @end_ds_option
+@handle_conf_not_found(log_error=True, callback=print_possible_confs)
 def run_adhoc(repo, conf, end_ds):
     """
     - Submit a one-off deploy job to Zipline. This submits the various jobs to allow your conf to be tested online.
@@ -150,6 +153,7 @@ def run_adhoc(repo, conf, end_ds):
 # zipline hub schedule --conf=compiled/joins/join
 @hub.command()
 @common_options
+@handle_conf_not_found(log_error=True, callback=print_possible_confs)
 def schedule(repo, conf):
     """
     - Deploys a schedule for the specified conf to Zipline. This allows your conf to have various associated jobs run on a schedule.
