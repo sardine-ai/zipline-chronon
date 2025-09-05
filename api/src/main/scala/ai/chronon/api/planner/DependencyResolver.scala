@@ -9,7 +9,7 @@ object DependencyResolver {
   private def minus(partition: String, offset: Window)(implicit partitionSpec: PartitionSpec): String = {
     if (partition == null) return null
     if (offset == null) return null
-    partitionSpec.minus(partition, offset)
+    partitionSpec.minusFast(partition, offset)
   }
 
   private def max(partition: String, cutOff: String): String = {

@@ -116,12 +116,19 @@ struct ConfPlan {
     2: optional map<Mode, string> terminalNodeNames
 }
 
-// CLI rough sketch
-// zipline backfill conf_name             -- runs all nodes upstream of terminal offline node - prepares training data
-// zipline deploy conf_name               -- runs all nodes upstream of terminal online node - makes it ready for serving
-// zipline run-only node_name             -- runs one particular node
-// zipline run node_name                  -- runs all nodes upstream
+// just the information needed by the workflow engine
+struct NodeMeta {
+    1: string name
+    2: string hash
+    3: list<common.TableDependency> deps
+    4: bool continuous
+    5: optional i32 stepSize
+    6: optional string outputTable
+    7: optional i32 retries
 
-// zipline compile                            -- compiles python
-// zipline plan conf start end                -- shows the node-step-graph that is produced by planner
-// zipline sync                               -- compiles and uploads confs of this branch to remote
+}
+
+struct WorkflowPlan {
+    1: list<NodeMeta> nodes
+    2: string terminalNode
+}

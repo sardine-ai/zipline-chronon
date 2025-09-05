@@ -19,6 +19,7 @@ package ai.chronon.api
 import ai.chronon.api.DataType.toTDataType
 import ai.chronon.api.Extensions.WindowUtils
 import ai.chronon.api.ScalaJavaConversions._
+import ai.chronon.api.TimeUnit
 import ai.chronon.observability.DriftSpec
 
 import scala.collection.Seq
@@ -372,5 +373,102 @@ object Builders {
       derivation
     }
   }
+
+  object TableDependency {
+    def apply(
+        table: String,
+        startOffsetDays: Int = 0,
+        endOffsetDays: Int = 0,
+        startCutoff: String = null,
+        endCutoff: String = null
+    ): TableDependency = {
+      val dep = new TableDependency()
+      val tableInfo = new TableInfo()
+      tableInfo.setTable(table)
+      dep.setTableInfo(tableInfo)
+
+      dep.setStartOffset(new Window(startOffsetDays, TimeUnit.DAYS))
+      dep.setEndOffset(new Window(endOffsetDays, TimeUnit.DAYS))
+      dep.setStartCutOff(startCutoff)
+      dep.setEndCutOff(endCutoff)
+
+      dep
+    }
+  }
+
+  // Alias for shorter syntax in WorkflowPlan builder
+  object Dep {
+    def apply(
+        table: String,
+        startOffsetDays: Int = 0,
+        endOffsetDays: Int = 0,
+        startCutoff: String = null,
+        endCutoff: String = null
+    ): TableDependency = TableDependency(table, startOffsetDays, endOffsetDays, startCutoff, endCutoff)
+  }
+
+  object NodeMeta {
+    def apply(
+        outputTable: String,
+        stepSize: Int = 1,
+        deps: Seq[TableDependency] = Seq.empty,
+        continuous: Boolean = false,
+        retries: Int = 3
+    ): ai.chronon.planner.NodeMeta = {
+      val nodeMeta = new ai.chronon.planner.NodeMeta()
+      val nodeHash = s"hash_${outputTable.replace(".", "_")}"
+
+      nodeMeta.setName(outputTable)
+      nodeMeta.setHash(nodeHash)
+      nodeMeta.setContinuous(continuous)
+      nodeMeta.setStepSize(stepSize)
+      nodeMeta.setOutputTable(outputTable)
+      nodeMeta.setRetries(retries)
+      nodeMeta.setDeps(deps.toJava)
+      nodeMeta
+    }
+  }
+
+  object WorkflowPlan {
+    def apply(
+        nodes: Map[String, ai.chronon.planner.NodeMeta],
+        terminalNode: String = null
+    ): ai.chronon.planner.WorkflowPlan = {
+      val plan = new ai.chronon.planner.WorkflowPlan()
+
+      // Set node names from the map keys
+      val nodeMetaList = nodes.map { case (nodeName, nodeMeta) =>
+        nodeMeta.setName(nodeName)
+        nodeMeta
+      }.toList
+
+      plan.setNodes(nodeMetaList.toJava)
+
+      val effectiveTerminalNode = Option(terminalNode).getOrElse {
+        // If no terminal node specified, use the last node in the map
+        nodes.keys.lastOption.getOrElse("")
+      }
+      plan.setTerminalNode(effectiveTerminalNode)
+
+      plan
+    }
+  }
+
+  // Shorter aliases for better readability
+  def node(
+      outputTable: String,
+      stepSize: Int = 1,
+      deps: Seq[TableDependency] = Seq.empty,
+      continuous: Boolean = false,
+      retries: Int = 3
+  ): ai.chronon.planner.NodeMeta = NodeMeta(outputTable, stepSize, deps, continuous, retries)
+
+  def dep(
+      table: String,
+      startOffsetDays: Int = 0,
+      endOffsetDays: Int = 0,
+      startCutoff: String = null,
+      endCutoff: String = null
+  ): TableDependency = Dep(table, startOffsetDays, endOffsetDays, startCutoff, endCutoff)
 
 }

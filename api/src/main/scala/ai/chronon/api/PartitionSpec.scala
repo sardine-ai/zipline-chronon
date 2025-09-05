@@ -17,13 +17,14 @@
 package ai.chronon.api
 
 import ai.chronon.api.Extensions._
+import org.apache.commons.lang3.time.FastDateFormat
 
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Locale
-import java.util.TimeZone
+import java.util.{Calendar, Locale, TimeZone}
+import scala.collection.mutable.ListBuffer
 
 case class PartitionSpec(column: String, format: String, spanMillis: Long) {
 
@@ -31,6 +32,36 @@ case class PartitionSpec(column: String, format: String, spanMillis: Long) {
     DateTimeFormatter
       .ofPattern(format, Locale.US)
       .withZone(ZoneOffset.UTC)
+
+  def expandRange(startDateStr: String, endDateStr: String): List[String] = {
+    // Parse/format in UTC with a stable locale
+    val tz = TimeZone.getTimeZone("UTC")
+    val dateFormat = FastDateFormat.getInstance(format, tz, Locale.US)
+
+    // Parse start and end dates
+    val startDate = dateFormat.parse(startDateStr)
+    val endDate = dateFormat.parse(endDateStr)
+
+    if (startDate.after(endDate)) return List.empty
+
+    // List to store all dates
+    val dates = ListBuffer[String]()
+
+    // Use Calendar for date iteration
+    val calendar = Calendar.getInstance(tz, Locale.US)
+    calendar.setTime(startDate)
+
+    // Iterate from start to end date
+    while (!calendar.getTime.after(endDate)) {
+      // Format current date and add to list
+      dates += dateFormat.format(calendar.getTime)
+
+      // Move to next day
+      calendar.add(Calendar.DAY_OF_MONTH, 1)
+    }
+
+    dates.toList
+  }
 
   private def sdf = {
     val formatter = new SimpleDateFormat(format)
@@ -46,6 +77,38 @@ case class PartitionSpec(column: String, format: String, spanMillis: Long) {
   def at(millis: Long): String = partitionFormatter.format(Instant.ofEpochMilli(millis))
 
   def before(s: String): String = shift(s, -1)
+
+  def calendarGrain(window: Window): Int = window.timeUnit match {
+    case TimeUnit.DAYS    => Calendar.DAY_OF_MONTH
+    case TimeUnit.HOURS   => Calendar.HOUR_OF_DAY
+    case TimeUnit.MINUTES => Calendar.MINUTE
+  }
+
+  // TODO-test:
+  // takes a string and a window and returns the string representing the advancement by window
+  def plusFast(s: String, window: Window, sign: Int = 1): String = {
+    // Parse/format in UTC with a stable locale
+    val tz = TimeZone.getTimeZone("UTC")
+    val dateFormat = FastDateFormat.getInstance(format, tz, Locale.US)
+
+    // Parse the given timestamp
+    val date = dateFormat.parse(s)
+
+    // Use Calendar for date math in UTC/Locale.US
+    val calendar = Calendar.getInstance(tz, Locale.US)
+    calendar.setTime(date)
+
+    // Advance by the window length
+    calendar.add(calendarGrain(window), sign * window.length)
+
+    // Format back to string
+    dateFormat.format(calendar.getTime)
+  }
+
+  def afterFast(s: String): String = plusFast(s, WindowUtils.Day)
+
+  // TODO-test:
+  def minusFast(s: String, window: Window): String = plusFast(s, window, -1)
 
   def minus(s: String, window: Window): String = at(epochMillis(s) - window.millis)
 
