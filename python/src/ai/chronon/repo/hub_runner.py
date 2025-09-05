@@ -53,7 +53,7 @@ def force_recompute_option(func):
 
 
 def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False):
-    hub_conf = get_hub_conf(conf)
+    hub_conf = get_hub_conf(conf, root_dir=repo)
     zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
     conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
     branch = get_current_branch()
@@ -80,12 +80,12 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False):
     workflow_id = response_json.get("workflowId", "N/A")
     print(" 🆔 Workflow Id:", workflow_id)
     print_wf_url(
-        conf=conf, conf_name=conf_name, mode=RunMode.BACKFILL.value, workflow_id=workflow_id
+        conf=conf, conf_name=conf_name, mode=RunMode.BACKFILL.value, workflow_id=workflow_id, repo=repo
     )
 
 
 def submit_schedule(repo, conf):
-    hub_conf = get_hub_conf(conf)
+    hub_conf = get_hub_conf(conf, root_dir=repo)
     zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
     conf_name_to_obj_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
     branch = get_current_branch()
@@ -96,7 +96,7 @@ def submit_schedule(repo, conf):
 
     # get conf name
     conf_name = utils.get_metadata_name_from_conf(repo, conf)
-    schedule_modes = get_schedule_modes(conf)
+    schedule_modes = get_schedule_modes(os.path.join(repo, conf))
     # create a dict for RunMode.BACKFILL.value and RunMode.DEPLOY.value to schedule_modes.offline_schedule and schedule_modes.online
     modes = {
         RunMode.BACKFILL.value.upper(): schedule_modes.offline_schedule,
@@ -184,8 +184,9 @@ class ScheduleModes:
     offline_schedule: str
 
 
-def get_hub_conf(conf_path):
-    common_env_map = get_common_env_map(conf_path)
+def get_hub_conf(conf_path, root_dir="."):
+    file_path = os.path.join(root_dir, conf_path)
+    common_env_map = get_common_env_map(file_path)
     hub_url = common_env_map.get("HUB_URL", os.environ.get("HUB_URL"))
     frontend_url = common_env_map.get("FRONTEND_URL", os.environ.get("FRONTEND_URL"))
     return HubConfig(hub_url=hub_url, frontend_url=frontend_url)
@@ -207,8 +208,8 @@ def get_schedule_modes(conf_path):
     return ScheduleModes(online=online, offline_schedule=offline_schedule)
 
 
-def print_wf_url(conf, conf_name, mode, workflow_id):
-    hub_conf = get_hub_conf(conf)
+def print_wf_url(conf, conf_name, mode, workflow_id, repo="."):
+    hub_conf = get_hub_conf(conf, root_dir=repo)
     frontend_url = hub_conf.frontend_url
 
     if "compiled/joins" in conf:

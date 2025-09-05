@@ -32,11 +32,18 @@ def teams_json(rootdir):
 def repo(rootdir):
     return os.path.join(rootdir, 'sample/')
 
+@pytest.fixture
+def canary(rootdir):
+    return os.path.join(rootdir, 'canary/')
 
 @pytest.fixture
 def test_online_group_by(repo):
     return os.path.join(repo, 'production/group_bys/sample_team/event_sample_group_by.v1')
 
+@pytest.fixture
+def online_join_conf():
+    """ Standard online join for tests """
+    return "compiled/joins/gcp/demo.v1__0"
 
 @pytest.fixture
 def sleepless():

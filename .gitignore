@@ -45,6 +45,9 @@ api/python/build/
 api/python/ai/chronon/thrift/
 api/python/*.egg-info/
 *.egg
+**/*.egg-info/
+python/src/agent/
+python/src/gen_thrift/
 
 # spark test scratch area
 **/spark-warehouse/

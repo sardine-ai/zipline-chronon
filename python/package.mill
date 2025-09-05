@@ -101,4 +101,50 @@ object `package` extends PythonModule with RuffModule with PublishModule {
     Seq(PathRef(outputDir))
   }
 
+  // Build wheel and install normally
+  def installWheel = Task {
+    val wheelPath = wheel().path
+    println(s"Installing wheel from: $wheelPath")
+    
+    // Uninstall existing version first
+    try {
+      os.proc("pip", "uninstall", "-y", "zipline-ai").call()
+    } catch {
+      case _: Exception => println("No existing zipline-ai package to uninstall")
+    }
+    
+    // Install the built wheel
+    os.proc("pip", "install", wheelPath.toString).call()
+    
+    println(s"Wheel installed successfully from: $wheelPath")
+  }
+
+  // Install in editable mode with generated sources
+  def installEditable() = Task.Command {
+    // Generate sources in Task.dest as usual
+    val generatedPaths = generatedSources()
+    
+    // Copy generated sources to src/
+    val pythonDir = moduleDir
+    val srcDir = pythonDir / "src"
+    generatedPaths.foreach { pathRef =>
+      val generatedDir = pathRef.path
+      println(s"Generated dir: $generatedDir")
+      if (os.exists(generatedDir)) {
+        // Copy contents of the generated directory to src/
+        os.list(generatedDir).foreach { item =>
+          if (os.isDir(item)) {
+            os.copy.over(item, srcDir / item.last, followLinks = true, replaceExisting = true, copyAttributes = false, createFolders = true)
+          }
+        }
+        println(s"Copied generated sources from $generatedDir to $srcDir")
+      }
+    }
+    
+    // Install in editable mode
+    println(s"Working directory: $pythonDir")
+    os.proc("python", "-m", "pip", "install", "-e", ".").call(cwd = pythonDir)
+    println("Package installed in editable mode with generated sources")
+  }
+
 }

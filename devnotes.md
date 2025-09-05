@@ -30,6 +30,12 @@
 # build the wheel - the user needs to have python installed
 ./mill python.wheel
 
+# build an editable package (for ide and development)
+./mill python.installEditable
+
+# build and install current wheel
+./mill python.installWheel
+
 # build and run the entry point (zipline.py)
 ./mill python.run hub backfill ...
 

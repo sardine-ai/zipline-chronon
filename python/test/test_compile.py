@@ -9,7 +9,8 @@ from ai.chronon.repo.compile import __compile
 
 
 def test_compile(repo):
-    os.chdir(repo)
+    import sys
+    sys.path.append(repo)
     results = __compile(chronon_root=repo, ignore_python_errors=True)
     assert len(results) != 0
 
