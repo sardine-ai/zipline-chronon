@@ -56,7 +56,12 @@ def generate_dataproc_cluster_config(
                     "FLINK",
                     "JUPYTER",
                 ],
-                "properties": {},
+                "properties": {
+                    "dataproc:dataproc.logging.stackdriver.enable": "true",
+                    "dataproc:jobs.file-backed-output.enable": "true",
+                    "dataproc:dataproc.logging.stackdriver.job.driver.enable": "true",
+                    "dataproc:dataproc.logging.stackdriver.job.yarn.container.enable": "true",
+                },
             },
             "initializationActions": [
                 {"executable_file": initialization_action}
@@ -72,4 +77,59 @@ def generate_dataproc_cluster_config(
                 "idleDeleteTtl": idle_timeout,
             },
         }
+    )
+
+
+def fixed_cluster(
+    size,
+    project_id,
+    artifact_prefix,
+    subnetwork="default",
+    initialization_actions=None,
+    tags=None,
+):
+    """
+    Create a Dataproc cluster configuration based on t-shirt sizes.
+    
+    :param size: T-shirt size - 'small', 'medium', or 'large'
+    :param project_id: GCP project ID
+    :param artifact_prefix: Artifact prefix for initialization scripts
+    :param subnetwork: Subnetwork for the cluster
+    :param initialization_actions: List of initialization actions
+    :param tags: List of tags for the cluster
+    :return: A json string representing the cluster configuration
+    """
+    size_configs = {
+        'small': {
+            'num_workers': 20,
+            'worker_host_type': 'n2-highmem-4',  # 16GB, 4 cores
+            'master_host_type': 'n2-highmem-4'   # Same as worker for consistency
+        },
+        'medium': {
+            'num_workers': 50,
+            'worker_host_type': 'n2-highmem-16',  # 32GB, 8 cores
+            'master_host_type': 'n2-highmem-16'   # Same as worker for consistency
+        },
+        'large': {
+            'num_workers': 250,
+            'worker_host_type': 'n2-highmem-16', # 64GB, 16 cores  
+            'master_host_type': 'n2-highmem-16'  # Same as worker for consistency
+        }
+    }
+    
+    if size not in size_configs:
+        raise ValueError(f"Invalid size '{size}'. Must be one of: {list(size_configs.keys())}")
+    
+    config = size_configs[size]
+    
+    return generate_dataproc_cluster_config(
+        num_workers=config['num_workers'],
+        project_id=project_id,
+        artifact_prefix=artifact_prefix,
+        master_host_type=config['master_host_type'],
+        worker_host_type=config['worker_host_type'],
+        subnetwork=subnetwork,
+        idle_timeout="3600s",  # 1 hour of inactivity
+        initialization_actions=initialization_actions,
+        tags=tags,
     )
