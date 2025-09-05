@@ -2,8 +2,6 @@ package ai.chronon.integrations.aws
 
 import ai.chronon.api.Constants.{ContinuationKey, ListLimit}
 import ai.chronon.online.KVStore._
-import com.amazonaws.services.dynamodbv2.local.main.ServerRunner
-import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer
 import io.circe.generic.auto._
 import io.circe.generic.semiauto._
 import io.circe.parser._
@@ -12,6 +10,8 @@ import io.circe.{Decoder, Encoder}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
@@ -30,6 +30,7 @@ object DDBTestUtils {
   case class TimeSeries(joinName: String, featureName: String, tileTs: Long, metric: String, summary: Array[Double])
 
 }
+
 class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
 
   import DDBTestUtils._
@@ -40,7 +41,7 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
   implicit val tsEncoder: Encoder[TimeSeries] = deriveEncoder[TimeSeries]
   implicit val tsDecoder: Decoder[TimeSeries] = deriveDecoder[TimeSeries]
 
-  var server: DynamoDBProxyServer = _
+  var dynamoContainer: GenericContainer[_] = _
   var client: DynamoDbClient = _
   var kvStoreImpl: DynamoDBKVStoreImpl = _
 
@@ -61,14 +62,17 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
   }
 
   override def beforeAll(): Unit = {
-    // Start the local DynamoDB instance
-    server = ServerRunner.createServerFromCommandLineArgs(Array("-inMemory", "-port", "8000"))
-    server.start()
+    // Start the DynamoDB Local container
+    dynamoContainer = new GenericContainer(DockerImageName.parse("amazon/dynamodb-local:latest"))
+    dynamoContainer.withExposedPorts(8000: Integer)
+    dynamoContainer.withCommand("-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb")
+    dynamoContainer.start()
 
-    // Create the DynamoDbClient
+    // Create the DynamoDbClient pointing to the container
+    val dynamoEndpoint = s"http://${dynamoContainer.getHost}:${dynamoContainer.getMappedPort(8000)}"
     client = DynamoDbClient
       .builder()
-      .endpointOverride(URI.create("http://localhost:8000"))
+      .endpointOverride(URI.create(dynamoEndpoint))
       .region(Region.US_WEST_2)
       .credentialsProvider(
         StaticCredentialsProvider.create(
@@ -78,8 +82,12 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
   }
 
   override def afterAll(): Unit = {
-//    client.close()
-//    server.stop()
+    if (client != null) {
+      client.close()
+    }
+    if (dynamoContainer != null) {
+      dynamoContainer.stop()
+    }
   }
 
   // Test creation of a table with primary keys only (e.g. model)

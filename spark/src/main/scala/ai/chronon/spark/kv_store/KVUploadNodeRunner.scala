@@ -2,14 +2,16 @@ package ai.chronon.spark.kv_store
 
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.planner.NodeRunner
 import ai.chronon.api._
+import ai.chronon.api.planner.NodeRunner
 import ai.chronon.online.Api
 import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.planner.{Node, NodeContent}
 import org.rogach.scallop.ScallopConf
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
 class KVUploadNodeRunner(api: Api) extends NodeRunner {
@@ -40,8 +42,8 @@ class KVUploadNodeRunner(api: Api) extends NodeRunner {
     try {
       val fetchContext = createFetchContext()
       val metadataStore = new MetadataStore(fetchContext)
-      metadataStore.putJoinConf(join)
-
+      val putRequest = metadataStore.putJoinConf(join)
+      Await.result(putRequest, 1.hour)
       val duration = (System.currentTimeMillis() - startTime) / 1000
       logger.info(s"Successfully uploaded Join metadata for Join: $joinName in $duration seconds")
 
@@ -80,6 +82,7 @@ class KVUploadNodeRunner(api: Api) extends NodeRunner {
         throw e
     }
   }
+
 }
 
 object KVUploadNodeRunner {
@@ -91,6 +94,9 @@ object KVUploadNodeRunner {
                                   descr =
                                     "Fully qualified Online.Api based class. We expect the jar to be on the class path")
     val apiProps: Map[String, String] = props[String]('Z', descr = "Props to configure API Store")
+    val tablePartitionsDataset = opt[String](required = true,
+                                             descr = "Name of table in kv store to use to keep track of partitions",
+                                             default = Option(NodeRunner.DefaultTablePartitionsDataset))
     verify()
   }
 
@@ -124,7 +130,7 @@ object KVUploadNodeRunner {
 
   def runFromArgs(confPath: String, endDs: String, onlineClass: String, props: Map[String, String]): Try[Unit] = {
     Try {
-      val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = true)
+      val node = ThriftJsonCodec.fromJsonFile[Node](confPath, check = false)
       val metadata = node.metaData
 
       val api = instantiateApi(onlineClass, props)

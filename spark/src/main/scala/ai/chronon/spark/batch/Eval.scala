@@ -15,7 +15,7 @@ import ai.chronon.api.ScalaJavaConversions.{JListOps, JMapOps, ListOps, MapOps}
 import ai.chronon.api.{Constants, PartitionRange, StructField}
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online.serde.SparkConversions.toChrononSchema
-import ai.chronon.orchestration._
+import ai.chronon.eval._
 import ai.chronon.spark.{GroupBy, JoinUtils}
 import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.functions.{col, left, lit, sum, when}
@@ -241,9 +241,12 @@ class Eval(implicit tableUtils: TableUtils) {
       val (gbEval, gbSchemaRawOpt) = gbToEvalResult.getOrElseUpdate(gbName, evalGroupBy(part.groupBy))
 
       // Get the gbSchemaFormatted and modify name to contain the prefix
-      val jpSchemaFormatted = Option(gbEval.getAggSchema).map(_.toScala.map { case (name, dataTypeStr) =>
-        (columnPrefix + name, dataTypeStr)
-      }.toMap)
+      val jpSchemaFormatted = Option(gbEval.getAggSchema).map(
+        _.toScala
+          .map { case (name, dataTypeStr) =>
+            (columnPrefix + name, dataTypeStr)
+          }
+          .toMap)
 
       // Also prefix the raw schema for derivation handling
       val jpSchemaRawOpt = gbSchemaRawOpt.map { schema =>

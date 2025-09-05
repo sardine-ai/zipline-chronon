@@ -27,7 +27,6 @@ import ai.chronon.api.thrift.protocol.TSimpleJSONProtocol
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.gson.GsonBuilder
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -46,17 +45,15 @@ object ThriftJsonCodec {
     override def initialValue(): TSerializer = new TSerializer(new TSimpleJSONProtocol.Factory())
   }
 
+  private val mapper = {
+    val mapper = new ObjectMapper()
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  }
+
   def serializer: TSerializer = serializerThreaded.get()
 
   def toJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
     new String(serializer.serialize(obj), Constants.UTF8)
-  }
-
-  @transient private lazy val prettyGson = new GsonBuilder().setPrettyPrinting().create()
-  def toPrettyJsonStr[T <: TBase[_, _]: Manifest](obj: T): String = {
-    val raw = toJsonStr(obj)
-    val je = prettyGson.fromJson(raw, classOf[com.google.gson.JsonElement])
-    prettyGson.toJson(je)
   }
 
   def toJsonList[T <: TBase[_, _]: Manifest](obj: util.List[T]): String = {
@@ -99,17 +96,23 @@ object ThriftJsonCodec {
   }
 
   def fromJsonStr[T <: TBase[_, _]: Manifest](jsonStr: String, check: Boolean = true, clazz: Class[_ <: T]): T = {
-    val mapper = new ObjectMapper()
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     val obj: T = mapper.readValue(jsonStr, clazz)
     if (check) {
       val inputNode: JsonNode = mapper.readTree(jsonStr)
       val reSerializedInput: JsonNode = mapper.readTree(toJsonStr(obj))
       require(
         inputNode.equals(reSerializedInput),
-        message = s"""Parsed Json object isn't reversible.
-     Original JSON String:  $jsonStr
-     JSON produced by serializing object: $reSerializedInput"""
+        message = s"""
+               |Parsed Json object isn't reversible.
+               |Original JSON String:
+               |
+               |$jsonStr
+               |-----------------------------------
+               |JSON produced by serializing object:
+               |
+               |$reSerializedInput
+               |------------------------------------
+               |""".stripMargin
       )
     }
     obj

@@ -116,7 +116,7 @@ class MetadataStore(fetchContext: FetchContext) {
     }
   )
 
-  def putJoinConf(join: Join): Unit = {
+  def putJoinConf(join: Join): Future[Boolean] = {
     val joinConfKeyForKvStore = join.keyNameForKvStore
     logger.info(s"uploading join conf to dataset: ${fetchContext.metadataDataset} by key:${joinConfKeyForKvStore}")
     fetchContext.kvStore.put(

@@ -153,6 +153,25 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       .getOrElse(partitions)
   }
 
+  def tableCoversRange(table: String, range: PartitionRange): Boolean = {
+    try {
+      val requiredPartitions = range.partitions.toSet
+      val coveredPartitions = partitions(table).toSet
+
+      val isFullyCovered = requiredPartitions.subsetOf(coveredPartitions)
+      if (!isFullyCovered) {
+        logger.info(
+          s"Production table $table does not cover full range. Required: $requiredPartitions, Available: $coveredPartitions")
+      }
+
+      isFullyCovered
+    } catch {
+      case e: Exception =>
+        logger.warn(s"Error checking production table coverage: ${e.getMessage}")
+        false
+    }
+  }
+
   // Given a table and a query extract the schema of the columns involved as input.
   def getColumnsFromQuery(query: String): Seq[String] = {
     val parser = sparkSession.sessionState.sqlParser
@@ -455,6 +474,62 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       logger.info(s"Archiving table with command: $command")
       sql(command)
     }
+  }
+
+  def dropTableOnSchemaChange(tableName: String, incomingDf: DataFrame): Unit = {
+    if (!tableReachable(tableName)) return
+
+    val existingSchema = loadTable(tableName).schema
+    val existingSchemaMap = existingSchema
+      .map(f => f.name -> f.dataType)
+      .toMap
+
+    val incomingSchemaMap = incomingDf.schema
+      .map(f => f.name -> f.dataType)
+      .toMap
+
+    val existingCols = existingSchemaMap.keySet
+    val incomingCols = incomingDf.columns.toSet
+
+    val addedCols = incomingCols -- existingCols
+    val removedCols = existingCols -- incomingCols
+
+    val updatedCols = incomingCols
+      .intersect(existingCols)
+      .flatMap { col =>
+        val existingType = existingSchemaMap(col)
+        val incomingType = incomingSchemaMap(col)
+
+        if (existingType != incomingType) {
+          Some(s"$col: ${existingType.catalogString}  -->  ${incomingType.catalogString}")
+        } else {
+          None
+        }
+
+      }
+      .toSeq
+
+    logger.info(s"""
+         |--- Table Archival Check ----
+         |
+         |incoming schema:
+         |  ${incomingDf.schema.catalogString}
+         |existing schema:
+         |  ${existingSchema.catalogString}
+         |
+         |added columns:
+         |  $addedCols
+         |removed columns:
+         |  $removedCols
+         |updated columns:
+         |  ${updatedCols.mkString("\n  ")}
+         |
+         |""".stripMargin)
+
+    if (addedCols.nonEmpty || removedCols.nonEmpty || updatedCols.nonEmpty) {
+      dropTableIfExists(tableName)
+    }
+
   }
 
   /*

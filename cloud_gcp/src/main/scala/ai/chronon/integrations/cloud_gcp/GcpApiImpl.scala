@@ -136,6 +136,12 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
     setClientRetrySettings(dataSettingsBuilder, conf)
 
     val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
+
+    logger.info(
+      s"Creating BigTableStore for $projectId and $instanceId. " +
+        s"Params: profileId: $maybeAppProfileId, adminClientEnabled: $enableUploadClients, " +
+        s"num procs = ${Runtime.getRuntime.availableProcessors()}")
+
     val dataClient = BigtableDataClient.create(dataSettings)
 
     val maybeAdminClient = maybeAdminSettingsBuilder.map { adminSettingsBuilder =>
@@ -143,10 +149,6 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       BigtableTableAdminClient.create(adminSettings)
     }
 
-    logger.info(
-      s"Creating BigTableStore for $projectId and $instanceId. " +
-        s"Params: profileId: $maybeAppProfileId, adminClientEnabled: $enableUploadClients, " +
-        s"num procs = ${Runtime.getRuntime.availableProcessors()}")
     new BigTableKVStoreImpl(dataClient, maybeAdminClient, maybeBQClient, conf)
   }
 
@@ -253,10 +255,10 @@ object GcpApiImpl {
   private[cloud_gcp] val FetcherOOCTopicInfo = "FETCHER_OOC_TOPIC_INFO"
   private[cloud_gcp] val SchemaRegistryId = "SCHEMA_REGISTRY_ID"
 
-  private val DefaultInitialRpcTimeoutDuration = Duration.ofMillis(100L)
+  private val DefaultInitialRpcTimeoutDuration = Duration.ofMillis(200L)
   private val DefaultRpcTimeoutMultiplier = 1.25
-  private val DefaultMaxRpcTimeoutDuration = Duration.ofMillis(200L)
-  private val DefaultTotalTimeoutDuration = Duration.ofMillis(500L)
+  private val DefaultMaxRpcTimeoutDuration = Duration.ofMillis(400L)
+  private val DefaultTotalTimeoutDuration = Duration.ofMillis(1000L)
   private val DefaultMaxAttempts = 2
 
   private val sharedKvStore = new AtomicReference[KVStore]()

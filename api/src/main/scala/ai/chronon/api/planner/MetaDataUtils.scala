@@ -42,7 +42,7 @@ object MetaDataUtils {
       } else {
         // if output table is not set, use the base metadata's output table
         // fully qualified: namespace + outputTable
-        copy.executionInfo.outputTableInfo.setTable(baseMetadata.outputTable)
+        copy.executionInfo.outputTableInfo.setTable(copy.outputTable)
       }
 
     tableInfo
