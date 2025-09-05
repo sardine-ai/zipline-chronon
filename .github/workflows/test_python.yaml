@@ -85,7 +85,12 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           ./mill python.test
 
+      - name: Build coverage report
+        shell: bash
+        run: |
+          ./mill python.test.coverageHtml --omit='**/test/**,**/out/**' --fail-under=65
+
       - uses: actions/upload-artifact@v4
         with:
           name: htmlcov
-          path: python/htmlcov
+          path: out/python/test/coverageHtml.dest/htmlcov

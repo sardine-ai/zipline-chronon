@@ -64,7 +64,7 @@ object `package` extends PythonModule with RuffModule with PublishModule {
   }
 
 
-  object test extends PythonTests, TestModule.Pytest {
+  object test extends PythonTests, TestModule.Pytest, CoverageTests {
     def pythonRequirementFiles = Task.Sources(moduleDir / os.up / "requirements" / "base.txt")
 
     override def sources = Task.Sources(moduleDir)
@@ -119,7 +119,7 @@ object `package` extends PythonModule with RuffModule with PublishModule {
     println(s"Wheel installed successfully from: $wheelPath")
   }
 
-  // Install in editable mode with generated sources
+  // Install in editable mode with generated sources. Can mess ruffCheck import order (due to gen_thrift priority change)
   def installEditable() = Task.Command {
     // Generate sources in Task.dest as usual
     val generatedPaths = generatedSources()
@@ -146,5 +146,4 @@ object `package` extends PythonModule with RuffModule with PublishModule {
     os.proc("python", "-m", "pip", "install", "-e", ".").call(cwd = pythonDir)
     println("Package installed in editable mode with generated sources")
   }
-
 }

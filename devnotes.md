@@ -39,6 +39,9 @@
 # build and run the entry point (zipline.py)
 ./mill python.run hub backfill ...
 
+# run coverage
+./mill python.test.coverageReport --omit='**/test/**,**/out/**'
+
 # publish to pypi
 # ask nikhil to generate a token for you
 export MILL_TWINE_REPOSITORY_URL=https://pypi.org/
