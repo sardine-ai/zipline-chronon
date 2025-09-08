@@ -30,25 +30,8 @@ object `package` extends build.BaseModule {
     mvn"org.apache.spark::spark-sql-api:${build.Constants.sparkVersion}",
     // Additional from Bazel
     mvn"net.jodah:typetools:0.6.3",
-    mvn"com.datadoghq:java-dogstatsd-client:4.4.0",
-    // Spark CU deps for derivations - we exclude hadoop-client runtime as it transitively brings in an older protobuf 
-    // that we don't want (we use the version defined in Constants)
-    mvn"org.apache.spark::spark-catalyst:${build.Constants.sparkVersion}".exclude("org.apache.hadoop" -> "hadoop-client-runtime"),
-    mvn"org.apache.spark::spark-sql:${build.Constants.sparkVersion}".exclude("org.apache.hadoop" -> "hadoop-client-runtime"),
-  ) ++ Seq(
-    // Force specific versions to get around security vulnerabilities in older versions
-    mvn"com.fasterxml.woodstox:woodstox-core:5.4.0",
-    mvn"org.apache.commons:commons-configuration2:2.10.1",
-    mvn"dnsjava:dnsjava:3.6.1",
-    mvn"com.nimbusds:nimbus-jose-jwt:9.37.4",
-    mvn"commons-net:commons-net:3.9.0",
-    mvn"org.eclipse.jetty:jetty-server:12.0.12",
-    mvn"org.eclipse.jetty:jetty-http:12.0.12",
-    mvn"org.eclipse.jetty:jetty-xml:12.0.12",
-    mvn"net.minidev:json-smart:2.5.2",
-    mvn"commons-beanutils:commons-beanutils:1.11.0",
-    mvn"org.apache.hadoop:hadoop-common:3.4.1",
-  ).map(_.forceVersion())
+    mvn"com.datadoghq:java-dogstatsd-client:4.4.0"
+  )
   
   object test extends build.BaseTestModule {
     def moduleDeps = Seq(build.online, build.api.test)

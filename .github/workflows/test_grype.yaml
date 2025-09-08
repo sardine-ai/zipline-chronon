@@ -50,6 +50,12 @@ jobs:
       - name: Build Cloud GCP JAR  
         run: ./mill cloud_gcp.assembly
 
+      - name: Build Flink jar
+        run: ./mill flink.assembly
+
+      - name: Build Flink connectors jar
+        run: ./mill flink_connectors.assembly
+
       - name: Prepare build artifacts
         run: |
           # Copy jars to build_output as docker build can't access the mill output directories directly
@@ -82,6 +88,18 @@ jobs:
           name: cloud-gcp-jar
           path: out/cloud_gcp/assembly.dest/out.jar
 
+      - name: Upload Flink Jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: flink-jar
+          path: out/flink/assembly.dest/out.jar
+
+      - name: Upload Flink connectors Jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: flink-connectors-jar
+          path: out/flink_connectors/assembly.dest/out.jar
+
       - name: Upload Docker image
         uses: actions/upload-artifact@v4
         with:
@@ -107,6 +125,18 @@ jobs:
           name: cloud-gcp-jar
           path: cloud-gcp-jar
 
+      - name: Download Flink Jar
+        uses: actions/download-artifact@v4
+        with:
+          name: flink-jar
+          path: flink-jar
+
+      - name: Download Flink connectors Jar
+        uses: actions/download-artifact@v4
+        with:
+          name: flink-connectors-jar
+          path: flink-connectors-jar
+
       - name: Download Docker image
         uses: actions/download-artifact@v4
         with:
@@ -125,6 +155,16 @@ jobs:
         run: |
           echo "Scanning Cloud GCP JAR for vulnerabilities..."
           grype --fail-on low cloud-gcp-jar/out.jar
+
+      - name: Run Grype scan on Flink JAR
+        run: |
+          echo "Scanning Flink JAR for vulnerabilities..."
+          grype --fail-on low flink-jar/out.jar
+
+      - name: Run Grype scan on Flink connectors JAR
+        run: |
+          echo "Scanning Flink connectors JAR for vulnerabilities..."
+          grype --fail-on low flink-connectors-jar/out.jar
 
       - name: Load Docker image for Grype scanning
         run: docker load -i chronon-fetcher.tar

@@ -8,6 +8,7 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y java-17-amazon-corretto-jdk && \
     apt-get remove --purge --autoremove -y gnupg && \
+    apt-get install -y --only-upgrade libpcre2-8-0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
