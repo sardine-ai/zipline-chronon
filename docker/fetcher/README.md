@@ -97,3 +97,43 @@ $ curl -X POST http://localhost:9000/v1/fetch/join/ranking_listing -H 'Content-T
   ]
 }
 ```
+
+### Local Telemetry Docker Setup
+
+For local development with full observability stack, use the included Docker Compose configuration that provides:
+
+* **OTEL Collector**: Receives and transforms Chronon metrics
+* **Prometheus**: Time-series database for metrics storage and querying
+
+#### Setup Steps
+
+1. **Configure environment** (copy and edit with your values):
+   ```shell
+   cp .env.example .env
+   # Edit .env with your GCP project details
+   ```
+
+2. **Build image** (optional - skip to use latest):
+   ```shell
+   ./scripts/distribution/publish_docker_images.sh --local
+   ```
+
+3. **Start services**:
+   ```shell
+   docker-compose -f chronon-service-with-local-telemetry.yml up -d
+   ```
+
+#### Viewing Metrics
+
+After making API calls per [Example Usage](#example-usage):
+
+```bash
+# View raw metrics from OTEL Collector
+curl http://localhost:9464/metrics
+
+# List available metrics in Prometheus
+curl -s "http://localhost:9091/api/v1/label/__name__/values" | jq '.data[]'
+
+# Query metrics in Prometheus UI
+open http://localhost:9091
+```

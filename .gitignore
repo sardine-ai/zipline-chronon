@@ -79,6 +79,10 @@ releases
 !/frontend/.env.example
 !/frontend/.env.test
 
+# Docker environment files
+docker/fetcher/.env
+docker/**/.env
+
 # Frontend Vite
 /frontend/vite.config.js.timestamp-*
 /frontend/vite.config.ts.timestamp-*
