@@ -88,8 +88,7 @@
       "conf": {
         "common": {
           "spark.chronon.partition.column": "ds"
-        },
-        "modeConfigs": {}
+        }
       },
       "env": {
         "common": {
@@ -109,8 +108,7 @@
           "PARTITION_COLUMN": "ds",
           "PARTITION_FORMAT": "yyyy-MM-dd",
           "VERSION": "latest"
-        },
-        "modeEnvironments": {}
+        }
       },
       "historicalBackfill": 0,
       "scheduleCron": "@daily"

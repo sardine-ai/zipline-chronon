@@ -3,6 +3,7 @@ from staging_queries.gcp import exports
 
 from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
 from ai.chronon.query import Query, selects
+from ai.chronon.types import EnvironmentVariables
 
 """
 This GroupBy aggregates user activity metrics from the user-activities-v0 topic.
@@ -30,9 +31,9 @@ source = Source(
                 is_desktop="IF(device_type = 'desktop', 1, 0)",
                 is_tablet="IF(device_type = 'tablet', 1, 0)",
                 # Activity structs for last_k tracking
-                user_event_struct="STRUCT(event_type, listing_id, event_time_ms as timestamp)",
+                user_event_struct="STRUCT(event_type, listing_id, unix_millis(TIMESTAMP(event_time_ms)) as timestamp)",
             ),
-            time_column="event_time_ms",
+            time_column="unix_millis(TIMESTAMP(event_time_ms))",
         ),
     )
 )
@@ -74,7 +75,12 @@ v1 = GroupBy(
     sources=[source],
     keys=["user_id"],  # Aggregate by user
     online=True,
-    version=0,
+    version=1,
     aggregations=aggregations,
     step_days=4,
+    env_vars=EnvironmentVariables(
+        common={
+            "CHRONON_ONLINE_ARGS": "-Ztasks=1",
+        }
+    ),
 )

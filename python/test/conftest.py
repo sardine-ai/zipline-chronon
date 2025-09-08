@@ -43,7 +43,7 @@ def test_online_group_by(repo):
 @pytest.fixture
 def online_join_conf():
     """ Standard online join for tests """
-    return "compiled/joins/gcp/demo.v1__0"
+    return "compiled/joins/gcp/demo.v1__1"
 
 @pytest.fixture
 def sleepless():

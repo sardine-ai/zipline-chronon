@@ -183,14 +183,14 @@
       "scheduleCron": "@daily",
       "stepDays": 2
     },
-    "name": "gcp.demo.derivations_v1__0",
+    "name": "gcp.demo.derivations_v1__1",
     "online": 1,
     "outputNamespace": "data",
     "production": 0,
     "samplePercent": 100.0,
     "sourceFile": "joins/gcp/demo.py",
     "team": "gcp",
-    "version": "0"
+    "version": "1"
   },
   "rowIds": [
     "event_id"

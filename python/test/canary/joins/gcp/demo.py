@@ -49,7 +49,7 @@ v1 = Join(
             prefix="merchant_"
         ),
     ],
-    version=0,
+    version=1,
     online=True,
     output_namespace="data",
     step_days=2,
@@ -80,7 +80,7 @@ derivations_v1 = Join(
             expression="*"
         )
     ],
-    version=0,
+    version=1,
     online=True,
     output_namespace="data",
     step_days=2,
