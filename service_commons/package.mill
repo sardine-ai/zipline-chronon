@@ -6,7 +6,7 @@ import mill.scalalib._
 object `package` extends build.BaseModule {
   def moduleDeps = Seq(build.api, build.online)
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingDeps ++ build.Constants.utilityDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ Seq(
     mvn"io.vertx:vertx-core:4.5.10",
     mvn"io.vertx:vertx-web:4.5.10",
     mvn"io.vertx:vertx-config:4.5.10",

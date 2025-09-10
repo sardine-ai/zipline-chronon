@@ -6,7 +6,7 @@ import mill.scalalib._
 object `package` extends build.BaseModule {
   def moduleDeps = Seq(build.spark, build.aggregator, build.api, build.online)
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingDeps ++ build.Constants.utilityDeps ++ build.Constants.sparkDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ build.Constants.sparkDeps ++ Seq(
     mvn"software.amazon.awssdk:dynamodb:2.30.13",
     mvn"software.amazon.awssdk:emr:2.30.13",
     mvn"software.amazon.awssdk:regions:2.30.13",

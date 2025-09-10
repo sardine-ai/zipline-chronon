@@ -38,7 +38,7 @@ object `package` extends build.BaseModule {
       mvn"org.apache.spark::spark-sql:${build.Constants.sparkVersion}",
   )
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingDeps ++ build.Constants.utilityDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ Seq(
     mvn"org.apache.avro:avro:1.11.4",
   )
   

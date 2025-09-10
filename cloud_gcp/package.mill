@@ -23,7 +23,7 @@ object `package` extends build.BaseModule {
 
 //  val googleBigdataVersion = "2.2.26"
   def mvnDeps = build.Constants.commonDeps ++
-    build.Constants.loggingDeps ++
+    build.Constants.loggingApiDeps ++
     build.Constants.utilityDeps ++
     Seq(
       mvn"com.google.cloud:google-cloud-storage:2.49.0",

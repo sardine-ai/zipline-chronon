@@ -11,7 +11,7 @@ object `package` extends build.BaseModule {
   )
 
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingDeps ++ build.Constants.utilityDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ Seq(
     mvn"org.apache.datasketches:datasketches-memory:3.0.2",
     mvn"org.apache.datasketches:datasketches-java:6.1.1",
   )

@@ -11,7 +11,7 @@ object `package` extends build.BaseModule {
     mvn"org.apache.hadoop:hadoop-client-api:3.3.6",
   )
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingDeps ++ build.Constants.utilityDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ Seq(
     // Core dependencies from Bazel
     mvn"com.github.ben-manes.caffeine:caffeine:3.1.8",
     mvn"org.apache.kafka:kafka-clients:3.8.1",

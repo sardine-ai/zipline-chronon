@@ -13,7 +13,7 @@ object `package` extends build.BaseModule {
     mvn"org.apache.spark::spark-sql:${build.Constants.sparkVersion}",
   )
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingDeps ++ build.Constants.utilityDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ Seq(
     mvn"io.dropwizard.metrics:metrics-core:4.2.19",
     mvn"org.apache.flink:flink-metrics-dropwizard:$flinkVersion",
     mvn"org.apache.flink:flink-metrics-prometheus:$flinkVersion",
