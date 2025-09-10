@@ -74,6 +74,24 @@ object Fetcher {
     context.distribution(metrics.Metrics.Name.FetchCount, responseMap.size)
   }
 
+  def logFeatureNullRates(responseMap: Map[String, AnyRef], context: metrics.Metrics.Context): Unit = {
+    import ai.chronon.online.metrics
+
+    responseMap.foreach { case (featureName, value) =>
+      if (!featureName.endsWith("_exception")) {
+        if (value == null)
+          context.increment(
+            metrics.Metrics.Name.FeatureNulls,
+            Map(metrics.Metrics.Tag.Feature -> featureName)
+          )
+        context.increment(
+          metrics.Metrics.Name.FeatureCount,
+          Map(metrics.Metrics.Tag.Feature -> featureName)
+        )
+      }
+    }
+  }
+
   /** Response for a join schema request
     * @param joinName - Name of the join
     * @param keySchema - Avro schema string for the key

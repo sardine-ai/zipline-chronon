@@ -54,6 +54,7 @@ object Metrics {
     val Accuracy = "accuracy"
     val Team = "team"
     val Dataset = "dataset"
+    val Feature = "feature"
   }
 
   object Name {
@@ -78,6 +79,8 @@ object Metrics {
     val FetchExceptions = "fetch.exception_count"
     val FetchNulls = "fetch.null_count"
     val FetchCount = "fetch.count"
+    val FeatureNulls = "feature.null_count"
+    val FeatureCount = "feature.count"
 
     val PutKeyNullPercent = "put.key.null_percent"
     val PutValueNullPercent = "put.value.null_percent"

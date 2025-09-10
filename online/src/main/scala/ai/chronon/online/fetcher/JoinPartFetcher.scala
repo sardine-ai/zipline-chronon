@@ -129,6 +129,7 @@ class JoinPartFetcher(fetchContext: FetchContext, metadataStore: MetadataStore) 
             case Success(responseMap) =>
               joinRequest.context.foreach { ctx =>
                 ctx.distribution("response.keys.count", responseMap.size)
+                Fetcher.logFeatureNullRates(responseMap, ctx)
               }
           }
           joinRequest.context.foreach { ctx =>

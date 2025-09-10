@@ -8,6 +8,7 @@ services:
       - "9000:9000"
       - "8907:8905"
       - "8908:8906"
+      - "5005:5005"  # Debug port
     volumes:
       - ~/.config/gcloud/application_default_credentials.json:/gcp/credentials.json:ro
     environment:
@@ -17,6 +18,7 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/gcp/credentials.json
       - CHRONON_METRICS_READER=http
       - EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - JVM_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     depends_on:
       - otel-collector
 
