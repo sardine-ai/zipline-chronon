@@ -1,5 +1,5 @@
 -r base.in
-tox
+tox==4.20.0
 pytest-cov
 black
 pre-commit

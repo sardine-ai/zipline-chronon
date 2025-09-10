@@ -2,6 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Optional
 
 import click
 from gen_thrift.planner.ttypes import Mode
@@ -55,7 +56,7 @@ def force_recompute_option(func):
 
 def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False):
     hub_conf = get_hub_conf(conf, root_dir=repo)
-    zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
+    zipline_hub = ZiplineHub(base_url=hub_conf.hub_url, sa_name=hub_conf.sa_name)
     conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
     branch = get_current_branch()
 
@@ -87,7 +88,7 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False):
 
 def submit_schedule(repo, conf):
     hub_conf = get_hub_conf(conf, root_dir=repo)
-    zipline_hub = ZiplineHub(base_url=hub_conf.hub_url)
+    zipline_hub = ZiplineHub(base_url=hub_conf.hub_url, sa_name=hub_conf.sa_name)
     conf_name_to_obj_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
     branch = get_current_branch()
 
@@ -180,6 +181,7 @@ def get_common_env_map(file_path):
 class HubConfig:
     hub_url: str
     frontend_url: str
+    sa_name: Optional[str] = None
 
 
 @dataclass
@@ -193,7 +195,8 @@ def get_hub_conf(conf_path, root_dir="."):
     common_env_map = get_common_env_map(file_path)
     hub_url = common_env_map.get("HUB_URL", os.environ.get("HUB_URL"))
     frontend_url = common_env_map.get("FRONTEND_URL", os.environ.get("FRONTEND_URL"))
-    return HubConfig(hub_url=hub_url, frontend_url=frontend_url)
+    sa_name = common_env_map.get("SA_NAME", os.environ.get("SA_NAME"))
+    return HubConfig(hub_url=hub_url, frontend_url=frontend_url, sa_name=sa_name)
 
 
 def get_schedule_modes(conf_path):
