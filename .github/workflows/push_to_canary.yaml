@@ -346,7 +346,7 @@ jobs:
         id: gcp_integration_tests
         run: |
           set -xo pipefail
-          ./scripts/distribution/run_gcp_quickstart.sh --canary --version ${{ needs.build_artifacts.outputs.version }}
+          ./scripts/distribution/run_gcp_template_quickstart.sh --canary --version ${{ needs.build_artifacts.outputs.version }}
 
       - name:  On Fail Notify Slack
         id: notify_slack
