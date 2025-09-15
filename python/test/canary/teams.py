@@ -28,8 +28,9 @@ default = Team(
             "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "FLINK_STATE_URI": "gs://zipline-warehouse-canary/flink-state",
-            "FRONTEND_URL": "http://localhost:3000", # gcp_compose:localhost:3000  canary:https://34.111.151.47.nip.io",
-            "HUB_URL": "http://localhost:3903" #  gcp_compose:localhost:3903  canary:http://34.133.227.246:3903",
+            "FRONTEND_URL": "http://localhost:3000", # gcp_compose:localhost:3000  canary:https://canary-gke.zipline.ai",
+            "HUB_URL": "http://localhost:3903", #  gcp_compose:localhost:3903  canary:https://canary-gke-orch.zipline.ai",
+            # "SA_NAME": "zipline-user", # needed for gcp authentication
         },
     ),
 )
