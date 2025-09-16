@@ -7,12 +7,14 @@ on:
     paths-ignore:
       - 'python/**'
       - '**/*.md'
+      - 'scripts/**'
   pull_request:
     branches:
       - main
     paths-ignore:
       - 'python/**'
       - '**/*.md'
+      - 'scripts/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
