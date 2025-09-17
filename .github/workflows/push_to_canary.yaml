@@ -1,9 +1,6 @@
 name: Push To Canary
 
 on:
-  push:
-    branches:
-      - main
   merge_group: # Trigger on merge groups to main branch
     branches:
       - main
