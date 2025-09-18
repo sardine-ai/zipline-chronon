@@ -4,7 +4,6 @@ import org.apache.iceberg.catalog.TableIdentifier
 import org.apache.iceberg.spark.SparkSessionCatalog
 import org.apache.iceberg.{DataFile, ManifestFiles, PartitionSpec, Table}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.execution.datasources.v2.V2SessionCatalog
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -17,7 +16,7 @@ class IcebergPartitionStatsExtractor(spark: SparkSession) {
 
     val catalog = spark.sessionState.catalogManager
       .catalog(catalogName)
-      .asInstanceOf[SparkSessionCatalog[V2SessionCatalog]]
+      .asInstanceOf[SparkSessionCatalog[_]]
       .icebergCatalog()
 
     val tableId: TableIdentifier = TableIdentifier.of(namespace, tableName)

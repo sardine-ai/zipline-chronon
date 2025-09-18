@@ -104,7 +104,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 
     val invalidSparkTableName = "project-id.dataset.table_name"
     assertThrows[ParseException] {
-      val notReachable = spark.sessionState.sqlParser.parseMultipartIdentifier(invalidSparkTableName)
+      val bTableId = SparkBQUtils.toTableId(invalidSparkTableName)(spark)
     }
   }
 
