@@ -33,7 +33,7 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
         "spark.chronon.partition.column" -> "ds",
         "spark.hadoop.fs.gs.impl" -> "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem",
         "spark.hadoop.fs.AbstractFileSystem.gs.impl" -> "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS",
-        "spark.sql.catalogImplementation" -> "in-memory"
+        "spark.sql.catalogImplementation" -> "in-memory",
 
 //        Uncomment to test
 //        "spark.sql.defaultCatalog" -> "default_iceberg",
@@ -41,8 +41,8 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
 //        "spark.sql.catalog.default_iceberg.catalog-impl" -> classOf[BQMSCatalog].getName,
 //        "spark.sql.catalog.default_iceberg.io-impl" -> classOf[ResolvingFileIO].getName,
 //        "spark.sql.catalog.default_iceberg.warehouse" -> "gs://zipline-warehouse-canary/data/tables/",
-//        "spark.sql.catalog.default_iceberg.gcp_location" -> "us-central1",
-//        "spark.sql.catalog.default_iceberg.gcp_project" -> "canary-443022",
+//        "spark.sql.catalog.default_iceberg.gcp.bigquery.location" -> "us-central1",
+//        "spark.sql.catalog.default_iceberg.gcp.bigquery.project-id" -> "canary-443022",
 //        "spark.kryo.registrator" -> classOf[ChrononIcebergKryoRegistrator].getName,
 //        "spark.sql.defaultUrlStreamHandlerFactory.enabled" -> false.toString,
 //
@@ -106,6 +106,65 @@ class BigQueryCatalogTest extends AnyFlatSpec with MockitoSugar {
     assertThrows[ParseException] {
       val bTableId = SparkBQUtils.toTableId(invalidSparkTableName)(spark)
     }
+  }
+
+  it should "correctly parse table names to Spark Identifiers" in {
+    // Test simple table name
+    val simpleTable = "table_name"
+    val simpleIdentifier = SparkBQUtils.toIdentifier(simpleTable)(spark)
+    assertEquals("table_name", simpleIdentifier.name())
+    assertEquals(0, simpleIdentifier.namespace().length)
+
+    // Test database.table formatN
+    val databaseTable = "database.table_name"
+    val databaseIdentifier = SparkBQUtils.toIdentifier(databaseTable)(spark)
+    assertEquals("table_name", databaseIdentifier.name())
+    assertEquals(1, databaseIdentifier.namespace().length)
+    assertEquals("database", databaseIdentifier.namespace()(0))
+
+    // Test catalog.database.table format
+    val catalogDatabaseTable = "catalog.database.table_name"
+    val catalogIdentifier = SparkBQUtils.toIdentifier(catalogDatabaseTable)(spark)
+    assertEquals("table_name", catalogIdentifier.name())
+    assertEquals(2, catalogIdentifier.namespace().length)
+    assertEquals("catalog", catalogIdentifier.namespace()(0))
+    assertEquals("database", catalogIdentifier.namespace()(1))
+  }
+
+  it should "handle quoted identifiers correctly" in {
+    // Test quoted project ID with hyphens
+    val quotedProjectTable = "`project-id`.dataset.table_name"
+    val quotedIdentifier = SparkBQUtils.toIdentifier(quotedProjectTable)(spark)
+    assertEquals("table_name", quotedIdentifier.name())
+    assertEquals(2, quotedIdentifier.namespace().length)
+    assertEquals("project-id", quotedIdentifier.namespace()(0))
+    assertEquals("dataset", quotedIdentifier.namespace()(1))
+
+    // Test quoted table name with special characters
+    val quotedTableName = "catalog.dataset.`table-with-hyphens`"
+    val quotedTableIdentifier = SparkBQUtils.toIdentifier(quotedTableName)(spark)
+    assertEquals("table-with-hyphens", quotedTableIdentifier.name())
+    assertEquals(2, quotedTableIdentifier.namespace().length)
+    assertEquals("catalog", quotedTableIdentifier.namespace()(0))
+    assertEquals("dataset", quotedTableIdentifier.namespace()(1))
+  }
+
+  it should "handle complex BigQuery table names" in {
+    // Test realistic BigQuery table name with project, dataset, and table
+    val bigQueryTable = "`my-project-123`.my_dataset.my_table_name"
+    val bigQueryIdentifier = SparkBQUtils.toIdentifier(bigQueryTable)(spark)
+    assertEquals("my_table_name", bigQueryIdentifier.name())
+    assertEquals(2, bigQueryIdentifier.namespace().length)
+    assertEquals("my-project-123", bigQueryIdentifier.namespace()(0))
+    assertEquals("my_dataset", bigQueryIdentifier.namespace()(1))
+
+    // Test table name with underscores and numbers
+    val complexTable = "project123.dataset_test.table_name_v2"
+    val complexIdentifier = SparkBQUtils.toIdentifier(complexTable)(spark)
+    assertEquals("table_name_v2", complexIdentifier.name())
+    assertEquals(2, complexIdentifier.namespace().length)
+    assertEquals("project123", complexIdentifier.namespace()(0))
+    assertEquals("dataset_test", complexIdentifier.namespace()(1))
   }
 
   it should "bigquery connector converts spark dates regardless of date setting" in {

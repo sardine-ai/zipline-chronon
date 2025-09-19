@@ -16,9 +16,13 @@ object SparkBQUtils {
   }
 
   def toIdentifier(tableName: String)(implicit spark: SparkSession): Identifier = {
-    val parseIdentifier = spark.sessionState.sqlParser.parseMultipartIdentifier(tableName).reverse
-    Identifier.of(parseIdentifier.tail.reverse.toArray, parseIdentifier.head)
+    val parseIdentifier = spark.sessionState.sqlParser.parseMultipartIdentifier(tableName)
+    Identifier.of(parseIdentifier.init.toArray, parseIdentifier.last)
+  }
 
+  def toIdentifierNoCatalog(tableName: String)(implicit spark: SparkSession): Identifier = {
+    val identifier = toIdentifier(tableName)
+    Identifier.of(Array(identifier.namespace().last), identifier.name())
   }
 
 }
