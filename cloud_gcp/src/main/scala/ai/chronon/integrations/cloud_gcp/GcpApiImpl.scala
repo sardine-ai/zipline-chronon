@@ -50,6 +50,10 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
       case Some(topicInfo) if topicInfo.messageBus.toLowerCase == "kafka" =>
         val maybeSchemaRegistryId = getOptional(SchemaRegistryId, conf).map(_.toInt)
         new KafkaLoggableResponseConsumer(topicInfo, maybeSchemaRegistryId)
+      case Some(topicInfo) if topicInfo.messageBus.toLowerCase == "pubsub" =>
+        val maybeSchemaRegistryId = getOptional(SchemaRegistryId, conf).map(_.toInt)
+        val projectId = getOrElseThrow(GcpProjectId, conf)
+        new PubSubLoggableResponseConsumer(topicInfo, maybeSchemaRegistryId, projectId)
       case _ =>
         // fall back to no-op consumer
         logger.info("Falling back to NoOp online/offline response consumer as FETCHER_OOC_TOPIC_INFO isn't configured")
