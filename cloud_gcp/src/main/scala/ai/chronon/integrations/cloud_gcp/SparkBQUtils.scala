@@ -22,7 +22,12 @@ object SparkBQUtils {
 
   def toIdentifierNoCatalog(tableName: String)(implicit spark: SparkSession): Identifier = {
     val identifier = toIdentifier(tableName)
-    Identifier.of(Array(identifier.namespace().last), identifier.name())
+    val namespace = identifier.namespace()
+    if (namespace.isEmpty) {
+      Identifier.of(Array.empty[String], identifier.name())
+    } else {
+      Identifier.of(Array(namespace.last), identifier.name())
+    }
   }
 
 }
