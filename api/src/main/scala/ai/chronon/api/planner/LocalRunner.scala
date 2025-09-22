@@ -1,7 +1,7 @@
 package ai.chronon.api.planner
 
 import ai.chronon.api.thrift.TBase
-import ai.chronon.api.{Constants, GroupBy, Join, PartitionSpec, StagingQuery, ThriftJsonCodec}
+import ai.chronon.api._
 import ai.chronon.planner.ConfPlan
 
 import java.io.File
@@ -36,7 +36,7 @@ object LocalRunner {
       }
       case "staging_queries" => {
         val confs = parseConfs[StagingQuery](confSubfolder)
-        confs.map((c) => new StagingQueryPlanner(c)).map(_.buildPlan)
+        confs.map((c) => StagingQueryPlanner(c)).map(_.buildPlan)
       }
       case "groupbys" => {
         val confs = parseConfs[GroupBy](confSubfolder)
@@ -66,7 +66,7 @@ object LocalRunner {
 
     println("Parsed configurations:")
     val plans = processConfigurations(confSubfolder, confType)
-    plans.foreach(println)
+    plans.map((plan) => ThriftJsonCodec.toJsonStr(plan)).foreach(println)
   }
 
 }
