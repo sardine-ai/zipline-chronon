@@ -30,21 +30,21 @@ object LocalRunner {
   def processConfigurations(confSubfolder: String, confType: String)(implicit
       partitionSpec: PartitionSpec): Seq[ConfPlan] = {
     confType match {
-      case "joins" => {
+      case Constants.JoinFolder => {
         val confs = parseConfs[Join](confSubfolder)
         confs.map((c) => MonolithJoinPlanner(c)).map(_.buildPlan)
       }
-      case "staging_queries" => {
+      case Constants.StagingQueryFolder => {
         val confs = parseConfs[StagingQuery](confSubfolder)
         confs.map((c) => StagingQueryPlanner(c)).map(_.buildPlan)
       }
-      case "groupbys" => {
+      case Constants.GroupByFolder => {
         val confs = parseConfs[GroupBy](confSubfolder)
         confs.map((c) => new GroupByPlanner(c)).map(_.buildPlan)
       }
       case _ =>
         throw new UnsupportedOperationException(
-          s"Unsupported conf type: $confType. Supported types are: joins, staging_queries, groupbys."
+          s"Unsupported conf type: $confType. Supported types are: joins, staging_queries, group_bys."
         )
     }
   }
