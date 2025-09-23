@@ -51,7 +51,8 @@ class BatchNodeRunnerArgs(args: Array[String]) extends ScallopConf(args) {
   val tableStatsDataset: ScallopOption[String] = opt[String](
     required = false,
     descr = "Name of table in kv store to use to store partition statistics",
-    default = Option(Constants.TiledSummaryDataset))
+    default = None
+  )
 
   verify()
 }
