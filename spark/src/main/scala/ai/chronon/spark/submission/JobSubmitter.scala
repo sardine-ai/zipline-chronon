@@ -222,6 +222,7 @@ object JobSubmitterConstants {
   val GcpEnableUploadKVClientEnvVar = "ENABLE_UPLOAD_CLIENTS"
 
   val TablePartitionsDatasetNameArgKeyword = "--table-partitions-dataset"
+  val TableStatsDatasetNameArgKeyword = "--table-stats-dataset"
 
   val CheckIfJobIsRunning = "check-if-job-is-running"
   val StreamingDeploy = "deploy"

@@ -4,7 +4,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions.JMapOps
 import ai.chronon.api._
 import ai.chronon.api.planner.{DependencyResolver, NodeRunner}
-import ai.chronon.observability.PartitionStats
+import ai.chronon.observability.{NullCounts, TileStats}
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.online.{Api, KVStore}
 import ai.chronon.planner._
@@ -156,25 +156,21 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     }
   }
 
-  private[batch] def extractAndPersistPartitionStats(metricsKvStore: KVStore, outputTable: String, jobName: String)(
+  private[batch] def extractAndPersistPartitionStats(metricsKvStore: KVStore, outputTable: String, confName: String)(
       implicit partitionSpec: PartitionSpec): Unit = {
     try {
       logger.info(s"Extracting partition statistics for table: $outputTable")
       val statsExtractor = new IcebergPartitionStatsExtractor(tableUtils.sparkSession)
-      val tileSummaries = statsExtractor.extractPartitionedStats(outputTable, jobName)
+      val tileSummaries = statsExtractor.extractPartitionedStats(outputTable, confName)
 
       if (tileSummaries.nonEmpty) {
-        // Use regular KVStore but with DataQualityMetricsKVStore format
-
-        // Group tile summaries by conf name and timestamp
         val groupedTileSummaries = tileSummaries.groupBy { case (observabilityTileKey, _) =>
           val dayPartitionMillis =
             IcebergPartitionStatsExtractor.extractPartitionMillisFromSlice(observabilityTileKey.getSlice, partitionSpec)
-          (observabilityTileKey.name, dayPartitionMillis)
+          (dayPartitionMillis)
         }
 
-        // Process each group and create PutRequests using the new data quality metrics format
-        val putRequests = groupedTileSummaries.map { case ((confName, dayPartitionMillis), columnTileSummaries) =>
+        val putRequests = groupedTileSummaries.map { case ((dayPartitionMillis), columnTileSummaries) =>
           // Extract null counts for all columns
           val nullCounts = columnTileSummaries.map { case (tileKey, tileSummary) =>
             val fieldId = tileKey.getColumn.toInt // Convert fieldId string back to Int
@@ -184,17 +180,18 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
           // Get total row count (should be same across all columns)
           val rowCount = columnTileSummaries.headOption.map(_._2.getCount).getOrElse(0L)
 
-          val partitionStats = new PartitionStats()
+          val nullCountsStats = new NullCounts()
             .setRowCount(rowCount)
             .setNullCounts(nullCounts.map { case (k, v) =>
               k.asInstanceOf[java.lang.Integer] -> v.asInstanceOf[java.lang.Long]
             }.toJava)
 
+          val partitionStats = TileStats.nullCounts(nullCountsStats)
+
           val thriftBytes = ThriftJsonCodec.toCompactBase64(partitionStats).getBytes
 
-          // Simple key with node name and metric type - DataQualityMetricsKVStore will add year-month
-          val simpleKey = s"null_count"
-          val datasetName = s"${confName}_BATCH"
+          val simpleKey = s"${outputTable}#null_counts"
+          val datasetName = s"${outputTable}_BATCH"
           PutRequest(simpleKey.getBytes(StandardCharsets.UTF_8), thriftBytes, datasetName, Some(dayPartitionMillis))
         }.toSeq
 

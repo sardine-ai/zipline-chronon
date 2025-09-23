@@ -119,7 +119,7 @@ class BigTableMetricsKvStore(dataClient: BigtableDataClient,
             val startTs = request.startTsMillis.getOrElse(System.currentTimeMillis() - 1.day.toMillis)
             val endTime = request.endTsMillis.getOrElse(System.currentTimeMillis())
             val (updatedQuery, addedRowKeys) =
-              setQueryTimeSeriesFilters(currentQuery, startTs, endTime, request.keyBytes, dataset)
+              setQueryTimeSeriesFilters(currentQuery, startTs, endTime, request.keyBytes)
             rowKeys ++= addedRowKeys
 
             (updatedQuery, acc :+ (request, rowKeys))
@@ -161,14 +161,13 @@ class BigTableMetricsKvStore(dataClient: BigtableDataClient,
   private def setQueryTimeSeriesFilters(query: Query,
                                         startTs: Long,
                                         endTs: Long,
-                                        keyBytes: Seq[Byte],
-                                        dataset: String): (Query, Iterable[ByteString]) = {
+                                        keyBytes: Seq[Byte]): (Query, Iterable[ByteString]) = {
 
     // Generate row keys for each year-month in the range
     val yearMonths = generateYearMonthRange(startTs, endTs)
 
     val rowKeyByteStrings = yearMonths.map { ymTimestamp =>
-      val rowKey = buildDataQualityRowKey(keyBytes, dataset, Some(ymTimestamp))
+      val rowKey = buildDataQualityRowKey(keyBytes, Some(ymTimestamp))
       val rowKeyByteString = ByteString.copyFrom(rowKey)
       query.rowKey(rowKeyByteString)
       rowKeyByteString
@@ -245,7 +244,7 @@ class BigTableMetricsKvStore(dataClient: BigtableDataClient,
       val timestampInPutRequest = request.tsMillis.getOrElse(
         throw new IllegalArgumentException("Timestamp is required for data quality metrics")
       )
-      val rowKey = buildDataQualityRowKey(request.keyBytes, request.dataset, Some(timestampInPutRequest))
+      val rowKey = buildDataQualityRowKey(request.keyBytes, Some(timestampInPutRequest))
 
       // Use day-start timestamp for coarse granularity
       val dayStartMillis = timestampInPutRequest - (timestampInPutRequest % 1.day.toMillis)
@@ -315,16 +314,13 @@ private object BigTableMetricsKvStore {
   val ColumnFamilyQualifierString: String = "value"
   val ColumnFamilyQualifier: ByteString = ByteString.copyFromUtf8(ColumnFamilyQualifierString)
 
-  private def buildDataQualityRowKey(baseKeyBytes: Seq[Byte],
-                                     dataset: String,
-                                     maybeTs: Option[Long] = None): Array[Byte] = {
-    val baseRowKey = s"$dataset#".getBytes(StandardCharsets.UTF_8) ++ baseKeyBytes
-    maybeTs match {
+  private def buildDataQualityRowKey(baseKeyBytes: Seq[Byte], maybeTs: Option[Long] = None): Array[Byte] = {
+    (maybeTs match {
       case Some(ts) =>
         val yearMonth = formatYearMonth(ts)
-        baseRowKey ++ s"#$yearMonth".getBytes(StandardCharsets.UTF_8)
-      case _ => baseRowKey
-    }
+        baseKeyBytes ++ s"#$yearMonth".getBytes(StandardCharsets.UTF_8)
+      case _ => baseKeyBytes
+    }).toArray
   }
 
   /** Format timestamp to year-month string */

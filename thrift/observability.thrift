@@ -58,9 +58,13 @@ struct TileSeriesKey {
 }
 
 // Internal use for persisting data quality metrics to KVStore.
-struct PartitionStats {
+struct NullCounts {
     1: optional map<i32, i64> nullCounts
     2: optional i64 rowCount
+}
+
+union TileStats {
+    1: NullCounts nullCounts
 }
 
 // array of tuples of (TileSummary, timestamp) ==(pivot)==> TileSummarySeries
@@ -169,7 +173,7 @@ struct JoinSummaryRequest {
 }
 
 struct MetricsRequest {
-    1: required string confName
+    1: required string tableName
     2: required i64 startTs
     3: required i64 endTs
 }
