@@ -63,6 +63,10 @@ struct NullCounts {
     2: optional i64 rowCount
 }
 
+enum TileStatsType {
+    NULL_COUNTS = 1
+}
+
 union TileStats {
     1: NullCounts nullCounts
 }
@@ -173,11 +177,12 @@ struct JoinSummaryRequest {
 }
 
 struct MetricsRequest {
-    1: required string tableName
-    2: required i64 startTs
-    3: required i64 endTs
+    1: optional string tableName
+    2: optional i64 startTs
+    3: optional i64 endTs
+    4: optional TileStatsType statsType
 }
 
 struct MetricsResponse {
-    1: required TileSummarySeries series
+    1: optional TileSummarySeries series
 }
