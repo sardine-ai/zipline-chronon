@@ -40,6 +40,7 @@ object Metrics {
     val JoinLogFlatten = "join.log_flatten"
     val LabelJoin = "label_join"
     val KVStore = "kv_store"
+    val Orchestrator = "orchestrator"
   }
 
   import Environment._
