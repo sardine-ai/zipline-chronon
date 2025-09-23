@@ -88,8 +88,16 @@ class BigQueryImport(stagingQueryConf: api.StagingQuery, endPartition: String, t
         )
       val destPath =
         destPrefix(range.partitionSpec.column, currPart)
+      val renderedSetups = setups.map(s =>
+        StagingQuery.substitute(
+          tableUtils,
+          s,
+          currPart,
+          currPart,
+          endPartition
+        ))
       val exportTemplate =
-        exportDataTemplate(destPath, renderedQuery, setups)
+        exportDataTemplate(destPath, renderedQuery, renderedSetups)
       logger.info(s"Rendered Staging Query to run is:\n$exportTemplate")
       val exportConf = QueryJobConfiguration.of(exportTemplate)
       val exportJobTry = Try {

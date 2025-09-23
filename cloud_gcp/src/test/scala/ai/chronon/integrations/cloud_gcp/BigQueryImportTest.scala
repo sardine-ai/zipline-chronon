@@ -329,4 +329,81 @@ class BigQueryImportTest extends AnyFlatSpec with MockitoSugar {
     verify(mockClient).create(any[JobInfo])
     verify(mockClient).create(any[TableInfo])
   }
+
+  it should "properly substitute variables in setup statements" in {
+    val stagingQueryConf = createTestStagingQuery()
+    val endPartition = "2024-01-31"
+    val mockClient = mock[BigQuery]
+    val mockJob = mock[Job]
+    val mockJobStatus = mock[JobStatus]
+    val mockTable = mock[Table]
+    val mockTableId = mock[TableId]
+
+    // Capture the JobInfo that gets passed to create()
+    var capturedJobInfo: JobInfo = null
+    when(mockJob.waitFor()).thenReturn(mockJob)
+    when(mockJob.getStatus).thenReturn(mockJobStatus)
+    when(mockJobStatus.getError).thenReturn(null)
+    when(mockClient.create(any[JobInfo])).thenAnswer { invocation =>
+      capturedJobInfo = invocation.getArgument(0).asInstanceOf[JobInfo]
+      mockJob
+    }
+    when(mockClient.create(any[TableInfo])).thenReturn(mockTable)
+    when(mockTable.getTableId).thenReturn(mockTableId)
+
+    val bigQueryStagingQuery = new BigQueryImport(stagingQueryConf, endPartition, tableUtils) {
+      override private[cloud_gcp] lazy val bigQueryClient: BigQuery = mockClient
+    }
+
+    val range = PartitionRange("2024-01-15", "2024-01-15")(partitionSpec)
+    val setups = Seq(
+      "CREATE TEMP TABLE temp_data AS SELECT * FROM source_data WHERE partition_date = {{ start_date }}",
+      "CREATE TEMP TABLE temp_end AS SELECT * FROM end_data WHERE end_date = {{ end_date }}"
+    )
+
+    bigQueryStagingQuery.compute(range, setups, Some(true))
+
+    // Verify that the JobInfo contains substituted setup statements
+    assertTrue("JobInfo should be captured", capturedJobInfo != null)
+    val queryConfig = capturedJobInfo.getConfiguration.asInstanceOf[QueryJobConfiguration]
+    val renderedQuery = queryConfig.getQuery
+
+    // Check that variables were properly substituted in setup statements
+    assertTrue("Setup should contain substituted start date",
+               renderedQuery.contains("partition_date = '2024-01-15'"))
+    assertTrue("Setup should contain substituted end date",
+               renderedQuery.contains("end_date = '2024-01-15'"))
+    assertTrue("Setup should not contain unsubstituted variables",
+               !renderedQuery.contains("{{ start_date }}") && !renderedQuery.contains("{{ end_date }}"))
+  }
+
+  it should "render setup SQL with complex variable substitutions" in {
+    val stagingQueryConf = createTestStagingQuery()
+    val endPartition = "2024-01-31"
+
+    val bigQueryStagingQuery = new BigQueryImport(stagingQueryConf, endPartition, tableUtils)
+
+    val uri = "gs://test-bucket/test-path/*.parquet"
+    val sql = "SELECT * FROM test_table WHERE ds = '{{ start_date }}' AND ds <= '{{ end_date }}'"
+    val setups = Seq(
+      "CREATE TEMP TABLE partition_data_{{ start_date }} AS (SELECT * FROM source WHERE date_col = '{{ start_date }}')",
+      "CREATE TEMP FUNCTION get_end_date() AS ('{{ end_date }}')",
+      "CREATE OR REPLACE VIEW test_view AS SELECT * FROM base_table WHERE partition >= '{{ start_date }}' AND partition <= '{{ end_date }}'"
+    )
+    val result = bigQueryStagingQuery.exportDataTemplate(uri, sql, setups)
+
+    // Verify the structure contains setup statements with variable placeholders
+    assertTrue("Template should contain BEGIN block", result.contains("BEGIN"))
+    assertTrue("Template should contain END block", result.contains("END;"))
+    assertTrue("Template should contain first setup with variables", result.contains("CREATE TEMP TABLE partition_data_{{ start_date }}"))
+    assertTrue("Template should contain second setup with variables", result.contains("CREATE TEMP FUNCTION get_end_date() AS ('{{ end_date }}')"))
+    assertTrue("Template should contain third setup with variables", result.contains("CREATE OR REPLACE VIEW test_view"))
+    assertTrue("Template should contain export data section", result.contains("EXPORT DATA"))
+    assertTrue("Template should contain main SQL with variables", result.contains("SELECT * FROM test_table WHERE ds = '{{ start_date }}' AND ds <= '{{ end_date }}'"))
+
+    // Verify each setup statement is properly terminated
+    setups.foreach { setup =>
+      assertTrue(s"Setup '$setup' should be terminated with semicolon", result.contains(setup + ";"))
+    }
+  }
 }
