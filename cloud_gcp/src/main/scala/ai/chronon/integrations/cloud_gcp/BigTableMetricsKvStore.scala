@@ -241,11 +241,12 @@ class BigTableMetricsKvStore(dataClient: BigtableDataClient,
         metricsContext.copy(dataset = tableId.toString)
       )
 
-      val timestampInPutRequest = request.tsMillis.getOrElse(System.currentTimeMillis())
-      val rowKey = buildDataQualityRowKey(request.keyBytes, Some(timestampInPutRequest))
+      val timestampInPutRequest = request.tsMillis
+      val rowKey = buildDataQualityRowKey(request.keyBytes, timestampInPutRequest)
 
       // Use day-start timestamp for coarse granularity
-      val dayStartMillis = timestampInPutRequest - (timestampInPutRequest % 1.day.toMillis)
+      val timestampMillis = timestampInPutRequest.getOrElse(System.currentTimeMillis())
+      val dayStartMillis = timestampMillis - (timestampMillis % 1.day.toMillis)
       val timestampMicros = dayStartMillis * 1000
       val mutation = RowMutation.create(tableId, ByteString.copyFrom(rowKey))
 

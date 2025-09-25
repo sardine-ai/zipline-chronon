@@ -175,14 +175,3 @@ struct JoinSummaryRequest {
     5: optional string percentiles  // Format: "p5,p50,p95"
     8: required string columnName
 }
-
-struct MetricsRequest {
-    1: optional string tableName
-    2: optional i64 startTs
-    3: optional i64 endTs
-    4: optional TileStatsType statsType
-}
-
-struct MetricsResponse {
-    1: optional TileSummarySeries series
-}
