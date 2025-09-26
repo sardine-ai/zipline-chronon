@@ -163,19 +163,32 @@ class BigTableMetricsKvStore(dataClient: BigtableDataClient,
                                         endTs: Long,
                                         keyBytes: Seq[Byte]): (Query, Iterable[ByteString]) = {
 
-    // Generate row keys for each year-month in the range
-    val yearMonths = generateYearMonthRange(startTs, endTs)
+    val keyString = new String(keyBytes.toArray, StandardCharsets.UTF_8)
 
-    val rowKeyByteStrings = yearMonths.map { ymTimestamp =>
-      val rowKey = buildDataQualityRowKey(keyBytes, Some(ymTimestamp))
-      val rowKeyByteString = ByteString.copyFrom(rowKey)
-      query.rowKey(rowKeyByteString)
-      rowKeyByteString
+    // Special case for schema rows - they don't have YYYY-MM suffix
+    if (keyString.endsWith("#schema")) {
+      val schemaRowKey = buildDataQualityRowKey(keyBytes, None)
+      val schemaRowKeyByteString = ByteString.copyFrom(schemaRowKey)
+      query.rowKey(schemaRowKeyByteString)
+
+      // For schema rows, get the latest timestamped cell without time range filters
+      // This allows us to get the most recent schema regardless of the query time range
+      (query, List(schemaRowKeyByteString))
+    } else {
+      // Generate row keys for each year-month in the range for regular metric rows
+      val yearMonths = generateYearMonthRange(startTs, endTs)
+
+      val rowKeyByteStrings = yearMonths.map { ymTimestamp =>
+        val rowKey = buildDataQualityRowKey(keyBytes, Some(ymTimestamp))
+        val rowKeyByteString = ByteString.copyFrom(rowKey)
+        query.rowKey(rowKeyByteString)
+        rowKeyByteString
+      }
+
+      val modifiedQuery =
+        query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000))
+      (modifiedQuery, rowKeyByteStrings)
     }
-
-    val modifiedQuery =
-      query.filter(Filters.FILTERS.timestamp().range().startClosed(startTs * 1000).endClosed(endTs * 1000))
-    (modifiedQuery, rowKeyByteStrings)
   }
 
   private def generateYearMonthRange(startTs: Long, endTs: Long): List[Long] = {
