@@ -24,10 +24,12 @@ class ShortNamesTest extends AnyFlatSpec {
 
   private implicit val tableUtils = TableTestUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
-  private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
-  private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
+  // Use 3 days ago as the end date to ensure data is always generated
+  private val threeDaysAgo = tableUtils.partitionSpec.minus(today, new Window(3, TimeUnit.DAYS))
+  private val monthAgo = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(30, TimeUnit.DAYS))
+  private val yearAgo = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(365, TimeUnit.DAYS))
 
-  val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
+  val start = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(60, TimeUnit.DAYS))
   private val dayAndMonthBefore = tableUtils.partitionSpec.before(monthAgo)
 
   val namespace = "test_short_names"
@@ -66,7 +68,7 @@ class ShortNamesTest extends AnyFlatSpec {
       .events(spark, itemQueries, 2000, partitions = 100)
       .save(itemQueriesTable)
 
-    val start = tableUtils.partitionSpec.minus(today, new Window(100, TimeUnit.DAYS))
+    val start = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(100, TimeUnit.DAYS))
 
     val joinConf = Builders
       .Join(
@@ -203,7 +205,7 @@ class ShortNamesTest extends AnyFlatSpec {
       query = Builders.Query(
         selects = Builders.Selects("user", "ts", "user_amount_dollars_sum_10d"),
         startPartition = start,
-        endPartition = today
+        endPartition = threeDaysAgo
       ),
       table = s"$namespace.bootstrap",
       keyColumns = Seq("user", "ts")
@@ -295,12 +297,12 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val sourceJobRange = new DateRange()
       .setStartDate(start)
-      .setEndDate(today)
+      .setEndDate(threeDaysAgo)
 
     val sourceRunner = new SourceJob(leftSourceWithFilter, sourceMetaData, sourceJobRange)
     sourceRunner.run()
     tableUtils.sql(s"SELECT * FROM $sourceOutputTable").show()
-    val sourceExpected = spark.sql(s"SELECT *, date as ds FROM $queryTable WHERE date >= '$start' AND date <= '$today'")
+    val sourceExpected = spark.sql(s"SELECT *, date as ds FROM $queryTable WHERE date >= '$start' AND date <= '$threeDaysAgo'")
     val sourceComputed = tableUtils.sql(s"SELECT * FROM $sourceOutputTable").drop("ts_ds")
     val diff = Comparison.sideBySide(sourceComputed, sourceExpected, List("user_name", "user", "ts"))
     if (diff.count() > 0) {
@@ -316,7 +318,7 @@ class ShortNamesTest extends AnyFlatSpec {
     val bootstrapOutputTable = joinConf.metaData.bootstrapTable
     val bootstrapJobRange = new DateRange()
       .setStartDate(start)
-      .setEndDate(today)
+      .setEndDate(threeDaysAgo)
 
     // Split bootstrap output table
     val bootstrapParts = bootstrapOutputTable.split("\\.", 2)
@@ -360,7 +362,7 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val joinPartJobRange = new DateRange()
       .setStartDate(start)
-      .setEndDate(today)
+      .setEndDate(threeDaysAgo)
 
     // Create metadata with name and namespace directly
     val metaData = new api.MetaData()
@@ -399,7 +401,7 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val mergeJobRange = new DateRange()
       .setStartDate(start)
-      .setEndDate(today)
+      .setEndDate(threeDaysAgo)
 
     // Create metadata for merge job
     val mergeMetaData = new api.MetaData()
@@ -418,7 +420,7 @@ class ShortNamesTest extends AnyFlatSpec {
 
     val derivationRange = new DateRange()
       .setStartDate(start)
-      .setEndDate(today)
+      .setEndDate(threeDaysAgo)
 
     // Split derivation output table
     val derivationParts = derivationOutputTable.split("\\.", 2)
@@ -450,7 +452,7 @@ class ShortNamesTest extends AnyFlatSpec {
                    |         AND ts IS NOT NULL
                    |         AND date IS NOT NULL
                    |         AND date >= '$start'
-                   |         AND date <= '$today')
+                   |         AND date <= '$threeDaysAgo')
                    |  SELECT
                    |    queries.user,
                    |    queries.ts,

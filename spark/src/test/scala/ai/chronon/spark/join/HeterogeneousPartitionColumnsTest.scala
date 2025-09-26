@@ -112,7 +112,7 @@ class HeterogeneousPartitionColumnsTest extends BaseJoinTest {
 
     // Convert start date to the left custom format
     val leftFormatSpec = tableUtils.partitionSpec.copy(column = customPartitionCol, format = customFormat)
-    val start = tableUtils.partitionSpec.minus(today, new Window(200, TimeUnit.DAYS))
+    val start = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(200, TimeUnit.DAYS))
     val startCustom = leftFormatSpec.at(tableUtils.partitionSpec.epochMillis(start))
     val monthAgoCustom = leftFormatSpec.at(tableUtils.partitionSpec.epochMillis(monthAgo))
 

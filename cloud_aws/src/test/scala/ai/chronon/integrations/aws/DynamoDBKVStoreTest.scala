@@ -2,11 +2,8 @@ package ai.chronon.integrations.aws
 
 import ai.chronon.api.Constants.{ContinuationKey, ListLimit}
 import ai.chronon.online.KVStore._
-import io.circe.generic.auto._
-import io.circe.generic.semiauto._
-import io.circe.parser._
-import io.circe.syntax._
-import io.circe.{Decoder, Encoder}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
@@ -36,29 +33,27 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
   import DDBTestUtils._
   import DynamoDBKVStoreConstants._
 
-  implicit val modelEncoder: Encoder[Model] = deriveEncoder[Model]
-  implicit val modelDecoder: Decoder[Model] = deriveDecoder[Model]
-  implicit val tsEncoder: Encoder[TimeSeries] = deriveEncoder[TimeSeries]
-  implicit val tsDecoder: Decoder[TimeSeries] = deriveDecoder[TimeSeries]
-
   var dynamoContainer: GenericContainer[_] = _
   var client: DynamoDbClient = _
   var kvStoreImpl: DynamoDBKVStoreImpl = _
 
+  private val objectMapper = new ObjectMapper()
+  objectMapper.registerModule(DefaultScalaModule)
+
   def modelKeyEncoder(model: Model): Array[Byte] = {
-    model.modelId.asJson.noSpaces.getBytes(StandardCharsets.UTF_8)
+    objectMapper.writeValueAsString(model.modelId).getBytes(StandardCharsets.UTF_8)
   }
 
   def modelValueEncoder(model: Model): Array[Byte] = {
-    model.asJson.noSpaces.getBytes(StandardCharsets.UTF_8)
+    objectMapper.writeValueAsString(model).getBytes(StandardCharsets.UTF_8)
   }
 
   def timeSeriesKeyEncoder(timeSeries: TimeSeries): Array[Byte] = {
-    (timeSeries.joinName, timeSeries.featureName).asJson.noSpaces.getBytes(StandardCharsets.UTF_8)
+    objectMapper.writeValueAsString((timeSeries.joinName, timeSeries.featureName)).getBytes(StandardCharsets.UTF_8)
   }
 
   def timeSeriesValueEncoder(series: TimeSeries): Array[Byte] = {
-    series.asJson.noSpaces.getBytes(StandardCharsets.UTF_8)
+    objectMapper.writeValueAsString(series).getBytes(StandardCharsets.UTF_8)
   }
 
   override def beforeAll(): Unit = {
@@ -231,13 +226,8 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
     ) {
       tSeq.length shouldBe 1
       val jsonStr = new String(tv.bytes, StandardCharsets.UTF_8)
-      val returnedModel = decode[Model](jsonStr)
-      returnedModel match {
-        case Right(model) =>
-          model shouldBe expectedModel
-        case Left(error) =>
-          fail(s"Decoding failed with error: $error")
-      }
+      val returnedModel = objectMapper.readValue(jsonStr, classOf[Model])
+      returnedModel shouldBe expectedModel
     }
   }
 
@@ -247,12 +237,10 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
         mSeq.length <= maxElements shouldBe true
         mSeq.foreach { modelKV =>
           val jsonStr = new String(modelKV.valueBytes, StandardCharsets.UTF_8)
-          val returnedModel = decode[Model](jsonStr)
+          val returnedModel = objectMapper.readValue(jsonStr, classOf[Model])
           val returnedKeyJsonStr = new String(modelKV.keyBytes, StandardCharsets.UTF_8)
-          val returnedKey = decode[String](returnedKeyJsonStr)
-          returnedModel.isRight shouldBe true
-          returnedKey.isRight shouldBe true
-          returnedModel.right.get.modelId shouldBe returnedKey.right.get
+          val returnedKey = objectMapper.readValue(returnedKeyJsonStr, classOf[String])
+          returnedModel.modelId shouldBe returnedKey
         }
       case Failure(exception) =>
         fail(s"List response failed with exception: $exception")
@@ -271,15 +259,10 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
     ) {
       tSeq.length shouldBe expectedTimeSeriesPoints.length
       val jsonStr = new String(tv.bytes, StandardCharsets.UTF_8)
-      val returnedTimeSeries = decode[TimeSeries](jsonStr)
-      returnedTimeSeries match {
-        case Right(ts) =>
-          // we just match the join name and timestamps for simplicity
-          ts.tileTs shouldBe ev.tileTs
-          ts.joinName shouldBe ev.joinName
-        case Left(error) =>
-          fail(s"Decoding failed with error: $error")
-      }
+      val returnedTimeSeries = objectMapper.readValue(jsonStr, classOf[TimeSeries])
+      // we just match the join name and timestamps for simplicity
+      returnedTimeSeries.tileTs shouldBe ev.tileTs
+      returnedTimeSeries.joinName shouldBe ev.joinName
     }
   }
 }

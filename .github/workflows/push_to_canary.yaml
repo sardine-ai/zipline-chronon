@@ -16,7 +16,12 @@ env:
 
 jobs:
   build_artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu_32_core_128gb
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     permissions:
       contents: read
@@ -24,36 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: corretto
-          java-version: 11
-
-      # Bazel cache credentials removed - using Mill now
-
-      - name: Install Thrift
-        env:
-          THRIFT_VERSION: 0.21.0
+      - name: Install curl
         run: |
-          sudo apt-get install automake bison flex g++ git libboost-all-dev libevent-dev libssl-dev libtool make pkg-config && \
-          curl -LSs https://archive.apache.org/dist/thrift/${{env.THRIFT_VERSION}}/thrift-${{env.THRIFT_VERSION}}.tar.gz -o thrift-${{env.THRIFT_VERSION}}.tar.gz && \
-          tar -xzf thrift-${{env.THRIFT_VERSION}}.tar.gz && \
-          cd thrift-${{env.THRIFT_VERSION}} && \
-          sudo ./configure --without-python --without-cpp --without-nodejs --without-java --disable-debug --disable-tests --disable-libs && \
-          sudo make && \
-          sudo make install && \
-          cd .. && \
-          sudo rm -rf thrift-${{env.THRIFT_VERSION}} thrift-${{env.THRIFT_VERSION}}.tar.gz
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11' # This should match the version used in [chronon]/.toolversions
+          apt-get update && apt-get install -y curl
 
       - name: Get the latest release tag
         id: get_tag
         run: |
+          git config --global --add safe.directory /__w/chronon/chronon
           git fetch --tags
           TAG=$(git tag --sort=-creatordate | head -n 1)
           TAG="${TAG#v}"
@@ -73,7 +56,7 @@ jobs:
           set -eo pipefail
           echo "Building wheel"
           ZIPLINE_VERSION=$VERSION ./mill python.wheel
-          
+
           EXPECTED_ZIPLINE_WHEEL="out/python/wheel.dest/dist/zipline_ai-${{ env.VERSION }}-py3-none-any.whl"
           if [ ! -f "$EXPECTED_ZIPLINE_WHEEL" ]; then
             echo "$EXPECTED_ZIPLINE_WHEEL not found"

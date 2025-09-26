@@ -47,8 +47,10 @@ abstract class BaseJoinTest extends AnyFlatSpec {
   protected implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
 
   protected val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
-  protected val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))
-  protected val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
+  // Use 3 days ago as the end date to ensure data is always generated in tests
+  protected val threeDaysAgo = tableUtils.partitionSpec.minus(today, new Window(3, TimeUnit.DAYS))
+  protected val monthAgo = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(30, TimeUnit.DAYS))
+  protected val yearAgo = tableUtils.partitionSpec.minus(threeDaysAgo, new Window(365, TimeUnit.DAYS))
   protected val dayAndMonthBefore = tableUtils.partitionSpec.before(monthAgo)
 
   protected val namespace = "test_namespace_jointest"

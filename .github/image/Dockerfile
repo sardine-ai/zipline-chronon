@@ -9,9 +9,6 @@ RUN apt update && apt install -y wget curl bash python3 python3-pip openjdk-11-j
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH=$PATH:$JAVA_HOME/bin
 
-# TODO(nikhil) remove bazel
-RUN curl -fsSL "https://github.com/bazelbuild/bazelisk/releases/download/v1.18.0/bazelisk-linux-amd64" -o /usr/local/bin/bazel
-RUN chmod +x /usr/local/bin/bazel
 ENV PATH="/usr/local/bin:${PATH}"
 
 # thrift
@@ -46,8 +43,7 @@ RUN apt install -y \
     flex \
     autoconf \
     automake \
-    libtool \
-    curl && \
+    libtool && \
     apt autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
@@ -70,6 +66,8 @@ RUN java -version && \
 
 # Set working directory
 WORKDIR /app
+
+ENV LANG=en_US.UTF-8
 
 # Cmd to run when starting the container
 CMD ["/bin/bash"]
