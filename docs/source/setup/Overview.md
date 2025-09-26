@@ -20,5 +20,5 @@ The table below gives further details on each of these control plane tasks, and 
 
 Here are a few code pointers that can be followed to get an even deeper understanding of each of these actions and their effect:
 
-1. [run.py](https://github.com/zipline/chronon/blob/main/api/python/ai/chronon/repo/run.py) - this is a CLI utility that can be used to trigger control plane flows directly, however, it is also called by production DAGs for executing scheduled actions.
-2. [Driver.scala](https://github.com/zipline/chronon/blob/main/spark/src/main/scala/ai/chronon/spark/Driver.scala) - this is the driver on the Scala side which drives the corresponding data plane actions. Run.py calls Driver.scala to run Spark jobs.
+1. [run.py](https://github.com/zipline-ai/chronon/blob/main/api/python/ai/chronon/repo/run.py) - this is a CLI utility that can be used to trigger control plane flows directly, however, it is also called by production DAGs for executing scheduled actions.
+2. [Driver.scala](https://github.com/zipline-ai/chronon/blob/main/spark/src/main/scala/ai/chronon/spark/Driver.scala) - this is the driver on the Scala side which drives the corresponding data plane actions. Run.py calls Driver.scala to run Spark jobs.

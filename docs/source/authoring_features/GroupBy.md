@@ -27,7 +27,7 @@ This can be achieved by using the output of one `GroupBy` as the input to the ne
 
 ### Supported aggregations
 
-All supported aggregations are defined [here](https://github.com/zipline/chronon/blob/main/api/thrift/api.thrift#L51).
+All supported aggregations are defined [here](https://github.com/zipline-ai/chronon/blob/main/api/thrift/api.thrift#L51).
 Chronon supports powerful aggregation patterns and the section below goes into detail of the properties and behaviors
 of aggregations.
 
@@ -206,7 +206,7 @@ The following examples are broken down by source type. We strongly suggest makin
 
 ### Realtime Event GroupBy examples
 
-This example is based on the [returns](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py) GroupBy from the quickstart guide that performs various aggregations over the `refund_amt` column over various windows.
+This example is based on the [returns](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/group_bys/quickstart/returns.py) GroupBy from the quickstart guide that performs various aggregations over the `refund_amt` column over various windows.
 
 ```python
 source = Source(
@@ -249,7 +249,7 @@ v1 = GroupBy(
 
 ### Bucketed GroupBy Example
 
-In this example we take the [Purchases GroupBy](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py) from the Quickstart tutorial and modify it to include buckets based on a hypothetical `"credit_card_type"` column.
+In this example we take the [Purchases GroupBy](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py) from the Quickstart tutorial and modify it to include buckets based on a hypothetical `"credit_card_type"` column.
 
 ```python
 source = Source(
@@ -296,7 +296,7 @@ v1 = GroupBy(
 
 ### Simple Batch Event GroupBy examples
 
-Example GroupBy with windowed aggregations. Taken from [purchases.py](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py).
+Example GroupBy with windowed aggregations. Taken from [purchases.py](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/group_bys/quickstart/purchases.py).
 
 Important things to note about this case relative to the streaming GroupBy:
 * The default accuracy here is `SNAPSHOT` meaning that updates to the online KV store only happen in batch, and also backfills will be midnight accurate rather than intra day accurate.
@@ -342,7 +342,7 @@ v1 = GroupBy(
 
 #### Batch Entity GroupBy examples
 
-This is taken from the [Users GroupBy](https://github.com/zipline/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py) from the quickstart tutorial.
+This is taken from the [Users GroupBy](https://github.com/zipline-ai/chronon/blob/main/api/python/test/sample/group_bys/quickstart/users.py) from the quickstart tutorial.
 
 
 ```python
