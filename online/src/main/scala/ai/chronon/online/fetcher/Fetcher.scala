@@ -16,14 +16,22 @@
 
 package ai.chronon.online.fetcher
 
-import ai.chronon.aggregator.row.ColumnAggregator
 import ai.chronon.api
 import ai.chronon.api.Constants.UTF8
 import ai.chronon.api.Extensions.{ExternalPartOps, JoinOps, StringOps, ThrowableOps}
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
 import ai.chronon.online._
-import ai.chronon.online.fetcher.Fetcher.{JoinSchemaResponse, Request, Response, ResponseWithContext}
+import ai.chronon.online.fetcher.Fetcher.{
+  AvroResponseValue,
+  BaseResponse,
+  JoinSchemaResponse,
+  Request,
+  Response,
+  ResponseV2,
+  ResponseWithContext
+}
+import ai.chronon.online.fetcher.FeaturesResponseType.ResponseType
 import ai.chronon.online.metrics.{Metrics, TTLCache}
 import ai.chronon.online.serde._
 import com.google.gson.Gson
@@ -38,6 +46,12 @@ import scala.collection.{Seq, mutable}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
+// Identifies the type for the features response. ex: map, avro encoded string of the map, avro byte array of the map.
+object FeaturesResponseType extends Enumeration {
+  type ResponseType = Value
+  val Map, AvroBytes, AvroString = Value
+}
+
 object Fetcher {
 
   import ai.chronon.online.metrics
@@ -48,11 +62,37 @@ object Fetcher {
                      context: Option[metrics.Metrics.Context] = None)
 
   case class PrefixedRequest(prefix: String, request: Request)
-  case class Response(request: Request, values: Try[Map[String, AnyRef]])
+
+  trait BaseResponse
+
+  case class Response(request: Request, values: Try[Map[String, AnyRef]]) extends BaseResponse
   case class ResponseWithContext(request: Request,
                                  derivedValues: Map[String, AnyRef],
                                  baseValues: Map[String, AnyRef]) {
     def combinedValues: Map[String, AnyRef] = baseValues ++ derivedValues
+  }
+
+  // Identifies the type of Avro response. currently supports the feature map encoded as avro bytes or avro string (base64 encoded)
+  sealed trait AvroResponseValue
+  object AvroResponseValue {
+    // TODO: do pure Avro binary
+    case class AvroBytes(value: Try[Array[Byte]]) extends AvroResponseValue
+    case class AvroString(value: Try[String]) extends AvroResponseValue
+  }
+
+  case class ResponseV2(request: Request,
+                        value: AvroResponseValue,
+                        errors: Try[scala.collection.immutable.Map[String, String]])
+      extends BaseResponse {
+
+    def valuesAvroString: Try[String] = value match {
+      case AvroResponseValue.AvroString(v) => v
+    }
+
+    def getResponseValueType: ResponseType = value match {
+      case AvroResponseValue.AvroBytes(_)  => FeaturesResponseType.AvroBytes
+      case AvroResponseValue.AvroString(_) => FeaturesResponseType.AvroString
+    }
   }
 
   case class ColumnSpec(groupByName: String,
@@ -78,7 +118,7 @@ object Fetcher {
     import ai.chronon.online.metrics
 
     responseMap.foreach { case (featureName, value) =>
-      if (!featureName.endsWith("_exception")) {
+      if (!featureName.endsWith(FetcherUtil.FeatureExceptionSuffix)) {
         if (value == null)
           context.increment(
             metrics.Metrics.Name.FeatureNulls,
@@ -106,7 +146,7 @@ object Fetcher {
                                 valueInfos: Array[JoinCodec.ValueInfo])
 }
 
-private[online] case class FetcherResponseWithTs(responses: Seq[Fetcher.Response], endTs: Long)
+private[online] case class FetcherResponseWithTs[T <: BaseResponse](responses: Seq[T], endTs: Long)
 
 // BaseFetcher + Logging + External service calls
 class Fetcher(val kvStore: KVStore,
@@ -132,8 +172,8 @@ class Fetcher(val kvStore: KVStore,
   lazy val joinCodecCache: TTLCache[String, Try[JoinCodec]] = metadataStore.buildJoinCodecCache(
     Some(logControlEvent)
   )
-
-  private[online] def withTs(responses: Future[Seq[Response]]): Future[FetcherResponseWithTs] = {
+  // Generic withTs method that works with any TimestampableResponse
+  private[online] def withTs[T <: BaseResponse](responses: Future[Seq[T]]): Future[FetcherResponseWithTs[T]] = {
     responses.map { response =>
       FetcherResponseWithTs(response, System.currentTimeMillis())
     }
@@ -157,8 +197,8 @@ class Fetcher(val kvStore: KVStore,
 
         val derivedResults = zipped.map { case (internalResponse, externalResponse) =>
           val cleanInternalRequest = internalResponse.request.copy(context = None)
-          val internalMap = internalResponse.values.getOrElse(
-            Map("join_part_fetch_exception" -> internalResponse.values.failed.get.traceString))
+          val internalMap = internalResponse.values.getOrElse(Map(
+            s"join_part_fetch${FetcherUtil.FeatureExceptionSuffix}" -> internalResponse.values.failed.get.traceString))
 
           val baseMap = if (externalResponse != null) {
 
@@ -172,8 +212,8 @@ class Fetcher(val kvStore: KVStore,
                    |  externalResponses:   ${externalResponses.map(_.request.name)}""".stripMargin
             )
 
-            val externalMap = externalResponse.values.getOrElse(
-              Map("external_part_fetch_exception" -> externalResponse.values.failed.get.traceString))
+            val externalMap = externalResponse.values.getOrElse(Map(
+              s"external_part_fetch${FetcherUtil.FeatureExceptionSuffix}" -> externalResponse.values.failed.get.traceString))
 
             internalMap ++ externalMap
           } else {
@@ -190,6 +230,88 @@ class Fetcher(val kvStore: KVStore,
 
     combinedResponsesF
       .map(_.iterator.map(logResponse(_, ts)).toSeq)
+  }
+
+  private def convertJoinFeaturesResponseToAvroBytes(features: Map[String, AnyRef],
+                                                     joinName: String): Try[Array[Byte]] = {
+    val startTime = System.currentTimeMillis()
+    val ctx =
+      Metrics.Context(Metrics.Environment.JoinSchemaFetching, join = joinName)
+    val joinCodecTry = joinCodecCache(joinName)
+
+    joinCodecTry.flatMap { joinCodec =>
+      Try {
+        val response = encode(joinCodec.valueSchema, joinCodec.valueCodec, features)
+        ctx.distribution("avroconversionbytes.latency.millis", System.currentTimeMillis() - startTime)
+        response
+      }.recover { case exception =>
+        logger.error(s"Failed to convert features to avro for $joinName", exception)
+        throw exception
+      }
+    }
+  }
+
+  private def convertJoinFeaturesResponseToAvroString(features: Map[String, AnyRef], joinName: String): Try[String] = {
+    val startTime = System.currentTimeMillis()
+    val ctx =
+      Metrics.Context(Metrics.Environment.JoinSchemaFetching, join = joinName)
+    val joinCodecTry = joinCodecCache(joinName)
+
+    joinCodecTry.flatMap { joinCodec =>
+      Try {
+        val avroBytes = encode(joinCodec.valueSchema, joinCodec.valueCodec, features)
+        val avroString = java.util.Base64.getEncoder.encodeToString(avroBytes)
+        ctx.distribution("avroconversionstring.latency.millis", System.currentTimeMillis() - startTime)
+        avroString
+      }.recover { case exception =>
+        logger.error(s"Failed to convert features to avro for $joinName", exception)
+        throw exception
+      }
+    }
+  }
+
+  def fetchJoinV2(requests: Seq[Request],
+                  joinConf: Option[api.Join] = None,
+                  responseType: ResponseType = FeaturesResponseType.Map): Future[Seq[ResponseV2]] = {
+    val rawResponse = fetchJoin(requests, joinConf)
+
+    responseType match {
+      case FeaturesResponseType.AvroBytes => {
+        rawResponse.map(
+          _.iterator
+            .map(r => {
+              val errors = r.values match {
+                case Failure(exception) => Failure(exception)
+                case Success(valueMap) =>
+                  val exceptionMap = FetcherUtil.filterFeatureMapForErrors(valueMap)
+                  if (exceptionMap.nonEmpty) Success(exceptionMap) else Success(Map.empty[String, String])
+              }
+              ResponseV2(r.request,
+                         AvroResponseValue.AvroBytes(r.values.flatMap(v => {
+                           convertJoinFeaturesResponseToAvroBytes(v, r.request.name)
+                         })),
+                         errors)
+            })
+            .toSeq)
+      }
+      case FeaturesResponseType.AvroString =>
+        rawResponse.map(
+          _.iterator
+            .map(r => {
+              val errors = r.values match {
+                case Failure(exception) => Failure(exception)
+                case Success(valueMap) =>
+                  val exceptionMap = FetcherUtil.filterFeatureMapForErrors(valueMap)
+                  if (exceptionMap.nonEmpty) Success(exceptionMap) else Success(Map.empty[String, String])
+              }
+              ResponseV2(r.request,
+                         AvroResponseValue.AvroString(r.values.flatMap(v => {
+                           convertJoinFeaturesResponseToAvroString(v, r.request.name)
+                         })),
+                         errors)
+            })
+            .toSeq)
+    }
   }
 
   private def applyDerivations(ts: Long, request: Request, baseMap: Map[String, AnyRef]): ResponseWithContext = {
@@ -226,20 +348,20 @@ class Fetcher(val kvStore: KVStore,
                 case Failure(exception) =>
                   ctx.incrementException(exception)
                   Map(
-                    "derivation_rename_exception" -> exception.traceString
+                    s"derivation_rename${FetcherUtil.FeatureExceptionSuffix}" -> exception.traceString
                       .asInstanceOf[AnyRef])
               }
 
             val derivedExceptionMap: Map[String, AnyRef] =
               Map(
-                "derivation_fetch_exception" -> exception.traceString
+                s"derivation_fetch${FetcherUtil.FeatureExceptionSuffix}" -> exception.traceString
                   .asInstanceOf[AnyRef])
 
             renameOnlyDerivedMap ++ derivedExceptionMap
         }
 
         // Preserve exceptions from baseMap
-        val baseMapExceptions = baseMap.filter(_._1.endsWith("_exception"))
+        val baseMapExceptions = baseMap.filter(_._1.endsWith(FetcherUtil.FeatureExceptionSuffix))
         val finalizedDerivedMap = derivedMap ++ baseMapExceptions
         val requestEndTs = System.currentTimeMillis()
         ctx.distribution("derivation.latency.millis", requestEndTs - derivationStartTs)
@@ -256,7 +378,9 @@ class Fetcher(val kvStore: KVStore,
         // more validation logic will be covered in compile.py to avoid this case
         joinCodecCache.refresh(joinName)
         ctx.incrementException(exception)
-        ResponseWithContext(request, Map("join_codec_fetch_exception" -> exception.traceString), Map.empty)
+        ResponseWithContext(request,
+                            Map(s"join_codec_fetch${FetcherUtil.FeatureExceptionSuffix}" -> exception.traceString),
+                            Map.empty)
 
     }
   }

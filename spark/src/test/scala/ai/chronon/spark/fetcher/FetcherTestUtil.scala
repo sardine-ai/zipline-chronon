@@ -8,7 +8,10 @@ import ai.chronon.api.Builders.Derivation
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
-import ai.chronon.online.fetcher.Fetcher.{Request, Response}
+import ai.chronon.online.fetcher.Fetcher.{Request, Response, ResponseV2}
+import ai.chronon.online.fetcher.FeaturesResponseType
+import ai.chronon.online.serde.AvroCodec
+import org.apache.avro.generic.GenericRecord
 import ai.chronon.online.serde.SparkConversions
 import ai.chronon.online._
 import ai.chronon.spark.Extensions._
@@ -27,6 +30,7 @@ import scala.collection.Seq
 import scala.compat.java8.FutureConverters
 import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{Await, ExecutionContext}
+import scala.util.{Failure, Success}
 
 object FetcherTestUtil {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -743,6 +747,129 @@ object FetcherTestUtil {
       )
       .setUseLongNames(false)
     joinConf
+  }
+
+  def joinResponsesV2(spark: SparkSession,
+                      requests: Array[Request],
+                      mockApi: MockApi,
+                      responseType: FeaturesResponseType.ResponseType = FeaturesResponseType.AvroString,
+                      debug: Boolean = false)(implicit ec: ExecutionContext): List[ResponseV2] = {
+    val chunkSize = 100
+    @transient lazy val fetcher = mockApi.buildFetcher(debug)
+
+    val result = requests.iterator
+      .grouped(chunkSize)
+      .flatMap { requestChunk =>
+        val responses = fetcher.fetchJoinV2(requestChunk, None, responseType)
+        Await.result(responses, Duration(10, SECONDS))
+      }
+      .toList
+
+    if (debug) {
+      result.foreach { response =>
+        logger.info(s"FetchJoinV2 Response for ${response.request.name}: " +
+          s"responseType=${response.getResponseValueType}, " +
+          s"hasErrors=${response.errors.isFailure || response.errors.get.nonEmpty}")
+      }
+    }
+
+    result
+  }
+
+  def testFetchJoinV2(spark: SparkSession,
+                      requests: Array[Request],
+                      mockApi: MockApi,
+                      debug: Boolean = false)(implicit ec: ExecutionContext): Unit = {
+    // Get the join schema and valueCodec for decoding
+    val fetcher = mockApi.buildFetcher(debug)
+    val joinName = requests.head.name
+    val joinSchemaResponse = fetcher.fetchJoinSchema(joinName).get
+    val valueCodec = new AvroCodec(joinSchemaResponse.valueSchema)
+
+    // Test AvroString response type
+    val avroStringResponses = joinResponsesV2(spark, requests, mockApi, FeaturesResponseType.AvroString, debug)
+
+    // Test AvroBytes response type
+    val avroBytesResponses = joinResponsesV2(spark, requests, mockApi, FeaturesResponseType.AvroBytes, debug)
+
+    // Basic validation
+    assert(avroStringResponses.length == requests.length, "AvroString response count should match request count")
+    assert(avroBytesResponses.length == requests.length, "AvroBytes response count should match request count")
+
+    // Validate response types are correct and decode actual values
+    avroStringResponses.foreach { response =>
+      assert(response.getResponseValueType == FeaturesResponseType.AvroString,
+        s"Response for ${response.request.name} should be AvroString type")
+
+            // Assert no per-feature errors and validate AvroString payload
+              response.errors match {
+            case Success(errs) => assert(errs.isEmpty, s"Expected no per-feature errors for ${response.request.name}, got: $errs")
+               case Failure(e)    => throw new AssertionError(s"errors Try failed for ${response.request.name}: ${e.getMessage}")
+              }
+      response.value match {
+        case ai.chronon.online.fetcher.Fetcher.AvroResponseValue.AvroString(valueResult) =>
+          valueResult match {
+            case Success(base64String) =>
+              assert(base64String.nonEmpty, "Base64 string should not be empty")
+              // Validate it's proper base64 and decode the actual Avro record
+              try {
+                val decodedBytes = java.util.Base64.getDecoder.decode(base64String)
+                val decodedRecord: GenericRecord = valueCodec.decode(decodedBytes)
+                assert(decodedRecord != null, s"Decoded Avro record should not be null for ${response.request.name}")
+
+                if (debug) {
+                  logger.info(s"AvroString decoded record for ${response.request.name}: ${decodedRecord}")
+                }
+              } catch {
+                case _: IllegalArgumentException =>
+                  throw new AssertionError(s"Invalid base64 string for ${response.request.name}")
+                case e: Exception =>
+                  throw new AssertionError(s"Failed to decode Avro record for ${response.request.name}: ${e.getMessage}")
+              }
+            case Failure(exception) =>
+              throw new AssertionError(s"AvroString conversion failed for ${response.request.name}: ${exception.getMessage}")
+          }
+        case _ => throw new AssertionError("Expected AvroString response value")
+      }
+    }
+
+    avroBytesResponses.foreach { response =>
+      assert(response.getResponseValueType == FeaturesResponseType.AvroBytes,
+        s"Response for ${response.request.name} should be AvroBytes type")
+
+            // Assert no per-feature errors and validate AvroBytes payload
+              response.errors match {
+           case Success(errs) => assert(errs.isEmpty, s"Expected no per-feature errors for ${response.request.name}, got: $errs")
+               case Failure(e)    => throw new AssertionError(s"errors Try failed for ${response.request.name}: ${e.getMessage}")
+            }
+      response.value match {
+        case ai.chronon.online.fetcher.Fetcher.AvroResponseValue.AvroBytes(valueResult) =>
+          valueResult match {
+            case Success(bytes) =>
+              assert(bytes.length > 0, "Byte array should not be empty")
+              // Decode the actual Avro record from bytes
+              try {
+                val decodedRecord: GenericRecord = valueCodec.decode(bytes)
+                assert(decodedRecord != null, s"Decoded Avro record should not be null for ${response.request.name}")
+
+                if (debug) {
+                  logger.info(s"AvroBytes decoded record for ${response.request.name}: ${decodedRecord}")
+                }
+              } catch {
+                case e: Exception =>
+                  throw new AssertionError(s"Failed to decode Avro record from bytes for ${response.request.name}: ${e.getMessage}")
+              }
+            case Failure(exception) =>
+              throw new AssertionError(s"AvroBytes conversion failed for ${response.request.name}: ${exception.getMessage}")
+          }
+        case _ => throw new AssertionError("Expected AvroBytes response value")
+      }
+    }
+
+    if (debug) {
+      logger.info(s"FetchJoinV2 test completed successfully for ${requests.length} requests")
+      logger.info(s"AvroString responses: ${avroStringResponses.length}, AvroBytes responses: ${avroBytesResponses.length}")
+    }
   }
 
   def generateEventOnlyData(namespace: String,

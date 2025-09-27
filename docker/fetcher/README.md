@@ -63,6 +63,7 @@ The service exposes the following HTTP endpoints:
 |GET|`/v1/join/:name/schema` | Returns a join schema payload (consists of join name, entity key schema as an Avro string, value schema as an Avro string, schema hash
 |POST|`/v1/fetch/groupby/:name`| Retrieve features for a specific GroupBy
 |POST|`/v1/fetch/join/:name`| Retrieve features for a specific Join
+|POST|`/v2/fetch/join/:name`| Retrieve features for a specific Join with the features response as an Avro binary string (base64 encoded)
 
 ### Example Usage
 
@@ -97,6 +98,40 @@ $ curl -X POST http://localhost:9000/v1/fetch/join/ranking_listing -H 'Content-T
   ]
 }
 ```
+
+#### V2 fetch join with Avro string response
+Get the Avro schema from `valueSchema`
+```bash
+curl -X POST 'http://localhost:9000/v1/join/gcp.demo.v1__1/schema'  -H 'Content-Type: application/json'
+{
+  "joinName": "gcp.demo.v1__1",
+  "keySchema": "...",
+  "valueSchema": "...",
+  "schemaHash": "...",
+  ...
+}
+```
+
+Query the v2 fetch join.
+```bash
+$ curl -X POST 'http://localhost:9000/v2/fetch/join/gcp.demo.v1__1' -H 'Content-Type: application/json' \
+ -d '[{"listing_id":"1","user_id":"user_7"}]'
+{
+  "status": "Success",
+  "entityKeys": {
+    "listing_id": "1",
+    "user_id": "user_7"
+  },
+  "featureAvroString": "AgICCHZpZXcCFgK85YW2sGYAAgICAAIAAgAAAAAAAAAAAgICCHZpZXcCFgK85YW2sGYAAgAAAAAAAAAAAgACigYCAAAAAAAAAAACAAIQY2xvdGhpbmcCAAIuL2ltYWdlcy90b3lzLzEvbWFpbi5qcGcCQEJ1aWxkaW5nIEtpdCAtIEhpZ2ggUXVhbGl0eSBUb3lzAgAAAAAAAAAAAgAAAAAAAAAAAgAAAAAAAAAAAi4vaW1hZ2VzL3RveXMvMS9zaWRlLmpwZwIAAAAAAAAAAAIAAAAAAADwPwIIdG95cwIAAAAAAAAAAAICAgACAAIAAAAAAAAAAAIAAgAAAAAAAAAAAip0cmVuZGluZyxoYW5kbWFkZSxuZXcCAAIOAgECAAAAAAAA8D8CAAIAAgAAAAAAAAAAAgICAAIAAAAAAADwPwICAgACAAAAAAAAAAACAAIAAgZFVVICAAIAAgICAAIAAgAAAAAAAAAAAgAAAAAAAAAAApoEVGhpcyBidWlsZGluZyBraXQgaXMgY3JhZnRlZCB3aXRoIGF0dGVudGlvbiB0byBkZXRhaWwgYW5kIGRlc2lnbmVkIGZvciBkdXJhYmlsaXR5LiBGZWF0dXJlcyBwcmVtaXVtIG1hdGVyaWFscyBhbmQgZXhjZWxsZW50IGNyYWZ0c21hbnNoaXAuIFBlcmZlY3QgZm9yIGJvdGggcGVyc29uYWwgdXNlIGFuZCBhcyBhIGdpZnQuIENvbWVzIHdpdGggbWFudWZhY3R1cmVyIHdhcnJhbnR5IGFuZCBzYXRpc2ZhY3Rpb24gZ3VhcmFudGVlLiBGYXN0IHNoaXBwaW5nIGF2YWlsYWJsZS4CAAICAgICCHZpZXcCFgK85YW2sGYAAgACiAFQcmVtaXVtIGJ1aWxkaW5nIGtpdCBwZXJmZWN0IGZvciBkYWlseSB1c2UuIEdyZWF0IHF1YWxpdHkgYW5kIHZhbHVlLgIAAAAAAADwPwIAAAAAAAAAAAICAgh2aWV3AhYCvOWFtrBmAALOXAICAqAFAgICAAICAgACAAAAAAAAAAACAAIA",
+  "featuresErrors": {
+    "listing_id_exception": "java.lang.RuntimeException: Couldn't fetch group by serving info for GCP_DIM_LISTINGS_V1__0_BATCH, please make sure a batch upload was successful"
+  }
+}
+```
+
+And then b64 decode the `featureAvroString` and use the Avro schema from `valueSchema` to decode the binary Avro data.
+
+Full example at: [scripts/fetcher_tests/avro_encoded_string_test.py](../../scripts/fetcher_tests/avro_encoded_string_test.py)
 
 ### Local Telemetry Docker Setup
 

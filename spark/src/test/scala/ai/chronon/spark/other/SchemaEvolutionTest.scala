@@ -26,12 +26,12 @@ import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.online.fetcher.{FetchContext, Fetcher}
 import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions.DataframeOps
-import ai.chronon.spark.{LogFlattenerJob, LoggingSchema}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.{DataFrameGen, GroupByTestSuite, InMemoryKvStore, JoinTestSuite, MockApi, OnlineUtils, SchemaEvolutionUtils}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import ai.chronon.spark.utils._
+import ai.chronon.spark.{LogFlattenerJob, LoggingSchema}
 import org.apache.spark.sql.functions.{col, lit}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -299,7 +299,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     metadataStore.putJoinConf(joinSuiteV1.joinConf)
     val fetcher = mockApi.buildFetcher(true)
     val response1 = fetchJoin(fetcher, joinSuiteV1)
-    assertTrue(response1.values.get.keys.exists(_.endsWith("_exception")))
+    assertTrue(response1.values.get.keys.exists(_.endsWith(FetcherUtil.FeatureExceptionSuffix)))
     assertEquals(joinSuiteV1.groupBys.length, response1.values.get.keys.size)
 
     // empty responses are still logged and this schema version is still tracked
@@ -356,7 +356,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     assertEquals(newGroupByCount, newSubMapActual.keys.size)
     if (newGroupByCount > 0) {
       // new GroupBy fetches will fail because upload has not run
-      assertTrue(newSubMapActual.keys.exists(_.endsWith("_exception")))
+      assertTrue(newSubMapActual.keys.exists(_.endsWith(FetcherUtil.FeatureExceptionSuffix)))
     }
     assertFalse(response3.values.get.keys.exists(k => removedSubMapOriginalData.keys.toSet.contains(k)))
 

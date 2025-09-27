@@ -1,14 +1,12 @@
 package ai.chronon.online.fetcher
 
-import ai.chronon.aggregator.row.ColumnAggregator
-import ai.chronon.aggregator.windowing.ResolutionUtils
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online.KVStore.{GetRequest, GetResponse, TimedValue}
-import ai.chronon.online.OnlineDerivationUtil.{applyDeriveFunc, buildRenameOnlyDerivationFunction}
-import ai.chronon.online.{metrics, _}
+import ai.chronon.online.OnlineDerivationUtil.applyDeriveFunc
 import ai.chronon.online.fetcher.Fetcher.{ColumnSpec, PrefixedRequest, Request, Response}
 import ai.chronon.online.fetcher.FetcherCache.{BatchResponses, CachedBatchResponse}
+import ai.chronon.online._
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.Seq
@@ -142,7 +140,7 @@ class GroupByFetcher(fetchContext: FetchContext, metadataStore: MetadataStore)
       case Failure(exception) =>
         requestContext.metricsContext.incrementException(exception)
         logger.error(s"Failed to derive values for request: ${request.name}@${request.keys}", exception)
-        Map("derivation_exception" -> exception.traceString.asInstanceOf[AnyRef])
+        Map(s"derivation${FetcherUtil.FeatureExceptionSuffix}" -> exception.traceString.asInstanceOf[AnyRef])
     }
   }
 

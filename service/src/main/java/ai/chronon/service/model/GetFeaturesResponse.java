@@ -54,13 +54,17 @@ public class GetFeaturesResponse {
         private final Status status;
         private final Map<String, Object> entityKeys;
         private final Map<String, Object> features;
+        private final String featureAvroString;
         private final String error;
+        private final Map<String, String> featuresErrors;
 
         private Result(Builder builder) {
             this.status = builder.status;
             this.entityKeys = builder.entityKeys;
             this.features = builder.features;
+            this.featureAvroString = builder.featureAvroString;
             this.error = builder.error;
+            this.featuresErrors = builder.featuresErrors;
         }
 
         public Status getStatus() {
@@ -71,12 +75,20 @@ public class GetFeaturesResponse {
             return features;
         }
 
+        public String getFeatureAvroString() {
+            return featureAvroString;
+        }
+
         public Map<String, Object> getEntityKeys() {
             return entityKeys;
         }
 
         public String getError() {
             return error;
+        }
+
+        public Map<String, String> getFeaturesErrors() {
+            return featuresErrors;
         }
 
         public static Builder builder() {
@@ -87,7 +99,9 @@ public class GetFeaturesResponse {
             private Status status;
             private Map<String, Object> entityKeys;
             private Map<String, Object> features;
+            private String featureAvroString;
             private String error;
+            private Map<String, String> featuresErrors;
 
             public Builder status(Status status) {
                 this.status = status;
@@ -99,6 +113,11 @@ public class GetFeaturesResponse {
                 return this;
             }
 
+            public Builder featureAvroString(String featureAvroString) {
+                this.featureAvroString = featureAvroString;
+                return this;
+            }
+
             public Builder entityKeys(Map<String, Object> entityKeys) {
                 this.entityKeys = entityKeys;
                 return this;
@@ -106,6 +125,11 @@ public class GetFeaturesResponse {
 
             public Builder error(String error) {
                 this.error = error;
+                return this;
+            }
+
+            public Builder featuresErrors(Map<String, String> featuresErrors) {
+                this.featuresErrors = featuresErrors;
                 return this;
             }
 

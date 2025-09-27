@@ -18,6 +18,8 @@ package ai.chronon.online;
 
 import ai.chronon.api.ScalaJavaConversions;
 import ai.chronon.online.fetcher.Fetcher;
+import ai.chronon.online.fetcher.FeaturesResponseType;
+import scala.Enumeration;
 
 import java.util.Map;
 
@@ -25,13 +27,48 @@ import java.util.Map;
 public class JavaResponse {
     public JavaRequest request;
     public JTry<Map<String, Object>> values;
+    public JTry<String> valuesAvroString;
+    public JTry<Map<String, String>> errorsV2;
+    public Enumeration.Value valueType;
 
     public JavaResponse(JavaRequest request, JTry<Map<String, Object>> values) {
         this.request = request;
         this.values = values;
+        this.valueType = FeaturesResponseType.Map(); // since values is a Map
     }
 
-    public JavaResponse(Fetcher.Response scalaResponse){
+    private void handleFetcherResponse(Fetcher.Response response) {
+        this.request = new JavaRequest(response.request());
+        this.values = JTry
+                .fromScala(response.values())
+                .map(v -> {
+                    if (v != null)
+                        return ScalaJavaConversions.toJava(v);
+                    else
+                        return null;
+                });
+        this.valueType = FeaturesResponseType.Map(); // since values is a Map
+    }
+
+    private void handleFetcherResponseV2(Fetcher.ResponseV2 responseV2) {
+        this.request = new JavaRequest(responseV2.request());
+        Enumeration.Value valueType = responseV2.getResponseValueType();
+        this.valueType = valueType;
+        this.errorsV2 = JTry.fromScala(responseV2.errors())
+                .map(v -> {
+                    if (v != null)
+                        return ScalaJavaConversions.toJava(v);
+                    else
+                        return null;
+                });
+        if (valueType == FeaturesResponseType.AvroString()) {
+            this.valuesAvroString = JTry.fromScala(responseV2.valuesAvroString());
+        } else {
+            throw new IllegalArgumentException("Unknown response type: " + valueType);
+        }
+    }
+
+    public JavaResponse(Fetcher.Response scalaResponse) {
         this.request = new JavaRequest(scalaResponse.request());
         this.values = JTry
                 .fromScala(scalaResponse.values())
@@ -41,6 +78,18 @@ public class JavaResponse {
                     else
                         return null;
                 });
+        this.valueType = FeaturesResponseType.Map(); // since values is a Map
+    }
+
+    // New generic constructor that handles both Response and ResponseV2
+    public JavaResponse(Fetcher.BaseResponse scalaResponse) {
+        if (scalaResponse instanceof Fetcher.Response) {
+            handleFetcherResponse((Fetcher.Response) scalaResponse);
+        } else if (scalaResponse instanceof Fetcher.ResponseV2) {
+            handleFetcherResponseV2((Fetcher.ResponseV2) scalaResponse);
+        } else {
+            throw new IllegalArgumentException("Unsupported response type: " + scalaResponse.getClass().getName());
+        }
     }
 
     public Fetcher.Response toScala() {

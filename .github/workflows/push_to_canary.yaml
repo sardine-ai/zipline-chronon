@@ -242,16 +242,16 @@ jobs:
           set -eo pipefail
           gcloud storage cp ${{ needs.build_artifacts.outputs.wheel_name }} gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/wheels/
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/wheels/${{ needs.build_artifacts.outputs.wheel_name }} --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          
+
           gcloud storage cp flink_assembly_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/flink_assembly_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/flink_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          
+
           gcloud storage cp cloud_gcp_lib_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/cloud_gcp_lib_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/cloud_gcp_lib_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          
+
           gcloud storage cp service_assembly_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/service_assembly_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/service_assembly_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
-          
+
           gcloud storage cp connectors_pubsub_deploy.jar gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/connectors_pubsub_deploy.jar
           gcloud storage objects update gs://zipline-artifacts-canary/release/${{ needs.build_artifacts.outputs.version }}/jars/connectors_pubsub_deploy.jar --custom-metadata="updated_date=$(date),commit=$(git rev-parse HEAD),branch=$(git rev-parse --abbrev-ref HEAD)"
 
@@ -300,6 +300,99 @@ jobs:
               ]
             }
 
+  run_fetcher_integration_tests:
+    runs-on: ubuntu-latest
+    needs: [ build_artifacts ]
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: 11
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # This should match the version used in [chronon]/.toolversions
+
+      - name: Configure GCP Credentials for Canary Project
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{secrets.GCP_CANARY_PROJECT_ID}}
+          workload_identity_provider: projects/${{secrets.GCP_CANARY_PROJECT_NUMBER}}/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: github-actions@${{secrets.GCP_CANARY_PROJECT_ID}}.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Download Service Assembly Jar
+        uses: actions/download-artifact@v4
+        with:
+          name: service-assembly-jar
+          path: service-assembly-jar
+
+      - name: Download Cloud GCP Lib Jar
+        uses: actions/download-artifact@v4
+        with:
+          name: cloud-gcp-jar
+          path: cloud-gcp-jar
+
+      - name: Copy the jars to expected paths and build
+        shell: bash
+        run: |
+          mkdir build_output
+          cp cloud-gcp-jar/out.jar build_output/cloud_gcp_lib_deploy.jar
+          cp service-assembly-jar/out.jar build_output/service_assembly_deploy.jar
+          docker buildx build \
+          -f docker/fetcher/Dockerfile \
+          -t ziplineai/chronon-fetcher:$(git rev-parse --short HEAD) \
+          -t ziplineai/chronon-fetcher:latest \
+          --load \
+          .
+
+      - name: Run docker detached
+        shell: bash
+        id: run_docker_detached
+        run: |
+          GCP_PROJECT_ID=canary-443022 GCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance docker compose -f docker/fetcher/chronon-service-with-local-telemetry.yml up -d
+          docker ps -a
+
+      # TODO: Do proper BT warm up in the GcpApiImpl
+      - name: curl and warm up the fetcher
+        shell: bash
+        run: |
+          set -eo pipefail
+          docker ps -a
+          for i in {1..10}; do curl -X POST   'http://localhost:9000/v1/fetch/join/gcp.demo.v1__1'   -H 'Content-Type: application/json'   -d '[{"listing_id":"1","user_id":"user_7"}]' || true; sleep 10; done
+
+      - name: Setup python
+        shell: bash
+        id: setup_python_venv
+        run: |
+          python3 -m venv fetcher_ci
+          pip3 install -r scripts/fetcher_tests/requirements.txt
+
+      - name: Run json string tests
+        shell: bash
+        id: run_json_string_tests
+        run: |
+          set -euxo pipefail
+          python3 scripts/fetcher_tests/json_string_test.py
+
+      - name: Run fetcher integration tests
+        shell: bash
+        id: run_fetcher_integration_tests
+        run: |
+          set -euxo pipefail
+          python3 scripts/fetcher_tests/avro_encoded_string_test.py
 
   run_gcp_integration_tests:
     runs-on: ubuntu-latest
@@ -350,7 +443,7 @@ jobs:
             }
 
   push_to_aws_passing:
-    needs: [ build_artifacts, run_gcp_integration_tests, run_aws_integration_tests ]
+    needs: [ build_artifacts, run_gcp_integration_tests, run_aws_integration_tests, run_fetcher_integration_tests ]
     runs-on: ubuntu-latest
 
     permissions:
@@ -406,7 +499,7 @@ jobs:
 
 
   push_to_gcp_passing:
-    needs: [build_artifacts, run_gcp_integration_tests, run_aws_integration_tests]
+    needs: [build_artifacts, run_gcp_integration_tests, run_aws_integration_tests, run_fetcher_integration_tests]
     runs-on: ubuntu-latest
 
     permissions:
@@ -506,7 +599,7 @@ jobs:
             service-assembly-jar
 
   merge_to_main-passing-tests:
-    needs: [run_aws_integration_tests, run_gcp_integration_tests]
+    needs: [run_fetcher_integration_tests, run_aws_integration_tests, run_gcp_integration_tests]
     if: ${{ needs.run_aws_integration_tests.result == 'success' && needs.run_gcp_integration_tests.result == 'success' }}
     runs-on: ubuntu-latest
 
@@ -547,7 +640,7 @@ jobs:
 
 
   on_fail_notify_slack:
-    needs: [run_aws_integration_tests, run_gcp_integration_tests, merge_to_main-passing-tests]
+    needs: [run_fetcher_integration_tests, run_aws_integration_tests, run_gcp_integration_tests, merge_to_main-passing-tests]
     if: failure()
     runs-on: ubuntu-latest
 
