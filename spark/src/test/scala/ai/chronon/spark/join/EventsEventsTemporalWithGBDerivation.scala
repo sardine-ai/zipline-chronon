@@ -5,7 +5,8 @@ import ai.chronon.api
 import ai.chronon.api.{Builders, Operation, TimeUnit, Window}
 import ai.chronon.spark._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.utils.{DataFrameGen, TableTestUtils}
+import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
 import org.junit.Assert._
@@ -17,7 +18,7 @@ class EventsEventsTemporalWithGBDerivation extends BaseJoinTest {
     local = true,
     additionalConfig = Option(Map("spark.chronon.join.backfill.mode.skewFree" -> "true"))
   )
-  protected implicit val tableUtilsSkewFree: TableTestUtils = TableTestUtils(sparkSkewFree)
+  protected implicit val tableUtilsSkewFree: TableUtils = TableUtils(sparkSkewFree)
 
   it should "test events events temporal with GroupBy derivations" in {
     val joinConf = getEventsEventsTemporalWithGBDerivations("temporal_with_derivations")

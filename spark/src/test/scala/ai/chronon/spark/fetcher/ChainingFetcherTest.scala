@@ -17,34 +17,30 @@
 package ai.chronon.spark.fetcher
 
 import ai.chronon.api
-import ai.chronon.api._
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.{JoinOps, MetadataOps}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
+import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.online.serde.SparkConversions
-import ai.chronon.spark.{Join => _, _}
-import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.utils.{MockApi, OnlineUtils, TestUtils}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.{MockApi, OnlineUtils, SparkTestBase, TestUtils}
+import ai.chronon.spark.{Join => _, _}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
+import org.apache.spark.sql.{DataFrame, Row}
 import org.junit.Assert.{assertEquals, assertTrue}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
-import ai.chronon.spark.submission.SparkSessionBuilder
 
 import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.collection.Seq
 import scala.concurrent.ExecutionContext
 
-class ChainingFetcherTest extends AnyFlatSpec {
+class ChainingFetcherTest extends SparkTestBase {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  val sessionName = "ChainingFetcherTest"
-  val spark: SparkSession = SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
   def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)

@@ -8,7 +8,7 @@ import ai.chronon.online.fetcher.FetchContext
 import ai.chronon.online.{MetadataDirWalker, MetadataEndPoint, fetcher}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission
-import ai.chronon.spark.utils.OnlineUtils
+import ai.chronon.spark.utils.{OnlineUtils, SparkTestBase}
 // Removed Bazel runfiles import - using standard resource loading instead
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
@@ -19,10 +19,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.Source
 
-class FetcherMetadataTest extends AnyFlatSpec {
-
-  val sessionName = "FetcherMetadataTest"
-  val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
+class FetcherMetadataTest extends SparkTestBase {
 
   it should "test metadata store" in {
     implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))

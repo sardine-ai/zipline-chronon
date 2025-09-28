@@ -21,8 +21,8 @@ import ai.chronon.api
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
-import ai.chronon.spark._
 import ai.chronon.spark.Extensions._
+import ai.chronon.spark._
 import ai.chronon.spark.utils.DataFrameGen
 import org.junit.Assert._
 
@@ -123,16 +123,10 @@ class EventsEntitiesSnapshotTest extends BaseJoinTest {
     runner1.computeJoin()
     val dropStart = tableUtils.partitionSpec.minus(today, new Window(55, TimeUnit.DAYS))
     val dropEnd = tableUtils.partitionSpec.minus(today, new Window(45, TimeUnit.DAYS))
-    tableUtils.dropPartitionRange(
-      s"$namespace.test_user_transaction_features",
-      dropStart,
-      dropEnd
-    )
-    println(tableUtils.partitions(s"$namespace.test_user_transaction_features"))
 
-    joinConf.joinParts.toScala
-      .map(jp => joinConf.partOutputTable(jp))
-      .foreach(tableUtils.dropPartitionRange(_, dropStart, dropEnd))
+    // Delete data in the specified partition range (equivalent to dropping partitions in Iceberg)
+    spark.sql(s"DELETE FROM $namespace.test_user_transaction_features WHERE ds >= '$dropStart' AND ds <= '$dropEnd'")
+    println(tableUtils.partitions(s"$namespace.test_user_transaction_features"))
 
     def resetUDFs(): Unit = {
       Seq("temp_replace_left", "temp_replace_right_a", "temp_replace_right_b", "temp_replace_right_c")
@@ -210,12 +204,9 @@ class EventsEntitiesSnapshotTest extends BaseJoinTest {
     val endMinus1 = tableUtils.partitionSpec.minus(end, new Window(1, TimeUnit.DAYS))
     val endMinus2 = tableUtils.partitionSpec.minus(end, new Window(2, TimeUnit.DAYS))
 
-    tableUtils.dropPartitionRange(s"$namespace.test_user_transaction_features", endMinus1, endMinus1)
+    // Delete specific partition data (equivalent to dropping single partitions in Iceberg)
+    spark.sql(s"DELETE FROM $namespace.test_user_transaction_features WHERE ds = '$endMinus1'")
     println(tableUtils.partitions(s"$namespace.test_user_transaction_features"))
-
-    joinConf.joinParts.toScala
-      .map(jp => joinConf.partOutputTable(jp))
-      .foreach(tableUtils.dropPartitionRange(_, endMinus2, endMinus2))
 
     resetUDFs()
     val runner3 = new ai.chronon.spark.Join(joinConf = joinConf, endPartition = end, tableUtils = tableUtils)

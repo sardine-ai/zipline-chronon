@@ -269,7 +269,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
     insertLogsToHive(mockApi, logsDelta, offlineDs)
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, offlineDs, "2022-10-01")
     val flattenerJob = new LogFlattenerJob(spark, joinConf, offlineDs, mockApi.logTable, mockApi.schemaTable)
-    flattenerJob.buildLogTable()
+    flattenerJob.buildLogTable(Option("2022-10-01"))
     val flattenedDf = tableUtils
       .loadTable(joinConf.metaData.loggedTable)
       .where(col(tableUtils.partitionColumn) === offlineDs)

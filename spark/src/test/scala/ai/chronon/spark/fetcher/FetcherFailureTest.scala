@@ -7,7 +7,7 @@ import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.online.fetcher.Fetcher.Request
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission
-import ai.chronon.spark.utils.{MockApi, OnlineUtils}
+import ai.chronon.spark.utils.{MockApi, OnlineUtils, SparkTestBase}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.junit.Assert.{assertEquals, assertTrue}
@@ -18,10 +18,8 @@ import java.util.TimeZone
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
 
-class FetcherFailureTest extends AnyFlatSpec {
+class FetcherFailureTest extends SparkTestBase {
 
-  val sessionName = "FetcherFailureTest"
-  val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
 
   private val topic = "test_topic"

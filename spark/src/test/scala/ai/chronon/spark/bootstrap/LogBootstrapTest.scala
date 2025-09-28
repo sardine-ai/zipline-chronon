@@ -20,26 +20,20 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher.Request
-import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.LogFlattenerJob
+import ai.chronon.spark.{Comparison, LogFlattenerJob}
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.{MockApi, OnlineUtils, SchemaEvolutionUtils}
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.utils.{MockApi, OnlineUtils, SchemaEvolutionUtils, SparkTestBase}
 import org.apache.spark.sql.functions._
 import org.junit.Assert.assertEquals
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class LogBootstrapTest extends AnyFlatSpec {
+class LogBootstrapTest extends SparkTestBase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = SparkSessionBuilder.build("BootstrapTest", local = true)
   val namespace = "test_log_bootstrap"
   private implicit val tableUtils: TableUtils = TableUtils(spark)
   tableUtils.createDatabase(namespace)
@@ -143,7 +137,7 @@ class LogBootstrapTest extends AnyFlatSpec {
       .save(mockApi.logTable, partitionColumns = Seq(tableUtils.partitionColumn, "name"))
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, endDs)
     val flattenerJob = new LogFlattenerJob(spark, joinV1, endDs, mockApi.logTable, mockApi.schemaTable)
-    flattenerJob.buildLogTable()
+    flattenerJob.buildLogTable(Option(today))
 
     val logDf = tableUtils.loadTable(joinV1.metaData.loggedTable)
     assertEquals(logDf.count(), responses.length)

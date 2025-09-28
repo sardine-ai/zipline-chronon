@@ -23,10 +23,8 @@ import ai.chronon.api._
 import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.utils.{DataFrameGen, InMemoryKvStore, OnlineUtils}
+import ai.chronon.spark.utils.{DataFrameGen, InMemoryKvStore, OnlineUtils, SparkTestBase}
 import ai.chronon.spark.{Join => _, _}
-import org.apache.spark.sql.SparkSession
-import org.scalatest.flatspec.AnyFlatSpec
 
 import java.util.TimeZone
 import scala.collection.JavaConverters.asScalaBufferConverter
@@ -41,11 +39,8 @@ object StreamingTest {
   }
 }
 
-class StreamingTest extends AnyFlatSpec {
+class StreamingTest extends SparkTestBase {
 
-  import ai.chronon.spark.submission
-
-  val spark: SparkSession = submission.SparkSessionBuilder.build("StreamingTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
   val namespace = "streaming_test"
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))

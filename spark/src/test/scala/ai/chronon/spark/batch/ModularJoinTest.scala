@@ -2,24 +2,20 @@ package ai.chronon.spark.batch
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api._
 import ai.chronon.api.Extensions._
-import ai.chronon.planner.{JoinBootstrapNode, JoinDerivationNode, JoinMergeNode, JoinPartNode, SourceWithFilterNode}
+import ai.chronon.api._
+import ai.chronon.planner._
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark._
 import ai.chronon.spark.batch._
-import ai.chronon.spark.Extensions._
-import ai.chronon.spark.utils.{DataFrameGen, TableTestUtils}
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import org.apache.spark.sql.functions._
 import org.junit.Assert._
-import org.scalatest.flatspec.AnyFlatSpec
 
-class ModularJoinTest extends AnyFlatSpec {
+class ModularJoinTest extends SparkTestBase {
 
-  import ai.chronon.spark.submission
-
-  val spark: SparkSession = submission.SparkSessionBuilder.build("ModularJoinTest", local = true)
-  private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
+  private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   // Use 3 days ago as the end date to ensure data is always generated

@@ -4,25 +4,23 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.api.planner.RelevantLeftForJoinPart
-import scala.collection.JavaConverters._
-import com.google.gson.Gson
 import ai.chronon.planner.{JoinMergeNode, JoinPartNode, SourceWithFilterNode}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.batch.{JoinPartJob, MergeJob, SourceJob}
-import ai.chronon.spark.utils.{DataFrameGen, TableTestUtils}
-import ai.chronon.spark.{Join, JoinUtils}
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.JoinUtils
+import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.submission.SparkSessionBuilder
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.SaveMode
 import org.junit.Assert._
 import org.scalatest.flatspec.AnyFlatSpec
 
+import scala.collection.JavaConverters._
+
 class MergeJobVersioningTest extends AnyFlatSpec {
 
-  import ai.chronon.spark.submission
-
-  val spark: SparkSession = submission.SparkSessionBuilder.build("MergeJobVersioningTest", local = true)
-  private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
+  private val spark: SparkSession = SparkSessionBuilder.build("MergeJobVersioningTest", local = true)
+  private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val threeDaysAgo = tableUtils.partitionSpec.minus(today, new Window(3, TimeUnit.DAYS))

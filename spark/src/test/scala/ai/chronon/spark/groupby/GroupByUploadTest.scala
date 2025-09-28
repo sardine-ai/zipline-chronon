@@ -22,23 +22,19 @@ import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.Fetcher
 import ai.chronon.spark.Extensions.DataframeOps
-import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.GroupByUpload
-import ai.chronon.spark.utils.{DataFrameGen, MockApi, OnlineUtils}
-import com.google.gson.Gson
-import org.apache.spark.sql.SparkSession
-import org.junit.Assert.assertEquals
 import ai.chronon.spark.catalog.TableUtils
-import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.utils.{DataFrameGen, MockApi, OnlineUtils, SparkTestBase}
+import com.google.gson.Gson
+import org.junit.Assert.assertEquals
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
-class GroupByUploadTest extends AnyFlatSpec {
+class GroupByUploadTest extends SparkTestBase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  lazy val spark: SparkSession = SparkSessionBuilder.build("GroupByUploadTest", local = true)
   private val namespace = "group_by_upload_test"
   private val tableUtils = TableUtils(spark)
 
@@ -328,8 +324,8 @@ class GroupByUploadTest extends AnyFlatSpec {
     val eventsTable = "test_gb_with_derivations"
 
     // Create test data with the columns needed for the derivations GroupBy
-    import spark.implicits._
     import org.apache.spark.sql.functions._
+      import spark.implicits._
 
     val testData = Seq(
       ("test_user_123", 100, 42.5, System.currentTimeMillis() - 86400000L), // 1 day ago

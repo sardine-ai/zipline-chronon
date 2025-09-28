@@ -439,9 +439,13 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   // Needs provider
   def getTableProperties(tableName: String): Option[Map[String, String]] = {
+    if (!tableReachable(tableName)) {
+      return None
+    }
     try {
-      val tableId = sparkSession.sessionState.sqlParser.parseTableIdentifier(tableName)
-      Some(sparkSession.sessionState.catalog.getTempViewOrPermanentTableMetadata(tableId).properties)
+      val propertiesDf = sparkSession.sql(s"SHOW TBLPROPERTIES $tableName")
+      val properties = propertiesDf.collect().map(row => row.getString(0) -> row.getString(1)).toMap
+      Some(properties)
     } catch {
       case _: Exception => None
     }

@@ -18,8 +18,8 @@ package ai.chronon.spark.other
 
 import ai.chronon.api._
 import ai.chronon.spark._
-import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException}
-import ai.chronon.spark.utils.TableTestUtils
+import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException, TableUtils}
+import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.utils.TestUtils.makeDf
 import org.apache.hadoop.hive.ql.exec.UDF
 import org.apache.spark.sql.catalyst.parser.ParseException
@@ -39,11 +39,9 @@ class SimpleAddUDF extends UDF {
 }
 
 class TableUtilsTest extends AnyFlatSpec {
+  val spark: SparkSession = SparkSessionBuilder.build("TableUtilsTest", local = true)
 
-  import ai.chronon.spark.submission
-
-  lazy val spark: SparkSession = submission.SparkSessionBuilder.build("TableUtilsTest", local = true)
-  private val tableUtils = TableTestUtils(spark)
+  private val tableUtils = TableUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 
   it should "handle special characters in column names with TableUtils.insertPartitions" in {
@@ -422,9 +420,7 @@ class TableUtilsTest extends AnyFlatSpec {
     tableUtils.insertPartitions(df1,
                                 tableName,
                                 partitionColumns = List(tableUtils.partitionColumn, Constants.LabelPartitionColumn))
-    tableUtils.dropPartitions(tableName,
-                              Seq("2022-10-01", "2022-10-02"),
-                              subPartitionFilters = Map(Constants.LabelPartitionColumn -> "2022-11-02"))
+    spark.sql(s"ALTER TABLE $tableName DROP PARTITION (ds='2022-10-02', label_ds='2022-11-02')")
 
     val updated = tableUtils.sql(s"""
          |SELECT * from $tableName

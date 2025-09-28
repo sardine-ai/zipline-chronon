@@ -8,21 +8,15 @@ import ai.chronon.api._
 import ai.chronon.planner._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.batch._
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.{DataFrameGen, TableTestUtils}
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import ai.chronon.spark.{Join, _}
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, rand}
 import org.junit.Assert.assertEquals
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.LoggerFactory
 
-class ShortNamesTest extends AnyFlatSpec {
-  @transient private lazy val logger = LoggerFactory.getLogger(getClass)
+class ShortNamesTest extends SparkTestBase {
 
-  val spark: SparkSession = SparkSessionBuilder.build("LabelJoinV2Test", local = true)
-
-  private implicit val tableUtils = TableTestUtils(spark)
+  private implicit val tableUtils: TableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   // Use 3 days ago as the end date to ensure data is always generated
   private val threeDaysAgo = tableUtils.partitionSpec.minus(today, new Window(3, TimeUnit.DAYS))

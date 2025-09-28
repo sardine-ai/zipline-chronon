@@ -19,20 +19,17 @@ package ai.chronon.spark.other
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
-import ai.chronon.spark.Extensions._
 import ai.chronon.spark.Comparison
-import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.Extensions._
 import ai.chronon.spark.batch.StagingQuery
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.catalog.{FormatProvider, TableUtils}
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
-import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
 
-class StagingQueryTest extends AnyFlatSpec {
+class StagingQueryTest extends SparkTestBase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  implicit lazy val spark: SparkSession = SparkSessionBuilder.build("StagingQueryTest", local = true)
   implicit private val tableUtils: TableUtils = TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
@@ -287,12 +284,19 @@ class StagingQueryTest extends AnyFlatSpec {
   }
 
   private def getPartitionColumnNames(tableName: String)(implicit spark: SparkSession): Seq[String] = {
-    // Get the catalog table information
-    val tableIdentifier = spark.sessionState.sqlParser.parseTableIdentifier(tableName)
-    val catalogTable = spark.sessionState.catalog.getTableMetadata(tableIdentifier)
-
-    // Extract partition column names from the table schema
-    catalogTable.partitionColumnNames
+    try {
+      val format = FormatProvider.from(spark).readFormat(tableName).get
+      val partitionsMap = format.partitions(tableName, "")
+      if (partitionsMap.nonEmpty) {
+        partitionsMap.head.keys.toSeq
+      } else {
+        Seq.empty
+      }
+    } catch {
+      case e: Exception =>
+        logger.warn(s"Could not get partition column names for $tableName: ${e.getMessage}")
+        Seq.empty
+    }
   }
 
   it should "handle additional output partition columns" in {
@@ -351,15 +355,6 @@ class StagingQueryTest extends AnyFlatSpec {
     }
 
     assertEquals(0, diff.count())
-
-    // Verify the table was created with the additional partition columns
-    val tableDesc = spark.sql(s"DESCRIBE ${stagingQueryConf.metaData.outputTable}")
-    val partitionInfo = spark.sql(s"SHOW PARTITIONS ${stagingQueryConf.metaData.outputTable}")
-
-    logger.info("Table description:")
-    tableDesc.show()
-    logger.info("Partition information:")
-    partitionInfo.show()
 
     // Get the partition column names from the table metadata
     val partitionColumnNames = getPartitionColumnNames(stagingQueryConf.metaData.outputTable)(spark)

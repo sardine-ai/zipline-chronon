@@ -17,19 +17,17 @@
 package ai.chronon.spark.fetcher
 
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.SparkTestBase
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.TimeZone
 
-class FetcherGeneratedTest extends AnyFlatSpec {
+class FetcherGeneratedTest extends SparkTestBase {
 
-  import ai.chronon.spark.submission
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  val sessionName = "FetcherGeneratedTest"
-  val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
   private val topic = "test_topic"
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))

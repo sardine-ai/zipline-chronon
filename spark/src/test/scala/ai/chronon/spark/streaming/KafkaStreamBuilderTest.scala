@@ -17,14 +17,9 @@
 package ai.chronon.spark.streaming
 
 import ai.chronon.online.TopicInfo
-import ai.chronon.spark.streaming.KafkaStreamBuilder
-import ai.chronon.spark.submission.SparkSessionBuilder
-import org.apache.spark.sql.SparkSession
-import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.utils.SparkTestBase
 
-class KafkaStreamBuilderTest extends AnyFlatSpec {
-
-  private val spark: SparkSession = SparkSessionBuilder.build("KafkaStreamBuilderTest", local = true)
+class KafkaStreamBuilderTest extends SparkTestBase {
 
   it should "throw when kafka stream does not exist" in {
     val topicInfo = TopicInfo.parse("kafka://test_topic/schema=my_schema/host=X/port=Y")

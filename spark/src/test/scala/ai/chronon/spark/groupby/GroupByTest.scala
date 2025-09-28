@@ -18,40 +18,23 @@ package ai.chronon.spark.groupby
 
 import ai.chronon.aggregator.test.{CStream, Column, NaiveAggregator}
 import ai.chronon.aggregator.windowing.FiveMinuteResolution
-import ai.chronon.api.Aggregation
-import ai.chronon.api.Builders
-import ai.chronon.api.Constants
-import ai.chronon.api.DoubleType
 import ai.chronon.api.Extensions._
-import ai.chronon.api.IntType
-import ai.chronon.api.LongType
-import ai.chronon.api.Operation
-import ai.chronon.api.PartitionSpec
-import ai.chronon.api.Source
-import ai.chronon.api.StringType
-import ai.chronon.api.TimeUnit
-import ai.chronon.api.Window
-import ai.chronon.api.PartitionRange
-import ai.chronon.online.serde.RowWrapper
-import ai.chronon.online.serde.SparkConversions
+import ai.chronon.api.{GroupBy => ApiGroupBy, _}
+import ai.chronon.online.serde.{RowWrapper, SparkConversions}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark._
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase, TestUtils}
+import ai.chronon.spark.{GroupBy, _}
 import com.google.gson.Gson
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Encoders, Row, SparkSession}
 import org.apache.spark.sql.types.{StructField, StructType, LongType => SparkLongType, StringType => SparkStringType}
+import org.apache.spark.sql.{Encoders, Row}
 import org.junit.Assert._
-import org.scalatest.flatspec.AnyFlatSpec
-import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.utils.{DataFrameGen, TestUtils}
 
 import scala.collection.mutable
 
-class GroupByTest extends AnyFlatSpec {
+class GroupByTest extends SparkTestBase {
 
-  import ai.chronon.spark.submission
-
-  lazy val spark: SparkSession = submission.SparkSessionBuilder.build("GroupByTest", local = true)
   val tableUtils: TableUtils = TableUtils(spark)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
 

@@ -16,7 +16,6 @@
 
 package ai.chronon.spark.analyzer
 
-import ai.chronon.api.Builders.Derivation
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
@@ -24,22 +23,15 @@ import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
 import ai.chronon.spark.bootstrap.BootstrapUtils
 import ai.chronon.spark.catalog.TableUtils
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.utils.SparkTestBase
 import org.apache.spark.sql.functions._
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.slf4j.{Logger, LoggerFactory}
 
-class DerivationBootstrapTest extends AnyFlatSpec {
-
-  import ai.chronon.spark.submission
+class DerivationBootstrapTest extends SparkTestBase {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = submission.SparkSessionBuilder.build("DerivationBootstrapTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 

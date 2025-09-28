@@ -188,52 +188,6 @@ object JoinUtils {
     finalDf
   }
 
-  /** *
-    * Method to create or replace a view for feature table joining with labels.
-    * Label columns will be prefixed with "label" or custom prefix for easy identification
-    */
-  def createOrReplaceView(viewName: String,
-                          leftTable: String,
-                          rightTable: String,
-                          joinKeys: Array[String],
-                          tableUtils: TableUtils,
-                          viewProperties: Map[String, String] = null,
-                          labelColumnPrefix: String = Constants.LabelColumnPrefix): Unit = {
-    val fieldDefinitions = joinKeys.map(field => s"l.`$field`") ++
-      tableUtils
-        .getSchemaFromTable(leftTable)
-        .filterNot(field => joinKeys.contains(field.name))
-        .map(field => s"l.`${field.name}`") ++
-      tableUtils
-        .getSchemaFromTable(rightTable)
-        .filterNot(field => joinKeys.contains(field.name))
-        .map(field => {
-          if (field.name.startsWith(labelColumnPrefix)) {
-            s"r.`${field.name}`"
-          } else {
-            s"r.`${field.name}` AS `${labelColumnPrefix}_${field.name}`"
-          }
-        })
-    val joinKeyDefinitions = joinKeys.map(key => s"l.`$key` = r.`$key`")
-    val createFragment = s"""CREATE OR REPLACE VIEW $viewName"""
-    val queryFragment =
-      s"""
-         |  AS SELECT
-         |     ${fieldDefinitions.mkString(",\n    ")}
-         |    FROM $leftTable AS l LEFT OUTER JOIN $rightTable AS r
-         |      ON ${joinKeyDefinitions.mkString(" AND ")}""".stripMargin
-
-    val propertiesFragment = if (viewProperties != null && viewProperties.nonEmpty) {
-      s"""    TBLPROPERTIES (
-         |    ${viewProperties.toMap.transform((k, v) => s"'$k'='$v'").values.mkString(",\n   ")}
-         |    )""".stripMargin
-    } else {
-      ""
-    }
-    val sqlStatement = Seq(createFragment, propertiesFragment, queryFragment).mkString("\n")
-    tableUtils.sql(sqlStatement)
-  }
-
   /** Generate a Bloom filter for 'joinPart' when the row count to be backfilled falls below a specified threshold.
     * This method anticipates that there will likely be a substantial number of rows on the right side that need to be filtered out.
     * @return bloomfilter map option for right part

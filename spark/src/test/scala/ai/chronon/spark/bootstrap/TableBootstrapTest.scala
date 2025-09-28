@@ -22,20 +22,15 @@ import ai.chronon.api._
 import ai.chronon.spark.Comparison
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.submission.SparkSessionBuilder
+import ai.chronon.spark.utils.SparkTestBase
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.junit.Assert.{assertEquals, assertFalse}
+import org.slf4j.{Logger, LoggerFactory}
 
-class TableBootstrapTest extends AnyFlatSpec {
+class TableBootstrapTest extends SparkTestBase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = SparkSessionBuilder.build("BootstrapTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 

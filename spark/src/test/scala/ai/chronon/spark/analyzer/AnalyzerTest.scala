@@ -21,21 +21,17 @@ import ai.chronon.api
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import ai.chronon.spark.{Analyzer, Join}
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, lit}
 import org.junit.Assert.assertTrue
 import org.scalatest.BeforeAndAfter
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.slf4j.{Logger, LoggerFactory}
 
-class AnalyzerTest extends AnyFlatSpec with BeforeAndAfter {
+class AnalyzerTest extends SparkTestBase with BeforeAndAfter {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = SparkSessionBuilder.build("AnalyzerTest", local = true)
   private val tableUtils = TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())

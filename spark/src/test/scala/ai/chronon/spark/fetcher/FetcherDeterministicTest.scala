@@ -16,24 +16,19 @@
 
 package ai.chronon.spark.fetcher
 
-import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.online.fetcher.Fetcher.Request
-import org.apache.spark.sql.SparkSession
-import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.SparkTestBase
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.TimeZone
-import scala.concurrent.{Await, ExecutionContext}
 import java.util.concurrent.Executors
 import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.{Await, ExecutionContext}
 
-class FetcherDeterministicTest extends AnyFlatSpec {
-
-  import ai.chronon.spark.submission
+class FetcherDeterministicTest extends SparkTestBase {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
-  val sessionName = "FetcherDeterministicTest"
-  val spark: SparkSession = submission.SparkSessionBuilder.build(sessionName, local = true)
   private val tableUtils = TableUtils(spark)
   TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
 
@@ -53,9 +48,9 @@ class FetcherDeterministicTest extends AnyFlatSpec {
     val joinConf = FetcherTestUtil.generateMutationData(namespace, tableUtils, spark)
 
     // Set up the mock API with data
-    import ai.chronon.spark.utils.{MockApi, OnlineUtils}
     import ai.chronon.api.Constants.MetadataDataset
-    import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
+      import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
+      import ai.chronon.spark.utils.{MockApi, OnlineUtils}
 
     val kvStoreFunc = () => OnlineUtils.buildInMemoryKVStore("FetchJoinV2Test")
     val inMemoryKvStore = kvStoreFunc()

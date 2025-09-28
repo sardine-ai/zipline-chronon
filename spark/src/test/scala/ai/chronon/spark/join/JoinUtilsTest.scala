@@ -22,25 +22,20 @@ import ai.chronon.api.{Builders, PartitionRange, PartitionSpec}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils
 import ai.chronon.spark.JoinUtils.{contains_any, set_add}
-import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.utils.{DataFrameGen, TestUtils}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row}
 import org.junit.Assert._
-import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.mutable
 import scala.util.Try
 
-class JoinUtilsTest extends AnyFlatSpec {
+class JoinUtilsTest extends BaseJoinTest {
 
-  lazy val spark: SparkSession = SparkSessionBuilder.build("JoinUtilsTest", local = true)
-  private val tableUtils = TableUtils(spark)
   private implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
-  private val namespace = "joinUtil"
+  override protected val namespace = "join_util"
   it should "udf set add" in {
     val data = Seq(
       Row(Seq("a", "b", "c"), "a"),
@@ -226,44 +221,6 @@ class JoinUtilsTest extends AnyFlatSpec {
       isFailure = false
     )
     assertEquals(3, df.get.columns.length)
-  }
-
-  it should "create join view" in {
-    val finalViewName = "testCreateView"
-    val leftTableName = "joinUtil.testFeatureTable"
-    val rightTableName = "joinUtil.testLabelTable"
-    tableUtils.createDatabase(namespace)
-    TestUtils.createSampleFeatureTableDf(spark).write.saveAsTable(leftTableName)
-    TestUtils.createSampleLabelTableDf(spark).write.saveAsTable(rightTableName)
-    val keys = Array("listing_id", tableUtils.partitionColumn)
-
-    JoinUtils.createOrReplaceView(finalViewName,
-                                  leftTableName,
-                                  rightTableName,
-                                  keys,
-                                  tableUtils,
-                                  viewProperties = Map("featureTable" -> leftTableName, "labelTable" -> rightTableName))
-
-    val view = tableUtils.sql(s"select * from $finalViewName")
-    view.show()
-    assertEquals(6, view.count())
-    assertEquals(null,
-                 view
-                   .where(view("ds") === "2022-10-01" && view("listing_id") === "5")
-                   .select("label_room_type")
-                   .first()
-                   .get(0))
-    assertEquals("SUPER_HOST",
-                 view
-                   .where(view("ds") === "2022-10-07" && view("listing_id") === "1")
-                   .select("label_host_type")
-                   .first()
-                   .get(0))
-
-    val properties = tableUtils.getTableProperties(finalViewName)
-    assertTrue(properties.isDefined)
-    assertEquals(properties.get.get("featureTable"), Some(leftTableName))
-    assertEquals(properties.get.get("labelTable"), Some(rightTableName))
   }
 
   it should "filter columns" in {

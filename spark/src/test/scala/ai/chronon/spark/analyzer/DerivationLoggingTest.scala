@@ -25,26 +25,18 @@ import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark._
 import ai.chronon.spark.bootstrap.BootstrapUtils
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.utils.{MockApi, OnlineUtils, SchemaEvolutionUtils}
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.utils.{MockApi, OnlineUtils, SchemaEvolutionUtils, SparkTestBase}
 import org.apache.spark.sql.functions._
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.scalatest.flatspec.AnyFlatSpec
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class DerivationLoggingTest extends AnyFlatSpec {
-
-  import ai.chronon.spark.submission
+class DerivationLoggingTest extends SparkTestBase {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession = submission.SparkSessionBuilder.build("DerivationLoggingTest", local = true)
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 
@@ -136,7 +128,7 @@ class DerivationLoggingTest extends AnyFlatSpec {
       .save(mockApi.logTable, partitionColumns = Seq(tableUtils.partitionColumn, "name"))
     SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, endDs)
     val flattenerJob = new LogFlattenerJob(spark, bootstrapJoin, endDs, mockApi.logTable, mockApi.schemaTable)
-    flattenerJob.buildLogTable()
+    flattenerJob.buildLogTable(Option(today))
     val logDf = tableUtils.loadTable(bootstrapJoin.metaData.loggedTable)
 
     // Verifies that logging is full regardless of select star

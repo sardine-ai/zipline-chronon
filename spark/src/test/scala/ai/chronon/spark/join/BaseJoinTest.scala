@@ -20,10 +20,9 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.utils.{DataFrameGen, TableTestUtils}
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
+import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.sql.functions._
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.Tag
 
 object JoinTag extends Tag("join")
@@ -39,12 +38,9 @@ object TestRow {
     }
 }
 
-abstract class BaseJoinTest extends AnyFlatSpec {
+abstract class BaseJoinTest extends SparkTestBase {
 
-  import ai.chronon.spark.submission
-
-  val spark: SparkSession = submission.SparkSessionBuilder.build("JoinTest", local = true)
-  protected implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
+  protected implicit val tableUtils: TableUtils = TableUtils(spark)
 
   protected val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   // Use 3 days ago as the end date to ensure data is always generated in tests

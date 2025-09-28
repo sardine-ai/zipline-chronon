@@ -21,15 +21,11 @@ import ai.chronon.api._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.Join
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
-import org.apache.spark.sql.SparkSession
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.DecimalType
-import org.scalatest.flatspec.AnyFlatSpec
 
-class AvroTest extends AnyFlatSpec {
-  val spark: SparkSession = SparkSessionBuilder.build("AvroTest", local = true)
+class AvroTest extends SparkTestBase {
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val monthAgo = tableUtils.partitionSpec.minus(today, new Window(30, TimeUnit.DAYS))

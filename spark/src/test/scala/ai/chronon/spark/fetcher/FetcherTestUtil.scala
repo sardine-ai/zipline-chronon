@@ -217,7 +217,7 @@ object FetcherTestUtil {
       val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
       SchemaEvolutionUtils.runLogSchemaGroupBy(mockApi, today, today)
       val flattenerJob = new LogFlattenerJob(spark, joinConf, today, mockApi.logTable, mockApi.schemaTable)
-      flattenerJob.buildLogTable()
+      flattenerJob.buildLogTable(Option(today))
 
       // build consistency metrics
       val consistencyJob = new ConsistencyJob(spark, joinConf, today)

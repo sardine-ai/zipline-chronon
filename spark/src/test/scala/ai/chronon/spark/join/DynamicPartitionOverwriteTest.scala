@@ -16,12 +16,6 @@
 
 package ai.chronon.spark.join
 
-import org.apache.spark.sql.SaveMode
-import ai.chronon.api.Builders
-import ai.chronon.api.Extensions._
-import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.spark._
-import ai.chronon.spark.Extensions._
 import org.junit.Assert._
 
 class DynamicPartitionOverwriteTest extends BaseJoinTest {
@@ -37,7 +31,7 @@ class DynamicPartitionOverwriteTest extends BaseJoinTest {
       TestRow("5", "e")
     )
     val data = spark.createDataFrame(rows) toDF ("ds", "value")
-    data.write.mode(SaveMode.Overwrite).format("hive").partitionBy("ds").saveAsTable(f"${namespace}.table")
+    tableUtils.insertPartitions(data, f"${namespace}.table")
     assertEquals(tableUtils.loadTable(f"${namespace}.table").as[TestRow].collect().toList.sorted, rows.sorted)
 
     tableUtils.loadTable(f"${namespace}.table").show(truncate = false)
@@ -48,10 +42,7 @@ class DynamicPartitionOverwriteTest extends BaseJoinTest {
     )
     val dynamicPartitionsDF = spark.createDataset(dynamicPartitions).select("value", "ds")
 
-    dynamicPartitionsDF.write
-      .format("hive")
-      .mode(SaveMode.Overwrite)
-      .insertInto(f"${namespace}.table")
+    tableUtils.insertPartitions(dynamicPartitionsDF, f"${namespace}.table")
 
     tableUtils.loadTable(f"${namespace}.table").show(truncate = false)
 

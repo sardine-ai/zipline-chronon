@@ -20,14 +20,12 @@ import ai.chronon.aggregator.test.Column
 import ai.chronon.api
 import ai.chronon.api.{Builders, Operation, TimeUnit, TsUtils, Window}
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.{Comparison, Join}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
+import ai.chronon.spark.{Comparison, Join}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
 
 /** Tests for the temporal join of entities.
@@ -35,14 +33,23 @@ import org.slf4j.{Logger, LoggerFactory}
   * Right is an entity with snapshots and mutation values through the day.
   * Join is the events and the entity value at the exact timestamp of the ts.
   */
-class MutationsTest extends AnyFlatSpec {
+class MutationsTest extends SparkTestBase {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  val spark: SparkSession =
-    SparkSessionBuilder.build("MutationsTest",
-                              local = true,
-                              additionalConfig =
-                                Some(Map("spark.chronon.join.backfill.check.left_time_range" -> "true")))
+  override lazy val spark: SparkSession = SparkSessionBuilder.build(
+    getClass.getSimpleName,
+    local = true,
+    additionalConfig = Option(Map(
+      "spark.sql.extensions" -> "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+      "spark.sql.catalog.spark_catalog" -> "org.apache.iceberg.spark.SparkSessionCatalog",
+      "spark.sql.warehouse.dir" -> s"${System.getProperty("java.io.tmpdir")}/warehouse",
+      "spark.sql.catalog.spark_catalog.type" -> "hadoop",
+      "spark.sql.catalog.spark_catalog.warehouse" -> icebergWarehouse,
+      "spark.driver.bindAddress" -> "127.0.0.1",
+      "spark.ui.enabled" -> "false",
+      "spark.chronon.join.backfill.check.left_time_range" -> "true"
+    ))
+  )
   private implicit val tableUtils: TableUtils = TableUtils(spark)
 
   private def namespace(suffix: String) = s"test_mutations_$suffix"

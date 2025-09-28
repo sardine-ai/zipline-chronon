@@ -2,54 +2,31 @@ package ai.chronon.spark.batch
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api.Extensions._
-import ai.chronon.api.ScalaJavaConversions.JIterableOps
-import ai.chronon.api.{
-  BooleanType,
-  Builders,
-  DateRange,
-  DoubleType,
-  IntType,
-  JoinPart,
-  LongType,
-  MetaData,
-  Operation,
-  StringType,
-  TimeUnit,
-  Window
-}
-import org.apache.spark.sql.{Row => SparkRow}
+import ai.chronon.api.planner.RelevantLeftForJoinPart
+import ai.chronon.api.{DoubleType, LongType, StringType, StructField, StructType, _}
+import ai.chronon.planner.JoinMergeNode
+import ai.chronon.spark.Extensions._
+import ai.chronon.spark.catalog.TableUtils
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
+import com.google.gson.Gson
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{
   DoubleType => SparkDoubleType,
   LongType => SparkLongType,
   StringType => SparkStringType,
   StructField => SparkStructField,
-  StructType => SparkStructType
+  StructType => SparkStructType,
+  _
 }
-
-import scala.collection.Seq
-import scala.collection.JavaConverters._
-import com.google.gson.Gson
-import ai.chronon.api.planner.RelevantLeftForJoinPart
-import ai.chronon.planner.{JoinMergeNode, JoinPartNode, SourceWithFilterNode}
-import ai.chronon.spark.Extensions._
-import ai.chronon.spark.batch.{JoinPartJob, MergeJob, SourceJob}
-import ai.chronon.spark.utils.{DataFrameGen, TableTestUtils}
-import ai.chronon.spark.{Join, JoinUtils}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.{SaveMode, Row => SparkRow}
 import org.junit.Assert._
-import org.scalatest.flatspec.AnyFlatSpec
 
-import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
+import scala.collection.JavaConverters._
+import scala.collection.Seq
 
-class MergeJobAnalyzeReuseTest extends AnyFlatSpec {
+class MergeJobAnalyzeReuseTest extends SparkTestBase {
 
-  import ai.chronon.spark.submission
-
-  val spark: SparkSession = submission.SparkSessionBuilder.build("MergeJobAnalyzeReuseTest", local = true)
-  private implicit val tableUtils: TableTestUtils = TableTestUtils(spark)
+  private implicit val tableUtils: TableUtils = new TableUtils(spark)
 
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
@@ -220,8 +197,8 @@ class MergeJobAnalyzeReuseTest extends AnyFlatSpec {
       quantityPartTableSchema
     )
 
-    pricePartData.write.mode(SaveMode.Overwrite).saveAsTable(pricePartTable)
-    quantityPartData.write.mode(SaveMode.Overwrite).saveAsTable(quantityPartTable)
+    tableUtils.insertPartitions(pricePartData, pricePartTable)
+    tableUtils.insertPartitions(quantityPartData, quantityPartTable)
 
     // Create left DataFrame for schema compatibility check
     val leftDf = DataFrameGen.events(spark, leftSchema, 10, 1)
@@ -422,8 +399,8 @@ class MergeJobAnalyzeReuseTest extends AnyFlatSpec {
       ratingPartTableSchema
     )
 
-    pricePartData.write.mode(SaveMode.Overwrite).saveAsTable(pricePartTable)
-    ratingPartData.write.mode(SaveMode.Overwrite).saveAsTable(ratingPartTable)
+    tableUtils.insertPartitions(pricePartData, pricePartTable)
+    tableUtils.insertPartitions(ratingPartData, ratingPartTable)
 
     // Create left DataFrame for schema compatibility check
     val leftDf = DataFrameGen.events(spark, leftSchema, 10, 1)
@@ -604,7 +581,7 @@ class MergeJobAnalyzeReuseTest extends AnyFlatSpec {
       partTableSchema
     )
 
-    pricePartData.write.mode(SaveMode.Overwrite).saveAsTable(pricePartTable)
+    tableUtils.insertPartitions(pricePartData, pricePartTable)
 
     // Create left DataFrame for schema compatibility check
     val leftDf = DataFrameGen.events(spark, leftSchema, 10, 1)

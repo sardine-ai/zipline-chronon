@@ -18,7 +18,6 @@ package ai.chronon.spark.other
 
 import ai.chronon.aggregator.test.Column
 import ai.chronon.api
-import ai.chronon.api.Builders
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.online.fetcher.DataMetrics
@@ -26,14 +25,9 @@ import ai.chronon.spark.Extensions._
 import ai.chronon.spark.Join
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.CompareJob
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
-import org.apache.spark.sql.SparkSession
-import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
-import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 
-class MigrationCompareTest extends AnyFlatSpec with BeforeAndAfterAll {
-  lazy val spark: SparkSession = SparkSessionBuilder.build("MigrationCompareTest", local = true)
+class MigrationCompareTest extends SparkTestBase {
   private val tableUtils = TableUtils(spark)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val ninetyDaysAgo = tableUtils.partitionSpec.minus(today, new Window(90, TimeUnit.DAYS))

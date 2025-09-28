@@ -1,7 +1,7 @@
 package ai.chronon.spark.catalog
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, date_format}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.StructType
 
 case object Iceberg extends Format {
@@ -21,9 +21,27 @@ case object Iceberg extends Format {
 
   override def partitions(tableName: String, partitionFilters: String)(implicit
       sparkSession: SparkSession): List[Map[String, String]] = {
-    throw new NotImplementedError(
-      "Multi-partitions retrieval is not supported on Iceberg tables yet." +
-        "For single partition retrieval, please use 'partition' method.")
+    val partitionsDf = sparkSession.read
+      .format("iceberg")
+      .load(s"${tableName}.partitions")
+
+    // Get the partition struct schema to understand what columns are partitioned
+    val index = partitionsDf.schema.fieldIndex("partition")
+    val partitionStruct = partitionsDf.schema(index).dataType.asInstanceOf[StructType]
+    val partitionColumnNames = partitionStruct.fieldNames
+
+    // Collect all partition rows and convert each partition struct to a Map[String, String]
+    val partitionRows = partitionsDf.select(col("partition")).collect()
+
+    partitionRows
+      .map { row =>
+        val partitionData = row.getStruct(0)
+        partitionColumnNames.flatMap { colName =>
+          Option(partitionData.getAs[Any](colName)).map(colName -> _.toString)
+        }.toMap
+      }
+      .toList
+      .distinct
   }
 
   private def getIcebergPartitions(tableName: String, partitionColumn: String)(implicit
@@ -34,13 +52,11 @@ case object Iceberg extends Format {
       .load(s"${tableName}.partitions")
 
     val index = partitionsDf.schema.fieldIndex("partition")
-    val tableUtils = TableUtils(sparkSession)
-    val partitionFmt = tableUtils.partitionFormat
     if (partitionsDf.schema(index).dataType.asInstanceOf[StructType].fieldNames.contains("hr")) {
       // Hour filter is currently buggy in iceberg. https://github.com/apache/iceberg/issues/4718
       // so we collect and then filter.
       partitionsDf
-        .select(date_format(col(s"partition.$partitionColumn"), partitionFmt), col("partition.hr"))
+        .select(col(s"partition.$partitionColumn"), col("partition.hr"))
         .collect()
         .filter(_.get(1) == null)
         .map(_.getString(0))
@@ -49,7 +65,7 @@ case object Iceberg extends Format {
     } else {
 
       partitionsDf
-        .select(date_format(col(s"partition.$partitionColumn"), partitionFmt))
+        .select(col(s"partition.$partitionColumn"))
         .collect()
         .map(_.getString(0))
         .toList
