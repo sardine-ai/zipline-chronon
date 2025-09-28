@@ -30,6 +30,8 @@ Generally, it's suggested to run a small range of data first to perform validati
 
 Once the job is complete you can query your table to see the computed data (note the table name is in the overview section of the Zipline Hub UI for convenience).
 
+If you wish to re-run a given range that is already marked as completed, then you'll also need to pass the `--force-recompute` flag. This can be used when you made a change that you wish to take effect, or when upstream data has changed and you wish to propogate the change to Chronon output.
+
 ## (Optional) Schedule
 
 Running `schedule` from a branch will tell Zipline to run the regular jobs associated with your config.
