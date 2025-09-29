@@ -55,7 +55,12 @@ def main():
         (
             'python/test/canary/joins/gcp/training_set.py.j2', 
             f'python/test/canary/joins/gcp/training_set_{args.test_id}.py'
+        ),
+        (
+            'python/test/canary/staging_queries/gcp/sample_staging_query.py.j2',
+            f'python/test/canary/staging_queries/gcp/sample_staging_query_{args.test_id}.py'
         )
+
     ]
     
     for template_path, relative_output_path in templates:
