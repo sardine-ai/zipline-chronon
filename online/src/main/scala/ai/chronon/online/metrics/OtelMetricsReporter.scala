@@ -7,6 +7,7 @@ import io.opentelemetry.api.metrics.{DoubleGauge, LongCounter, LongGauge, LongHi
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
 import io.opentelemetry.context.propagation.ContextPropagators
 import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter
+import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter
 import io.opentelemetry.exporter.prometheus.PrometheusHttpServer
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.metrics.SdkMeterProvider
@@ -85,6 +86,7 @@ object OtelMetricsReporter {
   val MetricsExporterPrometheusPortKey = "ai.chronon.metrics.exporter.port"
   val MetricsExporterResourceKey = "ai.chronon.metrics.exporter.resources"
 
+  val MetricsReaderGrpc = "grpc"
   val MetricsReaderHttp = "http"
   val MetricsReaderPrometheus = "prometheus"
   val MetricsExporterInterval = "PT15s"
@@ -108,6 +110,10 @@ object OtelMetricsReporter {
         // Configure periodic metric reader// Configure periodic metric reader
         PeriodicMetricReader.builder(metricExporter).setInterval(Duration.parse(MetricsExporterInterval)).build
 
+      case MetricsReaderGrpc =>
+        val metricExporter = OtlpGrpcMetricExporter.builder().setEndpoint(getExporterUrl).build
+        PeriodicMetricReader.builder(metricExporter).setInterval(Duration.parse(MetricsExporterInterval)).build
+
       case MetricsReaderPrometheus =>
         val prometheusPort =
           System.getProperty(MetricsExporterPrometheusPortKey, MetricsExporterPrometheusPortDefault).toInt
@@ -115,7 +121,7 @@ object OtelMetricsReporter {
           .setPort(prometheusPort)
           .build
       case _ =>
-        throw new IllegalArgumentException(s"Unknown metrics reader (only http / prometheus supported): $metricReader")
+        throw new IllegalArgumentException(s"Unknown metrics reader: $metricReader")
     }
   }
 

@@ -94,6 +94,7 @@ def StagingQuery(
     cluster_conf: common.ClusterConfigProperties = None,
     step_days: Optional[int] = None,
     recompute_days: Optional[int] = None,
+    additional_partitions: List[str] = None,
 ) -> ttypes.StagingQuery:
     """
     Creates a StagingQuery object for executing arbitrary SQL queries with templated date parameters.
@@ -198,6 +199,7 @@ def StagingQuery(
         customJson=custom_json,
         tableProperties=table_properties,
         version=str(version),
+        additionalOutputPartitionColumns=additional_partitions,
     )
 
     thrift_deps = []

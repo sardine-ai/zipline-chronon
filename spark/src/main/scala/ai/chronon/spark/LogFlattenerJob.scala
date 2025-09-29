@@ -28,7 +28,7 @@ import ai.chronon.spark.Extensions.{StructTypeOps, _}
 import ai.chronon.spark.catalog.TableUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, unbase64}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -132,7 +132,11 @@ class LogFlattenerJob(session: SparkSession,
     val outputSchema = StructType("", metadataFields ++ dataFields)
     val (keyBase64Idx, valueBase64Idx, tsIdx, dsIdx, schemaHashIdx) = (0, 1, 2, 3, 4)
     val outputRdd: RDD[Row] = rawDf
-      .select("key_base64", "value_base64", "ts_millis", "ds", Constants.SchemaHash)
+      .select(unbase64(col("key_base64").alias("key")),
+              unbase64(col("value_base64")).alias("value"),
+              col("ts_millis"),
+              col("ds"),
+              col(Constants.SchemaHash))
       .rdd
       .flatMap { row =>
         if (row.isNullAt(schemaHashIdx)) {
@@ -140,8 +144,8 @@ class LogFlattenerJob(session: SparkSession,
           None
         } else {
           val joinCodec = schemaMap(row.getString(schemaHashIdx))
-          val keyBytes = Base64.getDecoder.decode(row.getString(keyBase64Idx))
-          val valueBytes = Base64.getDecoder.decode(row.getString(valueBase64Idx))
+          val keyBytes = row.getAs[Array[Byte]](keyBase64Idx)
+          val valueBytes = row.getAs[Array[Byte]](valueBase64Idx)
           val keyRow = Try(joinCodec.keyCodec.decodeRow(keyBytes))
           val valueRow = Try(joinCodec.valueCodec.decodeRow(valueBytes))
 

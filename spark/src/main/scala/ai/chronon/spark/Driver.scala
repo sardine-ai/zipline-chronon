@@ -715,7 +715,7 @@ object Driver {
         args.schemaTable(),
         Some(args.stepDays())
       )
-      logFlattenerJob.buildLogTable()
+      logFlattenerJob.buildLogTable(args.startPartitionOverride.toOption)
     }
   }
 

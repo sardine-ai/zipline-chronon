@@ -34,6 +34,7 @@ object Metrics {
     val GroupByStreaming = "group_by.streaming"
     val Fetcher = "fetcher"
     val JoinOffline = "join.offline"
+    val JoinOOC = "join.ooc"
     val GroupByOffline = "group_by.offline"
     val StagingQueryOffline = "staging_query.offline"
 
@@ -237,5 +238,7 @@ object Metrics {
     def gauge(metric: String, value: Long): Unit = Context.client.longGauge(prefix(metric), value)
 
     def gauge(metric: String, value: Double): Unit = Context.client.doubleGauge(prefix(metric), value)
+    def gauge(metric: String, value: Double, additionalTags: Map[String, String]): Unit =
+      Context.client.doubleGauge(prefix(metric), value, additionalTags)
   }
 }

@@ -21,6 +21,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api._
 import ai.chronon.online.OnlineDerivationUtil.timeFields
+import ai.chronon.online.metrics.Metrics
 import ai.chronon.online.{fetcher, _}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
@@ -38,6 +39,57 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
     .getOrElse(Map.empty[String, String])
   implicit val tableUtils: TableUtils = TableUtils(session)
   implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+
+  private def publishTelemetry(consistencyMetrics: fetcher.DataMetrics): Unit = {
+
+    /** Publish to telemetry the latest result.
+      * Telemetry cannot have time manipulation hence we aggregate a match % per hours
+      * Grab the mismatch sum and total count for every feature defined.
+      * Push a gauge of match % per feature.
+      */
+    val topSeries = consistencyMetrics.series.sortBy(-_._1).take(24)
+    // Compute the % mismatch per map for each time bucket per feature
+    val featureMatches = topSeries.flatMap { case (_, map) =>
+      // Filter only keys that are *_mismatch_sum and *_total_count
+      val features = map.keys.collect {
+        case k if k.endsWith("_mismatch_sum") || k.endsWith("_total_count") => k
+      }
+
+      // Group by feature prefix: everything before the last two underscores
+      val featurePrefixes = features.map { k =>
+        val parts = k.split("_")
+        // join all except the last two segments
+        parts.dropRight(2).mkString("_")
+      }.toSet
+      logger.info(s"Found ${featurePrefixes.size} features, example: ${featurePrefixes.seq.head}")
+      featurePrefixes.flatMap { prefix =>
+        val mismatchOpt = map.get(s"${prefix}_mismatch_sum").collect { case n: Number => n.doubleValue() }
+        val totalOpt = map.get(s"${prefix}_total_count").collect { case n: Number => n.doubleValue() }
+
+        (mismatchOpt, totalOpt) match {
+          case (Some(mismatch), Some(total)) if total > 0 =>
+            Some(prefix -> (1.0 - (mismatch / total)))
+          case _ => None // ignore if total missing or 0
+        }
+      }
+    }
+
+    val overallMatches: Map[String, Double] =
+      featureMatches
+        .groupBy(_._1) // group by feature name
+        .map { case (feature, values) =>
+          val product = values.map(_._2).product
+          feature -> product * 100
+        }
+    logger.info(s"Publishing match data for ${overallMatches.size} features")
+    val context = Metrics.Context(Metrics.Environment.JoinOOC, joinConf)
+    overallMatches.foreach { case (name, match_pct) =>
+      logger.info(s"Publishing feature_consistency[${Metrics.Tag.Feature}=$name]: ${match_pct} %")
+      context.gauge("feature_consistency", match_pct, Map(Metrics.Tag.Feature -> name))
+    }
+    logger.info("Sleeping 30 seconds to allow metrics to be collected...")
+    Thread.sleep(30000)
+  }
 
   // Replace join's left side with the logged table events to determine offline values of the aggregations.
   private def buildComparisonJoin(): Join = {
@@ -135,6 +187,8 @@ class ConsistencyJob(session: SparkSession, joinConf: Join, endDate: String) ext
         .save(joinConf.metaData.consistencyUploadTable, tblProperties)
       metrics
     }
-    fetcher.DataMetrics(allMetrics.flatMap(_.series))
+    val consistencyMetrics = fetcher.DataMetrics(allMetrics.flatMap(_.series))
+    publishTelemetry(consistencyMetrics)
+    consistencyMetrics
   }
 }
