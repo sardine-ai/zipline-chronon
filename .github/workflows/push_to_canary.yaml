@@ -368,14 +368,6 @@ jobs:
           GCP_PROJECT_ID=canary-443022 GCP_BIGTABLE_INSTANCE_ID=zipline-canary-instance docker compose -f docker/fetcher/chronon-service-with-local-telemetry.yml up -d
           docker ps -a
 
-      # TODO: Do proper BT warm up in the GcpApiImpl
-      - name: curl and warm up the fetcher
-        shell: bash
-        run: |
-          set -eo pipefail
-          docker ps -a
-          for i in {1..10}; do curl -X POST   'http://localhost:9000/v1/fetch/join/gcp.demo.v1__1'   -H 'Content-Type: application/json'   -d '[{"listing_id":"1","user_id":"user_7"}]' || true; sleep 10; done
-
       - name: Setup python
         shell: bash
         id: setup_python_venv
