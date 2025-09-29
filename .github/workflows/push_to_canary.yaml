@@ -1,6 +1,9 @@
 name: Push To Canary
 
 on:
+  push:
+    branches:
+      - main
   merge_group: # Trigger on merge groups to main branch
     branches:
       - main
@@ -284,7 +287,7 @@ jobs:
 
       - name:  On Fail Notify Slack
         id: notify_slack
-        if: failure()
+        if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: slackapi/slack-github-action@v1
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_AWS_WEBHOOK_URL }}
@@ -426,7 +429,7 @@ jobs:
 
       - name:  On Fail Notify Slack
         id: notify_slack
-        if: failure()
+        if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: slackapi/slack-github-action@v1
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GCP_WEBHOOK_URL }}
@@ -597,10 +600,11 @@ jobs:
             cloud-aws-jar
             cloud-gcp-jar
             service-assembly-jar
+            pubsub-jar
 
   merge_to_main-passing-tests:
     needs: [run_fetcher_integration_tests, run_aws_integration_tests, run_gcp_integration_tests]
-    if: ${{ needs.run_aws_integration_tests.result == 'success' && needs.run_gcp_integration_tests.result == 'success' }}
+    if: ${{ needs.run_aws_integration_tests.result == 'success' && needs.run_gcp_integration_tests.result == 'success'  && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -617,7 +621,7 @@ jobs:
         env:
           TARGET_BRANCH: main-passing-tests
         run: |
-          echo "Merging to main branch after successful push to canary"
+          echo "Merging to main-passing-tests branch after successful push to canary"
           if git show-ref --quiet refs/heads/$TARGET_BRANCH; then
             echo "Target branch $TARGET_BRANCH exists. Merging main into it..."
             git checkout $TARGET_BRANCH
