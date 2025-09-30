@@ -72,14 +72,14 @@ def build_local_repo_hashmap(root_dir: str):
 
 
 def compute_and_upload_diffs(
-    branch: str, zipline_hub: ZiplineHub, local_repo_confs: dict[str, Conf]
+    branch: str, zipline_hub: ZiplineHub, local_repo_confs: dict[str, Conf], orch_v2=False
 ):
     # Determine which confs are different from the ZiplineHub
     # Call Zipline hub with `names_and_hashes` as the argument to get back
     names_to_hashes = {name: local_conf.hash for name, local_conf in local_repo_confs.items()}
     print(f"\n 🧮 Computed hashes for {len(names_to_hashes)} local files.")
 
-    changed_conf_names = zipline_hub.call_diff_api(names_to_hashes)
+    changed_conf_names = zipline_hub.call_diff_api(names_to_hashes, orch_v2)
 
     if not changed_conf_names:
         print(f" ✅ Remote contains all local files. No need to upload '{branch}'.")
@@ -100,10 +100,10 @@ def compute_and_upload_diffs(
             diff_confs.append(conf.__dict__)
 
         # Make PUT request to ZiplineHub
-        zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs)
+        zipline_hub.call_upload_api(branch=branch, diff_confs=diff_confs, orch_v2=orch_v2)
         print(f" ⬆️ Uploaded {len(diffed_confs)} changed confs to branch '{branch}'.")
 
-    zipline_hub.call_sync_api(branch=branch, names_to_hashes=names_to_hashes)
+    zipline_hub.call_sync_api(branch=branch, names_to_hashes=names_to_hashes, orch_v2=orch_v2)
 
     print(f" ✅ {len(names_to_hashes)} hashes updated on branch '{branch}'.\n")
     return diffed_confs

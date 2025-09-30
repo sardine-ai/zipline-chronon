@@ -105,8 +105,8 @@ class ZiplineHub:
 
         return response.signed_jwt
 
-    def call_diff_api(self, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
-        url = f"{self.base_url}/upload/v1/diff"
+    def call_diff_api(self, names_to_hashes: dict[str, str], orch_v2=False) -> Optional[list[str]]:
+        url = f"{self.base_url}/upload/v2/diff" if orch_v2 else f"{self.base_url}/upload/v1/diff"
 
         diff_request = {"namesToHashes": names_to_hashes}
         headers = {"Content-Type": "application/json"}
@@ -128,8 +128,8 @@ class ZiplineHub:
                 print(f" ❌ Error calling diff API: {e}")
             raise e
 
-    def call_upload_api(self, diff_confs, branch: str):
-        url = f"{self.base_url}/upload/v1/confs"
+    def call_upload_api(self, diff_confs, branch: str, orch_v2=False):
+        url = f"{self.base_url}/upload/v2/confs" if orch_v2 else f"{self.base_url}/upload/v1/confs"
 
         upload_request = {
             "diffConfs": diff_confs,
@@ -154,8 +154,8 @@ class ZiplineHub:
                 print(f" ❌ Error calling upload API: {e}")
             raise e
 
-    def call_schedule_api(self, modes, branch, conf_name, conf_hash):
-        url = f"{self.base_url}/schedule/v1/schedules"
+    def call_schedule_api(self, modes, branch, conf_name, conf_hash, orch_v2=False):
+        url = f"{self.base_url}/schedule/v2/schedules" if orch_v2 else f"{self.base_url}/schedule/v1/schedules"
 
         schedule_request = {
             "modeSchedules": modes,
@@ -183,8 +183,8 @@ class ZiplineHub:
                 print(f" ❌ Error deploying schedule: {e}")
             raise e
 
-    def call_sync_api(self, branch: str, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
-        url = f"{self.base_url}/upload/v1/sync"
+    def call_sync_api(self, branch: str, names_to_hashes: dict[str, str], orch_v2=False) -> Optional[list[str]]:
+        url = f"{self.base_url}/upload/v2/sync" if orch_v2 else f"{self.base_url}/upload/v1/sync"
 
         sync_request = {
             "namesToHashes": names_to_hashes,
@@ -220,8 +220,9 @@ class ZiplineHub:
         end=None,
         force_recompute=False,
         skip_long_running=False,
+        orch_v2=False
     ):
-        url = f"{self.base_url}/workflow/start"
+        url = f"{self.base_url}/workflow/v2/start" if orch_v2 else f"{self.base_url}/workflow/start"
         end_dt = end.strftime("%Y-%m-%d") if end else date.today().strftime("%Y-%m-%d")
         start_dt = start.strftime("%Y-%m-%d") if start else (date.today() - timedelta(days=14)).strftime("%Y-%m-%d")
         workflow_request = {

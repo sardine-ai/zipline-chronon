@@ -54,8 +54,16 @@ def force_recompute_option(func):
         help="Force recompute the backfill even if the data is already present in the output table.",
     )(func)
 
+def orch_v2_option(func):
+    return click.option(
+        "--orch-v2",
+        is_flag=True,
+        default=False,
+        help="To switch to the v2 orchestrator in the backend.",
+    )(func)
 
-def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, hub_url=None):
+
+def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, hub_url=None, orch_v2=False):
     hub_conf = get_hub_conf(conf, root_dir=repo)
     if hub_url is not None:
         zipline_hub = ZiplineHub(base_url=hub_url, sa_name=hub_conf.sa_name)
@@ -65,7 +73,7 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, h
     branch = get_current_branch()
 
     hub_uploader.compute_and_upload_diffs(
-        branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict
+        branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict, orch_v2=orch_v2
     )
 
     # get conf name
@@ -81,6 +89,7 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, h
         conf_hash=conf_name_to_hash_dict[conf_name].hash,
         force_recompute=force_recompute,
         skip_long_running=False,
+        orch_v2=orch_v2
     )
 
     workflow_id = response_json.get("workflowId", "N/A")
@@ -90,7 +99,7 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, h
     )
 
 
-def submit_schedule(repo, conf, hub_url=None):
+def submit_schedule(repo, conf, hub_url=None, orch_v2=False):
     hub_conf = get_hub_conf(conf, root_dir=repo)
     if hub_url is not None:
         zipline_hub = ZiplineHub(base_url=hub_url, sa_name=hub_conf.sa_name)
@@ -100,7 +109,7 @@ def submit_schedule(repo, conf, hub_url=None):
     branch = get_current_branch()
 
     hub_uploader.compute_and_upload_diffs(
-        branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_obj_dict
+        branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_obj_dict, orch_v2=orch_v2
     )
 
     # get conf name
@@ -117,6 +126,7 @@ def submit_schedule(repo, conf, hub_url=None):
         branch=branch,
         conf_name=conf_name,
         conf_hash=conf_name_to_obj_dict[conf_name].hash,
+        orch_v2=orch_v2
     )
 
     schedules = response_json.get("schedules", "N/A")
@@ -131,15 +141,16 @@ def submit_schedule(repo, conf, hub_url=None):
 @start_ds_option
 @end_ds_option
 @force_recompute_option
+@orch_v2_option
 @handle_conf_not_found(log_error=True, callback=print_possible_confs)
-def backfill(repo, conf, hub_url, start_ds, end_ds, force_recompute):
+def backfill(repo, conf, hub_url, start_ds, end_ds, force_recompute, orch_v2):
     """
     - Submit a backfill job to Zipline.
     Response should contain a list of confs that are different from what's on remote.
     - Call upload API to upload the conf contents for the list of confs that were different.
     - Call the actual run API with mode set to backfill.
     """
-    submit_workflow(repo, conf, RunMode.BACKFILL.value, start_ds, end_ds, force_recompute, hub_url=hub_url)
+    submit_workflow(repo, conf, RunMode.BACKFILL.value, start_ds, end_ds, force_recompute, hub_url=hub_url, orch_v2=orch_v2)
 
 
 # zipline hub run-adhoc --conf=compiled/joins/join
@@ -147,28 +158,30 @@ def backfill(repo, conf, hub_url, start_ds, end_ds, force_recompute):
 @hub.command()
 @common_options
 @end_ds_option
+@orch_v2_option
 @handle_conf_not_found(log_error=True, callback=print_possible_confs)
-def run_adhoc(repo, conf, hub_url, end_ds):
+def run_adhoc(repo, conf, hub_url, end_ds, orch_v2):
     """
     - Submit a one-off deploy job to Zipline. This submits the various jobs to allow your conf to be tested online.
     Response should contain a list of confs that are different from what's on remote.
     - Call upload API to upload the conf contents for the list of confs that were different.
     - Call the actual run API with mode set to deploy
     """
-    submit_workflow(repo, conf, RunMode.DEPLOY.value, end_ds, end_ds, hub_url=hub_url)
+    submit_workflow(repo, conf, RunMode.DEPLOY.value, end_ds, end_ds, hub_url=hub_url, orch_v2=orch_v2)
 
 
 # zipline hub schedule --conf=compiled/joins/join
 @hub.command()
 @common_options
+@orch_v2_option
 @handle_conf_not_found(log_error=True, callback=print_possible_confs)
-def schedule(repo, conf, hub_url):
+def schedule(repo, conf, hub_url, orch_v2):
     """
     - Deploys a schedule for the specified conf to Zipline. This allows your conf to have various associated jobs run on a schedule.
     This verb will introspect your conf to determine which of its jobs need to be scheduled (or paused if turned off) based on the
     'offline_schedule' and 'online' fields.
     """
-    submit_schedule(repo, conf, hub_url=hub_url)
+    submit_schedule(repo, conf, hub_url=hub_url, orch_v2=orch_v2)
 
 
 def get_metadata_map(file_path):
