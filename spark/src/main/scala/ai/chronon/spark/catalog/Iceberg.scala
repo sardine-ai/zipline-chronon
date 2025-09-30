@@ -6,6 +6,12 @@ import org.apache.spark.sql.types.StructType
 
 case object Iceberg extends Format {
 
+  override def tableProperties: Map[String, String] = {
+    Map(
+      "commit.retry.min-wait-ms" -> "5000"
+    )
+  }
+
   override def primaryPartitions(tableName: String,
                                  partitionColumn: String,
                                  partitionFilters: String,

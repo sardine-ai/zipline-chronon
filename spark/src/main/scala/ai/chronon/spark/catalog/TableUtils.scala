@@ -229,9 +229,18 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       expandTable(tableName, dfRearranged.schema)
     }
 
-    // Run tableProperties
-    Option(tableProperties).filter(_.nonEmpty).foreach { props =>
-      sql(CreationUtils.alterTablePropertiesSql(tableName, props))
+    val defaultTableProperties = tableFormatProvider
+      .readFormat(tableName)
+      .map(_.tableProperties)
+      .getOrElse(Map.empty)
+    val userTableProperties = Option(tableProperties).getOrElse(Map.empty)
+    val desiredTableProperties = defaultTableProperties ++ userTableProperties
+    val existingTableProperties = getTableProperties(tableName).getOrElse(Map.empty)
+    val propertyDiff = desiredTableProperties.filter { case (key, value) =>
+      !existingTableProperties.get(key).contains(value)
+    }
+    if (propertyDiff.nonEmpty) {
+      sql(CreationUtils.alterTablePropertiesSql(tableName, propertyDiff))
     }
 
     val finalizedDf = if (autoExpand) {

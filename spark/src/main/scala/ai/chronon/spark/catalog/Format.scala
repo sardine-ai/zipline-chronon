@@ -27,6 +27,8 @@ trait Format {
 
   @transient protected lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
+  def tableProperties: Map[String, String] = Map.empty[String, String]
+
   def table(tableName: String, partitionFilters: String, cacheDf: Boolean = false)(implicit
       sparkSession: SparkSession): DataFrame = {
 
