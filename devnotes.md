@@ -6,6 +6,9 @@
 # compile scala code
 ./mill __.compile
 
+# build assembly jar
+./mill __.assembly
+
 # run specific tests that match a pattern etc
 ./mill spark.test.testOnly "ai.chronon.spark.test.analyzer.*"
 
@@ -17,6 +20,9 @@
 
 # to find where a dependency comes from
 ./mill spark.showMvnDepsTree --whatDependsOn com.google.protobuf:protobuf-java
+
+# show actions available for a given module
+./mill resolve spark.__
 ```
 
 ## useful python commands
