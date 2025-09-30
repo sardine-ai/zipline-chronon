@@ -10,10 +10,10 @@
 ./mill __.assembly
 
 # run specific tests that match a pattern etc
-./mill spark.test.testOnly "ai.chronon.spark.test.analyzer.*"
+./mill spark.test.testOnly "ai.chronon.spark.analyzer.*"
 
 # run a particular test case inside a test class
-./mill spark.test.testOnly "ai.chronon.spark.test.kv_store.KVUploadNodeRunnerTest" -- -z "should handle GROUP_BY_UPLOAD_TO_KV successfully"
+./mill spark.test.testOnly "ai.chronon.spark.kv_store.KVUploadNodeRunnerTest" -- -z "should handle GROUP_BY_UPLOAD_TO_KV successfully"
 
 # run all tests of a sub-module
 ./mill api.test
