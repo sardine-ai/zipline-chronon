@@ -18,8 +18,6 @@ package ai.chronon.spark.fetcher
 
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.utils.SparkTestBase
-import org.apache.spark.sql.SparkSession
-import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.TimeZone

@@ -20,7 +20,6 @@ import ai.chronon.api.{Constants, PartitionRange, PartitionSpec, Query, QueryUti
 import ai.chronon.api.ColorPrinter.ColorString
 import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
-import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.{AnalysisException, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
@@ -66,17 +65,11 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     sparkSession.conf.get("spark.chronon.join.backfill.check.left_time_range", "false").toBoolean
   private val isBenchmarkMode = sparkSession.conf.get("spark.chronon.backfill.benchmarkMode.enabled", "true").toBoolean
 
-  // For label join job allows you to join sub-day windows to the same day on the join rather than
-  // the default behavior which is using a 1 day offset
-  val roundDownHourOffset: Boolean =
-    sparkSession.conf.get("spark.chronon.join.label_join.round_down_sub_day_windows", "false").toBoolean
   private val tableWriteFormat = sparkSession.conf.get("spark.chronon.table_write.format", "").toLowerCase
 
   // transient because the format provider is not always serializable.
   // for example, BigQueryImpl during reflecting with bq flavor
   @transient private lazy val tableFormatProvider: FormatProvider = FormatProvider.from(sparkSession)
-
-  val joinPartParallelism: Int = sparkSession.conf.get("spark.chronon.join.part.parallelism", "1").toInt
 
   sparkSession.sparkContext.setLogLevel("ERROR")
 
@@ -102,21 +95,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
       .map(_.table(tableName, andPredicates(rangeWheres), cacheDf)(sparkSession))
       .getOrElse(
         throw new RuntimeException(s"Could not load table: ${tableName} with partition filter: ${rangeWheres}"))
-  }
-
-  def createDatabase(database: String): Boolean = {
-    try {
-      val command = s"CREATE DATABASE IF NOT EXISTS $database"
-      logger.info(s"Creating database with command: $command")
-      sql(command)
-      true
-    } catch {
-      case _: AlreadyExistsException =>
-        false // 'already exists' is a swallowable exception
-      case e: Exception =>
-        logger.error(s"Failed to create database $database", e)
-        throw e
-    }
   }
 
   def partitions(tableName: String,

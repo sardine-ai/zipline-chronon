@@ -37,7 +37,7 @@ class DerivationBootstrapTest extends SparkTestBase {
 
   it should "bootstrap to derivations" in {
     val namespace = "test_derivations"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
 
     val derivation1 = Builders.Derivation(name = "user_amount_30d_avg", expression = "amount_dollars_sum_30d / 30")
@@ -289,7 +289,7 @@ class DerivationBootstrapTest extends SparkTestBase {
 
   it should "bootstrap to derivations no star" in {
     val namespace = "test_derivations_no_star"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)

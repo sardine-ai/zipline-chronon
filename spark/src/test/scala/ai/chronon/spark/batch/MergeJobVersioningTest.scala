@@ -7,7 +7,7 @@ import ai.chronon.api.planner.RelevantLeftForJoinPart
 import ai.chronon.planner.{JoinMergeNode, JoinPartNode, SourceWithFilterNode}
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.JoinUtils
-import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
 import org.apache.spark.sql.{SaveMode, SparkSession}
@@ -29,7 +29,7 @@ class MergeJobVersioningTest extends AnyFlatSpec {
   private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
   private val namespace = "test_namespace_merge_job_versioning"
-  tableUtils.createDatabase(namespace)
+  SparkTestBase.createDatabase(spark, namespace)
 
   it should "reuse columns from production table when join part major versions match" in {
     val testName = "merge_job_versioning_test"
@@ -303,7 +303,7 @@ class MergeJobVersioningTest extends AnyFlatSpec {
   it should "archive current table and reuse unchanged columns when a group_by changes" in {
     val testName = "merge_job_versioning_test_2"
     val namespace = "modify_gb_versioning"
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
 
     // Step 1 -- create a join with two group bys and run it
     val leftSchema = List(
@@ -585,7 +585,7 @@ class MergeJobVersioningTest extends AnyFlatSpec {
   it should "archive current table but not reuse any columns when left time column changes" in {
     val testName = "merge_job_versioning_test_3"
     val namespace = "time_column_change_versioning"
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
 
     // Step 1 -- create a join with two group bys and run it
     val leftSchema = List(

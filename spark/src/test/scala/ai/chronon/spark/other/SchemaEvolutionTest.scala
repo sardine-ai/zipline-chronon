@@ -28,6 +28,7 @@ import ai.chronon.online.serde._
 import ai.chronon.spark.Extensions.DataframeOps
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
+import ai.chronon.spark.utils.SparkTestBase
 import ai.chronon.spark.utils._
 import ai.chronon.spark.{LogFlattenerJob, LoggingSchema}
 import org.apache.spark.sql.functions.{col, lit}
@@ -214,7 +215,7 @@ class SchemaEvolutionTest extends AnyFlatSpec {
       tableUtils: TableUtils,
       inMemoryKvStore: InMemoryKvStore
   ): Unit = {
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
     joinTestSuite.groupBys.foreach { gbTestSuite =>
       val tableName = s"${namespace}.${gbTestSuite.name}"
       gbTestSuite.groupByData.save(tableName)

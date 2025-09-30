@@ -18,8 +18,7 @@ import ai.chronon.spark.stats.drift.Summarizer
 import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.stats.drift.scripts.PrepareData
 import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.InMemoryKvStore
-import ai.chronon.spark.utils.MockApi
+import ai.chronon.spark.utils.{InMemoryKvStore, MockApi}
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.slf4j.Logger
@@ -43,7 +42,7 @@ object ObservabilityDemo {
 
     val spark = SparkSessionBuilder.build(namespace, local = true)
     implicit val tableUtils: TableUtils = TableUtils(spark)
-    tableUtils.createDatabase(namespace)
+    spark.sql(s"CREATE DATABASE IF NOT EXISTS $namespace")
 
     // generate anomalous data (join output)
     val prepareData = PrepareData(namespace)

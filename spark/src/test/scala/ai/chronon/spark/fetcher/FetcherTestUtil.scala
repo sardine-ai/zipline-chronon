@@ -17,7 +17,7 @@ import ai.chronon.online._
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.ConsistencyJob
-import ai.chronon.spark.utils.{DataFrameGen, MockApi, OnlineUtils, SchemaEvolutionUtils}
+import ai.chronon.spark.utils.{DataFrameGen, MockApi, OnlineUtils, SchemaEvolutionUtils, SparkTestBase}
 import ai.chronon.spark.{Join => _, _}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.functions.{avg, col, lit}
@@ -210,7 +210,6 @@ object FetcherTestUtil {
         .withColumn("ts_millis", col("ts_lagged"))
         .drop("ts_lagged")
       logger.info("corrected lagged response")
-      correctedLaggedResponse.show()
       correctedLaggedResponse.save(mockApi.logTable, partitionColumns = Seq(tableUtils.partitionColumn, "name"))
 
       // build flattened log table
@@ -226,8 +225,8 @@ object FetcherTestUtil {
       OnlineUtils.serveConsistency(tableUtils, inMemoryKvStore, today, joinConf)
     }
     // benchmark
-    FetcherTestUtil.joinResponses(spark, requests, mockApi, runCount = 10, useJavaFetcher = true)
-    FetcherTestUtil.joinResponses(spark, requests, mockApi, runCount = 10)
+    FetcherTestUtil.joinResponses(spark, requests, mockApi, runCount = 5, useJavaFetcher = true)
+    FetcherTestUtil.joinResponses(spark, requests, mockApi, runCount = 5)
 
     // comparison
     val columns = endDsExpected.schema.fields.map(_.name)
@@ -277,7 +276,7 @@ object FetcherTestUtil {
   /** Generate deterministic data for testing and checkpointing IRs and streaming data.
     */
   def generateMutationData(namespace: String, tableUtils: TableUtils, spark: SparkSession): api.Join = {
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
     def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)
     val eventData = Seq(
       Row(595125622443733822L, toTs("2021-04-10 09:00:00"), "2021-04-10"),
@@ -413,7 +412,7 @@ object FetcherTestUtil {
   }
 
   def generateMutationDataWithUniqueTopK(namespace: String, tableUtils: TableUtils, spark: SparkSession): api.Join = {
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
     def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)
 
     // Create manual struct data for UniqueTopK testing
@@ -557,7 +556,7 @@ object FetcherTestUtil {
                          yesterday: String,
                          keyCount: Int = 4,
                          cardinality: Int = 100): api.Join = {
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
     val rowCount = cardinality * keyCount * 50
     val userCol = Column("user", StringType, keyCount)
     val vendorCol = Column("vendor", StringType, keyCount)
@@ -876,7 +875,7 @@ object FetcherTestUtil {
                             tableUtils: TableUtils,
                             spark: SparkSession,
                             groupByCustomJson: Option[String] = None): api.Join = {
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
 
     def toTs(arg: String): Long = TsUtils.datetimeToTs(arg)
 

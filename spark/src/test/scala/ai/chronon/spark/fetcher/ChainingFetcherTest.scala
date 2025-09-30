@@ -50,7 +50,7 @@ class ChainingFetcherTest extends SparkTestBase {
     * Chained Join: latest rating of the listings the user viewed in the last 7 days
     */
   def generateMutationData(namespace: String, accuracy: Accuracy): api.Join = {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     // left user views table
     // {listing, user, ts, ds}
     val viewsSchema = StructType(
@@ -145,7 +145,7 @@ class ChainingFetcherTest extends SparkTestBase {
   }
 
   def generateChainingJoinData(namespace: String, accuracy: Accuracy): api.Join = {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     // User search listing event. Schema: user, listing, ts, ds
     val searchSchema = StructType(
       "user_search_listing_event",

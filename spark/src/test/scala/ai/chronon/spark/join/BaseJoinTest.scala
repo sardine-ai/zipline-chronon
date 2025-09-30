@@ -50,7 +50,7 @@ abstract class BaseJoinTest extends SparkTestBase {
   protected val dayAndMonthBefore = tableUtils.partitionSpec.before(monthAgo)
 
   protected val namespace = "test_namespace_jointest"
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   protected def getViewsGroupBy(suffix: String, makeCumulative: Boolean = false) = {
     val viewsSchema = List(

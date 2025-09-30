@@ -35,7 +35,7 @@ class StagingQueryTest extends SparkTestBase {
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
   private val ninetyDaysAgo = tableUtils.partitionSpec.minus(today, new Window(90, TimeUnit.DAYS))
   private val namespace = "staging_query_chronon_test"
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   it should "staging query" in {
     val schema = List(

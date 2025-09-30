@@ -2,16 +2,13 @@ package ai.chronon.spark.fetcher
 
 import ai.chronon.api.Constants.MetadataDataset
 import ai.chronon.api.Extensions.JoinOps
-import ai.chronon.online.{FetcherUtil, fetcher}
-import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
 import ai.chronon.online.fetcher.Fetcher.Request
+import ai.chronon.online.fetcher.{FetchContext, MetadataStore}
+import ai.chronon.online.{FetcherUtil, fetcher}
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.submission
 import ai.chronon.spark.utils.{MockApi, OnlineUtils, SparkTestBase}
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.col
 import org.junit.Assert.{assertEquals, assertTrue}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.TimeZone

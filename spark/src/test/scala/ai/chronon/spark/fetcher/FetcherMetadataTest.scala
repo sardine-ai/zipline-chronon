@@ -7,13 +7,11 @@ import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.fetcher.FetchContext
 import ai.chronon.online.{MetadataDirWalker, MetadataEndPoint, fetcher}
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.submission
 import ai.chronon.spark.utils.{OnlineUtils, SparkTestBase}
 // Removed Bazel runfiles import - using standard resource loading instead
-import org.apache.spark.sql.SparkSession
-import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
-import org.scalatest.flatspec.AnyFlatSpec
 import ai.chronon.spark.Extensions._
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
+
 import java.util.concurrent.Executors
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}

@@ -29,7 +29,7 @@ class HeterogeneousPartitionColumnsTest extends BaseJoinTest {
     // Test for different partition columns and formats in the same join
     // First GroupBy with default format
     val namespace = "test_heterogeneous"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     val viewsSchema = List(
       Column("user", api.StringType, 10),

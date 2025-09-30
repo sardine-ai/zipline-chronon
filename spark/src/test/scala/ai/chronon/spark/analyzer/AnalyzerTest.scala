@@ -39,7 +39,7 @@ class AnalyzerTest extends SparkTestBase with BeforeAndAfter {
   private val oneYearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
   private val namespace = "analyzer_test_ns"
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   private val viewsTable = s"$namespace.view_events_gb_table"
   private val viewsSource = getTestEventSource()

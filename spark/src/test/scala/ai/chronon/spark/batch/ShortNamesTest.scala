@@ -27,7 +27,7 @@ class ShortNamesTest extends SparkTestBase {
   private val dayAndMonthBefore = tableUtils.partitionSpec.before(monthAgo)
 
   val namespace = "test_short_names"
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   it should "test monolith join short names" in {
 

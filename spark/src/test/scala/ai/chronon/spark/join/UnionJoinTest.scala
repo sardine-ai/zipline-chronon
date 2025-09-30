@@ -5,7 +5,6 @@ import ai.chronon.api
 import ai.chronon.api.Extensions.MetadataOps
 import ai.chronon.api._
 import ai.chronon.spark.Extensions._
-import ai.chronon.spark.join.UnionJoin
 import ai.chronon.spark.utils.DataFrameGen
 import org.scalatest.matchers.should.Matchers._
 
@@ -198,7 +197,7 @@ class UnionJoinTest extends BaseJoinTest {
   it should "test UnionJoin schema with GB derivations" in {
 
     val namespace = "union_join_gb_derivation"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     val eventsSchema = List(
       Column("user_id", api.StringType, 1),

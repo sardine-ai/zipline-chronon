@@ -49,7 +49,7 @@ class DerivationLoggingTest extends SparkTestBase {
   }
 
   private def runLoggingTest(namespace: String, wildcardSelection: Boolean): Unit = {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
@@ -173,7 +173,7 @@ class DerivationLoggingTest extends SparkTestBase {
 
   it should "contextual" in {
     val namespace = "test_contextual"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
     val bootstrapDf = tableUtils
       .loadTable(queryTable)
@@ -299,7 +299,7 @@ class DerivationLoggingTest extends SparkTestBase {
 
   it should "group by derivations" in {
     val namespace = "test_group_by_derivations"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
     groupBy.setBackfillStartDate(today)
     groupBy.setDerivations(

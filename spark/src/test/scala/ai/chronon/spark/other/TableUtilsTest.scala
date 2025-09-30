@@ -21,6 +21,7 @@ import ai.chronon.spark._
 import ai.chronon.spark.catalog.{Format, IncompatibleSchemaException, TableUtils}
 import ai.chronon.spark.submission.SparkSessionBuilder
 import ai.chronon.spark.utils.TestUtils.makeDf
+import ai.chronon.spark.utils.SparkTestBase
 import org.apache.hadoop.hive.ql.exec.UDF
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.functions.col
@@ -562,7 +563,7 @@ class TableUtilsTest extends AnyFlatSpec {
   it should "repartitioning an empty dataframe should work" in {
     import spark.implicits._
     val tableName = "db.test_empty_table"
-    tableUtils.createDatabase("db")
+    SparkTestBase.createDatabase(spark, "db")
 
     tableUtils.insertPartitions(spark.emptyDataset[TestRecord].toDF(), tableName)
     val res = tableUtils.loadTable(tableName)

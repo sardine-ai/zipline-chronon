@@ -26,7 +26,7 @@ class EvalTest extends SparkTestBase {
 
   it should "detect bad timestamps in GroupBy source data" in {
     val namespace = "testeval_bad_ts"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // Create a table with bad timestamp data
     val badTimestampData = List(
@@ -82,7 +82,7 @@ class EvalTest extends SparkTestBase {
 
   it should "detect bad column expressions in GroupBy source selects" in {
     val namespace = "testeval_bad_select"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // Create a table with valid data
     val validData = List(
@@ -133,7 +133,7 @@ class EvalTest extends SparkTestBase {
 
   it should "detect bad aggregation definition in GroupBy" in {
     val namespace = "testeval_bad_agg"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // Create a table with valid data
     val validData = List(
@@ -178,7 +178,7 @@ class EvalTest extends SparkTestBase {
 
   it should "detect bad derivation definition in GroupBy" in {
     val namespace = "testeval_bad_derivation_gb"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // Even though we're testing Derivations, leave the bad timestamps in here because it shouldn't halt
     // Schema validation
@@ -310,7 +310,7 @@ class EvalTest extends SparkTestBase {
 
   it should "evaluate staging query schema successfully" in {
     val namespace = "testeval_staging_query"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // Create a source table
     val sourceData = List(
@@ -368,7 +368,7 @@ class EvalTest extends SparkTestBase {
 
   it should "detect bad query expression in staging query" in {
     val namespace = "testeval_staging_query_bad"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // Create a source table
     val sourceData = List(
@@ -418,7 +418,7 @@ class EvalTest extends SparkTestBase {
                          badKeyMapping: Boolean = false,
                          badSourceExpressionInJoinPart: Boolean = false,
                          badDerivation: Boolean = false) = {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     val start = tableUtils.partitionSpec.minus(today, new Window(60, TimeUnit.DAYS))
     val dayAndMonthBefore = tableUtils.partitionSpec.before(monthAgo)

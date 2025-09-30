@@ -36,7 +36,7 @@ class LogBootstrapTest extends SparkTestBase {
 
   val namespace = "test_log_bootstrap"
   private implicit val tableUtils: TableUtils = TableUtils(spark)
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
   private val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
 
   it should "bootstrap" in {

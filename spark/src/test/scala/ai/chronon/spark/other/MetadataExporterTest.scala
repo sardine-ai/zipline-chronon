@@ -21,7 +21,7 @@ import ai.chronon.api
 import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import org.apache.spark.sql.SparkSession
 import org.scalatest.flatspec.AnyFlatSpec
 import org.slf4j.Logger
@@ -64,7 +64,7 @@ class MetadataExporterTest extends AnyFlatSpec {
     // Create the tables.
     val namespace = "example_namespace"
     val tablename = "table"
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
     val sampleData = List(
       Column("a", api.StringType, 10),
       Column("b", api.StringType, 10),

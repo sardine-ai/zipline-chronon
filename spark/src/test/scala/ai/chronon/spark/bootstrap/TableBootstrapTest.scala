@@ -81,7 +81,7 @@ class TableBootstrapTest extends SparkTestBase {
   it should "bootstrap" in {
 
     val namespace = "test_table_bootstrap"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     // group by
     val groupBy = BootstrapUtils.buildGroupBy(namespace, spark)
@@ -167,7 +167,7 @@ class TableBootstrapTest extends SparkTestBase {
   it should "bootstrap same join part multiple sources" in {
 
     val namespace = "test_bootstrap_multi_source"
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
 
     val queryTable = BootstrapUtils.buildQuery(namespace, spark)
     val endDs = tableUtils.loadTable(queryTable).select(max(tableUtils.partitionColumn)).head().getString(0)

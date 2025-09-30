@@ -392,7 +392,7 @@ class GroupByTest extends SparkTestBase {
     val namespace = "chronon_test"
     val sourceTable = s"$namespace.test_group_by_steps$suffix"
 
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     DataFrameGen.events(spark, sourceSchema, count = 1000, partitions = 200).save(sourceTable)
     val source = Builders.Source.events(
       query = Builders.Query(selects = Builders.Selects("ts", "item", "time_spent_ms", "price"),
@@ -409,7 +409,7 @@ class GroupByTest extends SparkTestBase {
                tableUtils: TableUtils,
                stepDays: Option[Int] = None,
                additionalAgg: Seq[Aggregation] = Seq.empty): String = {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     val groupBy = getSampleGroupBy(name, source, namespace, additionalAgg)
 
     GroupBy.computeBackfill(

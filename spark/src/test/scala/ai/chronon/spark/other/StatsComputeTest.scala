@@ -24,7 +24,7 @@ import ai.chronon.spark.Extensions._
 import ai.chronon.spark.catalog.TableUtils
 import ai.chronon.spark.stats.StatsCompute
 import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.DataFrameGen
+import ai.chronon.spark.utils.{DataFrameGen, SparkTestBase}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
 import org.scalatest.flatspec.AnyFlatSpec
@@ -55,7 +55,7 @@ class StatsComputeTest extends AnyFlatSpec {
   }
 
   it should "snapshot summary" in {
-    tableUtils.createDatabase(namespace)
+    SparkTestBase.createDatabase(spark, namespace)
     val data = Seq(
       ("1", Some(1L), Some(1.0), Some("a")),
       ("1", Some(1L), None, Some("b")),

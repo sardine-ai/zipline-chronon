@@ -2,40 +2,29 @@ package ai.chronon.spark.stats.drift
 
 import ai.chronon
 import ai.chronon.api.ColorPrinter.ColorString
-import ai.chronon.api.Constants
-import ai.chronon.api.Extensions.MetadataOps
-import ai.chronon.api.Extensions.WindowOps
-import ai.chronon.api.PartitionSpec
+import ai.chronon.api.Extensions.{MetadataOps, WindowOps}
 import ai.chronon.api.ScalaJavaConversions._
-import ai.chronon.api.Window
+import ai.chronon.api.{Constants, PartitionSpec, Window}
 import ai.chronon.observability.{DriftMetric, TileSummary, TileSummarySeries}
 import ai.chronon.online.KVStore
 import ai.chronon.online.stats.DriftStore
 import ai.chronon.spark.catalog.TableUtils
-import ai.chronon.spark.stats.drift.Summarizer
-import ai.chronon.spark.stats.drift.SummaryUploader
 import ai.chronon.spark.stats.drift.scripts.PrepareData
-import ai.chronon.spark.submission.SparkSessionBuilder
-import ai.chronon.spark.utils.InMemoryKvStore
-import ai.chronon.spark.utils.MockApi
-import org.apache.spark.sql.SparkSession
-import org.scalatest.flatspec.AnyFlatSpec
+import ai.chronon.spark.utils.{InMemoryKvStore, MockApi, SparkTestBase}
 import org.scalatest.matchers.should.Matchers
 import org.slf4j.LoggerFactory
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
-import scala.concurrent.Future
+import scala.collection.JavaConverters._
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.Success
-import scala.collection.JavaConverters._
 
-class DriftTest extends AnyFlatSpec with Matchers {
+class DriftTest extends SparkTestBase with Matchers {
 
   val namespace = "drift_test"
-  implicit val spark: SparkSession = SparkSessionBuilder.build(namespace, local = true)
   implicit val tableUtils: TableUtils = TableUtils(spark)
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   @transient private lazy val logger = LoggerFactory.getLogger(getClass.getName)
 

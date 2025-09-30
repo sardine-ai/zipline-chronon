@@ -66,7 +66,7 @@ object ObservabilityDemoDataLoader {
 
     val spark = SparkSessionBuilder.build(namespace, local = true)
     implicit val tableUtils: TableUtils = TableUtils(spark)
-    tableUtils.createDatabase(namespace)
+    spark.sql(s"CREATE DATABASE IF NOT EXISTS $namespace")
 
     // generate anomalous data (join output)
     val prepareData = PrepareData(namespace)

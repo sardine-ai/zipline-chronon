@@ -231,7 +231,7 @@ class JoinUtilsTest extends BaseJoinTest {
   }
 
   it should "get ranges to fill" in {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     // left table
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = "joinUtil.item_queries_table"
@@ -247,7 +247,7 @@ class JoinUtilsTest extends BaseJoinTest {
   }
 
   it should "get ranges to fill with override" in {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     // left table
     val itemQueries = List(Column("item", api.StringType, 100))
     val itemQueriesTable = "joinUtil.queries_table"

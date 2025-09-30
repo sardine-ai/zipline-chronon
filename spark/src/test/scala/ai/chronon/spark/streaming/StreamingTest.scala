@@ -49,7 +49,7 @@ class StreamingTest extends SparkTestBase {
   private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
   it should "struct in streaming" in {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     val topicName = "fake_topic"
     val inMemoryKvStore = StreamingTest.buildInMemoryKvStore()
     val nameSuffix = "_struct_streaming_test"

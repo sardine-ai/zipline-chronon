@@ -41,7 +41,7 @@ class GroupByUploadTest extends SparkTestBase {
   it should "temporal events last k" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     tableUtils.sql(s"USE $namespace")
     val eventsTable = "events_last_k_dup" // occurs in groupByTest
     val eventSchema = List(
@@ -69,7 +69,7 @@ class GroupByUploadTest extends SparkTestBase {
   it should "struct support" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     tableUtils.sql(s"USE $namespace")
     val eventsBase = "events_source"
     val eventsTable = "events_table_struct"
@@ -110,7 +110,7 @@ class GroupByUploadTest extends SparkTestBase {
   it should "multiple avg counters" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     tableUtils.sql(s"USE $namespace")
     val eventsTable = "my_events"
     val eventSchema = List(
@@ -142,7 +142,7 @@ class GroupByUploadTest extends SparkTestBase {
   //  joinPart = (review, user, listing)     [reviews]
   // groupBy = keys:[listing, category], aggs:[avg(rating)]
   it should "listing rating category join source" in {
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     tableUtils.sql(s"USE $namespace")
 
     val ratingsTable = s"${namespace}.ratings"
@@ -318,7 +318,7 @@ class GroupByUploadTest extends SparkTestBase {
   it should "upload groupBy with lastK struct + derivations" in {
     val today = tableUtils.partitionSpec.at(System.currentTimeMillis())
     val yesterday = tableUtils.partitionSpec.before(today)
-    tableUtils.createDatabase(namespace)
+    createDatabase(namespace)
     tableUtils.sql(s"USE $namespace")
 
     val eventsTable = "test_gb_with_derivations"

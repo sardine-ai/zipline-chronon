@@ -34,7 +34,7 @@ class MergeJobAnalyzeReuseTest extends SparkTestBase {
   private val yearAgo = tableUtils.partitionSpec.minus(today, new Window(365, TimeUnit.DAYS))
 
   private val namespace = "test_namespace_analyze_reuse"
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   it should "correctly identify reusable join parts when production table has matching columns" in {
     val testName = "analyze_reuse_matching_columns"

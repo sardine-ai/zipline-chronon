@@ -1,9 +1,11 @@
 package ai.chronon.spark.utils
 
 import ai.chronon.spark.submission.SparkSessionBuilder
+import org.apache.hadoop.hive.metastore.api.AlreadyExistsException
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
+import org.slf4j.LoggerFactory
 
 import java.nio.file.Files
 
@@ -33,9 +35,49 @@ abstract class SparkTestBase extends AnyFlatSpec with BeforeAndAfterAll {
     ))
   )
 
+  /**
+   * Creates a database in the test environment.
+   * This is a test utility method moved from TableUtils.scala.
+   * Delegates to the companion object method.
+   *
+   * @param database the database name to create
+   * @return true if database was created, false if it already existed
+   */
+  protected def createDatabase(database: String): Boolean = {
+    SparkTestBase.createDatabase(spark, database)
+  }
+
   override def afterAll(): Unit = {
     if (spark != null) {
       spark.stop()
+    }
+  }
+}
+
+object SparkTestBase {
+  @transient private lazy val logger = LoggerFactory.getLogger(getClass)
+
+  /**
+   * Creates a database in the test environment.
+   * This is a test utility method moved from TableUtils.scala.
+   * Can be used by any test class, even those that don't extend SparkTestBase.
+   *
+   * @param spark the SparkSession to use
+   * @param database the database name to create
+   * @return true if database was created, false if it already existed
+   */
+  def createDatabase(spark: SparkSession, database: String): Boolean = {
+    try {
+      val command = s"CREATE DATABASE IF NOT EXISTS $database"
+      logger.info(s"Creating database with command: $command")
+      spark.sql(command)
+      true
+    } catch {
+      case _: AlreadyExistsException =>
+        false // 'already exists' is a swallowable exception
+      case e: Exception =>
+        logger.error(s"Failed to create database $database", e)
+        throw e
     }
   }
 }

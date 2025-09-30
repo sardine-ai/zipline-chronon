@@ -26,7 +26,7 @@ class ModularJoinTest extends SparkTestBase {
   private val dayAndMonthBefore = tableUtils.partitionSpec.before(monthAgo)
 
   private val namespace = "test_namespace_jointest_modular"
-  tableUtils.createDatabase(namespace)
+  createDatabase(namespace)
 
   it should "test a join with bootstrap/derivation/external part/events/entity" in {
     val dollarTransactions = List(
