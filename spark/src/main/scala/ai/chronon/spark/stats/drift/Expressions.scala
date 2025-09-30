@@ -3,7 +3,7 @@ package ai.chronon.spark.stats.drift
 import ai.chronon.api.Constants
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.observability.Cardinality
-import ai.chronon.observability.TileKey
+import ai.chronon.observability.TileSummaryKey
 import ai.chronon.observability.TileSummary
 import org.apache.spark.sql
 import org.apache.spark.sql.Row
@@ -69,10 +69,10 @@ object Expressions {
     val stringLengthPercentiles = "string_length_percentiles"
   }
 
-  case class TileRow(partition: String, tileTs: Long, key: TileKey, summaries: TileSummary)
+  case class TileRow(partition: String, tileTs: Long, key: TileSummaryKey, summaries: TileSummary)
   def summaryPopulatorFunc(summaryExpressions: Seq[SummaryExpression],
                            summarySchema: StructType,
-                           keyBuilder: (String, sql.Row) => TileKey,
+                           keyBuilder: (String, sql.Row) => TileSummaryKey,
                            partitionColumn: String): Row => Seq[TileRow] = {
     val funcs = summaryExpressions.map { se =>
       val metricName = se.name

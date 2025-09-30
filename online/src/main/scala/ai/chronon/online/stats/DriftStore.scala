@@ -27,7 +27,7 @@ class DriftStore(kvStore: KVStore,
 
   def tileKeysForJoin(join: api.Join,
                       slice: Option[String] = None,
-                      columnNamePrefix: Option[String] = None): Map[String, Array[TileKey]] = {
+                      columnNamePrefix: Option[String] = None): Map[String, Array[TileSummaryKey]] = {
     val joinName = join.getMetaData.getName
     val tileSize = join.getMetaData.driftTileSize
 
@@ -41,7 +41,7 @@ class DriftStore(kvStore: KVStore,
     outputValueColumnsMap.mapValues {
       _.filter { col => columnNamePrefix.forall(col.startsWith) }
         .map { column =>
-          val key = new TileKey()
+          val key = new TileSummaryKey()
           slice.foreach(key.setSlice)
           key.setName(joinName)
           key.setColumn(column)
@@ -51,11 +51,13 @@ class DriftStore(kvStore: KVStore,
     }.toMap
   }
 
-  private case class SummaryRequestContext(request: GetRequest, tileKey: TileKey, groupName: String)
+  private case class SummaryRequestContext(request: GetRequest, tileKey: TileSummaryKey, groupName: String)
 
-  private case class SummaryResponseContext(summaries: Array[(TileSummary, Long)], tileKey: TileKey, groupName: String)
+  private case class SummaryResponseContext(summaries: Array[(TileSummary, Long)],
+                                            tileKey: TileSummaryKey,
+                                            groupName: String)
 
-  case class TileSummaryInfo(key: TileKey, summaries: Array[(TileSummary, Long)]) {
+  case class TileSummaryInfo(key: TileSummaryKey, summaries: Array[(TileSummary, Long)]) {
     def percentileToIndex(percentile: String): Int = {
       // Convert "p5" to 5, "p95" to 95, etc.
       val value = percentile.stripPrefix("p").toInt
@@ -157,7 +159,7 @@ class DriftStore(kvStore: KVStore,
       }
 
       responseContexts.map { responseContext =>
-        val tileKey = new TileKey()
+        val tileKey = new TileSummaryKey()
         tileKey.setSlice(responseContext.tileKey.getSlice)
         tileKey.setName(joinConf.getMetaData.name)
         tileKey.setColumn(responseContext.tileKey.getColumn)

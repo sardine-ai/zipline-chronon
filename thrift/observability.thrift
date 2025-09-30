@@ -25,7 +25,7 @@ enum DriftMetric {
     PSI = 3
 }
 
-struct TileKey {
+struct TileSummaryKey {
   1: optional string column
   2: optional string slice
   3: optional string name // name of the join, groupBy, stagingQuery etc
@@ -87,7 +87,7 @@ struct TileSummarySeries {
   8: optional list<list<i32>> stringLengthPercentiles
 
   200: optional list<i64> timestamps
-  300: optional TileKey key
+  300: optional TileSummaryKey key
 }
 
 // (DriftMetric + old TileSummary + new TileSummary) = TileDrift

@@ -5,8 +5,7 @@ import ai.chronon.api.Extensions._
 import ai.chronon.api.ScalaJavaConversions._
 import ai.chronon.api.SerdeUtils.compactSerializer
 import ai.chronon.api._
-import ai.chronon.observability.Cardinality
-import ai.chronon.observability.TileKey
+import ai.chronon.observability.{Cardinality, TileSummaryKey}
 import ai.chronon.online.Api
 import ai.chronon.online.KVStore.GetRequest
 import ai.chronon.online.KVStore.PutRequest
@@ -312,7 +311,7 @@ class SummaryPacker(confPath: String,
     val sliceIndex = sliceColumn.map(indexOf).getOrElse(-1)
 
     val keyBuilder = { (column: String, row: sql.Row) =>
-      val tileKey = new TileKey()
+      val tileKey = new TileSummaryKey()
       tileKey.setName(confPath)
       tileKey.setSizeMillis(tileSize.millis)
       if (sliceIndex >= 0) tileKey.setSlice(row.getString(sliceIndex))

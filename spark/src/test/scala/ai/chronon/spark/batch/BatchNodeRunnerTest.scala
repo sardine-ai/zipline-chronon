@@ -19,7 +19,7 @@ package ai.chronon.spark.batch
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.api.planner.{MetaDataUtils, NodeRunner, TableDependencies}
-import ai.chronon.observability.{TileKey, TileSummary}
+import ai.chronon.observability.{TileSummaryKey, TileSummary}
 import ai.chronon.online.KVStore.PutRequest
 import ai.chronon.planner.{ExternalSourceSensorNode, MonolithJoinNode, Node, NodeContent}
 import ai.chronon.spark.other.MockKVStore
@@ -59,7 +59,7 @@ class MockKVStoreWithTracking extends MockKVStore {
       try {
         // Check if the key can be deserialized as a TileKey (indicates it's a tile summary request)
         val keyStr = new String(req.keyBytes)
-        ThriftJsonCodec.fromJsonStr[TileKey](keyStr, check = false, classOf[TileKey])
+        ThriftJsonCodec.fromJsonStr[TileSummaryKey](keyStr, check = false, classOf[TileSummaryKey])
         true
       } catch {
         case _: Exception => false
@@ -67,9 +67,9 @@ class MockKVStoreWithTracking extends MockKVStore {
     }
   }
 
-  def getTileKeysAndSummaries: Seq[(TileKey, TileSummary)] = {
+  def getTileKeysAndSummaries: Seq[(TileSummaryKey, TileSummary)] = {
     getTileSummaryRequests.map { req =>
-      val tileKey = ThriftJsonCodec.fromJsonStr[TileKey](new String(req.keyBytes), check = false, classOf[TileKey])
+      val tileKey = ThriftJsonCodec.fromJsonStr[TileSummaryKey](new String(req.keyBytes), check = false, classOf[TileSummaryKey])
       val tileSummary = ThriftJsonCodec.fromJsonStr[TileSummary](new String(req.valueBytes), check = false, classOf[TileSummary])
       (tileKey, tileSummary)
     }

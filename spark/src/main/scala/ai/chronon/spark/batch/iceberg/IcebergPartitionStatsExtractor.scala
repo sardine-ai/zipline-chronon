@@ -54,7 +54,7 @@ object IcebergPartitionStatsExtractor {
   }
 
   def createNullCountsStats(
-      columnTileSummaries: Iterable[(TileKey, TileSummary)]
+      columnTileSummaries: Iterable[(TileSummaryKey, TileSummary)]
   ): NullCounts = {
     val nullCounts = columnTileSummaries.map { case (tileKey, tileSummary) =>
       val fieldId = tileKey.getColumn.toInt
@@ -157,12 +157,12 @@ class PartitionAccumulator(
     }
   }
 
-  def toTileSummaries: Map[TileKey, TileSummary] = {
+  def toTileSummaries: Map[TileSummaryKey, TileSummary] = {
     columnStats.map { case (fieldId, stats) =>
       // Create partition key string from partition values
       val partitionKeyStr = partitionKey.map { case (col, value) => s"$col=$value" }.mkString("/")
 
-      val tileKey = new TileKey()
+      val tileKey = new TileSummaryKey()
         .setColumn(fieldId.toString)
         .setName(confName)
         .setSlice(partitionKeyStr) // Use slice to store partition key
@@ -215,7 +215,7 @@ class IcebergPartitionStatsExtractor(spark: SparkSession) {
   }
 
   def extractPartitionedStats(fullTableName: String, confName: String)(implicit
-      partitionSpec: PartitionSpec): Map[TileKey, TileSummary] = {
+      partitionSpec: PartitionSpec): Map[TileSummaryKey, TileSummary] = {
     val table = loadIcebergTable(fullTableName)
 
     val tableSpec = Option(table.spec())
@@ -283,7 +283,7 @@ class IcebergPartitionStatsExtractor(spark: SparkSession) {
     }
 
     // Convert accumulators to TileKey -> TileSummary mapping
-    val result = mutable.Map[TileKey, TileSummary]()
+    val result = mutable.Map[TileSummaryKey, TileSummary]()
 
     partitionAccumulators.values.foreach { accumulator =>
       result ++= accumulator.toTileSummaries
