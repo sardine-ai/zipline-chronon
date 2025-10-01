@@ -110,7 +110,7 @@ class ZiplineHub:
 
         diff_request = {"namesToHashes": names_to_hashes}
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -136,7 +136,7 @@ class ZiplineHub:
             "branch": branch,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -165,7 +165,7 @@ class ZiplineHub:
         }
 
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -191,7 +191,7 @@ class ZiplineHub:
             "branch": branch,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -237,7 +237,7 @@ class ZiplineHub:
             "skipLongRunningNodes": skip_long_running,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
