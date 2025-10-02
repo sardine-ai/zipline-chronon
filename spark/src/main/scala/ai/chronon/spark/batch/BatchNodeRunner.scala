@@ -160,36 +160,51 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     try {
       logger.info(s"Extracting partition statistics for table: $outputTable")
       val statsExtractor = new IcebergPartitionStatsExtractor(tableUtils.sparkSession)
-      val tileSummaries = statsExtractor.extractPartitionedStats(outputTable, confName)
 
-      if (tileSummaries.nonEmpty) {
-        val groupedTileSummaries = tileSummaries.groupBy { case (observabilityTileKey, _) =>
-          val dayPartitionMillis =
-            IcebergPartitionStatsExtractor.extractPartitionMillisFromSlice(observabilityTileKey.getSlice, partitionSpec)
-          (dayPartitionMillis)
-        }
+      statsExtractor.extractPartitionedStats(outputTable, confName) match {
+        case Some(tileSummaries) if tileSummaries.nonEmpty =>
+          val groupedTileSummaries = tileSummaries.groupBy { case (observabilityTileKey, _) =>
+            val dayPartitionMillis =
+              IcebergPartitionStatsExtractor.extractPartitionMillisFromSlice(observabilityTileKey.getSlice,
+                                                                             partitionSpec)
+            (dayPartitionMillis)
+          }
 
-        val statsPutRequests = groupedTileSummaries.map { case ((dayPartitionMillis), columnTileSummaries) =>
-          val nullCountsStats = IcebergPartitionStatsExtractor.createNullCountsStats(columnTileSummaries)
-          val partitionStats = TileStats.nullCounts(nullCountsStats)
-          IcebergPartitionStatsExtractor.createPartitionStatsPutRequest(outputTable,
-                                                                        partitionStats,
-                                                                        dayPartitionMillis,
-                                                                        TileStatsType.NULL_COUNTS)
-        }.toSeq
+          val statsPutRequests = groupedTileSummaries.map { case ((dayPartitionMillis), columnTileSummaries) =>
+            val nullCountsStats = IcebergPartitionStatsExtractor.createNullCountsStats(columnTileSummaries)
+            val partitionStats = TileStats.nullCounts(nullCountsStats)
+            IcebergPartitionStatsExtractor.createPartitionStatsPutRequest(outputTable,
+                                                                          partitionStats,
+                                                                          dayPartitionMillis,
+                                                                          TileStatsType.NULL_COUNTS)
+          }.toSeq
 
-        val schemaMapping = statsExtractor.extractSchemaMapping(outputTable)
-        val schemaPutRequest = IcebergPartitionStatsExtractor.createSchemaMappingPutRequest(outputTable, schemaMapping)
+          statsExtractor.extractSchemaMapping(outputTable) match {
+            case Some(schemaMapping) =>
+              val schemaPutRequest =
+                IcebergPartitionStatsExtractor.createSchemaMappingPutRequest(outputTable, schemaMapping)
+              val allPutRequests = statsPutRequests :+ schemaPutRequest
 
-        val allPutRequests = statsPutRequests :+ schemaPutRequest
+              try {
+                val kvStoreUpdates = metricsKvStore.multiPut(allPutRequests)
+                Await.result(kvStoreUpdates, 30.seconds)
 
-        val kvStoreUpdates = metricsKvStore.multiPut(allPutRequests)
-        Await.result(kvStoreUpdates, 30.seconds)
-
-        logger.info(
-          s"Successfully persisted data quality metrics and schema mapping for table: $outputTable (${tileSummaries.size} tile summaries)")
-      } else {
-        logger.info(s"No tile summaries found for table: $outputTable")
+                logger.info(
+                  s"Successfully persisted data quality metrics and schema mapping for table: $outputTable (${tileSummaries.size} tile summaries)")
+              } catch {
+                case e: Exception =>
+                  logger.info(
+                    s"Failed to persist data quality metrics to KV store for table: $outputTable. This may be expected if the KV store table does not exist. Error: ${e.getMessage}")
+              }
+            case None =>
+              logger.info(
+                s"Could not extract schema mapping for table: $outputTable, skipping column stats persistence")
+          }
+        case Some(tileSummaries) if tileSummaries.isEmpty =>
+          logger.info(s"No tile summaries found for table: $outputTable")
+        case None =>
+          logger.info(
+            s"Table $outputTable is not an Iceberg table or is not partitioned, skipping column stats extraction")
       }
     } catch {
       case e: Exception =>
