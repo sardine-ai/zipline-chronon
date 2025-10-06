@@ -207,7 +207,6 @@ class IcebergPartitionStatsExtractor(spark: SparkSession) {
   def extractSchemaMapping(fullTableName: String): Option[Map[Int, String]] = {
     loadIcebergTable(fullTableName).flatMap { table =>
       Option(table.schema()).map { schema =>
-        // Create field ID to name mapping
         schema.columns().asScala.map(field => field.fieldId() -> field.name()).toMap
       }
     }

@@ -194,7 +194,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
               } catch {
                 case e: Exception =>
                   logger.info(
-                    s"Failed to persist data quality metrics to KV store for table: $outputTable. This may be expected if the KV store table does not exist. Error: ${e.getMessage}")
+                    s"Failed to persist data quality metrics to KV store for table: $outputTable. This may be expected if the KV store table does not exist. Error: ${e.traceString}")
               }
             case None =>
               logger.info(
@@ -232,15 +232,13 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
         logger.info(s"Successfully completed groupBy backfill for '${metadata.name}'")
       case NodeContent._Fields.STAGING_QUERY =>
         runStagingQuery(metadata, conf.getStagingQuery, range)
-      case NodeContent._Fields.EXTERNAL_SOURCE_SENSOR => {
-
+      case NodeContent._Fields.EXTERNAL_SOURCE_SENSOR =>
         checkPartitions(conf.getExternalSourceSensor, range) match {
-          case Success(_) => System.exit(0)
+          case Success(_) =>
           case Failure(exception) =>
             logger.error(s"ExternalSourceSensor check failed.", exception)
-            System.exit(1)
+            throw exception
         }
-      }
       case _ =>
         throw new UnsupportedOperationException(s"Unsupported NodeContent type: ${conf.getSetField}")
     }
