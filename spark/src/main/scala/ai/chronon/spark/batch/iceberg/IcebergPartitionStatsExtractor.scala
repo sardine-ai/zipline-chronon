@@ -5,7 +5,7 @@ import ai.chronon.api.{PartitionSpec, ThriftJsonCodec}
 import ai.chronon.observability._
 import ai.chronon.online.KVStore.PutRequest
 import org.apache.iceberg.spark.source.SparkTable
-import org.apache.iceberg.{DataFile, ManifestFiles}
+import org.apache.iceberg.{DataFile, ManifestFiles, PartitionData}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.connector.catalog.{Identifier, TableCatalog}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -244,19 +244,19 @@ class IcebergPartitionStatsExtractor(spark: SparkSession) {
                 .map(_.asScala.map(_.sourceId()).toSet)
                 .getOrElse(Set.empty[Int])
 
-              // Extract partition key
-              val partitionColToValue: PartitionKey = icebergPartitionSpec
-                .fields()
-                .asScala
-                .zipWithIndex
-                .flatMap { case (field, index) =>
-                  Option(schema.findField(field.sourceId())).map { sourceField =>
-                    val partition = Option(file.partition())
-                      .getOrElse(throw new IllegalStateException("File partition data is null"))
-                    val partitionValue = Option(partition.get(index, classOf[Object]))
-                      .map(String.valueOf)
-                      .getOrElse("null")
-                    sourceField.name() -> partitionValue
+              // Extract partition key using Iceberg's partitionToPath which properly formats all types
+              val partition = Option(file.partition())
+                .getOrElse(throw new IllegalStateException("File partition data is null"))
+              val partitionPath = icebergPartitionSpec.partitionToPath(partition)
+
+              val partitionColToValue: PartitionKey = partitionPath
+                .split("/")
+                .map { pair =>
+                  val parts = pair.split("=", 2)
+                  if (parts.length == 2) {
+                    parts(0) -> parts(1)
+                  } else {
+                    throw new IllegalStateException(s"Invalid partition format: $pair in path $partitionPath")
                   }
                 }
                 .toList

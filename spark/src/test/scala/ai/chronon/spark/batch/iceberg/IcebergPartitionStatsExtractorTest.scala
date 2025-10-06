@@ -1114,4 +1114,56 @@ class IcebergPartitionStatsExtractorTest
 
     spark.sql("DROP TABLE IF EXISTS test_consistency")
   }
+
+  it should "handle DATE partition type with proper string formatting" in {
+    spark.sql("""
+      CREATE TABLE test_date_partition (
+        id BIGINT,
+        name STRING,
+        ds DATE,
+        value DOUBLE
+      ) USING iceberg
+      PARTITIONED BY (ds)
+      """)
+
+    spark.sql("""
+      INSERT INTO test_date_partition VALUES
+      (1, 'Alice', DATE '2024-01-15', 100.0),
+      (2, 'Bob', DATE '2024-01-15', 200.0),
+      (3, 'Charlie', DATE '2024-01-16', 150.0)
+      """)
+
+    spark.sql("REFRESH TABLE test_date_partition")
+
+    val extractor = new IcebergPartitionStatsExtractor(spark)
+    val maybeTileSummaries = extractor.extractPartitionedStats("spark_catalog.default.test_date_partition", "test_conf")
+
+    maybeTileSummaries should be(defined)
+    val tileSummaries = maybeTileSummaries.get
+    tileSummaries should not be empty
+
+    // Helper function to get TileSummary for a specific partition and column
+    def getTileSummary(datePartition: String, column: String): Option[TileSummary] = {
+      getFieldId("test_date_partition", column).flatMap { fieldId =>
+        tileSummaries.find { case (tileKey, _) =>
+          tileKey.getColumn == fieldId && tileKey.getSlice == s"ds=$datePartition"
+        }.map(_._2)
+      }
+    }
+
+    // Verify partition keys are properly formatted as date strings
+    val jan15Summary = getTileSummary("2024-01-15", "id")
+    jan15Summary should be(defined)
+    jan15Summary.get.getCount should be(2)
+
+    val jan16Summary = getTileSummary("2024-01-16", "id")
+    jan16Summary should be(defined)
+    jan16Summary.get.getCount should be(1)
+
+    // Verify null counts
+    getTileSummary("2024-01-15", "name").get.getNullCount should be(0)
+    getTileSummary("2024-01-16", "name").get.getNullCount should be(0)
+
+    spark.sql("DROP TABLE IF EXISTS test_date_partition")
+  }
 }
