@@ -44,6 +44,12 @@ object SparkSessionBuilder {
     val console = builder
       .newAppender("console", "Console")
       .addAttribute("target", "SYSTEM_OUT")
+
+    val patternLayout = builder
+      .newLayout("PatternLayout")
+      .addAttribute("pattern", "%F:%L: %m%n")
+
+    console.add(patternLayout)
     builder.add(console)
 
     // Configure root logger
