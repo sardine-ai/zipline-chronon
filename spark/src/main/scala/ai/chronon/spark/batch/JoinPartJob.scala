@@ -209,14 +209,20 @@ class JoinPartJob(node: JoinPartNode, metaData: MetaData, range: DateRange, show
       case (EVENTS, EVENTS, Accuracy.SNAPSHOT) =>
         genGroupBy(shiftedPartitionRange).snapshotEvents(shiftedPartitionRange)
       case (EVENTS, EVENTS, Accuracy.TEMPORAL) =>
-        val skewFreeMode = tableUtils.sparkSession.conf
-          .get("spark.chronon.join.backfill.mode.skewFree", "false")
-          .toBoolean
+        if (tableUtils.skewFreeMode) {
 
-        if (skewFreeMode) {
           // Use UnionJoin for skewFree mode - it will handle column selection internally
           logger.info(s"Using UnionJoin for TEMPORAL events join part: ${joinPart.groupBy.metaData.name}")
-          UnionJoin.computeJoinPart(renamedLeftDf, joinPart, unfilledPartitionRange, produceFinalJoinOutput = false)
+
+          // key renaming is already done, so we should remove the keyMapping from joinPart
+          val joinPartWithoutMapping = joinPart.deepCopy()
+          joinPartWithoutMapping.unsetKeyMapping()
+
+          UnionJoin.computeJoinPart(renamedLeftDf,
+                                    joinPartWithoutMapping,
+                                    unfilledPartitionRange,
+                                    produceFinalJoinOutput = false)
+
         } else {
           // Use traditional temporalEvents approach
           genGroupBy(unfilledPartitionRange).temporalEvents(renamedLeftDf, Some(toTimeRange(unfilledPartitionRange)))

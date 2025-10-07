@@ -128,16 +128,21 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
 
     val joinConf = monolithJoin.join
     val joinName = metadata.name
-    val skewFreeMode = tableUtils.sparkSession.conf
-      .get("spark.chronon.join.backfill.mode.skewFree", "false")
-      .toBoolean
 
-    logger.info(s"Running join backfill for '$joinName' with skewFree mode: $skewFreeMode")
+    val standaloneUnionJoinEligible = UnionJoin.isEligibleForStandaloneRun(joinConf)
+
+    logger.info(
+      s"Running join backfill for '$joinName' with skewFreeMode: ${tableUtils.skewFreeMode}, standalone union-join eligible: $standaloneUnionJoinEligible")
     logger.info(s"Processing range: [${range.start}, ${range.end}]")
 
-    if (skewFreeMode) {
+    if (standaloneUnionJoinEligible && tableUtils.skewFreeMode) {
+
+      logger.info(s"Using standalone-union-join. Will skip writing join-part table & source table.")
+
       UnionJoin.computeJoinAndSave(joinConf, range)(tableUtils)
+
       logger.info(s"Successfully wrote range: $range")
+
     } else {
       val join = new Join(joinConf, range.end, tableUtils)
       val result = join.forceComputeRangeAndSave(range)
