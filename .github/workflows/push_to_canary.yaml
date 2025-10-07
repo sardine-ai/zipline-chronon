@@ -380,11 +380,12 @@ jobs:
         id: run_json_string_tests
         run: |
           docker ps -a
-          python3 scripts/fetcher_tests/json_string_test.py
-          if [ $? -ne 0 ]; then
+          TEST_FAILED=false
+          python3 scripts/fetcher_tests/json_string_test.py || TEST_FAILED=true
+          if [ "$TEST_FAILED" = "true" ]; then
             echo "JSON string tests failed"
-             docker logs -f chronon-service-chronon-fetcher-1               
-             exit 1
+            docker logs -f chronon-service-chronon-fetcher-1             
+            exit 1
           fi
 
       - name: Run fetcher integration tests
@@ -392,8 +393,9 @@ jobs:
         id: run_fetcher_integration_tests
         run: |
           docker ps -a
-          python3 scripts/fetcher_tests/avro_encoded_string_test.py
-          if [ $? -ne 0 ]; then
+          TEST_FAILED=false
+          python3 scripts/fetcher_tests/avro_encoded_string_test.py|| TEST_FAILED=true
+          if [ "$TEST_FAILED" = "true" ]; then
             echo "Avro encoded string tests failed"
             docker logs -f chronon-service-chronon-fetcher-1               
             exit 1
