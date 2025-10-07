@@ -71,7 +71,7 @@ case object Iceberg extends Format {
     } else {
 
       partitionsDf
-        .select(col(s"partition.$partitionColumn"))
+        .select(col(s"partition.$partitionColumn").cast("string"))
         .collect()
         .map(_.getString(0))
         .toList
