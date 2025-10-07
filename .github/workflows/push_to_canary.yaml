@@ -384,7 +384,7 @@ jobs:
           python3 scripts/fetcher_tests/json_string_test.py || TEST_FAILED=true
           if [ "$TEST_FAILED" = "true" ]; then
             echo "JSON string tests failed"
-            docker logs -f chronon-service-chronon-fetcher-1             
+            docker logs chronon-service-chronon-fetcher-1             
             exit 1
           fi
 
@@ -397,7 +397,7 @@ jobs:
           python3 scripts/fetcher_tests/avro_encoded_string_test.py|| TEST_FAILED=true
           if [ "$TEST_FAILED" = "true" ]; then
             echo "Avro encoded string tests failed"
-            docker logs -f chronon-service-chronon-fetcher-1               
+            docker logs chronon-service-chronon-fetcher-1               
             exit 1
           fi
 

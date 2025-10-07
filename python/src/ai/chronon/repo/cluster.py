@@ -25,6 +25,7 @@ def generate_dataproc_cluster_config(
                 "serviceAccount": "dataproc@" + project_id + ".iam.gserviceaccount.com",
                 "serviceAccountScopes": [
                     "https://www.googleapis.com/auth/cloud-platform",
+                    "https://www.googleapis.com/auth/monitoring",
                     "https://www.googleapis.com/auth/cloud.useraccounts.readonly",
                     "https://www.googleapis.com/auth/devstorage.read_write",
                     "https://www.googleapis.com/auth/logging.write",
