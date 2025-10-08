@@ -216,6 +216,7 @@ object UnionJoin {
   def isEligibleForStandaloneRun(joinConf: api.Join): Boolean = {
     joinConf.left.isSetEvents &&
     joinConf.getJoinParts.size() == 1 &&
+    joinConf.getJoinParts.get(0).groupBy.inferredAccuracy == Accuracy.TEMPORAL &&
     !joinConf.isSetBootstrapParts &&
     !joinConf.isSetLabelParts
   }
