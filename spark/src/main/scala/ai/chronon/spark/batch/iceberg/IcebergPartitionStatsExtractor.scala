@@ -4,12 +4,12 @@ import ai.chronon.api.ScalaJavaConversions.JMapOps
 import ai.chronon.api.{PartitionSpec, ThriftJsonCodec}
 import ai.chronon.observability._
 import ai.chronon.online.KVStore.PutRequest
-import org.apache.iceberg.spark.source.SparkTable
-import org.apache.iceberg.{DataFile, ManifestFiles, PartitionData}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.connector.catalog.{Identifier, TableCatalog}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import org.apache.iceberg.spark.source.SparkTable
+import org.apache.iceberg.{DataFile, ManifestFiles}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.connector.catalog.{Identifier, TableCatalog}
 
 import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
