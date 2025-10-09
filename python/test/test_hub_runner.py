@@ -59,7 +59,7 @@ class TestHubRunner:
         call_args = mock_post.call_args
 
         # Check URL
-        assert call_args[0][0].endswith("/workflow/start")
+        assert call_args[0][0].endswith("/workflow/v2/start")
 
         # Check JSON payload
         json_payload = call_args[1]['json']
@@ -113,7 +113,7 @@ class TestHubRunner:
         call_args = mock_post.call_args
 
         # Check URL
-        assert call_args[0][0].endswith("/workflow/start")
+        assert call_args[0][0].endswith("/workflow/v2/start")
 
         # Check JSON payload
         json_payload = call_args[1]['json']
@@ -153,7 +153,7 @@ class TestHubRunner:
         call_args = mock_post.call_args
 
         # Check URL
-        assert call_args[0][0].endswith("/schedule/v1/schedules")
+        assert call_args[0][0].endswith("/schedule/v2/schedules")
 
         # Check JSON payload
         json_payload = call_args[1]['json']
