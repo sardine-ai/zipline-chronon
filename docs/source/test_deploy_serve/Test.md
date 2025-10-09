@@ -143,22 +143,9 @@ The `-k` argument specifies a kafka broker to be able to connect to kafka. You n
 
 ## Online offline consistency metrics computation
 
-After enabling online serving, you may be interested in the online offline consistency metrics for the job. Computation of these can be turned on by setting the `sample_percent` and `check_consistency` in the join config like so:
+After enabling online serving, you may be interested in the online offline consistency metrics for the job. 
 
-```python
-my_join = Join(
-    ...
-    sample_percent=0.1, # Samples 10%
-    check_consistency=True
-)
-```
-
-The `sample_percent` param will enable logging during fetching phase, and the `check_consistency` param will enable the online offline consistency check DAG to trigger a spark job to compare the logged events with offline join job after data landing in the warehouse. The DAG will be named: `online_offline_comparison_<team_name>_<join_name>`.
-
-The spark job will write the result to a flat Hive table in the pattern of `<output_namespace>.<team_name>_<join_name>_consistency`.
-
-See more details of what it computes [here](https://sourcegraph.d.musta.ch/github.com/zipline/chronon/-/blob/docs/source/Online_Offline_Consistency.md).
-
+See details on how to do that [here](../management_in_production/Online_Offline_Consistency.md).
 
 ## Useful tips to work with Chronon
 
