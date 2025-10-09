@@ -5,7 +5,8 @@ Please refer to docs on our [docsite](https://zipline.ai/docs/getting_started/In
 
 ## What are the main differences of Zipline's Chronon with Airbnb's version of Chronon?
 
-Below is a list of upgrades and major improvements.
+Below is a list of upgrades and major improvements. 
+While some of the improvements are hard to upstream due to legacy reasons, we are supportive of anyone trying to upstream to the airbnb repo.
 
 ### Integrations
 
@@ -77,8 +78,10 @@ The previous api also didn't support point-in-time label attribution that many i
 
 ### Optimizations
 
-We have introduced a skew-free algorithm to compute point-in-time data that improves the training data backfill speed by upto 10x.
+We have introduced a skew-free algorithm to compute point-in-time data that improves the training data backfill speed by 9x for most cases.
 We also replaced the avro serde with LinkedIn's fastAvro library that reduces the read latency by a significant amount.
+We improved the cost of processing large streams by fusing the flink operators and avoiding unfiltered traffic between operators. 
+This improved the stream processing throughput by 4x.
 
 ---
 
