@@ -25,46 +25,47 @@ first-class components.
 ### Security Vulnerability prevention
 
 The security bar for commercial use of software is much much higher than for open source projects. 
-As such, whenever a new vulnerability is discovered, we need to **immediately** patch it to keep our users systems secure.
-This means two things - we need to upgrade versions of core libraries - like spark, flink, thrift to their latest possible versions. 
+As such, whenever a new vulnerability is discovered, we need to **immediately** patch it to keep our user's systems secure.
+
+We need to upgrade versions of core libraries - like spark, flink, thrift to their latest possible versions. 
 The airbnb version of chronon, for example uses thrift 0.9 (2015), we are on 0.21 (2024). 
 
-We infact detect vulnerabilities in pull requests as part of our CI.
+We detect vulnerabilities in pull requests as part of our CI to ensure that chronon deployments are resistant to known exploits.
 
 ---
 ### Iteration speed 
 
 #### Build system
 
-We drastically simplfied the build system since we always can pick the latest version of spark & flink that all major clouds support. 
+We drastically simplfied the build system - since we can always pick **one** (latest) version of spark & flink that all major clouds support. 
 While the Airbnb fork needs to support older version due to legacy requirements. (example: Spark 2.4, 3.1 etc vs. supporting Spark 3.5)
-This allows for the build and CI much faster. This also makes it much easier to work with IDEs like intellij and contribute.
+This allows for the build and CI to be much faster. This also makes it easier to work with IDEs like intellij and contribute back.
 
 We chose *mill* as our preferred build system over *bazel* given the poor support for the *rules_scala* extension, which prevents migration from
-the deprecated WORKSPACE to the more modern bzlmod approach. Bazel is also a lot more complicated and slower even than sbt to build the project with.
+the deprecated WORKSPACE to the more modern bzlmod approach. Bazel is also a lot more complicated and slower even than sbt.
 
 #### Unit tests
 
 We have eliminated all flaky tests and reduced the CI time from 20 minutes to 4 minutes. This is a significant compounding improvement 
-to the speed at which we can iterate and improve the Chronon project. It also makes it easier to onboard novice contributors to the project.
+to the speed at which we can iterate and improve the project. It also makes it easier to onboard new contributors to the project.
 
 ---
 ### Observability
 
 Since we interface deeply with table formats like iceberg, we can reach into the column statistics layers of these table formats to extract
-data quality metrics in a manner that is essentially 0$ cost. This means we can produce column statistics at the end of every chronon job.
+data quality metrics in a manner that is essentially zero-cost. We produce column statistics at the end of every chronon job for free.
 
-We also added support for more complex data quality metrics, like drift detection that are only found in proprietary observability systems like 
-Arize and Fiddler.
+We also added support for more complex data quality metrics, like realtime drift detection that are only found in proprietary observability 
+systems like Arize and Fiddler.
 
 ---
 ### Resolving a few major issues in the API.
 
-Some of the APIs we added to Chronon at airbnb, generalized poorly to the diverse needs of feature engineering.
+Some of the APIs we added to Chronon at airbnb, generalized poorly to the diverse needs of ML/AI data engineering.
 
 One example is the `LabelPart` API which is intended to be used for label computation. This builds on the existing 
-`GroupBy` concept. We later found that most label computation setups are way more complicated than what `GroupBy` can handle.
-Even for the simpler cases, having to write and reason about a `GroupBy` along with label offsets was extremely unintuitive and often 
+`GroupBy` concept. We later found that most label computation setups are way more complicated than what the `GroupBy` concept can handle.
+Even for the simpler cases, having to write and reason about a `GroupBy` alongside label offsets was extremely unintuitive. This often 
 lead to subtle but significant errors in the training data. As a result most companies that adopted Chronon actually DON'T use the
 label-part api at all! They stitch chronon with external systems to generate training data. 
 
