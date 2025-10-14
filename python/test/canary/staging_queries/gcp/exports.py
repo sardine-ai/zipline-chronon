@@ -25,7 +25,7 @@ def get_select_star_export(table: str, partition_column: str = "_PARTITIONTIME")
 
 
 user_activities = StagingQuery(
-    query="""
+    query=f"""
     SELECT 
         *,
         TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) as ds 
