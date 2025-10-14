@@ -8,7 +8,9 @@ case object Iceberg extends Format {
 
   override def tableProperties: Map[String, String] = {
     Map(
-      "commit.retry.min-wait-ms" -> "5000"
+      "commit.retry.min-wait-ms" -> "10000",
+      "commit.retry.num-retries" -> "10", // default = 4
+      "write.merge.isolation-level" -> "snapshot"
     )
   }
 
