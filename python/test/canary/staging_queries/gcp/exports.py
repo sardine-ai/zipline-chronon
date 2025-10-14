@@ -29,7 +29,7 @@ user_activities = StagingQuery(
     SELECT 
         *,
         TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) as ds 
-    FROM demo.`{table}`
+    FROM demo.`user-activities`
     WHERE 
     TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
     """,
