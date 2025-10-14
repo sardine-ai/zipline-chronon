@@ -25,6 +25,7 @@ default = Team(
             "CUSTOMER_ID": "dev",
             "GCP_PROJECT_ID": "canary-443022",
             "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "FLINK_STATE_URI": "gs://zipline-warehouse-canary/flink-state",
             "FRONTEND_URL": "http://localhost:3000", # gcp_compose:localhost:3000  canary:https://canary-gke.zipline.ai",
@@ -32,14 +33,6 @@ default = Team(
             # "SA_NAME": "zipline-user", # needed for gcp authentication
         },
     ),
-    clusterConf=ClusterConfigProperties(
-        common={
-            "dataproc.config": generate_dataproc_cluster_config(2, "canary-443022", "gs://zipline-artifacts-canary",
-                                                                idle_timeout="300s",
-                                                                worker_host_type="n2-standard-4",
-                                                                master_host_type="n2-standard-8")
-        }
-    )
 )
 
 test = Team(
@@ -72,6 +65,7 @@ gcp = Team(
             "CUSTOMER_ID": "dev",
             "GCP_PROJECT_ID": "canary-443022",
             "GCP_REGION": "us-central1",
+            "GCP_DATAPROC_CLUSTER_NAME": "zipline-canary-cluster",
             "GCP_BIGTABLE_INSTANCE_ID": "zipline-canary-instance",
             "ENABLE_PUBSUB": "true",
             "ARTIFACT_PREFIX": "gs://zipline-artifacts-dev",
