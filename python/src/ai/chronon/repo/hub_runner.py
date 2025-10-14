@@ -15,6 +15,7 @@ from ai.chronon.repo.zipline_hub import ZiplineHub
 
 ALLOWED_DATE_FORMATS = ["%Y-%m-%d"]
 
+
 @click.group()
 def hub():
     pass
@@ -24,12 +25,18 @@ def hub():
 def common_options(func):
     func = click.option("--repo", help="Path to chronon repo", default=".")(func)
     func = click.option("--conf", required=True, help="Conf param - required for every mode")(func)
-    func = click.option("--hub_url", help="Zipline Hub address, e.g. http://localhost:3903", default=None)(func)
+    func = click.option(
+        "--hub_url", help="Zipline Hub address, e.g. http://localhost:3903", default=None
+    )(func)
     return func
 
 
 def ds_option(func):
-    return click.option("--ds", help="the end partition to backfill the data", type=click.DateTime(formats=ALLOWED_DATE_FORMATS))(func)
+    return click.option(
+        "--ds",
+        help="the end partition to backfill the data",
+        type=click.DateTime(formats=ALLOWED_DATE_FORMATS),
+    )(func)
 
 
 def start_ds_option(func):
@@ -43,7 +50,12 @@ def start_ds_option(func):
 
 
 def end_ds_option(func):
-    return click.option("--end-ds", help="the end ds for a range backfill", type=click.DateTime(formats=ALLOWED_DATE_FORMATS), default=str(date.today() - timedelta(days=2)))(func)
+    return click.option(
+        "--end-ds",
+        help="the end ds for a range backfill",
+        type=click.DateTime(formats=ALLOWED_DATE_FORMATS),
+        default=str(date.today() - timedelta(days=2)),
+    )(func)
 
 
 def force_recompute_option(func):
@@ -53,7 +65,6 @@ def force_recompute_option(func):
         default=False,
         help="Force recompute the backfill even if the data is already present in the output table.",
     )(func)
-
 
 
 def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, hub_url=None):
@@ -81,13 +92,17 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, force_recompute=False, h
         end=end_ds,
         conf_hash=conf_name_to_hash_dict[conf_name].hash,
         force_recompute=force_recompute,
-        skip_long_running=False
+        skip_long_running=False,
     )
 
     workflow_id = response_json.get("workflowId", "N/A")
     print(" 🆔 Workflow Id:", workflow_id)
     print_wf_url(
-        conf=conf, conf_name=conf_name, mode=RunMode.BACKFILL.value, workflow_id=workflow_id, repo=repo
+        conf=conf,
+        conf_name=conf_name,
+        mode=RunMode.BACKFILL.value,
+        workflow_id=workflow_id,
+        repo=repo,
     )
 
 
@@ -117,7 +132,7 @@ def submit_schedule(repo, conf, hub_url=None):
         modes=modes,
         branch=branch,
         conf_name=conf_name,
-        conf_hash=conf_name_to_obj_dict[conf_name].hash
+        conf_hash=conf_name_to_obj_dict[conf_name].hash,
     )
 
     schedules = response_json.get("schedules", "N/A")
@@ -140,7 +155,9 @@ def backfill(repo, conf, hub_url, start_ds, end_ds, force_recompute):
     - Call upload API to upload the conf contents for the list of confs that were different.
     - Call the actual run API with mode set to backfill.
     """
-    submit_workflow(repo, conf, RunMode.BACKFILL.value, start_ds, end_ds, force_recompute, hub_url=hub_url)
+    submit_workflow(
+        repo, conf, RunMode.BACKFILL.value, start_ds, end_ds, force_recompute, hub_url=hub_url
+    )
 
 
 # zipline hub run-adhoc --conf=compiled/joins/join

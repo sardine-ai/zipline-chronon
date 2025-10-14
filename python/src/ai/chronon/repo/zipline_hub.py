@@ -10,7 +10,7 @@ from google.cloud import iam_credentials_v1
 
 
 class ZiplineHub:
-    def __init__(self, base_url, sa_name = None):
+    def __init__(self, base_url, sa_name=None):
         if not base_url:
             raise ValueError("Base URL for ZiplineHub cannot be empty.")
         self.base_url = base_url
@@ -110,7 +110,7 @@ class ZiplineHub:
 
         diff_request = {"namesToHashes": names_to_hashes}
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -121,9 +121,13 @@ class ZiplineHub:
             return diff_response["diff"]
         except requests.RequestException as e:
             if e.response is not None and e.response.status_code == 401 and self.sa is None:
-                print(" ❌  Error calling diff API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py.")
+                print(
+                    " ❌  Error calling diff API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py."
+                )
             elif e.response is not None and e.response.status_code == 401 and self.sa is not None:
-                print(f" ❌  Error calling diff API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission.")
+                print(
+                    f" ❌  Error calling diff API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission."
+                )
             else:
                 print(f" ❌ Error calling diff API: {e}")
             raise e
@@ -136,7 +140,7 @@ class ZiplineHub:
             "branch": branch,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -147,9 +151,13 @@ class ZiplineHub:
             return response.json()
         except requests.RequestException as e:
             if e.response is not None and e.response.status_code == 401 and self.sa is None:
-                print(" ❌  Error calling upload API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py.")
+                print(
+                    " ❌  Error calling upload API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py."
+                )
             elif e.response is not None and e.response.status_code == 401 and self.sa is not None:
-                print(f" ❌  Error calling upload API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission.")
+                print(
+                    f" ❌  Error calling upload API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission."
+                )
             else:
                 print(f" ❌ Error calling upload API: {e}")
             raise e
@@ -165,7 +173,7 @@ class ZiplineHub:
         }
 
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -176,9 +184,13 @@ class ZiplineHub:
             return response.json()
         except requests.RequestException as e:
             if e.response is not None and e.response.status_code == 401 and self.sa is None:
-                print(" ❌  Error deploying schedule. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py.")
+                print(
+                    " ❌  Error deploying schedule. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py."
+                )
             elif e.response is not None and e.response.status_code == 401 and self.sa is not None:
-                print(f" ❌  Error deploying schedule. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission.")
+                print(
+                    f" ❌  Error deploying schedule. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission."
+                )
             else:
                 print(f" ❌ Error deploying schedule: {e}")
             raise e
@@ -191,7 +203,7 @@ class ZiplineHub:
             "branch": branch,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -202,9 +214,13 @@ class ZiplineHub:
             return response.json()
         except requests.RequestException as e:
             if e.response is not None and e.response.status_code == 401 and self.sa is None:
-                print(" ❌  Error calling sync API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py.")
+                print(
+                    " ❌  Error calling sync API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py."
+                )
             elif e.response is not None and e.response.status_code == 401 and self.sa is not None:
-                print(f" ❌  Error calling sync API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission.")
+                print(
+                    f" ❌  Error calling sync API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission."
+                )
             else:
                 print(f" ❌ Error calling sync API: {e}")
             raise e
@@ -219,11 +235,15 @@ class ZiplineHub:
         start=None,
         end=None,
         force_recompute=False,
-        skip_long_running=False
+        skip_long_running=False,
     ):
         url = f"{self.base_url}/workflow/v2/start"
         end_dt = end.strftime("%Y-%m-%d") if end else date.today().strftime("%Y-%m-%d")
-        start_dt = start.strftime("%Y-%m-%d") if start else (date.today() - timedelta(days=14)).strftime("%Y-%m-%d")
+        start_dt = (
+            start.strftime("%Y-%m-%d")
+            if start
+            else (date.today() - timedelta(days=14)).strftime("%Y-%m-%d")
+        )
         workflow_request = {
             "confName": conf_name,
             "confHash": conf_hash,
@@ -236,7 +256,7 @@ class ZiplineHub:
             "skipLongRunningNodes": skip_long_running,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, 'sa') and self.sa is not None:
+        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.base_url.startswith("https"):
             headers["Authorization"] = f"Bearer {self.id_token}"
@@ -247,9 +267,13 @@ class ZiplineHub:
             return response.json()
         except requests.RequestException as e:
             if e.response is not None and e.response.status_code == 401 and self.sa is None:
-                print(" ❌  Error calling workflow start API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py.")
+                print(
+                    " ❌  Error calling workflow start API. Unauthorized and no service account provided. Make sure the environment has default credentials set up or provide a service account name as SA_NAME in teams.py."
+                )
             elif e.response is not None and e.response.status_code == 401 and self.sa is not None:
-                print(f" ❌  Error calling workflow start API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission.")
+                print(
+                    f" ❌  Error calling workflow start API. Unauthorized with provided service account: {self.sa}. Make sure the service account has the 'iap.webServiceVersions.accessViaIap' permission."
+                )
             else:
                 print(f" ❌ Error calling workflow start API: {e}")
             raise e

@@ -459,19 +459,23 @@ def handle_conf_not_found(log_error=True, callback=None):
                 return func(*args, **kwargs)
             except FileNotFoundError as e:
                 if log_error:
-                    print(style(f"File not found in {func.__name__}: {e}", fg='red'))
+                    print(style(f"File not found in {func.__name__}: {e}", fg="red"))
                 if callback:
                     callback(*args, **kwargs)
-                return 
+                return
+
         return wrapped
+
     return wrapper
+
 
 def print_possible_confs(conf, repo, *args, **kwargs):
     conf_location = os.path.join(repo, conf)
-    conf_dirname = os.path.dirname(conf_location)   
+    conf_dirname = os.path.dirname(conf_location)
     if os.path.exists(conf_dirname):
-        print(f"Possible confs from {style(conf_dirname, fg='yellow')}: \n -", 
-        '\n - '.join([name for name in os.listdir(conf_dirname)]))
+        print(
+            f"Possible confs from {style(conf_dirname, fg='yellow')}: \n -",
+            "\n - ".join([name for name in os.listdir(conf_dirname)]),
+        )
     else:
         print(f"Directory does not exist: {style(conf_dirname, fg='yellow')}")
-    

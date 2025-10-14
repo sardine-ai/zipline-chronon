@@ -36,6 +36,7 @@ def _get_output_table_name(obj, full_name: bool = False):
         utils.__set_name(obj, ttypes.GroupBy, "group_bys")
     return utils.output_table_name(obj, full_name)
 
+
 #  The GroupBy's default online/production status is None and it will inherit
 # online/production status from the Joins it is included.
 # If it is included in multiple joins, it is considered online/production

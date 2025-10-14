@@ -70,7 +70,7 @@
     "team": "gcp",
     "version": "0"
   },
-  "query": "\n    SELECT \n        * \n    FROM demo.`checkouts`\n    WHERE \n    TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
+  "query": "\n    SELECT \n        *,\n        TIMESTAMP_TRUNC(_PARTITIONTIME, DAY) as ds\n    FROM demo.`checkouts`\n    WHERE \n    _PARTITIONTIME BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "tableDependencies": [
     {
       "endOffset": {

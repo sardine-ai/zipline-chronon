@@ -219,6 +219,8 @@ def StagingQuery(
     )
 
     # Add the table property that calls the private function
-    staging_query.__class__.table = property(lambda self: _get_output_table_name(self, full_name=True))
+    staging_query.__class__.table = property(
+        lambda self: _get_output_table_name(self, full_name=True)
+    )
 
     return staging_query

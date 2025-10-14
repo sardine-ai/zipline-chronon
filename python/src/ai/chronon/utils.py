@@ -149,6 +149,7 @@ def get_table(source: api.Source) -> str:
         table = source.events.table
     else:
         from ai.chronon.join import _get_output_table_name
+
         table = _get_output_table_name(source.joinSource.join, True)
     return table.split("/")[0]
 
@@ -288,19 +289,13 @@ def join_part_output_table_name(join, jp, full_name: bool = False):
     )
 
 
-
-
 def log_table_name(obj, full_name: bool = False):
     return output_table_name(obj, full_name=full_name) + "_logged"
-
-
 
 
 def get_team_conf_from_py(team, key):
     team_module = importlib.import_module(f"teams.{team}")
     return getattr(team_module, key)
-
-
 
 
 def wait_for_simple_schema(table, lag, start, end):
