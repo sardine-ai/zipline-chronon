@@ -249,6 +249,57 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
     }
   }
 
+  private def postJobActions(metadata: MetaData,
+                             range: PartitionRange,
+                             tablePartitionsDataset: String,
+                             kvStore: KVStore,
+                             tableStatsDataset: Option[String],
+                             api: Api): Unit = {
+    val outputTablePartitionSpec = (for {
+      meta <- Option(metadata)
+      executionInfo <- Option(meta.executionInfo)
+      outputTableInfo <- Option(executionInfo.outputTableInfo)
+      definedSpec = outputTableInfo.partitionSpec(tableUtils.partitionSpec)
+    } yield definedSpec).getOrElse(tableUtils.partitionSpec)
+    val allOutputTablePartitions = tableUtils.partitions(metadata.executionInfo.outputTableInfo.table,
+                                                         tablePartitionSpec = Option(outputTablePartitionSpec))
+
+    val outputTablePartitionsJson = PartitionRange.collapsedPrint(allOutputTablePartitions)(range.partitionSpec)
+    logger.info(s"Output table partitions for '${metadata.name}': $outputTablePartitionsJson")
+
+    // Check if range is inside allOutputTablePartitions
+    if (!range.partitions.forall(p => allOutputTablePartitions.contains(p))) {
+      val missingPartitions = range.partitions.filterNot(p => allOutputTablePartitions.contains(p))
+      logger.error(
+        s"After job completion, output table ${metadata.executionInfo.outputTableInfo.table} is missing partitions: ${missingPartitions
+            .mkString(", ")} from the requested range: $range"
+      )
+    }
+
+    val putRequest = PutRequest(metadata.executionInfo.outputTableInfo.table.getBytes,
+                                outputTablePartitionsJson.getBytes,
+                                tablePartitionsDataset)
+    val kvStoreUpdates = kvStore.put(putRequest)
+    Await.result(kvStoreUpdates, Duration.Inf)
+    logger.info(s"Successfully completed batch node runner for '${metadata.name}'")
+
+    // Extract and persist partition statistics to KV store - done at the very end
+    // Skip data quality metrics persistence for EXTERNAL_SOURCE_SENSOR nodes
+    if (node.content.getSetField != NodeContent._Fields.EXTERNAL_SOURCE_SENSOR) {
+      tableStatsDataset.foreach { tableStats =>
+        val metricsKvStore = api.genMetricsKvStore(tableStats)
+        Option(metadata.outputTable) match {
+          case Some(outputTable) =>
+            extractAndPersistPartitionStats(metricsKvStore, outputTable, metadata.name)(outputTablePartitionSpec)
+          case None =>
+            logger.warn(s"Skipping partition stats extraction for '${metadata.name}' - outputTable is null")
+        }
+      }
+    } else {
+      logger.info(s"Skipping data quality metrics persistence for EXTERNAL_SOURCE_SENSOR node '${metadata.name}'")
+    }
+  }
+
   def runFromArgs(
       api: Api,
       startDs: String,
@@ -314,38 +365,17 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
         )
       } else {
         run(metadata, node.content, Option(range))
-
-        val outputTablePartitionSpec = (for {
-          meta <- Option(metadata)
-          executionInfo <- Option(meta.executionInfo)
-          outputTableInfo <- Option(executionInfo.outputTableInfo)
-          definedSpec = outputTableInfo.partitionSpec(tableUtils.partitionSpec)
-        } yield definedSpec).getOrElse(tableUtils.partitionSpec)
-        val allOutputTablePartitions = tableUtils.partitions(metadata.executionInfo.outputTableInfo.table,
-                                                             tablePartitionSpec = Option(outputTablePartitionSpec))
-
-        val outputTablePartitionsJson = PartitionRange.collapsedPrint(allOutputTablePartitions)(range.partitionSpec)
-        val putRequest = PutRequest(metadata.executionInfo.outputTableInfo.table.getBytes,
-                                    outputTablePartitionsJson.getBytes,
-                                    tablePartitionsDataset)
-        val kvStoreUpdates = kvStore.put(putRequest)
-        Await.result(kvStoreUpdates, Duration.Inf)
-        logger.info(s"Successfully completed batch node runner for '${metadata.name}'")
-
-        // Extract and persist partition statistics to KV store - done at the very end
-        // Skip data quality metrics persistence for EXTERNAL_SOURCE_SENSOR nodes
-        if (node.content.getSetField != NodeContent._Fields.EXTERNAL_SOURCE_SENSOR) {
-          tableStatsDataset.foreach { tableStats =>
-            val metricsKvStore = api.genMetricsKvStore(tableStats)
-            Option(metadata.outputTable) match {
-              case Some(outputTable) =>
-                extractAndPersistPartitionStats(metricsKvStore, outputTable, metadata.name)(outputTablePartitionSpec)
-              case None =>
-                logger.warn(s"Skipping partition stats extraction for '${metadata.name}' - outputTable is null")
-            }
-          }
-        } else {
-          logger.info(s"Skipping data quality metrics persistence for EXTERNAL_SOURCE_SENSOR node '${metadata.name}'")
+        try {
+          postJobActions(metadata = metadata,
+                         range = range,
+                         tablePartitionsDataset = tablePartitionsDataset,
+                         kvStore = kvStore,
+                         tableStatsDataset = tableStatsDataset,
+                         api = api)
+        } catch {
+          case e: Exception =>
+            // Don't fail the job if post-job actions fail
+            logger.error(s"Post-job actions failed for '${metadata.name}'", e)
         }
       }
     }
