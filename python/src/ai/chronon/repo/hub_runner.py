@@ -90,9 +90,9 @@ def submit_workflow(repo, conf, mode, start_ds, end_ds, hub_url=None):
     print_wf_url(
         conf=conf,
         conf_name=conf_name,
-        mode=RunMode.BACKFILL.value,
+        mode=mode,
         workflow_id=workflow_id,
-        repo=repo,
+        repo=repo
     )
 
 
