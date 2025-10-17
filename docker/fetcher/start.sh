@@ -20,6 +20,10 @@ fi
 
 METRICS_OPTS=""
 
+if [ -n "$CHRONON_METRICS_PREFIX" ]; then
+  METRICS_OPTS="$METRICS_OPTS -Dai.chronon.metrics.prefix=$CHRONON_METRICS_PREFIX"
+fi
+
 if [ -n "$CHRONON_METRICS_READER" ]; then
   METRICS_OPTS="-Dai.chronon.metrics.enabled=true"
   METRICS_OPTS="$METRICS_OPTS -Dai.chronon.metrics.reader=$CHRONON_METRICS_READER"

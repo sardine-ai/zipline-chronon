@@ -26,19 +26,20 @@ There's some additional environment variables that the Docker container can be s
 |GCP_PROJECT_ID |GCloud Zipline BigTable project |``            |
 |GOOGLE_CLOUD_PROJECT |GCloud Zipline BigTable project |``            |
 |GCP_BIGTABLE_INSTANCE_ID |GCloud Zipline BigTable instance id|``|
-|GOOGLE_APPLICATION_CREDENTIALS|Path to [GCloud application credentials json file](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)|``
+|GOOGLE_APPLICATION_CREDENTIALS|Path to [GCloud application credentials json file](https://cloud.google.com/docs/authentication/application-default-credentials#GAC)|``|
 |GCP_BIGTABLE_INSTANCE_ID |GCloud Zipline BigTable instance id|``|
 |**Profiler Configuration**
-|ENABLE_GCLOUD_PROFILER|If set to 'true', enables profiling service using [cloud profiler](https://cloud.google.com/profiler/docs/about-profiler)|`false`
+|ENABLE_GCLOUD_PROFILER|If set to 'true', enables profiling service using [cloud profiler](https://cloud.google.com/profiler/docs/about-profiler)|`false`|
 |**Service Metrics Configuration**
-|CHRONON_METRICS_READER | Either of 'http' or 'prometheus'.            |``
-|EXPORTER_OTLP_ENDPOINT|If using the 'http' metrics reader, exports metrics to the configured endpoint using [OTLP over http](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlphttpexporter)|`http://localhost:4318`
-|CHRONON_PROMETHEUS_SERVER_PORT|If using the 'prometheus' metrics reader, exposes a [Prometheus service endpoint](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/prometheus/) on the configured port to export Chronon library metrics|`8905`
-|VERTX_PROMETHEUS_SERVER_PORT|If using the 'prometheus' metrics reader, exposes a [Prometheus service endpoint](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/prometheus/) on the configured port to export Vert.x webservice metrics|`8906`
+|CHRONON_METRICS_PREFIX |Prefix to add to all Chronon metrics|``|
+|CHRONON_METRICS_READER | Either of 'http' or 'prometheus'.           |``|
+|EXPORTER_OTLP_ENDPOINT|If using the 'http' metrics reader, exports metrics to the configured endpoint using [OTLP over http](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlphttpexporter)|`http://localhost:4318`|
+|CHRONON_PROMETHEUS_SERVER_PORT|If using the 'prometheus' metrics reader, exposes a [Prometheus service endpoint](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/prometheus/) on the configured port to export Chronon library metrics|`8905`|
+|VERTX_PROMETHEUS_SERVER_PORT|If using the 'prometheus' metrics reader, exposes a [Prometheus service endpoint](https://opentelemetry.io/docs/specs/otel/metrics/sdk_exporters/prometheus/) on the configured port to export Vert.x webservice metrics|`8906`|
 |**Monitoring**
-|FETCHER_OOC_TOPIC_INFO|Topic string in the format of: `kafka://my-topic-name/key1=value1/key2=value2`. If configured, the service emits [online offline consistency feature logging](https://chronon.ai/test_deploy_serve/Online_Offline_Consistency.html) data to the given topic|``
+|FETCHER_OOC_TOPIC_INFO|Topic string in the format of: `kafka://my-topic-name/key1=value1/key2=value2`. If configured, the service emits [online offline consistency feature logging](https://chronon.ai/test_deploy_serve/Online_Offline_Consistency.html) data to the given topic|``|
 |**JVM Configuration**
-|JVM_OPTS|Additional JVM options to pass to the service|``
+|JVM_OPTS|Additional JVM options to pass to the service|``|
 
 ## Exporting Metrics
 
