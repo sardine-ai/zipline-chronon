@@ -10,11 +10,12 @@ from google.cloud import iam_credentials_v1
 
 
 class ZiplineHub:
-    def __init__(self, base_url, sa_name=None):
+    def __init__(self, base_url, sa_name=None, use_auth=False):
         if not base_url:
             raise ValueError("Base URL for ZiplineHub cannot be empty.")
         self.base_url = base_url
-        if self.base_url.startswith("https"):
+        if self.base_url.startswith("https") or use_auth:
+            self.use_auth = True
             print("\n 🔐 Using Google Cloud authentication for ZiplineHub.")
 
             # First try to get ID token from environment (GitHub Actions)
@@ -35,6 +36,9 @@ class ZiplineHub:
                 credentials.refresh(Request())
                 self.sa = None
                 self.id_token = credentials.id_token
+        else:
+            self.use_auth = False
+            print("\n 🔓 Not using authentication for ZiplineHub.")
 
     def _generate_jwt_payload(self, service_account_email: str, resource_url: str) -> str:
         """Generates JWT payload for service account.
@@ -110,9 +114,9 @@ class ZiplineHub:
 
         diff_request = {"namesToHashes": names_to_hashes}
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
+        if self.use_auth and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
-        elif self.base_url.startswith("https"):
+        elif self.use_auth:
             headers["Authorization"] = f"Bearer {self.id_token}"
         try:
             response = requests.post(url, json=diff_request, headers=headers)
@@ -140,9 +144,9 @@ class ZiplineHub:
             "branch": branch,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
+        if self.use_auth and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
-        elif self.base_url.startswith("https"):
+        elif self.use_auth:
             headers["Authorization"] = f"Bearer {self.id_token}"
 
         try:
@@ -173,9 +177,9 @@ class ZiplineHub:
         }
 
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
+        if self.use_auth and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
-        elif self.base_url.startswith("https"):
+        elif self.use_auth:
             headers["Authorization"] = f"Bearer {self.id_token}"
 
         try:
@@ -203,9 +207,9 @@ class ZiplineHub:
             "branch": branch,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
+        if self.use_auth and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
-        elif self.base_url.startswith("https"):
+        elif self.use_auth:
             headers["Authorization"] = f"Bearer {self.id_token}"
 
         try:
@@ -254,9 +258,9 @@ class ZiplineHub:
             "skipLongRunningNodes": skip_long_running,
         }
         headers = {"Content-Type": "application/json"}
-        if self.base_url.startswith("https") and hasattr(self, "sa") and self.sa is not None:
+        if self.use_auth and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
-        elif self.base_url.startswith("https"):
+        elif self.use_auth:
             headers["Authorization"] = f"Bearer {self.id_token}"
 
         try:

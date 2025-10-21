@@ -47,6 +47,7 @@ class TestHubRunner:
             'backfill',
             '--repo', canary,
             '--conf', online_join_conf,
+            '--no-use-auth',
             '--start-ds', '2024-01-15',
             '--end-ds', '2024-02-15',
         ])
@@ -91,6 +92,7 @@ class TestHubRunner:
             'run-adhoc',
             '--repo', canary,
             '--conf', online_join_conf,
+            '--no-use-auth',
             '--start-ds', '2024-01-15',
             '--end-ds', '2024-02-15',
         ])
@@ -101,6 +103,7 @@ class TestHubRunner:
             'run-adhoc',
             '--repo', canary,
             '--conf', online_join_conf,
+            '--no-use-auth',
             '--end-ds', '2024-02-15',
         ])
         assert result.exit_code == 0
@@ -142,6 +145,7 @@ class TestHubRunner:
             'schedule',
             '--repo', canary,
             '--conf', online_join_conf,
+            '--no-use-auth',
         ])
         assert result.exit_code == 0
 
