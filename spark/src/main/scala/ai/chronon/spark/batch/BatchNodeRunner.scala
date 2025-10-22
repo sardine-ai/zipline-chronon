@@ -306,7 +306,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
       endDs: String,
       tablePartitionsDataset: String,
       tableStatsDataset: Option[String]
-  ): Try[Unit] = {
+  ): Int = {
     Try {
       val metadata = node.metaData
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
@@ -378,6 +378,15 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils) extends NodeRunner {
             logger.error(s"Post-job actions failed for '${metadata.name}'", e)
         }
       }
+    } match {
+      case Success(_) => {
+        logger.info("Batch node runner completed successfully")
+        0
+      }
+      case Failure(e) => {
+        logger.error(s"Batch node runner failed for '${node.metaData.name}'", e)
+        1
+      }
     }
   }
 }
@@ -390,20 +399,12 @@ object BatchNodeRunner {
     val tableUtils = TableUtils(SparkSessionBuilder.build(s"batch-node-runner-${node.metaData.name}"))
     val runner = new BatchNodeRunner(node, tableUtils)
     val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
-    val exitCode = {
+    val exitCode =
       runner.runFromArgs(api,
                          batchArgs.startDs(),
                          batchArgs.endDs(),
                          batchArgs.tablePartitionsDataset(),
-                         batchArgs.tableStatsDataset.toOption) match {
-        case Success(_) =>
-          println("Batch node runner succeeded")
-          0
-        case Failure(exception) =>
-          println(s"Batch node runner failed: ${exception.traceString}")
-          1
-      }
-    }
+                         batchArgs.tableStatsDataset.toOption)
     tableUtils.sparkSession.stop()
     System.exit(exitCode)
   }
