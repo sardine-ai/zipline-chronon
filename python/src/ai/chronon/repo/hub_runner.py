@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
@@ -193,12 +194,56 @@ def get_common_env_map(file_path):
     common_env_map = metadata_map["executionInfo"]["env"]["common"]
     return common_env_map
 
+# zipline hub eval --conf=compiled/joins/join
+# localSparkSession evaluation of conf
+@hub.command()
+@common_options
+@click.option(
+    "--eval-url",
+    help="Eval Server",
+    type=str,
+    default=None
+)
+@handle_conf_not_found(log_error=True, callback=print_possible_confs)
+def eval(repo, conf, hub_url, use_auth, eval_url):
+    """
+    - Submit a eval job to Zipline.
+    Response should contain a list of validation checks that are executed in a sparkLocalSession with Metadata access.
+    - Call upload API to upload the conf contents for the list of confs that were different.
+    - Call the actual eval API.
+    """
+    hub_conf = get_hub_conf(conf, root_dir=repo)
+    zipline_hub = ZiplineHub(base_url=hub_url or hub_conf.hub_url, sa_name=hub_conf.sa_name, use_auth=use_auth, eval_url=eval_url or hub_conf.eval_url)
+    conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
+    branch = get_current_branch()
+
+    hub_uploader.compute_and_upload_diffs(
+        branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict
+    )
+
+    # get conf name
+    conf_name = utils.get_metadata_name_from_conf(repo, conf)
+
+    response_json = zipline_hub.call_eval_api(
+        conf_name=conf_name,
+        conf_hash_map={conf.name: conf.hash for conf in conf_name_to_hash_dict.values()},
+    )
+    if response_json.get("success"):
+        print(" 🟢 Eval job finished successfully")
+        print(response_json.get("message"))
+    else:
+        print(" 🔴 Eval job failed")
+        print(response_json.get("message"))
+        sys.exit(1)
+
+
 
 @dataclass
 class HubConfig:
     hub_url: str
     frontend_url: str
     sa_name: Optional[str] = None
+    eval_url: Optional[str] = None
 
 
 @dataclass
@@ -208,12 +253,19 @@ class ScheduleModes:
 
 
 def get_hub_conf(conf_path, root_dir="."):
+    """ 
+    Get the hub configuration from the config file or environment variables.
+    This method is used when the args are not provided.
+    Priority is arg -> environment variable -> common env.
+    """
     file_path = os.path.join(root_dir, conf_path)
     common_env_map = get_common_env_map(file_path)
-    hub_url = common_env_map.get("HUB_URL", os.environ.get("HUB_URL"))
-    frontend_url = common_env_map.get("FRONTEND_URL", os.environ.get("FRONTEND_URL"))
-    sa_name = common_env_map.get("SA_NAME", os.environ.get("SA_NAME"))
-    return HubConfig(hub_url=hub_url, frontend_url=frontend_url, sa_name=sa_name)
+    common_env_map.update(os.environ) # Override config with cli args
+    hub_url = common_env_map.get("HUB_URL")
+    frontend_url = common_env_map.get("FRONTEND_URL")
+    sa_name = common_env_map.get("SA_NAME")
+    eval_url = common_env_map.get("EVAL_URL")
+    return HubConfig(hub_url=hub_url, frontend_url=frontend_url, sa_name=sa_name, eval_url=eval_url)
 
 
 def get_schedule_modes(conf_path):
