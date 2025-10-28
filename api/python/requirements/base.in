@@ -10,3 +10,4 @@ rich
 google-cloud-storage==2.19.0
 google-cloud-bigquery-storage
 GitPython
+google-api-core==2.27.0
