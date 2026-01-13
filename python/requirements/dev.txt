@@ -5,33 +5,111 @@
 #
 #    requirements upgrade
 #
--r base.txt
 autoflake==2.3.1
-    # via -r requirements/dev.in
+    # via -r dev.in
 black==25.1.0
-    # via -r requirements/dev.in
+    # via -r dev.in
+boto3==1.40.26
+    # via -r base.in
+botocore==1.40.26
+    # via
+    #   boto3
+    #   s3transfer
+cachetools==5.5.2
+    # via
+    #   google-auth
+    #   tox
+certifi==2025.8.3
+    # via requests
 cfgv==3.4.0
     # via pre-commit
 chardet==5.2.0
     # via tox
+charset-normalizer==3.4.3
+    # via requests
+click==8.2.1
+    # via
+    #   -r base.in
+    #   black
 colorama==0.4.6
     # via tox
 coverage[toml]==7.10.6
     # via pytest-cov
+crcmod==1.7
+    # via -r base.in
 distlib==0.4.0
     # via virtualenv
-filelock==3.19.1
+filelock==3.20.3
     # via
     #   tox
     #   virtualenv
+gitdb==4.0.12
+    # via gitpython
+gitpython==3.1.45
+    # via -r base.in
+google-api-core[grpc]==2.27.0
+    # via
+    #   -r base.in
+    #   google-cloud-bigquery-storage
+    #   google-cloud-core
+    #   google-cloud-iam
+    #   google-cloud-storage
+google-auth==2.40.3
+    # via
+    #   google-api-core
+    #   google-cloud-bigquery-storage
+    #   google-cloud-core
+    #   google-cloud-iam
+    #   google-cloud-storage
+google-cloud-bigquery-storage==2.33.0
+    # via -r base.in
+google-cloud-core==2.4.3
+    # via google-cloud-storage
+google-cloud-iam==2.19.1
+    # via -r base.in
+google-cloud-storage==2.19.0
+    # via -r base.in
+google-crc32c==1.7.1
+    # via
+    #   google-cloud-storage
+    #   google-resumable-media
+google-resumable-media==2.7.2
+    # via google-cloud-storage
+googleapis-common-protos[grpc]==1.70.0
+    # via
+    #   google-api-core
+    #   grpc-google-iam-v1
+    #   grpcio-status
+grpc-google-iam-v1==0.14.2
+    # via google-cloud-iam
+grpcio==1.76.0
+    # via
+    #   google-api-core
+    #   googleapis-common-protos
+    #   grpc-google-iam-v1
+    #   grpcio-status
+grpcio-status==1.76.0
+    # via google-api-core
 identify==2.6.14
     # via pre-commit
+idna==3.10
+    # via requests
 importlib-metadata==8.4.0
-    # via -r requirements/dev.in
+    # via -r dev.in
+importlib-resources==6.5.2
+    # via -r base.in
 iniconfig==2.1.0
     # via pytest
 isort==6.0.1
-    # via -r requirements/dev.in
+    # via -r dev.in
+jmespath==1.0.1
+    # via
+    #   boto3
+    #   botocore
+markdown-it-py==4.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
 mypy-extensions==1.1.0
     # via black
 nodeenv==1.9.1
@@ -55,24 +133,78 @@ pluggy==1.6.0
     #   pytest-cov
     #   tox
 pre-commit==4.3.0
-    # via -r requirements/dev.in
+    # via -r dev.in
+proto-plus==1.26.1
+    # via
+    #   google-api-core
+    #   google-cloud-bigquery-storage
+    #   google-cloud-iam
+protobuf==6.32.0
+    # via
+    #   google-api-core
+    #   google-cloud-bigquery-storage
+    #   google-cloud-iam
+    #   googleapis-common-protos
+    #   grpc-google-iam-v1
+    #   grpcio-status
+    #   proto-plus
+py4j==0.10.9.7
+    # via pyspark
+pyasn1==0.6.1
+    # via
+    #   pyasn1-modules
+    #   rsa
+pyasn1-modules==0.4.2
+    # via google-auth
 pyflakes==3.4.0
     # via autoflake
+pygments==2.19.2
+    # via
+    #   pytest
+    #   rich
 pyproject-api==1.9.1
     # via tox
+pyspark==3.5.4
+    # via -r base.in
 pytest==8.4.2
     # via pytest-cov
 pytest-cov==6.3.0
-    # via -r requirements/dev.in
+    # via -r dev.in
+python-dateutil==2.9.0.post0
+    # via botocore
 pyyaml==6.0.2
     # via pre-commit
+requests==2.32.5
+    # via
+    #   google-api-core
+    #   google-cloud-storage
+rich==14.1.0
+    # via -r base.in
+rsa==4.9.1
+    # via google-auth
+s3transfer==0.13.1
+    # via boto3
+six==1.17.0
+    # via
+    #   python-dateutil
+    #   thrift
+smmap==5.0.2
+    # via gitdb
+thrift==0.21.0
+    # via -r base.in
 tox==4.20.0
-    # via -r requirements/dev.in
+    # via -r dev.in
+typing-extensions==4.15.0
+    # via grpcio
+urllib3==2.5.0
+    # via
+    #   botocore
+    #   requests
 virtualenv==20.34.0
     # via
     #   pre-commit
     #   tox
 zipp==3.19.1
     # via
-    #   -r requirements/dev.in
+    #   -r dev.in
     #   importlib-metadata
