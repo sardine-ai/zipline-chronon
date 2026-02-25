@@ -94,7 +94,7 @@ class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
   }
 
   override def genKvStore: KVStore = {
-    new DynamoDBKVStoreImpl(ddbClient)
+    new DynamoDBKVStoreImpl(ddbClient, conf)
   }
 
   /** The stream decoder method in the AwsApi is currently unimplemented. This needs to be implemented before
@@ -111,11 +111,9 @@ class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
     */
   override def logResponse(resp: LoggableResponse): Unit = ()
 
-  override def genMetricsKvStore(tableBaseName: String): KVStore = {
-    new DynamoDBKVStoreImpl(ddbClient)
-  }
+  override def genMetricsKvStore(tableBaseName: String): KVStore = null
 
-  override def genEnhancedStatsKvStore(tableBaseName: String): KVStore = ???
+  override def genEnhancedStatsKvStore(tableBaseName: String): KVStore = null
 }
 
 object AwsApiImpl {

@@ -19,6 +19,7 @@ trait SparkModule extends Cross.Module[String] with build.BaseModule {
     Seq(
       mvn"io.netty:netty-all:4.1.129.Final",
       mvn"org.rogach::scallop:5.1.0",
+      mvn"com.amazon.ion:ion-java:1.9.6",
       mvn"org.apache.avro:avro:${build.Constants.avroVersion}"
         .exclude("com.fasterxml.jackson.core" -> "jackson-core")
         .exclude("com.fasterxml.jackson.core" -> "jackson-databind")

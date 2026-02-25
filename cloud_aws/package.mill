@@ -14,7 +14,7 @@ trait CloudAwsModule extends Cross.Module[String] with build.BaseModule {
 
   def moduleDeps = Seq(build.spark(crossValue), build.aggregator(crossValue), build.api(crossValue), build.online(crossValue))
 
-  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps ++ Seq(
+  def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps  ++ Seq(
     mvn"software.amazon.awssdk:dynamodb:2.30.13",
     mvn"software.amazon.awssdk:ec2:2.30.13",
     mvn"software.amazon.awssdk:emr:2.30.13",
@@ -26,6 +26,7 @@ trait CloudAwsModule extends Cross.Module[String] with build.BaseModule {
     mvn"software.amazon.awssdk:url-connection-client:2.30.13",
     mvn"software.amazon.awssdk:netty-nio-client:2.30.13",
     mvn"software.amazon.awssdk:identity-spi:2.30.13",
+    mvn"org.apache.hadoop:hadoop-client-api:3.4.1",
     mvn"org.apache.iceberg::iceberg-spark-runtime-3.5:1.10.0",
   )
   
