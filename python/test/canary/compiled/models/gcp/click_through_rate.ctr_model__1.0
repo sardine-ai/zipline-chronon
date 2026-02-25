@@ -80,7 +80,8 @@
           "GCP_REGION": "us-central1",
           "HUB_URL": "http://localhost:3903",
           "SPARK_CLUSTER_NAME": "zipline-canary-cluster",
-          "VERSION": "latest"
+          "VERSION": "latest",
+          "WAREHOUSE_PREFIX": "gs://zipline-warehouse-canary"
         },
         "modeEnvironments": {
           "upload": {
@@ -96,7 +97,8 @@
             "GCP_REGION": "us-central1",
             "HUB_URL": "http://localhost:3903",
             "SPARK_CLUSTER_NAME": "zipline-transient-upload-cluster",
-            "VERSION": "latest"
+            "VERSION": "latest",
+            "WAREHOUSE_PREFIX": "gs://zipline-warehouse-canary"
           }
         }
       }

@@ -122,7 +122,8 @@
                 "FRONTEND_URL": "http://localhost:3000",
                 "HUB_URL": "http://localhost:3903",
                 "SPARK_CLUSTER_NAME": "zipline-canary-emr",
-                "VERSION": "latest"
+                "VERSION": "latest",
+                "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev"
               },
               "modeEnvironments": {
                 "upload": {
@@ -135,7 +136,8 @@
                   "FRONTEND_URL": "http://localhost:3000",
                   "HUB_URL": "http://localhost:3903",
                   "SPARK_CLUSTER_NAME": "zipline-canary-emr",
-                  "VERSION": "latest"
+                  "VERSION": "latest",
+                  "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev"
                 }
               }
             },
@@ -320,7 +322,8 @@
                 "FRONTEND_URL": "http://localhost:3000",
                 "HUB_URL": "http://localhost:3903",
                 "SPARK_CLUSTER_NAME": "zipline-canary-emr",
-                "VERSION": "latest"
+                "VERSION": "latest",
+                "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev"
               },
               "modeEnvironments": {
                 "upload": {
@@ -333,7 +336,8 @@
                   "FRONTEND_URL": "http://localhost:3000",
                   "HUB_URL": "http://localhost:3903",
                   "SPARK_CLUSTER_NAME": "zipline-canary-emr",
-                  "VERSION": "latest"
+                  "VERSION": "latest",
+                  "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev"
                 }
               }
             },
@@ -462,7 +466,8 @@
           "FRONTEND_URL": "http://localhost:3000",
           "HUB_URL": "http://localhost:3903",
           "SPARK_CLUSTER_NAME": "zipline-canary-emr",
-          "VERSION": "latest"
+          "VERSION": "latest",
+          "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev"
         },
         "modeEnvironments": {
           "upload": {
@@ -475,7 +480,8 @@
             "FRONTEND_URL": "http://localhost:3000",
             "HUB_URL": "http://localhost:3903",
             "SPARK_CLUSTER_NAME": "zipline-canary-emr",
-            "VERSION": "latest"
+            "VERSION": "latest",
+            "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev"
           }
         }
       },

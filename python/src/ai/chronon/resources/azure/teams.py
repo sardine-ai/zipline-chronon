@@ -37,6 +37,7 @@ default = Team(
             # TODO: Please fill in the following values
             "CUSTOMER_ID": "<customer_id>",
             "ARTIFACT_PREFIX": "<customer-artifact-bucket>",  # ex: "abfss://dev-zipline-artifacts@ziplineai2.dfs.core.windows.net"
+            "WAREHOUSE_PREFIX": "<customer-warehouse-prefix>",  # ex: "abfss://warehouse@account.dfs.core.windows.net"
             "VERSION": "<version>",  # ex: "Chronon engine version"
             "SNOWFLAKE_JDBC_URL": "<jdbc-url>",  # ex: "jdbc:snowflake://<account_identifier>.snowflakecomputing.com"
             "SNOWFLAKE_VAULT_URI": "<vault-uri>",  # ex: "https://<your-vault-name>.vault.azure.net/"
