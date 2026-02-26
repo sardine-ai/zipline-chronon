@@ -150,6 +150,8 @@ jobs:
             fail_on: medium
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -179,18 +181,77 @@ jobs:
     if: ${{ failure() && inputs.slack_webhook_secret != '' }}
 
     steps:
-      - name: On Fail Notify Slack
-        uses: slackapi/slack-github-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Collect failed scan details
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find which scan steps failed in the current job
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" \
+            --jq '[.jobs[] | select(.name | startswith("security_scan")) | select(.conclusion == "failure") | .name]' \
+            > /tmp/failed-scans.json 2>/dev/null || echo "[]" > /tmp/failed-scans.json
+
+      - name: Build notification payload
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          python3 << 'PYEOF' > /tmp/slack_payload.json
+          import json, os
+
+          run_url = os.environ['RUN_URL']
+          sha = os.environ['COMMIT_SHA']
+          branch = os.environ['BRANCH']
+
+          # Load failed scan step names
+          try:
+              with open('/tmp/failed-scans.json') as f:
+                  failed_scans = json.load(f)
+          except Exception:
+              failed_scans = []
+
+          if failed_scans:
+              scans_text = '\n'.join(f'• {s}' for s in failed_scans)
+          else:
+              scans_text = '• (could not determine failed scans)'
+
+          blocks = [
+              {
+                  'type': 'section',
+                  'text': {
+                      'type': 'mrkdwn',
+                      'text': f':warning: *Chronon Grype Security Scan Failed*\n\nCommit: <{run_url}|{sha[:8]}>\nBranch: `{branch}`'
+                  }
+              },
+              {
+                  'type': 'section',
+                  'text': {
+                      'type': 'mrkdwn',
+                      'text': f'*Failed Scans:*\n{scans_text}'
+                  }
+              },
+              {
+                  'type': 'context',
+                  'elements': [{
+                      'type': 'mrkdwn',
+                      'text': f'<{run_url}|View full logs>'
+                  }]
+              },
+          ]
+
+          payload = {
+              'text': 'Chronon Grype Security Scan Failed',
+              'blocks': blocks
+          }
+
+          print(json.dumps(payload))
+          PYEOF
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v2
         with:
-          payload: |
-            {
-              "text": "Grype Security Scan Failed\n\n The security scan failed for commit <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.sha }}> on branch ${{ github.ref }}. Security vulnerabilities were detected. Please check the logs for more details.",
-              "attachments": [
-                {
-                  "text": "",
-                  "color": "#ff0000"
-                }
-              ]
-            }
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload-file-path: /tmp/slack_payload.json
