@@ -96,6 +96,7 @@ trait CloudAzureModule extends Cross.Module[String] with build.BaseModule {
   override def assemblyRules = super.assemblyRules ++ Seq(
     Assembly.Rule.Exclude("META-INF/versions/17/reactor/netty/resources/DefaultLoopNIO.class"),
     Assembly.Rule.Relocate("io.netty.**", "shaded.io.netty.@1"),
+    Assembly.Rule.Relocate("reactor.netty.**", "shaded.reactor.netty.@1"),
     // Shade OkHttp/Okio to avoid conflicts with Spark's bundled OkHttp 3.x
     // (azure-core-http-okhttp requires OkHttp 4.x for RequestBody.create(byte[]))
     Assembly.Rule.Relocate("okhttp3.**", "shaded.okhttp3.@1"),
