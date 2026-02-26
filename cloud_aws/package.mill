@@ -35,6 +35,9 @@ trait CloudAwsModule extends Cross.Module[String] with build.BaseModule {
     // iceberg-spark-runtime embeds stale avro pom.properties (1.12.0) that override
     // the correct version during assembly merge. Exclude and patch back below.
     Assembly.Rule.ExcludePattern("META-INF/maven/org\\.apache\\.avro/.*"),
+    // iceberg-spark-runtime shades aircompressor but leaves the original pom metadata,
+    // which grype flags as vulnerable. Strip it since the code is shaded.
+    Assembly.Rule.ExcludePattern("META-INF/maven/io\\.airlift/aircompressor/.*"),
   )
 
   // Patch correct avro version back into the assembly jar after stripping stale metadata.
