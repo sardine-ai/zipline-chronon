@@ -8,6 +8,8 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from enum import Enum
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as ver
 
 from click import style
 
@@ -523,3 +525,12 @@ def print_possible_confs(conf, repo, *args, **kwargs):
         )
     else:
         print(f"Directory does not exist: {style(conf_dirname, fg='yellow')}")
+
+
+def get_package_version():
+    try:
+        package_version = ver("zipline-ai")
+    except PackageNotFoundError:
+        package_version = "unknown"
+    return package_version
+

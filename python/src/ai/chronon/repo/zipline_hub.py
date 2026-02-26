@@ -7,6 +7,7 @@ import requests
 
 from ai.chronon.cli.formatter import Format
 from ai.chronon.cli.theme import print_error, print_info, print_warning
+from ai.chronon.repo import utils
 
 
 class ZiplineHub:
@@ -28,6 +29,7 @@ class ZiplineHub:
         self.cloud_provider = (
             cloud_provider.lower() if cloud_provider is not None else cloud_provider
         )
+        self.version = utils.get_package_version()
         if self.base_url.startswith("https") and use_auth:
             if self.cloud_provider == "gcp":
                 self.use_auth = True
@@ -57,6 +59,7 @@ class ZiplineHub:
         else:
             self.use_auth = False
             print_info("Not using authentication for ZiplineHub.", format=format)
+
 
     def _setup_gcp_auth(self, sa_name):
         """Setup Google Cloud authentication."""
@@ -111,13 +114,28 @@ class ZiplineHub:
             self.id_token = None
             return
 
-    def auth_headers(self, url):
-        headers = {"Content-Type": "application/json"}
+    def additional_headers(self, url):
+        headers = {
+            "Content-Type": "application/json",
+            "X-Zipline-Version": self.version,
+        }
         if self.use_auth and hasattr(self, "sa") and self.sa is not None:
             headers["Authorization"] = f"Bearer {self._sign_jwt(self.sa, url)}"
         elif self.use_auth:
             headers["Authorization"] = f"Bearer {self.id_token}"
         return headers
+
+    def _get_error_details(self, e: requests.RequestException) -> str:
+        """Extract error details from request exception including response JSON if available."""
+        error_parts = [str(e)]
+        if e.response is not None:
+            try:
+                response_json = e.response.json()
+                error_parts.append(f"Response: {response_json}")
+            except (ValueError, AttributeError):
+                # Response is not JSON or cannot be parsed
+                pass
+        return " | ".join(error_parts)
 
     def handle_unauth(self, e: requests.RequestException, api_name: str):
         if e.response is not None and e.response.status_code == 401 and self.sa is None:
@@ -211,13 +229,13 @@ class ZiplineHub:
         diff_request = {"namesToHashes": names_to_hashes}
         try:
             response = requests.post(
-                url, json=diff_request, headers=self.auth_headers(self.base_url)
+                url, json=diff_request, headers=self.additional_headers(self.base_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "diff")
-            print_error(f"Error calling diff API: {e}", format=self.format)
+            print_error(f"Error calling diff API: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_upload_api(self, diff_confs, branch: str):
@@ -230,13 +248,13 @@ class ZiplineHub:
 
         try:
             response = requests.post(
-                url, json=upload_request, headers=self.auth_headers(self.base_url)
+                url, json=upload_request, headers=self.additional_headers(self.base_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "upload")
-            print_error(f"Error calling upload API: {e}", format=self.format)
+            print_error(f"Error calling upload API: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_schedule_api(self, modes, branch, conf_name, conf_hash):
@@ -251,25 +269,25 @@ class ZiplineHub:
 
         try:
             response = requests.post(
-                url, json=schedule_request, headers=self.auth_headers(self.base_url)
+                url, json=schedule_request, headers=self.additional_headers(self.base_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "schedule deploy")
-            print_error(f"Error deploying schedule: {e}", format=self.format)
+            print_error(f"Error deploying schedule: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_cancel_api(self, workflow_id):
         url = f"{self.base_url}/workflow/v2/{workflow_id}/cancel"
 
         try:
-            response = requests.post(url, headers=self.auth_headers(self.base_url))
+            response = requests.post(url, headers=self.additional_headers(self.base_url))
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "workflow cancel")
-            print_error(f"Error calling workflow cancel API: {e}", format=self.format)
+            print_error(f"Error calling workflow cancel API: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_sync_api(self, branch: str, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
@@ -282,13 +300,13 @@ class ZiplineHub:
 
         try:
             response = requests.post(
-                url, json=sync_request, headers=self.auth_headers(self.base_url)
+                url, json=sync_request, headers=self.additional_headers(self.base_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "sync")
-            print_error(f"Error calling sync API: {e}", format=self.format)
+            print_error(f"Error calling sync API: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_eval_api(
@@ -309,13 +327,13 @@ class ZiplineHub:
             _request["parameters"] = parameters
         try:
             response = requests.post(
-                self.eval_url + "/eval", json=_request, headers=self.auth_headers(self.eval_url)
+                self.eval_url + "/eval", json=_request, headers=self.additional_headers(self.eval_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "eval")
-            print_error(f"Error calling eval API: {e}", format=self.format)
+            print_error(f"Error calling eval API: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_schema_api(
@@ -335,13 +353,13 @@ class ZiplineHub:
         }
         try:
             response = requests.post(
-                self.eval_url + "/schema", json=_request, headers=self.auth_headers(self.eval_url)
+                self.eval_url + "/schema", json=_request, headers=self.additional_headers(self.eval_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "schema")
-            print_error(f"Error calling schema API: {e}", format=self.format)
+            print_error(f"Error calling schema API: {self._get_error_details(e)}", format=self.format)
             raise e
 
     def call_workflow_start_api(
@@ -374,11 +392,11 @@ class ZiplineHub:
         }
         try:
             response = requests.post(
-                url, json=workflow_request, headers=self.auth_headers(self.base_url)
+                url, json=workflow_request, headers=self.additional_headers(self.base_url)
             )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             self.handle_unauth(e, "workflow start")
-            print_error(f"Error calling workflow start API: {e}", format=self.format)
+            print_error(f"Error calling workflow start API: {self._get_error_details(e)}", format=self.format)
             raise e
