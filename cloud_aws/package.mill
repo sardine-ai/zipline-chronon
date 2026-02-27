@@ -29,6 +29,10 @@ trait CloudAwsModule extends Cross.Module[String] with build.BaseModule {
     mvn"software.amazon.awssdk:identity-spi:2.30.13",
     mvn"org.apache.hadoop:hadoop-client-api:3.4.1",
     mvn"org.apache.iceberg::iceberg-spark-runtime-3.5:1.10.0",
+    mvn"io.fabric8:kubernetes-client:7.5.2"
+      .exclude("com.fasterxml.jackson.core" -> "jackson-core")
+      .exclude("com.fasterxml.jackson.core" -> "jackson-databind")
+      .exclude("com.fasterxml.jackson.core" -> "jackson-annotations"),
   )
   
   override def assemblyRules = super.assemblyRules ++ Seq(
