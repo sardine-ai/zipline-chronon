@@ -36,7 +36,7 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     val expectedJobProperties = Map("spark.executor.memory" -> "4g", "spark.executor.cores" -> "2")
 
-    val submitter = new EmrSubmitter(expectedCustomerId, mockEmrClient, mockEc2Client, mockEksSubmitter)
+    val submitter = new EmrSubmitter(expectedCustomerId, mockEmrClient, mockEc2Client, Some(mockEksSubmitter))
     val submittedStepId = submitter.submit(
       jobType = SparkJob,
       submissionProperties = Map(
@@ -198,7 +198,7 @@ class EmrSubmitterTest extends AnyFlatSpec with MockitoSugar {
       "canary",
       EmrClient.builder().build(),
       Ec2Client.builder().build(),
-      new EksFlinkSubmitter()
+      Some(new EksFlinkSubmitter())
     )
     val jobId = emrSubmitter.submit(
       jobType = SparkJob,

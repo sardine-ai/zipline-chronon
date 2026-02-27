@@ -19,7 +19,10 @@ import software.amazon.awssdk.services.emr.model._
 
 import scala.jdk.CollectionConverters._
 
-class EmrSubmitter(customerId: String, emrClient: EmrClient, ec2Client: Ec2Client, eksFlinkSubmitter: EksFlinkSubmitter)
+class EmrSubmitter(customerId: String,
+                   emrClient: EmrClient,
+                   ec2Client: Ec2Client,
+                   eksFlinkSubmitter: Option[EksFlinkSubmitter] = None)
     extends JobSubmitter {
 
   private val ClusterApplications = List(
@@ -460,19 +463,23 @@ class EmrSubmitter(customerId: String, emrClient: EmrClient, ec2Client: Ec2Clien
         val namespace =
           submissionProperties.getOrElse(EksNamespace, throw new RuntimeException(s"Missing expected $EksNamespace"))
 
-        eksFlinkSubmitter.submit(
-          jobId = jobId,
-          mainClass = mainClass,
-          mainJarUri = mainJarUri,
-          jarUris = jarUris,
-          flinkCheckpointUri = flinkCheckpointPath,
-          maybeSavepointUri = maybeSavepointUri,
-          maybeFlinkJarsUri = submissionProperties.get(FlinkJarsUri),
-          jobProperties = jobProperties,
-          args = userArgs,
-          serviceAccount = serviceAccount,
-          namespace = namespace
-        )
+        eksFlinkSubmitter
+          .getOrElse(
+            throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs")
+          )
+          .submit(
+            jobId = jobId,
+            mainClass = mainClass,
+            mainJarUri = mainJarUri,
+            jarUris = jarUris,
+            flinkCheckpointUri = flinkCheckpointPath,
+            maybeSavepointUri = maybeSavepointUri,
+            maybeFlinkJarsUri = submissionProperties.get(FlinkJarsUri),
+            jobProperties = jobProperties,
+            args = userArgs,
+            serviceAccount = serviceAccount,
+            namespace = namespace
+          )
 
       case TypeSparkJob =>
         val existingJobId = submissionProperties.getOrElse(ClusterId, throw new RuntimeException("JobFlowId not found"))
@@ -548,7 +555,7 @@ object EmrSubmitter {
       customerId,
       EmrClient.builder().build(),
       Ec2Client.builder().build(),
-      new EksFlinkSubmitter(k8sConfig)
+      Some(new EksFlinkSubmitter(k8sConfig))
     )
   }
 
