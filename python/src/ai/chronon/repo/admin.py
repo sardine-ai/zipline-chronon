@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import traceback
 from functools import partial
 
 import click
@@ -264,6 +265,7 @@ def _load_from_docker_hub(target, api_token, release, cloud, progress):
             results.append((image_type, target.ref(repo, release), digest, "ok"))
         except RegistryError as e:
             _finish_task(progress, task_id, label, ok=False)
+            console.print(f"[{STYLE_ERROR}]Error loading {label}:[/]\n{traceback.format_exc()}")
             results.append((image_type, target.ref(repo, release), "", f"FAILED: {e}"))
     return results
 
@@ -324,6 +326,7 @@ def _load_from_bundle(target, bundle_path, release, cloud, progress):
                 results.append((image_name, target.ref(repo, release), digest, "ok"))
             except RegistryError as e:
                 _finish_task(progress, task_id, label, ok=False)
+                console.print(f"[{STYLE_ERROR}]Error loading {label}:[/]\n{traceback.format_exc()}")
                 results.append((image_name, target.ref(repo, release), "", f"FAILED: {e}"))
     return results
 
@@ -353,6 +356,7 @@ def _upload_jars_to_store(jars_dir, release, artifact_store):
                 upload_to_blob_store(local_path, remote_path)
                 results.append(("jar", remote_path, "", "ok"))
             except Exception as e:
+                console.print(f"[{STYLE_ERROR}]Error uploading {jar_file}:[/]\n{traceback.format_exc()}")
                 results.append(("jar", remote_path, "", f"FAILED: {e}"))
     return results
 
@@ -429,6 +433,7 @@ def _upload_engine_jars_to_store(client, registry, release, cloud, artifact_stor
     try:
         manifest = client.resolve_single_platform(registry, engine_repo, release)
     except RegistryError as e:
+        console.print(f"[{STYLE_ERROR}]Error resolving {engine_repo}:{release}:[/]\n{traceback.format_exc()}")
         results.append(("engine-jars", artifact_store, "", f"FAILED: {e}"))
         return results
 
