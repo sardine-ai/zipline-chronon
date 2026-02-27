@@ -388,7 +388,7 @@ jobs:
         env:
           CLOUD: aws
           VERSION: ${{ needs.build_artifacts.outputs.version }}
-          PYTEST_ADDOPTS: "-k test_run_quickstart"
+          PYTEST_ADDOPTS: "-x -k test_run_quickstart"
         run: |
           set -xo pipefail
           ./mill python.test_integration 2>&1 | tee /tmp/test-output.log
@@ -667,7 +667,7 @@ jobs:
         env:
           CLOUD: gcp
           VERSION: ${{ needs.build_artifacts.outputs.version }}
-          PYTEST_ADDOPTS: "-k test_run_quickstart"
+          PYTEST_ADDOPTS: "-x -k test_run_quickstart"
         run: |
           set -xo pipefail
           ./mill python.test_integration 2>&1 | tee /tmp/test-output.log

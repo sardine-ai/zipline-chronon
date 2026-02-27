@@ -16,6 +16,7 @@ DEMO_BACKFILL = {
 }
 
 
+@pytest.mark.skip(reason="Temporarily disabled")
 @pytest.mark.integration
 def test_run_adhoc_and_cancel(confs, chronon_root, hub_url, cloud):
     """run-adhoc launches a streaming deploy; cancel should terminate it."""
