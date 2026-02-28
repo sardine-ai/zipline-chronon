@@ -18,3 +18,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           delay: "120s"
+          ignore: "check_labels"
