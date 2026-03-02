@@ -1,7 +1,8 @@
 package ai.chronon.integrations.cloud_azure
 
-import org.mockito.Mockito.mock
-import com.azure.storage.blob.BlobServiceClient
+import org.mockito.Mockito.{mock, when, verify, never}
+import org.mockito.ArgumentMatchers.any
+import com.azure.storage.blob.{BlobClient, BlobContainerClient, BlobServiceClient}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -49,5 +50,21 @@ class AzureBlobStorageClientTest extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy {
       client.parsePath("not a uri at all")
     }
+  }
+
+  it should "upload without checking or creating the container" in {
+    val mockBlobServiceClient = mock(classOf[BlobServiceClient])
+    val mockContainerClient = mock(classOf[BlobContainerClient])
+    val mockBlobClient = mock(classOf[BlobClient])
+
+    when(mockBlobServiceClient.getBlobContainerClient("mycontainer")).thenReturn(mockContainerClient)
+    when(mockContainerClient.getBlobClient("some/path.json")).thenReturn(mockBlobClient)
+
+    val uploadClient = new AzureBlobStorageClient(mockBlobServiceClient)
+    uploadClient.upload("abfss://mycontainer@myaccount.dfs.core.windows.net/some/path.json", "hello".getBytes)
+
+    verify(mockBlobClient).upload(any(), any[Long](), any[Boolean]())
+    verify(mockContainerClient, never()).exists()
+    verify(mockContainerClient, never()).create()
   }
 }

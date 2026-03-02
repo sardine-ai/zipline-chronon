@@ -46,9 +46,7 @@ class AzureBlobStorageClient(blobServiceClient: BlobServiceClient) extends Stora
 
   override def upload(objectPath: String, content: Array[Byte]): Unit = {
     val (container, blobName) = parsePath(objectPath)
-    val containerClient = blobServiceClient.getBlobContainerClient(container)
-    if (!containerClient.exists()) { containerClient.create() }
-    val blobClient = containerClient.getBlobClient(blobName)
+    val blobClient = blobServiceClient.getBlobContainerClient(container).getBlobClient(blobName)
     blobClient.upload(new ByteArrayInputStream(content), content.length, true)
   }
 
