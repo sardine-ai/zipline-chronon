@@ -120,10 +120,13 @@ aws = Team(
             "SPARK_CLUSTER_NAME": "zipline-canary-emr",
             "ARTIFACT_PREFIX": "s3://zipline-artifacts-dev",
             "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev",
-            "FLINK_STATE_URI": "s3://zipline-warehouse-dev/flink-state",
-            "CHRONON_ONLINE_ARGS": " -Ztasks=4",
+            "FLINK_STATE_URI": "s3://zipline-warehouse-canary/flink-state",
+            "CHRONON_ONLINE_ARGS": " -Ztasks=1",
             "FRONTEND_URL": "http://localhost:3000",
             "HUB_URL": "http://localhost:3903",
+            "ENABLE_KINESIS": "true",
+            "EKS_SERVICE_ACCOUNT": "zipline-flink-sa",
+            "EKS_NAMESPACE": "zipline-flink",
         },
         modeEnvironments={
             RunMode.UPLOAD: {
@@ -153,6 +156,7 @@ aws = Team(
             "spark.driver.cores": "1",
             "spark.executor.memory": "512m",
             "spark.executor.cores": "1",
+            "taskmanager.memory.process.size": "4G",
         },
         modeConfigs={
             RunMode.BACKFILL: {

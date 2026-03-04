@@ -1318,7 +1318,8 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
       .thenReturn(null)
       .thenReturn(mockRunningCluster)
 
-    val clusterConfigStr = """{
+    val clusterConfigStr =
+      """{
       "masterConfig": {
         "numInstances": 1,
         "machineTypeUri": "n1-standard-4"
@@ -1335,5 +1336,50 @@ class DataprocSubmitterTest extends AnyFlatSpec with MockitoSugar {
 
     assertEquals(result, "new-cluster")
     verify(mockDataprocClient).createClusterAsync(any[CreateClusterRequest])
+  }
+
+  // --- buildFlinkSubmissionProps ---
+  private val testArtifactPrefix = "gs://zipline-artifacts-test"
+  private val testVersion = "1.0.0"
+  private val baseFlinkEnv = Map(
+    "FLINK_STATE_URI" -> "gs://test-bucket/flink-state"
+  )
+  private val pubSubConnectorJarUri =
+    s"$testArtifactPrefix/release/$testVersion/jars/connectors_pubsub_deploy.jar"
+
+  private def createTestSubmitter(): DataprocSubmitter =
+    new DataprocSubmitter(mock[JobControllerClient], mock[GCSClient], region = "us-central1", projectId = "test-project")
+
+  "buildFlinkSubmissionProps" should "include flink jar URI and checkpoint URI" in {
+    val submitter = createTestSubmitter()
+    val props = submitter.buildFlinkSubmissionProps(baseFlinkEnv, testVersion, testArtifactPrefix)
+
+    assertEquals(props(FlinkMainJarURI), s"$testArtifactPrefix/release/$testVersion/jars/flink_assembly_deploy.jar")
+    assertEquals(props(FlinkCheckpointUri), "gs://test-bucket/flink-state/checkpoints")
+  }
+
+  it should "include pubsub connector jar when ENABLE_PUBSUB is true" in {
+    val submitter = createTestSubmitter()
+    val env = baseFlinkEnv + ("ENABLE_PUBSUB" -> "true")
+
+    val props = submitter.buildFlinkSubmissionProps(env, testVersion, testArtifactPrefix)
+
+    assertEquals(props(FlinkPubSubConnectorJarURI), pubSubConnectorJarUri)
+  }
+
+  it should "omit pubsub connector jar when ENABLE_PUBSUB is false or absent" in {
+    val submitter = createTestSubmitter()
+
+    val props = submitter.buildFlinkSubmissionProps(baseFlinkEnv, testVersion, testArtifactPrefix)
+
+    assert(!props.contains(FlinkPubSubConnectorJarURI))
+  }
+
+  it should "throw exception when FLINK_STATE_URI is not set" in {
+    val submitter = createTestSubmitter()
+
+    intercept[IllegalArgumentException] {
+      submitter.buildFlinkSubmissionProps(Map.empty, testVersion, testArtifactPrefix)
+    }
   }
 }

@@ -472,7 +472,7 @@ class EmrSubmitter(customerId: String,
         val namespace =
           submissionProperties.getOrElse(EksNamespace, throw new RuntimeException(s"Missing expected $EksNamespace"))
 
-        eksFlinkSubmitter
+        val deploymentName = eksFlinkSubmitter
           .getOrElse(
             throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs")
           )
@@ -489,6 +489,8 @@ class EmrSubmitter(customerId: String,
             serviceAccount = serviceAccount,
             namespace = namespace
           )
+        // Encode namespace into the job ID so status/kill can target the right namespace
+        s"flink:$namespace:$deploymentName"
 
       case TypeSparkJob =>
         val existingJobId = submissionProperties.getOrElse(ClusterId, throw new RuntimeException("JobFlowId not found"))
@@ -515,47 +517,86 @@ class EmrSubmitter(customerId: String,
   }
 
   override def status(jobId: String): JobStatusType = {
-    val (clusterId, stepId) = if (jobId.contains(":")) {
-      val parts = jobId.split(":")
-      (parts(0), parts(1))
+    if (jobId.startsWith("flink:")) {
+      val parts = jobId.split(":", 3)
+      eksFlinkSubmitter
+        .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
+        .status(deploymentName = parts(2), namespace = parts(1))
     } else {
-      throw new IllegalArgumentException(s"Job ID must be in format 'clusterId:stepId', got: $jobId")
-    }
-
-    try {
-      val state = emrClient
-        .describeStep(
-          DescribeStepRequest
-            .builder()
-            .clusterId(clusterId)
-            .stepId(stepId)
-            .build()
-        )
-        .step()
-        .status()
-        .state()
-
-      state match {
-        case StepState.PENDING        => JobStatusType.PENDING
-        case StepState.CANCEL_PENDING => JobStatusType.PENDING
-        case StepState.RUNNING        => JobStatusType.RUNNING
-        case StepState.COMPLETED      => JobStatusType.SUCCEEDED
-        case StepState.CANCELLED      => JobStatusType.FAILED
-        case StepState.FAILED         => JobStatusType.FAILED
-        case StepState.INTERRUPTED    => JobStatusType.FAILED
-        case _                        => JobStatusType.UNKNOWN
+      val (clusterId, stepId) = if (jobId.contains(":")) {
+        val parts = jobId.split(":")
+        (parts(0), parts(1))
+      } else {
+        throw new IllegalArgumentException(s"Job ID must be in format 'clusterId:stepId', got: $jobId")
       }
-    } catch {
-      case e: SdkException =>
-        logger.error(s"Failed to get status for job $jobId: ${e.getMessage}", e)
-        JobStatusType.UNKNOWN
+
+      try {
+        val state = emrClient
+          .describeStep(
+            DescribeStepRequest
+              .builder()
+              .clusterId(clusterId)
+              .stepId(stepId)
+              .build()
+          )
+          .step()
+          .status()
+          .state()
+
+        state match {
+          case StepState.PENDING        => JobStatusType.PENDING
+          case StepState.CANCEL_PENDING => JobStatusType.PENDING
+          case StepState.RUNNING        => JobStatusType.RUNNING
+          case StepState.COMPLETED      => JobStatusType.SUCCEEDED
+          case StepState.CANCELLED      => JobStatusType.FAILED
+          case StepState.FAILED         => JobStatusType.FAILED
+          case StepState.INTERRUPTED    => JobStatusType.FAILED
+          case _                        => JobStatusType.UNKNOWN
+        }
+      } catch {
+        case e: SdkException =>
+          logger.error(s"Failed to get status for job $jobId: ${e.getMessage}", e)
+          JobStatusType.UNKNOWN
+      }
     }
   }
 
   override def kill(jobId: String): scala.Unit = {
-    val parts = jobId.split(":")
-    require(parts.length == 2, s"Expected jobId in 'clusterId:stepId' format, got: $jobId")
-    emrClient.cancelSteps(CancelStepsRequest.builder().clusterId(parts(0)).stepIds(parts(1)).build())
+    if (jobId.startsWith("flink:")) {
+      val parts = jobId.split(":", 3)
+      eksFlinkSubmitter
+        .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
+        .delete(deploymentName = parts(2), namespace = parts(1))
+    } else {
+      val parts = jobId.split(":")
+      require(parts.length == 2, s"Expected jobId in 'clusterId:stepId' format, got: $jobId")
+      emrClient.cancelSteps(CancelStepsRequest.builder().clusterId(parts(0)).stepIds(parts(1)).build())
+    }
+  }
+
+  override def buildFlinkSubmissionProps(env: Map[String, String],
+                                         version: String,
+                                         artifactPrefix: String): Map[String, String] = {
+    val flinkJarUri = s"$artifactPrefix/release/$version/jars/$flinkJarName"
+    val flinkStateUri = env.getOrElse(
+      "FLINK_STATE_URI",
+      throw new IllegalArgumentException("FLINK_STATE_URI must be set for GROUP_BY_STREAMING"))
+    val eksServiceAccount = env.getOrElse(
+      "EKS_SERVICE_ACCOUNT",
+      throw new IllegalArgumentException("EKS_SERVICE_ACCOUNT must be set for GROUP_BY_STREAMING"))
+    val eksNamespace = env.getOrElse(
+      "EKS_NAMESPACE",
+      throw new IllegalArgumentException("EKS_NAMESPACE must be set for GROUP_BY_STREAMING"))
+    val base = Map(
+      FlinkMainJarURI -> flinkJarUri,
+      FlinkCheckpointUri -> s"$flinkStateUri/checkpoints",
+      EksServiceAccount -> eksServiceAccount,
+      EksNamespace -> eksNamespace
+    )
+    val enableKinesis = env.getOrElse("ENABLE_KINESIS", "false").toBoolean
+    if (enableKinesis)
+      base + (FlinkKinesisConnectorJarURI -> s"$artifactPrefix/release/$version/jars/connectors_kinesis_deploy.jar")
+    else base
   }
 
   override def jarName: String = "cloud_aws_lib_deploy.jar"
@@ -574,6 +615,11 @@ class EmrSubmitter(customerId: String,
   override def deprecatedClusterNameEnvVars: Seq[String] = Seq(EmrClusterNameEnvVar)
 
   override def clusterIdentifierKey: String = ClusterId
+
+  // We submit long-running jobs to EKS, others to EMR, so we only need to create clusters for batch jobs (finite duration)
+  override def isClusterCreateNeeded(isLongRunning: Boolean): Boolean = {
+    !isLongRunning
+  }
 
   override def ensureClusterReady(clusterName: String, clusterConf: Option[Map[String, String]])(implicit
       ec: ExecutionContext): Option[String] = {

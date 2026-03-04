@@ -674,16 +674,21 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
     GcpLocationEnvVar -> region
   )
 
-  override def buildFlinkPlatformArgs(env: Map[String, String],
-                                      version: String,
-                                      artifactPrefix: String): Seq[String] = {
+  override def buildFlinkSubmissionProps(env: Map[String, String],
+                                         version: String,
+                                         artifactPrefix: String): Map[String, String] = {
+    val flinkJarUri = s"$artifactPrefix/release/$version/jars/$flinkJarName"
+    val flinkStateUri = env.getOrElse(
+      "FLINK_STATE_URI",
+      throw new IllegalArgumentException("FLINK_STATE_URI must be set for GROUP_BY_STREAMING"))
+    val base = Map(
+      FlinkMainJarURI -> flinkJarUri,
+      FlinkCheckpointUri -> s"$flinkStateUri/checkpoints"
+    )
     val enablePubSub = env.getOrElse("ENABLE_PUBSUB", "false").toBoolean
-    if (enablePubSub) {
-      val pubSubConnectorJarUri = s"$artifactPrefix/release/$version/jars/connectors_pubsub_deploy.jar"
-      Seq(s"$FlinkPubSubJarUriArgKeyword=$pubSubConnectorJarUri")
-    } else {
-      Seq.empty
-    }
+    if (enablePubSub)
+      base + (FlinkPubSubConnectorJarURI -> s"$artifactPrefix/release/$version/jars/connectors_pubsub_deploy.jar")
+    else base
   }
 }
 
