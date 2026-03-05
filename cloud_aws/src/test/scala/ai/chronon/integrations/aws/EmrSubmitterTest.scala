@@ -148,8 +148,8 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   private val testVersion = "1.0.0"
   private val baseFlinkEnv = Map(
     "FLINK_STATE_URI" -> "s3://test-bucket/flink-state",
-    "EKS_SERVICE_ACCOUNT" -> "zipline-flink-sa",
-    "EKS_NAMESPACE" -> "zipline-flink"
+    "FLINK_EKS_SERVICE_ACCOUNT" -> "zipline-flink-sa",
+    "FLINK_EKS_NAMESPACE" -> "zipline-flink"
   )
   private val kinesisConnectorJarUri =
     s"$testArtifactPrefix/release/$testVersion/jars/connectors_kinesis_deploy.jar"
@@ -193,18 +193,18 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
     }
   }
 
-  it should "throw exception when EKS_SERVICE_ACCOUNT is not set" in {
+  it should "throw exception when FLINK_EKS_SERVICE_ACCOUNT is not set" in {
     val submitter = createTestSubmitter()
-    val env = baseFlinkEnv - "EKS_SERVICE_ACCOUNT"
+    val env = baseFlinkEnv - "FLINK_EKS_SERVICE_ACCOUNT"
 
     intercept[IllegalArgumentException] {
       submitter.buildFlinkSubmissionProps(env, testVersion, testArtifactPrefix)
     }
   }
 
-  it should "throw exception when EKS_NAMESPACE is not set" in {
+  it should "throw exception when FLINK_EKS_NAMESPACE is not set" in {
     val submitter = createTestSubmitter()
-    val env = baseFlinkEnv - "EKS_NAMESPACE"
+    val env = baseFlinkEnv - "FLINK_EKS_NAMESPACE"
 
     intercept[IllegalArgumentException] {
       submitter.buildFlinkSubmissionProps(env, testVersion, testArtifactPrefix)

@@ -125,8 +125,6 @@ aws = Team(
             "FRONTEND_URL": "http://localhost:3000",
             "HUB_URL": "http://localhost:3903",
             "ENABLE_KINESIS": "true",
-            "EKS_SERVICE_ACCOUNT": "zipline-flink-sa",
-            "EKS_NAMESPACE": "zipline-flink",
         },
         modeEnvironments={
             RunMode.UPLOAD: {

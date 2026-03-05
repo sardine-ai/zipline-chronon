@@ -31,7 +31,10 @@ class EmrSubmitter(customerId: String,
                    dynamodbTableName: String = "",
                    awsRegion: String = "",
                    override val tablePartitionsDataset: String = "",
-                   override val dqMetricsDataset: String = "")
+                   override val dqMetricsDataset: String = "",
+                   flinkEksServiceAccount: Option[String] = None,
+                   flinkEksNamespace: Option[String] = None,
+                   eksClusterName: Option[String] = None)
     extends JobSubmitter {
 
   private val ClusterApplications = List(
@@ -581,12 +584,12 @@ class EmrSubmitter(customerId: String,
     val flinkStateUri = env.getOrElse(
       "FLINK_STATE_URI",
       throw new IllegalArgumentException("FLINK_STATE_URI must be set for GROUP_BY_STREAMING"))
-    val eksServiceAccount = env.getOrElse(
-      "EKS_SERVICE_ACCOUNT",
-      throw new IllegalArgumentException("EKS_SERVICE_ACCOUNT must be set for GROUP_BY_STREAMING"))
-    val eksNamespace = env.getOrElse(
-      "EKS_NAMESPACE",
-      throw new IllegalArgumentException("EKS_NAMESPACE must be set for GROUP_BY_STREAMING"))
+    val eksServiceAccount = this.flinkEksServiceAccount
+      .orElse(env.get("FLINK_EKS_SERVICE_ACCOUNT"))
+      .getOrElse(throw new IllegalArgumentException("FLINK_EKS_SERVICE_ACCOUNT must be set for GROUP_BY_STREAMING"))
+    val eksNamespace = this.flinkEksNamespace
+      .orElse(env.get("FLINK_EKS_NAMESPACE"))
+      .getOrElse(throw new IllegalArgumentException("FLINK_EKS_NAMESPACE must be set for GROUP_BY_STREAMING"))
     val base = Map(
       FlinkMainJarURI -> flinkJarUri,
       FlinkCheckpointUri -> s"$flinkStateUri/checkpoints",
@@ -606,7 +609,17 @@ class EmrSubmitter(customerId: String,
     s"/mnt/zipline/${stagedFileUri.split("/").last}"
 
   override def getJobUrl(jobId: String): Option[String] = {
-    if (jobId.contains(":")) {
+    if (jobId.startsWith("flink:")) {
+      // flink:<namespace>:<deploymentName>
+      val parts = jobId.split(":")
+      if (parts.length == 3) {
+        val namespace = parts(1)
+        val deploymentName = parts(2)
+        eksClusterName.map { clusterName =>
+          s"https://$awsRegion.console.aws.amazon.com/eks/clusters/$clusterName/deployments/$deploymentName?namespace=$namespace&region=$awsRegion"
+        }
+      } else None
+    } else if (jobId.contains(":")) {
       val parts = jobId.split(":")
       Some(s"https://console.aws.amazon.com/emr/home?region=$awsRegion#/clusterDetails/${parts(0)}/step/${parts(1)}")
     } else None
@@ -671,7 +684,10 @@ object EmrSubmitter {
       EmrClient.builder().build(),
       Ec2Client.builder().build(),
       eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig)),
-      awsRegion = awsRegion
+      awsRegion = awsRegion,
+      flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
+      flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
+      eksClusterName = sys.env.get("EKS_CLUSTER_NAME")
     )
   }
 
