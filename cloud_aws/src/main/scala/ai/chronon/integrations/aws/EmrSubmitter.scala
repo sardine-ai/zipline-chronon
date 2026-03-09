@@ -35,7 +35,8 @@ class EmrSubmitter(customerId: String,
                    override val dqMetricsDataset: String = "",
                    flinkEksServiceAccount: Option[String] = None,
                    flinkEksNamespace: Option[String] = None,
-                   eksClusterName: Option[String] = None)
+                   eksClusterName: Option[String] = None,
+                   ingressBaseUrl: Option[String] = None)
     extends JobSubmitter {
 
   private val ClusterApplications = List(
@@ -652,6 +653,14 @@ class EmrSubmitter(customerId: String,
     } else None
   }
 
+  override def getFlinkUrl(jobId: String): Option[String] = {
+    if (!jobId.startsWith("flink:")) return None
+    val parts = jobId.split(":", 3)
+    if (parts.length != 3) return None
+    val deploymentName = parts(2)
+    ingressBaseUrl.map(base => s"${base.stripSuffix("/")}/flink/$deploymentName/")
+  }
+
   override def deprecatedClusterNameEnvVars: Seq[String] = Seq(EmrClusterNameEnvVar)
 
   override def clusterIdentifierKey: String = ClusterId
@@ -707,16 +716,18 @@ object EmrSubmitter {
   def apply(k8sConfig: Option[Config] = None): EmrSubmitter = {
     val customerId = sys.env.getOrElse("CUSTOMER_ID", throw new Exception("CUSTOMER_ID not set")).toLowerCase
     val awsRegion = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", ""))
+    val ingressBaseUrl = sys.env.get("HUB_BASE_URL")
 
     new EmrSubmitter(
       customerId,
       EmrClient.builder().build(),
       Ec2Client.builder().build(),
-      eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig)),
+      eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
       awsRegion = awsRegion,
       flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
       flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
-      eksClusterName = sys.env.get("EKS_CLUSTER_NAME")
+      eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
+      ingressBaseUrl = ingressBaseUrl
     )
   }
 
