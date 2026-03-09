@@ -541,7 +541,7 @@ class EmrSubmitter(customerId: String,
 
         logger.info(s"EMR step id: $responseStepId")
         logger.info(
-          s"Safe to exit. Follow the job status at: https://console.aws.amazon.com/emr/home#/clusterDetails/$existingJobId")
+          s"Safe to exit. Follow the job status at: https://$awsRegion.console.aws.amazon.com/emr/home?region=$awsRegion#/clusterDetails/$existingJobId")
         // Return composite ID so status/kill/getJobUrl can resolve both cluster and step
         s"$existingJobId:$responseStepId"
     }
@@ -649,7 +649,18 @@ class EmrSubmitter(customerId: String,
       } else None
     } else if (jobId.contains(":")) {
       val parts = jobId.split(":")
-      Some(s"https://console.aws.amazon.com/emr/home?region=$awsRegion#/clusterDetails/${parts(0)}/step/${parts(1)}")
+      Some(s"https://$awsRegion.console.aws.amazon.com/emr/home?region=$awsRegion#/clusterDetails/${parts(0)}")
+    } else None
+  }
+
+  // Base SHS URL only — EMR DescribeStep API doesn't provide yarnApplicationId for deep linking
+  override def getSparkUrl(jobId: String): Option[String] = {
+    if (jobId.startsWith("flink:")) {
+      None
+    } else if (jobId.contains(":")) {
+      val clusterId = jobId.split(":")(0)
+      val clusterIdLower = clusterId.stripPrefix("j-").toLowerCase
+      Some(s"https://p-$clusterIdLower-shs.emrappui-prod.$awsRegion.amazonaws.com/shs/")
     } else None
   }
 
