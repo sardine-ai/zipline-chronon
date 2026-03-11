@@ -36,7 +36,8 @@ class EmrSubmitter(customerId: String,
                    flinkEksServiceAccount: Option[String] = None,
                    flinkEksNamespace: Option[String] = None,
                    eksClusterName: Option[String] = None,
-                   ingressBaseUrl: Option[String] = None)
+                   ingressBaseUrl: Option[String] = None,
+                   flinkHealthCheckFn: Option[String] => Boolean = _ => true)
     extends JobSubmitter {
 
   private val ClusterApplications = List(
@@ -550,9 +551,14 @@ class EmrSubmitter(customerId: String,
   override def status(jobId: String): JobStatusType = {
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
-      eksFlinkSubmitter
+      val eksStatus = eksFlinkSubmitter
         .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
         .status(deploymentName = parts(2), namespace = parts(1))
+      eksStatus match {
+        case JobStatusType.RUNNING if flinkHealthCheckFn(getFlinkUrl(jobId)) => JobStatusType.RUNNING
+        case JobStatusType.RUNNING                                           => JobStatusType.PENDING
+        case other                                                           => other
+      }
     } else {
       val (clusterId, stepId) = if (jobId.contains(":")) {
         val parts = jobId.split(":")

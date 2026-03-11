@@ -1,11 +1,12 @@
 package ai.chronon.integrations.aws
 
+import ai.chronon.api.JobStatusType
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{FlinkJob, SparkJob}
 import io.fabric8.kubernetes.client.Config
 import org.junit.Assert.assertEquals
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{verify, when}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
@@ -213,23 +214,56 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   // --- status / kill routing ---
 
-  "status" should "delegate to EksFlinkSubmitter for flink: prefixed job IDs" in {
-    import org.mockito.Mockito.{verify, when}
-    import ai.chronon.api.JobStatusType
-
+  "status" should "return RUNNING for flink job when EKS is RUNNING and health check passes" in {
     val mockEks = mock[EksFlinkSubmitter]
     when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
 
-    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks))
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
+      flinkHealthCheckFn = _ => true)
     val result = submitter.status("flink:zipline-flink:my-deployment")
 
     result shouldBe JobStatusType.RUNNING
     verify(mockEks).status("my-deployment", "zipline-flink")
   }
 
-  "kill" should "delegate to EksFlinkSubmitter for flink: prefixed job IDs" in {
-    import org.mockito.Mockito.verify
+  it should "return PENDING for flink job when EKS is RUNNING but health check fails" in {
+    val mockEks = mock[EksFlinkSubmitter]
+    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
 
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
+      flinkHealthCheckFn = _ => false)
+    val result = submitter.status("flink:zipline-flink:my-deployment")
+
+    result shouldBe JobStatusType.PENDING
+  }
+
+  it should "pass the flink URL derived from ingressBaseUrl to the health check fn" in {
+    val mockEks = mock[EksFlinkSubmitter]
+    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
+
+    var capturedUrl: Option[String] = None
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
+      ingressBaseUrl = Some("https://hub.example.com"),
+      flinkHealthCheckFn = url => { capturedUrl = url; true })
+    submitter.status("flink:zipline-flink:my-deployment")
+
+    capturedUrl shouldBe Some("https://hub.example.com/flink/my-deployment/")
+  }
+
+  it should "propagate non-RUNNING EKS status without invoking health check" in {
+    val mockEks = mock[EksFlinkSubmitter]
+    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.PENDING)
+
+    var healthCheckCalled = false
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
+      flinkHealthCheckFn = _ => { healthCheckCalled = true; true })
+    val result = submitter.status("flink:zipline-flink:my-deployment")
+
+    result shouldBe JobStatusType.PENDING
+    healthCheckCalled shouldBe false
+  }
+
+  "kill" should "delegate to EksFlinkSubmitter for flink: prefixed job IDs" in {
     val mockEks = mock[EksFlinkSubmitter]
     val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks))
     submitter.kill("flink:zipline-flink:my-deployment")
@@ -238,8 +272,6 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   "submit" should "return flink:namespace:deploymentName for FlinkJob" in {
-    import org.mockito.Mockito.when
-
     val mockEks = mock[EksFlinkSubmitter]
     when(
       mockEks.submit(
