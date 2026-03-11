@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters._
 
 class GCSClient(storageClient: Storage) extends StorageClient {
 
-  override def listFiles(bucketName: String, prefix: String): Iterator[String] = {
+  private def listFiles(bucketName: String, prefix: String): Iterator[String] = {
     val blobs = storageClient.list(bucketName, BlobListOption.prefix(prefix))
     blobs
       .iterateAll()
@@ -22,7 +22,7 @@ class GCSClient(storageClient: Storage) extends StorageClient {
     listFiles(blobId.getBucket, blobId.getName)
   }
 
-  override def fileExists(bucketName: String, objectName: String): Boolean = {
+  private def fileExists(bucketName: String, objectName: String): Boolean = {
     val blob = Option(storageClient.get(bucketName, objectName))
     if (blob.isEmpty) {
       false
@@ -36,7 +36,7 @@ class GCSClient(storageClient: Storage) extends StorageClient {
     fileExists(blobId.getBucket, blobId.getName)
   }
 
-  override def downloadObjectToMemory(bucketName: String, objectName: String): Array[Byte] = {
+  private def downloadObjectToMemory(bucketName: String, objectName: String): Array[Byte] = {
     storageClient.readAllBytes(bucketName, objectName)
   }
 

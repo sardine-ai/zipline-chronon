@@ -41,6 +41,30 @@ class GCPCleanup:
         return deleted
 
 
+class DataprocFlinkCleanup:
+    """Cancel Dataproc Flink jobs by job ID."""
+
+    def __init__(self, project: str, region: str):
+        self.project = project
+        self.region = region
+
+    def cancel_jobs(self, job_ids: list[str]) -> list[str]:
+        from google.cloud import dataproc_v1
+
+        client = dataproc_v1.JobControllerClient(
+            client_options={"api_endpoint": f"{self.region}-dataproc.googleapis.com:443"}
+        )
+        cancelled = []
+        for job_id in job_ids:
+            try:
+                logger.info("Cancelling Dataproc Flink job %s", job_id)
+                client.cancel_job(project_id=self.project, region=self.region, job_id=job_id)
+                cancelled.append(job_id)
+            except Exception:
+                logger.exception("Failed to cancel Dataproc Flink job %s", job_id)
+        return cancelled
+
+
 class AzureCleanup:
     """Stub for Azure table cleanup (Snowflake/Iceberg targets)."""
 

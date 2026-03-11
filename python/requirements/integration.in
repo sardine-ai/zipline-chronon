@@ -1,3 +1,4 @@
 -r base.in
 google-cloud-bigquery
+google-cloud-dataproc
 requests

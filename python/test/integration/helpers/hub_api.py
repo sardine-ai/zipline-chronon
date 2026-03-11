@@ -1,6 +1,7 @@
 """Direct HTTP helpers for Hub API endpoints not exposed via CLI."""
 
 import os
+from urllib.parse import quote
 
 import requests
 
@@ -34,3 +35,33 @@ def delete_schedule(hub_url: str, conf_name: str) -> dict:
 def find_schedules_by_test_id(hub_url: str, test_id: str) -> list[dict]:
     """List schedules and filter to those whose confName contains *test_id*."""
     return [s for s in list_schedules(hub_url) if test_id in s.get("confName", "")]
+
+
+def get_flink_job_ids(hub_url: str, workflow_id: str) -> list[str]:
+    """Return Dataproc job IDs for continuous (Flink) steps tracked by *workflow_id*."""
+    headers = _get_auth_headers()
+
+    resp = requests.get(f"{hub_url}/workflow/v2/{workflow_id}", headers=headers)
+    resp.raise_for_status()
+    workflow = resp.json().get("workflow", resp.json())
+
+    conf_name = workflow["confName"]
+    mode = workflow["mode"]
+    start = workflow["startPartition"]
+    end = workflow["endPartition"]
+
+    resp = requests.get(
+        f"{hub_url}/confs/v2/{quote(conf_name, safe='')}/status/{quote(mode, safe='')}",
+        params={"start": start, "end": end, "workflowId": workflow_id},
+        headers=headers,
+    )
+    resp.raise_for_status()
+
+    job_ids = []
+    for node in resp.json().get("nodeExecutions", []):
+        for step in node.get("stepRuns", []):
+            if step.get("continuous"):
+                tracking = step.get("jobTrackingInfo") or {}
+                if tracking.get("jobId"):
+                    job_ids.append(tracking["jobId"])
+    return job_ids

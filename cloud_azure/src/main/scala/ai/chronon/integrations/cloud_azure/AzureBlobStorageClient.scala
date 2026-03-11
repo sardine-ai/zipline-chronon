@@ -8,40 +8,28 @@ import java.net.URI
 
 class AzureBlobStorageClient(blobServiceClient: BlobServiceClient) extends StorageClient {
 
-  override def downloadObjectToMemory(bucketName: String, objectName: String): Array[Byte] = {
-    val blobClient = blobServiceClient.getBlobContainerClient(bucketName).getBlobClient(objectName)
+  override def downloadObjectToMemory(objectPath: String): Array[Byte] = {
+    val (container, blobName) = parsePath(objectPath)
+    val blobClient = blobServiceClient.getBlobContainerClient(container).getBlobClient(blobName)
     val outputStream = new java.io.ByteArrayOutputStream()
     blobClient.downloadStream(outputStream)
     outputStream.toByteArray
   }
 
-  override def downloadObjectToMemory(objectPath: String): Array[Byte] = {
-    val (container, blobName) = parsePath(objectPath)
-    downloadObjectToMemory(container, blobName)
-  }
-
-  override def listFiles(bucketName: String, prefix: String): Iterator[String] = {
+  override def listFiles(bucketPath: String): Iterator[String] = {
     import scala.jdk.CollectionConverters._
+    val (container, prefix) = parsePath(bucketPath)
     blobServiceClient
-      .getBlobContainerClient(bucketName)
+      .getBlobContainerClient(container)
       .listBlobsByHierarchy(prefix)
       .iterator()
       .asScala
       .map(_.getName)
   }
 
-  override def listFiles(bucketPath: String): Iterator[String] = {
-    val (container, prefix) = parsePath(bucketPath)
-    listFiles(container, prefix)
-  }
-
-  override def fileExists(bucketName: String, objectName: String): Boolean = {
-    blobServiceClient.getBlobContainerClient(bucketName).getBlobClient(objectName).exists()
-  }
-
   override def fileExists(objectPath: String): Boolean = {
     val (container, blobName) = parsePath(objectPath)
-    fileExists(container, blobName)
+    blobServiceClient.getBlobContainerClient(container).getBlobClient(blobName).exists()
   }
 
   override def upload(objectPath: String, content: Array[Byte]): Unit = {

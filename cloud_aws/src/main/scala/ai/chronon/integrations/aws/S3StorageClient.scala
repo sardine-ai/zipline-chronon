@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 
 class S3StorageClient(s3Client: S3Client) extends StorageClient {
 
-  override def downloadObjectToMemory(bucketName: String, objectName: String): Array[Byte] = {
+  private def downloadObjectToMemory(bucketName: String, objectName: String): Array[Byte] = {
     val request = GetObjectRequest.builder().bucket(bucketName).key(objectName).build()
     s3Client.getObjectAsBytes(request).asByteArray()
   }
@@ -24,7 +24,7 @@ class S3StorageClient(s3Client: S3Client) extends StorageClient {
     downloadObjectToMemory(bucket, key)
   }
 
-  override def listFiles(bucketName: String, prefix: String): Iterator[String] = {
+  private def listFiles(bucketName: String, prefix: String): Iterator[String] = {
     val request = ListObjectsV2Request.builder().bucket(bucketName).prefix(prefix).build()
     s3Client
       .listObjectsV2Paginator(request)
@@ -39,7 +39,7 @@ class S3StorageClient(s3Client: S3Client) extends StorageClient {
     listFiles(bucket, prefix)
   }
 
-  override def fileExists(bucketName: String, objectName: String): Boolean = {
+  private def fileExists(bucketName: String, objectName: String): Boolean = {
     try {
       val request = HeadObjectRequest.builder().bucket(bucketName).key(objectName).build()
       s3Client.headObject(request)
