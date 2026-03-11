@@ -2,8 +2,9 @@ package ai.chronon.flink_connectors.kinesis
 
 import ai.chronon.api.StructType
 import ai.chronon.online.TopicInfo
-import ai.chronon.online.serde.{AvroCodec, AvroConversions, AvroSerDe, Mutation, SerDe}
+import ai.chronon.online.serde.{AvroCodec, AvroSerDe, JsonSchemaSerDe, LocalSchemaSerDe, Mutation, SerDe}
 import org.apache.avro.Schema
+import org.slf4j.LoggerFactory
 import software.amazon.awssdk.auth.credentials.{
   AwsBasicCredentials,
   DefaultCredentialsProvider,
@@ -18,15 +19,23 @@ import software.amazon.awssdk.services.glue.model.{
   SchemaVersionNumber
 }
 
-/** SerDe implementation that uses AWS Glue Schema Registry to fetch Avro schemas.
-  * Can be configured as: topic = "kinesis://stream-name/registry_name=my-registry/schema_name=my-schema/[region=us-west-2]/[version_number=1]"
-  * Region and version_number are optional. If region is missing, the AWS default region provider chain is used.
-  * If version_number is missing, the latest schema version is used.
+/** SerDe that fetches schemas from AWS Glue Schema Registry and auto-detects the format (Avro or JSON).
+  *
+  * Configure via topic string:
+  *   kinesis://stream-name/serde=glue_registry/registry_name=my-registry/schema_name=my-schema/[region=us-west-2]/[version_number=1]
+  *
+  * Parameters:
+  *   - registry_name: Name of the Glue Schema Registry (required)
+  *   - schema_name: Name of the schema in the registry (required)
+  *   - region: AWS region (optional, uses AWS default region provider chain if not set)
+  *   - version_number: Specific schema version (optional, defaults to latest)
+  *   - aws_access_key_id / aws_secret_access_key: Explicit credentials (optional, both required if either is set)
   */
 class GlueSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
   import GlueSchemaSerDe._
 
-  // Validate credentials configuration early
+  @transient private lazy val logger = LoggerFactory.getLogger(getClass)
+
   (topicInfo.params.get(AccessKeyIdKey), topicInfo.params.get(SecretAccessKeyKey)) match {
     case (Some(_), Some(_)) | (None, None) => // valid combinations
     case _ =>
@@ -38,13 +47,8 @@ class GlueSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
   protected[flink_connectors] def buildGlueClient(): GlueClient = {
     val clientBuilder = GlueClient.builder()
 
-    // Region is optional - if not provided, SDK uses default region provider chain
-    // (AWS_REGION env var, aws.region system property, ~/.aws/config, EC2 metadata)
     topicInfo.params.get(RegionKey).foreach(r => clientBuilder.region(Region.of(r)))
 
-    // credential provider selection:
-    // - BASIC: When explicit credentials provided via topic params
-    // - DEFAULT: When no credentials provided (uses AWS credential chain)
     (topicInfo.params.get(AccessKeyIdKey), topicInfo.params.get(SecretAccessKeyKey)) match {
       case (Some(accessKeyId), Some(secretAccessKey)) =>
         val credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey)
@@ -53,23 +57,38 @@ class GlueSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
         clientBuilder.credentialsProvider(DefaultCredentialsProvider.builder().build())
       case _ =>
         // This case should never be reached due to validation above
-        throw new IllegalArgumentException(
-          s"Both $AccessKeyIdKey and $SecretAccessKeyKey must be provided together, or neither for default credential chain"
-        )
+        clientBuilder.credentialsProvider(DefaultCredentialsProvider.builder().build())
     }
 
     clientBuilder.build()
   }
 
-  lazy val (avroSchemaStr, chrononSchema) = retrieveSchema(topicInfo)
+  protected[flink_connectors] def localSchemaDirOverride: Option[String] = {
+    val v = System.getenv(LocalSchemaSerDe.SchemaDirEnvVar)
+    if (v != null && v.trim.nonEmpty) Some(v) else None
+  }
 
-  private def retrieveSchema(topicInfo: TopicInfo): (String, StructType) = {
-    val glueClient = buildGlueClient()
+  private lazy val delegate: SerDe = retrieveSchema(topicInfo)
+
+  private def retrieveSchema(topicInfo: TopicInfo): SerDe = {
+    // In dev environments, LOCAL_SCHEMA_DIR can be set to bypass Glue and load schemas from the local filesystem.
+    // This allows using the same topic config (serde=glue_registry/...) in both dev and prod.
+    localSchemaDirOverride match {
+      case Some(dir) =>
+        logger.info(s"${LocalSchemaSerDe.SchemaDirEnvVar} is set — using LocalSchemaSerDe instead of Glue")
+        return new LocalSchemaSerDe(topicInfo, dir)
+      case None =>
+    }
+
+    val schemaName =
+      topicInfo.params.getOrElse(SchemaNameKey, throw new IllegalArgumentException(s"$SchemaNameKey not set"))
 
     val registryName =
       topicInfo.params.getOrElse(RegistryNameKey, throw new IllegalArgumentException(s"$RegistryNameKey not set"))
-    val schemaName =
-      topicInfo.params.getOrElse(SchemaNameKey, throw new IllegalArgumentException(s"$SchemaNameKey not set"))
+
+    logger.info(s"Fetching schema from Glue: registry=$registryName, schema=$schemaName")
+
+    val glueClient = buildGlueClient()
 
     val schemaId = SchemaId
       .builder()
@@ -77,7 +96,6 @@ class GlueSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
       .schemaName(schemaName)
       .build()
 
-    // Use latest version by default, or specific version if provided
     val versionNumber = topicInfo.params.get(VersionNumberKey) match {
       case Some(v) => SchemaVersionNumber.builder().versionNumber(v.toLong).build()
       case None    => SchemaVersionNumber.builder().latestVersion(true).build()
@@ -101,25 +119,25 @@ class GlueSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
         glueClient.close()
       }
 
-    require(response.dataFormat().toString == "AVRO",
-            s"Unsupported schema type: ${response.dataFormat()}. Only Avro is supported.")
+    val format = response.dataFormat().toString
+    val schemaDefinition = response.schemaDefinition()
 
-    val avroSchemaStr = response.schemaDefinition()
-    val avroSchema: Schema = AvroCodec.of(avroSchemaStr).schema
-    val chrononSchema: StructType = AvroConversions.toChrononSchema(avroSchema).asInstanceOf[StructType]
-    (avroSchemaStr, chrononSchema)
+    logger.info(s"Retrieved schema (version ${response.versionNumber()}, format=$format) from Glue")
+
+    format match {
+      case "AVRO" =>
+        val avroSchema: Schema = AvroCodec.of(schemaDefinition).schema
+        new AvroSerDe(avroSchema)
+      case "JSON" =>
+        new JsonSchemaSerDe(schemaDefinition, schemaName)
+      case other =>
+        throw new IllegalArgumentException(s"Unsupported schema format: $other. Supported formats are AVRO and JSON.")
+    }
   }
 
-  override def schema: StructType = chrononSchema
+  override def schema: StructType = delegate.schema
 
-  lazy val avroSerDe = {
-    val avroSchema = AvroCodec.of(avroSchemaStr).schema
-    new AvroSerDe(avroSchema)
-  }
-
-  override def fromBytes(bytes: Array[Byte]): Mutation = {
-    avroSerDe.fromBytes(bytes)
-  }
+  override def fromBytes(bytes: Array[Byte]): Mutation = delegate.fromBytes(bytes)
 }
 
 object GlueSchemaSerDe {
@@ -127,10 +145,8 @@ object GlueSchemaSerDe {
   val AccessKeyIdKey = "aws_access_key_id"
   val SecretAccessKeyKey = "aws_secret_access_key"
 
-  // Schema identification (required)
   val RegistryNameKey = "registry_name"
   val SchemaNameKey = "schema_name"
 
-  // Optional: defaults to latest version if not specified
   val VersionNumberKey = "version_number"
 }
