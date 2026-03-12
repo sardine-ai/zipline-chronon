@@ -230,6 +230,7 @@ object JobSubmitterConstants {
   val ClusterName = "clusterName"
   val SubnetId = "subnetId"
   val SecurityGroupId = "securityGroupId"
+  val EmrReleaseLabel = "emrReleaseLabel"
 
   // EKS (Flink on EKS) specific properties
   val EksServiceAccount = "eksServiceAccount"
