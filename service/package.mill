@@ -25,10 +25,14 @@ trait ServiceModule extends Cross.Module[String] with build.BaseModule {
       // that we don't want (we use the version defined in Constants)
       mvn"org.apache.spark::spark-catalyst:${build.Constants.sparkVersion}"
         .exclude("org.apache.hadoop" -> "hadoop-client-runtime")
-        .exclude("org.apache.logging.log4j" -> "log4j-core"),
+        .exclude("org.apache.logging.log4j" -> "log4j-core")
+        .exclude("org.apache.zookeeper" -> "zookeeper")
+        .exclude("org.apache.zookeeper" -> "zookeeper-jute"),
       mvn"org.apache.spark::spark-sql:${build.Constants.sparkVersion}"
         .exclude("org.apache.hadoop" -> "hadoop-client-runtime")
-        .exclude("org.apache.logging.log4j" -> "log4j-core"),
+        .exclude("org.apache.logging.log4j" -> "log4j-core")
+        .exclude("org.apache.zookeeper" -> "zookeeper")
+        .exclude("org.apache.zookeeper" -> "zookeeper-jute"),
       ) ++ Seq(
         // Force specific versions to get around security vulnerabilities in older versions
         mvn"com.fasterxml.woodstox:woodstox-core:5.4.0",
@@ -41,7 +45,9 @@ trait ServiceModule extends Cross.Module[String] with build.BaseModule {
         mvn"org.eclipse.jetty:jetty-xml:12.0.32",
         mvn"net.minidev:json-smart:2.5.2",
         mvn"commons-beanutils:commons-beanutils:1.11.0",
-        mvn"org.apache.hadoop:hadoop-common:3.4.1",
+        mvn"org.apache.hadoop:hadoop-common:3.4.1"
+          .exclude("org.apache.zookeeper" -> "zookeeper")
+          .exclude("org.apache.zookeeper" -> "zookeeper-jute"),
         mvn"io.airlift:aircompressor:2.0.3",
       ).map(_.forceVersion())
 

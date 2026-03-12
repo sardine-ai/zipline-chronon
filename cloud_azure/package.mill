@@ -34,8 +34,6 @@ trait CloudAzureModule extends Cross.Module[String] with build.BaseModule {
       .exclude("org.apache.hive" -> "hive-exec")
       .exclude("org.apache.hive" -> "hive-llap-common")
       .exclude("org.apache.hive" -> "hive-llap-client")
-      .exclude("org.apache.zookeeper" -> "zookeeper")
-      .exclude("org.apache.zookeeper" -> "zookeeper-jute")
       .exclude("com.google.protobuf" -> "protobuf-java")
     ) ++ Seq(
     // Azure Identity for authentication
@@ -113,6 +111,9 @@ trait CloudAzureModule extends Cross.Module[String] with build.BaseModule {
     // iceberg-spark-runtime shades aircompressor but leaves the original pom metadata,
     // which grype flags as vulnerable. Strip it since the code is shaded.
     Assembly.Rule.ExcludePattern("META-INF/maven/io\\.airlift/aircompressor/.*"),
+    // hadoop-client-runtime shades zookeeper but leaves stale 3.6.3 pom metadata.
+    // Strip it since the code is shaded and we don't use ZooKeeper directly.
+    Assembly.Rule.ExcludePattern("META-INF/maven/org\\.apache\\.zookeeper/.*"),
   )
 
   // Uber-jars (spark-core, hadoop-client-runtime, iceberg-spark-runtime) embed stale
