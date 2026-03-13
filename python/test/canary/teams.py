@@ -255,7 +255,7 @@ azure = Team(
             "HUB_URL": "https://dev-orch-azure.zipline.ai",
             "SNOWFLAKE_JDBC_URL": "jdbc:snowflake://VEJLULX-AZURE.snowflakecomputing.com/?user=demo_batch_service&db=Demo&schema=public&warehouse=demo_wh",
             "SNOWFLAKE_VAULT_URI": "https://demo-service-writer-pkey.vault.azure.net/secrets/snowflake-private-key",
-            "EVAL_URL": "https://dev-eval-azure.zipline.ai",
+            "EVAL_URL": "https://dev-azure.zipline.ai/services/eval",
         },
     ),
     conf=ConfigProperties(

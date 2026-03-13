@@ -45,7 +45,7 @@
           "CHRONON_ONLINE_ARGS": " -Ztasks=4",
           "CLOUD_PROVIDER": "azure",
           "CUSTOMER_ID": "dev",
-          "EVAL_URL": "https://dev-eval-azure.zipline.ai",
+          "EVAL_URL": "https://dev-azure.zipline.ai/services/eval",
           "FRONTEND_URL": "https://dev-azure.zipline.ai",
           "HUB_URL": "https://dev-orch-azure.zipline.ai",
           "SNOWFLAKE_JDBC_URL": "jdbc:snowflake://VEJLULX-AZURE.snowflakecomputing.com/?user=demo_batch_service&db=Demo&schema=public&warehouse=demo_wh",
