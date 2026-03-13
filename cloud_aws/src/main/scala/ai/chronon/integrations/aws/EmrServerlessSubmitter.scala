@@ -4,6 +4,8 @@ import ai.chronon.api.JobStatusType
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.emr.EmrClient
+import software.amazon.awssdk.services.emr.model.ListStudiosRequest
 import software.amazon.awssdk.services.emrserverless.EmrServerlessClient
 import software.amazon.awssdk.services.emrserverless.model._
 
@@ -24,11 +26,19 @@ class EmrServerlessSubmitter(
     flinkEksNamespace: Option[String] = None,
     eksClusterName: Option[String] = None,
     ingressBaseUrl: Option[String] = None,
+    emrStudioId: Option[String] = None,
     flinkHealthCheckFn: Option[String] => Boolean = _ => true
 ) extends JobSubmitter {
 
   private val DefaultEmrReleaseLabel = "emr-7.12.0"
   private val DefaultApplicationName = "chronon-serverless-app"
+
+  private lazy val resolvedStudioId: Option[String] =
+    emrStudioId.orElse(EmrServerlessSubmitter.resolveEmrStudioId(awsRegion))
+
+  // Lazily resolved so the app is created/discovered on first Spark submission and reused thereafter
+  private lazy val resolvedApplicationId: String =
+    getOrCreateApplication(DefaultEmrReleaseLabel, DefaultApplicationName)
 
   private def getOrCreateApplication(releaseLabel: String, appName: String): String = {
     applicationId match {
@@ -180,7 +190,7 @@ class EmrServerlessSubmitter(
     val mainClass = submissionProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
     val jarUri = submissionProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
 
-    val appId = getOrCreateApplication(DefaultEmrReleaseLabel, DefaultApplicationName)
+    val appId = resolvedApplicationId
 
     val filesParam = if (files.nonEmpty) s" --files ${files.mkString(",")}" else ""
 
@@ -235,11 +245,8 @@ class EmrServerlessSubmitter(
     val jobRunId = response.jobRunId()
 
     logger.info(s"Started EMR Serverless job run: $jobRunId on application $appId")
-    logger.info(
-      s"Monitor at: https://$awsRegion.console.aws.amazon.com/emr/home?region=$awsRegion#/serverless-applications/$appId/job-runs/$jobRunId"
-    )
 
-    s"$appId|$jobRunId"
+    jobRunId
   }
 
   override def status(jobId: String): JobStatusType = {
@@ -255,20 +262,10 @@ class EmrServerlessSubmitter(
       }
     } else {
       try {
-        val parts = jobId.split("\\|")
-        if (parts.length != 2) {
-          logger.debug(
-            s"Unrecognized jobId format: $jobId (expected applicationId|jobRunId). Likely a legacy EMR Classic job.")
-          return JobStatusType.UNKNOWN
-        }
-
-        val appId = parts(0)
-        val jobRunId = parts(1)
-
         val getRequest = GetJobRunRequest
           .builder()
-          .applicationId(appId)
-          .jobRunId(jobRunId)
+          .applicationId(resolvedApplicationId)
+          .jobRunId(jobId)
           .build()
 
         val jobRun = emrServerlessClient.getJobRun(getRequest).jobRun()
@@ -298,24 +295,14 @@ class EmrServerlessSubmitter(
         .delete(deploymentName = parts(2), namespace = parts(1))
     } else {
       try {
-        val parts = jobId.split("\\|")
-        if (parts.length != 2) {
-          logger.debug(
-            s"Unrecognized jobId format: $jobId (expected applicationId|jobRunId). Likely a legacy EMR Classic job.")
-          return
-        }
-
-        val appId = parts(0)
-        val jobRunId = parts(1)
-
         val cancelRequest = CancelJobRunRequest
           .builder()
-          .applicationId(appId)
-          .jobRunId(jobRunId)
+          .applicationId(resolvedApplicationId)
+          .jobRunId(jobId)
           .build()
 
         emrServerlessClient.cancelJobRun(cancelRequest)
-        logger.info(s"Cancelled EMR Serverless job run $jobRunId on application $appId")
+        logger.info(s"Cancelled EMR Serverless job run $jobId on application $resolvedApplicationId")
       } catch {
         case e: Exception =>
           logger.error(s"Error killing job $jobId: ${e.getMessage}")
@@ -338,40 +325,32 @@ class EmrServerlessSubmitter(
           s"https://$awsRegion.console.aws.amazon.com/eks/clusters/$clusterName/deployments/$deploymentName?namespace=$namespace&region=$awsRegion"
         }
       } else None
-    } else if (jobId.contains("|")) {
-      val parts = jobId.split("\\|")
-      if (parts.length == 2) {
-        val appId = parts(0)
-        val jobRunId = parts(1)
-        val logGroup = java.net.URLEncoder.encode("/aws/emr-serverless", "UTF-8")
-        val logStream = java.net.URLEncoder.encode(s"applications/$appId/jobs/$jobRunId", "UTF-8")
-        Some(
-          s"https://$awsRegion.console.aws.amazon.com/cloudwatch/home?region=$awsRegion#logsV2:log-groups/log-group/$logGroup/log-events/$logStream"
-        )
-      } else None
-    } else None
+    } else {
+      resolvedStudioId.map { rawStudioId =>
+        val studioId = rawStudioId.stripPrefix("es-").toLowerCase
+        val appId = resolvedApplicationId
+        s"https://es-$studioId.emrstudio-prod.$awsRegion.amazonaws.com/#/serverless-applications/$appId/$jobId"
+      }
+    }
   }
 
   override def getSparkUrl(jobId: String): Option[String] = {
     if (jobId.startsWith("flink:")) {
       None
-    } else if (jobId.contains("|")) {
-      val parts = jobId.split("\\|")
-      if (parts.length == 2) {
-        try {
-          val request = GetDashboardForJobRunRequest
-            .builder()
-            .applicationId(parts(0))
-            .jobRunId(parts(1))
-            .build()
-          Some(emrServerlessClient.getDashboardForJobRun(request).url())
-        } catch {
-          case e: Exception =>
-            logger.debug(s"Could not get Spark UI URL for $jobId: ${e.getMessage}")
-            None
-        }
-      } else None
-    } else None
+    } else {
+      try {
+        val request = GetDashboardForJobRunRequest
+          .builder()
+          .applicationId(resolvedApplicationId)
+          .jobRunId(jobId)
+          .build()
+        Some(emrServerlessClient.getDashboardForJobRun(request).url())
+      } catch {
+        case e: Exception =>
+          logger.debug(s"Could not get Spark UI URL for $jobId: ${e.getMessage}")
+          None
+      }
+    }
   }
 
   override def getFlinkUrl(jobId: String): Option[String] = {
@@ -431,6 +410,35 @@ class EmrServerlessSubmitter(
 
 object EmrServerlessSubmitter {
 
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+
+  // Fallback when EMR_STUDIO_ID is not configured. Any studio in the same account/region
+  // can view any serverless application, so picking the first one from ListStudios works.
+  // Prefer setting EMR_STUDIO_ID explicitly via terraform/config for deterministic behavior.
+  private[aws] def resolveEmrStudioId(awsRegion: String): Option[String] = {
+    try {
+      val emrClient = EmrClient.builder().region(Region.of(awsRegion)).build()
+      try {
+        val response = emrClient.listStudios(ListStudiosRequest.builder().build())
+        val studios = response.studios()
+        if (studios.isEmpty) {
+          logger.debug("No EMR Studios found in account")
+          None
+        } else {
+          val studioId = studios.get(0).studioId()
+          logger.info(s"Resolved EMR Studio ID: $studioId")
+          Some(studioId)
+        }
+      } finally {
+        emrClient.close()
+      }
+    } catch {
+      case e: Exception =>
+        logger.debug(s"Could not resolve EMR Studio ID: ${e.getMessage}")
+        None
+    }
+  }
+
   def apply(k8sConfig: Option[io.fabric8.kubernetes.client.Config] = None): EmrServerlessSubmitter = {
     val region = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", "us-east-1"))
     val applicationId = sys.env.get("EMR_SERVERLESS_APP_ID")
@@ -459,7 +467,8 @@ object EmrServerlessSubmitter {
       flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
       flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
       eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
-      ingressBaseUrl = ingressBaseUrl
+      ingressBaseUrl = ingressBaseUrl,
+      emrStudioId = sys.env.get("EMR_STUDIO_ID")
     )
   }
 

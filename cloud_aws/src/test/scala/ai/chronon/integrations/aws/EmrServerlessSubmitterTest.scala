@@ -28,7 +28,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       dynamodbTableName: String = "test-table",
       awsRegion: String = "us-east-1",
       eksClusterName: Option[String] = None,
-      ingressBaseUrl: Option[String] = None
+      ingressBaseUrl: Option[String] = None,
+      emrStudioId: Option[String] = None
   ): EmrServerlessSubmitter = {
     new EmrServerlessSubmitter(
       mockClient,
@@ -39,7 +40,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       dynamodbTableName = dynamodbTableName,
       awsRegion = awsRegion,
       eksClusterName = eksClusterName,
-      ingressBaseUrl = ingressBaseUrl
+      ingressBaseUrl = ingressBaseUrl,
+      emrStudioId = emrStudioId
     )
   }
 
@@ -71,7 +73,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       Map("team" -> "chronon")
     )
 
-    assertEquals(s"$applicationId|$jobRunId", submittedJobId)
+    assertEquals(jobRunId, submittedJobId)
     verify(mockClient).startJobRun(any[StartJobRunRequest])
   }
 
@@ -130,7 +132,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       Map.empty
     )
 
-    assertEquals(s"$newAppId|$jobRunId", submittedJobId)
+    assertEquals(jobRunId, submittedJobId)
 
     verify(mockClient).createApplication(any[CreateApplicationRequest])
     verify(mockClient).startJobRun(any[StartJobRunRequest])
@@ -177,7 +179,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       Map.empty
     )
 
-    assertEquals(s"$existingAppId|$jobRunId", submittedJobId)
+    assertEquals(jobRunId, submittedJobId)
 
     verify(mockClient, never()).createApplication(any[CreateApplicationRequest])
     verify(mockClient).startJobRun(any[StartJobRunRequest])
@@ -187,7 +189,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
-    val jobId = s"$applicationId|$jobRunId"
 
     val getJobRunResponse = GetJobRunResponse
       .builder()
@@ -204,7 +205,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
 
-    assertEquals(JobStatusType.PENDING, submitter.status(jobId))
+    assertEquals(JobStatusType.PENDING, submitter.status(jobRunId))
     verify(mockClient).getJobRun(any[GetJobRunRequest])
   }
 
@@ -212,7 +213,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
-    val jobId = s"$applicationId|$jobRunId"
 
     val getJobRunResponse = GetJobRunResponse
       .builder()
@@ -229,14 +229,13 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
 
-    assertEquals(JobStatusType.RUNNING, submitter.status(jobId))
+    assertEquals(JobStatusType.RUNNING, submitter.status(jobRunId))
   }
 
   it should "return SUCCEEDED status for a completed job" in {
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
-    val jobId = s"$applicationId|$jobRunId"
 
     val getJobRunResponse = GetJobRunResponse
       .builder()
@@ -253,14 +252,13 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
 
-    assertEquals(JobStatusType.SUCCEEDED, submitter.status(jobId))
+    assertEquals(JobStatusType.SUCCEEDED, submitter.status(jobRunId))
   }
 
   it should "return FAILED status for a failed job" in {
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
-    val jobId = s"$applicationId|$jobRunId"
 
     val getJobRunResponse = GetJobRunResponse
       .builder()
@@ -277,29 +275,20 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
 
-    assertEquals(JobStatusType.FAILED, submitter.status(jobId))
-  }
-
-  it should "return UNKNOWN status for invalid jobId format" in {
-    val mockClient = mock[EmrServerlessClient]
-    val submitter = createSubmitter(mockClient)
-
-    assertEquals(JobStatusType.UNKNOWN, submitter.status("invalid-format"))
-    verify(mockClient, never()).getJobRun(any[GetJobRunRequest])
+    assertEquals(JobStatusType.FAILED, submitter.status(jobRunId))
   }
 
   it should "cancel a job successfully" in {
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
-    val jobId = s"$applicationId|$jobRunId"
 
     val cancelResponse = CancelJobRunResponse.builder().build()
     when(mockClient.cancelJobRun(any[CancelJobRunRequest]))
       .thenReturn(cancelResponse)
 
     val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
-    submitter.kill(jobId)
+    submitter.kill(jobRunId)
 
     val requestCaptor = ArgumentCaptor.forClass(classOf[CancelJobRunRequest])
     verify(mockClient).cancelJobRun(requestCaptor.capture())
@@ -307,15 +296,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val capturedRequest = requestCaptor.getValue
     assertEquals(applicationId, capturedRequest.applicationId())
     assertEquals(jobRunId, capturedRequest.jobRunId())
-  }
-
-  it should "handle kill gracefully for invalid jobId format" in {
-    val mockClient = mock[EmrServerlessClient]
-    val submitter = createSubmitter(mockClient)
-
-    submitter.kill("invalid-format")
-
-    verify(mockClient, never()).cancelJobRun(any[CancelJobRunRequest])
   }
 
   it should "delegate Flink status to eksFlinkSubmitter" in {
@@ -466,23 +446,60 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     assertEquals("us-west-2", props("AWS_DEFAULT_REGION"))
   }
 
-  it should "return CloudWatch logs URL for Spark job" in {
+  it should "return EMR Studio URL when studio ID is provided" in {
     val mockClient = mock[EmrServerlessClient]
-    val submitter = createSubmitter(mockClient, awsRegion = "us-east-1")
-    val url = submitter.getJobUrl("app-123|job-run-456")
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2", emrStudioId = Some("5zs3voh3ex6jahzji73kwcc14"))
+    val url = submitter.getJobUrl("job-run-456")
     assert(url.isDefined)
-    assert(url.get.contains("cloudwatch/home"))
-    assert(url.get.contains("us-east-1"))
-    assert(url.get.contains("emr-serverless"))
+    assertEquals(
+      "https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/app-123/job-run-456",
+      url.get
+    )
+  }
+
+  it should "normalize studio ID with es- prefix and uppercase from ListStudios API" in {
+    val mockClient = mock[EmrServerlessClient]
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2", emrStudioId = Some("es-5ZS3VOH3EX6JAHZJI73KWCC14"))
+    val url = submitter.getJobUrl("job-run-456")
+    assert(url.isDefined)
+    assertEquals(
+      "https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/app-123/job-run-456",
+      url.get
+    )
+  }
+
+  it should "return None for getJobUrl on flink jobs without eksClusterName" in {
+    val mockClient = mock[EmrServerlessClient]
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2", eksClusterName = None)
+    val url = submitter.getJobUrl("flink:ns:deploy")
+    assert(url.isEmpty)
+  }
+
+  it should "construct correct EMR Studio URL with realistic IDs" in {
+    val mockClient = mock[EmrServerlessClient]
+    val appId = "00g43cs10nq1310l"
+    val jobRunId = "00g43m46p6r9p80n"
+    val submitter = createSubmitter(
+      mockClient,
+      applicationId = Some(appId),
+      awsRegion = "us-west-2",
+      emrStudioId = Some("5zs3voh3ex6jahzji73kwcc14")
+    )
+    val url = submitter.getJobUrl(jobRunId)
+    assert(url.isDefined)
+    assertEquals(
+      s"https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/$appId/$jobRunId",
+      url.get
+    )
   }
 
   it should "return Spark UI URL via dashboard API" in {
     val mockClient = mock[EmrServerlessClient]
-    val dashboardUrl = "https://es-abc123.emrstudio-prod.us-east-1.amazonaws.com/#/serverless-applications/app-123/job-run-456"
+    val dashboardUrl = "https://es-abc123.emrstudio-prod.us-west-2.amazonaws.com/spark-ui"
     val response = GetDashboardForJobRunResponse.builder().url(dashboardUrl).build()
     when(mockClient.getDashboardForJobRun(any[GetDashboardForJobRunRequest])).thenReturn(response)
-    val submitter = createSubmitter(mockClient, awsRegion = "us-east-1")
-    val url = submitter.getSparkUrl("app-123|job-run-456")
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2")
+    val url = submitter.getSparkUrl("job-run-456")
     assert(url.isDefined)
     assertEquals(dashboardUrl, url.get)
   }
@@ -491,8 +508,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val mockClient = mock[EmrServerlessClient]
     when(mockClient.getDashboardForJobRun(any[GetDashboardForJobRunRequest]))
       .thenThrow(ValidationException.builder().message("Dashboard not available").build())
-    val submitter = createSubmitter(mockClient, awsRegion = "us-east-1")
-    val url = submitter.getSparkUrl("app-123|job-run-456")
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2")
+    val url = submitter.getSparkUrl("job-run-456")
     assert(url.isEmpty)
   }
 
@@ -522,7 +539,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   it should "return None for getFlinkUrl on non-flink job" in {
     val mockClient = mock[EmrServerlessClient]
     val submitter = createSubmitter(mockClient, ingressBaseUrl = Some("https://hub.example.com"))
-    assertEquals(None, submitter.getFlinkUrl("app-123|job-run-456"))
+    assertEquals(None, submitter.getFlinkUrl("job-run-456"))
   }
 
   it should "return empty deprecatedClusterNameEnvVars" in {
@@ -965,19 +982,12 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     )
 
     println(s"Job submitted successfully!")
-    println(s"Job ID: $submittedJobId")
-
-    val parts = submittedJobId.split("\\|")
-    val appId = parts(0)
-    val runId = parts(1)
-
-    println(s"Application ID: $appId")
-    println(s"Job Run ID: $runId")
+    println(s"Job Run ID: $submittedJobId")
     println(
-      s"Console URL: https://console.aws.amazon.com/emr/home?region=$region#/serverless-applications/$appId/job-runs/$runId")
+      s"Console URL: https://console.aws.amazon.com/emr/home?region=$region#/serverless-applications/${applicationId.getOrElse("unknown")}/job-runs/$submittedJobId")
     println()
 
-    assert(submittedJobId.contains("|"), "Job ID should be in format: applicationId|jobRunId")
+    assert(submittedJobId.nonEmpty, "Job run ID should not be empty")
 
     if (pollStatus) {
       println("Polling job status...")
