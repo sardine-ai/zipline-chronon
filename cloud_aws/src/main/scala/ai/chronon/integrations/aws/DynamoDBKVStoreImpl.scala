@@ -91,6 +91,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
     val maybeSortKeys = props.get(isTimedSorted) match {
       case Some(value: String) if value.toLowerCase == "true" => Some(sortKeyColumn)
       case Some(value: Boolean) if value                      => Some(sortKeyColumn)
+      case _ if isStreamingTable(dataset)                     => Some(sortKeyColumn)
       case _                                                  => None
     }
 

@@ -116,7 +116,7 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
     new AvroSerDe(AvroConversions.fromChrononSchema(groupByServingInfoParsed.streamChrononSchema))
 
   private def createKVStore(): KVStore = {
-    val (dataClient, maybeAdminClient, maybeBQClient) = createBigTableClients()
+    val (dataClient, adminClient, maybeBQClient) = createBigTableClients()
     val projectId = getOrElseThrow(GcpProjectId, conf)
     val instanceId = getOrElseThrow(GcpBigTableInstanceId, conf)
     val maybeAppProfileId = getOptional(GcpBigTableAppProfileId, conf)
@@ -127,19 +127,19 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
         s"Params: profileId: $maybeAppProfileId, adminClientEnabled: $enableUploadClients, " +
         s"num procs = ${Runtime.getRuntime.availableProcessors()}")
 
-    val kvStore = new BigTableKVStoreImpl(dataClient, maybeAdminClient, maybeBQClient, conf)
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient, maybeBQClient, conf)
     kvStore.init()
     kvStore
   }
 
-  private def createBigTableClients(): (BigtableDataClient, Option[BigtableTableAdminClient], Option[BigQuery]) = {
+  private def createBigTableClients(): (BigtableDataClient, BigtableTableAdminClient, Option[BigQuery]) = {
     val projectId = getOrElseThrow(GcpProjectId, conf)
     val instanceId = getOrElseThrow(GcpBigTableInstanceId, conf)
     val maybeAppProfileId = getOptional(GcpBigTableAppProfileId, conf)
     val enableUploadClients = getOptional(EnableUploadClients, conf).exists(_.toBoolean)
 
     // Create settings builder based on whether we're in emulator mode or not
-    val (dataSettingsBuilder, maybeAdminSettingsBuilder, maybeBQClient) = sys.env.get(BigTableEmulatorHost) match {
+    val (dataSettingsBuilder, adminSettingsBuilder, maybeBQClient) = sys.env.get(BigTableEmulatorHost) match {
       case Some(emulatorHostPort) =>
         val (emulatorHost, emulatorPort) = (emulatorHostPort.split(":")(0), emulatorHostPort.split(":")(1).toInt)
         val dataSettingsBuilder =
@@ -151,25 +151,22 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
           BigtableTableAdminSettings
             .newBuilderForEmulator(emulatorHost, emulatorPort)
             .setCredentialsProvider(NoCredentialsProvider.create())
-        (dataSettingsBuilder, Some(adminSettingsBuilder), None)
+        (dataSettingsBuilder, adminSettingsBuilder, None)
       case None =>
         val dataSettingsBuilder = BigtableDataSettings.newBuilder()
         val dataSettingsBuilderWithProfileId =
           maybeAppProfileId
             .map(profileId => dataSettingsBuilder.setAppProfileId(profileId))
             .getOrElse(dataSettingsBuilder)
-        if (enableUploadClients) {
-          val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
-          val bigQueryClient = BigQueryOptions.getDefaultInstance.getService
-          (dataSettingsBuilderWithProfileId, Some(adminSettingsBuilder), Some(bigQueryClient))
-        } else {
-          (dataSettingsBuilderWithProfileId, None, None)
-        }
+        // Admin client always created to keep things consistent with other KV store impls
+        val adminSettingsBuilder = BigtableTableAdminSettings.newBuilder()
+        val maybeBQClient = if (enableUploadClients) Some(BigQueryOptions.getDefaultInstance.getService) else None
+        (dataSettingsBuilderWithProfileId, adminSettingsBuilder, maybeBQClient)
     }
 
     // Configure all the settings
     setBigTableBulkReadRowsSettings(dataSettingsBuilder)
-    setClientThreadPools(dataSettingsBuilder, maybeAdminSettingsBuilder)
+    setClientThreadPools(dataSettingsBuilder, Some(adminSettingsBuilder))
 
     // Configure retry settings
     val initialRpcTimeoutDuration =
@@ -216,22 +213,20 @@ class GcpApiImpl(conf: Map[String, String]) extends Api(conf) {
     val dataSettings = dataSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
     val dataClient = BigtableDataClient.create(dataSettings)
 
-    val maybeAdminClient = maybeAdminSettingsBuilder.map { adminSettingsBuilder =>
-      val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
-      BigtableTableAdminClient.create(adminSettings)
-    }
+    val adminSettings = adminSettingsBuilder.setProjectId(projectId).setInstanceId(instanceId).build()
+    val adminClient = BigtableTableAdminClient.create(adminSettings)
 
-    (dataClient, maybeAdminClient, maybeBQClient)
+    (dataClient, adminClient, maybeBQClient)
   }
 
   private def createDataQualityKvStore(tableBaseName: String): KVStore = {
-    val (dataClient, maybeAdminClient, _) = createBigTableClients()
-    new BigTableMetricsKvStore(dataClient, tableBaseName, maybeAdminClient, conf)
+    val (dataClient, adminClient, _) = createBigTableClients()
+    new BigTableMetricsKvStore(dataClient, tableBaseName, adminClient, conf)
   }
 
   private def createEnhancedStatsKvStore(tableBaseName: String): KVStore = {
-    val (dataClient, maybeAdminClient, _) = createBigTableClients()
-    new EnhancedDatasetKVStoreImpl(dataClient, tableBaseName, maybeAdminClient, conf)
+    val (dataClient, adminClient, _) = createBigTableClients()
+    new EnhancedDatasetKVStoreImpl(dataClient, tableBaseName, adminClient, conf)
   }
 
   // BigTable's bulk read rows by default will batch calls and wait for a delay before sending them. This is not

@@ -49,7 +49,7 @@ import scala.util.{Failure, Success}
   * store data indefinitely and also to cap the amount of data we store.
   */
 class BigTableKVStoreImpl(dataClient: BigtableDataClient,
-                          maybeAdminClient: scala.Option[BigtableTableAdminClient] = None,
+                          adminClient: BigtableTableAdminClient,
                           maybeBigQueryClient: scala.Option[BigQuery] = None,
                           conf: Map[String, String] = Map.empty)
     extends KVStore {
@@ -80,33 +80,24 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
   override def create(dataset: String, props: Map[String, Any]): Unit = {
-    maybeAdminClient
-      .map { adminClient =>
-        try {
-
-          if (!adminClient.exists(dataset)) {
-
-            // we can explore split points if we need custom tablet partitioning. For now though, we leave this to BT
-            val createTableRequest = CreateTableRequest.of(dataset).addFamily(ColumnFamilyString, DefaultGcRules)
-            val table = adminClient.createTable(createTableRequest)
-            // TODO: this actually submits an async task. thus, the submission can succeed but the task can fail.
-            //  doesn't return a future but maybe we can poll
-            logger.info(s"Created table: $table")
-            metricsContext.increment("create.successes")
-
-          } else {
-
-            logger.info(s"Table $dataset already exists")
-
-          }
-        } catch {
-
-          case e: Exception =>
-            logger.error("Error creating table", e)
-            metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
-        }
+    val tableName = physicalTableName(dataset)
+    try {
+      if (!adminClient.exists(tableName)) {
+        // we can explore split points if we need custom tablet partitioning. For now though, we leave this to BT
+        val createTableRequest = CreateTableRequest.of(tableName).addFamily(ColumnFamilyString, DefaultGcRules)
+        val table = adminClient.createTable(createTableRequest)
+        // TODO: this actually submits an async task. thus, the submission can succeed but the task can fail.
+        //  doesn't return a future but maybe we can poll
+        logger.info(s"Created table: $table")
+        metricsContext.increment("create.successes")
+      } else {
+        logger.info(s"Table $tableName already exists")
       }
-      .orElse(throw new IllegalStateException("Missing BigTable admin client. Is the ENABLE_UPLOAD_CLIENTS flag set?"))
+    } catch {
+      case e: Exception =>
+        logger.error("Error creating table", e)
+        metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
+    }
   }
 
   override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = {
@@ -462,13 +453,6 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   private def bulkPutFromSpark(sourceOfflineTable: String,
                                destinationOnlineDataSet: String,
                                partition: String): Unit = {
-    if (maybeAdminClient.isEmpty) {
-      logger.error("Need the BigTable admin client available to export data to BigTable")
-      metricsContext.increment("bulkPut.failures", Map("exception" -> "missinguploadclients"))
-      throw new RuntimeException("BigTable admin client is needed to export data to BigTable")
-    }
-
-    val adminClient = maybeAdminClient.get
     val startTs = System.currentTimeMillis()
 
     logger.info(
@@ -507,13 +491,11 @@ class BigTableKVStoreImpl(dataClient: BigtableDataClient,
   private def bulkPutFromBigQuery(sourceOfflineTable: String,
                                   destinationOnlineDataSet: String,
                                   partition: String): Unit = {
-    if (maybeBigQueryClient.isEmpty || maybeAdminClient.isEmpty) {
-      logger.error("Need the BigTable admin and BigQuery available to export data to BigTable")
+    if (maybeBigQueryClient.isEmpty) {
+      logger.error("Need the BigQuery client available to export data to BigTable")
       metricsContext.increment("bulkPut.failures", Map("exception" -> "missinguploadclients"))
-      throw new RuntimeException("BigTable admin and BigQuery clients are needed to export data to BigTable")
+      throw new RuntimeException("BigQuery client is needed to export data to BigTable")
     }
-
-    val adminClient = maybeAdminClient.get
 
     // we write groupby data to 1 large multi use-case table
     val batchTable = "GROUPBY_BATCH"
@@ -691,15 +673,14 @@ object BigTableKVStore {
     }
   }
 
-  def mapDatasetToTable(dataset: String): BTTableId = {
-    if (dataset.endsWith("_BATCH")) {
-      BTTableId.of("GROUPBY_BATCH")
-    } else if (dataset.endsWith("_STREAMING")) {
-      BTTableId.of("GROUPBY_STREAMING")
-    } else {
-      BTTableId.of(dataset)
-    }
+  // Returns the physical table name string used by the admin client (exists/create)
+  def physicalTableName(dataset: String): String = {
+    if (dataset.endsWith("_BATCH")) "GROUPBY_BATCH"
+    else if (dataset.endsWith("_STREAMING")) "GROUPBY_STREAMING"
+    else dataset
   }
+
+  def mapDatasetToTable(dataset: String): BTTableId = BTTableId.of(physicalTableName(dataset))
 
   def getTableType(dataset: String): TableType = {
     dataset match {

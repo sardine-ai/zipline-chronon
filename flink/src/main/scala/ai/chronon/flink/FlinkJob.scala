@@ -162,7 +162,8 @@ object FlinkJob {
     val enableDebug = jobArgs.enableDebug()
 
     val api = buildApi(onlineClassName, props)
-    val metadataStore = new MetadataStore(FetchContext(api.genKvStore, MetadataDataset))
+    val kvStore = api.genKvStore
+    val metadataStore = new MetadataStore(FetchContext(kvStore, MetadataDataset))
 
     if (validateMode) {
       val validationResults = ValidationFlinkJob.run(metadataStore, props, groupByName, validateRows)
@@ -179,6 +180,8 @@ object FlinkJob {
     val flinkJob =
       maybeServingInfo
         .map { servingInfo =>
+          // create the groupby dataset on the KV store if it doesn't exist prior to starting up the job
+          kvStore.create(servingInfo.groupBy.streamingDataset)
           buildFlinkJob(groupByName, props, api, servingInfo, enableDebug)
         }
         .recover { case e: Exception =>

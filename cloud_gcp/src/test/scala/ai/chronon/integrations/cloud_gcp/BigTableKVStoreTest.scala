@@ -96,7 +96,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   }
 
   it should "create BigTable table successfully" in {
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     val dataset = "test-table"
     kvStore.create(dataset)
     adminClient.listTables().asScala.contains(dataset) shouldBe true
@@ -104,16 +104,10 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     kvStore.create(dataset)
   }
 
-  it should "fail BigTable creation if missing admin client" in {
-    val kvStore = new BigTableKVStoreImpl(dataClient, None)
-    val dataset = "test-table"
-    an[IllegalStateException] should be thrownBy kvStore.create(dataset)
-  }
-
   // Test write & read of a simple blob dataset
   it should "blob data round trip" in {
     val dataset = "models"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     val key1 = "alice"
@@ -143,7 +137,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   it should "blob data updates" in {
     val dataset = "models"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     val key1 = "alice"
@@ -178,7 +172,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   it should "list with pagination" in {
     val dataset = "CHRONON_METADATA"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     val putReqs = (0 until 100).map { i =>
@@ -219,7 +213,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   it should "list entity types with pagination" in {
     val dataset = "CHRONON_METADATA"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     val putGrpByReqs = (0 until 50).map { i =>
@@ -274,7 +268,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   it should "multiput failures" in {
     val mockDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
-    val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, Some(mockAdminClient))
+    val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
 
     val failedFuture = ApiFutures.immediateFailedFuture[Void](new RuntimeException("some BT exception on read"))
     when(mockDataClient.mutateRowAsync(any[RowMutation])).thenReturn(failedFuture)
@@ -296,7 +290,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   it should "multiget failures" in {
     val mockDataClient = mock[BigtableDataClient](withSettings().mockMaker("mock-maker-inline"))
     val mockAdminClient = mock[BigtableTableAdminClient]
-    val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, Some(mockAdminClient))
+    val kvStoreWithMocks = new BigTableKVStoreImpl(mockDataClient, mockAdminClient)
     val serverStreamingCallable = mock[ServerStreamingCallable[Query, Row]]
     val unaryCallable = mock[UnaryCallable[Query, util.List[Row]]]
 
@@ -324,7 +318,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   // Test repeated writes to the same streaming tile - should return the latest value
   it should "repeated streaming tile updates return latest value" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // tile timestamp - 10/04/24 00:00
@@ -355,7 +349,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   // Test write and query of a simple tiled dataset across multiple days
   it should "streaming tiled query_multiple days" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
@@ -386,7 +380,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   // Test write and query of a simple tiled dataset across multiple days with multiple keys at once
   it should "streaming tiled query_multiple days and multiple keys" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16 for key1
@@ -423,7 +417,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
     val dataset1 = "GROUPBY_A_STREAMING"
     val dataset2 = "GROUPBY_B_STREAMING"
     val btTable = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(btTable)
 
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16 for key1
@@ -471,7 +465,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   // Test write and query of a simple tiled dataset for one full day
   it should "streaming tiled query_one day" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
@@ -502,7 +496,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   // Test write and query of a simple tiled dataset for a subset of a day
   it should "streaming tiled query_same day" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
@@ -532,7 +526,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   it should "streaming tiled query_days without data" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // generate some hourly timestamps & tiles from 10/04/24 00:00 to 10/16
@@ -565,7 +559,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   it should "handle multiple entities with different time ranges in single query" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // Create data for two different entities
@@ -619,7 +613,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
   it should "handle mixed request types - time series and non-time series" in {
     val timeSeriesDataset = "GROUPBY_STREAMING"
     val blobDataset = "CHRONON_METADATA"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(timeSeriesDataset)
     kvStore.create(blobDataset)
 
@@ -659,7 +653,7 @@ class BigTableKVStoreTest extends AnyFlatSpec with BeforeAndAfter {
 
   it should "handle entities where some have data and others don't" in {
     val dataset = "GROUPBY_STREAMING"
-    val kvStore = new BigTableKVStoreImpl(dataClient, Some(adminClient))
+    val kvStore = new BigTableKVStoreImpl(dataClient, adminClient)
     kvStore.create(dataset)
 
     // Create data only for entity1, not for entity2

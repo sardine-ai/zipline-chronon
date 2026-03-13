@@ -37,7 +37,7 @@ import scala.util.{Failure, Success}
   */
 class EnhancedDatasetKVStoreImpl(dataClient: BigtableDataClient,
                                  tableBaseName: String,
-                                 maybeAdminClient: Option[BigtableTableAdminClient] = None,
+                                 adminClient: BigtableTableAdminClient,
                                  conf: Map[String, String] = Map.empty)
     extends KVStore {
 
@@ -63,30 +63,26 @@ class EnhancedDatasetKVStoreImpl(dataClient: BigtableDataClient,
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
   override def create(dataset: String, props: Map[String, Any]): Unit = {
-    maybeAdminClient
-      .map { adminClient =>
-        try {
-          // For admin operations, use just the table name
-          if (!adminClient.exists(tableBaseName)) {
-            val createTableRequest = CreateTableRequest
-              .of(tableBaseName)
-              .addFamily(DataColumnFamily, DefaultGcRules)
-              .addFamily(CardinalityMapColumnFamily, DefaultGcRules)
+    try {
+      // For admin operations, use just the table name
+      if (!adminClient.exists(tableBaseName)) {
+        val createTableRequest = CreateTableRequest
+          .of(tableBaseName)
+          .addFamily(DataColumnFamily, DefaultGcRules)
+          .addFamily(CardinalityMapColumnFamily, DefaultGcRules)
 
-            val table = adminClient.createTable(createTableRequest)
-            logger.info(
-              s"Created enhanced stats table: $table with column families: $DataColumnFamily, $CardinalityMapColumnFamily")
-            metricsContext.increment("create.successes")
-          } else {
-            logger.info(s"Enhanced stats table $tableBaseName already exists")
-          }
-        } catch {
-          case e: Exception =>
-            logger.error("Error creating enhanced stats table", e)
-            metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
-        }
+        val table = adminClient.createTable(createTableRequest)
+        logger.info(
+          s"Created enhanced stats table: $table with column families: $DataColumnFamily, $CardinalityMapColumnFamily")
+        metricsContext.increment("create.successes")
+      } else {
+        logger.info(s"Enhanced stats table $tableBaseName already exists")
       }
-      .orElse(throw new IllegalStateException("Missing BigTable admin client. Is the ENABLE_UPLOAD_CLIENTS flag set?"))
+    } catch {
+      case e: Exception =>
+        logger.error("Error creating enhanced stats table", e)
+        metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
+    }
   }
 
   override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = {

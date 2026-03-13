@@ -37,7 +37,7 @@ import scala.util.{Failure, Success}
   */
 class BigTableMetricsKvStore(dataClient: BigtableDataClient,
                              tableBaseName: String,
-                             maybeAdminClient: Option[BigtableTableAdminClient] = None,
+                             adminClient: BigtableTableAdminClient,
                              conf: Map[String, String] = Map.empty)
     extends KVStore {
 
@@ -66,27 +66,23 @@ class BigTableMetricsKvStore(dataClient: BigtableDataClient,
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
   override def create(dataset: String, props: Map[String, Any]): Unit = {
-    maybeAdminClient
-      .map { adminClient =>
-        try {
-          val tableName = mapDatasetToTable(dataset)
+    try {
+      val tableName = mapDatasetToTable(dataset)
 
-          if (!adminClient.exists(tableName.toString)) {
-            val createTableRequest =
-              CreateTableRequest.of(tableName.toString).addFamily(ColumnFamilyString, DefaultGcRules)
-            val table = adminClient.createTable(createTableRequest)
-            logger.info(s"Created data quality metrics table: $table")
-            metricsContext.increment("create.successes")
-          } else {
-            logger.info(s"Data quality metrics table $tableName already exists")
-          }
-        } catch {
-          case e: Exception =>
-            logger.error("Error creating data quality metrics table", e)
-            metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
-        }
+      if (!adminClient.exists(tableName.toString)) {
+        val createTableRequest =
+          CreateTableRequest.of(tableName.toString).addFamily(ColumnFamilyString, DefaultGcRules)
+        val table = adminClient.createTable(createTableRequest)
+        logger.info(s"Created data quality metrics table: $table")
+        metricsContext.increment("create.successes")
+      } else {
+        logger.info(s"Data quality metrics table $tableName already exists")
       }
-      .orElse(throw new IllegalStateException("Missing BigTable admin client. Is the ENABLE_UPLOAD_CLIENTS flag set?"))
+    } catch {
+      case e: Exception =>
+        logger.error("Error creating data quality metrics table", e)
+        metricsContext.increment("create.failures", Map("exception" -> e.getClass.getName))
+    }
   }
 
   override def multiGet(requests: Seq[KVStore.GetRequest]): Future[Seq[KVStore.GetResponse]] = {

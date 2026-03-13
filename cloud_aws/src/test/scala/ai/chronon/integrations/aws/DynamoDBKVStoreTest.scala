@@ -112,6 +112,35 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
     kvStore.create(dataset, props)
   }
 
+  // Streaming tables auto-configure the sort key without needing isTimedSorted prop
+  it should "auto-configure sort key for streaming table created without props" in {
+    val dataset = "AUTO_SORT_KEY_STREAMING"
+    val kvStore = new DynamoDBKVStoreImpl(client)
+    kvStore.create(dataset) // no props — _STREAMING suffix should trigger sort key
+    val tables = client.listTables().join().tableNames()
+    tables.contains(dataset) shouldBe true
+
+    // Verify sort key works by writing and reading tiled data
+    val entityKeyBytes = "test_entity".getBytes(StandardCharsets.UTF_8)
+    val tileSizeMillis = 1.hour.toMillis
+    val tileStart = 1728000000000L
+    val putReq = {
+      val tileKey = TilingUtils.buildTileKey(dataset, entityKeyBytes, Some(tileSizeMillis), Some(tileStart))
+      val tileKeyBytes = TilingUtils.serializeTileKey(tileKey)
+      PutRequest(tileKeyBytes, "value".getBytes(StandardCharsets.UTF_8), dataset, Some(tileStart))
+    }
+    val putResults = Await.result(kvStore.multiPut(Seq(putReq)), 1.minute)
+    putResults shouldBe Seq(true)
+
+    val readTileKey = TilingUtils.buildTileKey(dataset, entityKeyBytes, Some(tileSizeMillis), None)
+    val readKeyBytes = TilingUtils.serializeTileKey(readTileKey)
+    val getRequest = GetRequest(readKeyBytes, dataset, Some(tileStart), Some(tileStart + tileSizeMillis))
+    val getResults = Await.result(kvStore.multiGet(Seq(getRequest)), 1.minute)
+    getResults.size shouldBe 1
+    getResults.head.values.isSuccess shouldBe true
+    getResults.head.values.get.nonEmpty shouldBe true
+  }
+
   // Test table scan with pagination
   it should "table scan with pagination" in {
     val dataset = "models_scan_pagination"
@@ -600,9 +629,8 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
   }
 
   private def setupStreamingDataset(dataset: String): DynamoDBKVStoreImpl = {
-    val props = Map(isTimedSorted -> "true")
     val kvStore = new DynamoDBKVStoreImpl(client)
-    kvStore.create(dataset, props)
+    kvStore.create(dataset)
     kvStore
   }
 
