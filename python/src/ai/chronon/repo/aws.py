@@ -22,16 +22,13 @@ from ai.chronon.repo.utils import (
 LOG = get_logger()
 
 # AWS SPECIFIC CONSTANTS
-EMR_ENTRY = "ai.chronon.integrations.aws.EmrSubmitter"
+EMR_ENTRY = "ai.chronon.integrations.aws.EmrServerlessSubmitter"
 ZIPLINE_AWS_JAR_DEFAULT = "cloud_aws_lib_deploy.jar"
 ZIPLINE_AWS_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.aws.AwsApiImpl"
 ZIPLINE_AWS_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
 ZIPLINE_AWS_SERVICE_JAR = "service_assembly_deploy.jar"
 
 LOCAL_FILE_TO_ETAG_JSON = f"{ZIPLINE_DIRECTORY}/local_file_to_etag.json"
-
-EMR_MOUNT_FILE_PREFIX = "/mnt/zipline/"
-
 
 class AwsRunner(Runner):
     def __init__(self, args):
@@ -180,7 +177,7 @@ class AwsRunner(Runner):
                     job_type=job_type.value,
                     main_class=main_class,
                 )
-                + f" --additional-conf-path={EMR_MOUNT_FILE_PREFIX}additional-confs.yaml"
+                + f" --additional-conf-path={zipline_artifacts_bucket_prefix}-{get_customer_id()}/confs/additional-confs.yaml"
                 f" --files={s3_file_args}"
             )
         else:
@@ -222,9 +219,8 @@ class AwsRunner(Runner):
                         args=self._gen_final_args(
                             start_ds=start_ds,
                             end_ds=end_ds,
-                            # when we download files from s3 to emr, they'll be mounted at /mnt/zipline
                             override_conf_path=(
-                                EMR_MOUNT_FILE_PREFIX + extract_filename_from_path(self.conf)
+                                f"s3://zipline-warehouse-{get_customer_id()}/metadata/{extract_filename_from_path(self.conf)}"
                                 if self.conf
                                 else None
                             ),
@@ -244,9 +240,8 @@ class AwsRunner(Runner):
                     subcommand=ROUTES[self.conf_type][self.mode],
                     args=self._gen_final_args(
                         start_ds=self.start_ds,
-                        # when we download files from s3 to emr, they'll be mounted at /mnt/zipline
                         override_conf_path=(
-                            EMR_MOUNT_FILE_PREFIX + extract_filename_from_path(self.conf)
+                            f"s3://zipline-warehouse-{get_customer_id()}/metadata/{extract_filename_from_path(self.conf)}"
                             if self.conf
                             else None
                         ),
@@ -273,48 +268,51 @@ class AwsRunner(Runner):
             output = check_output(command_list[0]).decode("utf-8").split("\n")
             print(*output, sep="\n")
 
-            # Parse EMR step ID and cluster ID from EmrSubmitter output
-            step_id = None
-            cluster_id = None
+            # Parse job ID from EmrServerlessSubmitter output (format: appId|jobRunId)
+            app_id = None
+            job_run_id = None
             for line in output:
-                if "EMR step id:" in line:
-                    step_id = line.split("EMR step id:")[-1].strip()
-                if "clusterDetails/" in line:
-                    cluster_id = line.split("clusterDetails/")[-1].strip()
+                if "Job submitted with ID:" in line:
+                    job_id_str = line.split("Job submitted with ID:")[-1].strip()
+                    parts = job_id_str.split("|")
+                    if len(parts) == 2:
+                        app_id, job_run_id = parts
 
-            if not self.disable_cloud_logging and step_id and cluster_id:
-                poll_interval = 30
-                max_attempts = 120
-                region = os.environ.get("AWS_REGION", "us-west-2")
-                emr_client = boto3.client("emr", region_name=region)
-
-                LOG.info("Waiting for EMR step %s on cluster %s...", step_id, cluster_id)
-                for _attempt in range(max_attempts):
-                    resp = emr_client.describe_step(
-                        ClusterId=cluster_id, StepId=step_id
-                    )
-                    state = resp["Step"]["Status"]["State"]
-                    LOG.info("EMR step %s status: %s", step_id, state)
-
-                    if state == "COMPLETED":
-                        LOG.info("EMR step %s completed successfully.", step_id)
-                        return
-                    elif state in ("FAILED", "CANCELLED", "INTERRUPTED"):
-                        status_info = resp["Step"]["Status"]
-                        failure_msg = (
-                            status_info.get("FailureDetails", {}).get("Message")
-                            or status_info.get("StateChangeReason", {}).get("Message")
-                            or "no details"
-                        )
-                        log_uri = status_info.get("FailureDetails", {}).get("LogFile", "")
-                        detail = f"EMR step {step_id} {state}: {failure_msg}"
-                        if log_uri:
-                            detail += f"\nLog: {log_uri}"
-                        raise RuntimeError(detail)
-
-                    time.sleep(poll_interval)
-
+            if not app_id or not job_run_id:
                 raise RuntimeError(
-                    f"Timed out waiting for EMR step {step_id} after"
-                    f" {max_attempts * poll_interval} seconds."
+                    "Failed to parse job ID from EMR Serverless submission output. "
+                    "Expected 'Job submitted with ID: <appId>|<jobRunId>'."
                 )
+
+            if self.disable_cloud_logging:
+                LOG.info("Cloud logging disabled; skipping status polling for job %s", job_run_id)
+                return
+
+            poll_interval = 30
+            max_attempts = 120
+            region = os.environ.get("AWS_REGION", "us-west-2")
+            emr_serverless = boto3.client("emr-serverless", region_name=region)
+
+            LOG.info("Waiting for EMR Serverless job %s on app %s...", job_run_id, app_id)
+            for _attempt in range(max_attempts):
+                resp = emr_serverless.get_job_run(
+                    applicationId=app_id, jobRunId=job_run_id
+                )
+                state = resp["jobRun"]["state"]
+                LOG.info("EMR Serverless job %s status: %s", job_run_id, state)
+
+                if state == "SUCCESS":
+                    LOG.info("EMR Serverless job %s completed successfully.", job_run_id)
+                    return
+                elif state in ("FAILED", "CANCELLED"):
+                    state_details = resp["jobRun"].get("stateDetails", "no details")
+                    raise RuntimeError(
+                        f"EMR Serverless job {job_run_id} {state}: {state_details}"
+                    )
+
+                time.sleep(poll_interval)
+
+            raise RuntimeError(
+                f"Timed out waiting for EMR Serverless job {job_run_id} after"
+                f" {max_attempts * poll_interval} seconds."
+            )
