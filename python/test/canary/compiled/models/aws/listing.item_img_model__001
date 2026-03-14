@@ -80,7 +80,7 @@
           "FLINK_STATE_URI": "s3://zipline-warehouse-canary/flink-state",
           "FRONTEND_URL": "http://localhost:3000",
           "HUB_URL": "http://localhost:3903",
-          "SPARK_CLUSTER_NAME": "zipline-canary-emr",
+          "SPARK_CLUSTER_NAME": "zipline-emr-canary",
           "VERSION": "latest",
           "WAREHOUSE_PREFIX": "s3://zipline-warehouse-canary"
         },
@@ -95,7 +95,7 @@
             "FLINK_STATE_URI": "s3://zipline-warehouse-canary/flink-state",
             "FRONTEND_URL": "http://localhost:3000",
             "HUB_URL": "http://localhost:3903",
-            "SPARK_CLUSTER_NAME": "zipline-canary-emr",
+            "SPARK_CLUSTER_NAME": "zipline-emr-canary",
             "VERSION": "latest",
             "WAREHOUSE_PREFIX": "s3://zipline-warehouse-canary"
           }

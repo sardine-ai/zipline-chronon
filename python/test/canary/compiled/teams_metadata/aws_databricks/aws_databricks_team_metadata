@@ -42,7 +42,7 @@
         "DATABRICKS_SECRET_NAME": "canary-zipline-databricks-sp",
         "FRONTEND_URL": "http://localhost:3000",
         "HUB_URL": "http://localhost:3903",
-        "SPARK_CLUSTER_NAME": "zipline-canary-emr",
+        "SPARK_CLUSTER_NAME": "zipline-emr-canary",
         "VERSION": "latest",
         "WAREHOUSE_PREFIX": "s3://zipline-warehouse-canary"
       }

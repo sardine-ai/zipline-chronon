@@ -19,9 +19,36 @@ import scala.jdk.CollectionConverters._
 
 class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
+  /** Mock ListApplications to return a single app with the given name and ID.
+    * Most tests use this to set up the name-based resolution path.
+    */
+  private def mockListApplications(mockClient: EmrServerlessClient,
+                                    appId: String,
+                                    appName: String = "test-app"): Unit = {
+    val appSummary = ApplicationSummary
+      .builder()
+      .id(appId)
+      .name(appName)
+      .state(ApplicationState.STARTED)
+      .build()
+    val listResponse = ListApplicationsResponse.builder().applications(List(appSummary).asJava).build()
+    when(mockClient.listApplications(any[ListApplicationsRequest])).thenReturn(listResponse)
+  }
+
+  /** Also mock GetJobRun so findApplicationForJob succeeds for status/kill/URL tests. */
+  private def mockFindApplicationForJob(mockClient: EmrServerlessClient,
+                                        appId: String,
+                                        jobRunId: String): Unit = {
+    mockListApplications(mockClient, appId)
+    val getJobRunResponse = GetJobRunResponse
+      .builder()
+      .jobRun(JobRun.builder().applicationId(appId).jobRunId(jobRunId).state(JobRunState.RUNNING).build())
+      .build()
+    when(mockClient.getJobRun(any[GetJobRunRequest])).thenReturn(getJobRunResponse)
+  }
+
   private def createSubmitter(
       mockClient: EmrServerlessClient,
-      applicationId: Option[String] = Some("app-123"),
       executionRoleArn: String = "arn:aws:iam::123456789012:role/EMRServerlessRole",
       s3LogUri: String = "s3://my-bucket/logs/",
       eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
@@ -29,11 +56,11 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       awsRegion: String = "us-east-1",
       eksClusterName: Option[String] = None,
       ingressBaseUrl: Option[String] = None,
-      emrStudioId: Option[String] = None
+      emrStudioId: Option[String] = None,
+      applicationName: String = "test-app"
   ): EmrServerlessSubmitter = {
     new EmrServerlessSubmitter(
       mockClient,
-      applicationId,
       executionRoleArn,
       s3LogUri,
       eksFlinkSubmitter = eksFlinkSubmitter,
@@ -41,11 +68,12 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       awsRegion = awsRegion,
       eksClusterName = eksClusterName,
       ingressBaseUrl = ingressBaseUrl,
-      emrStudioId = emrStudioId
+      emrStudioId = emrStudioId,
+      applicationName = applicationName
     )
   }
 
-  "EmrServerlessSubmitter" should "submit a Spark job successfully with existing application" in {
+  "EmrServerlessSubmitter" should "submit a Spark job using app ID from submission props" in {
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-123456"
 
@@ -59,14 +87,15 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.startJobRun(any[StartJobRunRequest]))
       .thenReturn(startJobRunResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
 
     val submittedJobId = submitter.submit(
       submission.SparkJob,
       Map(
         MainClass -> "ai.chronon.spark.Driver",
         JarURI -> "s3://my-bucket/jars/cloud-aws.jar",
-        JobId -> "test-job-id"
+        JobId -> "test-job-id",
+        submitter.clusterIdentifierKey -> applicationId
       ),
       Map("spark.executor.memory" -> "4g"),
       List.empty,
@@ -75,12 +104,42 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     assertEquals(jobRunId, submittedJobId)
     verify(mockClient).startJobRun(any[StartJobRunRequest])
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+    assertEquals(applicationId, requestCaptor.getValue.applicationId())
   }
 
-  it should "create a new application if applicationId is not provided" in {
+  it should "resolve app by name via ListApplications when no app ID in submission props" in {
     val mockClient = mock[EmrServerlessClient]
+    val appId = "app-resolved-456"
 
-    val newAppId = "app-new-123"
+    mockListApplications(mockClient, appId, "my-emr-app")
+
+    val jobRunId = "job-run-456"
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(appId).jobRunId(jobRunId).build())
+
+    val submitter = createSubmitter(mockClient, applicationName = "my-emr-app")
+
+    val submittedJobId = submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://my-bucket/jars/cloud-aws.jar",
+        JobId -> "test-job-id"
+      ),
+      Map.empty,
+      List.empty,
+      Map.empty
+    )
+
+    assertEquals(jobRunId, submittedJobId)
+    verify(mockClient, never()).createApplication(any[CreateApplicationRequest])
+  }
+
+  it should "fail with clear error if no application found by name" in {
+    val mockClient = mock[EmrServerlessClient]
 
     val listAppsResponse = ListApplicationsResponse
       .builder()
@@ -89,100 +148,25 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.listApplications(any[ListApplicationsRequest]))
       .thenReturn(listAppsResponse)
 
-    val createAppResponse = CreateApplicationResponse
-      .builder()
-      .applicationId(newAppId)
-      .build()
-    when(mockClient.createApplication(any[CreateApplicationRequest]))
-      .thenReturn(createAppResponse)
+    val submitter = createSubmitter(mockClient, applicationName = "nonexistent-app")
 
-    val getAppResponse = GetApplicationResponse
-      .builder()
-      .application(
-        Application
-          .builder()
-          .applicationId(newAppId)
-          .state(ApplicationState.CREATED)
-          .build()
+    val exception = intercept[RuntimeException] {
+      submitter.submit(
+        submission.SparkJob,
+        Map(
+          MainClass -> "ai.chronon.spark.Driver",
+          JarURI -> "s3://my-bucket/jars/cloud-aws.jar",
+          JobId -> "test-job-id"
+        ),
+        Map.empty,
+        List.empty,
+        Map.empty
       )
-      .build()
-    when(mockClient.getApplication(any[GetApplicationRequest]))
-      .thenReturn(getAppResponse)
+    }
 
-    val jobRunId = "job-run-123"
-    val startJobRunResponse = StartJobRunResponse
-      .builder()
-      .applicationId(newAppId)
-      .jobRunId(jobRunId)
-      .build()
-    when(mockClient.startJobRun(any[StartJobRunRequest]))
-      .thenReturn(startJobRunResponse)
-
-    val submitter = createSubmitter(mockClient, applicationId = None)
-
-    val submittedJobId = submitter.submit(
-      submission.SparkJob,
-      Map(
-        MainClass -> "ai.chronon.spark.Driver",
-        JarURI -> "s3://my-bucket/jars/cloud-aws.jar",
-        JobId -> "test-job-id"
-      ),
-      Map.empty,
-      List.empty,
-      Map.empty
-    )
-
-    assertEquals(jobRunId, submittedJobId)
-
-    verify(mockClient).createApplication(any[CreateApplicationRequest])
-    verify(mockClient).startJobRun(any[StartJobRunRequest])
-  }
-
-  it should "reuse existing application with matching name" in {
-    val mockClient = mock[EmrServerlessClient]
-
-    val existingAppId = "app-existing-123"
-
-    val existingApp = ApplicationSummary
-      .builder()
-      .id(existingAppId)
-      .name("chronon-serverless-app")
-      .state(ApplicationState.CREATED)
-      .build()
-    val listAppsResponse = ListApplicationsResponse
-      .builder()
-      .applications(List(existingApp).asJava)
-      .build()
-    when(mockClient.listApplications(any[ListApplicationsRequest]))
-      .thenReturn(listAppsResponse)
-
-    val jobRunId = "job-run-456"
-    val startJobRunResponse = StartJobRunResponse
-      .builder()
-      .applicationId(existingAppId)
-      .jobRunId(jobRunId)
-      .build()
-    when(mockClient.startJobRun(any[StartJobRunRequest]))
-      .thenReturn(startJobRunResponse)
-
-    val submitter = createSubmitter(mockClient, applicationId = None)
-
-    val submittedJobId = submitter.submit(
-      submission.SparkJob,
-      Map(
-        MainClass -> "ai.chronon.spark.Driver",
-        JarURI -> "s3://my-bucket/jars/cloud-aws.jar",
-        JobId -> "test-job-id"
-      ),
-      Map.empty,
-      List.empty,
-      Map.empty
-    )
-
-    assertEquals(jobRunId, submittedJobId)
-
+    exception.getMessage should include("No EMR Serverless application found")
+    exception.getMessage should include("Terraform")
     verify(mockClient, never()).createApplication(any[CreateApplicationRequest])
-    verify(mockClient).startJobRun(any[StartJobRunRequest])
   }
 
   it should "return PENDING status for a submitted job" in {
@@ -190,6 +174,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
 
+    mockFindApplicationForJob(mockClient, applicationId, jobRunId)
+    // Override the GetJobRun mock to return PENDING
     val getJobRunResponse = GetJobRunResponse
       .builder()
       .jobRun(
@@ -203,10 +189,9 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.getJobRun(any[GetJobRunRequest]))
       .thenReturn(getJobRunResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
 
     assertEquals(JobStatusType.PENDING, submitter.status(jobRunId))
-    verify(mockClient).getJobRun(any[GetJobRunRequest])
   }
 
   it should "return RUNNING status for a running job" in {
@@ -214,20 +199,9 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
 
-    val getJobRunResponse = GetJobRunResponse
-      .builder()
-      .jobRun(
-        JobRun.builder()
-          .applicationId(applicationId)
-          .jobRunId(jobRunId)
-          .state(JobRunState.RUNNING)
-          .build()
-      )
-      .build()
-    when(mockClient.getJobRun(any[GetJobRunRequest]))
-      .thenReturn(getJobRunResponse)
+    mockFindApplicationForJob(mockClient, applicationId, jobRunId)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
 
     assertEquals(JobStatusType.RUNNING, submitter.status(jobRunId))
   }
@@ -237,6 +211,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
 
+    mockListApplications(mockClient, applicationId)
     val getJobRunResponse = GetJobRunResponse
       .builder()
       .jobRun(
@@ -250,7 +225,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.getJobRun(any[GetJobRunRequest]))
       .thenReturn(getJobRunResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
 
     assertEquals(JobStatusType.SUCCEEDED, submitter.status(jobRunId))
   }
@@ -260,6 +235,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
 
+    mockListApplications(mockClient, applicationId)
     val getJobRunResponse = GetJobRunResponse
       .builder()
       .jobRun(
@@ -273,7 +249,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.getJobRun(any[GetJobRunRequest]))
       .thenReturn(getJobRunResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
 
     assertEquals(JobStatusType.FAILED, submitter.status(jobRunId))
   }
@@ -283,11 +259,13 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val applicationId = "app-123"
     val jobRunId = "job-run-123"
 
+    mockFindApplicationForJob(mockClient, applicationId, jobRunId)
+
     val cancelResponse = CancelJobRunResponse.builder().build()
     when(mockClient.cancelJobRun(any[CancelJobRunRequest]))
       .thenReturn(cancelResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
     submitter.kill(jobRunId)
 
     val requestCaptor = ArgumentCaptor.forClass(classOf[CancelJobRunRequest])
@@ -334,14 +312,15 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.startJobRun(any[StartJobRunRequest]))
       .thenReturn(startJobRunResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId))
+    val submitter = createSubmitter(mockClient)
 
     submitter.submit(
       submission.SparkJob,
       Map(
         MainClass -> "ai.chronon.spark.Driver",
         JarURI -> "s3://my-bucket/jars/cloud-aws.jar",
-        JobId -> "test-job-id"
+        JobId -> "test-job-id",
+        submitter.clusterIdentifierKey -> applicationId
       ),
       Map(
         "spark.executor.memory" -> "4g",
@@ -383,14 +362,15 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     when(mockClient.startJobRun(any[StartJobRunRequest]))
       .thenReturn(startJobRunResponse)
 
-    val submitter = createSubmitter(mockClient, applicationId = Some(applicationId), s3LogUri = s3LogUri)
+    val submitter = createSubmitter(mockClient, s3LogUri = s3LogUri)
 
     submitter.submit(
       submission.SparkJob,
       Map(
         MainClass -> "ai.chronon.spark.Driver",
         JarURI -> "s3://my-bucket/jars/test.jar",
-        JobId -> "test-job"
+        JobId -> "test-job",
+        submitter.clusterIdentifierKey -> applicationId
       ),
       Map.empty,
       List.empty,
@@ -424,18 +404,155 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     assertEquals("join.json", submitter.resolveConfPath(s3Uri))
   }
 
-  it should "return false for isClusterCreateNeeded" in {
+  it should "return true for isClusterCreateNeeded for batch jobs" in {
+    val mockClient = mock[EmrServerlessClient]
+    val submitter = createSubmitter(mockClient)
+    assertEquals(true, submitter.isClusterCreateNeeded(isLongRunning = false))
+  }
+
+  it should "return false for isClusterCreateNeeded for long-running jobs" in {
     val mockClient = mock[EmrServerlessClient]
     val submitter = createSubmitter(mockClient)
     assertEquals(false, submitter.isClusterCreateNeeded(isLongRunning = true))
-    assertEquals(false, submitter.isClusterCreateNeeded(isLongRunning = false))
   }
 
-  it should "return None for ensureClusterReady" in {
+  it should "return app ID from ensureClusterReady when app is ready" in {
     val mockClient = mock[EmrServerlessClient]
+    val appId = "app-ready-123"
+    val appName = "test-app"
+
+    mockListApplications(mockClient, appId, appName)
+
+    val getAppResponse = GetApplicationResponse
+      .builder()
+      .application(
+        Application.builder().applicationId(appId).state(ApplicationState.STARTED).build()
+      )
+      .build()
+    when(mockClient.getApplication(any[GetApplicationRequest]))
+      .thenReturn(getAppResponse)
+
     val submitter = createSubmitter(mockClient)
+
     import scala.concurrent.ExecutionContext.Implicits.global
-    assertEquals(None, submitter.ensureClusterReady("cluster", None))
+    val result = submitter.ensureClusterReady(appName, None)
+    assertEquals(Some(appId), result)
+  }
+
+  it should "return None from ensureClusterReady when app is starting" in {
+    val mockClient = mock[EmrServerlessClient]
+    val appId = "app-starting-123"
+    val appName = "starting-app"
+
+    val existingApp = ApplicationSummary
+      .builder()
+      .id(appId)
+      .name(appName)
+      .state(ApplicationState.STARTING)
+      .build()
+    val listAppsResponse = ListApplicationsResponse
+      .builder()
+      .applications(List(existingApp).asJava)
+      .build()
+    when(mockClient.listApplications(any[ListApplicationsRequest]))
+      .thenReturn(listAppsResponse)
+
+    val getAppResponse = GetApplicationResponse
+      .builder()
+      .application(
+        Application.builder().applicationId(appId).state(ApplicationState.STARTING).build()
+      )
+      .build()
+    when(mockClient.getApplication(any[GetApplicationRequest]))
+      .thenReturn(getAppResponse)
+
+    val submitter = createSubmitter(mockClient)
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val result = submitter.ensureClusterReady(appName, None)
+    assertEquals(None, result)
+  }
+
+  it should "return app ID from ensureClusterReady when app is stopped (auto-start on job submit)" in {
+    val mockClient = mock[EmrServerlessClient]
+    val appId = "app-stopped-123"
+    val appName = "stopped-app"
+
+    val existingApp = ApplicationSummary
+      .builder()
+      .id(appId)
+      .name(appName)
+      .state(ApplicationState.STOPPED)
+      .build()
+    val listAppsResponse = ListApplicationsResponse
+      .builder()
+      .applications(List(existingApp).asJava)
+      .build()
+    when(mockClient.listApplications(any[ListApplicationsRequest]))
+      .thenReturn(listAppsResponse)
+
+    val getAppResponse = GetApplicationResponse
+      .builder()
+      .application(
+        Application.builder().applicationId(appId).state(ApplicationState.STOPPED).build()
+      )
+      .build()
+    when(mockClient.getApplication(any[GetApplicationRequest]))
+      .thenReturn(getAppResponse)
+
+    val submitter = createSubmitter(mockClient)
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val result = submitter.ensureClusterReady(appName, None)
+    assertEquals(Some(appId), result)
+  }
+
+  it should "throw from ensureClusterReady when app is terminated" in {
+    val mockClient = mock[EmrServerlessClient]
+    val appId = "app-terminated-123"
+    val appName = "terminated-app"
+
+    val existingApp = ApplicationSummary
+      .builder()
+      .id(appId)
+      .name(appName)
+      .state(ApplicationState.TERMINATED)
+      .build()
+    val listAppsResponse = ListApplicationsResponse
+      .builder()
+      .applications(List(existingApp).asJava)
+      .build()
+    when(mockClient.listApplications(any[ListApplicationsRequest]))
+      .thenReturn(listAppsResponse)
+
+    val submitter = createSubmitter(mockClient)
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+    // findApplication filters out TERMINATED apps, so this hits the "no app found" path
+    val exception = intercept[RuntimeException] {
+      submitter.ensureClusterReady(appName, None)
+    }
+    exception.getMessage should include("No EMR Serverless application found")
+  }
+
+  it should "throw from ensureClusterReady when no app found" in {
+    val mockClient = mock[EmrServerlessClient]
+
+    val listAppsResponse = ListApplicationsResponse
+      .builder()
+      .applications(List.empty[ApplicationSummary].asJava)
+      .build()
+    when(mockClient.listApplications(any[ListApplicationsRequest]))
+      .thenReturn(listAppsResponse)
+
+    val submitter = createSubmitter(mockClient)
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val exception = intercept[RuntimeException] {
+      submitter.ensureClusterReady("nonexistent-app", None)
+    }
+    exception.getMessage should include("No EMR Serverless application found")
+    exception.getMessage should include("Terraform")
   }
 
   it should "return correct kvStoreApiProperties" in {
@@ -448,22 +565,34 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "return EMR Studio URL when studio ID is provided" in {
     val mockClient = mock[EmrServerlessClient]
-    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2", emrStudioId = Some("5zs3voh3ex6jahzji73kwcc14"))
-    val url = submitter.getJobUrl("job-run-456")
+    val appId = "app-123"
+    val jobRunId = "job-run-456"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2",
+      emrStudioId = Some("5zs3voh3ex6jahzji73kwcc14"))
+    val url = submitter.getJobUrl(jobRunId)
     assert(url.isDefined)
     assertEquals(
-      "https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/app-123/job-run-456",
+      s"https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/$appId/$jobRunId",
       url.get
     )
   }
 
   it should "normalize studio ID with es- prefix and uppercase from ListStudios API" in {
     val mockClient = mock[EmrServerlessClient]
-    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2", emrStudioId = Some("es-5ZS3VOH3EX6JAHZJI73KWCC14"))
-    val url = submitter.getJobUrl("job-run-456")
+    val appId = "app-123"
+    val jobRunId = "job-run-456"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
+    val submitter = createSubmitter(mockClient, awsRegion = "us-west-2",
+      emrStudioId = Some("es-5ZS3VOH3EX6JAHZJI73KWCC14"))
+    val url = submitter.getJobUrl(jobRunId)
     assert(url.isDefined)
     assertEquals(
-      "https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/app-123/job-run-456",
+      s"https://es-5zs3voh3ex6jahzji73kwcc14.emrstudio-prod.us-west-2.amazonaws.com/#/serverless-applications/$appId/$jobRunId",
       url.get
     )
   }
@@ -479,9 +608,11 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val mockClient = mock[EmrServerlessClient]
     val appId = "00g43cs10nq1310l"
     val jobRunId = "00g43m46p6r9p80n"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
     val submitter = createSubmitter(
       mockClient,
-      applicationId = Some(appId),
       awsRegion = "us-west-2",
       emrStudioId = Some("5zs3voh3ex6jahzji73kwcc14")
     )
@@ -495,21 +626,31 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "return Spark UI URL via dashboard API" in {
     val mockClient = mock[EmrServerlessClient]
+    val appId = "app-123"
+    val jobRunId = "job-run-456"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
     val dashboardUrl = "https://es-abc123.emrstudio-prod.us-west-2.amazonaws.com/spark-ui"
     val response = GetDashboardForJobRunResponse.builder().url(dashboardUrl).build()
     when(mockClient.getDashboardForJobRun(any[GetDashboardForJobRunRequest])).thenReturn(response)
     val submitter = createSubmitter(mockClient, awsRegion = "us-west-2")
-    val url = submitter.getSparkUrl("job-run-456")
+    val url = submitter.getSparkUrl(jobRunId)
     assert(url.isDefined)
     assertEquals(dashboardUrl, url.get)
   }
 
   it should "return None for getSparkUrl when dashboard API fails" in {
     val mockClient = mock[EmrServerlessClient]
+    val appId = "app-123"
+    val jobRunId = "job-run-456"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
     when(mockClient.getDashboardForJobRun(any[GetDashboardForJobRunRequest]))
       .thenThrow(ValidationException.builder().message("Dashboard not available").build())
     val submitter = createSubmitter(mockClient, awsRegion = "us-west-2")
-    val url = submitter.getSparkUrl("job-run-456")
+    val url = submitter.getSparkUrl(jobRunId)
     assert(url.isEmpty)
   }
 
@@ -548,6 +689,38 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     assert(submitter.deprecatedClusterNameEnvVars.isEmpty)
   }
 
+  // --- findApplicationForJob ---
+
+  "findApplicationForJob" should "find app by scanning applications" in {
+    val mockClient = mock[EmrServerlessClient]
+    val appId = "app-found-123"
+    val jobRunId = "job-run-scan-456"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
+    val submitter = createSubmitter(mockClient)
+
+    val status = submitter.status(jobRunId)
+    assertEquals(JobStatusType.RUNNING, status)
+  }
+
+  it should "cache app ID after first lookup" in {
+    val mockClient = mock[EmrServerlessClient]
+    val appId = "app-cached-123"
+    val jobRunId = "job-run-cached-456"
+
+    mockFindApplicationForJob(mockClient, appId, jobRunId)
+
+    val submitter = createSubmitter(mockClient)
+
+    // First call triggers scan
+    submitter.status(jobRunId)
+    // Second call should use cache — listApplications should only be called once
+    submitter.status(jobRunId)
+
+    verify(mockClient, times(1)).listApplications(any[ListApplicationsRequest])
+  }
+
   // --- buildFlinkSubmissionProps ---
 
   private val testArtifactPrefix = "s3://zipline-artifacts-test"
@@ -562,7 +735,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   private def createTestServerlessSubmitter(): EmrServerlessSubmitter =
     new EmrServerlessSubmitter(mock[EmrServerlessClient],
-      applicationId = Some("app-test"),
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
       eksFlinkSubmitter = Some(mock[EksFlinkSubmitter]))
@@ -624,7 +796,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   it should "prefer constructor-level flinkEksServiceAccount/flinkEksNamespace over env vars" in {
     val submitter = new EmrServerlessSubmitter(
       mock[EmrServerlessClient],
-      applicationId = Some("app-test"),
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
       eksFlinkSubmitter = Some(mock[EksFlinkSubmitter]),
@@ -648,7 +819,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     val submitter = new EmrServerlessSubmitter(
       mockClient,
-      applicationId = Some("app-test"),
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
       eksFlinkSubmitter = Some(mockFlinkSubmitter),
@@ -667,7 +837,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     var capturedUrl: Option[String] = None
     val submitter = new EmrServerlessSubmitter(
       mockClient,
-      applicationId = Some("app-test"),
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
       eksFlinkSubmitter = Some(mockFlinkSubmitter),
@@ -687,7 +856,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     var healthCheckCalled = false
     val submitter = new EmrServerlessSubmitter(
       mockClient,
-      applicationId = Some("app-test"),
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
       eksFlinkSubmitter = Some(mockFlinkSubmitter),
@@ -897,7 +1065,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     * - AWS_REGION: us-east-1
     * - AWS_ACCOUNT_ID: 123456789012 (MUST be set to your actual AWS account)
     * - CUSTOMER_ID: canary (used for role and bucket naming)
-    * - EMR_SERVERLESS_APP_ID: (Optional) Pre-created application ID
+    * - SPARK_CLUSTER_NAME: EMR Serverless application name (required)
     * - EMR_EXECUTION_ROLE_ARN: Defaults to arn:aws:iam::{ACCOUNT_ID}:role/zipline_{CUSTOMER_ID}_emr_serverless_role
     * - EMR_LOG_URI: Defaults to s3://zipline-logs-{CUSTOMER_ID}/emr-serverless/
     * - TEST_JAR_URI: Defaults to s3://zipline-artifacts-{CUSTOMER_ID}/jars/cloud-aws.jar
@@ -907,6 +1075,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     * Example setup:
     * export AWS_ACCOUNT_ID=123456789012
     * export CUSTOMER_ID=canary
+    * export SPARK_CLUSTER_NAME=zipline-emr-canary
     * export POLL_JOB_STATUS=true
     *
     * Then run:
@@ -916,7 +1085,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val awsAccountId = sys.env.getOrElse("AWS_ACCOUNT_ID", "123456789012")
     val customerId = sys.env.getOrElse("CUSTOMER_ID", "canary")
     val region = sys.env.getOrElse("AWS_REGION", "us-east-1")
-    val applicationId = sys.env.get("EMR_SERVERLESS_APP_ID")
+    val appName = sys.env.getOrElse("SPARK_CLUSTER_NAME", "zipline-emr-canary")
 
     val executionRoleArn = sys.env.getOrElse(
       "EMR_EXECUTION_ROLE_ARN",
@@ -937,7 +1106,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     println(s"AWS Account ID: $awsAccountId")
     println(s"Customer ID: $customerId")
     println(s"Region: $region")
-    println(s"Application ID: ${applicationId.getOrElse("Will create new")}")
+    println(s"Application Name: $appName")
     println(s"Execution Role: $executionRoleArn")
     println(s"Log URI: $s3LogUri")
     println(s"JAR URI: $jarUri")
@@ -951,9 +1120,9 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     val submitter = new EmrServerlessSubmitter(
       client,
-      applicationId,
       executionRoleArn,
-      s3LogUri
+      s3LogUri,
+      applicationName = appName
     )
 
     val jobId = s"chronon-test-${System.currentTimeMillis()}"
@@ -983,8 +1152,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
     println(s"Job submitted successfully!")
     println(s"Job Run ID: $submittedJobId")
-    println(
-      s"Console URL: https://console.aws.amazon.com/emr/home?region=$region#/serverless-applications/${applicationId.getOrElse("unknown")}/job-runs/$submittedJobId")
     println()
 
     assert(submittedJobId.nonEmpty, "Job run ID should not be empty")
@@ -1014,7 +1181,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       }
     } else {
       println("Skipping status polling (set POLL_JOB_STATUS=true to enable)")
-      println("You can check the job status manually at the console URL above")
     }
   }
 }

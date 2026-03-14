@@ -7,22 +7,21 @@ import ai.chronon.integrations.aws.EmrSubmitter.{
   DefaultClusterInstanceCount,
   DefaultClusterInstanceType
 }
-import ai.chronon.spark.submission.JobSubmitterConstants
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import software.amazon.awssdk.core.exception.SdkException
 import io.fabric8.kubernetes.client.Config
+import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.services.ec2.Ec2Client
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 import software.amazon.awssdk.services.ec2.model.{DescribeSecurityGroupsRequest, DescribeSubnetsRequest, Filter}
 import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.{Unit => _, _}
 import software.amazon.awssdk.services.s3.S3Client
+
+import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
+import scala.util.{Failure, Success, Try}
 
 class EmrSubmitter(customerId: String,
                    emrClient: EmrClient,

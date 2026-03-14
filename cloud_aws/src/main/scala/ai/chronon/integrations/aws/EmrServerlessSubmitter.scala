@@ -9,12 +9,12 @@ import software.amazon.awssdk.services.emr.model.ListStudiosRequest
 import software.amazon.awssdk.services.emrserverless.EmrServerlessClient
 import software.amazon.awssdk.services.emrserverless.model._
 
+import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 
 class EmrServerlessSubmitter(
     emrServerlessClient: EmrServerlessClient,
-    applicationId: Option[String],
     executionRoleArn: String,
     s3LogUri: String,
     eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
@@ -28,98 +28,45 @@ class EmrServerlessSubmitter(
     ingressBaseUrl: Option[String] = None,
     emrStudioId: Option[String] = None,
     flinkHealthCheckFn: Option[String] => Boolean = _ => true,
-    cloudWatchLogGroupName: Option[String] = None
+    cloudWatchLogGroupName: Option[String] = None,
+    applicationName: String = EmrServerlessSubmitter.DefaultApplicationName
 ) extends JobSubmitter {
 
-  private val DefaultEmrReleaseLabel = "emr-7.12.0"
-  private val DefaultApplicationName = "chronon-serverless-app"
+  // Cache of jobRunId → appId for reverse lookups in status/kill/URL
+  private val jobAppIdCache = new ConcurrentHashMap[String, String]()
 
   private lazy val resolvedStudioId: Option[String] =
     emrStudioId.orElse(EmrServerlessSubmitter.resolveEmrStudioId(awsRegion))
 
-  // Lazily resolved so the app is created/discovered on first Spark submission and reused thereafter
+  // Lazily resolved for the CLI path
   lazy val resolvedApplicationId: String =
-    getOrCreateApplication(DefaultEmrReleaseLabel, DefaultApplicationName)
+    findApplication(applicationName)
+      .getOrElse(
+        throw new RuntimeException(
+          s"No EMR Serverless application found with name '$applicationName'. " +
+            "Applications must be created via Terraform with proper VPC network configuration."))
 
-  private def getOrCreateApplication(releaseLabel: String, appName: String): String = {
-    applicationId match {
-      case Some(appId) =>
-        logger.info(s"Using existing EMR Serverless application: $appId")
-        appId
-
-      case None =>
-        val existingApps = {
-          val buf = scala.collection.mutable.Buffer.empty[ApplicationSummary]
-          var nextToken: Option[String] = None
-          do {
-            val requestBuilder = ListApplicationsRequest.builder()
-            nextToken.foreach(requestBuilder.nextToken)
-            val response = emrServerlessClient.listApplications(requestBuilder.build())
-            buf ++= response.applications().asScala
-            nextToken = Option(response.nextToken())
-          } while (nextToken.isDefined)
-          buf.filter(app => app.name() == appName && app.state() != ApplicationState.TERMINATED)
-        }
-
-        if (existingApps.nonEmpty) {
-          val appId = existingApps.head.id()
-          logger.info(s"Found existing EMR Serverless application: $appId")
-          appId
-        } else {
-          logger.info(s"Creating new EMR Serverless application: $appName")
-          val createRequest = CreateApplicationRequest
-            .builder()
-            .name(appName)
-            .releaseLabel(releaseLabel)
-            .`type`("Spark")
-            .autoStartConfiguration(
-              AutoStartConfig.builder().enabled(true).build()
-            )
-            .autoStopConfiguration(
-              AutoStopConfig.builder().enabled(true).idleTimeoutMinutes(15).build()
-            )
-            .build()
-
-          val response = emrServerlessClient.createApplication(createRequest)
-          val newAppId = response.applicationId()
-          logger.info(s"Created EMR Serverless application: $newAppId")
-
-          waitForApplicationReady(newAppId)
-          newAppId
-        }
+  private def findApplication(appName: String): Option[String] = {
+    val existingApps = {
+      val buf = scala.collection.mutable.Buffer.empty[ApplicationSummary]
+      var nextToken: Option[String] = None
+      do {
+        val requestBuilder = ListApplicationsRequest.builder()
+        nextToken.foreach(requestBuilder.nextToken)
+        val response = emrServerlessClient.listApplications(requestBuilder.build())
+        buf ++= response.applications().asScala
+        nextToken = Option(response.nextToken())
+      } while (nextToken.isDefined)
+      buf.filter(app => app.name() == appName && app.state() != ApplicationState.TERMINATED)
     }
-  }
 
-  private def waitForApplicationReady(appId: String): Unit = {
-    var attempts = 0
-    val maxAttempts = 60
-    val sleepSeconds = 10
-
-    while (attempts < maxAttempts) {
-      val getRequest = GetApplicationRequest.builder().applicationId(appId).build()
-      val app = emrServerlessClient.getApplication(getRequest).application()
-
-      app.state() match {
-        case ApplicationState.CREATED | ApplicationState.STARTED =>
-          logger.info(s"Application $appId is ready (state: ${app.state()})")
-          return
-        case ApplicationState.CREATING | ApplicationState.STARTING =>
-          logger.info(s"Waiting for application $appId (state: ${app.state()}, attempt $attempts/$maxAttempts)")
-          Thread.sleep(sleepSeconds * 1000)
-          attempts += 1
-        case ApplicationState.STOPPING =>
-          logger.info(
-            s"Application $appId is stopping (attempt $attempts/$maxAttempts), waiting for terminal state"
-          )
-          Thread.sleep(sleepSeconds * 1000)
-          attempts += 1
-        case ApplicationState.TERMINATED | ApplicationState.STOPPED =>
-          throw new RuntimeException(s"Application $appId entered terminal state: ${app.state()}")
-        case _ =>
-          throw new RuntimeException(s"Application $appId in unexpected state: ${app.state()}")
-      }
+    if (existingApps.nonEmpty) {
+      val appId = existingApps.head.id()
+      logger.info(s"Found existing EMR Serverless application: $appId (name=$appName)")
+      Some(appId)
+    } else {
+      None
     }
-    throw new RuntimeException(s"Timeout waiting for application $appId to be ready")
   }
 
   override def submit(
@@ -191,7 +138,9 @@ class EmrServerlessSubmitter(
     val mainClass = submissionProperties.getOrElse(MainClass, throw new RuntimeException("Main class not found"))
     val jarUri = submissionProperties.getOrElse(JarURI, throw new RuntimeException("Jar URI not found"))
 
-    val appId = resolvedApplicationId
+    // Prefer app ID from submission props (set by NodeSubmitter via ensureClusterReady),
+    // fall back to resolvedApplicationId for CLI path
+    val appId = submissionProperties.getOrElse(clusterIdentifierKey, resolvedApplicationId)
 
     val filesParam = if (files.nonEmpty) s" --files ${files.mkString(",")}" else ""
 
@@ -247,9 +196,45 @@ class EmrServerlessSubmitter(
     val response = emrServerlessClient.startJobRun(startJobRunRequest)
     val jobRunId = response.jobRunId()
 
+    // Cache the mapping so status/kill/URL can find the app
+    jobAppIdCache.put(jobRunId, appId)
     logger.info(s"Started EMR Serverless job run: $jobRunId on application $appId")
 
     jobRunId
+  }
+
+  /** Scan applications to find which one owns the given jobRunId.
+    * In practice there are 1-2 apps per environment, so this is 1-2 API calls.
+    */
+  private def findApplicationForJob(jobRunId: String): String = {
+    val cached = jobAppIdCache.get(jobRunId)
+    if (cached != null) return cached
+
+    // List all applications (including terminated so we can query jobs from replaced apps)
+    val apps = {
+      val buf = scala.collection.mutable.Buffer.empty[ApplicationSummary]
+      var nextToken: Option[String] = None
+      do {
+        val requestBuilder = ListApplicationsRequest.builder()
+        nextToken.foreach(requestBuilder.nextToken)
+        val response = emrServerlessClient.listApplications(requestBuilder.build())
+        buf ++= response.applications().asScala
+        nextToken = Option(response.nextToken())
+      } while (nextToken.isDefined)
+      buf
+    }
+
+    for (app <- apps) {
+      try {
+        val request = GetJobRunRequest.builder().applicationId(app.id()).jobRunId(jobRunId).build()
+        emrServerlessClient.getJobRun(request)
+        jobAppIdCache.put(jobRunId, app.id())
+        return app.id()
+      } catch {
+        case _: ResourceNotFoundException => // job not on this app, try next
+      }
+    }
+    throw new RuntimeException(s"Could not find application for job run $jobRunId across ${apps.size} applications")
   }
 
   override def status(jobId: String): JobStatusType = {
@@ -265,9 +250,10 @@ class EmrServerlessSubmitter(
       }
     } else {
       try {
+        val appId = findApplicationForJob(jobId)
         val getRequest = GetJobRunRequest
           .builder()
-          .applicationId(resolvedApplicationId)
+          .applicationId(appId)
           .jobRunId(jobId)
           .build()
 
@@ -298,14 +284,15 @@ class EmrServerlessSubmitter(
         .delete(deploymentName = parts(2), namespace = parts(1))
     } else {
       try {
+        val appId = findApplicationForJob(jobId)
         val cancelRequest = CancelJobRunRequest
           .builder()
-          .applicationId(resolvedApplicationId)
+          .applicationId(appId)
           .jobRunId(jobId)
           .build()
 
         emrServerlessClient.cancelJobRun(cancelRequest)
-        logger.info(s"Cancelled EMR Serverless job run $jobId on application $resolvedApplicationId")
+        logger.info(s"Cancelled EMR Serverless job run $jobId on application $appId")
       } catch {
         case e: Exception =>
           logger.error(s"Error killing job $jobId: ${e.getMessage}")
@@ -329,10 +316,16 @@ class EmrServerlessSubmitter(
         }
       } else None
     } else {
-      resolvedStudioId.map { rawStudioId =>
-        val studioId = rawStudioId.stripPrefix("es-").toLowerCase
-        val appId = resolvedApplicationId
-        s"https://es-$studioId.emrstudio-prod.$awsRegion.amazonaws.com/#/serverless-applications/$appId/$jobId"
+      resolvedStudioId.flatMap { rawStudioId =>
+        try {
+          val studioId = rawStudioId.stripPrefix("es-").toLowerCase
+          val appId = findApplicationForJob(jobId)
+          Some(s"https://es-$studioId.emrstudio-prod.$awsRegion.amazonaws.com/#/serverless-applications/$appId/$jobId")
+        } catch {
+          case e: Exception =>
+            logger.debug(s"Could not get job URL for $jobId: ${e.getMessage}")
+            None
+        }
       }
     }
   }
@@ -342,9 +335,10 @@ class EmrServerlessSubmitter(
       None
     } else {
       try {
+        val appId = findApplicationForJob(jobId)
         val request = GetDashboardForJobRunRequest
           .builder()
-          .applicationId(resolvedApplicationId)
+          .applicationId(appId)
           .jobRunId(jobId)
           .build()
         Some(emrServerlessClient.getDashboardForJobRun(request).url())
@@ -391,11 +385,34 @@ class EmrServerlessSubmitter(
 
   override def deprecatedClusterNameEnvVars: Seq[String] = Seq.empty
 
-  // Serverless has no clusters to manage for batch; Flink goes to EKS
-  override def isClusterCreateNeeded(isLongRunning: Boolean): Boolean = false
+  // Batch jobs need cluster resolution (app name → app ID); Flink goes to EKS
+  override def isClusterCreateNeeded(isLongRunning: Boolean): Boolean = !isLongRunning
 
   override def ensureClusterReady(clusterName: String, clusterConf: Option[Map[String, String]])(implicit
-      ec: ExecutionContext): Option[String] = None
+      ec: ExecutionContext): Option[String] = {
+    val appName = clusterName
+    findApplication(appName) match {
+      case Some(appId) =>
+        val getRequest = GetApplicationRequest.builder().applicationId(appId).build()
+        val app = emrServerlessClient.getApplication(getRequest).application()
+        app.state() match {
+          case ApplicationState.CREATED | ApplicationState.STARTED | ApplicationState.STOPPED =>
+            logger.info(s"Application $appId (name=$appName) is ready (state: ${app.state()})")
+            Some(appId)
+          case ApplicationState.CREATING | ApplicationState.STARTING =>
+            logger.info(s"Application $appId (name=$appName) is starting (state: ${app.state()}), will retry")
+            None
+          case other =>
+            throw new RuntimeException(
+              s"Application $appId (name=$appName) is in non-usable state: $other. " +
+                "Recreate the application via Terraform.")
+        }
+      case None =>
+        throw new RuntimeException(
+          s"No EMR Serverless application found with name '$appName'. " +
+            "Applications must be created via Terraform with proper VPC network configuration.")
+    }
+  }
 
   override def kvStoreApiProperties: Map[String, String] = Map(
     "AWS_DYNAMODB_TABLE_NAME" -> dynamodbTableName,
@@ -414,6 +431,7 @@ class EmrServerlessSubmitter(
 object EmrServerlessSubmitter {
 
   private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
+  val DefaultApplicationName = "chronon-serverless-app"
 
   // Fallback when EMR_STUDIO_ID is not configured. Any studio in the same account/region
   // can view any serverless application, so picking the first one from ListStudios works.
@@ -446,7 +464,6 @@ object EmrServerlessSubmitter {
       awsRegion: String,
       executionRoleArn: String,
       s3LogUri: String,
-      applicationId: Option[String] = None,
       dynamodbTableName: String = "",
       tablePartitionsDataset: String = "",
       dqMetricsDataset: String = "",
@@ -457,7 +474,8 @@ object EmrServerlessSubmitter {
       emrStudioId: Option[String] = None,
       cloudWatchLogGroupName: Option[String] = None,
       k8sConfig: Option[io.fabric8.kubernetes.client.Config] = None,
-      flinkHealthCheckFn: Option[String] => Boolean = _ => true
+      flinkHealthCheckFn: Option[String] => Boolean = _ => true,
+      applicationName: String = DefaultApplicationName
   ): EmrServerlessSubmitter = {
     val client = EmrServerlessClient
       .builder()
@@ -466,7 +484,6 @@ object EmrServerlessSubmitter {
 
     new EmrServerlessSubmitter(
       client,
-      applicationId,
       executionRoleArn,
       s3LogUri,
       eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
@@ -480,7 +497,8 @@ object EmrServerlessSubmitter {
       ingressBaseUrl = ingressBaseUrl,
       emrStudioId = emrStudioId,
       flinkHealthCheckFn = flinkHealthCheckFn,
-      cloudWatchLogGroupName = cloudWatchLogGroupName
+      cloudWatchLogGroupName = cloudWatchLogGroupName,
+      applicationName = applicationName
     )
   }
 
@@ -586,12 +604,13 @@ object EmrServerlessSubmitter {
     val modeConfigProperties = JobSubmitter.getModeConfigProperties(args)
 
     val region = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", "us-west-2"))
+    val appName = sys.env.get(SparkClusterNameEnvVar).filter(_.nonEmpty).getOrElse(DefaultApplicationName)
     val submitter = EmrServerlessSubmitter(
       awsRegion = region,
       executionRoleArn = sys.env.getOrElse("EMR_EXECUTION_ROLE_ARN",
                                            throw new Exception("EMR_EXECUTION_ROLE_ARN environment variable not set")),
       s3LogUri = sys.env.getOrElse("EMR_LOG_URI", throw new Exception("EMR_LOG_URI environment variable not set")),
-      applicationId = sys.env.get("EMR_SERVERLESS_APP_ID").filter(_.nonEmpty),
+      applicationName = appName,
       flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
       flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
       eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
@@ -608,11 +627,10 @@ object EmrServerlessSubmitter {
       finalArgs: _*
     )
 
-    // Flink jobs return "flink:namespace:deployment"; Spark jobs return a jobRunId.
-    // For Spark, include the applicationId so the caller can poll status.
-    val outputId =
-      if (resultJobId.startsWith("flink:")) resultJobId
-      else s"${submitter.resolvedApplicationId}|$resultJobId"
+    val outputId = jobType match {
+      case TypeSparkJob => s"${submitter.resolvedApplicationId}|$resultJobId"
+      case TypeFlinkJob => resultJobId
+    }
     println(s"Job submitted with ID: $outputId")
   }
 }

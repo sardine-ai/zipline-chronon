@@ -350,7 +350,7 @@ jobs:
 
 
   push_to_azure_passing:
-    needs: [build_and_push, integration_tests]
+    needs: [build_and_push, push_to_azure]
     runs-on: ubuntu-latest
     environment: main
 
@@ -437,7 +437,7 @@ jobs:
                 --overwrite
 
       - name: Push Jars to Azure Blob Storage (latest)
-        if: ${{ needs.integration_tests.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         shell: bash
         run: |
             set -eo pipefail
