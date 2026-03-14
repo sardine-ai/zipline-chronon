@@ -404,6 +404,8 @@ jobs:
           CLOUD: aws
           VERSION: ${{ needs.build_artifacts.outputs.version }}
           PYTEST_ADDOPTS: "-x -k test_run_quickstart"
+          EMR_EXECUTION_ROLE_ARN: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/zipline_canary_emr_serverless_role
+          EMR_LOG_URI: s3://zipline-logs-canary/emr/
         run: |
           set -xo pipefail
           ./mill python.test_integration 2>&1 | tee /tmp/test-output.log
