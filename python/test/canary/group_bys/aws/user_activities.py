@@ -84,3 +84,40 @@ v1 = GroupBy(
         }
     ),
 )
+
+kafka_source = Source(
+    events=EventSource(
+        table=exports.user_activities.table,
+        topic="kafka://user-activities-js/serde=glue_registry/registry_name=zipline-canary/schema_name=user-activities-js",
+        query=Query(
+            selects=selects(
+                user_id="user_id",
+                listing_id="listing_id",
+                view_event="IF(event_type = 'view', 1, 0)",
+                click_event="IF(event_type = 'click', 1, 0)",
+                purchase_event="IF(event_type = 'purchase', 1, 0)",
+                favorite_event="IF(event_type = 'favorite', 1, 0)",
+                add_to_cart_event="IF(event_type = 'add_to_cart', 1, 0)",
+                is_mobile="IF(device_type = 'mobile', 1, 0)",
+                is_desktop="IF(device_type = 'desktop', 1, 0)",
+                is_tablet="IF(device_type = 'tablet', 1, 0)",
+                user_event_struct="STRUCT(event_type, listing_id, unix_millis(TIMESTAMP(event_time_ms)) as timestamp)",
+            ),
+            time_column="unix_millis(TIMESTAMP(event_time_ms))",
+        ),
+    )
+)
+
+kafka_v1 = GroupBy(
+    sources=[kafka_source],
+    keys=["user_id"],
+    online=True,
+    version=1,
+    aggregations=aggregations,
+    step_days=30,
+    env_vars=EnvironmentVariables(
+        common={
+            "CHRONON_ONLINE_ARGS": "-Ztasks=1 -Zbootstrap=b-1.ziplinecanarykafka.b7jz16.c4.kafka.us-west-2.amazonaws.com:9092",
+        }
+    ),
+)
