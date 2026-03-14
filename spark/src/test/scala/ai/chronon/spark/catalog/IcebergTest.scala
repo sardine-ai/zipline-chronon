@@ -14,7 +14,7 @@ class IcebergTest extends SparkTestBase with Matchers {
     props("commit.status-check.min-wait-ms") shouldBe "10000"
     props("commit.status-check.max-wait-ms") shouldBe "600000"
     props("write.merge.isolation-level") shouldBe "snapshot"
-    props("format-version") shouldBe "3"
+    props("format-version") shouldBe "2"
   }
 
   "Iceberg.supportSubPartitionsFilter" should "return false" in {

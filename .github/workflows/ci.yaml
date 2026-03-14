@@ -307,15 +307,40 @@ jobs:
     if: needs.changes.outputs.security == 'true'
     uses: ./.github/workflows/grype_scan_reusable.yaml
 
+  # === Integration test pipeline (merge_group only) ===
+
+  build_and_push:
+    if: github.event_name == 'merge_group'
+    uses: ./.github/workflows/reusable_build_and_push.yaml
+    secrets: inherit
+
+  integration_tests:
+    if: github.event_name == 'merge_group'
+    needs: build_and_push
+    uses: ./.github/workflows/reusable_integration_tests.yaml
+    with:
+      version: ${{ needs.build_and_push.outputs.version }}
+    secrets: inherit
+
   integration-gate:
-    if: github.event_name == 'pull_request'
+    if: always()
+    needs: [integration_tests]
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Integration tests run in the merge queue, not on PRs"
+      - name: Check integration test results
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          for result in $results; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "Integration tests failed: at least one job had result '$result'"
+              exit 1
+            fi
+          done
+          echo "All integration tests passed or were skipped"
 
   ci-gate:
     if: always()
-    needs: [spark, non-spark, python-lint, python-tests, cosmos, redis, format, grype]
+    needs: [spark, non-spark, python-lint, python-tests, cosmos, redis, format, grype, integration-gate]
     runs-on: ubuntu-latest
     steps:
       - name: Check CI results
