@@ -591,7 +591,7 @@ object EmrServerlessSubmitter {
       executionRoleArn = sys.env.getOrElse("EMR_EXECUTION_ROLE_ARN",
                                            throw new Exception("EMR_EXECUTION_ROLE_ARN environment variable not set")),
       s3LogUri = sys.env.getOrElse("EMR_LOG_URI", throw new Exception("EMR_LOG_URI environment variable not set")),
-      applicationId = sys.env.get("EMR_SERVERLESS_APP_ID"),
+      applicationId = sys.env.get("EMR_SERVERLESS_APP_ID").filter(_.nonEmpty),
       flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
       flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
       eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
