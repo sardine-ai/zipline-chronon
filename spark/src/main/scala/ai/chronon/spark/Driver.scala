@@ -88,9 +88,6 @@ object Driver {
     this: ScallopConf =>
     val confPath: ScallopOption[String] = opt[String](required = false, descr = "Path to conf")
 
-    val additionalConfPath: ScallopOption[String] =
-      opt[String](required = false, descr = "Path to additional driver job configurations")
-
     val runFirstHole: ScallopOption[Boolean] =
       opt[Boolean](required = false,
                    default = Some(true),
@@ -600,10 +597,6 @@ object Driver {
     val onlineClass: ScallopOption[String] =
       opt[String](required = true,
                   descr = "Fully qualified Online.Api based class. We expect the jar to be on the class path")
-
-    // TODO: davidhan - remove this when we've migrated away from additional-conf-path
-    val additionalConfPath: ScallopOption[String] =
-      opt[String](required = false, descr = "Path to additional driver job configurations")
 
     // hashmap implements serializable
     def serializableProps: Map[String, String] = {

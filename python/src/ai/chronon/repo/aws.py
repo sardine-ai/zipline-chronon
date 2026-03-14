@@ -32,11 +32,14 @@ LOCAL_FILE_TO_ETAG_JSON = f"{ZIPLINE_DIRECTORY}/local_file_to_etag.json"
 
 class AwsRunner(Runner):
     def __init__(self, args):
+        artifacts_bucket_prefix = os.environ.get(
+            "ARTIFACT_PREFIX", f"s3://zipline-artifacts-{get_customer_id()}"
+        )
         aws_jar_path = AwsRunner.download_zipline_aws_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_AWS_JAR_DEFAULT
+            ZIPLINE_DIRECTORY, artifacts_bucket_prefix, args["version"], ZIPLINE_AWS_JAR_DEFAULT
         )
         service_jar_path = AwsRunner.download_zipline_aws_jar(
-            ZIPLINE_DIRECTORY, get_customer_id(), args["version"], ZIPLINE_AWS_SERVICE_JAR
+            ZIPLINE_DIRECTORY, artifacts_bucket_prefix, args["version"], ZIPLINE_AWS_SERVICE_JAR
         )
         jar_path = f"{service_jar_path}:{aws_jar_path}" if args["mode"] == "fetch" else aws_jar_path
         self.version = args.get("version", "latest")
@@ -45,12 +48,16 @@ class AwsRunner(Runner):
 
     @staticmethod
     def download_zipline_aws_jar(
-        destination_dir: str, customer_id: str, version: str, jar_name: str
+        destination_dir: str, artifacts_prefix: str, version: str, jar_name: str
     ):
         s3_client = boto3.client("s3")
         destination_path = f"{destination_dir}/{jar_name}"
-        source_key_name = f"release/{version}/jars/{jar_name}"
-        bucket_name = f"zipline-artifacts-{customer_id}"
+        # Parse bucket and optional key prefix from s3://bucket[/prefix]
+        stripped = artifacts_prefix.removeprefix("s3://")
+        parts = stripped.split("/", 1)
+        bucket_name = parts[0]
+        key_prefix = parts[1] if len(parts) > 1 else ""
+        source_key_name = f"{key_prefix}/release/{version}/jars/{jar_name}" if key_prefix else f"release/{version}/jars/{jar_name}"
 
         are_identical = (
             AwsRunner.compare_s3_and_local_file_hashes(
@@ -121,30 +128,27 @@ class AwsRunner(Runner):
         job_type: JobType = JobType.SPARK,
         local_files_to_upload: List[str] = None,
     ):
-        customer_warehouse_bucket_name = f"zipline-warehouse-{get_customer_id()}"
+        warehouse_bucket_prefix = os.environ.get(
+            "WAREHOUSE_PREFIX", f"s3://zipline-warehouse-{get_customer_id()}"
+        )
+        artifacts_bucket_prefix = os.environ.get(
+            "ARTIFACT_PREFIX", f"s3://zipline-artifacts-{get_customer_id()}"
+        )
         s3_files = []
         for source_file in local_files_to_upload:
             # upload to `metadata` folder
             destination_file_path = f"metadata/{extract_filename_from_path(source_file)}"
             s3_files.append(
                 upload_to_blob_store(
-                    source_file, f"s3://{customer_warehouse_bucket_name}/{destination_file_path}"
+                    source_file, f"{warehouse_bucket_prefix}/{destination_file_path}"
                 )
             )
-
-        # we also want the additional-confs included here. it should already be in the bucket
-
-        zipline_artifacts_bucket_prefix = "s3://zipline-artifacts"
-
-        s3_files.append(
-            f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}/confs/additional-confs.yaml"
-        )
 
         s3_file_args = ",".join(s3_files)
 
         # include jar uri. should also already be in the bucket
         jar_uri = (
-            f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
+            f"{artifacts_bucket_prefix}"
             + f"/release/{self.version}/jars/{ZIPLINE_AWS_JAR_DEFAULT}"
         )
 
@@ -155,7 +159,7 @@ class AwsRunner(Runner):
         if job_type == JobType.FLINK:
             main_class = "ai.chronon.flink.FlinkJob"
             flink_jar_uri = (
-                f"{zipline_artifacts_bucket_prefix}-{get_customer_id()}"
+                f"{artifacts_bucket_prefix}"
                 + f"/jars/{ZIPLINE_AWS_FLINK_JAR_DEFAULT}"
             )
             return (
@@ -177,8 +181,7 @@ class AwsRunner(Runner):
                     job_type=job_type.value,
                     main_class=main_class,
                 )
-                + f" --additional-conf-path={zipline_artifacts_bucket_prefix}-{get_customer_id()}/confs/additional-confs.yaml"
-                f" --files={s3_file_args}"
+                + f" --files={s3_file_args}"
             )
         else:
             raise ValueError(f"Invalid job type: {job_type}")
@@ -207,6 +210,14 @@ class AwsRunner(Runner):
             local_files_to_upload_to_aws = []
             if self.conf:
                 local_files_to_upload_to_aws.append(os.path.join(self.repo, self.conf))
+            warehouse_bucket_prefix = os.environ.get(
+                "WAREHOUSE_PREFIX", f"s3://zipline-warehouse-{get_customer_id()}"
+            )
+            s3_conf_path = (
+                f"{warehouse_bucket_prefix}/metadata/{extract_filename_from_path(self.conf)}"
+                if self.conf
+                else None
+            )
             if self.parallelism > 1:
                 assert self.start_ds is not None and self.ds is not None, (
                     "To use parallelism, please specify --start-ds and --end-ds to "
@@ -219,18 +230,13 @@ class AwsRunner(Runner):
                         args=self._gen_final_args(
                             start_ds=start_ds,
                             end_ds=end_ds,
-                            override_conf_path=(
-                                f"s3://zipline-warehouse-{get_customer_id()}/metadata/{extract_filename_from_path(self.conf)}"
-                                if self.conf
-                                else None
-                            ),
+                            override_conf_path=s3_conf_path,
                         ),
                         additional_args=os.environ.get("CHRONON_CONFIG_ADDITIONAL_ARGS", ""),
                     )
 
                     emr_args = self.generate_emr_submitter_args(
                         local_files_to_upload=local_files_to_upload_to_aws,
-                        # for now, self.conf is the only local file that requires uploading to gcs
                         user_args=user_args,
                     )
                     command = f"java -cp {self.jar_path} {EMR_ENTRY} {emr_args}"
@@ -240,11 +246,7 @@ class AwsRunner(Runner):
                     subcommand=ROUTES[self.conf_type][self.mode],
                     args=self._gen_final_args(
                         start_ds=self.start_ds,
-                        override_conf_path=(
-                            f"s3://zipline-warehouse-{get_customer_id()}/metadata/{extract_filename_from_path(self.conf)}"
-                            if self.conf
-                            else None
-                        ),
+                        override_conf_path=s3_conf_path,
                     ),
                     additional_args=os.environ.get("CHRONON_CONFIG_ADDITIONAL_ARGS", ""),
                 )

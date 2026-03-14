@@ -27,7 +27,8 @@ class EmrServerlessSubmitter(
     eksClusterName: Option[String] = None,
     ingressBaseUrl: Option[String] = None,
     emrStudioId: Option[String] = None,
-    flinkHealthCheckFn: Option[String] => Boolean = _ => true
+    flinkHealthCheckFn: Option[String] => Boolean = _ => true,
+    cloudWatchLogGroupName: Option[String] = None
 ) extends JobSubmitter {
 
   private val DefaultEmrReleaseLabel = "emr-7.12.0"
@@ -37,7 +38,7 @@ class EmrServerlessSubmitter(
     emrStudioId.orElse(EmrServerlessSubmitter.resolveEmrStudioId(awsRegion))
 
   // Lazily resolved so the app is created/discovered on first Spark submission and reused thereafter
-  private lazy val resolvedApplicationId: String =
+  lazy val resolvedApplicationId: String =
     getOrCreateApplication(DefaultEmrReleaseLabel, DefaultApplicationName)
 
   private def getOrCreateApplication(releaseLabel: String, appName: String): String = {
@@ -213,9 +214,11 @@ class EmrServerlessSubmitter(
           .s3MonitoringConfiguration(
             S3MonitoringConfiguration.builder().logUri(s3LogUri).build()
           )
-          .cloudWatchLoggingConfiguration(
-            CloudWatchLoggingConfiguration.builder().enabled(true).build()
-          )
+          .cloudWatchLoggingConfiguration({
+            val cwBuilder = CloudWatchLoggingConfiguration.builder().enabled(true)
+            cloudWatchLogGroupName.foreach(cwBuilder.logGroupName)
+            cwBuilder.build()
+          })
           .build()
       )
 
@@ -439,22 +442,26 @@ object EmrServerlessSubmitter {
     }
   }
 
-  def apply(k8sConfig: Option[io.fabric8.kubernetes.client.Config] = None): EmrServerlessSubmitter = {
-    val region = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", "us-east-1"))
-    val applicationId = sys.env.get("EMR_SERVERLESS_APP_ID")
-    val executionRoleArn = sys.env.getOrElse(
-      "EMR_EXECUTION_ROLE_ARN",
-      throw new Exception("EMR_EXECUTION_ROLE_ARN environment variable not set")
-    )
-    val s3LogUri = sys.env.getOrElse(
-      "EMR_LOG_URI",
-      throw new Exception("EMR_LOG_URI environment variable not set")
-    )
-    val ingressBaseUrl = sys.env.get("HUB_BASE_URL")
-
+  def apply(
+      awsRegion: String,
+      executionRoleArn: String,
+      s3LogUri: String,
+      applicationId: Option[String] = None,
+      dynamodbTableName: String = "",
+      tablePartitionsDataset: String = "",
+      dqMetricsDataset: String = "",
+      flinkEksServiceAccount: Option[String] = None,
+      flinkEksNamespace: Option[String] = None,
+      eksClusterName: Option[String] = None,
+      ingressBaseUrl: Option[String] = None,
+      emrStudioId: Option[String] = None,
+      cloudWatchLogGroupName: Option[String] = None,
+      k8sConfig: Option[io.fabric8.kubernetes.client.Config] = None,
+      flinkHealthCheckFn: Option[String] => Boolean = _ => true
+  ): EmrServerlessSubmitter = {
     val client = EmrServerlessClient
       .builder()
-      .region(Region.of(region))
+      .region(Region.of(awsRegion))
       .build()
 
     new EmrServerlessSubmitter(
@@ -463,12 +470,17 @@ object EmrServerlessSubmitter {
       executionRoleArn,
       s3LogUri,
       eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
-      awsRegion = region,
-      flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
-      flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
-      eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
+      dynamodbTableName = dynamodbTableName,
+      awsRegion = awsRegion,
+      tablePartitionsDataset = tablePartitionsDataset,
+      dqMetricsDataset = dqMetricsDataset,
+      flinkEksServiceAccount = flinkEksServiceAccount,
+      flinkEksNamespace = flinkEksNamespace,
+      eksClusterName = eksClusterName,
       ingressBaseUrl = ingressBaseUrl,
-      emrStudioId = sys.env.get("EMR_STUDIO_ID")
+      emrStudioId = emrStudioId,
+      flinkHealthCheckFn = flinkHealthCheckFn,
+      cloudWatchLogGroupName = cloudWatchLogGroupName
     )
   }
 
@@ -573,7 +585,20 @@ object EmrServerlessSubmitter {
     val finalArgs = userArgs.toSeq
     val modeConfigProperties = JobSubmitter.getModeConfigProperties(args)
 
-    val submitter = EmrServerlessSubmitter()
+    val region = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", "us-west-2"))
+    val submitter = EmrServerlessSubmitter(
+      awsRegion = region,
+      executionRoleArn = sys.env.getOrElse("EMR_EXECUTION_ROLE_ARN",
+                                           throw new Exception("EMR_EXECUTION_ROLE_ARN environment variable not set")),
+      s3LogUri = sys.env.getOrElse("EMR_LOG_URI", throw new Exception("EMR_LOG_URI environment variable not set")),
+      applicationId = sys.env.get("EMR_SERVERLESS_APP_ID"),
+      flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
+      flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
+      eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
+      ingressBaseUrl = sys.env.get("HUB_BASE_URL"),
+      emrStudioId = sys.env.get("EMR_STUDIO_ID"),
+      cloudWatchLogGroupName = sys.env.get("EMR_CLOUDWATCH_LOG_GROUP")
+    )
     val resultJobId = submitter.submit(
       jobType = jobType,
       submissionProperties = submissionProps,
@@ -583,6 +608,11 @@ object EmrServerlessSubmitter {
       finalArgs: _*
     )
 
-    println(s"Job submitted with ID: $resultJobId")
+    // Flink jobs return "flink:namespace:deployment"; Spark jobs return a jobRunId.
+    // For Spark, include the applicationId so the caller can poll status.
+    val outputId =
+      if (resultJobId.startsWith("flink:")) resultJobId
+      else s"${submitter.resolvedApplicationId}|$resultJobId"
+    println(s"Job submitted with ID: $outputId")
   }
 }
