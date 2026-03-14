@@ -30,7 +30,7 @@ from ai.chronon.repo.registry_client import (
     RegistryClient,
     RegistryError,
 )
-from ai.chronon.repo.utils import get_package_version, upload_to_blob_store
+from ai.chronon.repo.utils import get_package_version, read_from_blob_store, upload_to_blob_store
 
 logger = logging.getLogger(__name__)
 
@@ -359,19 +359,63 @@ def _extract_jars_from_layer(layer_path, dest_dir):
         pass
 
 
+def _should_update_latest(release, artifact_store):
+    """Check whether release is >= the current latest version in the artifact store."""
+    from packaging.version import InvalidVersion, Version
+
+    try:
+        current = Version(release.lstrip("v"))
+    except InvalidVersion:
+        return False
+
+    version_marker = f"{artifact_store.rstrip('/')}/release/latest/VERSION"
+    existing = read_from_blob_store(version_marker)
+    if existing is None:
+        return True
+    try:
+        return current >= Version(existing.strip().lstrip("v"))
+    except InvalidVersion:
+        return True
+
+
 def _upload_jars_to_store(jars_dir, release, artifact_store):
-    """Upload all files in jars_dir to the artifact store."""
+    """Upload all files in jars_dir to the artifact store (versioned + latest)."""
     results = []
-    if os.path.isdir(jars_dir):
-        for jar_file in os.listdir(jars_dir):
-            local_path = os.path.join(jars_dir, jar_file)
-            remote_path = f"{artifact_store.rstrip('/')}/release/{release}/jars/{jar_file}"
-            try:
-                upload_to_blob_store(local_path, remote_path)
-                results.append(("jar", remote_path, "", "ok"))
-            except Exception as e:
-                console.print(f"[{STYLE_ERROR}]Error uploading {jar_file}:[/]\n{traceback.format_exc()}")
-                results.append(("jar", remote_path, "", f"FAILED: {e}"))
+    if not os.path.isdir(jars_dir):
+        return results
+
+    update_latest = _should_update_latest(release, artifact_store)
+    if update_latest:
+        logger.info(f"Will update release/latest/ (release={release})")
+    else:
+        logger.info(f"Skipping release/latest/ update (release={release} is older than current latest)")
+
+    for jar_file in os.listdir(jars_dir):
+        local_path = os.path.join(jars_dir, jar_file)
+        remote_path = f"{artifact_store.rstrip('/')}/release/{release}/jars/{jar_file}"
+        try:
+            upload_to_blob_store(local_path, remote_path)
+            if update_latest:
+                latest_path = f"{artifact_store.rstrip('/')}/release/latest/jars/{jar_file}"
+                upload_to_blob_store(local_path, latest_path)
+            results.append(("jar", remote_path, "", "ok"))
+        except Exception as e:
+            console.print(f"[{STYLE_ERROR}]Error uploading {jar_file}:[/]\n{traceback.format_exc()}")
+            results.append(("jar", remote_path, "", f"FAILED: {e}"))
+
+    # Write VERSION marker so future installs can compare
+    if update_latest and results and all(s == "ok" for _, _, _, s in results):
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+                f.write(release.lstrip("v"))
+                tmp_path = f.name
+            version_marker = f"{artifact_store.rstrip('/')}/release/latest/VERSION"
+            upload_to_blob_store(tmp_path, version_marker)
+        except Exception:
+            logger.warning("Failed to write VERSION marker to latest/", exc_info=True)
+        finally:
+            os.unlink(tmp_path)
+
     return results
 
 

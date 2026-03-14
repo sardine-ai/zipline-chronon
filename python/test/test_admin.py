@@ -14,6 +14,8 @@ from ai.chronon.repo.admin import (
     _creds_from_helper,
     _get_docker_credentials,
     _parse_registry,
+    _should_update_latest,
+    _upload_jars_to_store,
     admin,
 )
 from ai.chronon.repo.registry_client import DOCKER_HUB_REGISTRY
@@ -363,3 +365,112 @@ class TestInstallReleaseResolution:
         assert "does not match" not in result.output
         mock_load.assert_called_once()
         assert mock_load.call_args[0][2] == "1.0.14"
+
+
+# --- _should_update_latest ---
+
+
+class TestShouldUpdateLatest:
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value=None)
+    def test_no_existing_marker_returns_true(self, mock_read):
+        assert _should_update_latest("1.0.0", "gs://bucket/store") is True
+        mock_read.assert_called_once_with("gs://bucket/store/release/latest/VERSION")
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value="1.0.0")
+    def test_newer_version_returns_true(self, mock_read):
+        assert _should_update_latest("2.0.0", "gs://bucket/store") is True
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value="1.0.0")
+    def test_same_version_returns_true(self, mock_read):
+        assert _should_update_latest("1.0.0", "gs://bucket/store") is True
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value="2.0.0")
+    def test_older_version_returns_false(self, mock_read):
+        assert _should_update_latest("1.0.0", "gs://bucket/store") is False
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value="1.0.0")
+    def test_v_prefix_stripped_from_release(self, mock_read):
+        assert _should_update_latest("v2.0.0", "gs://bucket/store") is True
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value="v1.0.0\n")
+    def test_v_prefix_and_whitespace_stripped_from_marker(self, mock_read):
+        assert _should_update_latest("2.0.0", "gs://bucket/store") is True
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value="not-a-version")
+    def test_invalid_existing_marker_returns_true(self, mock_read):
+        assert _should_update_latest("1.0.0", "gs://bucket/store") is True
+
+    def test_invalid_release_version_returns_false(self):
+        assert _should_update_latest("not-a-version", "gs://bucket/store") is False
+
+    @patch("ai.chronon.repo.admin.read_from_blob_store", return_value=None)
+    def test_trailing_slash_stripped_from_store(self, mock_read):
+        _should_update_latest("1.0.0", "s3://bucket/store/")
+        mock_read.assert_called_once_with("s3://bucket/store/release/latest/VERSION")
+
+
+# --- _upload_jars_to_store ---
+
+
+class TestUploadJarsToStore:
+    def test_nonexistent_dir_returns_empty(self, tmp_path):
+        results = _upload_jars_to_store(str(tmp_path / "nope"), "1.0.0", "gs://b/store")
+        assert results == []
+
+    @patch("ai.chronon.repo.admin._should_update_latest", return_value=True)
+    @patch("ai.chronon.repo.admin.upload_to_blob_store")
+    def test_uploads_versioned_and_latest(self, mock_upload, mock_latest, tmp_path):
+        jar = tmp_path / "foo.jar"
+        jar.write_text("data")
+        results = _upload_jars_to_store(str(tmp_path), "1.0.0", "gs://b/store")
+        assert len(results) == 1
+        assert results[0][3] == "ok"
+        # versioned + latest jar + VERSION marker = 3 uploads
+        assert mock_upload.call_count == 3
+        paths = [call.args[1] for call in mock_upload.call_args_list]
+        assert "gs://b/store/release/1.0.0/jars/foo.jar" in paths
+        assert "gs://b/store/release/latest/jars/foo.jar" in paths
+        assert "gs://b/store/release/latest/VERSION" in paths
+
+    @patch("ai.chronon.repo.admin._should_update_latest", return_value=False)
+    @patch("ai.chronon.repo.admin.upload_to_blob_store")
+    def test_skips_latest_when_older(self, mock_upload, mock_latest, tmp_path):
+        jar = tmp_path / "foo.jar"
+        jar.write_text("data")
+        results = _upload_jars_to_store(str(tmp_path), "0.9.0", "gs://b/store")
+        assert len(results) == 1
+        assert results[0][3] == "ok"
+        # Only versioned upload, no latest
+        assert mock_upload.call_count == 1
+        assert mock_upload.call_args.args[1] == "gs://b/store/release/0.9.0/jars/foo.jar"
+
+    @patch("ai.chronon.repo.admin._should_update_latest", return_value=True)
+    @patch("ai.chronon.repo.admin.upload_to_blob_store")
+    def test_multiple_jars(self, mock_upload, mock_latest, tmp_path):
+        (tmp_path / "a.jar").write_text("a")
+        (tmp_path / "b.jar").write_text("b")
+        results = _upload_jars_to_store(str(tmp_path), "1.0.0", "gs://b/store")
+        assert len(results) == 2
+        assert all(r[3] == "ok" for r in results)
+        # 2 versioned + 2 latest + 1 VERSION marker = 5 uploads
+        assert mock_upload.call_count == 5
+
+    @patch("ai.chronon.repo.admin._should_update_latest", return_value=True)
+    @patch("ai.chronon.repo.admin.upload_to_blob_store", side_effect=Exception("upload failed"))
+    def test_upload_failure_recorded(self, mock_upload, mock_latest, tmp_path):
+        (tmp_path / "foo.jar").write_text("data")
+        results = _upload_jars_to_store(str(tmp_path), "1.0.0", "gs://b/store")
+        assert len(results) == 1
+        assert "FAILED" in results[0][3]
+
+    @patch("ai.chronon.repo.admin._should_update_latest", return_value=True)
+    @patch("ai.chronon.repo.admin.upload_to_blob_store")
+    def test_version_marker_not_written_on_failure(self, mock_upload, mock_latest, tmp_path):
+        (tmp_path / "foo.jar").write_text("data")
+        # First call (versioned) succeeds, second call (latest jar) raises
+        mock_upload.side_effect = [None, Exception("fail")]
+        results = _upload_jars_to_store(str(tmp_path), "1.0.0", "gs://b/store")
+        assert "FAILED" in results[0][3]
+        # No VERSION marker write attempted since results contain a failure
+        paths = [call.args[1] for call in mock_upload.call_args_list]
+        assert "gs://b/store/release/latest/VERSION" not in paths

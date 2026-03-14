@@ -454,6 +454,56 @@ def get_metadata_name_from_conf(repo_path, conf_path):
         return data.get("metaData", {}).get("name", None)
 
 
+def read_from_blob_store(remote_uri: str) -> str | None:
+    """Read a small text file from GCS, S3, Azure Blob Storage, or local filesystem.
+
+    Returns the file contents as a string, or None if the file does not exist.
+    """
+    try:
+        if remote_uri.startswith("gs://"):
+            from google.cloud import storage
+
+            parts = remote_uri[len("gs://"):].split("/", 1)
+            bucket_name, blob_name = parts[0], parts[1] if len(parts) > 1 else ""
+            client = storage.Client()
+            blob = client.bucket(bucket_name).blob(blob_name)
+            return blob.download_as_text()
+        elif remote_uri.startswith("s3://"):
+            import boto3
+            from botocore.exceptions import ClientError
+
+            parts = remote_uri[len("s3://"):].split("/", 1)
+            bucket_name, key = parts[0], parts[1] if len(parts) > 1 else ""
+            try:
+                obj = boto3.client("s3").get_object(Bucket=bucket_name, Key=key)
+                return obj["Body"].read().decode("utf-8")
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "NoSuchKey":
+                    return None
+                raise
+        elif "blob.core.windows.net" in remote_uri:
+            from urllib.parse import urlparse
+
+            from azure.identity import DefaultAzureCredential
+            from azure.storage.blob import BlobServiceClient
+
+            parsed = urlparse(remote_uri)
+            account_url = f"{parsed.scheme}://{parsed.netloc}"
+            path_parts = parsed.path.lstrip("/").split("/", 1)
+            container = path_parts[0]
+            blob_name = path_parts[1] if len(path_parts) > 1 else ""
+            blob_service = BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
+            blob_client = blob_service.get_blob_client(container=container, blob=blob_name)
+            return blob_client.download_blob().readall().decode("utf-8")
+        else:
+            if os.path.exists(remote_uri):
+                with open(remote_uri) as f:
+                    return f.read()
+            return None
+    except Exception:
+        return None
+
+
 def upload_to_blob_store(local_path: str, remote_uri: str) -> str:
     """Upload a local file to GCS, S3, or Azure Blob Storage based on URI scheme.
 
