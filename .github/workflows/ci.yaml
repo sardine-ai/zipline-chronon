@@ -307,6 +307,12 @@ jobs:
     if: needs.changes.outputs.security == 'true'
     uses: ./.github/workflows/grype_scan_reusable.yaml
 
+  integration-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Integration tests run in the merge queue, not on PRs"
+
   ci-gate:
     if: always()
     needs: [spark, non-spark, python-lint, python-tests, cosmos, redis, format, grype]
