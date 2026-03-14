@@ -93,9 +93,9 @@ class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
 
   }
 
-  override def genKvStore: KVStore = {
-    new DynamoDBKVStoreImpl(ddbClient, conf)
-  }
+  private val kvStore = new DynamoDBKVStoreImpl(ddbClient, conf)
+
+  override def genKvStore: KVStore = kvStore
 
   /** The stream decoder method in the AwsApi is currently unimplemented. This needs to be implemented before
     * we can spin up the Aws streaming Chronon stack
@@ -111,9 +111,14 @@ class AwsApiImpl(conf: Map[String, String]) extends Api(conf) {
     */
   override def logResponse(resp: LoggableResponse): Unit = ()
 
-  override def genMetricsKvStore(tableBaseName: String): KVStore = null
+  override def genMetricsKvStore(tableBaseName: String): KVStore = {
+    val store = new DynamoDBMetricsKVStoreImpl(new DynamoDBStatsKVStoreImpl(ddbClient, conf), tableBaseName)
+    store.create(tableBaseName)
+    store
+  }
 
-  override def genEnhancedStatsKvStore(tableBaseName: String): KVStore = null
+  override def genEnhancedStatsKvStore(tableBaseName: String): KVStore =
+    new DynamoDBStatsKVStoreImpl(ddbClient, conf)
 }
 
 object AwsApiImpl {

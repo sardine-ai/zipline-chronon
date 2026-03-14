@@ -158,7 +158,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
     Future.sequence(getItemResults ++ aggregatedQueryResults)
   }
 
-  private def doGetLookups(getLookups: Seq[KVStore.GetRequest]): Seq[Future[GetResponse]] = {
+  protected def doGetLookups(getLookups: Seq[KVStore.GetRequest]): Seq[Future[GetResponse]] = {
     val getItemCompletables = getLookups.map { req =>
       val keyAttributeMap = primaryKeyMap(req.keyBytes)
       val tableName = resolveTableName(req.dataset)
@@ -183,18 +183,26 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
     getItemResults
   }
 
-  private def doQueryLookups(queryLookups: Seq[KVStore.GetRequest]): Seq[Future[GetResponse]] = {
-    def queryPartition(dataset: String,
-                       partitionKeyBytes: Array[Byte],
-                       startTs: Long,
-                       endTs: Option[Long]): Future[QueryResponse] = {
-      val queryRequest = buildTimeRangeQuery(dataset, partitionKeyBytes, startTs, endTs)
-      val callStartTs = System.currentTimeMillis()
-      handleDynamoDbOperation(metricsContext.withSuffix("query"), dataset, callStartTs)(
-        dynamoDbClient.query(queryRequest)
-      )
-    }
+  protected def queryPartition(dataset: String,
+                               partitionKeyBytes: Array[Byte],
+                               startTs: Long,
+                               endTs: Option[Long]): Future[QueryResponse] = {
+    val queryRequest = buildTimeRangeQuery(dataset, partitionKeyBytes, startTs, endTs)
+    val callStartTs = System.currentTimeMillis()
+    handleDynamoDbOperation(metricsContext.withSuffix("query"), dataset, callStartTs)(
+      dynamoDbClient.query(queryRequest)
+    )
+  }
 
+  protected def queryPartitionOnly(dataset: String, partitionKeyBytes: Array[Byte]): Future[QueryResponse] = {
+    val queryRequest = buildPartitionOnlyQuery(dataset, partitionKeyBytes)
+    val callStartTs = System.currentTimeMillis()
+    handleDynamoDbOperation(metricsContext.withSuffix("query"), dataset, callStartTs)(
+      dynamoDbClient.query(queryRequest)
+    )
+  }
+
+  protected def doQueryLookups(queryLookups: Seq[KVStore.GetRequest]): Seq[Future[GetResponse]] = {
     val defaultTimestamp = Instant.now().toEpochMilli
 
     queryLookups.map { req =>
@@ -470,7 +478,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
     }
   }
 
-  private def handleDynamoDbOperation[T](context: Context, dataset: String, startTs: Long)(
+  protected def handleDynamoDbOperation[T](context: Context, dataset: String, startTs: Long)(
       completableFuture: CompletableFuture[T]): Future[T] = {
     FutureConverters.toScala(completableFuture).transform {
       case Success(result) =>
@@ -509,8 +517,8 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
     }
   }
 
-  private def extractTimedValues(ddbResponseList: util.List[util.Map[String, AttributeValue]],
-                                 defaultTimestamp: Long): Try[Seq[TimedValue]] = {
+  protected def extractTimedValues(ddbResponseList: util.List[util.Map[String, AttributeValue]],
+                                   defaultTimestamp: Long): Try[Seq[TimedValue]] = {
     Try {
       ddbResponseList.toScala.filterNot(_.isEmpty).map { ddbResponseMap =>
         val responseMap = ddbResponseMap.toScala
@@ -631,6 +639,19 @@ object DynamoDBKVStoreConstants {
       .keyConditionExpression(s"$partitionAlias = :partitionKeyValue AND $timeAlias BETWEEN :start AND :end")
       .expressionAttributeNames(attrNameAliasMap.toJava)
       .expressionAttributeValues(attrValuesMap.toJava)
+      .build
+  }
+
+  // Queries by partition key only — used for time-sorted tables when the sort key is unknown,
+  // e.g. schema/metadata rows whose write timestamp isn't tracked at read time.
+  def buildPartitionOnlyQuery(dataset: String, partitionKeyBytes: Array[Byte]): QueryRequest = {
+    val partitionAlias = "#pk"
+    QueryRequest.builder
+      .tableName(dataset)
+      .keyConditionExpression(s"$partitionAlias = :partitionKeyValue")
+      .expressionAttributeNames(Map(partitionAlias -> partitionKeyColumn).toJava)
+      .expressionAttributeValues(
+        Map(":partitionKeyValue" -> AttributeValue.builder.b(SdkBytes.fromByteArray(partitionKeyBytes)).build).toJava)
       .build
   }
 }

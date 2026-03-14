@@ -852,6 +852,7 @@
           }
         }
       },
+      "enableStatsCompute": 1,
       "env": {
         "common": {
           "ARTIFACT_PREFIX": "s3://zipline-artifacts-canary",
