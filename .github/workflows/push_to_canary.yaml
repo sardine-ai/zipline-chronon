@@ -407,6 +407,7 @@ jobs:
           EMR_EXECUTION_ROLE_ARN: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/zipline_canary_emr_serverless_role
           EMR_LOG_URI: s3://zipline-logs-canary/emr/
           EMR_SERVERLESS_APP_ID: ${{secrets.AWS_EMR_SERVERLESS_APP_ID}}
+          EMR_CLOUDWATCH_LOG_GROUP: /emr/zipline-canary
         run: |
           set -xo pipefail
           ./mill python.test_integration 2>&1 | tee /tmp/test-output.log
