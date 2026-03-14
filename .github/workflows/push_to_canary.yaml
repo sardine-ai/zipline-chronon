@@ -1087,6 +1087,22 @@ jobs:
             pubsub-jar
             kinesis-jar
 
+  integration-gate:
+    if: always()
+    needs: [run_aws_integration_tests, run_gcp_integration_tests, run_fetcher_integration_tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check integration test results
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          for result in $results; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "Integration tests failed: at least one job had result '$result'"
+              exit 1
+            fi
+          done
+          echo "All integration tests passed or were skipped"
+
   merge_to_main-passing-tests:
     needs: [ run_fetcher_integration_tests, run_aws_integration_tests, run_gcp_integration_tests ]
     if: ${{ needs.run_aws_integration_tests.result == 'success' && needs.run_gcp_integration_tests.result == 'success'  && github.event_name == 'push' && github.ref == 'refs/heads/main' }}

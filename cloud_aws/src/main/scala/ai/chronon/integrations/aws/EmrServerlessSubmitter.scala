@@ -582,12 +582,7 @@ object EmrServerlessSubmitter {
         arg.substring(eqIdx + 1).split(",")
     }
 
-    // Rewrite --conf-path from S3 URI to local filename since --files distributes it locally
-    val finalArgs = userArgs.map { arg =>
-      if (arg.startsWith("--conf-path=") && arg.contains("://")) {
-        s"--conf-path=${arg.split("/").last}"
-      } else arg
-    }.toSeq
+    val finalArgs = userArgs.toSeq
     val modeConfigProperties = JobSubmitter.getModeConfigProperties(args)
 
     val region = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", "us-west-2"))

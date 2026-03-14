@@ -210,11 +210,8 @@ class AwsRunner(Runner):
             local_files_to_upload_to_aws = []
             if self.conf:
                 local_files_to_upload_to_aws.append(os.path.join(self.repo, self.conf))
-            warehouse_bucket_prefix = os.environ.get(
-                "WAREHOUSE_PREFIX", f"s3://zipline-warehouse-{get_customer_id()}"
-            )
             s3_conf_path = (
-                f"{warehouse_bucket_prefix}/metadata/{extract_filename_from_path(self.conf)}"
+                extract_filename_from_path(self.conf)
                 if self.conf
                 else None
             )
