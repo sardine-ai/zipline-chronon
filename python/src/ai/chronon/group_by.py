@@ -525,6 +525,7 @@ def GroupBy(
             '30 14 * * MON-FRI': Weekdays at 2:30 PM
             '0 9 * * 1': Mondays at 9:00 AM
             '15 23 * * SUN': Sundays at 11:15 PM
+            '@never': Explicitly disable offline scheduling
 
         Note: Hourly, sub-hourly, or multi-daily schedules are not supported.
 

@@ -369,6 +369,7 @@ def Join(
         Schedule expression for offline join compute tasks. Supports standard cron expressions
         that run at most once per day. Examples: '@daily' (midnight), '0 2 * * *' (2am daily),
         '30 14 * * MON-FRI' (weekdays at 2:30pm), '0 9 * * 1' (Mondays at 9am).
+        Use '@never' to explicitly disable offline scheduling.
         Note: Hourly, sub-hourly, or multi-daily schedules are not supported.
     :param online_schedule:
         Schedule expression for online/deploy tasks. When online=True and online_schedule is not specified,

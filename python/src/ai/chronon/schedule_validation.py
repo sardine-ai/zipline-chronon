@@ -23,6 +23,7 @@ def validate_at_most_daily_schedule(schedule_expression: str) -> Union[str, None
 
     Examples of valid expressions:
         - "@daily" (legacy format)
+        - "@never" (explicitly disable scheduling)
         - "0 2 * * *" (daily at 2am)
         - "30 14 * * MON-FRI" (weekdays at 2:30pm)
         - "0 9 * * 1" (Mondays at 9am)
@@ -43,6 +44,10 @@ def validate_at_most_daily_schedule(schedule_expression: str) -> Union[str, None
 
     # Allow legacy @daily format
     if schedule_expression.lower() == "@daily":
+        return None
+
+    # Allow @never for explicitly disabling scheduling
+    if schedule_expression.lower() == "@never":
         return None
 
     # Allow None/none for disabling schedules

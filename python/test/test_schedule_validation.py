@@ -20,6 +20,7 @@ class TestScheduleValidation:
             "0 9 * * MON-FRI",  # weekdays at 9am
             "0 8 * * 1-5",  # weekdays at 8am (numeric)
             "45 16 * * 6",  # Saturday at 4:45pm
+            "@never",  # never schedule
             None,  # no schedule
             "none",  # disabled schedule
             "None",  # disabled schedule
