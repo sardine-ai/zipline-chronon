@@ -26,7 +26,7 @@ def test_backfill(confs, chronon_root, hub_url, cloud):
 
     workflow_id = submit_backfill(
         runner, chronon_root, hub_url,
-        confs[DEMO_DERIVATIONS[cloud]], "2025-08-01", "2025-08-01",
+        confs[DEMO_DERIVATIONS[cloud]], "2026-01-15", "2026-01-15",
     )
     poll_workflow(hub_url, workflow_id, timeout=900, interval=30)
 
@@ -54,6 +54,6 @@ def test_staging_query_backfill_multiday(confs, chronon_root, hub_url, cloud):
     workflow_id = submit_backfill(
         runner, chronon_root, hub_url,
         confs[f"compiled/staging_queries/{cloud}/exports.user_activities__0"],
-        "2025-08-01", "2025-08-03",
+        "2026-01-15", "2026-01-17",
     )
     poll_workflow(hub_url, workflow_id, timeout=900, interval=30)
