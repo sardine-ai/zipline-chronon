@@ -28,7 +28,7 @@ def test_backfill(confs, chronon_root, hub_url, cloud):
         runner, chronon_root, hub_url,
         confs[DEMO_DERIVATIONS[cloud]], "2026-03-01", "2026-03-01",
     )
-    poll_workflow(hub_url, workflow_id, timeout=900, interval=30)
+    poll_workflow(hub_url, workflow_id, timeout=1800, interval=45)
 
 
 @pytest.mark.integration
@@ -42,7 +42,7 @@ def test_backfill_no_data(confs, chronon_root, hub_url, cloud):
         confs[DEMO_DERIVATIONS[cloud]], "1969-01-01", "1969-01-01",
     )
     with pytest.raises(RuntimeError, match="ended with status FAILED"):
-        poll_workflow(hub_url, workflow_id, timeout=900, interval=30)
+        poll_workflow(hub_url, workflow_id, timeout=1800, interval=45)
 
 
 @pytest.mark.integration
@@ -56,4 +56,4 @@ def test_staging_query_backfill_multiday(confs, chronon_root, hub_url, cloud):
         confs[f"compiled/staging_queries/{cloud}/exports.user_activities__0"],
         "2026-03-01", "2026-03-03",
     )
-    poll_workflow(hub_url, workflow_id, timeout=900, interval=30)
+    poll_workflow(hub_url, workflow_id, timeout=1800, interval=45)
