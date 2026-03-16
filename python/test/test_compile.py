@@ -17,6 +17,27 @@ def test_compile(repo):
     assert len(results) != 0
 
 
+def test_compile_gcp_resources(gcp_resources):
+    """Test compilation of GCP resource examples."""
+    import sys
+    sys.path.insert(0, gcp_resources)
+    results = __compile(chronon_root=gcp_resources, ignore_python_errors=True)
+    assert len(results) != 0
+
+def test_compile_aws_resources(aws_resources):
+    """Test compilation of AWS resource examples."""
+    import sys
+    sys.path.insert(0, aws_resources)
+    results = __compile(chronon_root=aws_resources, ignore_python_errors=True)
+    assert len(results) != 0
+
+def test_compile_azure_resources(azure_resources):
+    """Test compilation of Azure resource examples."""
+    import sys
+    sys.path.insert(0, azure_resources)
+    results = __compile(chronon_root=azure_resources, ignore_python_errors=True)
+    assert len(results) != 0
+
 def test_parse_configs_relative_source_file():
     """Test that sourceFile is stored as a path relative to chronon_root."""
     # Setup

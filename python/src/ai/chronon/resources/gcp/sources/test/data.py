@@ -18,6 +18,7 @@ source_v1 = Source(
         query=Query(
             selects=selects("user_id", "purchase_price"),  # Select the fields we care about
             time_column="ts",
+            start_partition="2023-01-01",  # Set start partition for bounded event source
         ),  # The event time
     )
 )

@@ -57,6 +57,30 @@ def canary(rootdir):
     sys.path.insert(0, path)
     return path
 
+@pytest.fixture(scope="session")
+def gcp_resources():
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(os.path.dirname(test_dir), 'src/ai/chronon/resources/gcp')
+    if path not in sys.path:
+        sys.path.insert(0, path)
+    return path
+
+@pytest.fixture(scope="session")
+def aws_resources():
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(os.path.dirname(test_dir), 'src/ai/chronon/resources/aws')
+    if path not in sys.path:
+        sys.path.insert(0, path)
+    return path
+
+@pytest.fixture(scope="session")
+def azure_resources():
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(os.path.dirname(test_dir), 'src/ai/chronon/resources/azure')
+    if path not in sys.path:
+        sys.path.insert(0, path)
+    return path
+
 @pytest.fixture
 def test_online_group_by(repo):
     return os.path.join(repo, 'production/group_bys/sample_team/event_sample_group_by.v1')
