@@ -92,6 +92,8 @@ class ChainedGroupByJob(eventSrc: FlinkSource[ProjectedEvent],
     }
   }
 
+  private def getAllowedLatenessMs(): Long = FlinkUtils.getAllowedLatenessMs(props, topicInfo)
+
   /** Build the tiled version of the Flink GroupBy job that chains features using a JoinSource.
     *  The operators are structured as follows:
     *  - Source: Read from Kafka topic into ProjectedEvent stream
@@ -174,6 +176,11 @@ class ChainedGroupByJob(eventSrc: FlinkSource[ProjectedEvent],
     // Configure trigger (default to always fire on element)
     val trigger = getTrigger()
 
+    // allowedLateness keeps window state open after the watermark passes the window end,
+    // allowing late events to still be processed. Configurable via allowed_lateness_seconds property.
+    // Default: 0 (disabled).
+    val allowedLatenessMs = getAllowedLatenessMs()
+
     // We use Flink "Side Outputs" to track any late events that aren't computed.
     val tilingLateEventsTag = new OutputTag[ProjectedEvent]("tiling-late-events") {}
 
@@ -182,6 +189,7 @@ class ChainedGroupByJob(eventSrc: FlinkSource[ProjectedEvent],
       processedStream
         .keyBy(KeySelectorBuilder.build(groupByServingInfoParsed.groupBy))
         .window(window)
+        .allowedLateness(Time.milliseconds(allowedLatenessMs))
         .trigger(trigger)
         .sideOutputLateData(tilingLateEventsTag)
         .aggregate(

@@ -152,6 +152,11 @@ class FlinkGroupByStreamingJob(eventSrc: FlinkSource[ProjectedEvent],
     // or properties) which will buffer writes and only "FIRE" every X milliseconds per GroupBy & key.
     val trigger = getTrigger()
 
+    // allowedLateness keeps window state open after the watermark passes the window end,
+    // allowing late events to still be processed. Configurable via allowed_lateness_seconds property.
+    // Default: 0 (disabled).
+    val allowedLatenessMs = getAllowedLatenessMs()
+
     // We use Flink "Side Outputs" to track any late events that aren't computed.
     val tilingLateEventsTag = new OutputTag[ProjectedEvent]("tiling-late-events") {}
 
@@ -170,6 +175,7 @@ class FlinkGroupByStreamingJob(eventSrc: FlinkSource[ProjectedEvent],
       sparkExprEvalDSAndWatermarks
         .keyBy(KeySelectorBuilder.build(groupByServingInfoParsed.groupBy))
         .window(window)
+        .allowedLateness(Time.milliseconds(allowedLatenessMs))
         .trigger(trigger)
         .sideOutputLateData(tilingLateEventsTag)
         .aggregate(
@@ -214,4 +220,6 @@ class FlinkGroupByStreamingJob(eventSrc: FlinkSource[ProjectedEvent],
       }
       .getOrElse(new AlwaysFireOnElementTrigger())
   }
+
+  private def getAllowedLatenessMs(): Long = FlinkUtils.getAllowedLatenessMs(props, topicInfo)
 }

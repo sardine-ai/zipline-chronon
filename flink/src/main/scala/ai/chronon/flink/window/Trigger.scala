@@ -30,10 +30,16 @@ class AlwaysFireOnElementTrigger extends Trigger[ProjectedEvent, TimeWindow] {
       window: TimeWindow,
       ctx: Trigger.TriggerContext
   ): TriggerResult =
+    // Fire when window is closing to ensure final complete tile is emitted with isComplete=true.
+    // This is critical for client-side caching in SFS.
     // We don't need to PURGE here since we don't have explicit state.
     // Flink's "Window Lifecycle" doc: "The window is completely removed when the time (event or processing time)
     // passes its end timestamp plus the user-specified allowed lateness"
-    TriggerResult.CONTINUE
+    if (time >= window.maxTimestamp()) {
+      TriggerResult.FIRE
+    } else {
+      TriggerResult.CONTINUE
+    }
 
   // This Trigger doesn't hold state, so we don't need to do anything when the window is purged.
   override def clear(
@@ -140,6 +146,9 @@ class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Proj
     *
     * Flink automatically sets up an event timer for the end of the window (+ allowed lateness) as soon as it
     * sees the first element in it. See 'registerCleanupTimer' in Flink's 'WindowOperator.java'.
+    *
+    * When the window is closing (timestamp >= window.maxTimestamp()), we always fire to ensure a final
+    * "complete" tile is emitted with isComplete=true. This is critical for client-side caching in SFS.
     */
   override def onEventTime(
       timestamp: Long,
@@ -149,7 +158,15 @@ class BufferedProcessingTimeTrigger(bufferSizeMillis: Long) extends Trigger[Proj
     val nextTimerTimestampState: ValueState[java.lang.Long] = ctx.getPartitionedState(
       nextTimerTimestampStateDescriptor
     )
-    if (nextTimerTimestampState.value() != null) {
+
+    // Always fire when window is closing to ensure final complete tile is emitted.
+    // We check timestamp first (regardless of timer state) because the processing-time
+    // buffer timer may have already fired and nulled out nextTimerTimestampState before
+    // this window-close event arrives. Timer cleanup is handled by clear() which Flink
+    // calls immediately after this method returns.
+    if (timestamp >= window.maxTimestamp()) {
+      TriggerResult.FIRE
+    } else if (nextTimerTimestampState.value() != null) {
       TriggerResult.FIRE
     } else {
       TriggerResult.CONTINUE

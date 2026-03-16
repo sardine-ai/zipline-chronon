@@ -118,15 +118,16 @@ class FlinkJobEventIntegrationTest extends AnyFlatSpec with BeforeAndAfter {
     val writeEventCreatedDS = CollectSink.values.toScala
 
     // BASIC ASSERTIONS
-    // All elements were processed
-    writeEventCreatedDS.size shouldBe elements.size
+    // Each element triggers a tile emission, plus each window fires again on close to ensure
+    // final complete tile. With 3 keys (each in separate window), we get 3 + 3 = 6 emissions.
+    writeEventCreatedDS.size shouldBe elements.size * 2
 
     // check that the timestamps of the written out events match the input events
     // we use a Set as we can have elements out of order given we have multiple tasks
     writeEventCreatedDS.map(_.tsMillis).toSet shouldBe elements.map(_.created).toSet
 
     // check that all the writes were successful
-    writeEventCreatedDS.map(_.status) shouldBe Seq(true, true, true)
+    writeEventCreatedDS.forall(_.status) shouldBe true
 
     // Assert that the pre-aggregates/tiles are deserializable
     // Get a list of the final IRs for each key.
