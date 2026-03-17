@@ -1,5 +1,4 @@
 from gen_thrift.api.ttypes import EventSource, Source
-from staging_queries.aws import exports
 
 from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
 from ai.chronon.query import Query, selects
@@ -13,8 +12,7 @@ with last_k, sum, and average aggregations over multiple time windows.
 
 source = Source(
     events=EventSource(
-        # This will be the Glue table that receives the Kinesis data
-        table=exports.user_activities.table,
+        table="demo.user_activities_raw",
         topic="kinesis://user-activities/serde=glue_registry/registry_name=zipline-canary/schema_name=user-activities",
         query=Query(
             selects=selects(
@@ -87,7 +85,7 @@ v1 = GroupBy(
 
 kafka_source = Source(
     events=EventSource(
-        table=exports.user_activities.table,
+        table="demo.user_activities_raw",
         topic="kafka://user-activities-js/serde=glue_registry/registry_name=zipline-canary/schema_name=user-activities-js",
         query=Query(
             selects=selects(
@@ -117,7 +115,7 @@ kafka_v1 = GroupBy(
     step_days=30,
     env_vars=EnvironmentVariables(
         common={
-            "CHRONON_ONLINE_ARGS": "-Ztasks=1 -Zbootstrap=b-1.ziplinecanarykafka.b7jz16.c4.kafka.us-west-2.amazonaws.com:9092",
+            "CHRONON_ONLINE_ARGS": "-Ztasks=1 -Zbootstrap=b-1.ziplinecanarykafka.hak90r.c4.kafka.us-west-2.amazonaws.com:9092",
         }
     ),
 )

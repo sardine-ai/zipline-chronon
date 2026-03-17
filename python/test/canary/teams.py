@@ -142,6 +142,7 @@ aws = Team(
             "spark.sql.catalog.spark_catalog.warehouse": "s3://zipline-warehouse-dev/data/tables/",
             "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkSessionCatalog",
             "spark.sql.catalog.spark_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
+            "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
             "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
             "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-dev/data/tables/",
             "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",

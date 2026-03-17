@@ -50,6 +50,7 @@
           "spark.driver.memory": "1g",
           "spark.executor.cores": "1",
           "spark.executor.memory": "1g",
+          "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
           "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
           "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
           "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-dev/data/tables/",
@@ -75,6 +76,7 @@
             "spark.driver.memory": "1g",
             "spark.executor.cores": "1",
             "spark.executor.memory": "1g",
+            "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
             "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
             "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
             "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-dev/data/tables/",
@@ -176,6 +178,7 @@
               "spark.driver.memory": "1g",
               "spark.executor.cores": "1",
               "spark.executor.memory": "1g",
+              "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
               "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
               "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
               "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-dev/data/tables/",
@@ -201,6 +204,7 @@
                 "spark.driver.memory": "1g",
                 "spark.executor.cores": "1",
                 "spark.executor.memory": "1g",
+                "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
                 "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
                 "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
                 "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-dev/data/tables/",
@@ -753,7 +757,7 @@
                         },
                         "timeColumn": "unix_millis(TIMESTAMP(event_time_ms))"
                       },
-                      "table": "data.aws_exports_user_activities__0",
+                      "table": "demo.user_activities_raw",
                       "topic": "kinesis://user-activities/serde=glue_registry/registry_name=zipline-canary/schema_name=user-activities"
                     }
                   }
