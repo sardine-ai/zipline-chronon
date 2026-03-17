@@ -18,6 +18,13 @@ trait CloudAwsModule extends Cross.Module[String] with build.BaseModule {
 
   def moduleDeps = Seq(build.spark(crossValue), build.aggregator(crossValue), build.api(crossValue), build.online(crossValue))
 
+  // Built from unitycatalog v0.4.0 source with Scala 2.12 / Spark 3.5.3
+  def ucSparkJarFile = Task.Source(moduleDir / "unitycatalog-spark_2.12-0.4.0.jar")
+
+  override def unmanagedClasspath = Task {
+    super.unmanagedClasspath() ++ Seq(ucSparkJarFile())
+  }
+
   def mvnDeps = build.Constants.commonDeps ++ build.Constants.loggingApiDeps ++ build.Constants.utilityDeps  ++ Seq(
     mvn"software.amazon.awssdk:dynamodb:2.30.13",
     mvn"software.amazon.awssdk:ec2:2.30.13",
@@ -39,7 +46,7 @@ trait CloudAwsModule extends Cross.Module[String] with build.BaseModule {
       .exclude("com.fasterxml.jackson.core" -> "jackson-core")
       .exclude("com.fasterxml.jackson.core" -> "jackson-databind")
       .exclude("com.fasterxml.jackson.core" -> "jackson-annotations"),
-    mvn"io.unitycatalog:unitycatalog-spark_2.12:0.2.1"
+    mvn"io.unitycatalog:unitycatalog-client:0.4.0"
       .exclude("com.fasterxml.jackson.core" -> "jackson-core")
       .exclude("com.fasterxml.jackson.core" -> "jackson-databind")
       .exclude("com.fasterxml.jackson.core" -> "jackson-annotations"),

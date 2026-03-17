@@ -77,49 +77,49 @@ jobs:
       - name: Upload Service Assembly Jar
         uses: actions/upload-artifact@v4
         with:
-          name: service-assembly-jar
+          name: grype-service-assembly-jar
           path: out/service/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Cloud GCP Jar
         uses: actions/upload-artifact@v4
         with:
-          name: cloud-gcp-jar
+          name: grype-cloud-gcp-jar
           path: out/cloud_gcp/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Cloud AWS Jar
         uses: actions/upload-artifact@v4
         with:
-          name: cloud-aws-jar
+          name: grype-cloud-aws-jar
           path: out/cloud_aws/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Cloud Azure Jar
         uses: actions/upload-artifact@v4
         with:
-          name: cloud-azure-jar
+          name: grype-cloud-azure-jar
           path: out/cloud_azure/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Flink Jar
         uses: actions/upload-artifact@v4
         with:
-          name: flink-jar
+          name: grype-flink-jar
           path: out/flink/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Flink connectors Jar
         uses: actions/upload-artifact@v4
         with:
-          name: flink-connectors-jar
+          name: grype-flink-connectors-jar
           path: out/flink_connectors/pubsub/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Flink Kinesis connector Jar
         uses: actions/upload-artifact@v4
         with:
-          name: flink-kinesis-connector-jar
+          name: grype-flink-kinesis-connector-jar
           path: out/flink_connectors/kinesis/${{ env.SCALA_VERSION }}/assembly.dest/out.jar
 
       - name: Upload Docker image
         uses: actions/upload-artifact@v4
         with:
-          name: chronon-fetcher-image
+          name: grype-chronon-fetcher-image
           path: /tmp/chronon-fetcher.tar
 
   security_scan:
@@ -130,35 +130,35 @@ jobs:
       matrix:
         include:
           - artifact: service
-            artifact_name: service-assembly-jar
+            artifact_name: grype-service-assembly-jar
             scan_type: jar
             fail_on: low
           - artifact: cloud-gcp
-            artifact_name: cloud-gcp-jar
+            artifact_name: grype-cloud-gcp-jar
             scan_type: jar
             fail_on: low
           - artifact: cloud-aws
-            artifact_name: cloud-aws-jar
+            artifact_name: grype-cloud-aws-jar
             scan_type: jar
             fail_on: low
           - artifact: cloud-azure
-            artifact_name: cloud-azure-jar
+            artifact_name: grype-cloud-azure-jar
             scan_type: jar
             fail_on: low
           - artifact: flink
-            artifact_name: flink-jar
+            artifact_name: grype-flink-jar
             scan_type: jar
             fail_on: low
           - artifact: flink-connectors
-            artifact_name: flink-connectors-jar
+            artifact_name: grype-flink-connectors-jar
             scan_type: jar
             fail_on: low
           - artifact: flink-kinesis-connector
-            artifact_name: flink-kinesis-connector-jar
+            artifact_name: grype-flink-kinesis-connector-jar
             scan_type: jar
             fail_on: low
           - artifact: fetcher-image
-            artifact_name: chronon-fetcher-image
+            artifact_name: grype-chronon-fetcher-image
             scan_type: docker
             fail_on: medium
 

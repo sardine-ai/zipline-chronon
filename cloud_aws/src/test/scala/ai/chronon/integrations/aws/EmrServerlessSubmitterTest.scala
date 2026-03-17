@@ -1056,6 +1056,99 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     }
   }
 
+  "resolveEnvVars" should "resolve {VAR} placeholders from environment variables in job properties" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-env-123"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-env-1").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    // HOME is a reliable env var present in all environments
+    val homeValue = sys.env("HOME")
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-env-resolve",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      Map("spark.some.config" -> "{HOME}/data"),
+      List.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val appConfigs = requestCaptor.getValue.configurationOverrides().applicationConfiguration()
+    appConfigs should not be empty
+    val props = appConfigs.get(0).properties()
+    props.get("spark.some.config") shouldBe s"$homeValue/data"
+  }
+
+  it should "leave properties without placeholders unchanged" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-env-456"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-env-2").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-no-placeholder",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      Map("spark.executor.memory" -> "4g", "spark.driver.cores" -> "2"),
+      List.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val props = requestCaptor.getValue.configurationOverrides().applicationConfiguration().get(0).properties()
+    props.get("spark.executor.memory") shouldBe "4g"
+    props.get("spark.driver.cores") shouldBe "2"
+  }
+
+  it should "keep unresolvable {VAR} placeholders as-is when env var is not set" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-env-789"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-env-3").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-unresolvable",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      Map("spark.some.token" -> "{CHRONON_NONEXISTENT_VAR_XYZ}"),
+      List.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val props = requestCaptor.getValue.configurationOverrides().applicationConfiguration().get(0).properties()
+    props.get("spark.some.token") shouldBe "{CHRONON_NONEXISTENT_VAR_XYZ}"
+  }
+
   /**
     * Integration test that submits a real Spark job to EMR Serverless.
     *

@@ -35,6 +35,17 @@ class EmrServerlessSubmitter(
   // Cache of jobRunId → appId for reverse lookups in status/kill/URL
   private val jobAppIdCache = new ConcurrentHashMap[String, String]()
 
+  private val EnvVarPattern = """\{([A-Z_][A-Z0-9_]*)\}""".r
+
+  private def resolveEnvVars(properties: Map[String, String]): Map[String, String] =
+    properties.map { case (k, v) =>
+      k -> EnvVarPattern.replaceAllIn(v,
+                                      m => {
+                                        val varName = m.group(1)
+                                        sys.env.getOrElse(varName, m.matched)
+                                      })
+    }
+
   private lazy val resolvedStudioId: Option[String] =
     emrStudioId.orElse(EmrServerlessSubmitter.resolveEmrStudioId(awsRegion))
 
@@ -176,7 +187,7 @@ class EmrServerlessSubmitter(
         Configuration
           .builder()
           .classification("spark-defaults")
-          .properties(jobProperties.asJava)
+          .properties(resolveEnvVars(jobProperties).asJava)
           .build()
       )
     }

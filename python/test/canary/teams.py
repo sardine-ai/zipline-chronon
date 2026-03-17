@@ -114,7 +114,7 @@ aws = Team(
     env=EnvironmentVariables(
         common={
             "CLOUD_PROVIDER": "aws",
-            "CUSTOMER_ID": "dev",
+            "CUSTOMER_ID": "canary",
             "VERSION": "latest",
             "AWS_REGION": "us-west-2",
             "SPARK_CLUSTER_NAME": "zipline-emr-canary",
@@ -122,8 +122,8 @@ aws = Team(
             "WAREHOUSE_PREFIX": "s3://zipline-warehouse-canary",
             "FLINK_STATE_URI": "s3://zipline-warehouse-canary/flink-state",
             "CHRONON_ONLINE_ARGS": " -Ztasks=1",
-            "FRONTEND_URL": "http://localhost:3000",
-            "HUB_URL": "http://localhost:3903",
+            "FRONTEND_URL": "https://canary-aws.zipline.ai",
+            "HUB_URL": "https://canary-orch-aws.zipline.ai",
             "ENABLE_KINESIS": "true",
         },
         modeEnvironments={
@@ -135,16 +135,16 @@ aws = Team(
         common={
             "spark.chronon.partition.format": "yyyy-MM-dd",
             "spark.chronon.partition.column": "ds",
-            "spark.chronon.table_write.prefix": "s3://zipline-warehouse-dev/data/tables/",
+            "spark.chronon.table_write.prefix": "s3://zipline-warehouse-canary/data/tables/",
             "spark.chronon.table_write.format": "iceberg",
             "spark.chronon.table_write.upload.format": "ion",
-            "spark.chronon.table_write.upload.location": "s3://zipline-warehouse-dev/data/ion_uploads/",
-            "spark.sql.catalog.spark_catalog.warehouse": "s3://zipline-warehouse-dev/data/tables/",
+            "spark.chronon.table_write.upload.location": "s3://zipline-warehouse-canary/data/ion_uploads/",
+            "spark.sql.catalog.spark_catalog.warehouse": "s3://zipline-warehouse-canary/data/tables/",
             "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkSessionCatalog",
             "spark.sql.catalog.spark_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
             "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
             "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-            "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-dev/data/tables/",
+            "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-canary/data/tables/",
             "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
             "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
             "spark.sql.defaultUrlStreamHandlerFactory.enabled": "false",
@@ -293,9 +293,8 @@ aws_databricks = Team(
             "AWS_REGION": "us-west-2",
             "SPARK_CLUSTER_NAME": "zipline-emr-canary",
             "ARTIFACT_PREFIX": "s3://zipline-artifacts-canary",
-            "WAREHOUSE_PREFIX": "s3://zipline-warehouse-canary",
-            "DATABRICKS_HOST": "https://dbc-050d6f00-dcb3.cloud.databricks.com",
-            "DATABRICKS_SECRET_NAME": "canary-zipline-databricks-sp",
+            # TODO: To move warehouse location to canary instead of dev blocked by databricks setup
+            "WAREHOUSE_PREFIX": "s3://zipline-warehouse-dev",
             "FRONTEND_URL": "http://localhost:3000",
             "HUB_URL": "http://localhost:3903",
         },
@@ -303,22 +302,27 @@ aws_databricks = Team(
     conf=ConfigProperties(
         common={
             # Delta + Iceberg extensions in same session
-            "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+            "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension,ai.chronon.spark.extensions.ChrononDeltaFixExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
             # DeltaCatalog required by UCSingleCatalog for Delta reads
             "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-            "spark.databricks.delta.deletionVectors.enabled": "false",
-
-            # UC read catalog (Delta via UCSingleCatalog)
-            # Token resolved at runtime on EMR via shell variable expansion (must use $VAR not ${VAR})
+            # UC read catalog (Delta via UCSingleCatalog with OAuth auto-refresh)
             "spark.sql.catalog.workspace": "io.unitycatalog.spark.UCSingleCatalog",
-            "spark.sql.catalog.workspace.uri": "https://dbc-050d6f00-dcb3.cloud.databricks.com/api/2.1/unity-catalog",
-            "spark.sql.catalog.workspace.token": "$DATABRICKS_OAUTH_TOKEN",
+            "spark.sql.catalog.workspace.uri": "https://dbc-050d6f00-dcb3.cloud.databricks.com",
+            "spark.sql.catalog.workspace.auth.type": "oauth",
+            "spark.sql.catalog.workspace.auth.oauth.uri": "https://dbc-050d6f00-dcb3.cloud.databricks.com/oidc/v1/token",
+            "spark.sql.catalog.workspace.auth.oauth.clientId": "{DATABRICKS_CLIENT_ID}",
+            "spark.sql.catalog.workspace.auth.oauth.clientSecret": "{DATABRICKS_CLIENT_SECRET}",
+            # UC 0.4.0 defaults renewCredential.enabled=true which tries to set AwsVendedTokenProvider
+            # on Hadoop's S3A — causes classloader issues on EMR. Disable to use EMR's own credentials.
+            "spark.sql.catalog.workspace.renewCredential.enabled": "false",
 
-            # UC write catalog (Iceberg via REST)
+            # UC write catalog (Iceberg REST with OAuth)
             "spark.sql.catalog.workspace_iceberg": "org.apache.iceberg.spark.SparkCatalog",
             "spark.sql.catalog.workspace_iceberg.type": "rest",
             "spark.sql.catalog.workspace_iceberg.uri": "https://dbc-050d6f00-dcb3.cloud.databricks.com/api/2.1/unity-catalog/iceberg-rest",
-            "spark.sql.catalog.workspace_iceberg.token": "$DATABRICKS_OAUTH_TOKEN",
+            "spark.sql.catalog.workspace_iceberg.credential": "{DATABRICKS_CREDENTIAL}",
+            "spark.sql.catalog.workspace_iceberg.oauth2-server-uri": "https://dbc-050d6f00-dcb3.cloud.databricks.com/oidc/v1/token",
+            "spark.sql.catalog.workspace_iceberg.scope": "all-apis",
             "spark.sql.catalog.workspace_iceberg.warehouse": "workspace",
 
             # Chronon write config
@@ -326,16 +330,13 @@ aws_databricks = Team(
             "spark.chronon.partition.column": "ds",
             "spark.chronon.partition.format": "yyyy-MM-dd",
 
-            # Cross-catalog persist: materialize before write to avoid DV lineage issue
-            "spark.chronon.cross_catalog.persist": "true",
-
             "spark.sql.warehouse.dir": "s3://zipline-warehouse-dev/data/uc-poc/warehouse/",
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
-            "spark.driver.memory": "512m",
+            "spark.driver.memory": "1g",
             "spark.driver.cores": "1",
-            "spark.executor.memory": "512m",
+            "spark.executor.memory": "1g",
             "spark.executor.cores": "1",
         },
     ),
