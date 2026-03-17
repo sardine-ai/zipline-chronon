@@ -80,7 +80,8 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
   )
 
   private[aws] def resolveTableName(dataset: String): String = {
-    if (dataset.endsWith(batchSuffix)) batchTableCache(dataset)
+    // Use refresh() instead of apply() so the cache re-checks DynamoDB every ~8s rather than every 2hrs
+    if (dataset.endsWith(batchSuffix)) batchTableCache.refresh(dataset)
     else dataset
   }
 
