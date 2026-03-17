@@ -1,3 +1,8 @@
+---
+title: "Online Integration"
+order: 5
+---
+
 # Online Integration
 
 This document covers how to integrate Chronon with your online KV store, which is the backend that powers low latency serving of individual feature vectors in the online environment.

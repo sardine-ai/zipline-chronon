@@ -1,3 +1,8 @@
+---
+title: "Chaining Features"
+order: 3
+---
+
 # Chaining Features
 
 ## What is a Chaining Feature

@@ -1,3 +1,7 @@
+---
+title: "Eval - Configuration Validation"
+---
+
 # Eval - Configuration Validation
 
 Eval provides fast configuration validation without running expensive production jobs. Use it to catch errors early in your development workflow.

@@ -1,3 +1,8 @@
+---
+title: "GroupBy"
+order: 1
+---
+
 # GroupBy
 
 *We suggest familiarizing yourself with the concepts in this document, however if you'd like you can also jump ahead to the [Examples](#examples).*

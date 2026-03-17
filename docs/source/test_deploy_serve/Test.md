@@ -1,3 +1,8 @@
+---
+title: "Testing GroupBy and Join"
+order: 1
+---
+
 # Testing `GroupBy`s and `Join`s
 
 This doc assumes that you have already a `GroupBy`, `Join`, or `StagingQuery` created that you wish to test.

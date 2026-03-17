@@ -1,3 +1,8 @@
+---
+title: "Introduction"
+order: 1
+---
+
 # What is Chronon?
 
 Chronon is an open source end-to-end feature platform that allows Machine Learning (ML) teams to easily build, deploy, manage and monitor data pipelines for machine learning.

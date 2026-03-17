@@ -1,3 +1,8 @@
+---
+title: "Streaming Metrics"
+order: 4
+---
+
 # Streaming Metrics
 
 Chronon's streaming pipeline provides comprehensive metrics for monitoring real-time feature computation performance, health, and data quality. The streaming infrastructure is built on Apache Flink and emits detailed metrics at every stage of the pipeline to enable proactive monitoring and troubleshooting.

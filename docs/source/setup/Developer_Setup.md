@@ -1,3 +1,8 @@
+---
+title: "Developer Setup"
+order: 4
+---
+
 # Developer Setup
 
 The Chronon developer experience consists of the following steps:

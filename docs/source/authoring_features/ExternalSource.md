@@ -1,3 +1,8 @@
+---
+title: "ExternalSource"
+order: 9
+---
+
 # ExternalSource
 
 ExternalSource is a powerful feature in Chronon that allows you to integrate real-time data from external services and APIs into your feature pipeline. Unlike standard GroupBys that compute features from batch or streaming data sources, ExternalSources fetch features on-demand from external systems during online serving.

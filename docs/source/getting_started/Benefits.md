@@ -1,3 +1,8 @@
+---
+title: "Benefits"
+order: 3
+---
+
 # Benefits of Chronon over other approaches
 
 Chronon offers the most value to AI/ML practitioners who are trying to build "online" models that are serving requests in real-time as opposed to batch workflows.

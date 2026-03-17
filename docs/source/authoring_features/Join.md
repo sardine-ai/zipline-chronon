@@ -1,3 +1,8 @@
+---
+title: "Join"
+order: 2
+---
+
 # Join
 
 As the name suggests, `Join` is primarily responsible for joining together many `GroupBy`s, possibly with different keys. However, it is also responsible for another very important function: defining the timeline along which features will be computed in the backfill.

@@ -1,3 +1,8 @@
+---
+title: "Bootstrap"
+order: 7
+---
+
 # Bootstrap
 
 We support feature **bootstrap** as a primitive as part of Chronon Join in order to support various kinds of feature experimentation workflows that are manually done by clients previously outside of Chronon.

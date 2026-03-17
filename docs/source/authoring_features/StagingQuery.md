@@ -1,3 +1,8 @@
+---
+title: "Staging Query"
+order: 5
+---
+
 # Staging Query
 
 A StagingQuery can be used to express free form ETL (including SQL joins/group by) within Chronon. They are typically used

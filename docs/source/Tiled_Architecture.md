@@ -1,4 +1,9 @@
-# The Tiled Architecture
+---
+title: "Tiled Architecture"
+order: 1
+---
+
+# Tiled Architecture
 
 **Important**: Tiling is a new feature that is still in the process of being open-sourced.
 

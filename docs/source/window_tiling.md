@@ -1,3 +1,7 @@
+---
+title: "Window Tiling Algorithm"
+---
+
 # Window Tiling Algorithm
 
 ## Context

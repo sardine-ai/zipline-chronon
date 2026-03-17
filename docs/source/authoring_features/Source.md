@@ -1,3 +1,8 @@
+---
+title: "Sources"
+order: 4
+---
+
 # Sources
 
 Sources in Chronon define data inputs to feature computation pipelines. It's often the first thing that users will write when defining a new entity in Chronon, and getting it right is one of the most important steps in the authoring process. Defining it correctly will make everything fall into place correctly.

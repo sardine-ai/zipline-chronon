@@ -1,3 +1,8 @@
+---
+title: "Orchestrating Chronon"
+order: 6
+---
+
 
 **Note: This is only required if self-hosting Chronon. If using Zipline these considerations are solved by the Zipline Hub.**
 

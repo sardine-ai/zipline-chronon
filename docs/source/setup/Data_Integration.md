@@ -1,3 +1,8 @@
+---
+title: "Data Integration"
+order: 3
+---
+
 # Data Integration
 
 This section covers how to setup Chronon so that it can read the raw data in your warehouse for feature computation, and write out computed feature values for storage.

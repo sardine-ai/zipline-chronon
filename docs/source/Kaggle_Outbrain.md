@@ -1,3 +1,8 @@
+---
+title: "Solving Outbrain Click Prediction"
+order: 3
+---
+
 # Solving Outbrain Click Prediction
 
 This doc walks you through the steps to create a training dataset with Chronon for the [Outbrain Click Prediction](https://www.kaggle.com/c/outbrain-click-prediction) project on Kaggle.

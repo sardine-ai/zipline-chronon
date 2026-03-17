@@ -1,3 +1,8 @@
+---
+title: "Derived Features"
+order: 6
+---
+
 # Derived Features
 
 While hydrating features for ML models, it is quite common to transform raw features further to make the model more effective at predicting. This is typically done to incorporate domain knowledge of a data scientist into the model. The ratio of a listing's current price and the user's historical booking price is a more helpful signal than the separate prices - while predicting relevant listings to recommend to a user.

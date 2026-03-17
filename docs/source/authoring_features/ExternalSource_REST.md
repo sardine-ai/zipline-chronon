@@ -1,3 +1,8 @@
+---
+title: "External Sources (REST & GraphQL)"
+order: 10
+---
+
 # REST and GraphQL ExternalSources
 
 Chronon provides declarative REST and GraphQL ExternalSources that allow you to integrate external APIs without writing custom handler code. Simply define your API endpoint configuration, and Chronon handles the HTTP requests, authentication, retries, and response parsing automatically.

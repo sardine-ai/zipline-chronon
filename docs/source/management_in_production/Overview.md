@@ -1,3 +1,8 @@
+---
+title: "Observability Overview"
+order: 1
+---
+
 # Observability Overview
 
 Chronon is a complex system that has various components each with their own observability requirements. The most crucial of these are:

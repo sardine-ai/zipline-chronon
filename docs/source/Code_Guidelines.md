@@ -1,3 +1,8 @@
+---
+title: "Code Guidelines"
+order: 2
+---
+
 # Code Guidelines
 
 ## Scala Language usage Philosophy

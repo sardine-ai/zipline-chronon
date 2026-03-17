@@ -1,3 +1,8 @@
+---
+title: "Failure Handling"
+order: 3
+---
+
 # Failure Handling
 
 The most critical failures that can occur in Chronon are usually in the online production flow, because that can affect live inference.

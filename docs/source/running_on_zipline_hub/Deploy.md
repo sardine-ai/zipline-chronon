@@ -1,3 +1,8 @@
+---
+title: "Deploying Chronon Entities"
+order: 3
+---
+
 # Deploying
 
 Once you have authored and tested your `GroupBy`, `Join` or `StagingQuery`, then all you need to do to productionize it is merge it into your repository.

@@ -1,3 +1,8 @@
+---
+title: "Control Plane Overview"
+order: 1
+---
+
 # Control Plane Overview
 
 All the jobs that Chronon runs are driven by the configs in the Chronon repo. The orchestrator (Airflow by default) is configured to read the files in the repo and kick off a number of jobs to drive data and metadata flows. This is illustrated below:

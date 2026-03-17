@@ -1,3 +1,8 @@
+---
+title: "Data Quality"
+order: 2
+---
+
 # Data Quality Metrics
 
 Chronon automatically computes and stores data quality metrics for both offline batch jobs and near real-time streaming contexts, enabling users to monitor the health and quality of their feature pipelines over time.

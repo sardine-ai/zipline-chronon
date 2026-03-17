@@ -1,3 +1,8 @@
+---
+title: "Quickstart"
+order: 2
+---
+
 # Quickstart
 
 This section walks you through the steps to create a training dataset with Chronon, using a fabricated underlying raw dataset.
