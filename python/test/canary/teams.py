@@ -120,6 +120,7 @@ aws = Team(
             "FRONTEND_URL": "https://canary-aws.zipline.ai",
             "HUB_URL": "https://canary-orch-aws.zipline.ai",
             "ENABLE_KINESIS": "true",
+            "FLINK_JARS_URI": "s3://zipline-artifacts-canary/spark-3.5.3/libs/",
         },
         modeEnvironments={
             RunMode.UPLOAD: {
