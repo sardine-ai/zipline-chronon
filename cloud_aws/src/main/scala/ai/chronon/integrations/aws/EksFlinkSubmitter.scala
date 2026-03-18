@@ -114,7 +114,12 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
       // Use Web Identity Token credentials (IRSA) instead of EC2 instance metadata
       "s3.access.key" -> "",
       "s3.secret.key" -> "",
-      "fs.s3a.aws.credentials.provider" -> "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
+      "fs.s3a.aws.credentials.provider" -> "com.amazonaws.auth.WebIdentityTokenCredentialsProvider",
+      // Expose Flink metrics via Prometheus HTTP endpoint so the AWS managed scraper can collect them.
+      // Port range handles multiple TM pods co-scheduled on the same node.
+      "metrics.reporters" -> "prom",
+      "metrics.reporter.prom.factory.class" -> "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
+      "metrics.reporter.prom.port" -> "9250-9260"
     ) ++ flinkMemoryConfig(tier) ++ jobProperties
   }
 
@@ -430,7 +435,19 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
                 })
     podSpec.put("volumes", volumes)
 
+    val podMeta = new java.util.HashMap[String, Object]()
+    podMeta.put(
+      "annotations", {
+        val m = new java.util.HashMap[String, String]()
+        m.put("prometheus.io/scrape", "true")
+        m.put("prometheus.io/port", "9250")
+        m.put("prometheus.io/path", "/metrics")
+        m
+      }
+    )
+
     val podTemplate = new java.util.HashMap[String, Object]()
+    podTemplate.put("metadata", podMeta)
     podTemplate.put("spec", podSpec)
     component.put("podTemplate", podTemplate)
 
