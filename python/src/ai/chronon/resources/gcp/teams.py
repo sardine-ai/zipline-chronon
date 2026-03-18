@@ -8,20 +8,16 @@ default = Team(
     outputNamespace="default",
     conf=ConfigProperties(
         common={
-            "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
             "spark.chronon.table_write.format": "iceberg",
-            "spark.sql.defaultCatalog": "bigquery_catalog",
-            "spark.sql.catalog.bigquery_catalog": "org.apache.iceberg.spark.SparkCatalog",
-            "spark.sql.catalog.bigquery_catalog.catalog-impl": "org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog",
-            "spark.sql.catalog.bigquery_catalog.io-impl": "org.apache.iceberg.io.ResolvingFileIO",
-            "spark.sql.defaultUrlStreamHandlerFactory.enabled": "false",
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
+
+            "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
+
+            # TODO: Choose a data catalog configuration.
+
             # TODO: Please fill in the following values
-            "spark.sql.catalog.bigquery_catalog.warehouse": "gs://zipline-warehouse-<customer_id>/data/tables/",
-            "spark.sql.catalog.bigquery_catalog.gcp.bigquery.location": "<region>",
-            "spark.sql.catalog.bigquery_catalog.gcp.bigquery.project-id": "<project-id>",
             "spark.chronon.partition.format": "<date-format>",  # ex: "yyyy-MM-dd",
             "spark.chronon.partition.column": "<partition-column-name>",  # ex: "ds",
         },

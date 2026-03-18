@@ -8,27 +8,24 @@ default = Team(
     outputNamespace="default",
     conf=ConfigProperties(
         common={
-            "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_azure.AzureFormatProvider",
             "spark.chronon.table_write.format": "iceberg",
-            "spark.kryo.registrator": "ai.chronon.spark.submission.ChrononKryoRegistrator",
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
+
+            "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_azure.AzureFormatProvider",
+
             "spark.driver.memory": "1g",
             "spark.driver.cores": "1",
             "spark.executor.memory": "1g",
             "spark.executor.cores": "1",
-            # Setup iceberg
-            "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkCatalog",
-            "spark.sql.catalog.spark_catalog.type": "rest",
-            "spark.sql.catalog.spark_catalog.header.X-Iceberg-Access-Delegation": "vended-credentials",
+
+            # TODO: Choose a data catalog configuration.
+
             # TODO: Please fill in the following values
-            "spark.sql.catalog.spark_catalog.uri": "<URI>",
-            "spark.sql.catalog.spark_catalog.credential": "<CLIENT_ID>:<SECRET>",
-            "spark.sql.catalog.spark_catalog.warehouse": "<NAME>",
-            "spark.sql.catalog.spark_catalog.scope": "PRINCIPAL_ROLE:<NAME>",
             "spark.chronon.partition.format": "<date-format>",  # ex: "yyyy-MM-dd",
             "spark.chronon.partition.column": "<partition-column-name>",  # ex: "ds",
+
         },
     ),
     env=EnvironmentVariables(

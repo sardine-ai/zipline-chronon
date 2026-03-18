@@ -9,24 +9,18 @@ default = Team(
     conf=ConfigProperties(
         common={
             "spark.chronon.table_write.format": "iceberg",
-            "spark.chronon.table_write.upload.format": "ion",
-
-            "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkSessionCatalog",
-            "spark.sql.catalog.spark_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
-            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-
-            "spark.sql.defaultUrlStreamHandlerFactory.enabled": "false",
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
 
+            "spark.chronon.table_write.upload.format": "ion",
             # Flink
             "taskmanager.memory.process.size": "4G",
 
+            # TODO: Choose a data catalog configuration.
+
             # TODO: Please fill in the following values
             "spark.chronon.table_write.upload.location": "s3://zipline-warehouse-<customer_id>/data/ion_uploads/",
-            "spark.sql.catalog.spark_catalog.warehouse": "s3://zipline-warehouse-<customer_id>/data/tables/",
-            "spark.chronon.table_write.prefix": "s3://zipline-warehouse-<customer_id>/data/tables/",
             "spark.chronon.partition.format": "<date-format>",  # ex: "yyyy-MM-dd",
             "spark.chronon.partition.column": "<partition-column-name>",  # ex: "ds",
         },

@@ -2,6 +2,7 @@ from gen_thrift.api.ttypes import Team
 
 from ai.chronon.repo.cluster import generate_dataproc_cluster_config, generate_emr_cluster_config
 from ai.chronon.repo.constants import RunMode
+from ai.chronon.repo.spark_catalog_confs import *
 from ai.chronon.types import ClusterConfigProperties, ConfigProperties, EnvironmentVariables
 
 default = Team(
@@ -65,27 +66,21 @@ gcp = Team(
     ),
     conf=ConfigProperties(
         common={
+            **BigQueryConfiguration({
+                "spark.sql.catalog.spark_catalog.warehouse": "gs://zipline-warehouse-canary/data/tables/",
+                "spark.sql.catalog.spark_catalog.gcp.bigquery.location": "us-central1",
+                "spark.sql.catalog.spark_catalog.gcp.bigquery.project-id": "canary-443022",
+                "spark.chronon.table.gcs.temporary_gcs_bucket": "zipline-warehouse-canary",
+                "spark.chronon.table.gcs.connector_output_dataset": "data",
+                "spark.chronon.table.gcs.connector_output_project": "canary-443022",
+            }),
+
             "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_gcp.GcpFormatProvider",
-            "spark.chronon.partition.format": "yyyy-MM-dd",
-            "spark.chronon.table.gcs.temporary_gcs_bucket": "zipline-warehouse-canary",
-            "spark.chronon.partition.column": "ds",
-            "spark.chronon.table.gcs.connector_output_dataset": "data",
-            "spark.chronon.table.gcs.connector_output_project": "canary-443022",
-            "spark.chronon.table_write.prefix": "gs://zipline-warehouse-canary/data/tables/",
             "spark.chronon.table_write.format": "iceberg",
-            "spark.sql.catalog.spark_catalog.warehouse": "gs://zipline-warehouse-canary/data/tables/",
-            "spark.sql.catalog.spark_catalog.gcp.bigquery.location": "us-central1",
-            "spark.sql.catalog.spark_catalog.gcp.bigquery.project-id": "canary-443022",
-            "spark.sql.catalog.spark_catalog.catalog-impl": "org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog",
-            "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkSessionCatalog",
-            "spark.sql.catalog.spark_catalog.io-impl": "org.apache.iceberg.io.ResolvingFileIO",
-            "spark.sql.catalog.default_iceberg.warehouse": "gs://zipline-warehouse-canary/data/tables/",
-            "spark.sql.catalog.default_iceberg.gcp.bigquery.location": "us-central1",
-            "spark.sql.catalog.default_iceberg.gcp.bigquery.project-id": "canary-443022",
-            "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.gcp.bigquery.BigQueryMetastoreCatalog",
-            "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
-            "spark.sql.catalog.default_iceberg.io-impl": "org.apache.iceberg.io.ResolvingFileIO",
-            "spark.sql.defaultUrlStreamHandlerFactory.enabled": "false",
+
+            "spark.chronon.partition.format": "yyyy-MM-dd",
+            "spark.chronon.partition.column": "ds",
+
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
@@ -133,21 +128,15 @@ aws = Team(
     ),
     conf=ConfigProperties(
         common={
+            **GlueConfiguration({
+                "spark.sql.catalog.spark_catalog.warehouse": "s3://zipline-warehouse-canary/data/tables/",
+            }),
             "spark.chronon.partition.format": "yyyy-MM-dd",
             "spark.chronon.partition.column": "ds",
-            "spark.chronon.table_write.prefix": "s3://zipline-warehouse-canary/data/tables/",
             "spark.chronon.table_write.format": "iceberg",
             "spark.chronon.table_write.upload.format": "ion",
             "spark.chronon.table_write.upload.location": "s3://zipline-warehouse-canary/data/ion_uploads/",
-            "spark.sql.catalog.spark_catalog.warehouse": "s3://zipline-warehouse-canary/data/tables/",
-            "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkSessionCatalog",
-            "spark.sql.catalog.spark_catalog.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
-            "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory",
-            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-            "spark.sql.catalog.default_iceberg.warehouse": "s3://zipline-warehouse-canary/data/tables/",
-            "spark.sql.catalog.default_iceberg": "org.apache.iceberg.spark.SparkCatalog",
-            "spark.sql.catalog.default_iceberg.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
-            "spark.sql.defaultUrlStreamHandlerFactory.enabled": "false",
+
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
@@ -261,17 +250,17 @@ azure = Team(
     ),
     conf=ConfigProperties(
         common={
+            **OpenCatalogConfiguration({
+                "spark.sql.catalog.spark_catalog.uri": "https://vejlulx-azure-oc.snowflakecomputing.com/polaris/api/catalog",
+                "spark.sql.catalog.spark_catalog.credential": "XtyCirtE0/o3pcTMdkLCh7LXVno=:i++cOG/+vHgZwU8Wnj5Qx3hIzHwvlr0rhaGJnDwIBTg=",
+                "spark.sql.catalog.spark_catalog.warehouse": "demo-v2",
+                "spark.sql.catalog.spark_catalog.scope": "PRINCIPAL_ROLE:engine",
+
+            }),
+            "spark.chronon.table_write.format": "iceberg",
             "spark.chronon.table.format_provider.class": "ai.chronon.integrations.cloud_azure.AzureFormatProvider",
             "spark.chronon.partition.format": "yyyy-MM-dd",
             "spark.chronon.partition.column": "ds",
-            "spark.chronon.table_write.format": "iceberg",
-            "spark.sql.catalog.spark_catalog": "org.apache.iceberg.spark.SparkCatalog",
-            "spark.sql.catalog.spark_catalog.type": "rest",
-            "spark.sql.catalog.spark_catalog.uri": "https://vejlulx-azure-oc.snowflakecomputing.com/polaris/api/catalog",
-            "spark.sql.catalog.spark_catalog.credential": "XtyCirtE0/o3pcTMdkLCh7LXVno=:i++cOG/+vHgZwU8Wnj5Qx3hIzHwvlr0rhaGJnDwIBTg=",
-            "spark.sql.catalog.spark_catalog.warehouse": "demo-v2",
-            "spark.sql.catalog.spark_catalog.scope": "PRINCIPAL_ROLE:engine",
-            "spark.sql.catalog.spark_catalog.header.X-Iceberg-Access-Delegation": "vended-credentials",
             "spark.chronon.coalesce.factor": "10",
             "spark.default.parallelism": "10",
             "spark.sql.shuffle.partitions": "10",
