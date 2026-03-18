@@ -24,6 +24,23 @@ def handle_compile(func):
     return wrapper
 
 
+def handle_dry_run_compile(func):
+    """
+    Handler for compiling the confs before running commands
+    Requires repo arg
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        sys.path.append(kwargs.get("repo"))
+        results, has_errors, pending_changes = __compile(
+            kwargs.get("repo"), force=kwargs.get("force"), dry_run=True, validate_all=True
+        )
+        kwargs["compile_pending_changes"] = pending_changes
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def handle_conf_not_found(log_error=True, callback=None):
     """
     Handler for when a conf is not found

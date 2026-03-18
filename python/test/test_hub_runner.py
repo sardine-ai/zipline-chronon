@@ -299,3 +299,257 @@ class TestHubRunner:
         # click.UsageError exits with code 2
         assert result.exit_code == 2
         assert "Customer ID is not set for Azure" in result.output
+
+    @patch('ai.chronon.repo.hub_runner.submit_schedule_all')
+    @patch('ai.chronon.click_helpers.__compile')
+    def test_schedule_all_no_changes(
+        self,
+        mock_compile,
+        mock_submit_schedule_all,
+        canary,
+    ):
+        """Test schedule_all when there are no compilation changes."""
+        # Mock __compile to return no pending changes
+        mock_compile.return_value = ({}, False, {"added": [], "changed": [], "deleted": []})
+
+        runner = CliRunner()
+        result = self._run_and_print(runner, hub, [
+            'schedule-all',
+            '--repo', canary,
+            '--cloud', 'gcp',
+            '--no-use-auth',
+        ])
+
+        # Should succeed with exit code 0
+        assert result.exit_code == 0
+        plain_output = _plain(result.output)
+        assert "No compilation changes detected" in plain_output
+
+        # submit_schedule_all SHOULD be called since there are no changes
+        mock_submit_schedule_all.assert_called_once()
+
+    @patch('ai.chronon.repo.hub_runner.submit_schedule_all')
+    @patch('ai.chronon.click_helpers.__compile')
+    def test_schedule_all_with_added_changes(
+        self,
+        mock_compile,
+        mock_submit_schedule_all,
+        canary,
+    ):
+        """Test schedule_all when there are added configs."""
+        # Create mock ConfigChange objects
+        from ai.chronon.cli.compile.conf_validator import ConfigChange
+
+        added_change = ConfigChange(
+            name="test_team.new_join",
+            obj_type="Join",
+            online=True,
+        )
+
+        # Mock __compile to return pending changes
+        mock_compile.return_value = (
+            {},
+            False,
+            {"added": [added_change], "changed": [], "deleted": []}
+        )
+
+        runner = CliRunner()
+        result = self._run_and_print(runner, hub, [
+            'schedule-all',
+            '--repo', canary,
+            '--cloud', 'gcp',
+            '--no-use-auth',
+        ])
+
+        # Should fail with exit code 1
+        assert result.exit_code == 1
+        plain_output = _plain(result.output)
+        assert "Compilation resulted in changes" in plain_output
+        assert "Added: test_team.new_join" in plain_output
+
+        # submit_schedule_all should NOT be called
+        mock_submit_schedule_all.assert_not_called()
+
+    @patch('ai.chronon.repo.hub_runner.submit_schedule_all')
+    @patch('ai.chronon.click_helpers.__compile')
+    def test_schedule_all_with_changed_configs(
+        self,
+        mock_compile,
+        mock_submit_schedule_all,
+        canary,
+    ):
+        """Test schedule_all when there are changed configs."""
+        from ai.chronon.cli.compile.conf_validator import ConfigChange
+
+        changed_change = ConfigChange(
+            name="test_team.existing_join",
+            obj_type="Join",
+            online=True,
+        )
+
+        # Mock __compile to return pending changes
+        mock_compile.return_value = (
+            {},
+            False,
+            {"added": [], "changed": [changed_change], "deleted": []}
+        )
+
+        runner = CliRunner()
+        result = self._run_and_print(runner, hub, [
+            'schedule-all',
+            '--repo', canary,
+            '--cloud', 'gcp',
+            '--no-use-auth',
+        ])
+
+        # Should fail with exit code 1
+        assert result.exit_code == 1
+        plain_output = _plain(result.output)
+        assert "Compilation resulted in changes" in plain_output
+        assert "Changed: test_team.existing_join" in plain_output
+
+        # submit_schedule_all should NOT be called
+        mock_submit_schedule_all.assert_not_called()
+
+    @patch('ai.chronon.repo.hub_runner.submit_schedule_all')
+    @patch('ai.chronon.click_helpers.__compile')
+    def test_schedule_all_with_deleted_configs(
+        self,
+        mock_compile,
+        mock_submit_schedule_all,
+        canary,
+    ):
+        """Test schedule_all when there are deleted configs."""
+        from ai.chronon.cli.compile.conf_validator import ConfigChange
+
+        deleted_change = ConfigChange(
+            name="test_team.old_join",
+            obj_type="Join",
+            online=False,
+        )
+
+        # Mock __compile to return pending changes
+        mock_compile.return_value = (
+            {},
+            False,
+            {"added": [], "changed": [], "deleted": [deleted_change]}
+        )
+
+        runner = CliRunner()
+        result = self._run_and_print(runner, hub, [
+            'schedule-all',
+            '--repo', canary,
+            '--cloud', 'gcp',
+            '--no-use-auth',
+        ])
+
+        # Should fail with exit code 1
+        assert result.exit_code == 1
+        plain_output = _plain(result.output)
+        assert "Compilation resulted in changes" in plain_output
+        assert "Deleted: test_team.old_join" in plain_output
+
+        # submit_schedule_all should NOT be called
+        mock_submit_schedule_all.assert_not_called()
+
+    @patch('ai.chronon.repo.hub_runner.submit_schedule_all')
+    @patch('ai.chronon.click_helpers.__compile')
+    def test_schedule_all_with_multiple_changes(
+        self,
+        mock_compile,
+        mock_submit_schedule_all,
+        canary,
+    ):
+        """Test schedule_all when there are multiple types of changes."""
+        from ai.chronon.cli.compile.conf_validator import ConfigChange
+
+        added_change = ConfigChange(name="test_team.new_join", obj_type="Join", online=True)
+        changed_change = ConfigChange(name="test_team.existing_join", obj_type="Join", online=True)
+        deleted_change = ConfigChange(name="test_team.old_join", obj_type="Join", online=False)
+
+        # Mock __compile to return pending changes
+        mock_compile.return_value = (
+            {},
+            False,
+            {
+                "added": [added_change],
+                "changed": [changed_change],
+                "deleted": [deleted_change]
+            }
+        )
+
+        runner = CliRunner()
+        result = self._run_and_print(runner, hub, [
+            'schedule-all',
+            '--repo', canary,
+            '--cloud', 'gcp',
+            '--no-use-auth',
+        ])
+
+        # Should fail with exit code 1
+        assert result.exit_code == 1
+        plain_output = _plain(result.output)
+        assert "Compilation resulted in changes" in plain_output
+        assert "Added: test_team.new_join" in plain_output
+        assert "Changed: test_team.existing_join" in plain_output
+        assert "Deleted: test_team.old_join" in plain_output
+
+        # submit_schedule_all should NOT be called
+        mock_submit_schedule_all.assert_not_called()
+
+
+    @patch('ai.chronon.repo.hub_runner.get_schedule_modes')
+    @patch('ai.chronon.repo.hub_runner.hub_uploader.compute_and_upload_diffs')
+    @patch('ai.chronon.repo.hub_runner.hub_uploader.build_local_repo_hashmap')
+    @patch('ai.chronon.repo.hub_runner.get_current_branch')
+    @patch('ai.chronon.repo.hub_runner.ZiplineHub')
+    def test_schedule_all_skips_confs_with_none_str_schedules(
+        self,
+        mock_zipline_hub,
+        mock_get_current_branch,
+        mock_build_hashmap,
+        mock_compute_diffs,
+        mock_get_schedule_modes,
+        canary,
+    ):
+        """Test that submit_schedule_all skips confs where both schedules are SCHEDULE_NONE_STR."""
+        from ai.chronon.repo.hub_runner import (
+            SCHEDULE_NONE_STR,
+            ScheduleModes,
+            submit_schedule_all,
+        )
+        from gen_thrift.api.ttypes import Conf
+
+        mock_get_current_branch.return_value = "test-branch"
+        mock_build_hashmap.return_value = {}
+
+        # Mock compute_and_upload_diffs to return a conf without schedules
+        conf_without_schedules = Conf(
+            name="test_team.join_without_schedules",
+            localPath="/path/to/conf",
+            hash="hash1",
+        )
+        mock_compute_diffs.return_value = {
+            "test_team.join_without_schedules": conf_without_schedules,
+        }
+
+        # Mock get_schedule_modes to return SCHEDULE_NONE_STR for both schedules
+        mock_get_schedule_modes.return_value = ScheduleModes(
+            offline_schedule=SCHEDULE_NONE_STR,
+            online_schedule=SCHEDULE_NONE_STR
+        )
+
+        # Mock ZiplineHub instance
+        mock_hub_instance = mock_zipline_hub.return_value
+
+        # Call submit_schedule_all
+        submit_schedule_all(
+            repo=canary,
+            cloud='gcp',
+            customer_id=None,
+            hub_url=None,
+            use_auth=False
+        )
+
+        # Verify call_schedule_all_api was NOT called since all confs have no schedules
+        mock_hub_instance.call_schedule_all_api.assert_not_called()

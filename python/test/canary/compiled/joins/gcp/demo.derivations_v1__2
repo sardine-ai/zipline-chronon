@@ -841,7 +841,7 @@
           }
         }
       },
-      "offlineSchedule": "0 3 * * *",
+      "offlineSchedule": "0 4 * * *",
       "onlineSchedule": "0 3 * * *",
       "stepDays": 30
     },

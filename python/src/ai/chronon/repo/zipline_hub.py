@@ -278,6 +278,50 @@ class ZiplineHub:
             print_error(f"Error deploying schedule: {self._get_error_details(e)}", format=self.format)
             raise e
 
+    def call_schedule_all_api(self, schedules: list[dict]) -> dict:
+        """
+        Deploy schedules for multiple confs in a single batch request.
+
+        Args:
+            schedules: List of dicts with keys:
+                - conf_name: str
+                - conf_hash: str
+                - branch: str
+                - modes: dict[str, str] (mode name -> schedule expression)
+
+        Returns:
+            dict with:
+                - results: list[dict] with per-conf results
+                - totalCount: int
+                - successCount: int
+                - failureCount: int
+        """
+        url = f"{self.base_url}/schedule/v2/schedules/all"
+
+        # Transform to thrift structure format
+        schedule_items = [
+            {
+                "confName": s["conf_name"],
+                "confHash": s["conf_hash"],
+                "branch": s["branch"],
+                "modeSchedules": s["modes"],
+            }
+            for s in schedules
+        ]
+
+        request_body = {"schedules": schedule_items}
+
+        try:
+            response = requests.post(
+                url, json=request_body, headers=self.additional_headers(self.base_url)
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            self.handle_unauth(e, "schedule-all")
+            print_error(f"Error deploying schedules: {self._get_error_details(e)}", format=self.format)
+            raise e
+
     def call_cancel_api(self, workflow_id):
         url = f"{self.base_url}/workflow/v2/{workflow_id}/cancel"
 

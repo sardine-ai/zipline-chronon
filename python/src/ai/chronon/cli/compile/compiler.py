@@ -30,7 +30,7 @@ class Compiler:
     def __init__(self, compile_context: CompileContext):
         self.compile_context = compile_context
 
-    def compile(self) -> Dict[ConfType, CompileResult]:
+    def compile(self, dry_run=False, validate_all=False) -> Dict[ConfType, CompileResult]:
         # Clean staging directory at the start to ensure fresh compilation
         staging_dir = self.compile_context.staging_output_dir()
         if os.path.exists(staging_dir):
@@ -49,7 +49,7 @@ class Compiler:
             all_compiled_objects.extend(compiled_objects)
 
         # Validate changes once after all classes have been processed
-        self.compile_context.validator.validate_changes(all_compiled_objects)
+        self.compile_context.validator.validate_changes(all_compiled_objects, validate_all)
 
         # Show the nice display first
         if self.compile_context.format != Format.JSON:
@@ -77,7 +77,11 @@ class Compiler:
                     )
 
         # Only proceed with file operations if there are no compilation errors
-        if not self.has_compilation_errors() or self.compile_context.ignore_python_errors:
+        if dry_run:
+            staging_dir = self.compile_context.staging_output_dir()
+            if os.path.exists(staging_dir):
+                shutil.rmtree(staging_dir)
+        elif not self.has_compilation_errors() or self.compile_context.ignore_python_errors:
             self._compile_team_metadata()
 
             # check if staging_output_dir exists

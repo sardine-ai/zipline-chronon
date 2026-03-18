@@ -55,6 +55,7 @@ def build_local_repo_hashmap(root_dir: str):
                     # contents=binary,
                     contents=thrift_json,
                     confType=FOLDER_NAME_TO_CONF_TYPE[folder_name],
+                    localPath=json_file
                 )
 
             except Exception as e:
@@ -73,17 +74,17 @@ def build_local_repo_hashmap(root_dir: str):
 
 
 def compute_and_upload_diffs(
-    branch: str,
-    zipline_hub: ZiplineHub,
-    local_repo_confs: dict[str, Conf],
-    format: Format = Format.TEXT,
-):
+        branch: str,
+        zipline_hub: ZiplineHub,
+        local_repo_confs: dict[str, Conf],
+        format: Format = Format.TEXT,
+) -> dict[str, Conf]:
     # Determine which confs are different from the ZiplineHub
     # Call Zipline hub with `names_and_hashes` as the argument to get back
     names_to_hashes = {name: local_conf.hash for name, local_conf in local_repo_confs.items()}
     print_step(f"🧮 Computed hashes for {len(names_to_hashes)} local files.", format=format)
 
-    changed_conf_names = zipline_hub.call_diff_api(names_to_hashes)["diff"]
+    changed_conf_names: list[str] = zipline_hub.call_diff_api(names_to_hashes)["diff"]
 
     if not changed_conf_names:
         print_success(

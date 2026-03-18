@@ -5,7 +5,7 @@ import sys
 import click
 
 from ai.chronon.cli.compile.compile_context import CompileContext
-from ai.chronon.cli.compile.compiler import Compiler, CompileResult
+from ai.chronon.cli.compile.compiler import Compiler
 from ai.chronon.cli.formatter import Format, jsonify_exceptions_if_json_format
 from ai.chronon.cli.theme import STYLE_INFO, console
 from gen_thrift.api.ttypes import ConfType
@@ -37,8 +37,13 @@ from gen_thrift.api.ttypes import ConfType
     is_flag=True,
     help="Force compilation to proceed even with errors",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Perform a dry run of the compilation without writing any files",
+)
 @jsonify_exceptions_if_json_format
-def compile(chronon_root, ignore_python_errors, format, force):
+def compile(chronon_root, ignore_python_errors=False, format=Format.TEXT, force=False, dry_run=False):
     """Compile Chronon configs."""
     if chronon_root is None or chronon_root == "":
         chronon_root = os.getcwd()
@@ -54,18 +59,14 @@ def compile(chronon_root, ignore_python_errors, format, force):
             f"\n[{STYLE_INFO} italic]{chronon_root}[/{STYLE_INFO} italic] already on python path."
         )
 
-    compiled_result, has_errors = __compile(
-        chronon_root, ignore_python_errors, format=format, force=force
-    )
+    compiled_result, has_errors, _ = __compile(chronon_root=chronon_root, ignore_python_errors=ignore_python_errors, format=format, force=force, dry_run=dry_run)
 
-    if has_errors and not ignore_python_errors:
-        sys.exit(1)
     return compiled_result
 
 
 def __compile(
-    chronon_root, ignore_python_errors=False, format=Format.TEXT, force=False
-) -> tuple[dict[ConfType, CompileResult], bool]:
+    chronon_root, ignore_python_errors=False, format=Format.TEXT, force=False, dry_run=False, validate_all=False
+):
     if chronon_root:
         chronon_root_path = os.path.expanduser(chronon_root)
         os.chdir(chronon_root_path)
@@ -83,7 +84,7 @@ def __compile(
         ignore_python_errors=ignore_python_errors, format=format, force=force
     )
     compiler = Compiler(compile_context)
-    results = compiler.compile()
+    results = compiler.compile(dry_run, validate_all)
     if format == Format.JSON:
         print(
             json.dumps(
@@ -98,7 +99,12 @@ def __compile(
                 indent=4,
             )
         )
-    return results, compiler.has_compilation_errors()
+    has_errors = compiler.has_compilation_errors()
+
+    if has_errors and not ignore_python_errors:
+        sys.exit(1)
+
+    return results, has_errors, compiler.compile_context.validator.pending_changes
 
 
 if __name__ == "__main__":

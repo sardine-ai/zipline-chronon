@@ -55,7 +55,7 @@ class ClassTracker:
                 )
 
                 format_print(
-                    f"Updated object: {compiled.name} in file {compiled.file}", format=self.format
+                    f"Updating object: {compiled.name} in file {compiled.file}", format=self.format
                 )
                 format_print("".join(diff), format=self.format)
                 format_print("\n", format=self.format)

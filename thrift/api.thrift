@@ -359,6 +359,7 @@ struct Conf {
     2: optional string hash
     3: optional string contents
     4: optional ConfType confType
+    5: optional string localPath
 }
 
 // Equivalent to a FeatureSet in chronon terms

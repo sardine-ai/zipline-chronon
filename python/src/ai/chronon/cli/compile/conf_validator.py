@@ -629,7 +629,7 @@ class ConfValidator(object):
                     )
         return errors
 
-    def validate_changes(self, results):
+    def validate_changes(self, results, validate_all=False):
         """
         Validate changes in compiled objects against existing materialized objects.
 
@@ -664,7 +664,7 @@ class ConfValidator(object):
                 # New object
                 change = self._create_config_change(result.obj, obj_type)
                 changed_objects["added"].append(change)
-            elif self._has_diff(result.obj, old_obj):
+            elif self._has_diff(result.obj, old_obj, skipped_fields=[] if validate_all else SKIPPED_FIELDS):
                 # Modified object
                 change = self._create_config_change(result.obj, obj_type)
                 changed_objects["changed"].append(change)
@@ -682,7 +682,7 @@ class ConfValidator(object):
                     changed_objects["deleted"].append(change)
 
         # Store changes for later confirmation check
-        self._pending_changes = {
+        self.pending_changes = {
             "changed": changed_objects["changed"],
             "deleted": changed_objects["deleted"],
             "added": changed_objects["added"],
@@ -725,8 +725,8 @@ class ConfValidator(object):
     def _non_version_changes(self):
         """Return list of changes that are NOT version bumps and require confirmation."""
         return self._filter_non_version_changes(
-            self._pending_changes["changed"] + self._pending_changes["deleted"],
-            self._pending_changes["added"],
+            self.pending_changes["changed"] + self.pending_changes["deleted"],
+            self.pending_changes["added"],
         )
 
     def _has_compilation_errors(self, compile_status):
