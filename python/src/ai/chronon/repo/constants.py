@@ -163,3 +163,34 @@ GCP = "GCP"
 ONLINE_CLASS_ARG = "online_class"
 ONLINE_JAR_ARG = "online_jar"
 ONLINE_ARGS = "online_args"
+
+PUBLIC_JARS_FOR_ADMIN = [
+    "https://repo1.maven.org/maven2/org/apache/commons/commons-collections4/4.4/commons-collections4-4.4.jar",
+    "https://repo1.maven.org/maven2/org/codehaus/janino/commons-compiler/3.1.9/commons-compiler-3.1.9.jar",
+    "https://repo1.maven.org/maven2/org/codehaus/janino/janino/3.1.9/janino-3.1.9.jar",
+    "https://repo1.maven.org/maven2/org/json4s/json4s-ast_2.12/3.7.0-M11/json4s-ast_2.12-3.7.0-M11.jar",
+    "https://repo1.maven.org/maven2/org/json4s/json4s-core_2.12/3.7.0-M11/json4s-core_2.12-3.7.0-M11.jar",
+    "https://repo1.maven.org/maven2/com/esotericsoftware/kryo-shaded/4.0.2/kryo-shaded-4.0.2.jar",
+    "https://repo1.maven.org/maven2/io/dropwizard/metrics/metrics-core/4.2.19/metrics-core-4.2.19.jar",
+    "https://repo1.maven.org/maven2/io/dropwizard/metrics/metrics-json/4.2.19/metrics-json-4.2.19.jar",
+    "https://repo1.maven.org/maven2/org/apache/xbean/xbean-asm9-shaded/4.23/xbean-asm9-shaded-4.23.jar"
+]
+
+SPARK_3_5_3_VERSION = "3.5.3"
+
+def get_public_spark_jars_for_admin(spark_version: str):
+    if spark_version not in [SPARK_3_5_3_VERSION]:
+        raise ValueError(f"Unsupported Spark version: {spark_version}")
+    return [
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-catalyst_2.12/{spark_version}/spark-catalyst_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-common-utils_2.12/{spark_version}/spark-common-utils_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-core_2.12/{spark_version}/spark-core_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-kvstore_2.12/{spark_version}/spark-kvstore_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-launcher_2.12/{spark_version}/spark-launcher_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-hive_2.12/{spark_version}/spark-hive_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-network-common_2.12/{spark_version}/spark-network-common_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-network-shuffle_2.12/{spark_version}/spark-network-shuffle_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-sql-api_2.12/{spark_version}/spark-sql-api_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-sql_2.12/{spark_version}/spark-sql_2.12-{spark_version}.jar",
+        f"https://repo1.maven.org/maven2/org/apache/spark/spark-unsafe_2.12/{spark_version}/spark-unsafe_2.12-{spark_version}.jar",
+    ] + PUBLIC_JARS_FOR_ADMIN

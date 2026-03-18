@@ -23,14 +23,23 @@ from rich.progress import (
 from rich.table import Table
 
 from ai.chronon.cli.theme import STYLE_ERROR, STYLE_SUCCESS, console
-from ai.chronon.repo.constants import VALID_CLOUDS
+from ai.chronon.repo.constants import (
+    SPARK_3_5_3_VERSION,
+    VALID_CLOUDS,
+    get_public_spark_jars_for_admin,
+)
 from ai.chronon.repo.registry_client import (
     DOCKER_HUB_REGISTRY,
     ImageTarget,
     RegistryClient,
     RegistryError,
 )
-from ai.chronon.repo.utils import get_package_version, read_from_blob_store, upload_to_blob_store
+from ai.chronon.repo.utils import (
+    blob_exists,
+    get_package_version,
+    read_from_blob_store,
+    upload_to_blob_store,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,17 +154,25 @@ def install(cloud, registry, api_token, release, artifact_prefix, bundle):
             results = _load_from_docker_hub(target, api_token, release, cloud, progress)
 
         if artifact_prefix:
+            console.print(f"\n[bold]Uploading artifacts to {artifact_prefix}...[/bold]")
             if bundle:
+                console.print("[bold]Extracting engine JARs from bundle...[/bold]")
                 jar_results = _extract_engine_jars_from_bundle(
                     bundle, cloud, release, artifact_prefix, progress
                 )
             else:
+                console.print(f"[bold]Downloading and extracting engine image (ziplineai/engine-{cloud}:{release})...[/bold]")
                 hub_client = RegistryClient()
                 _authenticate_docker_hub(hub_client, api_token)
                 jar_results = _upload_engine_jars_to_store(
                     hub_client, DOCKER_HUB_REGISTRY, release, cloud, artifact_prefix, progress
                 )
             results.extend(jar_results)
+
+            # Download and upload public Maven jars
+            console.print("\n[bold]Processing public Maven dependencies...[/bold]")
+            public_jar_results = _download_and_upload_public_jars(artifact_prefix, progress)
+            results.extend(public_jar_results)
 
     _print_summary(results, release, cloud, registry)
 
@@ -378,11 +395,27 @@ def _should_update_latest(release, artifact_store):
         return True
 
 
+def _extract_scripts_from_layer(layer_path, dest_dir, cloud):
+    """Extract files from scripts/<cloud>/ directory in a single tar layer."""
+    try:
+        with tarfile.open(layer_path, "r") as tar:
+            scripts_prefix = f"scripts/{cloud}/"
+            for member in tar.getmembers():
+                if member.name.startswith(scripts_prefix):
+                    tar.extract(member, dest_dir)
+    except tarfile.ReadError:
+        pass
+
+
 def _upload_jars_to_store(jars_dir, release, artifact_store):
     """Upload all files in jars_dir to the artifact store (versioned + latest)."""
     results = []
     if not os.path.isdir(jars_dir):
+        console.print(f"    No JARs found in {jars_dir}")
         return results
+
+    jar_files = os.listdir(jars_dir)
+    console.print(f"    Found {len(jar_files)} JAR(s) to upload")
 
     update_latest = _should_update_latest(release, artifact_store)
     if update_latest:
@@ -390,14 +423,16 @@ def _upload_jars_to_store(jars_dir, release, artifact_store):
     else:
         logger.info(f"Skipping release/latest/ update (release={release} is older than current latest)")
 
-    for jar_file in os.listdir(jars_dir):
+    for idx, jar_file in enumerate(jar_files, 1):
         local_path = os.path.join(jars_dir, jar_file)
         remote_path = f"{artifact_store.rstrip('/')}/release/{release}/jars/{jar_file}"
         try:
+            console.print(f"    [{idx}/{len(jar_files)}] Uploading {jar_file}...")
             upload_to_blob_store(local_path, remote_path)
             if update_latest:
                 latest_path = f"{artifact_store.rstrip('/')}/release/latest/jars/{jar_file}"
                 upload_to_blob_store(local_path, latest_path)
+            console.print(f"    [{idx}/{len(jar_files)}] ✓ {jar_file}")
             results.append(("jar", remote_path, "", "ok"))
         except Exception as e:
             console.print(f"[{STYLE_ERROR}]Error uploading {jar_file}:[/]\n{traceback.format_exc()}")
@@ -419,8 +454,98 @@ def _upload_jars_to_store(jars_dir, release, artifact_store):
     return results
 
 
-def _extract_jars_from_oci_archive(archive_path, release, artifact_store):
-    """Extract JARs from an OCI image archive (docker save format) and upload to the artifact store."""
+def _upload_scripts_to_store(scripts_dir, cloud, release, artifact_store):
+    """Upload all files from scripts/<cloud>/ directory to the artifact store."""
+    results = []
+    scripts_cloud_dir = os.path.join(scripts_dir, "scripts", cloud)
+    update_latest = _should_update_latest(release, artifact_store)
+    if os.path.isdir(scripts_cloud_dir):
+        # Count total scripts first
+        total_scripts = sum(len(files) for _, _, files in os.walk(scripts_cloud_dir))
+        console.print(f"    Found {total_scripts} script(s) to upload")
+
+        for root, _dirs, files in os.walk(scripts_cloud_dir):
+            for script_file in files:
+                local_path = os.path.join(root, script_file)
+                rel_path = os.path.relpath(local_path, scripts_cloud_dir)
+                remote_path = f"{artifact_store.rstrip('/')}/release/{release}/scripts/{cloud}/{rel_path}"
+                try:
+                    upload_to_blob_store(local_path, remote_path)
+                    if update_latest:
+                        latest_path = (f"{artifact_store.rstrip('/')}/release/latest/scripts/{cloud}/{rel_path}")
+                        upload_to_blob_store(local_path, latest_path)
+                    results.append(("script", remote_path, "", "ok"))
+                except Exception as e:
+                    console.print(f"[{STYLE_ERROR}]Error uploading {script_file}:[/]\n{traceback.format_exc()}")
+                    results.append(("script", remote_path, "", f"FAILED: {e}"))
+    else:
+        console.print(f"    No scripts found in {scripts_cloud_dir}")
+    return results
+
+
+def _download_and_upload_public_jars(artifact_store, progress):
+    """Download public Maven jars and upload them to the artifact store.
+
+    Checks which jars already exist in the artifact store and only downloads missing ones.
+    """
+    import urllib.request
+
+    results = []
+
+    spark_version = SPARK_3_5_3_VERSION
+    console.print(f"[bold]Processing public Maven dependencies for Spark {spark_version}...[/bold]")
+
+    # First, check which jars already exist
+    console.print(f"[bold]Checking for existing jars in {artifact_store}/spark-{spark_version}/libs/...[/bold]")
+    jars_to_download = []
+
+    public_jars = get_public_spark_jars_for_admin(spark_version)
+    for jar_url in public_jars:
+        jar_filename = jar_url.split("/")[-1]
+
+        remote_path = f"{artifact_store.rstrip('/')}/spark-{SPARK_3_5_3_VERSION}/libs/{jar_filename}"
+
+        console.print(f"Checking for {remote_path}")
+        if blob_exists(remote_path):
+            console.print(f"  ✓ {jar_filename} already exists in artifact store")
+            results.append(("maven-jar", remote_path, "", "already exists"))
+        else:
+            console.print(f"  ✗ {jar_filename} not found in artifact store, will download and upload")
+            jars_to_download.append((jar_url, jar_filename, remote_path))
+
+    if not jars_to_download:
+        console.print(f"[green]All {len(public_jars)} Maven jars already exist in artifact store[/green]")
+        return results
+
+    console.print(f"[bold]Downloading and uploading {len(jars_to_download)} missing jars...[/bold]")
+    label = f"public Maven dependencies ({len(jars_to_download)}/{len(public_jars)} missing)"
+    task_id = progress.add_task(f"Processing {label}", total=len(jars_to_download))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for idx, (jar_url, jar_filename, remote_path) in enumerate(jars_to_download, 1):
+            local_path = os.path.join(tmpdir, jar_filename)
+
+            try:
+                console.print(f"  [{idx}/{len(jars_to_download)}] Downloading {jar_filename}...")
+                urllib.request.urlretrieve(jar_url, local_path)
+                console.print(f"  [{idx}/{len(jars_to_download)}] Uploading {jar_filename} to artifact store...")
+                upload_to_blob_store(local_path, remote_path)
+                console.print(f"  [{idx}/{len(jars_to_download)}] ✓ {jar_filename}")
+
+                progress.update(task_id, advance=1)
+                results.append(("maven-jar", remote_path, "", "ok"))
+            except Exception as e:
+                progress.update(task_id, advance=1)
+                console.print(f"[{STYLE_ERROR}]Error downloading/uploading {jar_filename}:[/]\n{traceback.format_exc()}")
+                results.append(("maven-jar", jar_url, "", f"FAILED: {e}"))
+
+    ok = all(status in ("ok", "already exists") for _, _, _, status in results)
+    _finish_task(progress, task_id, label, ok=ok)
+    return results
+
+
+def _extract_jars_from_oci_archive(archive_path, cloud, release, artifact_store):
+    """Extract JARs and scripts from an OCI image archive (docker save format) and upload to the artifact store."""
     results = []
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -440,23 +565,27 @@ def _extract_jars_from_oci_archive(archive_path, release, artifact_store):
 
         entry = archive_manifests[0]
 
-        jars_tmpdir = os.path.join(tmpdir, "jars_extract")
-        os.makedirs(jars_tmpdir, exist_ok=True)
+        extract_tmpdir = os.path.join(tmpdir, "extract")
+        os.makedirs(extract_tmpdir, exist_ok=True)
 
         for layer_file_rel in entry["Layers"]:
             layer_path = os.path.join(oci_dir, layer_file_rel)
-            _extract_jars_from_layer(layer_path, jars_tmpdir)
+            _extract_jars_from_layer(layer_path, extract_tmpdir)
+            _extract_scripts_from_layer(layer_path, extract_tmpdir, cloud)
 
         results.extend(
-            _upload_jars_to_store(os.path.join(jars_tmpdir, "jars"), release, artifact_store)
+            _upload_jars_to_store(os.path.join(extract_tmpdir, "jars"), release, artifact_store)
+        )
+        results.extend(
+            _upload_scripts_to_store(extract_tmpdir, cloud, release, artifact_store)
         )
 
     return results
 
 
 def _extract_engine_jars_from_bundle(bundle_path, cloud, release, artifact_store, progress):
-    """Extract engine JARs from a bundle's engine image archive and copy them to the artifact store."""
-    label = f"engine JARs (engine-{cloud}:{release})"
+    """Extract engine JARs and scripts from a bundle's engine image archive and copy them to the artifact store."""
+    label = f"engine artifacts (engine-{cloud}:{release})"
     task_id = progress.add_task(f"Extracting {label}", total=None)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -468,14 +597,14 @@ def _extract_engine_jars_from_bundle(bundle_path, cloud, release, artifact_store
             _finish_task(progress, task_id, label, ok=False)
             return [
                 (
-                    "engine-jars",
+                    "engine-artifacts",
                     artifact_store,
                     "",
                     f"FAILED: engine-{cloud}.tar not found in bundle",
                 )
             ]
 
-        results = _extract_jars_from_oci_archive(engine_archive, release, artifact_store)
+        results = _extract_jars_from_oci_archive(engine_archive, cloud, release, artifact_store)
 
     ok = all(status == "ok" for _, _, _, status in results)
     _finish_task(progress, task_id, label, ok=ok)
@@ -483,19 +612,22 @@ def _extract_engine_jars_from_bundle(bundle_path, cloud, release, artifact_store
 
 
 def _upload_engine_jars_to_store(client, registry, release, cloud, artifact_store, progress):
-    """Extract JARs from the engine image and upload to a blob store."""
+    """Extract JARs and scripts from the engine image and upload to a blob store."""
     results = []
     engine_repo = f"ziplineai/engine-{cloud}"
-    label = f"engine JARs ({engine_repo}:{release})"
+    label = f"engine artifacts ({engine_repo}:{release})"
 
+    console.print(f"  Resolving manifest for {engine_repo}:{release}...")
     try:
         manifest = client.resolve_single_platform(registry, engine_repo, release)
     except RegistryError as e:
         console.print(f"[{STYLE_ERROR}]Error resolving {engine_repo}:{release}:[/]\n{traceback.format_exc()}")
-        results.append(("engine-jars", artifact_store, "", f"FAILED: {e}"))
+        results.append(("engine-artifacts", artifact_store, "", f"FAILED: {e}"))
         return results
 
+    num_layers = len(manifest.get("layers", []))
     total_bytes = sum(layer.get("size", 0) for layer in manifest.get("layers", []))
+    console.print(f"  Found {num_layers} layers ({total_bytes / (1024*1024):.1f} MB total)")
     task_id = progress.add_task(f"Extracting {label}", total=total_bytes)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -510,8 +642,12 @@ def _upload_engine_jars_to_store(client, registry, release, cloud, artifact_stor
                 on_progress=partial(_advance_progress, progress, task_id),
             )
             _extract_jars_from_layer(layer_path, tmpdir)
+            _extract_scripts_from_layer(layer_path, tmpdir, cloud)
 
+        console.print(f"  Uploading engine JARs to {artifact_store}...")
         results.extend(_upload_jars_to_store(os.path.join(tmpdir, "jars"), release, artifact_store))
+        console.print(f"  Uploading scripts to {artifact_store}...")
+        results.extend(_upload_scripts_to_store(tmpdir, cloud, release, artifact_store))
 
     ok = all(status == "ok" for _, _, _, status in results)
     _finish_task(progress, task_id, label, ok=ok)
@@ -689,10 +825,14 @@ def _print_summary(results, release, cloud, registry):
 
     all_ok = True
     for entry_type, ref, _digest, status in results:
-        style = "green" if status == "ok" else "red"
-        table.add_row(entry_type, ref, f"[{style}]{status}[/{style}]")
-        if status != "ok":
+        if status == "ok":
+            style = "green"
+        elif status == "already exists":
+            style = "cyan"
+        else:
+            style = "red"
             all_ok = False
+        table.add_row(entry_type, ref, f"[{style}]{status}[/{style}]")
 
     console.print(table)
 
@@ -793,3 +933,6 @@ def verify(hub_url, expected_version):
     else:
         console.print("\n[bold red]Some checks failed.[/bold red]")
         raise SystemExit(1)
+
+if __name__ == "__main__":
+    admin()

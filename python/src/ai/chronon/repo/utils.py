@@ -475,11 +475,14 @@ def read_from_blob_store(remote_uri: str) -> str | None:
             parts = remote_uri[len("s3://"):].split("/", 1)
             bucket_name, key = parts[0], parts[1] if len(parts) > 1 else ""
             try:
+                LOG.info(f"Checking S3: bucket={bucket_name}, key={key}")
                 obj = boto3.client("s3").get_object(Bucket=bucket_name, Key=key)
                 return obj["Body"].read().decode("utf-8")
             except ClientError as e:
                 if e.response["Error"]["Code"] == "NoSuchKey":
+                    LOG.debug(f"S3 object not found: {remote_uri}")
                     return None
+                LOG.warning(f"S3 ClientError reading {remote_uri}: {e}")
                 raise
         elif "blob.core.windows.net" in remote_uri:
             from urllib.parse import urlparse
@@ -500,7 +503,8 @@ def read_from_blob_store(remote_uri: str) -> str | None:
                 with open(remote_uri) as f:
                     return f.read()
             return None
-    except Exception:
+    except Exception as e:
+        LOG.warning(f"Exception reading from blob store {remote_uri}: {e}")
         return None
 
 
@@ -575,6 +579,57 @@ def print_possible_confs(conf, repo, *args, **kwargs):
         )
     else:
         print(f"Directory does not exist: {style(conf_dirname, fg='yellow')}")
+
+
+def blob_exists(remote_uri: str) -> bool:
+    """Check if a blob exists in GCS, S3, Azure Blob Storage, or local filesystem.
+
+    Returns True if the blob exists, False otherwise.
+    """
+    try:
+        if remote_uri.startswith("gs://"):
+            from google.cloud import storage
+
+            parts = remote_uri[len("gs://"):].split("/", 1)
+            bucket_name, blob_name = parts[0], parts[1] if len(parts) > 1 else ""
+            client = storage.Client()
+            blob = client.bucket(bucket_name).blob(blob_name)
+            return blob.exists()
+        elif remote_uri.startswith("s3://"):
+            import boto3
+            from botocore.exceptions import ClientError
+
+            parts = remote_uri[len("s3://"):].split("/", 1)
+            bucket_name, key = parts[0], parts[1] if len(parts) > 1 else ""
+            if "s3://" in key:
+                key = key.split("s3://", 1)[1]
+            try:
+                boto3.client("s3").head_object(Bucket=bucket_name, Key=key)
+                return True
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "404":
+                    return False
+                LOG.warning(f"S3 error checking existence of {remote_uri}: {e}")
+                return False
+        elif "blob.core.windows.net" in remote_uri:
+            from urllib.parse import urlparse
+
+            from azure.identity import DefaultAzureCredential
+            from azure.storage.blob import BlobServiceClient
+
+            parsed = urlparse(remote_uri)
+            account_url = f"{parsed.scheme}://{parsed.netloc}"
+            path_parts = parsed.path.lstrip("/").split("/", 1)
+            container = path_parts[0]
+            blob_name = path_parts[1] if len(path_parts) > 1 else ""
+            blob_service = BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
+            blob_client = blob_service.get_blob_client(container=container, blob=blob_name)
+            return blob_client.exists()
+        else:
+            return os.path.exists(remote_uri)
+    except Exception as e:
+        LOG.warning(f"Exception checking blob existence {remote_uri}: {e}")
+        return False
 
 
 def get_package_version():

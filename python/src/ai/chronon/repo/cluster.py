@@ -36,6 +36,7 @@ def generate_dataproc_cluster_config(
     num_workers,
     project_id,
     artifact_prefix,
+    version="latest", # TODO: we should enforce this though.
     master_host_type="n2-highmem-64",
     worker_host_type="n2-highmem-16",
     subnetwork="default",
@@ -99,7 +100,8 @@ def generate_dataproc_cluster_config(
                 {"executable_file": initialization_action}
                 for initialization_action in (
                     (initialization_actions or [])
-                    + [artifact_prefix.rstrip("/") + "/scripts/copy_java_security.sh"]
+                    # Expecting structured path to be ex:  gs://my-bucket/zipline/release/1.0.42/scripts/gcp/start.sh
+                    + [("/".join([artifact_prefix, f"release/{version}"])).rstrip("/") + s for s in ["/scripts/gcp/copy_java_security.sh", "/scripts/gcp/start.sh"]]
                 )
             ],
             "endpointConfig": {
@@ -112,7 +114,7 @@ def generate_dataproc_cluster_config(
     )
 
 
-def fixed_cluster(
+def fixed_gcp_cluster(
     size,
     project_id,
     artifact_prefix,

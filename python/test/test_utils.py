@@ -323,3 +323,179 @@ transform(
 """
 
     assert utils.clean_expression(expr) == "transform( funct2( arg) )"
+
+
+# --- blob_exists tests ---
+
+
+def test_blob_exists_s3_file_exists():
+    """Test blob_exists returns True for existing S3 object."""
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("boto3.client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        mock_client.head_object.return_value = {}
+
+        assert blob_exists("s3://bucket/path/to/file.jar") is True
+        mock_client.head_object.assert_called_once_with(Bucket="bucket", Key="path/to/file.jar")
+
+
+def test_blob_exists_s3_file_not_found():
+    """Test blob_exists returns False for non-existent S3 object."""
+    from unittest.mock import MagicMock, patch
+
+    from botocore.exceptions import ClientError
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("boto3.client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        error_response = {"Error": {"Code": "404"}}
+        mock_client.head_object.side_effect = ClientError(error_response, "HeadObject")
+
+        assert blob_exists("s3://bucket/path/to/missing.jar") is False
+
+
+def test_blob_exists_s3_permission_error():
+    """Test blob_exists returns False for S3 permission errors."""
+    from unittest.mock import MagicMock, patch
+
+    from botocore.exceptions import ClientError
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("boto3.client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        error_response = {"Error": {"Code": "AccessDenied"}}
+        mock_client.head_object.side_effect = ClientError(error_response, "HeadObject")
+
+        assert blob_exists("s3://bucket/path/to/file.jar") is False
+
+
+def test_blob_exists_gcs_file_exists():
+    """Test blob_exists returns True for existing GCS object."""
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("google.cloud.storage.Client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = True
+
+        assert blob_exists("gs://bucket/path/to/file.jar") is True
+        mock_blob.exists.assert_called_once()
+
+
+def test_blob_exists_gcs_file_not_found():
+    """Test blob_exists returns False for non-existent GCS object."""
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("google.cloud.storage.Client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = False
+
+        assert blob_exists("gs://bucket/path/to/missing.jar") is False
+
+
+def test_blob_exists_azure_file_exists():
+    """Test blob_exists returns True for existing Azure blob."""
+    pytest.importorskip("azure.storage.blob")
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("azure.storage.blob.BlobServiceClient") as mock_service, patch(
+        "azure.identity.DefaultAzureCredential"
+    ):
+        mock_client = MagicMock()
+        mock_blob_client = MagicMock()
+        mock_service.return_value = mock_client
+        mock_client.get_blob_client.return_value = mock_blob_client
+        mock_blob_client.exists.return_value = True
+
+        assert blob_exists("https://account.blob.core.windows.net/container/path/file.jar") is True
+        mock_blob_client.exists.assert_called_once()
+
+
+def test_blob_exists_azure_file_not_found():
+    """Test blob_exists returns False for non-existent Azure blob."""
+    pytest.importorskip("azure.storage.blob")
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("azure.storage.blob.BlobServiceClient") as mock_service, patch(
+        "azure.identity.DefaultAzureCredential"
+    ):
+        mock_client = MagicMock()
+        mock_blob_client = MagicMock()
+        mock_service.return_value = mock_client
+        mock_client.get_blob_client.return_value = mock_blob_client
+        mock_blob_client.exists.return_value = False
+
+        assert blob_exists("https://account.blob.core.windows.net/container/path/missing.jar") is False
+
+
+def test_blob_exists_local_file_exists(tmp_path):
+    """Test blob_exists returns True for existing local file."""
+    from ai.chronon.repo.utils import blob_exists
+
+    test_file = tmp_path / "test.jar"
+    test_file.write_text("content")
+
+    assert blob_exists(str(test_file)) is True
+
+
+def test_blob_exists_local_file_not_found(tmp_path):
+    """Test blob_exists returns False for non-existent local file."""
+    from ai.chronon.repo.utils import blob_exists
+
+    assert blob_exists(str(tmp_path / "missing.jar")) is False
+
+
+def test_blob_exists_handles_exception():
+    """Test blob_exists returns False on unexpected exceptions."""
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("boto3.client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        mock_client.head_object.side_effect = Exception("Network error")
+
+        assert blob_exists("s3://bucket/path/to/file.jar") is False
+
+
+def test_blob_exists_s3_double_prefix():
+    """Test blob_exists handles double s3:// prefix correctly."""
+    from unittest.mock import MagicMock, patch
+
+    from ai.chronon.repo.utils import blob_exists
+
+    with patch("boto3.client") as mock_client_constructor:
+        mock_client = MagicMock()
+        mock_client_constructor.return_value = mock_client
+        mock_client.head_object.return_value = {}
+
+        # Simulate the double prefix issue that could occur
+        assert blob_exists("s3://bucket/s3://path/file.jar") is True
+        # Should strip the nested s3:// from the key
+        mock_client.head_object.assert_called_once_with(Bucket="bucket", Key="path/file.jar")
