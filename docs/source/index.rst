@@ -42,6 +42,7 @@
    :hidden:
    :caption: Test, Serve & Monitor
 
+   test_deploy_serve/Setup
    test_deploy_serve/Test
    test_deploy_serve/Deploy
    test_deploy_serve/Serve
