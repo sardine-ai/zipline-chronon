@@ -15,7 +15,7 @@ Includes:
 - The workflow for measuring consistency between backfilled training data and online inference data.
 
 Does not include:
-- A deep dive on the various concepts and terminologies in Chronon. For that, please see the [Introductory](https://chronon.ai/authoring_features/GroupBy.html) documentation.
+- A deep dive on the various concepts and terminologies in Chronon. For that, please see the [Introductory](/docs/authoring_features/GroupBy) documentation.
 - Running streaming jobs.
 
 ## Requirements
