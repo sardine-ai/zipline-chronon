@@ -30,7 +30,8 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
   // TM memory tiers. TM sizing follows the following conventions:
   // 64G: 4 slots, tuned network/managed/metaspace settings matching prior load testing on Dataproc
   // 32G: 2 slots, halved from 64G settings
-  // Small (anything else, e.g. 8G/16G): 1 slot, no explicit memory tuning — Flink defaults apply,
+  // 16G: 1 slot, tuned settings for a smaller footprint
+  // Small (anything else, e.g. 8G): 1 slot, no explicit memory tuning — Flink defaults apply,
   // and the pod resource size is taken directly from jobProperties (or Flink's own default if absent)
   private sealed trait MemoryTier {
     // None means Flink defaults
@@ -63,6 +64,16 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
     val metaspaceSize = Some("512m")
     val taskOffHeap = Some("512m")
   }
+  private case object TaskManager16G extends MemoryTier {
+    val tmProcessMemory = Some("16G")
+    val taskSlots = 1
+    val networkMin = Some("256m")
+    val networkMax = Some("512m")
+    val managedFraction = Some("0.5f")
+    val metaspaceSize = Some("512m")
+    val taskOffHeap = Some("256m")
+  }
+
   private case object SmallTaskManager extends MemoryTier {
     val tmProcessMemory = None
     val taskSlots = 1
@@ -77,7 +88,8 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
     jobProperties.get("taskmanager.memory.process.size") match {
       case Some(v) if v.toUpperCase.startsWith("64") => TaskManager64G
       case Some(v) if v.toUpperCase.startsWith("32") => TaskManager32G
-      case None                                      => TaskManager64G
+      case Some(v) if v.toUpperCase.startsWith("16") => TaskManager16G
+      case None                                      => TaskManager16G
       case _                                         => SmallTaskManager
     }
   }

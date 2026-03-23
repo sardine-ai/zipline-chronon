@@ -43,20 +43,30 @@ class EksFlinkSubmitterTest extends AnyFlatSpec {
     assertFalse(cfg.contains("pipeline.jars"))
   }
 
-  // No TM memory in jobProperties defaults to TaskManager64G (conservative production default)
-  it should "default to 64G tier when no TM memory is specified" in {
+  it should "default to 16G tier when no TM memory is specified" in {
     val cfg = config()
-    assertEquals("64G", cfg("taskmanager.memory.process.size"))
-    assertEquals("4", cfg("taskmanager.numberOfTaskSlots"))
+    assertEquals("16G", cfg("taskmanager.memory.process.size"))
+    assertEquals("1", cfg("taskmanager.numberOfTaskSlots"))
     assertEquals("4G", cfg("jobmanager.memory.process.size"))
-    assertEquals("1G", cfg("taskmanager.memory.network.min"))
-    assertEquals("2G", cfg("taskmanager.memory.network.max"))
+    assertEquals("256m", cfg("taskmanager.memory.network.min"))
+    assertEquals("512m", cfg("taskmanager.memory.network.max"))
     assertEquals("0.5f", cfg("taskmanager.memory.managed.fraction"))
     assertEquals("512m", cfg("taskmanager.memory.jvm-metaspace.size"))
-    assertEquals("1G", cfg("taskmanager.memory.task.off-heap.size"))
+    assertEquals("256m", cfg("taskmanager.memory.task.off-heap.size"))
   }
 
-  it should "use SmallTaskManager defaults for sub-32G TM memory (e.g. 8G)" in {
+  it should "apply 16G tier settings when explicitly specified" in {
+    val cfg = config(Map("taskmanager.memory.process.size" -> "16G"))
+    assertEquals("16G", cfg("taskmanager.memory.process.size"))
+    assertEquals("1", cfg("taskmanager.numberOfTaskSlots"))
+    assertEquals("256m", cfg("taskmanager.memory.network.min"))
+    assertEquals("512m", cfg("taskmanager.memory.network.max"))
+    assertEquals("0.5f", cfg("taskmanager.memory.managed.fraction"))
+    assertEquals("512m", cfg("taskmanager.memory.jvm-metaspace.size"))
+    assertEquals("256m", cfg("taskmanager.memory.task.off-heap.size"))
+  }
+
+  it should "use SmallTaskManager defaults for sub-16G TM memory (e.g. 8G)" in {
     val cfg = config(Map("taskmanager.memory.process.size" -> "8G"))
     assertEquals("1", cfg("taskmanager.numberOfTaskSlots"))
     // jobProperties wins — 8G flows through untouched
