@@ -8,6 +8,10 @@ import io.fabric8.kubernetes.client.{Config, KubernetesClientBuilder}
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
 import org.slf4j.LoggerFactory
 
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters._
 
 /** Submits Flink jobs to an EKS cluster via the Flink Kubernetes Operator's FlinkDeployment CRD.
@@ -147,20 +151,68 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
 
       if (resource == null) return JobStatusType.UNKNOWN
 
-      val lifecycleState = Option(resource.getAdditionalProperties.get("status"))
+      val statusMap = Option(resource.getAdditionalProperties.get("status"))
         .collect { case m: java.util.Map[_, _] => m }
+
+      val lifecycleState = statusMap
         .flatMap(s => Option(s.get("lifecycleState")))
         .map(_.toString)
         .getOrElse("")
 
-      lifecycleState match {
-        case "STABLE"                                              => JobStatusType.RUNNING
-        case "DEPLOYED" | "CREATED" | "UPGRADING" | "ROLLING_BACK" => JobStatusType.PENDING
-        case "SUSPENDED" | "FAILED"                                => JobStatusType.FAILED
-        case _                                                     => JobStatusType.UNKNOWN
-      }
+      val jmDeploymentStatus = statusMap
+        .flatMap(s => Option(s.get("jobManagerDeploymentStatus")))
+        .map(_.toString)
+        .getOrElse("")
+
+      val creationTimestamp = Option(resource.getMetadata.getCreationTimestamp)
+        .map(ts => Instant.from(DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(ts)))
+
+      resolveStatus(deploymentName, lifecycleState, jmDeploymentStatus, creationTimestamp)
     } finally {
       client.close()
+    }
+  }
+
+  private[aws] def resolveStatus(deploymentName: String,
+                                 lifecycleState: String,
+                                 jmDeploymentStatus: String,
+                                 creationTimestamp: Option[Instant]): JobStatusType = {
+    lifecycleState match {
+      case "STABLE"                                              => JobStatusType.RUNNING
+      case "SUSPENDED" | "FAILED"                                => JobStatusType.FAILED
+      case "DEPLOYED" | "CREATED" | "UPGRADING" | "ROLLING_BACK" =>
+        // The operator sets jobManagerDeploymentStatus=ERROR for detected pod failures (e.g.
+        // CrashLoopBackOff on the init container), but lifecycleState stays DEPLOYED . Similarly, unschedulable TMs
+        // leave the deployment stuck in DEPLOYED indefinitely. In these cases we want to fail relatively
+        // quickly so the orchestrator can surface the error and avoid long waits, but we also want to give
+        // the operator some time to react to transient issues (e.g. scheduling delays due to cluster
+        // autoscaling or temporary capacity shortages) before we declare failure.
+        val timedOut = creationTimestamp.exists { created =>
+          Instant.now().isAfter(created.plusSeconds(DeploymentPendingTimeout.toSeconds))
+        }
+        if (jmDeploymentStatus == "ERROR") {
+          // ERROR means the operator has positively detected a pod failure (e.g. CrashLoopBackOff)
+          // — safe to fail immediately regardless of age.
+          logger.warn(s"FlinkDeployment $deploymentName has jobManagerDeploymentStatus=ERROR, treating as FAILED")
+          JobStatusType.FAILED
+        } else if (timedOut && jmDeploymentStatus == "MISSING") {
+          // MISSING is the normal state immediately after creation before the JM pod starts.
+          // Only treat it as a failure once the deployment has been around long enough that
+          // the JM should have started by now.
+          logger.warn(
+            s"FlinkDeployment $deploymentName has jobManagerDeploymentStatus=MISSING after $DeploymentPendingTimeout, treating as FAILED")
+          JobStatusType.FAILED
+        } else if (timedOut) {
+          logger.warn(
+            s"FlinkDeployment $deploymentName has been in $lifecycleState for more than $DeploymentPendingTimeout without reaching STABLE, treating as FAILED")
+          JobStatusType.FAILED
+        } else {
+          JobStatusType.PENDING
+        }
+      case _ =>
+        logger.warn(
+          s"Flink deployment $deploymentName has unrecognized lifecycleState=$lifecycleState, treating as UNKNOWN")
+        JobStatusType.UNKNOWN
     }
   }
 
@@ -458,6 +510,9 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
 object EksFlinkSubmitter {
   // Default path for the libs we need for Spark expression eval in Flink
   val DefaultS3FlinkJarsBasePath = "s3://zipline-spark-libs/spark-3.5.3/libs/"
+
+  // How long a deployment may stay in a non-STABLE pending state before we declare it failed.
+  val DeploymentPendingTimeout: Duration = Duration(10, TimeUnit.MINUTES)
 
   // Jars required on EKS that other engines like Dataproc provide via their pre-installed Hadoop/YARN host classpath.
   val EksOnlyAdditionalJarNames: Array[String] = Array(
