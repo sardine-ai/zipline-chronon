@@ -23,7 +23,6 @@ import software.amazon.awssdk.services.dynamodb.model.{
   AttributeValue,
   BillingMode,
   CreateTableRequest,
-  DeleteTableRequest,
   DescribeImportRequest,
   DescribeTableRequest,
   GetItemRequest,
@@ -343,7 +342,9 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
     val path = IonWriter.resolvePartitionPath(sourceOfflineTable, partitionColumn, partition, rootPath)
     val s3Source = toS3BucketSource(path)
     val logicalTableName = destinationOnlineDataSet
-    val physicalTableName = logicalTableName.sanitize.toUpperCase + "_" + partition.replace("-", "_")
+    val timestamp = Instant.now().toEpochMilli
+    val physicalTableName =
+      logicalTableName.sanitize.toUpperCase + "_" + partition.replace("-", "_") + "_" + timestamp
     logger.info(
       s"Starting DynamoDB import for table: $physicalTableName (logical: $logicalTableName) from S3: $s3Source")
 
@@ -367,10 +368,6 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
       .tableCreationParameters(tableParams)
       .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
       .build()
-
-    // If the table already exists (e.g. from a previous failed/successful import attempt),
-    // delete it first so ImportTable can recreate it. This makes bulkPut idempotent.
-    deleteTableIfExists(physicalTableName)
 
     try {
       val startTs = System.currentTimeMillis()
@@ -410,30 +407,6 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
       .s3Bucket(uri.getHost)
       .s3KeyPrefix(uri.getPath.stripPrefix("/") + "/")
       .build()
-  }
-
-  private def deleteTableIfExists(tableName: String): Unit = {
-    val describeRequest = DescribeTableRequest
-      .builder()
-      .tableName(tableName)
-      .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
-      .build()
-    try {
-      dynamoDbClient.describeTable(describeRequest).join()
-      logger.warn(s"Table $tableName already exists from a previous attempt. Deleting before re-import.")
-      val deleteRequest = DeleteTableRequest
-        .builder()
-        .tableName(tableName)
-        .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
-        .build()
-      dynamoDbClient
-        .deleteTable(deleteRequest)
-        .thenCompose(_ => dynamoDbClient.waiter().waitUntilTableNotExists(describeRequest))
-        .join()
-      logger.info(s"Table $tableName deleted successfully.")
-    } catch {
-      case e: java.util.concurrent.CompletionException if e.getCause.isInstanceOf[ResourceNotFoundException] =>
-    }
   }
 
   private def waitForImportCompletion(importArn: String, tableName: String): Unit = {
