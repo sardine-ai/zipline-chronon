@@ -260,6 +260,7 @@ object JobSubmitterConstants {
   val StreamingModeArgKeyword = "--streaming-mode"
 
   val StreamingVersionCheckDeploy = "--version-check"
+  val StreamingTopicOverrideArgKeyword = "--topic-override"
 
   val StreamingLatestSavepointArgKeyword = "--latest-savepoint"
   val StreamingCustomSavepointArgKeyword = "--custom-savepoint"
