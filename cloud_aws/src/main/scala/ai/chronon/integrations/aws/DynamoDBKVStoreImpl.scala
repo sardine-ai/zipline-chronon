@@ -15,6 +15,7 @@ import ai.chronon.online.KVStore.TimedValue
 import ai.chronon.online.metrics.Metrics.Context
 import ai.chronon.online.metrics.Metrics
 import ai.chronon.online.metrics.TTLCache
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{
@@ -49,7 +50,7 @@ import software.amazon.awssdk.services.dynamodb.model.{
 }
 
 import java.nio.charset.Charset
-import java.time.Instant
+import java.time.{Duration, Instant}
 import java.util
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
@@ -364,6 +365,7 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
       .inputFormat(InputFormat.ION)
       .inputCompressionType(InputCompressionType.NONE)
       .tableCreationParameters(tableParams)
+      .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
       .build()
 
     // If the table already exists (e.g. from a previous failed/successful import attempt),
@@ -411,11 +413,19 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
   }
 
   private def deleteTableIfExists(tableName: String): Unit = {
-    val describeRequest = DescribeTableRequest.builder().tableName(tableName).build()
+    val describeRequest = DescribeTableRequest
+      .builder()
+      .tableName(tableName)
+      .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
+      .build()
     try {
       dynamoDbClient.describeTable(describeRequest).join()
       logger.warn(s"Table $tableName already exists from a previous attempt. Deleting before re-import.")
-      val deleteRequest = DeleteTableRequest.builder().tableName(tableName).build()
+      val deleteRequest = DeleteTableRequest
+        .builder()
+        .tableName(tableName)
+        .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
+        .build()
       dynamoDbClient
         .deleteTable(deleteRequest)
         .thenCompose(_ => dynamoDbClient.waiter().waitUntilTableNotExists(describeRequest))
@@ -437,7 +447,11 @@ class DynamoDBKVStoreImpl(dynamoDbClient: DynamoDbAsyncClient, conf: Map[String,
       Thread.sleep(pollIntervalMs)
 
       try {
-        val describeRequest = DescribeImportRequest.builder().importArn(importArn).build()
+        val describeRequest = DescribeImportRequest
+          .builder()
+          .importArn(importArn)
+          .overrideConfiguration(DynamoDBKVStoreConstants.ControlPlaneApiOverride)
+          .build()
         val describeResponse = dynamoDbClient.describeImport(describeRequest).join()
         lastDescription = describeResponse.importTableDescription()
         status = lastDescription.importStatus()
@@ -565,6 +579,14 @@ object DynamoDBKVStoreConstants {
 
   // Streaming tables use TileKey wrapping for tiled data.
   def isStreamingTable(dataset: String): Boolean = dataset.endsWith("_STREAMING")
+
+  // Control plane operations (ImportTable, DeleteTable, DescribeImport) are slower than
+  // data plane operations (GetItem, PutItem). Use higher timeouts to avoid intermittent failures.
+  val ControlPlaneApiOverride: AwsRequestOverrideConfiguration = AwsRequestOverrideConfiguration
+    .builder()
+    .apiCallTimeout(Duration.ofSeconds(30))
+    .apiCallAttemptTimeout(Duration.ofSeconds(10))
+    .build()
 
   case class TileKeyComponents(baseKeyBytes: Array[Byte], tileSizeMillis: Long, tileStartTimestampMillis: Long)
 
