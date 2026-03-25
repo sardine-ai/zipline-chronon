@@ -1,5 +1,5 @@
-from joins.gcp import demo
-from models.gcp import listing_model as listing
+from joins.aws import demo
+from models.aws import listing
 
 # Create a listing_model transforms
 from ai.chronon.model import ModelTransforms
