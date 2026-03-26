@@ -14,7 +14,7 @@ from ai.chronon.cli.formatter import (
     format_print,
     jsonify_exceptions_if_json_format,
 )
-from ai.chronon.cli.git_utils import get_current_branch, get_git_user_email
+from ai.chronon.cli.git_utils import get_current_branch
 from ai.chronon.cli.theme import (
     print_error,
     print_info,
@@ -25,6 +25,7 @@ from ai.chronon.cli.theme import (
 )
 from ai.chronon.click_helpers import handle_compile, handle_conf_not_found, handle_dry_run_compile
 from ai.chronon.repo import hub_uploader, utils
+from ai.chronon.repo.auth import get_user_email
 from ai.chronon.repo.constants import VALID_CLOUDS, RunMode
 from ai.chronon.repo.utils import print_possible_confs, upload_to_blob_store
 from ai.chronon.repo.zipline_hub import ZiplineHub
@@ -228,6 +229,7 @@ def _get_zipline_hub(
         cloud_provider=hub_conf.cloud_provider,
         scope=scope,
         format=format,
+        auth_url=hub_conf.frontend_url,
     )
 
 
@@ -398,7 +400,7 @@ def submit_workflow(
             conf_name=conf_name,
             mode=mode,
             branch=branch,
-            user=get_git_user_email(),
+            user=get_user_email(),
             start=start_ds,
             end=end_ds,
             conf_hash=conf_name_to_hash_dict[conf_name].hash,
@@ -809,6 +811,7 @@ def eval(
         cloud_provider=hub_conf.cloud_provider,
         scope=scope,
         format=format,
+        auth_url=hub_conf.frontend_url,
     )
     conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
     branch = get_current_branch()
@@ -931,6 +934,7 @@ def eval_table(
         cloud_provider=hub_conf.cloud_provider,
         scope=scope,
         format=format,
+        auth_url=hub_conf.frontend_url,
     )
 
     execution_info = (
@@ -1020,6 +1024,7 @@ def list_tables(schema_name, repo, team, hub_url, use_auth, format, eval_url, en
         cloud_provider=hub_conf.cloud_provider,
         scope=scope,
         format=format,
+        auth_url=hub_conf.frontend_url,
     )
 
     response_json = zipline_hub.call_list_tables_api(
