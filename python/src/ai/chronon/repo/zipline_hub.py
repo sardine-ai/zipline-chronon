@@ -25,7 +25,7 @@ class ZiplineHub:
     ):
         if not base_url:
             raise ValueError("Base URL for ZiplineHub cannot be empty.")
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.eval_url = eval_url
         self.format = format
         self.cloud_provider = (
