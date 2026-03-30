@@ -10,6 +10,7 @@ on:
 jobs:
   run_aws_integration_tests:
     runs-on: ubuntu-latest
+    environment: aws
 
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -115,6 +116,7 @@ jobs:
 
   run_gcp_integration_tests:
     runs-on: ubuntu-latest
+    environment: gcp
 
     container:
       image: ghcr.io/${{ github.repository }}-ci:latest
@@ -211,6 +213,114 @@ jobs:
 
           payload = {
               'text': 'Chronon GCP Integration Tests Failed',
+              'blocks': blocks
+          }
+
+          print(json.dumps(payload))
+          PYEOF
+
+          curl -X POST -H 'Content-type: application/json' --data @/tmp/slack_payload.json "$SLACK_WEBHOOK_URL"
+
+  run_azure_integration_tests:
+    runs-on: ubuntu-latest
+    environment: azure
+
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run Integration Tests
+        shell: bash
+        env:
+          CLOUD: azure
+          VERSION: ${{ inputs.version }}
+          PYTEST_ADDOPTS: "-x -k test_run_quickstart"
+          HUB_URL: ${{ secrets.AZURE_HUB_URL }}
+        run: |
+          set -xo pipefail
+          ./mill python.test_integration 2>&1 | tee /tmp/test-output.log
+
+      - name: On Fail Notify Slack
+        id: notify_slack
+        if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_AZURE_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          python3 << 'PYEOF' > /tmp/slack_payload.json
+          import json, os, re
+
+          run_url = os.environ['RUN_URL']
+          sha = os.environ['COMMIT_SHA']
+          branch = os.environ['BRANCH']
+
+          log_tail = ''
+          try:
+              with open('/tmp/test-output.log') as f:
+                  lines = f.readlines()
+              cleaned = []
+              for line in lines:
+                  line = re.sub(r'\x1b\[[0-9;]*m', '', line.rstrip())
+                  cleaned.append(line)
+              log_tail = '\n'.join(cleaned[-30:])
+          except Exception:
+              pass
+
+          blocks = [
+              {
+                  'type': 'section',
+                  'text': {
+                      'type': 'mrkdwn',
+                      'text': f':x: *Chronon Azure Integration Tests Failed*\n\nCommit: <{run_url}|{sha[:8]}>\nBranch: `{branch}`'
+                  }
+              },
+          ]
+
+          if log_tail:
+              log_text = f'```\n{log_tail}\n```'
+              if len(log_text) > 2900:
+                  log_text = f'```\n...{log_tail[-2880:]}\n```'
+              blocks.append({
+                  'type': 'section',
+                  'text': {
+                      'type': 'mrkdwn',
+                      'text': log_text
+                  }
+              })
+
+          blocks.append({
+              'type': 'context',
+              'elements': [{
+                  'type': 'mrkdwn',
+                  'text': f'<{run_url}|View full logs>'
+              }]
+          })
+
+          payload = {
+              'text': 'Chronon Azure Integration Tests Failed',
               'blocks': blocks
           }
 

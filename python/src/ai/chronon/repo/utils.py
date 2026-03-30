@@ -508,6 +508,60 @@ def read_from_blob_store(remote_uri: str) -> str | None:
         return None
 
 
+def download_from_blob_store(remote_uri: str, local_path: str) -> None:
+    """Download a binary file from GCS, S3, or Azure Blob Storage to a local path.
+
+    Raises FileNotFoundError if the remote file does not exist.
+    """
+    if remote_uri.startswith("gs://"):
+        from google.cloud import storage
+
+        parts = remote_uri[len("gs://"):].split("/", 1)
+        bucket_name, blob_name = parts[0], parts[1] if len(parts) > 1 else ""
+        client = storage.Client()
+        blob = client.bucket(bucket_name).blob(blob_name)
+        blob.download_to_filename(local_path)
+    elif remote_uri.startswith("s3://"):
+        import boto3
+
+        parts = remote_uri[len("s3://"):].split("/", 1)
+        bucket_name, key = parts[0], parts[1] if len(parts) > 1 else ""
+        boto3.client("s3").download_file(bucket_name, key, local_path)
+    elif remote_uri.startswith("abfss://") or "blob.core.windows.net" in remote_uri:
+        _download_from_azure_blob(remote_uri, local_path)
+    elif os.path.exists(remote_uri):
+        import shutil
+        shutil.copy2(remote_uri, local_path)
+    else:
+        raise FileNotFoundError(f"Remote file not found: {remote_uri}")
+    LOG.info(f"Downloaded {remote_uri} -> {local_path}")
+
+
+def _download_from_azure_blob(remote_uri: str, local_path: str) -> None:
+    from azure.identity import DefaultAzureCredential
+    from azure.storage.blob import BlobServiceClient
+
+    if remote_uri.startswith("abfss://"):
+        # abfss://container@account.dfs.core.windows.net/path
+        without_scheme = remote_uri[len("abfss://"):]
+        container, rest = without_scheme.split("@", 1)
+        host, blob_name = rest.split("/", 1)
+        # Convert dfs.core.windows.net to blob.core.windows.net for the SDK
+        account_url = f"https://{host.replace('.dfs.core.windows.net', '.blob.core.windows.net')}"
+    else:
+        from urllib.parse import urlparse
+        parsed = urlparse(remote_uri)
+        account_url = f"{parsed.scheme}://{parsed.netloc}"
+        path_parts = parsed.path.lstrip("/").split("/", 1)
+        container = path_parts[0]
+        blob_name = path_parts[1] if len(path_parts) > 1 else ""
+
+    blob_service = BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
+    blob_client = blob_service.get_blob_client(container=container, blob=blob_name)
+    with open(local_path, "wb") as f:
+        blob_client.download_blob().readinto(f)
+
+
 def upload_to_blob_store(local_path: str, remote_uri: str) -> str:
     """Upload a local file to GCS, S3, or Azure Blob Storage based on URI scheme.
 

@@ -27,9 +27,15 @@ from ai.chronon.repo.aws import (
     ZIPLINE_AWS_ONLINE_CLASS_DEFAULT,
     AwsRunner,
 )
+from ai.chronon.repo.azure import (
+    ZIPLINE_AZURE_JAR_DEFAULT,
+    ZIPLINE_AZURE_ONLINE_CLASS_DEFAULT,
+    AzureRunner,
+)
 from ai.chronon.repo.constants import (
     APP_NAME_TEMPLATE,
     AWS,
+    AZURE,
     CLOUD_PROVIDER_KEYWORD,
     GCP,
     MODE_ARGS,
@@ -319,6 +325,11 @@ def main(
         ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_AWS_ONLINE_CLASS_DEFAULT
         ctx.params[CLOUD_PROVIDER_KEYWORD] = cloud_provider
         AwsRunner(ctx.params).run()
+    elif cloud_provider.upper() == AZURE:
+        ctx.params[ONLINE_JAR_ARG] = ZIPLINE_AZURE_JAR_DEFAULT
+        ctx.params[ONLINE_CLASS_ARG] = ZIPLINE_AZURE_ONLINE_CLASS_DEFAULT
+        ctx.params[CLOUD_PROVIDER_KEYWORD] = cloud_provider
+        AzureRunner(ctx.params).run()
     else:
         raise ValueError(f"Unsupported cloud provider: {cloud_provider}")
 
