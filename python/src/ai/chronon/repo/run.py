@@ -27,7 +27,7 @@ from ai.chronon.repo.aws import (
     ZIPLINE_AWS_ONLINE_CLASS_DEFAULT,
     AwsRunner,
 )
-from ai.chronon.repo.azure import (
+from ai.chronon.repo.azure_runner import (
     ZIPLINE_AZURE_JAR_DEFAULT,
     ZIPLINE_AZURE_ONLINE_CLASS_DEFAULT,
     AzureRunner,
