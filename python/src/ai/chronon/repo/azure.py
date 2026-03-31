@@ -141,7 +141,7 @@ class AzureRunner(Runner):
             command_list.append(command)
 
         if len(command_list) == 1:
-            output = check_output(command_list[0]).decode("utf-8").split("\n")
+            output = check_output(command_list[0], streaming=True).decode("utf-8").split("\n")
             print(*output, sep="\n")
         elif len(command_list) > 1:
             raise ValueError("Parallel execution is not supported for Azure yet.")

@@ -77,9 +77,29 @@ def check_call(cmd):
     return subprocess.check_call(cmd.split(), bufsize=0)
 
 
-def check_output(cmd):
+def check_output(cmd, timeout=None, streaming=False):
     LOG.info("Running command: " + cmd)
-    return subprocess.check_output(cmd.split(), bufsize=0).strip()
+    proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
+    output_lines = []
+    deadline = (time.monotonic() + timeout) if timeout else None
+    for line in iter(proc.stdout.readline, b""):
+        if streaming:
+            print(line.decode("utf-8", errors="replace").rstrip(), flush=True)
+        output_lines.append(line)
+        if deadline and time.monotonic() > deadline:
+            proc.kill()
+            proc.wait()
+            raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(output_lines))
+    remaining = max(0, deadline - time.monotonic()) if deadline else None
+    try:
+        proc.wait(timeout=remaining)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(output_lines)) from None
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=b"".join(output_lines))
+    return b"".join(output_lines).strip()
 
 
 def custom_json(conf):
