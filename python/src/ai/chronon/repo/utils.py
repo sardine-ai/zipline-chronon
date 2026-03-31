@@ -643,6 +643,43 @@ def _upload_to_azure_blob(local_path: str, azure_uri: str) -> str:
     return azure_uri
 
 
+def resolve_conf(repo, conf):
+    """Resolve a conf path, automatically finding versioned conf files.
+
+    If the exact conf path exists, return it as-is. Otherwise, look for files
+    matching conf__<version> in the same directory. If exactly one match is found,
+    return the resolved conf path. Raises ValueError if multiple matches are found,
+    or returns the original conf unchanged if none are found (so downstream code
+    can raise the normal FileNotFoundError).
+    """
+    conf_path = os.path.join(repo, conf)
+    if os.path.isfile(conf_path):
+        return conf
+
+    conf_dir = os.path.dirname(conf_path)
+    basename = os.path.basename(conf_path)
+    prefix = basename + "__"
+
+    if not os.path.isdir(conf_dir):
+        return conf
+
+    matches = [
+        name for name in os.listdir(conf_dir)
+        if name.startswith(prefix) and name[len(prefix):].isdigit()
+    ]
+    if len(matches) == 1:
+        resolved = os.path.join(os.path.dirname(conf), matches[0])
+        LOG.info(f"Resolved conf '{conf}' -> '{resolved}'")
+        return resolved
+    elif len(matches) > 1:
+        raise ValueError(
+            f"Ambiguous conf '{conf}': found multiple versioned files in "
+            f"{style(conf_dir, fg='yellow')}:\n - " + "\n - ".join(sorted(matches))
+        )
+
+    return conf
+
+
 def print_possible_confs(conf, repo, *args, **kwargs):
     conf_location = os.path.join(repo, conf)
     conf_dirname = os.path.dirname(conf_location)

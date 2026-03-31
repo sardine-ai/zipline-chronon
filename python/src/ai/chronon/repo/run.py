@@ -52,7 +52,7 @@ from ai.chronon.repo.gcp import (
     ZIPLINE_GCP_ONLINE_CLASS_DEFAULT,
     GcpRunner,
 )
-from ai.chronon.repo.utils import get_environ_arg, set_runtime_env_v3
+from ai.chronon.repo.utils import get_environ_arg, resolve_conf, set_runtime_env_v3
 
 
 # TODO: @davidhan - we should move these to all be in the defaults of the choice args
@@ -295,6 +295,7 @@ def main(
     unknown_args = ctx.args
     click.echo("Running with args: {}".format(ctx.params))
 
+    conf = resolve_conf(repo, conf)
     conf_path = os.path.join(repo, conf)
     if not os.path.isfile(conf_path):
         raise ValueError(f"Conf file {conf_path} does not exist.")
