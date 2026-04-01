@@ -20,8 +20,8 @@ import re
 import shutil
 import subprocess
 import tempfile
-from collections.abc import Iterable
-from typing import List, Optional, Union, cast
+from collections.abc import Iterable, Sequence
+from typing import List, Optional, Union, cast, get_args
 
 import ai.chronon.repo.extract_objects as eo
 import gen_thrift.api.ttypes as api
@@ -63,6 +63,26 @@ def normalize_source(source: ANY_SOURCE_TYPE, output_namespace: str = None) -> a
             return source
     else:
         print("unrecognized " + str(source))
+
+
+def normalize_sources(
+    sources: Union[Sequence[ANY_SOURCE_TYPE], ANY_SOURCE_TYPE], output_namespace: str = None
+) -> List[api.Source]:
+    """Convert a source or source sequence into wrapped api.Source objects."""
+    source_types = get_args(ANY_SOURCE_TYPE)
+
+    if isinstance(sources, source_types):
+        sources = [sources]
+    elif not isinstance(sources, Sequence):
+        raise TypeError("sources must be a source or a sequence of sources")
+
+    for index, source in enumerate(sources):
+        if not isinstance(source, source_types):
+            raise TypeError(
+                f"sources[{index}] must be a supported source type, got {type(source).__name__}"
+            )
+
+    return [normalize_source(source, output_namespace) for source in sources]
 
 
 def edit_distance(str1, str2):
