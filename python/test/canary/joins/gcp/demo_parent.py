@@ -1,12 +1,10 @@
-from gen_thrift.api.ttypes import EventSource, Source, JoinSource
-
 from group_bys.gcp import dim_listings, dim_merchants
 from staging_queries.gcp import exports
 
 from ai.chronon.group_by import Aggregation, Operation, TimeUnit, Window
 from ai.chronon.join import Derivation, Join, JoinPart
 from ai.chronon.query import Query, selects
-from ai.chronon.source import EventSource
+from ai.chronon.source import EventSource, JoinSource
 from ai.chronon.types import EnvironmentVariables
 
 source = EventSource(

@@ -1,4 +1,3 @@
-from gen_thrift.api.ttypes import JoinSource
 from joins.gcp import demo_parent
 
 from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
