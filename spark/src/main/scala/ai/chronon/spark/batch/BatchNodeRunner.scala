@@ -350,10 +350,18 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
       semanticHash = Option(node.semanticHash).filter(_.nonEmpty)
     )
 
-    // Upload to KV store using the proper EnhancedStatsStore method
+    // Upload to KV store using the proper EnhancedStatsStore method.
+    // Sharding is gated by CHRONON_SHARD_ENHANCED_STATS — must be enabled on both write and read sides
+    // before activating, otherwise the service won't find the sharded data.
     logger.info(s"Uploading $recordCount stats records to KV store")
     import ai.chronon.spark.stats.EnhancedStatsStore
-    val statsStore = new EnhancedStatsStore(api, Constants.EnhancedStatsDataset)(tableUtils)
+    val shardingEnabled = sys.env.getOrElse("CHRONON_SHARD_ENHANCED_STATS", "false").equalsIgnoreCase("true")
+    val statsSemanticHash = if (shardingEnabled) Option(node.semanticHash).filter(_.nonEmpty) else None
+    logger.info(
+      s"Stats sharding: ${if (shardingEnabled) s"enabled, semanticHash=${statsSemanticHash.getOrElse("(empty)")}"
+        else "disabled (CHRONON_SHARD_ENHANCED_STATS not set)"}")
+    val statsStore = new EnhancedStatsStore(api, Constants.EnhancedStatsDataset, semanticHash = statsSemanticHash)(
+      tableUtils)
     statsStore.upload(avroDf, putsPerRequest = 100)
 
     logger.info(s"Successfully computed and saved stats for join '$joinName'")
