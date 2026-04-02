@@ -2,7 +2,13 @@ package ai.chronon.integrations.cloud_gcp
 import ai.chronon.api.Builders.MetaData
 import ai.chronon.api.JobStatusType
 import ai.chronon.spark.submission.JobSubmitterConstants._
-import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.{
+  JobSubmitter,
+  JobType,
+  StorageClient,
+  FlinkJob => TypeFlinkJob,
+  SparkJob => TypeSparkJob
+}
 import com.google.api.gax.rpc.ApiException
 import com.google.cloud.dataproc.v1._
 import com.google.cloud.storage.{Storage, StorageOptions}
@@ -25,7 +31,8 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
                         bigtableInstanceId: String = "",
                         override val tablePartitionsDataset: String = "",
                         override val dqMetricsDataset: String = "",
-                        flinkHealthCheckFn: Option[String] => Boolean = _ => true)
+                        flinkHealthCheckFn: Option[String] => Boolean = _ => true,
+                        flinkInternalJobIdFetchFn: Option[String] => Option[String] = _ => None)
     extends JobSubmitter {
 
   def listRunningGroupByFlinkJobs(groupByName: String): List[String] = {
@@ -76,27 +83,20 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
       .map(_.split("=")(1))
       .getOrElse(throw new RuntimeException("Flink job id not found in manifest file."))
 
-    val flinkJobIdCheckpointPath = s"$flinkCheckpointUri/$flinkJobId"
-    val matchedFiles = gcsClient.listFiles(flinkJobIdCheckpointPath).toList
-    val allCheckpoints = matchedFiles
+    // flinkCheckpointUri is already the checkpoints base path (e.g. gs://bucket/flink-state/checkpoints).
+    // List directly under it rather than going through StorageClient.resolveLatestCheckpointPath which
+    // appends /checkpoints/ and uses a different path convention.
+    val jobCheckpointPath = s"$flinkCheckpointUri/$flinkJobId"
+    val latestCheckpoint = gcsClient
+      .listFiles(jobCheckpointPath)
       .filter(_.split("/").exists(_.startsWith("chk-")))
       .map(_.split("/").find(_.startsWith("chk-")).get)
+      .toList
       .distinct
-      .sortBy(chk => chk.substring(4).toInt)(Ordering.Int.reverse)
-    logger.info(s"Flink checkpoints for $groupByName: $allCheckpoints")
-
-    val latestCheckpoint = allCheckpoints.headOption
-    val latestCheckpointUri = latestCheckpoint
-      .map(chk => {
-        s"$flinkJobIdCheckpointPath/$chk"
-      })
-
-    if (latestCheckpointUri.isEmpty) {
-      logger.info(s"No checkpoints found for $groupByName.")
-    } else {
-      logger.info(s"Latest checkpoint for $groupByName: ${latestCheckpointUri.get}")
-    }
-
+      .sortBy(_.substring(4).toInt)(Ordering.Int.reverse)
+      .headOption
+    val latestCheckpointUri = latestCheckpoint.map(chk => s"$jobCheckpointPath/$chk")
+    logger.info(s"Latest checkpoint for $groupByName: $latestCheckpointUri")
     latestCheckpointUri
   }
 
@@ -604,6 +604,20 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
         s"$baseUrl/gateway/default/yarn/proxy/$appId/"
       }
     }
+  }
+
+  override def getFlinkInternalJobId(jobId: String): Option[String] =
+    flinkInternalJobIdFetchFn(getFlinkUrl(jobId))
+
+  override def getLatestCheckpointPath(flinkInternalJobId: String, flinkStateUri: String): Option[String] = {
+    val result = StorageClient.resolveLatestCheckpointPath(gcsClient, flinkInternalJobId, flinkStateUri)
+    result match {
+      case Some(path) => logger.info(s"Resolved latest checkpoint for Flink job $flinkInternalJobId: $path")
+      case None =>
+        logger.warn(
+          s"No checkpoints found for Flink job $flinkInternalJobId at $flinkStateUri/checkpoints/$flinkInternalJobId")
+    }
+    result
   }
 
   override def deprecatedClusterNameEnvVars: Seq[String] = Seq(GcpDataprocClusterNameEnvVar)

@@ -8,7 +8,13 @@ import ai.chronon.integrations.aws.EmrSubmitter.{
   DefaultClusterInstanceType
 }
 import ai.chronon.spark.submission.JobSubmitterConstants._
-import ai.chronon.spark.submission.{JobSubmitter, JobType, FlinkJob => TypeFlinkJob, SparkJob => TypeSparkJob}
+import ai.chronon.spark.submission.{
+  JobSubmitter,
+  JobType,
+  StorageClient,
+  FlinkJob => TypeFlinkJob,
+  SparkJob => TypeSparkJob
+}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import io.fabric8.kubernetes.client.Config
@@ -36,7 +42,8 @@ class EmrSubmitter(customerId: String,
                    flinkEksNamespace: Option[String] = None,
                    eksClusterName: Option[String] = None,
                    ingressBaseUrl: Option[String] = None,
-                   flinkHealthCheckFn: Option[String] => Boolean = _ => true)
+                   flinkHealthCheckFn: Option[String] => Boolean = _ => true,
+                   flinkInternalJobIdFetchFn: Option[String] => Option[String] = _ => None)
     extends JobSubmitter {
 
   private val ClusterApplications = List(
@@ -675,6 +682,24 @@ class EmrSubmitter(customerId: String,
     if (parts.length != 3) return None
     val deploymentName = parts(2)
     ingressBaseUrl.map(base => s"${base.stripSuffix("/")}/flink/$deploymentName/")
+  }
+
+  override def getFlinkInternalJobId(jobId: String): Option[String] =
+    flinkInternalJobIdFetchFn(getFlinkUrl(jobId))
+
+  override def getLatestCheckpointPath(flinkInternalJobId: String, flinkStateUri: String): Option[String] = {
+    val s3 = s3Client.getOrElse {
+      logger.warn(s"S3 client not available, cannot resolve checkpoint path for Flink job $flinkInternalJobId")
+      return None
+    }
+    val result = StorageClient.resolveLatestCheckpointPath(new S3StorageClient(s3), flinkInternalJobId, flinkStateUri)
+    result match {
+      case Some(path) => logger.info(s"Resolved latest checkpoint for Flink job $flinkInternalJobId: $path")
+      case None =>
+        logger.warn(
+          s"No checkpoints found for Flink job $flinkInternalJobId at $flinkStateUri/checkpoints/$flinkInternalJobId")
+    }
+    result
   }
 
   override def deprecatedClusterNameEnvVars: Seq[String] = Seq(EmrClusterNameEnvVar)
