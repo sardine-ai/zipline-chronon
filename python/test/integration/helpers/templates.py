@@ -124,6 +124,7 @@ AZURE_CONFIGS = [
         confs=[
             "compiled/staging_queries/azure/exports.user_activities__0",
             "compiled/staging_queries/azure/exports.checkouts__0",
+            "compiled/staging_queries/azure/exports.dim_listings__0",
         ],
     ),
     ConfigTemplate(
