@@ -30,7 +30,6 @@ object SnowflakeConnector {
     val pemBase64 = extractPemBase64(pemContent)
     def require(key: String, label: String): String =
       params.getOrElse(key, throw new IllegalStateException(s"$label missing in SNOWFLAKE_JDBC_URL"))
-
     Map(
       "sfURL" -> jdbcUrl.split("\\?").head.replace("jdbc:snowflake://", ""),
       "pem_private_key" -> pemBase64,
