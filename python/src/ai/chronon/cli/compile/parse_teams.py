@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, Union
 
 from ai.chronon.cli.logger import get_logger
 from ai.chronon.cli.theme import console
-from gen_thrift.api.ttypes import Join, JoinPart, MetaData, Model, ModelTransforms, Team
+from gen_thrift.api.ttypes import GroupBy, Join, JoinPart, MetaData, Model, ModelTransforms, Team
 from gen_thrift.common.ttypes import (
     ClusterConfigProperties,
     ConfigProperties,
@@ -117,38 +117,38 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
         f"'{_DEFAULT_CONF_TEAM}' team not found in teams.py, please add an entry 🙏."
     )
 
-    # Only set the outputNamespace if it hasn't been set already
     if not metadata.outputNamespace:
         metadata.outputNamespace = team_dict[team].outputNamespace
 
-    def set_join_part_or_models_metadata(part: Union[JoinPart, Model], output_namespace):
-        if part is not None:
-            if part.metaData:
-                # Only set the outputNamespace if it hasn't been set already
-                if not part.metaData.outputNamespace:
-                    part.metaData.outputNamespace = output_namespace
-                if not part.metaData.team:
-                    part.metaData.team = team
-            else:
-                # If there's no metaData at all, create it and set outputNamespace
-                part.metaData = MetaData()
-                part.metaData.outputNamespace = output_namespace
-                part.metaData.team = team
+    namespace = metadata.outputNamespace
 
-            merge_team_execution_info(part.metaData, team_dict, part.metaData.team)
+    def _set_part_metadata(part: Union[JoinPart, Model]):
+        if part is None:
+            return
+        if not part.metaData:
+            part.metaData = MetaData()
+        if not part.metaData.outputNamespace:
+            part.metaData.outputNamespace = namespace
+        if not part.metaData.team:
+            part.metaData.team = team
+        merge_team_execution_info(part.metaData, team_dict, part.metaData.team)
+
+    def _propagate_namespace_to_join_sources(sources):
+        for src in sources or []:
+            if src.joinSource and src.joinSource.join and src.joinSource.join.metaData:
+                if not src.joinSource.join.metaData.outputNamespace:
+                    src.joinSource.join.metaData.outputNamespace = namespace
 
     if isinstance(obj, Join):
-        join_namespace = obj.metaData.outputNamespace
-        if obj.joinParts:
-            for jp in obj.joinParts or []:
-                jp.useLongNames = obj.useLongNames
-                set_join_part_or_models_metadata(jp.groupBy, join_namespace)
+        for jp in obj.joinParts or []:
+            jp.useLongNames = obj.useLongNames
+            _set_part_metadata(jp.groupBy)
     elif isinstance(obj, ModelTransforms):
-        model_transforms_namespace = obj.metaData.outputNamespace
-
-        if obj.models:
-            for m in obj.models or []:
-                set_join_part_or_models_metadata(m, model_transforms_namespace)
+        for m in obj.models or []:
+            _set_part_metadata(m)
+        _propagate_namespace_to_join_sources(obj.sources)
+    elif isinstance(obj, GroupBy):
+        _propagate_namespace_to_join_sources(obj.sources)
 
     if metadata.executionInfo is None:
         metadata.executionInfo = ExecutionInfo()

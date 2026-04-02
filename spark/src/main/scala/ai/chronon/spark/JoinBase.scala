@@ -61,7 +61,7 @@ abstract class JoinBase(val joinConfCloned: api.Join,
   private val gson = new Gson()
   // Combine tableProperties set on conf with encoded Join
   protected val tableProps: Map[String, String] =
-    confTableProps ++ Map(Constants.SemanticHashKey -> gson.toJson(joinConfCloned.semanticHash.asJava))
+    confTableProps ++ Map(Constants.JoinSemanticHashKey -> gson.toJson(joinConfCloned.semanticHash.asJava))
 
   def joinWithLeft(leftDf: DataFrame, rightDf: DataFrame, joinPart: JoinPart): DataFrame = {
     val partLeftKeys = joinPart.rightToLeft.values.toArray
