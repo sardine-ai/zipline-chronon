@@ -72,7 +72,7 @@ v1 = GroupBy(
     online=True,
     version=1,
     aggregations=aggregations,
-    step_days=30,
+    step_days=10,
     env_vars=EnvironmentVariables(
         common={
             "CHRONON_ONLINE_ARGS": "-Ztasks=1",
@@ -107,7 +107,7 @@ kafka_v1 = GroupBy(
     online=True,
     version=1,
     aggregations=aggregations,
-    step_days=30,
+    step_days=10,
     env_vars=EnvironmentVariables(
         common={
             "CHRONON_ONLINE_ARGS": "-Ztasks=1 -Zbootstrap=b-1.ziplinecanarykafka.hak90r.c4.kafka.us-west-2.amazonaws.com:9092",

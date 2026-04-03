@@ -378,13 +378,31 @@ trait BaseJUnit4TestModule extends JavaModule with TestModule.Junit4 {
   def jvmId = Constants.jvmId
   // Use the same repositories as parent modules
   def repositoriesTask = Task.Anon { super.repositoriesTask() ++ Constants.repositories }
-  
+
   // Override sources to use the correct test directory
   override def sources = Task.Sources(moduleDir / os.up / "src" / "test" / "java")
-  
+
   // Override resources to use the correct test resources directory
   override def resources = Task.Sources(moduleDir / os.up / "src" / "test" / "resources")
-  
+
   // Enable parallel test execution using Mill's testParallelism
   def testParallelism = true
+}
+
+// Aggregate target: builds all deploy assemblies in parallel via Mill's task graph.
+// Usage: ./mill artifacts[2.12.18]
+object artifacts extends Cross[ArtifactsModule](Constants.scalaVersions)
+trait ArtifactsModule extends Cross.Module[String] {
+  def scalaVersion = crossValue
+  def all = Task {
+    Seq(
+      flink(scalaVersion).assembly(),
+      cloud_gcp(scalaVersion).assembly(),
+      cloud_aws(scalaVersion).assembly(),
+      cloud_azure(scalaVersion).assembly(),
+      service(scalaVersion).assembly(),
+      flink_connectors.pubsub(scalaVersion).assembly(),
+      flink_connectors.kinesis(scalaVersion).assembly()
+    )
+  }
 }

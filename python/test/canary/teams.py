@@ -91,7 +91,7 @@ gcp = Team(
         modeClusterConfigs={
             RunMode.UPLOAD: {
                 "dataproc.config": generate_dataproc_cluster_config(2, "canary-443022", "gs://zipline-artifacts-canary",
-                                                                    idle_timeout="300s",
+                                                                    idle_timeout="7200s",
                                                                     worker_host_type="n2-highmem-4",
                                                                     master_host_type="n2-highmem-8")
             }
@@ -154,7 +154,7 @@ aws = Team(
                 subnet_name="zipline-canary-subnet-main",
                 security_group_name="zipline-canary-sg",
                 instance_type="m5.xlarge",
-                idle_timeout=300,
+                idle_timeout=7200,
                 release_label="emr-7.12.0"
             )
         }
@@ -333,7 +333,7 @@ aws_databricks = Team(
                 subnet_name="zipline-canary-subnet-main",
                 security_group_name="zipline-canary-sg",
                 instance_type="m5.xlarge",
-                idle_timeout=300,
+                idle_timeout=7200,
                 release_label="emr-7.12.0"
             )
         }

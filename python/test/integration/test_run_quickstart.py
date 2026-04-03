@@ -7,6 +7,8 @@ Exercises: compile -> import staging queries -> backfill group_bys -> backfill j
 Replaces the former test_gcp_template_quickstart.py.
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import pytest
 from click.testing import CliRunner
 
@@ -16,6 +18,7 @@ from .helpers.cli import (
     submit_fetch,
     submit_metadata_upload,
     submit_run,
+    submit_run_subprocess,
     submit_upload,
     submit_upload_to_kv,
 )
@@ -28,7 +31,7 @@ START_DS = {
 
 END_DS = {
     "gcp": "2023-11-30",
-    "aws": "2026-02-10",
+    "aws": "2026-01-18",
     "azure": "2023-11-30",
 }
 
@@ -71,25 +74,47 @@ def test_run_quickstart(test_id, confs, chronon_root, version, cloud):
     start_ds = START_DS[cloud]
     end_ds = END_DS[cloud]
 
-    # 1. Import staging queries / run exports
-    for key in STAGING_QUERY_IMPORT_KEYS.get(cloud, []):
-        if key in confs:
-            submit_run(runner, chronon_root, confs[key], version,
-                       start_ds=start_ds, end_ds=end_ds)
+    # 1. Import staging queries / run exports (parallel — jobs are independent)
+    staging_keys = STAGING_QUERY_IMPORT_KEYS[cloud]
+    missing = [k for k in staging_keys if k not in confs]
+    assert not missing, f"Missing staging configs for {cloud}: {missing}"
+    with ThreadPoolExecutor(max_workers=len(staging_keys) or 1) as pool:
+        futures = {
+            pool.submit(
+                submit_run_subprocess,
+                chronon_root, confs[key], version,
+                start_ds=start_ds, end_ds=end_ds,
+            ): key
+            for key in staging_keys
+        }
+        for future in as_completed(futures):
+            future.result()
 
     # 2. Backfill group_by
     gb_conf = confs[GROUP_BY_KEY[cloud]]
     submit_run(runner, chronon_root, gb_conf, version,
                start_ds=start_ds, end_ds=end_ds)
 
-    # 3. Backfill join
+    # 3. Backfill joins (parallel — both depend on group_by, not on each other)
     join_conf = confs[JOIN_KEY[cloud]]
-    submit_run(runner, chronon_root, join_conf, version,
-               start_ds=start_ds, end_ds=end_ds)
-
     notds_key = f"compiled/joins/{cloud}/training_set.v1_dev_notds__0"
+    join_confs = [join_conf]
     if notds_key in confs:
-        submit_run(runner, chronon_root, confs[notds_key], version,
+        join_confs.append(confs[notds_key])
+    if len(join_confs) > 1:
+        with ThreadPoolExecutor(max_workers=len(join_confs)) as pool:
+            futures = [
+                pool.submit(
+                    submit_run_subprocess,
+                    chronon_root, conf, version,
+                    start_ds=start_ds, end_ds=end_ds,
+                )
+                for conf in join_confs
+            ]
+            for future in as_completed(futures):
+                future.result()
+    else:
+        submit_run(runner, chronon_root, join_confs[0], version,
                    start_ds=start_ds, end_ds=end_ds)
 
     # Steps 4-9 are only supported by the GCP runner (Dataproc).

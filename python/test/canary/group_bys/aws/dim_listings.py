@@ -43,5 +43,5 @@ v1 = GroupBy(
     online=True,
     version=0,
     aggregations=None,  # No aggregations - this is a simple passthrough
-    step_days=30
+    step_days=10
 )

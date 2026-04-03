@@ -79,14 +79,7 @@ jobs:
       - name: Build Mill Project
         id: mill-build
         run: |
-          ./mill clean
-          ./mill flink\[${{ env.SCALA_VERSION }}\].assembly
-          ./mill cloud_gcp\[${{ env.SCALA_VERSION }}\].assembly
-          ./mill cloud_aws\[${{ env.SCALA_VERSION }}\].assembly
-          ./mill cloud_azure\[${{ env.SCALA_VERSION }}\].assembly
-          ./mill service\[${{ env.SCALA_VERSION }}\].assembly
-          ./mill flink_connectors.pubsub\[${{ env.SCALA_VERSION }}\].assembly
-          ./mill flink_connectors.kinesis\[${{ env.SCALA_VERSION }}\].assembly
+          ./mill artifacts\[${{ env.SCALA_VERSION }}\].all
 
       - name: Upload Flink Assembly Jar
         uses: actions/upload-artifact@v4
