@@ -8,7 +8,15 @@ from typing import Any, Dict, Optional, Union
 
 from ai.chronon.cli.logger import get_logger
 from ai.chronon.cli.theme import console
-from gen_thrift.api.ttypes import GroupBy, Join, JoinPart, MetaData, Model, ModelTransforms, Team
+from gen_thrift.api.ttypes import (
+    GroupBy,
+    Join,
+    MetaData,
+    Model,
+    ModelTransforms,
+    StagingQuery,
+    Team,
+)
 from gen_thrift.common.ttypes import (
     ClusterConfigProperties,
     ConfigProperties,
@@ -122,38 +130,43 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
 
     namespace = metadata.outputNamespace
 
-    def _set_part_metadata(part: Union[JoinPart, Model]):
-        if part is None:
+    def _propagate_namespace(node):
+        """Recursively propagate outputNamespace and team to all nested metadata."""
+        if node is None:
             return
-        if not part.metaData:
-            part.metaData = MetaData()
-        if not part.metaData.outputNamespace:
-            part.metaData.outputNamespace = namespace
-        if not part.metaData.team:
-            part.metaData.team = team
-        merge_team_execution_info(part.metaData, team_dict, part.metaData.team)
+        if isinstance(node, (GroupBy, Join, Model, ModelTransforms, StagingQuery)):
+            if not node.metaData:
+                node.metaData = MetaData()
+            if not node.metaData.outputNamespace:
+                node.metaData.outputNamespace = namespace
+            if not node.metaData.team:
+                node.metaData.team = team
+            merge_team_execution_info(node.metaData, team_dict, node.metaData.team)
+        if isinstance(node, Join):
+            for jp in node.joinParts or []:
+                jp.useLongNames = getattr(node, "useLongNames", jp.useLongNames)
+                _propagate_namespace(jp.groupBy)
+        if isinstance(node, ModelTransforms):
+            for m in node.models or []:
+                _propagate_namespace(m)
+        # Recurse into any propagatable child nested inside a Source.
+        # Source has four mutually exclusive fields: events, entities, joinSource, modelTransforms.
+        # Only joinSource (wraps a Join) and modelTransforms carry metaData that needs propagation.
+        def _recurse_into_source(src):
+            if src is None:
+                return
+            if src.joinSource and src.joinSource.join:
+                _propagate_namespace(src.joinSource.join)
+            if src.modelTransforms:
+                _propagate_namespace(src.modelTransforms)
 
-    def _propagate_namespace_to_join_sources(sources):
-        for src in sources or []:
-            if src.joinSource and src.joinSource.join and src.joinSource.join.metaData:
-                if not src.joinSource.join.metaData.outputNamespace:
-                    src.joinSource.join.metaData.outputNamespace = namespace
+        for src in getattr(node, "sources", None) or []:
+            _recurse_into_source(src)
+        # Join left is also a source
+        if isinstance(node, Join) and node.left:
+            _recurse_into_source(node.left)
 
-    if isinstance(obj, Join):
-        for jp in obj.joinParts or []:
-            jp.useLongNames = obj.useLongNames
-            _set_part_metadata(jp.groupBy)
-    elif isinstance(obj, ModelTransforms):
-        for m in obj.models or []:
-            _set_part_metadata(m)
-        _propagate_namespace_to_join_sources(obj.sources)
-    elif isinstance(obj, GroupBy):
-        _propagate_namespace_to_join_sources(obj.sources)
-
-    if metadata.executionInfo is None:
-        metadata.executionInfo = ExecutionInfo()
-
-    merge_team_execution_info(metadata, team_dict, team)
+    _propagate_namespace(obj)
 
 
 def merge_team_execution_info(metadata: MetaData, team_dict: Dict[str, Team], team_name: str):
