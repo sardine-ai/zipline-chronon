@@ -1,5 +1,4 @@
-from ai.chronon.query import Query, selects
-from ai.chronon.source import EventSource
+from ai.chronon.types import EventSource, Query, selects
 
 """
 Example: Defining a Chronon Source from a Batch Table

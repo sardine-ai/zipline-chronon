@@ -1,6 +1,6 @@
 from joins.azure import demo_parent
 
-from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
+from ai.chronon.types import Aggregation, GroupBy, Operation, TimeUnit, Window
 from ai.chronon.types import EnvironmentVariables
 
 """

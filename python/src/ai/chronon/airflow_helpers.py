@@ -176,8 +176,13 @@ def _set_group_by_deps(group_by):
 
 def _dedupe_and_set_airflow_deps_json(obj, deps, custom_json_key):
     sorted_items = [tuple(sorted(d.items())) for d in deps]
-    # Use OrderedDict for re-producible ordering of dependencies
-    unique = [OrderedDict(t) for t in sorted_items]
+    # Deduplicate while preserving order, then use OrderedDict for reproducible key ordering
+    seen = set()
+    unique = []
+    for t in sorted_items:
+        if t not in seen:
+            seen.add(t)
+            unique.append(OrderedDict(t))
     existing_json = obj.metaData.customJson or "{}"
     json_map = json.loads(existing_json)
     json_map[custom_json_key] = unique

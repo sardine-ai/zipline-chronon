@@ -14,6 +14,7 @@
 
 import gc
 import importlib
+import inspect
 import json
 import os
 import re
@@ -21,7 +22,7 @@ import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterable, Sequence
-from typing import List, Union, get_args
+from typing import List, Optional, Union, get_args
 
 import gen_thrift.api.ttypes as api
 
@@ -240,11 +241,36 @@ def _import_module_set_name(module, cls):
     return module
 
 
+def _import_module_set_name(module, cls):
+    """Evaluate imported modules to assign object name."""
+    for name, obj in list(module.__dict__.items()):
+        if isinstance(obj, cls):
+            base_name = module.__name__.partition(".")[2] + "." + name
+            if hasattr(obj.metaData, "version") and obj.metaData.version is not None:
+                base_name = base_name + "__" + str(obj.metaData.version)
+            obj.metaData.name = base_name
+            obj.metaData.team = module.__name__.split(".")[1]
+    return module
+
+
 def __set_name(obj, cls, mod_prefix):
     module_qualifier = get_mod_name_from_gc(obj, mod_prefix)
 
     module = importlib.import_module(module_qualifier)
     _import_module_set_name(module, cls)
+
+
+def _get_team_from_caller(stack_depth=2):
+    """Extract team name from the calling file's parent directory."""
+    caller_path = inspect.stack()[stack_depth].filename
+    return os.path.basename(os.path.dirname(caller_path))
+
+
+def _ensure_name_and_get_output_table(obj, cls, mod_prefix, full_name=False):
+    """Set name via GC if missing, then return output table name."""
+    if not obj.metaData.name:
+        __set_name(obj, cls, mod_prefix)
+    return output_table_name(obj, full_name)
 
 
 def sanitize(name):
@@ -368,6 +394,20 @@ def compose(arg, *methods):
         result = [f"{indent}{method}("] + result + [f"{indent})"]
 
     return "\n".join(result)
+
+
+def resolve_online_schedule(online: bool, online_schedule: Optional[str]) -> Optional[str]:
+    """Validate and normalize the online_schedule parameter."""
+    if not online and online_schedule is not None and online_schedule != "@never":
+        raise ValueError(
+            "online_schedule cannot be set when online=False. "
+            "Either set online=True or remove the online_schedule parameter."
+        )
+    if online_schedule == "@never":
+        return None
+    elif online and online_schedule is None:
+        return "@daily"
+    return online_schedule
 
 
 def clean_expression(expr):

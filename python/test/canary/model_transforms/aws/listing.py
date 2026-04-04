@@ -2,9 +2,7 @@ from joins.aws import demo
 from models.aws import listing
 
 # Create a listing_model transforms
-from ai.chronon.model import ModelTransforms
-from ai.chronon.query import Query
-from ai.chronon.source import JoinSource
+from ai.chronon.types import JoinSource, ModelTransforms, Query
 
 from ai.chronon.data_types import DataType
 

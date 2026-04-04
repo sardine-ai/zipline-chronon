@@ -17,7 +17,7 @@ from group_bys.kaggle.clicks import ad_streaming
 from group_bys.kaggle.outbrain import ad_doc, ad_platform, ad_uuid
 from sources.kaggle.outbrain import outbrain_left_events
 
-from ai.chronon.join import Join, JoinPart
+from ai.chronon.types import Join, JoinPart
 
 training_set = Join(  # left equi join
     left=outbrain_left_events(

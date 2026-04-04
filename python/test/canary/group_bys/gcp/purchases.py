@@ -1,8 +1,6 @@
 from staging_queries.gcp import purchases_import, purchases_notds_import
 
-from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
-from ai.chronon.query import Query, selects
-from ai.chronon.source import EventSource
+from ai.chronon.types import Aggregation, EventSource, GroupBy, Operation, Query, TimeUnit, Window, selects
 
 """
 This GroupBy aggregates metrics about a user's previous purchases in various windows.

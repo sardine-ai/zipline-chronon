@@ -1,8 +1,6 @@
 from group_bys.aws import item_event_canary, purchases
 
-from ai.chronon.join import Join, JoinPart
-from ai.chronon.query import Query, selects
-from ai.chronon.source import EventSource
+from ai.chronon.types import EventSource, Join, JoinPart, Query, selects
 
 source = EventSource(
     table="data.item_events_parquet_compat",

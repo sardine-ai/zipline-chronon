@@ -73,7 +73,7 @@ By default, `StagingQuery` uses `SPARK` (Spark SQL) as its compute engine. You c
 To use a non-default engine, import `EngineType` and pass it to your `StagingQuery`:
 
 ```python
-from ai.chronon.staging_query import StagingQuery, EngineType
+from ai.chronon.types import EngineType, StagingQuery
 
 v1 = StagingQuery(
     query="SELECT * FROM my_dataset.my_table WHERE ds BETWEEN '{{ start_date }}' AND '{{ end_date }}'",

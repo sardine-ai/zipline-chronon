@@ -1,5 +1,5 @@
-import inspect
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
@@ -12,6 +12,8 @@ import gen_thrift.common.ttypes as common
 from ai.chronon import utils
 from ai.chronon.airflow_helpers import AIRFLOW_DEPENDENCIES_KEY
 
+logger = logging.getLogger(__name__)
+
 
 def _strip_jinja_templates(query: str) -> str:
     """Replace Jinja-style template variables with placeholder values so sqlglot can parse the query."""
@@ -23,7 +25,8 @@ def _tables_in_query(query: str, dialect: str = "spark") -> List[str]:
     clean_query = _strip_jinja_templates(query)
     try:
         parsed_query = parse_one(clean_query, dialect=dialect)
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to parse SQL for table extraction: %s", e)
         return []
     return [t.sql() for t in parsed_query.find_all(exp.Table)]
 
@@ -35,8 +38,9 @@ def _normalize_table_name(table_name: str) -> str:
 
 def _get_output_table_name(staging_query: ttypes.StagingQuery, full_name: bool = False):
     """generate output table name for staging query job"""
-    utils.__set_name(staging_query, ttypes.StagingQuery, "staging_queries")
-    return utils.output_table_name(staging_query, full_name=full_name)
+    return utils._ensure_name_and_get_output_table(
+        staging_query, ttypes.StagingQuery, "staging_queries", full_name
+    )
 
 
 # Wrapper for EngineType
@@ -151,7 +155,7 @@ def StagingQuery(
         A StagingQuery object
     """
     # Get caller's filename to assign team
-    team = inspect.stack()[1].filename.split("/")[-2]
+    team = utils._get_team_from_caller()
 
     assert version is None or isinstance(version, int), (
         f"Version must be an integer or None, but found {type(version).__name__}"

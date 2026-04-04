@@ -1,8 +1,6 @@
 from staging_queries.quickstart import exports
 
-from ai.chronon.group_by import Aggregation, GroupBy, Operation, TimeUnit, Window
-from ai.chronon.query import Query, selects
-from ai.chronon.source import EventSource
+from ai.chronon.types import Aggregation, EventSource, GroupBy, Operation, Query, TimeUnit, Window, selects
 from ai.chronon.types import EnvironmentVariables
 
 """

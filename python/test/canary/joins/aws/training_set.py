@@ -1,8 +1,6 @@
 from group_bys.aws import purchases
 
-from ai.chronon.join import Join, JoinPart
-from ai.chronon.query import Query, selects
-from ai.chronon.source import EventSource
+from ai.chronon.types import EventSource, Join, JoinPart, Query, selects
 
 """
 This is the "left side" of the join that will comprise our training set. It is responsible for providing the primary keys

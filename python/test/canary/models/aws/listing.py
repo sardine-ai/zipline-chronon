@@ -1,8 +1,6 @@
 from joins.aws import demo
 
-from ai.chronon.model import Model, ModelBackend, InferenceSpec, ModelTransforms
-from ai.chronon.query import Query, selects
-from ai.chronon.source import JoinSource
+from ai.chronon.types import InferenceSpec, JoinSource, Model, ModelBackend, ModelTransforms, Query, selects
 from ai.chronon.data_types import DataType
 
 """
