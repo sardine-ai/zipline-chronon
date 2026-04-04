@@ -137,10 +137,17 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
         if isinstance(node, (GroupBy, Join, Model, ModelTransforms, StagingQuery)):
             if not node.metaData:
                 node.metaData = MetaData()
-            if not node.metaData.outputNamespace:
-                node.metaData.outputNamespace = namespace
             if not node.metaData.team:
                 node.metaData.team = team
+            if not node.metaData.outputNamespace:
+                resolved_team = team_dict.get(node.metaData.team)
+                node.metaData.outputNamespace = (
+                    resolved_team.outputNamespace if resolved_team and resolved_team.outputNamespace else namespace
+                )
+            if node.metaData.team not in team_dict:
+                raise ValueError(
+                    f"Team '{node.metaData.team}' referenced by '{node.metaData.name}' not found in teams.py"
+                )
             merge_team_execution_info(node.metaData, team_dict, node.metaData.team)
         if isinstance(node, Join):
             for jp in node.joinParts or []:

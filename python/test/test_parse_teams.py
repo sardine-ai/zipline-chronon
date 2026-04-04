@@ -138,7 +138,8 @@ def test_update_metadata_preserves_join_part_namespace():
 
 
 def test_update_metadata_sets_missing_join_part_namespace():
-    """Test that update_metadata sets outputNamespace for join parts when not set."""
+    """Test that update_metadata sets outputNamespace for join parts when not set.
+    Child inherits parent's team, so it gets that team's outputNamespace."""
     # Setup
     team_name = "test_team"
     team_dict = {
@@ -150,7 +151,7 @@ def test_update_metadata_sets_missing_join_part_namespace():
     join_part_gb = GroupBy(metaData=MetaData())
     join_part = JoinPart(groupBy=join_part_gb)
 
-    # Create the join object
+    # Create the join object with an explicit outputNamespace different from team's
     join = Join(
         metaData=MetaData(
             team=team_name,
@@ -163,9 +164,91 @@ def test_update_metadata_sets_missing_join_part_namespace():
     # Call the function
     parse_teams.update_metadata(join, team_dict)
 
-    # Verify outputNamespace values were set correctly
+    # Parent keeps its explicit outputNamespace
     assert join.metaData.outputNamespace == "join_namespace"
-    assert join.joinParts[0].groupBy.metaData.outputNamespace == "join_namespace"
+    # Child inherits parent's team (test_team) and gets that team's outputNamespace
+    assert join.joinParts[0].groupBy.metaData.team == team_name
+    assert join.joinParts[0].groupBy.metaData.outputNamespace == "team_namespace"
+
+def test_nested_groupby_with_different_team_gets_correct_namespace():
+    """Test that a nested GroupBy with its own team gets that team's outputNamespace, not the parent's."""
+    parent_team = "parent_team"
+    child_team = "child_team"
+    team_dict = {
+        "default": Team(outputNamespace="default_namespace"),
+        parent_team: Team(outputNamespace="parent_namespace"),
+        child_team: Team(outputNamespace="child_namespace"),
+    }
+
+    # Child GroupBy explicitly sets its own team but no outputNamespace
+    child_gb = GroupBy(metaData=MetaData(team=child_team))
+    join_part = JoinPart(groupBy=child_gb)
+
+    join = Join(
+        metaData=MetaData(
+            team=parent_team,
+            name="test.join.cross_team",
+        ),
+        joinParts=[join_part],
+    )
+
+    parse_teams.update_metadata(join, team_dict)
+
+    # Parent should get its own team's namespace
+    assert join.metaData.outputNamespace == "parent_namespace"
+    # Child should get its own team's namespace, NOT the parent's
+    assert join.joinParts[0].groupBy.metaData.outputNamespace == "child_namespace"
+    assert join.joinParts[0].groupBy.metaData.team == child_team
+
+
+def test_nested_groupby_without_team_inherits_parent_namespace():
+    """Test that a nested GroupBy without its own team inherits the parent's namespace."""
+    parent_team = "parent_team"
+    team_dict = {
+        "default": Team(outputNamespace="default_namespace"),
+        parent_team: Team(outputNamespace="parent_namespace"),
+    }
+
+    # Child GroupBy has no team and no outputNamespace
+    child_gb = GroupBy(metaData=MetaData())
+    join_part = JoinPart(groupBy=child_gb)
+
+    join = Join(
+        metaData=MetaData(
+            team=parent_team,
+            name="test.join.inherit",
+        ),
+        joinParts=[join_part],
+    )
+
+    parse_teams.update_metadata(join, team_dict)
+
+    assert join.metaData.outputNamespace == "parent_namespace"
+    # Child inherits parent's team and therefore parent's namespace
+    assert join.joinParts[0].groupBy.metaData.team == parent_team
+    assert join.joinParts[0].groupBy.metaData.outputNamespace == "parent_namespace"
+
+
+def test_invalid_team_on_nested_node_raises():
+    """Test that a nested node with an unknown team raises ValueError."""
+    team_dict = {
+        "default": Team(outputNamespace="default_namespace"),
+        "parent_team": Team(outputNamespace="parent_namespace"),
+    }
+
+    child_gb = GroupBy(metaData=MetaData(team="nonexistent_team"))
+    join_part = JoinPart(groupBy=child_gb)
+
+    join = Join(
+        metaData=MetaData(
+            team="parent_team",
+            name="test.join.bad_child_team",
+        ),
+        joinParts=[join_part],
+    )
+
+    with pytest.raises(ValueError, match="nonexistent_team"):
+        parse_teams.update_metadata(join, team_dict)
 
 def test_merge_team_execution_info():
     """Test that merge_team_execution_info correctly merges team execution info."""
