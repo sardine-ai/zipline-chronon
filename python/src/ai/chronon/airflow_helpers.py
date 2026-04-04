@@ -3,11 +3,10 @@ import math
 from typing import OrderedDict
 
 import ai.chronon.utils as utils
-from ai.chronon.constants import (
-    AIRFLOW_DEPENDENCIES_KEY,
-)
 from gen_thrift.api.ttypes import GroupBy, Join
 from gen_thrift.common.ttypes import TimeUnit
+
+AIRFLOW_DEPENDENCIES_KEY = "airflowDependencies"
 
 
 def create_airflow_dependency(table, partition_column, additional_partitions=None, offset=0):

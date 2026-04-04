@@ -29,11 +29,52 @@ from ai.chronon.repo.auth import get_user_email
 from ai.chronon.repo.constants import VALID_CLOUDS, RunMode
 from ai.chronon.repo.utils import print_possible_confs, upload_to_blob_store
 from ai.chronon.repo.zipline_hub import ZiplineHub
-from ai.chronon.schedule_validation import validate_at_most_daily_schedule
 from gen_thrift.api.ttypes import DataKind
 from gen_thrift.planner.ttypes import Mode
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_at_most_daily_schedule(schedule_expression: str) -> Optional[str]:
+    """Validates that a schedule expression runs at most once per day.
+    Returns None if valid, error message string if invalid."""
+    import datetime
+
+    from croniter import croniter
+
+    if not schedule_expression or schedule_expression.strip().lower() in ("", "none", "null", "@daily", "@never"):
+        return None
+
+    schedule_expression = schedule_expression.strip()
+
+    try:
+        croniter(schedule_expression, datetime.datetime(2024, 1, 1, 0, 0))
+    except (ValueError, TypeError) as e:
+        return f"Invalid cron expression syntax: {e}"
+
+    try:
+        test_start = datetime.datetime(2024, 1, 1, 0, 0)
+        for day_offset in range(7):
+            day_start = test_start + datetime.timedelta(days=day_offset)
+            day_end = day_start + datetime.timedelta(days=1)
+            cron_start = day_start - datetime.timedelta(seconds=1)
+            cron = croniter(schedule_expression, cron_start)
+            executions_in_day = 0
+            for _ in range(200):
+                next_run = cron.get_next(datetime.datetime)
+                if next_run >= day_end:
+                    break
+                executions_in_day += 1
+                if executions_in_day > 1:
+                    return (
+                        f"Schedule runs {executions_in_day} times on "
+                        f"{day_start.strftime('%A')} ({day_start.strftime('%Y-%m-%d')}). "
+                        f"Only at-most-daily schedules are allowed."
+                    )
+    except Exception as e:
+        return f"Error validating schedule frequency: {e}"
+
+    return None
 
 
 ALLOWED_DATE_FORMATS = ["%Y-%m-%d"]
@@ -1123,12 +1164,12 @@ def get_schedule_modes(conf_path: str):
 
     # Validate schedule expressions using croniter-based validation
     if offline_schedule:
-        validation_error = validate_at_most_daily_schedule(offline_schedule)
+        validation_error = _validate_at_most_daily_schedule(offline_schedule)
         if validation_error:
             raise ValueError(f"Invalid offline_schedule: {validation_error}")
 
     if online_schedule:
-        validation_error = validate_at_most_daily_schedule(online_schedule)
+        validation_error = _validate_at_most_daily_schedule(online_schedule)
         if validation_error:
             raise ValueError(f"Invalid online_schedule: {validation_error}")
 

@@ -21,13 +21,9 @@ import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterable, Sequence
-from typing import List, Optional, Union, cast, get_args
+from typing import List, Union, get_args
 
-import ai.chronon.repo.extract_objects as eo
 import gen_thrift.api.ttypes as api
-from ai.chronon.repo import FOLDER_NAME_TO_CLASS
-
-ChrononJobTypes = Union[api.GroupBy, api.Join, api.StagingQuery]
 
 # Common type definition for any source type used across the codebase
 ANY_SOURCE_TYPE = Union[
@@ -206,15 +202,6 @@ def get_table(source: api.Source) -> str:
     return table.split("/")[0]
 
 
-def get_topic(source: api.Source) -> str:
-    return source.entities.mutationTopic if source.entities else source.events.topic
-
-
-def get_columns(source: api.Source):
-    query = get_query(source)
-    assert query.selects is not None, "Please specify selects in your Source/Query"
-    columns = query.selects.keys()
-    return columns
 
 
 def get_mod_name_from_gc(obj, mod_prefix):
@@ -240,26 +227,24 @@ def get_mod_name_from_gc(obj, mod_prefix):
     return mod_name
 
 
-def get_mod_and_var_name_from_gc(obj, mod_prefix):
-    # Find the variable name within the module
-    mod_name = get_mod_name_from_gc(obj, mod_prefix)
-    """Get the variable name that points to the obj in the module"""
-    if not mod_name:
-        return None
 
-    module = importlib.import_module(mod_name)
-    for var_name, value in vars(module).items():
-        if value is obj:
-            return mod_name, var_name
-
-    return mod_name, None
+def _import_module_set_name(module, cls):
+    """Evaluate imported modules to assign object name."""
+    for name, obj in list(module.__dict__.items()):
+        if isinstance(obj, cls):
+            base_name = module.__name__.partition(".")[2] + "." + name
+            if hasattr(obj.metaData, "version") and obj.metaData.version is not None:
+                base_name = base_name + "__" + str(obj.metaData.version)
+            obj.metaData.name = base_name
+            obj.metaData.team = module.__name__.split(".")[1]
+    return module
 
 
 def __set_name(obj, cls, mod_prefix):
     module_qualifier = get_mod_name_from_gc(obj, mod_prefix)
 
     module = importlib.import_module(module_qualifier)
-    eo.import_module_set_name(module, cls)
+    _import_module_set_name(module, cls)
 
 
 def sanitize(name):
@@ -270,28 +255,6 @@ def sanitize(name):
     if name is not None:
         return re.sub("[^a-zA-Z0-9_]", "_", name)
     return None
-
-
-def dict_to_bash_commands(d):
-    """
-    Convert a dict into a bash command substring
-    """
-    if not d:
-        return ""
-    bash_commands = []
-    for key, value in d.items():
-        cmd = f"--{key.replace('_', '-')}={value}" if value else f"--{key.replace('_', '-')}"
-        bash_commands.append(cmd)
-    return " ".join(bash_commands)
-
-
-def dict_to_exports(d):
-    if not d:
-        return ""
-    exports = []
-    for key, value in d.items():
-        exports.append(f"export {key.upper()}={value}")
-    return " && ".join(exports)
 
 
 def output_table_name(obj, full_name: bool):
@@ -341,135 +304,6 @@ def join_part_output_table_name(join, jp, full_name: bool = False):
     )
 
 
-def log_table_name(obj, full_name: bool = False):
-    return output_table_name(obj, full_name=full_name) + "_logged"
-
-
-def get_team_conf_from_py(team, key):
-    team_module = importlib.import_module(f"teams.{team}")
-    return getattr(team_module, key)
-
-
-def wait_for_simple_schema(table, lag, start, end):
-    if not table:
-        return None
-    table_tokens = table.split("/")
-    clean_name = table_tokens[0]
-    subpartition_spec = "/".join(table_tokens[1:]) if len(table_tokens) > 1 else ""
-    return {
-        "name": "wait_for_{}_ds{}".format(clean_name, "" if lag == 0 else f"_minus_{lag}"),
-        "spec": "{}/ds={}{}".format(
-            clean_name,
-            "{{ ds }}" if lag == 0 else "{{{{ macros.ds_add(ds, -{}) }}}}".format(lag),
-            "/{}".format(subpartition_spec) if subpartition_spec else "",
-        ),
-        "start": start,
-        "end": end,
-    }
-
-
-def wait_for_name(dep):
-    replace_nonalphanumeric = re.sub("[^a-zA-Z0-9]", "_", dep)
-    name = f"wait_for_{replace_nonalphanumeric}"
-    return re.sub("_+", "_", name).rstrip("_")
-
-
-def dedupe_in_order(seq):
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
-
-
-def has_topic(group_by: api.GroupBy) -> bool:
-    """Find if there's topic or mutationTopic for a source helps define streaming tasks"""
-    return any(
-        (source.entities and source.entities.mutationTopic)
-        or (source.events and source.events.topic)
-        for source in group_by.sources
-    )
-
-
-def get_offline_schedule(conf: ChrononJobTypes, default: Optional[str] = "@daily") -> Optional[str]:
-    offline_schedule = conf.metaData.executionInfo.offlineSchedule
-    if offline_schedule is None:
-        offline_schedule = default
-    # "@never" explicitly disables backfill
-    if offline_schedule == "@never":
-        return None
-    return offline_schedule
-
-
-def requires_log_flattening_task(conf: ChrononJobTypes) -> bool:
-    return (conf.metaData.samplePercent or 0) > 0
-
-
-def get_applicable_modes(conf: ChrononJobTypes) -> List[str]:
-    """Based on a conf and mode determine if a conf should define a task."""
-    modes = []  # type: List[str]
-
-    if isinstance(conf, api.GroupBy):
-        group_by = cast(api.GroupBy, conf)
-        # For GroupBys, offline_schedule=None means no backfill (no default)
-        if get_offline_schedule(conf, default=None) is not None:
-            modes.append("backfill")
-
-        online = group_by.metaData.online or False
-
-        if online:
-            modes.append("upload")
-
-            temporal_accuracy = group_by.accuracy or False
-            streaming = has_topic(group_by)
-            if temporal_accuracy or streaming:
-                modes.append("streaming")
-
-    elif isinstance(conf, api.Join):
-        join = cast(api.Join, conf)
-
-        # For Joins, offline_schedule=None defaults to "@daily"
-        if get_offline_schedule(conf, default="@daily") is not None:
-            modes.append("backfill")
-            modes.append("stats-summary")
-
-        if join.metaData.consistencyCheck is True:
-            modes.append("consistency-metrics-compute")
-
-        if requires_log_flattening_task(join):
-            modes.append("log-flattener")
-
-    elif isinstance(conf, api.StagingQuery):
-        modes.append("backfill")
-    else:
-        raise ValueError(f"Unsupported job type {type(conf).__name__}")
-
-    return modes
-
-
-def get_related_table_names(conf: ChrononJobTypes) -> List[str]:
-    table_name = output_table_name(conf, full_name=True)
-
-    applicable_modes = set(get_applicable_modes(conf))
-    related_tables = []  # type: List[str]
-
-    if "upload" in applicable_modes:
-        related_tables.append(f"{table_name}_upload")
-    if "stats-summary" in applicable_modes:
-        related_tables.append(f"{table_name}_daily_stats")
-    if "label-join" in applicable_modes:
-        related_tables.append(f"{table_name}_labels")
-        related_tables.append(f"{table_name}_labeled")
-        related_tables.append(f"{table_name}_labeled_latest")
-    if "log-flattener" in applicable_modes:
-        related_tables.append(f"{table_name}_logged")
-    if "consistency-metrics-compute" in applicable_modes:
-        related_tables.append(f"{table_name}_consistency")
-
-    if isinstance(conf, api.Join) and conf.bootstrapParts:
-        related_tables.append(f"{table_name}_bootstrap")
-
-    return related_tables
-
-
 class DotDict(dict):
     def __getattr__(self, attr):
         if attr in self:
@@ -485,27 +319,6 @@ def convert_json_to_obj(d):
         return [convert_json_to_obj(item) for item in d]
     else:
         return d
-
-
-def chronon_path(file_path: str) -> str:
-    conf_types = FOLDER_NAME_TO_CLASS.keys()
-    splits = file_path.split("/")
-    conf_occurences = [splits.index(typ) for typ in conf_types if typ in splits]
-    assert len(conf_occurences) > 0, (
-        f"Path: {file_path} doesn't contain folder with name among {conf_types}"
-    )
-
-    index = min([splits.index(typ) for typ in conf_types if typ in splits])
-    rel_path = "/".join(splits[index:])
-    return rel_path
-
-
-def module_path(file_path: str) -> str:
-    adjusted_path = chronon_path(file_path)
-    assert adjusted_path.endswith(".py"), f"Path: {file_path} doesn't end with '.py'"
-    without_extension = adjusted_path[:-3]
-    mod_path = without_extension.replace("/", ".")
-    return mod_path
 
 
 def compose(arg, *methods):

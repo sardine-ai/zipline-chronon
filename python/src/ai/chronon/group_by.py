@@ -28,6 +28,13 @@ OperationType = int  # type(zthrift.Operation.FIRST)
 OperationWithArgs = Tuple[ttypes.Operation, Dict[str, str]]
 
 
+def get_columns(source):
+    query = utils.get_query(source)
+    assert query.selects is not None, "Please specify selects in your Source/Query"
+    columns = query.selects.keys()
+    return columns
+
+
 def _get_output_table_name(obj, full_name: bool = False):
     """
     Group by backfill output table name
@@ -228,7 +235,7 @@ def DefaultAggregation(keys, sources, operation=Operation.LAST, tags=None):
     aggregate_columns = []
     for source in sources:
         query = utils.get_query(source)
-        columns = utils.get_columns(source)
+        columns = get_columns(source)
         non_aggregate_columns = keys + [
             "ts",
             "is_before",
@@ -331,7 +338,7 @@ def validate_group_by(group_by: ttypes.GroupBy):
     keys = group_by.keyColumns
     aggregations = group_by.aggregations
     # check ts is not included in query.select
-    first_source_columns = set(utils.get_columns(sources[0]))
+    first_source_columns = set(get_columns(sources[0]))
     # TODO undo this check after ml_models CI passes
     assert "ts" not in first_source_columns, (
         "'ts' is a reserved key word for Chronon, please specify the expression in timeColumn"
@@ -360,7 +367,7 @@ def validate_group_by(group_by: ttypes.GroupBy):
     column_set = None
     # all sources should select the same columns
     for i, source in enumerate(sources[1:]):
-        column_set = set(utils.get_columns(source))
+        column_set = set(get_columns(source))
         column_diff = column_set ^ first_source_columns
         assert not column_diff, f"""
 Mismatched columns among sources [1, {i + 2}], Difference: {column_diff}
@@ -390,7 +397,7 @@ Keys {unselected_keys}, are unselected in source
             "You can only set aggregations=None in an EntitySource without mutations"
         )
     else:
-        columns = set([c for src in sources for c in utils.get_columns(src)])
+        columns = set([c for src in sources for c in get_columns(src)])
         for agg in aggregations:
             assert agg.inputColumn, (
                 f"input_column is required for all operations, found: input_column = {agg.inputColumn} "

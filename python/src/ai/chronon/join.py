@@ -19,7 +19,6 @@ import logging
 from collections import Counter
 from typing import Dict, List, Optional, Union
 
-import ai.chronon.repo.extract_objects as eo
 import ai.chronon.utils as utils
 import gen_thrift.api.ttypes as api
 import gen_thrift.common.ttypes as common
@@ -81,9 +80,7 @@ def JoinPart(
         f"Expecting GroupBy. But found {type(group_by).__name__}"
     )
 
-    # used for reset for next run
-    import_copy = __builtins__["__import__"]
-    # get group_by's module info from garbage collector
+    # Resolve group_by's module via GC referrers and set metadata names
     gc.collect()
 
     group_by_module_name = None
@@ -103,7 +100,7 @@ def JoinPart(
             "group_by's module info from garbage collector {}".format(group_by_module_name)
         )
         group_by_module = importlib.import_module(group_by_module_name)
-        __builtins__["__import__"] = eo.import_module_set_name(group_by_module, api.GroupBy)
+        utils._import_module_set_name(group_by_module, api.GroupBy)
     else:
         if not group_by.metaData.name:
             logging.error("No group_by file or custom group_by name found")
@@ -112,28 +109,23 @@ def JoinPart(
                 "You may pass it in via GroupBy.name. \n"
             )
 
-    try:
-        if key_mapping:
-            try:
-                utils.check_contains(
-                    key_mapping.values(), group_by.keyColumns, "key", group_by.metaData.name
-                )
-            except AssertionError as e:
-                raise ValueError(
-                    f"Invalid key_mapping for JoinPart on GroupBy '{group_by.metaData.name}'.\n"
-                    f"key_mapping format is {{left_column: group_by_key}}.\n"
-                    f"Valid GroupBy keys: {group_by.keyColumns}\n"
-                    f"Provided key_mapping: {key_mapping}\n"
-                    f"Bad value(s): {e}"
-                ) from None
+    if key_mapping:
+        try:
+            utils.check_contains(
+                key_mapping.values(), group_by.keyColumns, "key", group_by.metaData.name
+            )
+        except AssertionError as e:
+            raise ValueError(
+                f"Invalid key_mapping for JoinPart on GroupBy '{group_by.metaData.name}'.\n"
+                f"key_mapping format is {{left_column: group_by_key}}.\n"
+                f"Valid GroupBy keys: {group_by.keyColumns}\n"
+                f"Provided key_mapping: {key_mapping}\n"
+                f"Bad value(s): {e}"
+            ) from None
 
-        join_part = api.JoinPart(groupBy=group_by, keyMapping=key_mapping, prefix=prefix)
-        join_part.tags = tags
-        return join_part
-    finally:
-        # Always restore __import__ — if we raise before reaching the reset below,
-        # subsequent imports in this process would use the monkey-patched version.
-        __builtins__["__import__"] = import_copy
+    join_part = api.JoinPart(groupBy=group_by, keyMapping=key_mapping, prefix=prefix)
+    join_part.tags = tags
+    return join_part
 
 
 def ExternalSource(
