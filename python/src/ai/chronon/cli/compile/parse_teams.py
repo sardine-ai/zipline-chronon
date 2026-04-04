@@ -149,29 +149,31 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
                     f"Team '{node.metaData.team}' referenced by '{node.metaData.name}' not found in teams.py"
                 )
             merge_team_execution_info(node.metaData, team_dict, node.metaData.team)
+
+        # useLongNames only propagates from a Join to its direct JoinParts —
+        # nested Joins (via JoinSource) control their own naming independently.
         if isinstance(node, Join):
             for jp in node.joinParts or []:
-                jp.useLongNames = getattr(node, "useLongNames", jp.useLongNames)
+                if node.useLongNames and not jp.useLongNames:
+                    jp.useLongNames = node.useLongNames
                 _propagate_namespace(jp.groupBy)
         if isinstance(node, ModelTransforms):
             for m in node.models or []:
                 _propagate_namespace(m)
-        # Recurse into any propagatable child nested inside a Source.
-        # Source has four mutually exclusive fields: events, entities, joinSource, modelTransforms.
-        # Only joinSource (wraps a Join) and modelTransforms carry metaData that needs propagation.
-        def _recurse_into_source(src):
-            if src is None:
-                return
-            if src.joinSource and src.joinSource.join:
-                _propagate_namespace(src.joinSource.join)
-            if src.modelTransforms:
-                _propagate_namespace(src.modelTransforms)
 
-        for src in getattr(node, "sources", None) or []:
-            _recurse_into_source(src)
-        # Join left is also a source
+        def _recurse_into_sources(sources):
+            for src in sources or []:
+                if src is None:
+                    continue
+                if src.joinSource and src.joinSource.join:
+                    _propagate_namespace(src.joinSource.join)
+                if src.modelTransforms:
+                    _propagate_namespace(src.modelTransforms)
+
+        if isinstance(node, (GroupBy, ModelTransforms)):
+            _recurse_into_sources(node.sources)
         if isinstance(node, Join) and node.left:
-            _recurse_into_source(node.left)
+            _recurse_into_sources([node.left])
 
     _propagate_namespace(obj)
 
@@ -250,11 +252,11 @@ def _merge_mode_maps(
 
     filtered_mode_maps = [m for m in mode_maps if m]
 
-    # Initialize the result with the first mode map
-    result = None
+    if not filtered_mode_maps:
+        return None
 
-    if len(filtered_mode_maps) >= 1:
-        result = push_common_to_modes(filtered_mode_maps[0], env_or_config_attribute)
+    # Initialize the result with the first mode map
+    result = push_common_to_modes(filtered_mode_maps[0], env_or_config_attribute)
 
     # Merge each new mode map into the result
     for m in filtered_mode_maps[1:]:

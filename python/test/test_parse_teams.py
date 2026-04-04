@@ -15,7 +15,7 @@ Tests for the parse_teams module.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 import pytest
-from gen_thrift.api.ttypes import GroupBy, Join, JoinPart, MetaData, Team
+from gen_thrift.api.ttypes import GroupBy, Join, JoinPart, JoinSource, MetaData, Source, Team
 from gen_thrift.common.ttypes import ConfigProperties
 
 from ai.chronon.cli.compile import parse_teams
@@ -675,3 +675,49 @@ def test_merge_mode_maps_with_none_default_env():
     backfill_conf = actual_execution_info.conf.modeConfigs[RunMode.BACKFILL]
     assert backfill_conf["spark.chronon.partition.column"] == "ds"
     assert backfill_conf["spark.chronon.cloud_provider"] == "gcp"
+
+
+def test_use_long_names_propagates_to_direct_join_parts_only():
+    """Test that useLongNames propagates from Join to its JoinParts but NOT to nested Joins via JoinSource.
+    Each Join controls its own column naming independently."""
+    team_dict = {
+        "default": Team(outputNamespace="default_namespace"),
+        "test_team": Team(outputNamespace="test_namespace"),
+    }
+
+    # Inner join with its own useLongNames=False (the default)
+    inner_join = Join(metaData=MetaData())
+    inner_join_source = Source(joinSource=JoinSource(join=inner_join))
+
+    # GroupBy that uses a JoinSource
+    child_gb = GroupBy(
+        metaData=MetaData(),
+        sources=[inner_join_source],
+    )
+    join_part = JoinPart(groupBy=child_gb)
+
+    # Outer join with useLongNames=True
+    outer_join = Join(
+        metaData=MetaData(
+            team="test_team",
+            name="test.join.chained",
+        ),
+        joinParts=[join_part],
+        useLongNames=True,
+    )
+
+    parse_teams.update_metadata(outer_join, team_dict)
+
+    # useLongNames should propagate to direct JoinParts
+    assert outer_join.joinParts[0].useLongNames is True
+    # Inner Join via JoinSource should NOT inherit parent's useLongNames
+    assert not inner_join.useLongNames
+
+
+def test_merge_mode_maps_with_all_none_inputs():
+    """Test that _merge_mode_maps returns None when all inputs are None."""
+    result = parse_teams._merge_mode_maps(
+        None, None, None,
+        env_or_config_attribute=parse_teams.EnvOrConfigAttribute.ENV,
+    )
+    assert result is None
