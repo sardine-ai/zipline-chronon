@@ -21,7 +21,7 @@ import sys
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import gen_thrift.common.ttypes as common
 from ai.chronon.cli.compile.column_hashing import (
@@ -49,8 +49,7 @@ from gen_thrift.api.ttypes import (
 )
 
 # Fields that indicate status of the entities.
-SKIPPED_FIELDS = frozenset(["metaData"])
-EXTERNAL_KEY = "onlineExternalParts"
+SKIPPED_FIELDS = frozenset(["metaData", "onlineExternalParts"])
 
 
 @dataclass
@@ -67,13 +66,16 @@ class ConfigChange:
     is_version_change: bool = False
 
 
-def _filter_skipped_fields_from_join(json_obj: Dict, skipped_fields):
-    for join_part in json_obj["joinParts"]:
-        group_by = join_part["groupBy"]
-        for field in skipped_fields:
-            group_by.pop(field, None)
-    if EXTERNAL_KEY in json_obj:
-        json_obj.pop(EXTERNAL_KEY, None)
+def _strip_fields_recursive(obj, fields_to_strip):
+    """Recursively remove specified fields from all dicts in a JSON tree."""
+    if isinstance(obj, dict):
+        for field in fields_to_strip:
+            obj.pop(field, None)
+        for value in obj.values():
+            _strip_fields_recursive(value, fields_to_strip)
+    elif isinstance(obj, list):
+        for item in obj:
+            _strip_fields_recursive(item, fields_to_strip)
 
 
 def _is_batch_upload_needed(group_by: GroupBy) -> bool:
@@ -263,18 +265,10 @@ class ConfValidator(object):
         return errors
 
     def _has_diff(self, obj: object, old_obj: object, skipped_fields=SKIPPED_FIELDS) -> bool:
-        new_json = {
-            k: v for k, v in json.loads(thrift_simple_json(obj)).items() if k not in skipped_fields
-        }
-        old_json = {
-            k: v
-            for k, v in json.loads(thrift_simple_json(old_obj)).items()
-            if k not in skipped_fields
-        }
-        if isinstance(obj, Join):
-            _filter_skipped_fields_from_join(new_json, skipped_fields)
-            _filter_skipped_fields_from_join(old_json, skipped_fields)
-
+        new_json = json.loads(thrift_simple_json(obj))
+        old_json = json.loads(thrift_simple_json(old_obj))
+        _strip_fields_recursive(new_json, skipped_fields)
+        _strip_fields_recursive(old_json, skipped_fields)
         return new_json != old_json
 
     def safe_to_overwrite(self, obj: object) -> bool:
