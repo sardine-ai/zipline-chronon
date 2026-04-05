@@ -150,12 +150,9 @@ def update_metadata(obj: Any, team_dict: Dict[str, Team]):
                 )
             merge_team_execution_info(node.metaData, team_dict, node.metaData.team)
 
-        # useLongNames only propagates from a Join to its direct JoinParts —
-        # nested Joins (via JoinSource) control their own naming independently.
         if isinstance(node, Join):
             for jp in node.joinParts or []:
-                if node.useLongNames and not jp.useLongNames:
-                    jp.useLongNames = node.useLongNames
+                jp.useLongNames = getattr(node, "useLongNames", jp.useLongNames)
                 _propagate_namespace(jp.groupBy)
         if isinstance(node, ModelTransforms):
             for m in node.models or []:
