@@ -61,7 +61,23 @@ class DynamoDBKVStoreImpl(rawDynamoDbClient: DynamoDbAsyncClient, conf: Map[Stri
 
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
+  private def tableExists(dataset: String): Boolean = {
+    val request = DescribeTableRequest.builder.tableName(dataset).build
+    try {
+      prefixedDynamoDbClient.describeTable(request).join()
+      true
+    } catch {
+      case _: ResourceNotFoundException                                                 => false
+      case e: CompletionException if e.getCause.isInstanceOf[ResourceNotFoundException] => false
+    }
+  }
+
   override def create(dataset: String, props: Map[String, Any]): Unit = {
+    if (tableExists(dataset)) {
+      logger.info(s"DynamoDB table $dataset already exists, skipping creation")
+      return
+    }
+
     val maybeSortKeys = props.get(isTimedSorted) match {
       case Some(value: String) if value.toLowerCase == "true" => Some(sortKeyColumn)
       case Some(value: Boolean) if value                      => Some(sortKeyColumn)
