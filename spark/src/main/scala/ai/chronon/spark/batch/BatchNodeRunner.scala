@@ -524,6 +524,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
                              range: PartitionRange,
                              tablePartitionsDataset: String,
                              kvStore: KVStore,
+                             partitionsKvStore: KVStore,
                              tableStatsDataset: Option[String]): Unit = {
     val outputTablePartitionSpec = (for {
       meta <- Option(metadata)
@@ -553,9 +554,9 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
 
     val outputTable = metadata.executionInfo.outputTableInfo.table
 
-    // Use KvPartitionsStore to store partitions with semantic hash
+    // Use KvPartitionsStore to store partitions with semantic hash (no TTL)
     implicit val ec: ExecutionContext = ExecutionContext.global
-    val kvPartitionsStore = new KvPartitionsStore(kvStore, tablePartitionsDataset)
+    val kvPartitionsStore = new KvPartitionsStore(partitionsKvStore, tablePartitionsDataset)
     val kvPartitions = KvPartitions(
       partitions = allOutputTablePartitions,
       semanticHash = Option(node.semanticHash).filter(_.nonEmpty)
@@ -663,13 +664,14 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
       val metadata = node.metaData
       val range = PartitionRange(startDs, endDs)(PartitionSpec.daily)
       val kvStore = api.genKvStore
+      val partitionsKvStore = api.genMetricsKvStore(tablePartitionsDataset)
 
       val inputTablePartitionStatuses = computeInputTablePartitionStatuses(metadata, range, tableUtils)
 
       logger.info(s"Starting batch node runner for '${metadata.name}'")
 
       implicit val ec: ExecutionContext = ExecutionContext.global
-      val kvPartitionsStore = new KvPartitionsStore(kvStore = kvStore, dataset = tablePartitionsDataset)
+      val kvPartitionsStore = new KvPartitionsStore(kvStore = partitionsKvStore, dataset = tablePartitionsDataset)
 
       val kvStoreUpdates =
         inputTablePartitionStatuses
@@ -738,11 +740,14 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
 
         try {
 
-          postJobActions(metadata = metadata,
-                         range = range,
-                         tablePartitionsDataset = tablePartitionsDataset,
-                         kvStore = kvStore,
-                         tableStatsDataset = tableStatsDataset)
+          postJobActions(
+            metadata = metadata,
+            range = range,
+            tablePartitionsDataset = tablePartitionsDataset,
+            kvStore = kvStore,
+            partitionsKvStore = partitionsKvStore,
+            tableStatsDataset = tableStatsDataset
+          )
 
           if (!isSensorNode) {
             su.setSemanticHash(outputTable, incomingSemanticHash)
