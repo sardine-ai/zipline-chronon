@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.emrserverless.EmrServerlessClient
 import software.amazon.awssdk.services.emrserverless.model._
 import software.amazon.awssdk.services.s3.S3Client
 
+import java.time.{Duration, Instant}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
@@ -260,13 +261,22 @@ class EmrServerlessSubmitter(
   override def status(jobId: String): JobStatusType = {
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
-      val eksStatus = eksFlinkSubmitter
+      val (eksStatus, creationTime) = eksFlinkSubmitter
         .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
-        .status(deploymentName = parts(2), namespace = parts(1))
+        .statusWithCreationTime(deploymentName = parts(2), namespace = parts(1))
       eksStatus match {
         case JobStatusType.RUNNING if flinkHealthCheckFn(getFlinkUrl(jobId)) => JobStatusType.RUNNING
-        case JobStatusType.RUNNING                                           => JobStatusType.PENDING
-        case other                                                           => other
+        case JobStatusType.RUNNING                                           =>
+          // Health check failed: job is STABLE on K8s but checkpoints haven't accumulated yet.
+          // Within the grace period this is expected (K8s startup consumes part of the window),
+          // so stay PENDING rather than triggering a retrigger.
+          JobSubmitter.flinkStatusWithGrace(
+            jobId,
+            creationTime,
+            EmrServerlessSubmitter.FlinkHealthCheckGracePeriod,
+            logger
+          )
+        case other => other
       }
     } else {
       try {
@@ -465,6 +475,11 @@ object EmrServerlessSubmitter {
 
   private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   val DefaultApplicationName = "chronon-serverless-app"
+
+  // Total grace period from CRD creation before an unhealthy STABLE job is marked FAILED.
+  // EksFlinkSubmitter already allows up to 10 minutes for the deployment to reach STABLE,
+  // so this window covers that plus additional time for checkpoints to accumulate post-STABLE.
+  val FlinkHealthCheckGracePeriod: Duration = Duration.ofMinutes(15)
 
   // Fallback when EMR_STUDIO_ID is not configured. Any studio in the same account/region
   // can view any serverless application, so picking the first one from ListStudios works.

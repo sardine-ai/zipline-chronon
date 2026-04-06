@@ -25,6 +25,7 @@ import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.{Unit => _, _}
 import software.amazon.awssdk.services.s3.S3Client
 
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
@@ -557,13 +558,22 @@ class EmrSubmitter(customerId: String,
   override def status(jobId: String): JobStatusType = {
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
-      val eksStatus = eksFlinkSubmitter
+      val (eksStatus, creationTime) = eksFlinkSubmitter
         .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
-        .status(deploymentName = parts(2), namespace = parts(1))
+        .statusWithCreationTime(deploymentName = parts(2), namespace = parts(1))
       eksStatus match {
         case JobStatusType.RUNNING if flinkHealthCheckFn(getFlinkUrl(jobId)) => JobStatusType.RUNNING
-        case JobStatusType.RUNNING                                           => JobStatusType.PENDING
-        case other                                                           => other
+        case JobStatusType.RUNNING                                           =>
+          // Health check failed: job is STABLE on K8s but checkpoints haven't accumulated yet.
+          // Within the grace period this is expected (K8s startup consumes part of the window),
+          // so stay PENDING rather than triggering a retrigger.
+          JobSubmitter.flinkStatusWithGrace(
+            jobId,
+            creationTime,
+            EmrServerlessSubmitter.FlinkHealthCheckGracePeriod,
+            logger
+          )
+        case other => other
       }
     } else {
       val (clusterId, stepId) = if (jobId.contains(":")) {

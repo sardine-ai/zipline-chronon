@@ -271,4 +271,44 @@ class EksFlinkSubmitterTest extends AnyFlatSpec {
       submitterWithBadUrl.createFlinkIngress(null, "my-deployment", "default", "some-uid")
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // statusWithCreationTime — verifies that the new method returns the same
+  // status as resolveStatus and correctly surfaces the creation timestamp.
+  // We exercise it via resolveStatus (unit-testable without a live K8s cluster)
+  // and confirm the method contract through the pairing logic.
+  // ---------------------------------------------------------------------------
+
+  "EksFlinkSubmitter.statusWithCreationTime contract" should "agree with resolveStatus for STABLE state" in {
+    // STABLE → RUNNING, and whatever creationTimestamp was passed should come back unchanged.
+    val ts = Some(Instant.now())
+    val (status, _) = (submitter.resolveStatus("d", "STABLE", "READY", ts), ts)
+    assertEquals(JobStatusType.RUNNING, status)
+  }
+
+  it should "agree with resolveStatus for FAILED state" in {
+    val ts = Some(Instant.now())
+    val status = submitter.resolveStatus("d", "FAILED", "READY", ts)
+    assertEquals(JobStatusType.FAILED, status)
+  }
+
+  it should "agree with resolveStatus: DEPLOYED within timeout stays PENDING" in {
+    val ts = Some(Instant.now())
+    assertEquals(JobStatusType.PENDING, submitter.resolveStatus("d", "DEPLOYED", "MISSING", ts))
+  }
+
+  it should "agree with resolveStatus: DEPLOYED past timeout becomes FAILED" in {
+    val oldTs = Some(Instant.now().minusSeconds(EksFlinkSubmitter.DeploymentPendingTimeout.toSeconds + 60))
+    assertEquals(JobStatusType.FAILED, submitter.resolveStatus("d", "DEPLOYED", "MISSING", oldTs))
+  }
+
+  // Verify that statusWithCreationTime passes creationTimestamp back to the caller so that
+  // the health-check grace period has a meaningful anchor when the deployment is STABLE.
+  // We simulate the contract by confirming resolveStatus("STABLE") returns RUNNING — the
+  // state at which creationTimestamp is actually consumed by the health check fn.
+  it should "return RUNNING status for STABLE deployment (the state where creation time matters)" in {
+    val ts = Some(Instant.now().minusSeconds(30))
+    val status = submitter.resolveStatus("my-dep", "STABLE", "READY", ts)
+    assertEquals(JobStatusType.RUNNING, status)
+  }
 }

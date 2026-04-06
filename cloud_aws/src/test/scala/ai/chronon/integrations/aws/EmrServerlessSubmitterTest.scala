@@ -284,14 +284,14 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   it should "delegate Flink status to eksFlinkSubmitter" in {
     val mockClient = mock[EmrServerlessClient]
     val mockFlinkSubmitter = mock[EksFlinkSubmitter]
-    when(mockFlinkSubmitter.status("my-deployment", "my-namespace"))
-      .thenReturn(JobStatusType.RUNNING)
+    when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "my-namespace"))
+      .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockFlinkSubmitter))
 
     val status = submitter.status("flink:my-namespace:my-deployment")
     assertEquals(JobStatusType.RUNNING, status)
-    verify(mockFlinkSubmitter).status("my-deployment", "my-namespace")
+    verify(mockFlinkSubmitter).statusWithCreationTime("my-deployment", "my-namespace")
   }
 
   it should "delegate Flink kill to eksFlinkSubmitter" in {
@@ -824,10 +824,51 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   // --- status Flink health check behavior ---
 
-  "status" should "return PENDING for flink job when EKS is RUNNING but health check fails" in {
+  "status" should "return PENDING for flink job when EKS is RUNNING but health check fails within grace period" in {
     val mockClient = mock[EmrServerlessClient]
     val mockFlinkSubmitter = mock[EksFlinkSubmitter]
-    when(mockFlinkSubmitter.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
+    // CRD was created just now — well within the 20-min grace window
+    when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
+
+    val submitter = new EmrServerlessSubmitter(
+      mockClient,
+      executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
+      s3LogUri = "s3://test-bucket/logs/",
+      eksFlinkSubmitter = Some(mockFlinkSubmitter),
+      flinkHealthCheckFn = _ => false
+    )
+    val result = submitter.status("flink:zipline-flink:my-deployment")
+
+    result shouldBe JobStatusType.PENDING
+  }
+
+  it should "return FAILED for flink job when EKS is RUNNING but health check fails past grace period" in {
+    val mockClient = mock[EmrServerlessClient]
+    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    // CRD was created 25 minutes ago — past the 20-min grace window
+    val oldCreationTime = java.time.Instant.now().minus(java.time.Duration.ofMinutes(25))
+    when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(oldCreationTime)))
+
+    val submitter = new EmrServerlessSubmitter(
+      mockClient,
+      executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
+      s3LogUri = "s3://test-bucket/logs/",
+      eksFlinkSubmitter = Some(mockFlinkSubmitter),
+      flinkHealthCheckFn = _ => false
+    )
+    val result = submitter.status("flink:zipline-flink:my-deployment")
+
+    result shouldBe JobStatusType.FAILED
+  }
+
+  it should "return PENDING for flink job when EKS is RUNNING, health check fails, and no creation time is available" in {
+    val mockClient = mock[EmrServerlessClient]
+    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    // No creation time returned — conservatively stays PENDING (cannot determine grace window)
+    when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, None))
 
     val submitter = new EmrServerlessSubmitter(
       mockClient,
@@ -844,7 +885,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   it should "pass the flink URL derived from ingressBaseUrl to the health check fn" in {
     val mockClient = mock[EmrServerlessClient]
     val mockFlinkSubmitter = mock[EksFlinkSubmitter]
-    when(mockFlinkSubmitter.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
+    when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
     var capturedUrl: Option[String] = None
     val submitter = new EmrServerlessSubmitter(
@@ -863,7 +905,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   it should "propagate non-RUNNING EKS status without invoking health check" in {
     val mockClient = mock[EmrServerlessClient]
     val mockFlinkSubmitter = mock[EksFlinkSubmitter]
-    when(mockFlinkSubmitter.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.PENDING)
+    when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.PENDING, None))
 
     var healthCheckCalled = false
     val submitter = new EmrServerlessSubmitter(

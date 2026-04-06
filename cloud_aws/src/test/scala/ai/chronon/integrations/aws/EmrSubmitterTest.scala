@@ -217,19 +217,48 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   "status" should "return RUNNING for flink job when EKS is RUNNING and health check passes" in {
     val mockEks = mock[EksFlinkSubmitter]
-    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
+    when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
     val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
       flinkHealthCheckFn = _ => true)
     val result = submitter.status("flink:zipline-flink:my-deployment")
 
     result shouldBe JobStatusType.RUNNING
-    verify(mockEks).status("my-deployment", "zipline-flink")
+    verify(mockEks).statusWithCreationTime("my-deployment", "zipline-flink")
   }
 
-  it should "return PENDING for flink job when EKS is RUNNING but health check fails" in {
+  it should "return PENDING for flink job when EKS is RUNNING, health check fails, within grace period" in {
     val mockEks = mock[EksFlinkSubmitter]
-    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
+    // CRD created just now — within the 20-min grace window
+    when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
+
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
+      flinkHealthCheckFn = _ => false)
+    val result = submitter.status("flink:zipline-flink:my-deployment")
+
+    result shouldBe JobStatusType.PENDING
+  }
+
+  it should "return FAILED for flink job when EKS is RUNNING, health check fails, past grace period" in {
+    val mockEks = mock[EksFlinkSubmitter]
+    val oldCreationTime = java.time.Instant.now().minus(java.time.Duration.ofMinutes(25))
+    when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(oldCreationTime)))
+
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
+      flinkHealthCheckFn = _ => false)
+    val result = submitter.status("flink:zipline-flink:my-deployment")
+
+    result shouldBe JobStatusType.FAILED
+  }
+
+  it should "return PENDING when health check fails and no creation time is available" in {
+    val mockEks = mock[EksFlinkSubmitter]
+    // No creation time — conservatively stay PENDING
+    when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, None))
 
     val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
       flinkHealthCheckFn = _ => false)
@@ -240,7 +269,8 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   it should "pass the flink URL derived from ingressBaseUrl to the health check fn" in {
     val mockEks = mock[EksFlinkSubmitter]
-    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.RUNNING)
+    when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
     var capturedUrl: Option[String] = None
     val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),
@@ -253,7 +283,8 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   it should "propagate non-RUNNING EKS status without invoking health check" in {
     val mockEks = mock[EksFlinkSubmitter]
-    when(mockEks.status("my-deployment", "zipline-flink")).thenReturn(JobStatusType.PENDING)
+    when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
+      .thenReturn((JobStatusType.PENDING, None))
 
     var healthCheckCalled = false
     val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks),

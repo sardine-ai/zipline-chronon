@@ -152,7 +152,14 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
     .withConfig(k8sConfig.getOrElse(Config.autoConfigure(null)))
     .build()
 
-  def status(deploymentName: String, namespace: String): JobStatusType = {
+  def status(deploymentName: String, namespace: String): JobStatusType =
+    statusWithCreationTime(deploymentName, namespace)._1
+
+  /** Returns the job status alongside the CRD creation timestamp in a single K8s call.
+    * Callers that need the creation time for a submission grace-period check should use
+    * this method to avoid a second round-trip.
+    */
+  def statusWithCreationTime(deploymentName: String, namespace: String): (JobStatusType, Option[Instant]) = {
     val client = k8sClient
     try {
       val resource = client
@@ -161,7 +168,7 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
         .withName(deploymentName)
         .get()
 
-      if (resource == null) return JobStatusType.UNKNOWN
+      if (resource == null) return (JobStatusType.UNKNOWN, None)
 
       val statusMap = Option(resource.getAdditionalProperties.get("status"))
         .collect { case m: java.util.Map[_, _] => m }
@@ -179,7 +186,7 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
       val creationTimestamp = Option(resource.getMetadata.getCreationTimestamp)
         .map(ts => Instant.from(DateTimeFormatter.ISO_OFFSET_DATE_TIME.parse(ts)))
 
-      resolveStatus(deploymentName, lifecycleState, jmDeploymentStatus, creationTimestamp)
+      (resolveStatus(deploymentName, lifecycleState, jmDeploymentStatus, creationTimestamp), creationTimestamp)
     } finally {
       client.close()
     }

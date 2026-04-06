@@ -87,6 +87,26 @@ trait JobSubmitter {
 object JobSubmitter {
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
+  // Used by submitters when a Flink job is RUNNING on the infra layer but the checkpoint
+  // health check hasn't passed yet
+  def flinkStatusWithGrace(
+      jobId: String,
+      submissionTime: Option[java.time.Instant],
+      gracePeriod: java.time.Duration,
+      logger: Logger
+  ): JobStatusType = {
+    val withinGrace = submissionTime.forall { t =>
+      java.time.Instant.now().isBefore(t.plus(gracePeriod))
+    }
+    if (withinGrace) {
+      logger.info(s"Flink job $jobId health check not yet passing — within grace period, staying PENDING")
+      JobStatusType.PENDING
+    } else {
+      logger.warn(s"Flink job $jobId health check has not passed after $gracePeriod — marking FAILED")
+      JobStatusType.FAILED
+    }
+  }
+
   def getApplicationArgs(jobType: JobType, args: Array[String]): Array[String] = {
     val userArgs = args.filter(arg => !JobSubmitterConstants.SharedInternalArgs.exists(arg.startsWith))
     jobType match {

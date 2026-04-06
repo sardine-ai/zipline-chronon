@@ -14,6 +14,7 @@ import com.google.cloud.dataproc.v1._
 import com.google.cloud.storage.{Storage, StorageOptions}
 import com.google.protobuf.util.JsonFormat
 
+import java.time.{Duration, Instant}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
@@ -113,8 +114,21 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
         case JobStatus.State.ERROR                                         => JobStatusType.FAILED
         case JobStatus.State.DONE                                          => JobStatusType.SUCCEEDED
         case JobStatus.State.RUNNING if isFlinkJob && isRunningAndHealthy  => JobStatusType.RUNNING
-        case JobStatus.State.RUNNING if isFlinkJob && !isRunningAndHealthy => JobStatusType.PENDING
-        case JobStatus.State.RUNNING | JobStatus.State.SETUP_DONE          => JobStatusType.RUNNING
+        case JobStatus.State.RUNNING if isFlinkJob && !isRunningAndHealthy =>
+          // Health check failed. Derive submission time from the already-fetched job object
+          // (no extra RPC) and delegate grace period logic to the shared utility.
+          // Filter out entries whose stateStartTime is unset (epoch 0) to avoid treating
+          // the proto default as a real submission time, which would make withinGrace always false.
+          val submissionTime = job.getStatusHistoryList.asScala
+            .find(s => s.hasStateStartTime && s.getStateStartTime.getSeconds > 0)
+            .map(s => Instant.ofEpochSecond(s.getStateStartTime.getSeconds))
+          JobSubmitter.flinkStatusWithGrace(
+            jobId,
+            submissionTime,
+            DataprocSubmitter.FlinkHealthCheckGracePeriod,
+            logger
+          )
+        case JobStatus.State.RUNNING | JobStatus.State.SETUP_DONE => JobStatusType.RUNNING
         case JobStatus.State.CANCEL_STARTED | JobStatus.State.CANCEL_PENDING | JobStatus.State.CANCELLED =>
           JobStatusType.FAILED
         case _ => JobStatusType.UNKNOWN
@@ -707,6 +721,11 @@ class DataprocSubmitter(jobControllerClient: JobControllerClient,
 }
 
 object DataprocSubmitter {
+
+  // Grace period from job submission before an unhealthy RUNNING Flink job is marked FAILED.
+  // Dataproc goes straight to RUNNING (no K8s operator layer), so this window covers full
+  // startup including YARN app initialisation and checkpoint accumulation.
+  val FlinkHealthCheckGracePeriod: Duration = Duration.ofMinutes(15)
 
   def apply(jobControllerClient: JobControllerClient,
             storageClient: Storage,
