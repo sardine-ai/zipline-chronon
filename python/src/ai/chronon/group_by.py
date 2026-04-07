@@ -312,16 +312,18 @@ def Window(length: int, time_unit: common.TimeUnit) -> common.Window:
 
 def Derivation(name: str, expression: str) -> ttypes.Derivation:
     """
-    Derivation allows arbitrary SQL select clauses to be computed using columns from the output of group by backfill
-    output schema. It is supported for offline computations for now.
-
-    If both name and expression are set to "*", then every raw column will be included along with the derived columns.
-
-    :param name: output column name of the SQL expression
-    :param expression: any valid Spark SQL select clause based on joinPart or externalPart columns
-    :return: a Derivation object representing a single derived column or a wildcard ("*") selection.
+    .. deprecated::
+        Use ``from ai.chronon.types import Derivation`` instead.
     """
-    return ttypes.Derivation(name=name, expression=expression)
+    import warnings
+    warnings.warn(
+        "Importing Derivation from ai.chronon.group_by is deprecated. "
+        "Use 'from ai.chronon.types import Derivation' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    from ai.chronon.derivation import Derivation as _Derivation
+    return _Derivation(name=name, expression=expression)
 
 
 def contains_windowed_aggregation(aggregations: Optional[List[ttypes.Aggregation]]):
