@@ -35,7 +35,6 @@ class EmrSubmitter(customerId: String,
                    ec2Client: Ec2Client,
                    eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
                    s3Client: Option[S3Client] = None,
-                   dynamodbTableName: String = "",
                    awsRegion: String = "",
                    override val tablePartitionsDataset: String = "",
                    override val dqMetricsDataset: String = "",
@@ -756,7 +755,6 @@ class EmrSubmitter(customerId: String,
   }
 
   override def kvStoreApiProperties: Map[String, String] = Map(
-    "AWS_DYNAMODB_TABLE_NAME" -> dynamodbTableName,
     "AWS_DEFAULT_REGION" -> awsRegion
   )
 }

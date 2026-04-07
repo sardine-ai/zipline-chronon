@@ -58,7 +58,6 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       emrStudioId: Option[String] = None,
       applicationName: String = "test-app",
       kvStoreApiProperties: Map[String, String] = Map(
-        "AWS_DYNAMODB_TABLE_NAME" -> "test-table",
         "AWS_DEFAULT_REGION" -> "us-east-1"
       ),
       s3Client: Option[software.amazon.awssdk.services.s3.S3Client] = None
@@ -566,12 +565,10 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       mockClient,
       awsRegion = "us-west-2",
       kvStoreApiProperties = Map(
-        "AWS_DYNAMODB_TABLE_NAME" -> "my-table",
         "AWS_DEFAULT_REGION" -> "us-west-2"
       )
     )
     val props = submitter.kvStoreApiProperties
-    assertEquals("my-table", props("AWS_DYNAMODB_TABLE_NAME"))
     assertEquals("us-west-2", props("AWS_DEFAULT_REGION"))
   }
 
