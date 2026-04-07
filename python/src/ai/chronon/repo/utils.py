@@ -98,7 +98,11 @@ def check_output(cmd, timeout=None, streaming=False):
         proc.wait()
         raise subprocess.TimeoutExpired(cmd, timeout, output=b"".join(output_lines)) from None
     if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, cmd, output=b"".join(output_lines))
+        output = b"".join(output_lines)
+        output_str = output.decode("utf-8", errors="replace")
+        error_msg = f"Command '{cmd}' returned non-zero exit status {proc.returncode}.\n\nCommand output:\n{output_str}"
+        LOG.error(error_msg)
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=output, stderr=error_msg)
     return b"".join(output_lines).strip()
 
 
