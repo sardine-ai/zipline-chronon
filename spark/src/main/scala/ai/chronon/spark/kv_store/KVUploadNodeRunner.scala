@@ -18,7 +18,11 @@ class KVUploadNodeRunner(api: Api) extends NodeRunner {
 
   @transient lazy val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def createFetchContext(): FetchContext = FetchContext(api.genKvStore, MetadataDataset)
+  def createFetchContext(): FetchContext = {
+    val kvStore = api.genKvStore
+    kvStore.create(MetadataDataset)
+    FetchContext(kvStore, MetadataDataset)
+  }
 
   override def run(metadata: MetaData, conf: NodeContent, range: Option[PartitionRange]): Unit = {
     conf.getSetField match {
