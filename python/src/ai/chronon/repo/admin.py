@@ -64,6 +64,109 @@ def _app_images(cloud):
     ]
 
 
+# EKS service → (deployment_name, container_name, image_repo_template)
+_EKS_SERVICES = {
+    "hub": ("zipline-orchestration-hub", "orchestration-hub", "ziplineai/hub-{cloud}"),
+    "ui": ("zipline-orchestration-ui", "web-ui", "ziplineai/web-ui"),
+    "eval": ("zipline-eval", "eval", "ziplineai/eval-{cloud}"),
+    "fetcher": ("zipline-fetcher", "fetcher", "ziplineai/chronon-fetcher"),
+}
+_EKS_NAMESPACE = "zipline-system"
+_EKS_ROLLOUT_TIMEOUT = 300
+
+
+def _get_current_image(deployment, container):
+    """Return the current image for a container in a deployment, or None on failure."""
+    result = subprocess.run(
+        [
+            "kubectl", "get", "deployment", deployment,
+            "--namespace", _EKS_NAMESPACE,
+            "-o", f"jsonpath={{.spec.template.spec.containers[?(@.name==\"{container}\")].image}}",
+        ],
+        capture_output=True, text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return None
+
+
+def _upgrade_eks_services(cloud, release):
+    """Upgrade running EKS deployments to the new release. Skips services that don't exist."""
+    if not shutil.which("kubectl"):
+        console.print(
+            "[red]kubectl not found.[/red]\n"
+            "Install kubectl (https://kubernetes.io/docs/tasks/tools/) and retry."
+        )
+        raise SystemExit(1)
+
+    result = subprocess.run(
+        ["kubectl", "cluster-info", "--namespace", _EKS_NAMESPACE],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        console.print(
+            "[red]Cannot reach Kubernetes cluster.[/red]\n"
+            "Configure your kubeconfig and retry:\n"
+            "  aws eks update-kubeconfig --name <cluster-name> --region <region>"
+        )
+        raise SystemExit(1)
+
+    console.print(f"\n[bold]Upgrading EKS services in namespace {_EKS_NAMESPACE}...[/bold]")
+    results = []
+    has_failures = False
+
+    for service, (deployment, container, image_template) in _EKS_SERVICES.items():
+        image = image_template.format(cloud=cloud) + f":{release}"
+
+        check = subprocess.run(
+            ["kubectl", "get", "deployment", deployment, "--namespace", _EKS_NAMESPACE],
+            capture_output=True, text=True,
+        )
+        if check.returncode != 0:
+            console.print(
+                f"  [dim]{service}: deployment/{deployment} not found — "
+                f"skipping (this is expected if the service has not been deployed yet)[/dim]"
+            )
+            continue
+
+        current_image = _get_current_image(deployment, container)
+        if current_image == image:
+            console.print(f"  [dim]{service}: already on {image} — skipping[/dim]")
+            results.append((service, image, "ok", "already up-to-date"))
+            continue
+
+        console.print(f"  [bold]{service}[/bold]: {image}")
+        set_cmd = ["kubectl", "set", "image", f"deployment/{deployment}", f"{container}={image}", "--namespace", _EKS_NAMESPACE]
+        set_result = subprocess.run(set_cmd, capture_output=True, text=True)
+        if set_result.returncode != 0:
+            results.append((service, image, "FAIL", set_result.stderr.strip()))
+            has_failures = True
+            continue
+
+        rollout_cmd = ["kubectl", "rollout", "status", f"deployment/{deployment}", f"--timeout={_EKS_ROLLOUT_TIMEOUT}s", "--namespace", _EKS_NAMESPACE]
+        rollout = subprocess.run(rollout_cmd, capture_output=True, text=True)
+        if rollout.returncode == 0:
+            results.append((service, image, "ok", "rollout complete"))
+        else:
+            results.append((service, image, "FAIL", rollout.stderr.strip()))
+            has_failures = True
+
+    if results:
+        table = Table(title="EKS Service Upgrade")
+        table.add_column("Service", style="cyan")
+        table.add_column("Image", style="white")
+        table.add_column("Status")
+        table.add_column("Detail", style="white")
+        for service, image, status, detail in results:
+            style = "green" if status == "ok" else "red"
+            table.add_row(service, image, f"[{style}]{status}[/{style}]", detail)
+        console.print(table)
+
+    if has_failures:
+        console.print("\n[yellow]Some services failed to upgrade. Check the errors above and retry.[/yellow]")
+        raise SystemExit(1)
+
+
 def _parse_registry(registry):
     """Parse a registry URL into (host, repo_prefix)."""
     from urllib.parse import urlparse
@@ -848,6 +951,33 @@ def _print_summary(results, release, cloud, registry):
     else:
         console.print("\n[bold red]Some artifacts failed to load. See errors above.[/bold red]")
         raise SystemExit(1)
+
+
+@admin.command("upgrade")
+@click.argument("cloud", type=click.Choice(VALID_CLOUDS, case_sensitive=False))
+@click.option(
+    "--release",
+    default=None,
+    help="Zipline release to upgrade to (e.g. 1.4.2). Defaults to the installed zipline-ai package version.",
+)
+def upgrade(cloud, release):
+    """Upgrade running EKS service deployments to a given release.
+
+    CLOUD is the cloud provider variant (gcp, aws, or azure).
+    Currently only AWS EKS deployments are supported.
+    """
+    if cloud != "aws":
+        console.print(f"[yellow]Upgrade is currently only supported for AWS (got {cloud}).[/yellow]")
+        raise SystemExit(1)
+
+    if release is None:
+        release = get_package_version()
+        if release == "unknown":
+            console.print("[red]Could not detect installed zipline version. Please specify --release.[/red]")
+            raise SystemExit(1)
+        console.print(f"Using release [bold]{release}[/bold]")
+
+    _upgrade_eks_services(cloud, release)
 
 
 @admin.command("doctor")
