@@ -911,9 +911,32 @@ class TestUpgradeEksServices:
         _upgrade_eks_services("aws", "1.0.0")
         output = strip_ansi(capsys.readouterr().out)
         assert "EKS Service Upgrade" in output
+        assert "Previous" in output
+        assert "Current" in output
         assert "rollout complete" in output
         assert "ok" in output
         assert "failed" not in output.lower()
+
+    @patch("ai.chronon.repo.admin.subprocess.run")
+    @patch("ai.chronon.repo.admin.shutil.which", return_value="/usr/local/bin/kubectl")
+    def test_table_shows_previous_version(self, mock_which, mock_run, capsys):
+        """Table should show the previous version tag for upgraded services."""
+        def side_effect(cmd, **kwargs):
+            if "cluster-info" in cmd:
+                return _make_subprocess_result(returncode=0)
+            if "get" in cmd and "jsonpath" in str(cmd):
+                return _make_subprocess_result(returncode=0, stdout="ziplineai/hub-aws:0.9.0")
+            if "get" in cmd:
+                return _make_subprocess_result(returncode=0)
+            if "set" in cmd or "rollout" in cmd:
+                return _make_subprocess_result(returncode=0)
+            return _make_subprocess_result(returncode=0)
+
+        mock_run.side_effect = side_effect
+        _upgrade_eks_services("aws", "1.0.0")
+        output = strip_ansi(capsys.readouterr().out)
+        assert "0.9.0" in output
+        assert "1.0.0" in output
 
     @patch("ai.chronon.repo.admin.subprocess.run")
     @patch("ai.chronon.repo.admin.shutil.which", return_value="/usr/local/bin/kubectl")
@@ -1006,7 +1029,7 @@ class TestUpgradeEksServices:
         mock_run.side_effect = side_effect
         _upgrade_eks_services("aws", "1.0.0")
         output = strip_ansi(capsys.readouterr().out)
-        assert "already up-to-date" in output
+        assert "already on 1.0.0" in output
         # No set image calls should have been made
         set_calls = [c for c in mock_run.call_args_list if "set" in c[0][0]]
         assert len(set_calls) == 0

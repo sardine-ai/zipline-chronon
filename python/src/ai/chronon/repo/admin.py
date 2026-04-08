@@ -130,36 +130,41 @@ def _upgrade_eks_services(cloud, release):
             continue
 
         current_image = _get_current_image(deployment, container)
+        current_tag = current_image.rsplit(":", 1)[-1] if current_image else "unknown"
+        image_repo = image_template.format(cloud=cloud)
         if current_image == image:
-            console.print(f"  [dim]{service}: already on {image} — skipping[/dim]")
-            results.append((service, image, "ok", "already up-to-date"))
+            console.print(f"  [dim]{service}: already on {release} — skipping[/dim]")
+            results.append((service, image_repo, current_tag, release, "ok", "already up-to-date"))
             continue
 
-        console.print(f"  [bold]{service}[/bold]: {image}")
+        console.print(f"  [bold]{service}[/bold]: {current_tag} → {release}")
         set_cmd = ["kubectl", "set", "image", f"deployment/{deployment}", f"{container}={image}", "--namespace", _EKS_NAMESPACE]
         set_result = subprocess.run(set_cmd, capture_output=True, text=True)
         if set_result.returncode != 0:
-            results.append((service, image, "FAIL", set_result.stderr.strip()))
+            results.append((service, image_repo, current_tag, release, "FAIL", set_result.stderr.strip()))
             has_failures = True
             continue
 
+        console.print("    waiting for rollout to complete...")
         rollout_cmd = ["kubectl", "rollout", "status", f"deployment/{deployment}", f"--timeout={_EKS_ROLLOUT_TIMEOUT}s", "--namespace", _EKS_NAMESPACE]
         rollout = subprocess.run(rollout_cmd, capture_output=True, text=True)
         if rollout.returncode == 0:
-            results.append((service, image, "ok", "rollout complete"))
+            results.append((service, image_repo, current_tag, release, "ok", "rollout complete"))
         else:
-            results.append((service, image, "FAIL", rollout.stderr.strip()))
+            results.append((service, image_repo, current_tag, release, "FAIL", rollout.stderr.strip()))
             has_failures = True
 
     if results:
         table = Table(title="EKS Service Upgrade")
         table.add_column("Service", style="cyan")
         table.add_column("Image", style="white")
+        table.add_column("Previous", style="dim")
+        table.add_column("Current", style="white")
         table.add_column("Status")
         table.add_column("Detail", style="white")
-        for service, image, status, detail in results:
+        for service, image_repo, prev_ver, cur_ver, status, detail in results:
             style = "green" if status == "ok" else "red"
-            table.add_row(service, image, f"[{style}]{status}[/{style}]", detail)
+            table.add_row(service, image_repo, prev_ver, cur_ver, f"[{style}]{status}[/{style}]", detail)
         console.print(table)
 
     if has_failures:
