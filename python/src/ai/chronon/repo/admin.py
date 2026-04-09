@@ -132,24 +132,30 @@ def _upgrade_eks_services(cloud, release):
         current_image = _get_current_image(deployment, container)
         current_tag = current_image.rsplit(":", 1)[-1] if current_image else "unknown"
         image_repo = image_template.format(cloud=cloud)
-        if current_image == image:
-            console.print(f"  [dim]{service}: already on {release} — skipping[/dim]")
-            results.append((service, image_repo, current_tag, release, "ok", "already up-to-date"))
-            continue
 
-        console.print(f"  [bold]{service}[/bold]: {current_tag} → {release}")
-        set_cmd = ["kubectl", "set", "image", f"deployment/{deployment}", f"{container}={image}", "--namespace", _EKS_NAMESPACE]
-        set_result = subprocess.run(set_cmd, capture_output=True, text=True)
-        if set_result.returncode != 0:
-            results.append((service, image_repo, current_tag, release, "FAIL", set_result.stderr.strip()))
-            has_failures = True
-            continue
+        if current_image == image:
+            console.print(f"  [bold]{service}[/bold]: already on {release} — restarting")
+            restart_cmd = ["kubectl", "rollout", "restart", f"deployment/{deployment}", "--namespace", _EKS_NAMESPACE]
+            restart_result = subprocess.run(restart_cmd, capture_output=True, text=True)
+            if restart_result.returncode != 0:
+                results.append((service, image_repo, current_tag, release, "FAIL", restart_result.stderr.strip()))
+                has_failures = True
+                continue
+        else:
+            console.print(f"  [bold]{service}[/bold]: {current_tag} → {release}")
+            set_cmd = ["kubectl", "set", "image", f"deployment/{deployment}", f"{container}={image}", "--namespace", _EKS_NAMESPACE]
+            set_result = subprocess.run(set_cmd, capture_output=True, text=True)
+            if set_result.returncode != 0:
+                results.append((service, image_repo, current_tag, release, "FAIL", set_result.stderr.strip()))
+                has_failures = True
+                continue
 
         console.print("    waiting for rollout to complete...")
         rollout_cmd = ["kubectl", "rollout", "status", f"deployment/{deployment}", f"--timeout={_EKS_ROLLOUT_TIMEOUT}s", "--namespace", _EKS_NAMESPACE]
         rollout = subprocess.run(rollout_cmd, capture_output=True, text=True)
         if rollout.returncode == 0:
-            results.append((service, image_repo, current_tag, release, "ok", "rollout complete"))
+            detail = "restart complete" if current_image == image else "rollout complete"
+            results.append((service, image_repo, current_tag, release, "ok", detail))
         else:
             results.append((service, image_repo, current_tag, release, "FAIL", rollout.stderr.strip()))
             has_failures = True

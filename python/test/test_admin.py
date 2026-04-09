@@ -1009,15 +1009,14 @@ class TestUpgradeEksServices:
 
     @patch("ai.chronon.repo.admin.subprocess.run")
     @patch("ai.chronon.repo.admin.shutil.which", return_value="/usr/local/bin/kubectl")
-    def test_skips_services_already_on_target_version(self, mock_which, mock_run, capsys):
-        """Services already running the target image should be skipped without a rollout."""
+    def test_restarts_services_already_on_target_version(self, mock_which, mock_run, capsys):
+        """Services already on target image should be restarted via rollout restart."""
         def side_effect(cmd, **kwargs):
             if "cluster-info" in cmd:
                 return _make_subprocess_result(returncode=0)
             if "get" in cmd and "deployment" in cmd and "jsonpath" not in str(cmd):
                 return _make_subprocess_result(returncode=0)
             if "jsonpath" in str(cmd):
-                # Return the target image so it looks already up-to-date
                 for _svc, (dep, _cont, tmpl) in _EKS_SERVICES.items():
                     if dep in str(cmd):
                         return _make_subprocess_result(
@@ -1030,7 +1029,11 @@ class TestUpgradeEksServices:
         _upgrade_eks_services("aws", "1.0.0")
         output = strip_ansi(capsys.readouterr().out)
         assert "already on 1.0.0" in output
-        # No set image calls should have been made
+        assert "restarting" in output.lower()
+        assert "restart complete" in output
+        # Should use rollout restart, not set image
+        restart_calls = [c for c in mock_run.call_args_list if "rollout" in c[0][0] and "restart" in c[0][0]]
+        assert len(restart_calls) == len(_EKS_SERVICES)
         set_calls = [c for c in mock_run.call_args_list if "set" in c[0][0]]
         assert len(set_calls) == 0
 
