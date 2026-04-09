@@ -281,14 +281,8 @@ class ConfValidator(object):
     def _validate_time_partitioned_query(
         self, query: Optional[Query], source_context: str
     ) -> BaseException | None:
-        if query is None:
-            return None
-
-        if query.timePartitioned and query.partitionColumn is None:
-            return ValueError(
-                f"{source_context}: timePartitioned sources must have partitionColumn set to the timestamp/date column name"
-            )
-
+        # timePartitioned flag is deprecated — partition column type is detected automatically.
+        # Kept for backwards compatibility but no longer enforced.
         return None
 
     def _validate_derivations(

@@ -45,6 +45,25 @@ case object Snowflake extends Format {
     throw new UnsupportedOperationException("Table creation is not supported for Snowflake format.")
   }
 
+  override def primaryPartitions(tableName: String,
+                                 partitionColumn: String,
+                                 partitionFilters: String,
+                                 subPartitionsFilter: Map[String, String] = Map.empty)(implicit
+      sparkSession: SparkSession): List[String] = {
+    if (!supportSubPartitionsFilter && subPartitionsFilter.nonEmpty) {
+      throw new NotImplementedError("subPartitionsFilter is not supported for Snowflake tables")
+    }
+    val partitionFormat = sparkSession.conf.get("spark.chronon.partition.format", "yyyy-MM-dd")
+    val (database, schema, table) = parseTableName(tableName)
+
+    // Use the clustering key if one exists, otherwise fall back to the column requested by the caller
+    val effectiveColumn = getPartitionColumn(database, schema, table).getOrElse(partitionColumn)
+    snowflakeLogger.info(s"Using partition column '$effectiveColumn' for table $tableName")
+
+    queryDistinctPartitions(tableName, effectiveColumn, partitionFilters, partitionFormat)
+      .flatMap(_.collectFirst { case (k, v) if k.equalsIgnoreCase(effectiveColumn) => v })
+  }
+
   override def partitions(tableName: String, partitionFilters: String)(implicit
       sparkSession: SparkSession): List[Map[String, String]] = {
     val defaultPartitionColumn = sparkSession.conf.get("spark.chronon.partition.column", "ds")
@@ -173,10 +192,10 @@ case object Snowflake extends Format {
     partitions
   }
 
-  private def buildPartitionQuery(tableName: String,
-                                  partitionColumn: String,
-                                  partitionFilters: String,
-                                  partitionFormat: String): String = {
+  private[cloud_azure] def buildPartitionQuery(tableName: String,
+                                               partitionColumn: String,
+                                               partitionFilters: String,
+                                               partitionFormat: String): String = {
     // Convert Java DateTimeFormatter pattern to Snowflake format pattern
     // Common mappings: yyyy->YYYY, MM->MM, dd->DD
     val snowflakeFormat = partitionFormat

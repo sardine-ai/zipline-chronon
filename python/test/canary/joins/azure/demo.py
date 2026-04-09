@@ -103,3 +103,17 @@ derivations_v3 = Join(
     output_namespace="data",
     step_days=30,
 )
+
+pc_v2 = Join(
+    left=dim_listings.pc_source,
+    row_ids=[], # TODO -- kill this once the SPJ API change goes through
+    right_parts=[
+        JoinPart(
+            group_by=dim_listings.pc_v3,
+        ),
+    ],
+    online=False,
+    output_namespace="data",
+    step_days=30,
+    enable_stats_compute=False,
+)

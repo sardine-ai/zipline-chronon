@@ -174,19 +174,21 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
   def tableCoversRange(table: String, range: PartitionRange): Boolean = {
     try {
-      val requiredPartitions = range.partitions.toSet
-      val coveredPartitions = partitions(table).toSet
-
-      val isFullyCovered = requiredPartitions.subsetOf(coveredPartitions)
-      if (!isFullyCovered) {
-        logger.info(
-          s"Production table $table does not cover full range. Required: $requiredPartitions, Available: $coveredPartitions")
+      lastAvailablePartition(table) match {
+        case Some(maxPartition) =>
+          val covers = maxPartition >= range.end
+          if (!covers) {
+            logger.info(
+              s"Table $table does not cover range: last available partition $maxPartition < required end ${range.end}")
+          }
+          covers
+        case None =>
+          logger.info(s"Table $table has no available partitions")
+          false
       }
-
-      isFullyCovered
     } catch {
       case e: Exception =>
-        logger.warn(s"Error checking production table coverage: ${e.getMessage}")
+        logger.warn(s"Error checking table coverage: ${e.getMessage}")
         false
     }
   }
@@ -214,20 +216,43 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
   def lastAvailablePartition(tableName: String,
                              partitionRange: Option[PartitionRange] = None,
                              subPartitionFilters: Map[String, String] = Map.empty,
-                             tablePartitionSpec: Option[PartitionSpec] = None): Option[String] =
-    partitions(tableName, subPartitionFilters, partitionRange, tablePartitionSpec = tablePartitionSpec).reduceOption(
-      (x, y) => Ordering[String].max(x, y))
+                             tablePartitionSpec: Option[PartitionSpec] = None): Option[String] = {
+    val effectiveSpec = tablePartitionSpec.getOrElse(partitionSpec)
+    val effectivePartColumn = effectiveSpec.column
+    if (subPartitionFilters.nonEmpty) {
+      // Fall back to enumeration when sub-partition filters are needed
+      partitions(tableName, subPartitionFilters, partitionRange, tablePartitionSpec = tablePartitionSpec).reduceOption(
+        (x, y) => Ordering[String].max(x, y))
+    } else {
+      val result = tableFormatProvider
+        .readFormat(tableName)
+        .flatMap(_.lastAvailablePartition(tableName, effectivePartColumn, effectiveSpec)(sparkSession))
+      // Translate to global partitionSpec if needed
+      result.map(date => effectiveSpec.translate(date, partitionSpec))
+    }
+  }
 
   def firstAvailablePartition(tableName: String,
                               partitionSpec: PartitionSpec = partitionSpec,
                               partitionRange: Option[PartitionRange] = None,
-                              subPartitionFilters: Map[String, String] = Map.empty): Option[String] =
-    partitions(
-      tableName,
-      subPartitionFilters,
-      partitionRange.map(_.translate(partitionSpec)),
-      tablePartitionSpec = Some(partitionSpec)
-    ).reduceOption((x, y) => Ordering[String].min(x, y))
+                              subPartitionFilters: Map[String, String] = Map.empty): Option[String] = {
+    if (subPartitionFilters.nonEmpty) {
+      // Fall back to enumeration when sub-partition filters are needed
+      partitions(
+        tableName,
+        subPartitionFilters,
+        partitionRange.map(_.translate(partitionSpec)),
+        tablePartitionSpec = Some(partitionSpec)
+      ).reduceOption((x, y) => Ordering[String].min(x, y))
+    } else {
+      val effectivePartColumn = partitionSpec.column
+      val result = tableFormatProvider
+        .readFormat(tableName)
+        .flatMap(_.firstAvailablePartition(tableName, effectivePartColumn, partitionSpec)(sparkSession))
+      // Translate to global partitionSpec if needed
+      result.map(date => partitionSpec.translate(date, this.partitionSpec))
+    }
+  }
 
   def insertPartitions(df: DataFrame,
                        tableName: String,
@@ -689,7 +714,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
              range: Option[PartitionRange] = None): DataFrame = {
 
     val maybeQuery = Option(query)
-    val isTimePartitioned = maybeQuery.exists(q => q.isSetTimePartitioned && q.timePartitioned)
 
     val queryPartitionColumn = maybeQuery.flatMap(q => Option(q.partitionColumn)).getOrElse(partitionColumn)
 
@@ -705,8 +729,9 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
 
     if (queryPartitionColumn != partitionColumn) {
       val renamed = scanDf.withColumnRenamed(queryPartitionColumn, partitionColumn)
-      if (isTimePartitioned) {
-        // Convert timestamp/date column to formatted date string for downstream partition logic
+      // If the partition column is not a string (e.g. timestamp/date), convert to formatted date string
+      val colType = renamed.schema(partitionColumn).dataType
+      if (colType != StringType) {
         renamed.withColumn(partitionColumn, date_format(col(partitionColumn).cast(DateType), partitionFormat))
       } else {
         renamed

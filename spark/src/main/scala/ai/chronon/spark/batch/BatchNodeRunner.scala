@@ -75,53 +75,9 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
     val tableInfo = conf.sourceTableDependency.tableInfo
     val hasPartitionColumn = Option(tableInfo.partitionColumn).isDefined
     val hasTriggerExpr = Option(tableInfo.triggerExpr).isDefined
-    val isTimePartitioned = tableInfo.isSetTimePartitioned && tableInfo.timePartitioned
 
-    // Case 1: No partitions or trigger expression defined -> return success
-    if (!hasPartitionColumn && !hasTriggerExpr && !isTimePartitioned) {
-      logger.info(
-        s"Input table ${tableName} has no partitions or trigger expression defined. Checking table existence.")
-      if (tableUtils.tableReachable(tableName)) return Success(())
-      else return Failure(new RuntimeException(s"Table ${tableName} was not found."))
-    }
-
-    // Case 2: Time-partitioned table — check MAX(partitionColumn) covers range
-    if (isTimePartitioned && hasPartitionColumn) {
-      val partCol = tableInfo.partitionColumn
-      val spec = tableInfo.partitionSpec(tableUtils.partitionSpec)
-      @tailrec
-      def retryMaxCheck(attempt: Long): Try[Unit] = {
-        Try {
-          logger.info(s"Executing time-partitioned sensor check for ${tableName} column ${partCol}")
-          val maxValueStr = tableUtils
-            .maxTimestampDate(tableName, partCol, Some(spec))
-            .getOrElse(throw new RuntimeException(s"Could not determine MAX(${partCol}) for ${tableName}"))
-
-          val maxPartition = range.end
-          logger.info(s"MAX(${partCol}) = ${maxValueStr}, required end = ${maxPartition}")
-
-          if (maxValueStr >= maxPartition) {
-            logger.info(s"Time-partitioned sensor succeeded: ${maxValueStr} >= ${maxPartition}")
-            ()
-          } else {
-            throw new RuntimeException(s"Time-partitioned sensor: MAX(${partCol}) = ${maxValueStr} < ${maxPartition}")
-          }
-        } match {
-          case Success(_) => Success(())
-          case Failure(e) if attempt < retryCount =>
-            logger.warn(s"Attempt ${attempt + 1} failed: ${e.getMessage}. Retrying in ${retryIntervalMin} minutes")
-            Thread.sleep(retryIntervalMin * 60 * 1000)
-            retryMaxCheck(attempt + 1)
-          case Failure(e) =>
-            Failure(
-              new RuntimeException(s"Sensor timed out after ${retryIntervalMin * attempt} minutes. ${e.getMessage}", e))
-        }
-      }
-      return retryMaxCheck(0)
-    }
-
-    // Case 3: No partitions but trigger expression is defined
-    if (!hasPartitionColumn && hasTriggerExpr) {
+    // Case 1: triggerExpr overrides — user-defined readiness check
+    if (hasTriggerExpr) {
       val triggerExpr = tableInfo.triggerExpr
       @tailrec
       def retryTriggerExpr(attempt: Long): Try[Unit] = {
@@ -130,8 +86,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
           logger.info(s"Executing trigger expression query: ${sql} on engine: ${conf.engineType.name()}")
           val result = conf.engineType match {
             case EngineType.SPARK => tableUtils.sql(sql)
-            // TODO: Implement EngineType.BIG_QUERY (Possibly through tableUtils)
-            case _ => throw new RuntimeException("Not implemented.")
+            case _                => throw new RuntimeException("Not implemented.")
           }
           val triggerValue = result
             .collect()
@@ -139,10 +94,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
             .getOrElse(throw new RuntimeException(s"Trigger expression query returned no results"))
             .get(0)
 
-          // Compare trigger value against partitionRange.max (end partition)
           val maxPartition = range.end
-
-          // Convert both to comparable format - assuming the trigger expression returns a comparable value
           val triggerValueStr = triggerValue.toString
           logger.info(s"Trigger value: ${triggerValueStr}, Max partition: ${maxPartition}")
 
@@ -172,37 +124,46 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
       return retryTriggerExpr(0)
     }
 
-    // Case 4: Use existing partition check logic
-    val spec = tableInfo.partitionSpec(tableUtils.partitionSpec)
+    // Case 2: Has partition column — unified check: lastAvailablePartition >= range.end
+    // Works for dense Hive, sparse Hive, Iceberg hidden partitions, timestamp columns — all the same.
+    if (hasPartitionColumn) {
+      val spec = tableInfo.partitionSpec(tableUtils.partitionSpec)
+      @tailrec
+      def retry(attempt: Long): Try[Unit] = {
+        Try {
+          logger.info(s"Checking last available partition for ${tableName} column ${tableInfo.partitionColumn}")
+          val lastPartition = tableUtils
+            .lastAvailablePartition(tableName, tablePartitionSpec = Some(spec))
+            .getOrElse(throw new RuntimeException(s"Could not determine last available partition for ${tableName}"))
 
-    @tailrec
-    def retry(attempt: Long): Try[Unit] = {
-      val result = Try {
-        val partitionsInRange =
-          tableUtils.partitions(tableName,
-                                partitionRange = Option(range.translate(spec)),
-                                tablePartitionSpec = Option(spec))
-        Option(range).map(_.partitions).getOrElse(Seq.empty).diff(partitionsInRange)
-      }
+          val requiredEnd = range.end
+          logger.info(s"Last available partition: ${lastPartition}, required end: ${requiredEnd}")
 
-      result match {
-        case Success(missingPartitions) if missingPartitions.isEmpty =>
-          logger.info(s"Input table ${tableName} has the requested range present: ${range}.")
-          Success(())
-        case Success(missingPartitions) if attempt < retryCount =>
-          logger.warn(
-            s"Attempt ${attempt + 1} failed: Input table ${tableName} is missing partitions: ${missingPartitions
-                .mkString(", ")}. Retrying in ${retryIntervalMin} minutes")
-          Thread.sleep(retryIntervalMin * 60 * 1000)
-          retry(attempt + 1)
-        case Success(missingPartitions) =>
-          Failure(new RuntimeException(
-            s"Sensor timed out after ${retryIntervalMin * attempt} minutes. Input table ${tableName} is missing partitions: ${missingPartitions
-                .mkString(", ")}"))
-        case Failure(e) => Failure(e)
+          if (lastPartition >= requiredEnd) {
+            logger.info(s"Sensor succeeded: ${lastPartition} >= ${requiredEnd}")
+            ()
+          } else {
+            throw new RuntimeException(
+              s"Sensor check failed: last available partition ${lastPartition} < required end ${requiredEnd}")
+          }
+        } match {
+          case Success(_) => Success(())
+          case Failure(e) if attempt < retryCount =>
+            logger.warn(s"Attempt ${attempt + 1} failed: ${e.getMessage}. Retrying in ${retryIntervalMin} minutes")
+            Thread.sleep(retryIntervalMin * 60 * 1000)
+            retry(attempt + 1)
+          case Failure(e) =>
+            Failure(
+              new RuntimeException(s"Sensor timed out after ${retryIntervalMin * attempt} minutes. ${e.getMessage}", e))
+        }
       }
+      return retry(0)
     }
-    retry(0)
+
+    // Case 3: No partition column, no trigger — just check table existence
+    logger.info(s"Input table ${tableName} has no partitions or trigger expression defined. Checking table existence.")
+    if (tableUtils.tableReachable(tableName)) Success(())
+    else Failure(new RuntimeException(s"Table ${tableName} was not found."))
   }
 
   private def runStagingQuery(metaData: MetaData, stagingQuery: StagingQueryNode, range: PartitionRange): Unit = {
@@ -531,31 +492,39 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
       outputTableInfo <- Option(executionInfo.outputTableInfo)
       definedSpec = outputTableInfo.partitionSpec(tableUtils.partitionSpec)
     } yield definedSpec).getOrElse(tableUtils.partitionSpec)
-    val allOutputTablePartitions = tableUtils.partitions(metadata.executionInfo.outputTableInfo.table,
-                                                         tablePartitionSpec = Option(outputTablePartitionSpec))
+    val outputTable = metadata.executionInfo.outputTableInfo.table
 
-    // allOutputTablePartitions are in tableUtils.partitionSpec format (translated by tableUtils.partitions);
-    // range is in PartitionSpec.daily (from CLI). Translate range for consistent comparison.
+    val firstOutputPartition =
+      tableUtils.firstAvailablePartition(outputTable, partitionSpec = outputTablePartitionSpec)
+    val lastOutputPartition =
+      tableUtils.lastAvailablePartition(outputTable, tablePartitionSpec = Option(outputTablePartitionSpec))
     val translatedRange = range.translate(tableUtils.partitionSpec)
 
-    val outputTablePartitionsJson =
-      PartitionRange.collapsedPrint(allOutputTablePartitions)(tableUtils.partitionSpec)
-    logger.info(s"Output table partitions for '${metadata.name}': $outputTablePartitionsJson")
+    logger.info(
+      s"Output table last available partition for '${metadata.name}': ${lastOutputPartition.getOrElse("none")}")
 
-    // Check if range is inside allOutputTablePartitions
-    if (!translatedRange.partitions.forall(p => allOutputTablePartitions.contains(p))) {
-      val missingPartitions = translatedRange.partitions.filterNot(p => allOutputTablePartitions.contains(p))
-      logger.error(
-        s"After job completion, output table ${metadata.executionInfo.outputTableInfo.table} is missing partitions: ${missingPartitions
-            .mkString(", ")} from the requested range: $translatedRange. All output partitions: ${allOutputTablePartitions}"
-      )
+    // Validate output covers the requested range
+    lastOutputPartition match {
+      case Some(lastPartition) if lastPartition >= translatedRange.end =>
+        logger.info(
+          s"Output table $outputTable covers requested range (last: $lastPartition >= end: ${translatedRange.end})")
+      case Some(lastPartition) =>
+        logger.error(
+          s"After job completion, output table $outputTable last partition $lastPartition < required end ${translatedRange.end}")
+      case None =>
+        logger.error(s"After job completion, output table $outputTable has no partitions")
     }
 
-    val outputTable = metadata.executionInfo.outputTableInfo.table
+    // Use KvPartitionsStore to store partitions with semantic hash (no TTL)
+    // Expand min..max into full partition list for KV store
+    val allOutputPartitions = (firstOutputPartition, lastOutputPartition) match {
+      case (Some(first), Some(last)) => tableUtils.partitionSpec.expandRange(first, last)
+      case _                         => Seq.empty[String]
+    }
 
     implicit val ec: ExecutionContext = ExecutionContext.global
     val kvPartitions = KvPartitions(
-      partitions = allOutputTablePartitions,
+      partitions = allOutputPartitions,
       semanticHash = Option(node.semanticHash).filter(_.nonEmpty)
     )
     val kvStoreUpdates = kvPartitionsStore.put(outputTable, kvPartitions)(tableUtils.partitionSpec)
@@ -580,12 +549,14 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
   }
 
   case class TablePartitionStatus(name: String,
-                                  existingPartitions: Seq[String],
-                                  missingPartitions: Set[String],
+                                  firstAvailablePartition: Option[String],
+                                  lastAvailablePartition: Option[String],
+                                  ready: Boolean,
+                                  requiredEnd: String,
                                   semanticHash: Option[String])
 
-  /** Computes partition statuses for input tables, handling cases where the same input table
-    * is used multiple times (e.g., for both labels and groupBy in a join).
+  /** Computes partition statuses for input tables using lastAvailablePartition >= required end.
+    * Works uniformly for dense, sparse, Hive, Iceberg, timestamp columns.
     */
   private[batch] def computeInputTablePartitionStatuses(
       metadata: MetaData,
@@ -605,27 +576,25 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
       .filterNot(_._2.forall(td => td.isSetIsSoftNodeDependency && td.isSoftNodeDependency))
       .map { case (table, deps) =>
         val inputPartitionSpec = deps.head.tableInfo.partitionSpec(tableUtils.partitionSpec)
-        val isTimePartitioned = deps.head.tableInfo.isSetTimePartitioned && deps.head.tableInfo.timePartitioned
-        val existingPartitions = tableUtils.partitions(table,
-                                                       tablePartitionSpec = Some(inputPartitionSpec),
-                                                       timePartitioned = isTimePartitioned)
 
-        // existingPartitions are already translated to tableUtils.partitionSpec by tableUtils.partitions()
-        val missingPartitionsAcrossDeps = deps.flatMap { td =>
-          // Translate required partitions to tableUtils.partitionSpec to match existingPartitions
-          val requiredInputPartitions = DependencyResolver
-            .computeInputRange(range, td)
-            .map(_.translate(tableUtils.partitionSpec))
-            .toSeq
-            .flatMap(_.partitions)
-            .toSet
+        val firstPartition =
+          tableUtils.firstAvailablePartition(table, partitionSpec = inputPartitionSpec)
+        val lastPartition = tableUtils.lastAvailablePartition(table, tablePartitionSpec = Some(inputPartitionSpec))
 
-          val missingPartitions = requiredInputPartitions -- existingPartitions.toSet
-          missingPartitions
-        }.toSet
+        // Compute the maximum required end across all dependencies for this table
+        val requiredEnd = deps
+          .flatMap { td =>
+            DependencyResolver
+              .computeInputRange(range, td)
+              .map(_.translate(tableUtils.partitionSpec))
+              .map(_.end)
+          }
+          .toSeq
+          .sorted
+          .lastOption
+          .getOrElse(range.end)
 
-        // existingPartitions are in tableUtils.partitionSpec; translate to range.partitionSpec for KV store
-        val existingTranslated = existingPartitions.map(p => tableUtils.partitionSpec.translate(p, range.partitionSpec))
+        val ready = lastPartition.exists(_ >= requiredEnd)
 
         // Collect semanticHash values from all dependencies for this table
         val semanticHashes = deps.flatMap { td =>
@@ -643,7 +612,7 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
           semanticHashes.headOption
         }
 
-        TablePartitionStatus(table, existingTranslated, missingPartitionsAcrossDeps, semanticHash)
+        TablePartitionStatus(table, firstPartition, lastPartition, ready, requiredEnd, semanticHash)
       }
   }
 
@@ -673,9 +642,12 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
       val kvStoreUpdates =
         inputTablePartitionStatuses
           .map { tps =>
-            kvPartitionsStore.put(
-              tps.name,
-              KvPartitions(tps.existingPartitions, System.currentTimeMillis(), tps.semanticHash))(range.partitionSpec)
+            val partitions = (tps.firstAvailablePartition, tps.lastAvailablePartition) match {
+              case (Some(first), Some(last)) => tableUtils.partitionSpec.expandRange(first, last)
+              case _                         => Seq.empty[String]
+            }
+            kvPartitionsStore.put(tps.name, KvPartitions(partitions, System.currentTimeMillis(), tps.semanticHash))(
+              range.partitionSpec)
           }
 
       Await.result(Future.sequence(kvStoreUpdates), Duration.Inf)
@@ -690,16 +662,14 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
         su.checkSemanticHashAndArchive(outputTable, incomingSemanticHash)
       } else None
 
-      val inputTableToMissingPartitions = inputTablePartitionStatuses
-        .filter(_.missingPartitions.nonEmpty)
-        .map { tps => tps.name -> tps.missingPartitions }
+      val notReadyTables = inputTablePartitionStatuses.filterNot(_.ready)
 
-      if (inputTableToMissingPartitions.nonEmpty) {
+      if (notReadyTables.nonEmpty) {
         throw new RuntimeException(
-          "The following input tables are missing partitions for the requested range:\n" +
-            inputTableToMissingPartitions
-              .map { case (tableName, missing) =>
-                s"Table: $tableName, Missing Partitions: ${missing.mkString(", ")}"
+          "The following input tables are not ready for the requested range:\n" +
+            notReadyTables
+              .map { tps =>
+                s"Table: ${tps.name}, last available: ${tps.lastAvailablePartition.getOrElse("none")}, required end: ${tps.requiredEnd}"
               }
               .mkString("\n")
         )
