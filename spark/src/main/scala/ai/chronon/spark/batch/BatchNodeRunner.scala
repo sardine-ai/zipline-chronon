@@ -3,6 +3,7 @@ package ai.chronon.spark.batch
 import ai.chronon.api.Extensions._
 import ai.chronon.api._
 import ai.chronon.api.planner.{DependencyResolver, NodeRunner}
+import ai.chronon.api.secrets.SecretResolver
 import ai.chronon.observability.{TileStats, TileStatsType}
 import ai.chronon.online.{Api, KVStore, KvPartitions, KvPartitionsStore}
 import ai.chronon.planner._
@@ -666,7 +667,8 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
 
       if (notReadyTables.nonEmpty) {
         throw new RuntimeException(
-          "The following input tables are not ready for the requested range:\n" +
+          "The following input tables are not ready for the requested range " +
+            "(if the table exists, check logs above for credential or connectivity errors):\n" +
             notReadyTables
               .map { tps =>
                 s"Table: ${tps.name}, last available: ${tps.lastAvailablePartition.getOrElse("none")}, required end: ${tps.requiredEnd}"
@@ -739,9 +741,11 @@ object BatchNodeRunner {
 
   def main(args: Array[String]): Unit = {
     val batchArgs = new BatchNodeRunnerArgs(args)
+    val resolvedEnv = SecretResolver.resolveVaultUris(sys.env.toMap)
+    val driverSecrets = resolvedEnv -- sys.env.keySet
     val node = ThriftJsonCodec.fromJsonFile[Node](batchArgs.confPath(), check = false)
     val tableUtils = TableUtils(SparkSessionBuilder.build(s"batch-node-runner-${node.metaData.name}"))
-    val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps)
+    val api = instantiateApi(batchArgs.onlineClass(), batchArgs.apiProps ++ driverSecrets)
     val runner = new BatchNodeRunner(node, tableUtils, api)
     val exitCode =
       runner.runFromArgs(batchArgs.startDs(),

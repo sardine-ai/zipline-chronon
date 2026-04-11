@@ -85,8 +85,12 @@ trait Format {
 
     val partitionSeq = Try(partitions(tableName, partitionFilters)(sparkSession)) match {
       case Success(p) => p
-      case Failure(e) =>
+      case Failure(e) if Option(e.getMessage).exists(_.contains("TABLE_OR_VIEW_NOT_FOUND")) =>
         logger.warn(s"Failed to get partitions for $tableName: ${e.getMessage}")
+        List.empty
+      case Failure(e) =>
+        logger.warn(
+          s"Failed to get partitions for $tableName: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)")}")
         List.empty
     }
 
@@ -123,7 +127,11 @@ trait Format {
     // Try metadata-based partition listing first (free for Hive/Iceberg/Delta)
     val metadataResult = Try(primaryPartitions(tableName, partitionColumn, "")(sparkSession)) match {
       case Success(parts) if parts.nonEmpty => Some(parts.max)
-      case _                                => None
+      case Success(_) => None // Empty result — column not a catalog partition, fall through to data scan
+      case Failure(ex) =>
+        logger.warn(
+          s"[NonFatal] Failed to check primary partitions for ${tableName}, falling back to data scan: ${ex.getMessage}");
+        None
     }
     if (metadataResult.isDefined) return metadataResult
 
@@ -149,8 +157,12 @@ trait Format {
       }
     } match {
       case Success(result) => result
-      case Failure(e) =>
+      case Failure(e) if Option(e.getMessage).exists(_.contains("TABLE_OR_VIEW_NOT_FOUND")) =>
         logger.warn(s"Failed to get last available partition for $tableName: ${e.getMessage}")
+        None
+      case Failure(e) =>
+        logger.warn(
+          s"Failed to get last available partition for $tableName: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)")}")
         None
     }
   }
@@ -186,8 +198,12 @@ trait Format {
       }
     } match {
       case Success(result) => result
-      case Failure(e) =>
+      case Failure(e) if Option(e.getMessage).exists(_.contains("TABLE_OR_VIEW_NOT_FOUND")) =>
         logger.warn(s"Failed to get first available partition for $tableName: ${e.getMessage}")
+        None
+      case Failure(e) =>
+        logger.warn(
+          s"Failed to get first available partition for $tableName: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)")}")
         None
     }
   }
