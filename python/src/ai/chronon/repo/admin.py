@@ -28,6 +28,13 @@ from ai.chronon.repo.constants import (
     VALID_CLOUDS,
     get_public_spark_jars_for_admin,
 )
+from ai.chronon.repo.hub_runner import (
+    format_option,
+    hub_url_option,
+    redeploy_streaming,
+    repo_option,
+    use_auth_option,
+)
 from ai.chronon.repo.registry_client import (
     DOCKER_HUB_REGISTRY,
     ImageTarget,
@@ -964,14 +971,20 @@ def _print_summary(results, release, cloud, registry):
         raise SystemExit(1)
 
 
-@admin.command("upgrade")
+@admin.group("upgrade")
+def upgrade():
+    """Upgrade Zipline control-plane EKS services or trigger a data-plane streaming job redeploy."""
+    pass
+
+
+@upgrade.command("control-plane")
 @click.argument("cloud", type=click.Choice(VALID_CLOUDS, case_sensitive=False))
 @click.option(
     "--release",
     default=None,
     help="Zipline release to upgrade to (e.g. 1.4.2). Defaults to the installed zipline-ai package version.",
 )
-def upgrade(cloud, release):
+def control_plane(cloud, release):
     """Upgrade running EKS service deployments to a given release.
 
     CLOUD is the cloud provider variant (gcp, aws, or azure).
@@ -989,6 +1002,28 @@ def upgrade(cloud, release):
         console.print(f"Using release [bold]{release}[/bold]")
 
     _upgrade_eks_services(cloud, release)
+
+
+@upgrade.command("data-plane")
+@click.argument("confs", nargs=-1, required=True)
+@repo_option
+@hub_url_option
+@use_auth_option
+@format_option
+def data_plane(confs, repo, hub_url, use_auth, format):
+    """Redeploy running streaming GroupBy jobs.
+
+    CONFs are the path to the compiled conf (e.g. compiled/joins/team/my_join).
+    Syncs confs to Hub then triggers a redeploy - the job will use the version as configured in the VERSION of the
+    conf / teams.py (in that order)
+    """
+    redeploy_streaming(
+        repo=repo,
+        confs=list(confs),
+        hub_url=hub_url,
+        use_auth=use_auth,
+        format=format,
+    )
 
 
 @admin.command("doctor")

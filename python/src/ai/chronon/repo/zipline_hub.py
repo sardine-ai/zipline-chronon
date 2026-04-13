@@ -483,6 +483,26 @@ class ZiplineHub:
             print_error(f"Error calling workflow cancel API: {self._get_error_details(e)}", format=self.format)
             raise e
 
+    def call_streaming_redeploy_api(self, metadata_names: list[str]) -> dict:
+        url = f"{self.base_url}/streaming/v1/redeploy"
+        request_body = {"metadataNames": metadata_names}
+        try:
+            response = requests.post(url, json=request_body, headers=self.additional_headers(self.base_url))
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            print_error(
+                f"Error calling streaming redeploy API: Invalid JSON response\n"
+                f"Response status: {response.status_code}\n"
+                f"Response text: {response.text[:500]}",
+                format=self.format,
+            )
+            raise e
+        except requests.RequestException as e:
+            self.handle_unauth(e, "streaming redeploy")
+            print_error(f"Error calling streaming redeploy API: {self._get_error_details(e)}", format=self.format)
+            raise e
+
     def call_sync_api(self, branch: str, names_to_hashes: dict[str, str]) -> Optional[list[str]]:
         url = f"{self.base_url}/upload/v2/sync"
 

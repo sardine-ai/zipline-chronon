@@ -1128,35 +1128,81 @@ class TestUpgradeEksServices:
 
 
 class TestUpgradeCommand:
+    # --- control-plane subcommand ---
+
     @patch("ai.chronon.repo.admin._upgrade_eks_services")
     @patch("ai.chronon.repo.admin.get_package_version", return_value="1.0.0")
-    def test_upgrade_aws_with_release(self, mock_ver, mock_upgrade):
+    def test_upgrade_control_plane_aws_with_release(self, mock_ver, mock_upgrade):
         runner = CliRunner()
-        result = runner.invoke(admin, ["upgrade", "aws", "--release", "1.4.2"])
+        result = runner.invoke(admin, ["upgrade", "control-plane", "aws", "--release", "1.4.2"])
         assert result.exit_code == 0
         mock_upgrade.assert_called_once_with("aws", "1.4.2")
 
     @patch("ai.chronon.repo.admin._upgrade_eks_services")
     @patch("ai.chronon.repo.admin.get_package_version", return_value="1.0.0")
-    def test_upgrade_aws_defaults_to_package_version(self, mock_ver, mock_upgrade):
+    def test_upgrade_control_plane_defaults_to_package_version(self, mock_ver, mock_upgrade):
         runner = CliRunner()
-        result = runner.invoke(admin, ["upgrade", "aws"])
+        result = runner.invoke(admin, ["upgrade", "control-plane", "aws"])
         assert result.exit_code == 0
         mock_upgrade.assert_called_once_with("aws", "1.0.0")
 
     @patch("ai.chronon.repo.admin._upgrade_eks_services")
-    def test_upgrade_gcp_rejected(self, mock_upgrade):
+    def test_upgrade_control_plane_gcp_rejected(self, mock_upgrade):
         runner = CliRunner()
-        result = runner.invoke(admin, ["upgrade", "gcp"])
+        result = runner.invoke(admin, ["upgrade", "control-plane", "gcp"])
         assert result.exit_code != 0
         mock_upgrade.assert_not_called()
         assert "only supported for AWS" in result.output
 
     @patch("ai.chronon.repo.admin._upgrade_eks_services")
     @patch("ai.chronon.repo.admin.get_package_version", return_value="unknown")
-    def test_upgrade_unknown_version_no_release_fails(self, mock_ver, mock_upgrade):
+    def test_upgrade_control_plane_unknown_version_no_release_fails(self, mock_ver, mock_upgrade):
         runner = CliRunner()
-        result = runner.invoke(admin, ["upgrade", "aws"])
+        result = runner.invoke(admin, ["upgrade", "control-plane", "aws"])
         assert result.exit_code != 0
         mock_upgrade.assert_not_called()
         assert "--release" in result.output
+
+    # --- data-plane subcommand ---
+
+    @patch("ai.chronon.repo.admin.redeploy_streaming")
+    def test_upgrade_data_plane_calls_redeploy(self, mock_redeploy, canary):
+        runner = CliRunner()
+        result = runner.invoke(admin, [
+            "upgrade", "data-plane",
+            "compiled/group_bys/aws/dim_listings.v1__0",
+            "--repo", canary,
+            "--no-use-auth",
+        ])
+        assert result.exit_code == 0
+        mock_redeploy.assert_called_once()
+        call_kwargs = mock_redeploy.call_args[1]
+        assert call_kwargs["repo"] == canary
+        assert call_kwargs["confs"] == ["compiled/group_bys/aws/dim_listings.v1__0"]
+        assert call_kwargs["use_auth"] is False
+
+    @patch("ai.chronon.repo.admin.redeploy_streaming")
+    def test_upgrade_data_plane_multiple_confs(self, mock_redeploy, canary):
+        runner = CliRunner()
+        result = runner.invoke(admin, [
+            "upgrade", "data-plane",
+            "compiled/group_bys/aws/dim_listings.v1__0",
+            "compiled/group_bys/aws/dim_merchants.v1__0",
+            "--repo", canary,
+            "--no-use-auth",
+        ])
+        assert result.exit_code == 0
+        call_kwargs = mock_redeploy.call_args[1]
+        assert set(call_kwargs["confs"]) == {
+            "compiled/group_bys/aws/dim_listings.v1__0",
+            "compiled/group_bys/aws/dim_merchants.v1__0",
+        }
+
+    def test_upgrade_data_plane_no_confs_fails(self, canary):
+        runner = CliRunner()
+        result = runner.invoke(admin, [
+            "upgrade", "data-plane",
+            "--repo", canary,
+            "--no-use-auth",
+        ])
+        assert result.exit_code != 0

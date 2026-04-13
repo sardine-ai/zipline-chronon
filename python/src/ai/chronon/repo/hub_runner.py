@@ -274,6 +274,53 @@ def _get_zipline_hub(
     )
 
 
+def redeploy_streaming(repo, confs, hub_url=None, use_auth=True, format: Format = Format.TEXT):
+    hub_confs = [get_hub_conf(conf, root_dir=repo) for conf in confs]
+    hub_urls = {hc.hub_url for hc in hub_confs}
+    if len(hub_urls) > 1:
+        mismatches = "\n".join(
+            f"  {conf}: {hc.hub_url}" for conf, hc in zip(confs, hub_confs, strict=True)
+        )
+        raise ValueError(
+            f"All confs must target the same Hub, but found multiple hub_url values:\n{mismatches}"
+        )
+    hub_conf = hub_confs[0]
+    zipline_hub = _get_zipline_hub(hub_url, hub_conf, use_auth, format)
+
+    with status_spinner("Computing local conf hashes...", format=format):
+        conf_name_to_hash_dict = hub_uploader.build_local_repo_hashmap(root_dir=repo)
+    branch = get_current_branch()
+    with status_spinner("Syncing confs with Hub...", format=format):
+        hub_uploader.compute_and_upload_diffs(
+            branch, zipline_hub=zipline_hub, local_repo_confs=conf_name_to_hash_dict, format=format
+        )
+
+    metadata_names = [utils.get_metadata_name_from_conf(repo, conf) for conf in confs]
+
+    with status_spinner(f"Requesting redeploy for {len(metadata_names)} streaming job(s)...", format=format):
+        response = zipline_hub.call_streaming_redeploy_api(metadata_names)
+
+    failure_count = response.get("failureCount", 0)
+
+    if format == Format.JSON:
+        print(json.dumps(response, indent=4))
+        sys.exit(1 if failure_count > 0 else 0)
+
+    for result in response.get("results", []):
+        name = result.get("metadataName", "unknown")
+        if result.get("success"):
+            print_success(f"Redeploy initiated for {name}", format=format)
+        else:
+            print_error(f"Failed: {name}: {result.get('message', '')}", format=format)
+
+    print_key_value("Total", response.get("totalCount", 0), format=format)
+    print_key_value("Succeeded", response.get("successCount", 0), format=format)
+    print_key_value("Failed", failure_count, format=format)
+
+    if failure_count > 0:
+        sys.exit(1)
+
+
 def submit_schedule_all(
     repo, cloud, customer_id, hub_url=None, use_auth=True, format: Format = Format.TEXT
 ):
