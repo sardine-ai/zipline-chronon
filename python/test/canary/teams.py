@@ -240,7 +240,8 @@ azure = Team(
             "FRONTEND_URL": "https://dev-azure.zipline.ai",
             "HUB_URL": "https://dev-orch-azure.zipline.ai",
             "SNOWFLAKE_JDBC_URL": "jdbc:snowflake://VEJLULX-AZURE.snowflakecomputing.com/?user=demo_batch_service&db=Demo&schema=public&warehouse=demo_wh",
-            "SNOWFLAKE_VAULT_URI": "https://demo-service-writer-pkey.vault.azure.net/secrets/snowflake-private-key",
+            "SNOWFLAKE_PRIVATE_KEY_VAULT_URI": "https://demo-service-writer-pkey.vault.azure.net/secrets/snowflake-private-key",
+            "OC_CREDENTIAL_VAULT_URI": "https://dev-zipline-secrets.vault.azure.net/secrets/oc-catalog-credential",
             "EVAL_URL": "https://dev-azure.zipline.ai/services/eval",
             "AUTH_SCOPE": "api://dev-zipline-auth"
         },
@@ -249,7 +250,7 @@ azure = Team(
         common={
             **OpenCatalogConfiguration({
                 "spark.sql.catalog.spark_catalog.uri": "https://vejlulx-azure-oc.snowflakecomputing.com/polaris/api/catalog",
-                "spark.sql.catalog.spark_catalog.credential": "XtyCirtE0/o3pcTMdkLCh7LXVno=:i++cOG/+vHgZwU8Wnj5Qx3hIzHwvlr0rhaGJnDwIBTg=",
+                "spark.sql.catalog.spark_catalog.credential": "{OC_CREDENTIAL}",
                 "spark.sql.catalog.spark_catalog.warehouse": "demo-v2",
                 "spark.sql.catalog.spark_catalog.scope": "PRINCIPAL_ROLE:engine",
 
