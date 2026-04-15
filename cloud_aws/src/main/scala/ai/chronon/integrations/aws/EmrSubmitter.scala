@@ -17,6 +17,7 @@ import ai.chronon.spark.submission.{
 }
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
 import io.fabric8.kubernetes.client.Config
 import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.services.ec2.Ec2Client
@@ -33,7 +34,7 @@ import scala.util.{Failure, Success, Try}
 class EmrSubmitter(customerId: String,
                    emrClient: EmrClient,
                    ec2Client: Ec2Client,
-                   eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
+                   eksFlinkSubmitter: Option[K8sFlinkSubmitter] = None,
                    s3Client: Option[S3Client] = None,
                    awsRegion: String = "",
                    override val tablePartitionsDataset: String = "",
@@ -516,7 +517,7 @@ class EmrSubmitter(customerId: String,
 
         val deploymentName = eksFlinkSubmitter
           .getOrElse(
-            throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs")
+            throw new RuntimeException("K8sFlinkSubmitter is required for Flink jobs")
           )
           .submit(
             jobId = jobId,
@@ -558,7 +559,7 @@ class EmrSubmitter(customerId: String,
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
       val (eksStatus, creationTime) = eksFlinkSubmitter
-        .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
+        .getOrElse(throw new RuntimeException("K8sFlinkSubmitter is required for Flink jobs"))
         .statusWithCreationTime(deploymentName = parts(2), namespace = parts(1))
       eksStatus match {
         case JobStatusType.RUNNING if flinkHealthCheckFn(getFlinkUrl(jobId)) => JobStatusType.RUNNING
@@ -617,7 +618,7 @@ class EmrSubmitter(customerId: String,
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
       eksFlinkSubmitter
-        .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
+        .getOrElse(throw new RuntimeException("K8sFlinkSubmitter is required for Flink jobs"))
         .delete(deploymentName = parts(2), namespace = parts(1))
     } else {
       val parts = jobId.split(":")
@@ -771,7 +772,7 @@ object EmrSubmitter {
       customerId,
       EmrClient.builder().build(),
       Ec2Client.builder().build(),
-      eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
+      eksFlinkSubmitter = Some(EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
       awsRegion = awsRegion,
       flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
       flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),

@@ -1,6 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.JobStatusType
+import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
 import ai.chronon.spark.submission
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{FlinkJob, StorageClient}
@@ -51,7 +52,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       mockClient: EmrServerlessClient,
       executionRoleArn: String = "arn:aws:iam::123456789012:role/EMRServerlessRole",
       s3LogUri: String = "s3://my-bucket/logs/",
-      eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
+      eksFlinkSubmitter: Option[K8sFlinkSubmitter] = None,
       awsRegion: String = "us-east-1",
       eksClusterName: Option[String] = None,
       ingressBaseUrl: Option[String] = None,
@@ -282,7 +283,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "delegate Flink status to eksFlinkSubmitter" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "my-namespace"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
@@ -295,7 +296,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "delegate Flink kill to eksFlinkSubmitter" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
 
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockFlinkSubmitter))
 
@@ -746,7 +747,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     new EmrServerlessSubmitter(mock[EmrServerlessClient],
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
-      eksFlinkSubmitter = Some(mock[EksFlinkSubmitter]))
+      eksFlinkSubmitter = Some(mock[K8sFlinkSubmitter]))
 
   "buildFlinkSubmissionProps" should "include flink jar URI, checkpoint URI, EKS service account and namespace" in {
     val submitter = createTestServerlessSubmitter()
@@ -807,7 +808,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       mock[EmrServerlessClient],
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
-      eksFlinkSubmitter = Some(mock[EksFlinkSubmitter]),
+      eksFlinkSubmitter = Some(mock[K8sFlinkSubmitter]),
       flinkEksServiceAccount = Some("constructor-sa"),
       flinkEksNamespace = Some("constructor-ns")
     )
@@ -823,7 +824,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   "status" should "return PENDING for flink job when EKS is RUNNING but health check fails within grace period" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     // CRD was created just now — well within the 20-min grace window
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
@@ -842,7 +843,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "return FAILED for flink job when EKS is RUNNING but health check fails past grace period" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     // CRD was created 25 minutes ago — past the 20-min grace window
     val oldCreationTime = java.time.Instant.now().minus(java.time.Duration.ofMinutes(25))
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
@@ -862,7 +863,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "return PENDING for flink job when EKS is RUNNING, health check fails, and no creation time is available" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     // No creation time returned — conservatively stays PENDING (cannot determine grace window)
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, None))
@@ -881,7 +882,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "pass the flink URL derived from ingressBaseUrl to the health check fn" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
@@ -901,7 +902,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "propagate non-RUNNING EKS status without invoking health check" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.PENDING, None))
 
@@ -923,7 +924,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   "submit" should "return flink:namespace:deploymentName for FlinkJob" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     when(
       mockEks.submit(
         jobId = org.mockito.ArgumentMatchers.anyString(),
@@ -1041,7 +1042,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "throw when JobId is missing from submissionProperties for Flink" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockEks))
 
     intercept[RuntimeException] {
@@ -1064,7 +1065,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "throw when FlinkMainJarURI is missing from submissionProperties" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockEks))
 
     intercept[RuntimeException] {
@@ -1087,7 +1088,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "throw when EksServiceAccount is missing from submissionProperties" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockEks))
 
     intercept[RuntimeException] {

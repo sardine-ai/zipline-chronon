@@ -1,6 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.JobStatusType
+import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{
   JobSubmitter,
@@ -25,7 +26,7 @@ class EmrServerlessSubmitter(
     emrServerlessClient: EmrServerlessClient,
     executionRoleArn: String,
     s3LogUri: String,
-    eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
+    eksFlinkSubmitter: Option[K8sFlinkSubmitter] = None,
     awsRegion: String = "",
     override val tablePartitionsDataset: String = "",
     override val dqMetricsDataset: String = "",
@@ -127,7 +128,7 @@ class EmrServerlessSubmitter(
 
         val deploymentName = eksFlinkSubmitter
           .getOrElse(
-            throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs")
+            throw new RuntimeException("K8sFlinkSubmitter is required for Flink jobs")
           )
           .submit(
             jobId = jobId,
@@ -262,7 +263,7 @@ class EmrServerlessSubmitter(
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
       val (eksStatus, creationTime) = eksFlinkSubmitter
-        .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
+        .getOrElse(throw new RuntimeException("K8sFlinkSubmitter is required for Flink jobs"))
         .statusWithCreationTime(deploymentName = parts(2), namespace = parts(1))
       eksStatus match {
         case JobStatusType.RUNNING if flinkHealthCheckFn(getFlinkUrl(jobId)) => JobStatusType.RUNNING
@@ -310,7 +311,7 @@ class EmrServerlessSubmitter(
     if (jobId.startsWith("flink:")) {
       val parts = jobId.split(":", 3)
       eksFlinkSubmitter
-        .getOrElse(throw new RuntimeException("EksFlinkSubmitter is required for Flink jobs"))
+        .getOrElse(throw new RuntimeException("K8sFlinkSubmitter is required for Flink jobs"))
         .delete(deploymentName = parts(2), namespace = parts(1))
     } else {
       try {
@@ -477,7 +478,7 @@ object EmrServerlessSubmitter {
   val DefaultApplicationName = "chronon-serverless-app"
 
   // Total grace period from CRD creation before an unhealthy STABLE job is marked FAILED.
-  // EksFlinkSubmitter already allows up to 10 minutes for the deployment to reach STABLE,
+  // K8sFlinkSubmitter already allows up to 10 minutes for the deployment to reach STABLE,
   // so this window covers that plus additional time for checkpoints to accumulate post-STABLE.
   val FlinkHealthCheckGracePeriod: Duration = Duration.ofMinutes(15)
 
@@ -536,7 +537,7 @@ object EmrServerlessSubmitter {
       client,
       executionRoleArn,
       s3LogUri,
-      eksFlinkSubmitter = Some(new EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
+      eksFlinkSubmitter = Some(EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
       awsRegion = awsRegion,
       tablePartitionsDataset = tablePartitionsDataset,
       dqMetricsDataset = dqMetricsDataset,

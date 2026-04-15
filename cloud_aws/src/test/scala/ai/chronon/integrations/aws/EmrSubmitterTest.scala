@@ -1,6 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.JobStatusType
+import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
 import ai.chronon.api.ScalaJavaConversions.ListOps
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{FlinkJob, SparkJob, StorageClient}
@@ -22,7 +23,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val mockEmrClient = mock[EmrClient]
     val mockEc2Client = mock[Ec2Client]
-    val mockEksSubmitter = mock[EksFlinkSubmitter]
+    val mockEksSubmitter = mock[K8sFlinkSubmitter]
 
     val requestCaptor = org.mockito.ArgumentCaptor.forClass(classOf[AddJobFlowStepsRequest])
 
@@ -157,7 +158,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
     s"$testArtifactPrefix/release/$testVersion/jars/connectors_kinesis_deploy.jar"
 
   private def createTestSubmitter(): EmrSubmitter =
-    new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mock[EksFlinkSubmitter]), awsRegion = "us-west-2")
+    new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mock[K8sFlinkSubmitter]), awsRegion = "us-west-2")
 
   "buildFlinkSubmissionProps" should "include flink jar URI, checkpoint URI, EKS account and namespace" in {
     val submitter = createTestSubmitter()
@@ -216,7 +217,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   // --- status / kill routing ---
 
   "status" should "return RUNNING for flink job when EKS is RUNNING and health check passes" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
@@ -229,7 +230,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "return PENDING for flink job when EKS is RUNNING, health check fails, within grace period" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     // CRD created just now — within the 20-min grace window
     when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
@@ -242,7 +243,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "return FAILED for flink job when EKS is RUNNING, health check fails, past grace period" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val oldCreationTime = java.time.Instant.now().minus(java.time.Duration.ofMinutes(25))
     when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(oldCreationTime)))
@@ -255,7 +256,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "return PENDING when health check fails and no creation time is available" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     // No creation time — conservatively stay PENDING
     when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, None))
@@ -268,7 +269,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "pass the flink URL derived from ingressBaseUrl to the health check fn" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
@@ -282,7 +283,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "propagate non-RUNNING EKS status without invoking health check" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     when(mockEks.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.PENDING, None))
 
@@ -296,7 +297,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   "kill" should "delegate to EksFlinkSubmitter for flink: prefixed job IDs" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mockEks))
     submitter.kill("flink:zipline-flink:my-deployment")
 
@@ -304,7 +305,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   "submit" should "return flink:namespace:deploymentName for FlinkJob" in {
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     when(
       mockEks.submit(
         jobId = org.mockito.ArgumentMatchers.anyString(),
@@ -347,7 +348,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val mockEmrClient = mock[EmrClient]
     val mockEc2Client = mock[Ec2Client]
-    val mockEksSubmitter = mock[EksFlinkSubmitter]
+    val mockEksSubmitter = mock[K8sFlinkSubmitter]
 
     val requestCaptor = org.mockito.ArgumentCaptor.forClass(classOf[AddJobFlowStepsRequest])
     when(
@@ -386,7 +387,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   it should "throw exception when only DATABRICKS_HOST is set without DATABRICKS_SECRET_NAME" in {
     val mockEmrClient = mock[EmrClient]
     val mockEc2Client = mock[Ec2Client]
-    val mockEksSubmitter = mock[EksFlinkSubmitter]
+    val mockEksSubmitter = mock[K8sFlinkSubmitter]
 
     val submitter = new EmrSubmitter("canary", mockEmrClient, mockEc2Client, Some(mockEksSubmitter), awsRegion = "us-west-2")
     intercept[IllegalArgumentException] {
@@ -415,7 +416,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "return EKS URL for Flink jobs" in {
-    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mock[EksFlinkSubmitter]),
+    val submitter = new EmrSubmitter("test-customer", mock[EmrClient], mock[Ec2Client], Some(mock[K8sFlinkSubmitter]),
       awsRegion = "us-west-2", eksClusterName = Some("test-eks-cluster"))
     val url = submitter.getJobUrl("flink:zipline-flink:my-deployment")
     url shouldBe Some("https://us-west-2.console.aws.amazon.com/eks/clusters/test-eks-cluster/deployments/my-deployment?namespace=zipline-flink&region=us-west-2")
@@ -476,7 +477,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     // Explicitly target the canary EKS cluster rather than relying on the ambient kubeconfig context
     val k8sConfig = Config.autoConfigure("arn:aws:eks:us-west-2:345594603419:cluster/canary-eks")
-    val eksFlinkSubmitter = new EksFlinkSubmitter(Some(k8sConfig))
+    val eksFlinkSubmitter = EksFlinkSubmitter(Some(k8sConfig))
 
     val deploymentName = eksFlinkSubmitter.submit(
       jobId = jobId,
@@ -559,7 +560,7 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
       "canary",
       EmrClient.builder().build(),
       Ec2Client.builder().build(),
-      Some(new EksFlinkSubmitter())
+      Some(EksFlinkSubmitter())
     )
     val jobId = emrSubmitter.submit(
       jobType = SparkJob,
