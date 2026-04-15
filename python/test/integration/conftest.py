@@ -97,8 +97,8 @@ def _random_suffix(length: int = 8) -> str:
 
 
 @pytest.fixture
-def confs(test_id, cloud) -> dict[str, str]:
-    """Compiled conf paths keyed by logical name, resolved with the current test_id."""
+def confs(test_id, cloud):
+    """Callable that resolves logical conf paths to test-scoped paths."""
     return get_confs(cloud, test_id)
 
 

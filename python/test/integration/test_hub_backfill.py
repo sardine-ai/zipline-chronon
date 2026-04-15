@@ -26,7 +26,7 @@ def test_backfill_no_data(confs, chronon_root, hub_url, cloud):
 
     workflow_id = submit_backfill(
         runner, chronon_root, hub_url,
-        confs[DEMO_DERIVATIONS[cloud]], "1969-01-01", "1969-01-01",
+        confs(DEMO_DERIVATIONS[cloud]), "1969-01-01", "1969-01-01",
     )
     with pytest.raises(RuntimeError, match="ended with status FAILED"):
         poll_workflow(hub_url, workflow_id, timeout=1800, interval=45)
@@ -50,7 +50,7 @@ def test_backfill_multiday(confs, chronon_root, hub_url, cloud):
 
     workflow_id = submit_backfill(
         runner, chronon_root, hub_url,
-        confs[MULTIDAY_BACKFILL[cloud]],
+        confs(MULTIDAY_BACKFILL[cloud]),
         "2026-03-01", "2026-03-03",
     )
     poll_workflow(hub_url, workflow_id, timeout=1800, interval=45)

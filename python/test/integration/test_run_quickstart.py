@@ -7,6 +7,7 @@ Exercises: compile -> import staging queries -> backfill group_bys -> backfill j
 Replaces the former test_gcp_template_quickstart.py.
 """
 
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
@@ -76,13 +77,11 @@ def test_run_quickstart(test_id, confs, chronon_root, version, cloud):
 
     # 1. Import staging queries / run exports (parallel — jobs are independent)
     staging_keys = STAGING_QUERY_IMPORT_KEYS[cloud]
-    missing = [k for k in staging_keys if k not in confs]
-    assert not missing, f"Missing staging configs for {cloud}: {missing}"
     with ThreadPoolExecutor(max_workers=len(staging_keys) or 1) as pool:
         futures = {
             pool.submit(
                 submit_run_subprocess,
-                chronon_root, confs[key], version,
+                chronon_root, confs(key), version,
                 start_ds=start_ds, end_ds=end_ds,
             ): key
             for key in staging_keys
@@ -91,16 +90,17 @@ def test_run_quickstart(test_id, confs, chronon_root, version, cloud):
             future.result()
 
     # 2. Backfill group_by
-    gb_conf = confs[GROUP_BY_KEY[cloud]]
+    gb_conf = confs(GROUP_BY_KEY[cloud])
     submit_run(runner, chronon_root, gb_conf, version,
                start_ds=start_ds, end_ds=end_ds)
 
     # 3. Backfill joins (parallel — both depend on group_by, not on each other)
-    join_conf = confs[JOIN_KEY[cloud]]
+    join_conf = confs(JOIN_KEY[cloud])
     notds_key = f"compiled/joins/{cloud}/training_set.v1_dev_notds__0"
     join_confs = [join_conf]
-    if notds_key in confs:
-        join_confs.append(confs[notds_key])
+    notds_conf = confs(notds_key)
+    if os.path.exists(os.path.join(chronon_root, notds_conf)):
+        join_confs.append(notds_conf)
     if len(join_confs) > 1:
         with ThreadPoolExecutor(max_workers=len(join_confs)) as pool:
             futures = [
@@ -138,7 +138,7 @@ def test_run_quickstart(test_id, confs, chronon_root, version, cloud):
         submit_metadata_upload(runner, chronon_root, gb_conf, version)
 
         # 8. Staging query (exports)
-        exports_conf = confs[f"compiled/staging_queries/{cloud}/exports.checkouts__0"]
+        exports_conf = confs(f"compiled/staging_queries/{cloud}/exports.checkouts__0")
         submit_run(runner, chronon_root, exports_conf, version,
                    start_ds=start_ds, end_ds=end_ds)
 
