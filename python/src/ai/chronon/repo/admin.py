@@ -23,6 +23,7 @@ from rich.progress import (
 from rich.table import Table
 
 from ai.chronon.cli.theme import STYLE_ERROR, STYLE_SUCCESS, console
+from ai.chronon.repo.admin_utils import print_check_table, run_infra_checks
 from ai.chronon.repo.constants import (
     SPARK_3_5_3_VERSION,
     VALID_CLOUDS,
@@ -1026,11 +1027,18 @@ def data_plane(confs, repo, hub_url, use_auth, format):
     )
 
 
-@admin.command("doctor")
+
+@admin.group("doctor")
+def doctor():
+    """Diagnose a Zipline deployment."""
+    pass
+
+
+@doctor.command("hub-health")
 @click.argument("hub_url")
 @click.option("--expected-version", default=None, help="Expected Zipline version (optional).")
-def doctor(hub_url, expected_version):
-    """Check that a Zipline hub is reachable and healthy.
+def hub_health(hub_url, expected_version):
+    """Check that the Zipline hub is reachable and healthy.
 
     HUB_URL is the URL of the running Zipline hub (e.g. https://hub.example.com).
     """
@@ -1079,30 +1087,18 @@ def doctor(hub_url, expected_version):
     except Exception as e:
         results.append(("Upload API", f"{hub_url}/upload/v2/diff", "FAIL", str(e)))
 
-    table = Table(title=f"Zipline Deployment Diagnostics: {hub_url}")
-    table.add_column("Check", style="cyan")
-    table.add_column("Endpoint", style="white")
-    table.add_column("Status", style="green")
-    table.add_column("Detail", style="white")
+    print_check_table(f"Zipline Hub Diagnostics: {hub_url}", results)
 
-    all_ok = True
-    for check, endpoint, status, detail in results:
-        if status == "ok":
-            style = "green"
-        elif status == "WARN":
-            style = "yellow"
-        else:
-            style = "red"
-            all_ok = False
-        table.add_row(check, endpoint, f"[{style}]{status}[/{style}]", detail)
 
-    console.print(table)
+@doctor.command("streaming-health")
+def streaming_health():
+    """Check that the Flink-on-EKS streaming infrastructure is correctly configured.
 
-    if all_ok:
-        console.print("\n[bold green]All checks passed.[/bold green]")
-    else:
-        console.print("\n[bold red]Some checks failed.[/bold red]")
-        raise SystemExit(1)
+    Requires kubectl to be installed and configured with access to the cluster.
+    """
+    console.print("[bold]Running Kubernetes infrastructure checks...[/bold]")
+    results = run_infra_checks()
+    print_check_table("Zipline Streaming Infrastructure Diagnostics", results)
 
 if __name__ == "__main__":
     admin()
