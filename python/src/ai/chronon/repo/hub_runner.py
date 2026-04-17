@@ -1,3 +1,4 @@
+import functools
 import json
 import logging
 import os
@@ -239,8 +240,36 @@ def start_ds_option(func):
     )(func)
 
 
+def confirm_end_ds_not_future(end_ds, assume_yes: bool = False):
+    """Abort with a confirm prompt if end_ds is today or later.
+
+    Data for today (and beyond) typically hasn't landed yet, so a backfill
+    covering that range will silently produce partial or empty output.
+
+    When assume_yes is True the prompt is skipped (non-interactive callers /
+    CI pipelines that have explicitly opted in to the risk).
+    """
+    if end_ds is None or assume_yes:
+        return
+    end_date_value = end_ds.date() if hasattr(end_ds, "date") else end_ds
+    today = date.today()
+    if end_date_value >= today:
+        click.confirm(
+            click.style(
+                f"End date {end_date_value} is today or in the future. Upstream data may not have "
+                "landed yet, so the backfill could be incomplete. Proceed anyway?",
+                fg="yellow",
+            ),
+            abort=True,
+        )
+
+
 def end_ds_option(func):
-    return click.option(
+    """Adds --end-date / --end-ds and a bundled --yes/--assume-yes flag, and
+    automatically prompts the user to confirm if end_ds is today or in the
+    future. The prompt is skipped when --yes is passed.
+    """
+    @click.option(
         "--end-date",
         "--end-ds",
         "end_ds",
@@ -248,7 +277,26 @@ def end_ds_option(func):
         type=click.DateTime(formats=ALLOWED_DATE_FORMATS),
         default=str(date.today() - timedelta(days=2)),
         show_default=True,
-    )(func)
+    )
+    @click.option(
+        "-y",
+        "--yes",
+        "--assume-yes",
+        "assume_yes",
+        is_flag=True,
+        default=False,
+        help="Skip the end-date confirmation prompt. Use in non-interactive CI where "
+        "stdin isn't a TTY and the prompt would otherwise abort the job.",
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        confirm_end_ds_not_future(
+            kwargs.get("end_ds"),
+            assume_yes=kwargs.get("assume_yes", False),
+        )
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def _get_zipline_hub(
@@ -579,6 +627,7 @@ def backfill(
     force,
     start_ds,
     end_ds,
+    assume_yes,
     skip_compile,
 ):
     """Submit a backfill job to Zipline Hub.
@@ -614,6 +663,7 @@ def run_adhoc(
     format,
     force,
     end_ds,
+    assume_yes,
     skip_compile,
 ):
     """Submit a one-off deploy job to test a conf online.
