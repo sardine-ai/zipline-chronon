@@ -164,7 +164,39 @@ class EmrServerlessSubmitter(
     // fall back to resolvedApplicationId for CLI path
     val appId = submissionProperties.getOrElse(clusterIdentifierKey, resolvedApplicationId)
 
-    val filesParam = if (files.nonEmpty) s" --files ${files.mkString(",")}" else ""
+    val filesParam = if (files.nonEmpty) s"--files ${files.mkString(",")}" else ""
+
+    // EMR Serverless caps properties per Configuration at 100. Anything beyond
+    // that spills into --conf flags on sparkSubmitParameters (same effect on SparkConf,
+    // without the console-side property-count limit).
+    val resolvedProps = resolveEnvVars(jobProperties)
+    val (inlineProps, overflowProps) = EmrServerlessSubmitter.splitForConfigCap(resolvedProps)
+    if (overflowProps.nonEmpty) {
+      logger.warn(
+        s"jobProperties has ${resolvedProps.size} entries, exceeding EMR Serverless cap of " +
+          s"${EmrServerlessSubmitter.MaxPropertiesPerClassification} per classification; " +
+          s"routing ${overflowProps.size} through sparkSubmitParameters as --conf flags")
+    }
+    val overflowConf = overflowProps.toSeq
+      .sortBy(_._1)
+      .map { case (k, v) =>
+        s"--conf ${EmrServerlessSubmitter.maybeShellQuote(s"$k=$v")}"
+      }
+      .mkString(" ")
+
+    val sparkSubmitParams =
+      Seq(s"--class $mainClass", filesParam, overflowConf).filter(_.nonEmpty).mkString(" ")
+
+    val jobName = submissionProperties.getOrElse(JobId, s"chronon-job-${System.currentTimeMillis()}")
+    logger.info(
+      s"EMR Serverless submission for $jobName: ${resolvedProps.size} jobProperties " +
+        s"(${inlineProps.size} in spark-defaults, ${overflowProps.size} as --conf overflow)")
+    if (inlineProps.nonEmpty) {
+      logger.info(
+        s"spark-defaults classification for $jobName:\n  " +
+          inlineProps.toSeq.sortBy(_._1).map { case (k, v) => s"$k = $v" }.mkString("\n  "))
+    }
+    logger.info(s"sparkSubmitParameters for $jobName: $sparkSubmitParams")
 
     val jobDriverBuilder = JobDriver
       .builder()
@@ -173,7 +205,7 @@ class EmrServerlessSubmitter(
           .builder()
           .entryPoint(jarUri)
           .entryPointArguments(args.toList.asJava)
-          .sparkSubmitParameters(s"--class $mainClass$filesParam")
+          .sparkSubmitParameters(sparkSubmitParams)
           .build()
       )
 
@@ -193,17 +225,15 @@ class EmrServerlessSubmitter(
           .build()
       )
 
-    if (jobProperties.nonEmpty) {
+    if (inlineProps.nonEmpty) {
       configOverridesBuilder.applicationConfiguration(
         Configuration
           .builder()
           .classification("spark-defaults")
-          .properties(resolveEnvVars(jobProperties).asJava)
+          .properties(inlineProps.asJava)
           .build()
       )
     }
-
-    val jobName = submissionProperties.getOrElse(JobId, s"chronon-job-${System.currentTimeMillis()}")
 
     val startJobRunRequest = StartJobRunRequest
       .builder()
@@ -476,6 +506,28 @@ object EmrServerlessSubmitter {
 
   private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
   val DefaultApplicationName = "chronon-serverless-app"
+
+  // EMR Serverless StartJobRun API rejects any applicationConfiguration entry whose
+  // properties map has more than 100 keys (service-side validation).
+  val MaxPropertiesPerClassification: Int = 100
+
+  // Characters that force shell-style quoting when embedding a k=v pair into
+  // sparkSubmitParameters. EMR Serverless tokenizes that string shell-style before
+  // invoking spark-submit, so values containing whitespace or shell metacharacters
+  // must be single-quoted to travel as one token.
+  private val NeedsQuoting = """[\s"'\\$`&|;<>(){}*?~#\[\]]""".r
+
+  private[aws] def maybeShellQuote(s: String): String =
+    if (NeedsQuoting.findFirstIn(s).isDefined) "'" + s.replace("'", "'\\''") + "'"
+    else s
+
+  private[aws] def splitForConfigCap(props: Map[String, String]): (Map[String, String], Map[String, String]) =
+    if (props.size <= MaxPropertiesPerClassification) (props, Map.empty)
+    else {
+      val sorted = props.toSeq.sortBy(_._1)
+      val (head, tail) = sorted.splitAt(MaxPropertiesPerClassification)
+      (head.toMap, tail.toMap)
+    }
 
   // Total grace period from CRD creation before an unhealthy STABLE job is marked FAILED.
   // K8sFlinkSubmitter already allows up to 10 minutes for the deployment to reach STABLE,

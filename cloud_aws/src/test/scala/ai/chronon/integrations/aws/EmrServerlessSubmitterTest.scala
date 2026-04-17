@@ -1173,6 +1173,107 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     props.get("spark.driver.cores") shouldBe "2"
   }
 
+  it should "keep spark-defaults at <=100 and spill the rest into --conf on sparkSubmitParameters" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-overflow-123"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-overflow-1").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    // 150 props forces overflow past the 100-prop EMR Serverless cap.
+    val props = (1 to 150).map(i => f"spark.chronon.prop.$i%03d" -> s"val$i").toMap
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-overflow",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      props,
+      List.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val captured = requestCaptor.getValue
+    val inline = captured.configurationOverrides().applicationConfiguration().get(0).properties()
+    inline.size() shouldBe 100
+    // Deterministic alphabetic split: 001..100 inline, 101..150 overflowed as --conf
+    inline.containsKey("spark.chronon.prop.001") shouldBe true
+    inline.containsKey("spark.chronon.prop.100") shouldBe true
+    inline.containsKey("spark.chronon.prop.101") shouldBe false
+
+    val submitParams = captured.jobDriver().sparkSubmit().sparkSubmitParameters()
+    submitParams should include("--conf spark.chronon.prop.101=val101")
+    submitParams should include("--conf spark.chronon.prop.150=val150")
+    submitParams should not include "--conf spark.chronon.prop.100="
+  }
+
+  it should "not emit overflow --conf flags when props fit under the cap" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-no-overflow"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-no-overflow").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-fits",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      Map("spark.executor.memory" -> "4g", "spark.executor.cores" -> "2"),
+      List.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val submitParams = requestCaptor.getValue.jobDriver().sparkSubmit().sparkSubmitParameters()
+    submitParams should not include "--conf"
+  }
+
+  "maybeShellQuote" should "leave simple values unquoted" in {
+    EmrServerlessSubmitter.maybeShellQuote("spark.executor.memory=4g") shouldBe "spark.executor.memory=4g"
+    EmrServerlessSubmitter.maybeShellQuote("spark.x=s3://bucket/path") shouldBe "spark.x=s3://bucket/path"
+  }
+
+  it should "single-quote values containing whitespace or shell metacharacters" in {
+    EmrServerlessSubmitter.maybeShellQuote("spark.x=hello world") shouldBe "'spark.x=hello world'"
+    EmrServerlessSubmitter.maybeShellQuote("spark.x=a$b") shouldBe "'spark.x=a$b'"
+    // Embedded single quotes use the POSIX close/escape/reopen trick
+    EmrServerlessSubmitter.maybeShellQuote("a'b") shouldBe "'a'\\''b'"
+  }
+
+  "splitForConfigCap" should "return all in the first map when size <= cap" in {
+    val props = (1 to 50).map(i => s"k$i" -> s"v$i").toMap
+    val (head, tail) = EmrServerlessSubmitter.splitForConfigCap(props)
+    head shouldBe props
+    tail shouldBe Map.empty[String, String]
+  }
+
+  it should "split deterministically at 100 when size > cap" in {
+    val props = (1 to 150).map(i => f"k$i%03d" -> s"v$i").toMap
+    val (head, tail) = EmrServerlessSubmitter.splitForConfigCap(props)
+    head.size shouldBe 100
+    tail.size shouldBe 50
+    head.contains("k001") shouldBe true
+    head.contains("k100") shouldBe true
+    tail.contains("k101") shouldBe true
+    tail.contains("k150") shouldBe true
+  }
+
   it should "keep unresolvable {VAR} placeholders as-is when env var is not set" in {
     val mockClient = mock[EmrServerlessClient]
     val applicationId = "app-env-789"
