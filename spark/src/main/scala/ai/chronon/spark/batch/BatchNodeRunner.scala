@@ -308,7 +308,6 @@ class BatchNodeRunner(node: Node, tableUtils: TableUtils, api: Api) extends Node
     tableUtils.insertPartitions(
       df = avroDfWithPartition,
       tableName = outputTable,
-      saveMode = org.apache.spark.sql.SaveMode.Overwrite,
       semanticHash = Option(node.semanticHash).filter(_.nonEmpty)
     )
 

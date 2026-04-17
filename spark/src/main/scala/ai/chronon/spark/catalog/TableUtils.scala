@@ -258,7 +258,6 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
                        tableName: String,
                        tableProperties: Map[String, String] = null,
                        partitionColumns: List[String] = List(partitionColumn),
-                       saveMode: SaveMode = SaveMode.Overwrite,
                        autoExpand: Boolean = false,
                        semanticHash: Option[String] = None): Unit = {
 
@@ -317,13 +316,42 @@ class TableUtils(@transient val sparkSession: SparkSession) extends Serializable
     }
 
     logger.info(s"Writing to $tableName ...")
-    finalizedDf.write
-      .mode(saveMode)
-      // Requires table to exist before inserting.
-      // Fails if schema does not match.
-      // Does NOT overwrite the schema.
-      // Handles dynamic partition overwrite.
-      .insertInto(tableName)
+    val isIceberg = tableFormatProvider.readFormat(tableName).contains(Iceberg)
+    val hasPartitionSpec =
+      isIceberg && Try(Iceberg.partitionColumnNames(tableName)(sparkSession).nonEmpty).getOrElse(false)
+    if (isIceberg && partitionColumns.nonEmpty && !hasPartitionSpec) {
+      // Unpartitioned / UC liquid clustering: insertInto() with DYNAMIC mode appends instead of
+      // replacing. Use MERGE INTO with ON FALSE for atomic delete+insert in a single snapshot.
+      // ON FALSE means: no target row matches any source row, so all target rows matching the
+      // delete condition are "not matched by source" (deleted) and all source rows are
+      // "not matched by target" (inserted).
+      //
+      // Delete condition uses per-column IN lists AND'ed together rather than a min/max range.
+      // additionalPartitions can include categorical columns (e.g. `action`) where range
+      // semantics are meaningless; IN-lists stay correct for those. It is slightly over-broad
+      // for multi-column keys (matches cartesian product of distinct values) but safe here —
+      // we only delete rows the upstream job intends to rewrite.
+      val tempView = s"__chronon_insert_${tableName.replace('.', '_')}_${System.nanoTime()}"
+      finalizedDf.createOrReplaceTempView(tempView)
+      val deleteCondition = partitionColumns
+        .map { pc =>
+          val values = finalizedDf.select(col(pc)).distinct().collect().map(row => lit(row.get(0)).expr.sql)
+          s"target.`$pc` IN (${values.mkString(", ")})"
+        }
+        .mkString(" AND ")
+      val mergeSQL =
+        s"""MERGE INTO $tableName AS target
+           |USING $tempView AS source
+           |ON FALSE
+           |WHEN NOT MATCHED BY SOURCE AND $deleteCondition THEN DELETE
+           |WHEN NOT MATCHED THEN INSERT *""".stripMargin
+      sparkSession.sql(mergeSQL)
+      sparkSession.catalog.dropTempView(tempView)
+    } else {
+      finalizedDf.write
+        .mode(SaveMode.Overwrite)
+        .insertInto(tableName)
+    }
     logger.info(s"Finished writing to $tableName")
   }
 
