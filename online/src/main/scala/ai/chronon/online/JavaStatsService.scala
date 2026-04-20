@@ -204,12 +204,12 @@ class JavaStatsService(api: Api,
                   .map { pair =>
                     val parts = pair.split(":")
                     val key = parts(0).stripPrefix("\"").stripSuffix("\"")
-                    val value = parts(1).toLong
+                    val value = parts(1).toDouble
                     key -> value
                   }
                   .toMap
               } else {
-                Map.empty[String, Long]
+                Map.empty[String, Double]
               }
 
               logger.info(s"Merged cardinality map for $tableName with ${mergedCardinalityMap.size} columns")
@@ -219,7 +219,7 @@ class JavaStatsService(api: Api,
               val enhancedMetrics = StatsGenerator.buildEnhancedMetrics(
                 noKeysFields,
                 mergedCardinalityMap,
-                cardinalityThreshold = 100
+                cardinalityThreshold = 0.01
               )
 
               // Filter metrics to only those whose inputColumn exists in selectedSchema.
@@ -307,8 +307,9 @@ class JavaStatsService(api: Api,
     * @param tableName The table name
     * @param endTimeMillis Optional end time to get the latest cardinalityMap up to this time
     */
-  private def fetchMetadata(tableName: String,
-                            endTimeMillis: Option[Long] = None): Option[(Map[String, Long], StructType, StructType)] = {
+  private def fetchMetadata(
+      tableName: String,
+      endTimeMillis: Option[Long] = None): Option[(Map[String, Double], StructType, StructType)] = {
     val cardinalityMapKey = s"$tableName/cardinalityMap"
     val selectedSchemaKey = s"$tableName/selectedSchema"
     val noKeysSchemaKey = s"$tableName/noKeysSchema"
@@ -326,7 +327,8 @@ class JavaStatsService(api: Api,
       }
 
       // Deserialize from JSON/Avro formats
-      // Parse cardinality map from simple JSON format: {"col1":123,"col2":456}
+      // Parse cardinality map from simple JSON format: {"col1":0.001,"col2":0.85}
+      // Values are normalized ratios (distinct / total_rows).
       val cardinalityMapJson = cardinalityMapOpt.get
       val cardinalityMap = cardinalityMapJson
         .stripPrefix("{")
@@ -335,7 +337,7 @@ class JavaStatsService(api: Api,
         .map { pair =>
           val parts = pair.split(":")
           val key = parts(0).stripPrefix("\"").stripSuffix("\"")
-          val value = parts(1).toLong
+          val value = parts(1).toDouble
           key -> value
         }
         .toMap
@@ -405,7 +407,7 @@ class JavaStatsService(api: Api,
       val enhancedMetrics = StatsGenerator.buildEnhancedMetrics(
         noKeysFields,
         cardinalityMap,
-        cardinalityThreshold = 100 // Use the same threshold as during computation
+        cardinalityThreshold = 0.01
       )
 
       val selectedSchemaColumns = selectedSchema.fields.map(_.name).toSet
