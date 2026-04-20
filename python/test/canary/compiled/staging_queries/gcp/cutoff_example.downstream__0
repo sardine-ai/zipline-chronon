@@ -1,6 +1,7 @@
 {
+  "engineType": 1,
   "metaData": {
-    "customJson": "{\"airflowDependencies\": []}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_gcp_cutoff_example_export_a__0_with_offset_0\", \"spec\": \"data.gcp_cutoff_example_export_a__0/ds={{ macros.ds_add(ds, 0) }}\"}]}",
     "executionInfo": {
       "clusterConf": {
         "modeClusterConfigs": {
@@ -67,27 +68,48 @@
           }
         }
       },
-      "offlineSchedule": "@daily"
+      "offlineSchedule": "@daily",
+      "stepDays": 30
     },
-    "name": "gcp.partitioned_logging.v0__2",
+    "name": "gcp.cutoff_example.downstream__0",
     "outputNamespace": "data",
-    "sourceFile": "staging_queries/gcp/partitioned_logging.py",
+    "sourceFile": "staging_queries/gcp/cutoff_example.py",
     "team": "gcp",
-    "version": "2"
+    "version": "0"
   },
-  "query": "\n      SELECT\n        DATE(TIMESTAMP_MILLIS(tsMillis)) AS ds\n        , tsMillis as ts_millis\n        , BASE64(keyBytes) as key_base64\n        , BASE64(valueBytes) as value_base64\n        , joinName as name\n        , schemaHash as schema_hash\n        , keyBytes\n        , valueBytes\n      FROM data.loggable_response\n      WHERE DATE(TIMESTAMP_MILLIS(tsMillis)) BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
+  "query": "\n    SELECT\n        a.ds AS ds,\n        a.user_id AS user_id\n    FROM data.gcp_cutoff_example_export_a__0 a\n    JOIN data.gcp_cutoff_example_export_b__0 b USING (ds)\n    WHERE a.ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "tableDependencies": [
     {
       "endOffset": {
         "length": 0,
         "timeUnit": 1
       },
+      "startOffset": {
+        "length": 0,
+        "timeUnit": 1
+      },
       "tableInfo": {
+        "partitionColumn": "ds",
         "partitionInterval": {
           "length": 1,
           "timeUnit": 1
         },
-        "table": "data.loggable_response"
+        "table": "data.gcp_cutoff_example_export_a__0"
+      }
+    },
+    {
+      "endOffset": {
+        "length": 0,
+        "timeUnit": 1
+      },
+      "startCutOff": "2026-02-25",
+      "tableInfo": {
+        "partitionColumn": "ds",
+        "partitionInterval": {
+          "length": 1,
+          "timeUnit": 1
+        },
+        "table": "data.gcp_cutoff_example_export_b__0"
       }
     }
   ]

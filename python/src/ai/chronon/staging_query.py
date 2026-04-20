@@ -57,12 +57,31 @@ class TableDependency:
     partition_format: Optional[str] = None
     additional_partitions: Optional[List[str]] = None
     offset: Optional[int] = None
+    # Fixed floor on the resolved dependency range start. Combined with offset the
+    # platform orchestrator requires every partition in [start_cutoff, query_end]
+    # on the upstream to be Filled before the child step can run.
+    start_cutoff: Optional[str] = None
+    # Fixed ceiling on the resolved dependency range end.
+    end_cutoff: Optional[str] = None
     time_partitioned: Optional[bool] = None
 
     def to_thrift(self):
-        if self.partition_column is not None and self.offset is None:
-            raise ValueError(f"Dependency offset for table {self.table} must be specified.")
-        offset_window = common.Window(length=self.offset, timeUnit=common.TimeUnit.DAYS)
+        if self.partition_column is not None and self.offset is None and self.start_cutoff is None:
+            raise ValueError(
+                f"Dependency for table {self.table} must specify at least one of offset or start_cutoff."
+            )
+
+        if self.offset is not None:
+            start_offset = common.Window(length=self.offset, timeUnit=common.TimeUnit.DAYS)
+            end_offset = start_offset
+        else:
+            # startOffset=None + startCutOff tells the planner to pin the resolved
+            # dep start at start_cutoff (max(null, cutoff) = cutoff). endOffset must
+            # still be non-null or DependencyChecker.expandRange / BatchNodeRunner's
+            # requiredEnd receive null, so default to zero-days.
+            start_offset = None
+            end_offset = common.Window(length=0, timeUnit=common.TimeUnit.DAYS)
+
         return common.TableDependency(
             tableInfo=common.TableInfo(
                 table=self.table,
@@ -71,10 +90,10 @@ class TableDependency:
                 partitionInterval=common.Window(1, common.TimeUnit.DAYS),
                 timePartitioned=self.time_partitioned,
             ),
-            startOffset=offset_window,
-            endOffset=offset_window,
-            startCutOff=None,
-            endCutOff=None,
+            startOffset=start_offset,
+            endOffset=end_offset,
+            startCutOff=self.start_cutoff,
+            endCutOff=self.end_cutoff,
         )
 
 
@@ -198,7 +217,11 @@ def StagingQuery(
     if dependencies:
         for d in dependencies:
             if isinstance(d, TableDependency) and d.partition_column is not None:
-                # Create an Airflow dependency object for the table
+                if d.offset is None:
+                    # start_cutoff-only deps opt out of Airflow-style relative-offset
+                    # monitoring; the chronon engine + platform orchestrator still
+                    # enforce the dep via DependencyChecker.
+                    continue
                 airflow_dependency = airflow_helpers.create_airflow_dependency(
                     d.table,
                     d.partition_column,

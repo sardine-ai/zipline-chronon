@@ -1,12 +1,23 @@
 package ai.chronon.api.test.planner
 
 import ai.chronon.api.Extensions.{WindowUtils, MetadataOps}
-import ai.chronon.api.planner.TableDependencies
-import ai.chronon.api.{Builders, Operation, TimeUnit, Window}
+import ai.chronon.api.planner.{DependencyResolver, TableDependencies}
+import ai.chronon.api.{
+  Builders,
+  Operation,
+  PartitionRange,
+  PartitionSpec,
+  TableDependency,
+  TableInfo,
+  TimeUnit,
+  Window
+}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class TableDependenciesTest extends AnyFlatSpec with Matchers {
+
+  private implicit val testPartitionSpec: PartitionSpec = PartitionSpec.daily
 
   "TableDependencies.fromTable" should "handle left Source with null query (default behavior)" in {
     val table = "test.events_table"
@@ -318,5 +329,58 @@ class TableDependenciesTest extends AnyFlatSpec with Matchers {
     val deps = TableDependencies.fromGroupBy(groupBy)
     deps should not be empty
     deps.head.getTableInfo.getPartitionColumn should equal("created_at")
+  }
+
+  // Mirrors the three shapes the Python TableDependency dataclass can produce after
+  // exposing start_cutoff / end_cutoff. These pin down what each shape resolves to
+  // in the planner — critical because the platform orchestrator expands the full
+  // resolved range and requires every date in it to be Filled on the upstream.
+  private def tableDepOf(startOffset: Window,
+                         endOffset: Window,
+                         startCutOff: String = null,
+                         endCutOff: String = null): TableDependency = {
+    new TableDependency()
+      .setTableInfo(new TableInfo().setTable("ns.upstream"))
+      .setStartOffset(startOffset)
+      .setEndOffset(endOffset)
+      .setStartCutOff(startCutOff)
+      .setEndCutOff(endCutOff)
+  }
+
+  "DependencyResolver.computeInputRange" should "return [Q.start, Q.end] for symmetric offset=0" in {
+    val queryRange = PartitionRange("2026-01-10", "2026-01-10")
+    val dep = tableDepOf(WindowUtils.zero(), WindowUtils.zero())
+
+    DependencyResolver.computeInputRange(queryRange, dep) should equal(
+      Some(PartitionRange("2026-01-10", "2026-01-10"))
+    )
+  }
+
+  it should "pin the start at startCutOff when startOffset is null and endOffset is zero" in {
+    val queryRange = PartitionRange("2026-01-10", "2026-01-10")
+    val dep = tableDepOf(
+      startOffset = null,
+      endOffset = WindowUtils.zero(),
+      startCutOff = "2024-01-01"
+    )
+
+    DependencyResolver.computeInputRange(queryRange, dep) should equal(
+      Some(PartitionRange("2024-01-01", "2026-01-10"))
+    )
+  }
+
+  it should "honor both startCutOff and offset — cutoff wins when query.start - offset goes past it" in {
+    val queryRange = PartitionRange("2024-01-03", "2024-01-10")
+    val sevenDays = new Window(7, TimeUnit.DAYS)
+    val dep = tableDepOf(
+      startOffset = sevenDays,
+      endOffset = sevenDays,
+      startCutOff = "2024-01-01"
+    )
+
+    // query.start - 7d = 2023-12-27 which is < startCutOff, so start clamps to the cutoff.
+    DependencyResolver.computeInputRange(queryRange, dep) should equal(
+      Some(PartitionRange("2024-01-01", "2024-01-03"))
+    )
   }
 }
