@@ -25,6 +25,7 @@ from rich.table import Table
 from ai.chronon.cli.theme import STYLE_ERROR, STYLE_SUCCESS, console
 from ai.chronon.repo.admin_utils import print_check_table, run_infra_checks
 from ai.chronon.repo.constants import (
+    FLINK_IMAGE_TAG,
     SPARK_3_5_3_VERSION,
     VALID_CLOUDS,
     get_public_spark_jars_for_admin,
@@ -62,13 +63,15 @@ def _safe_extractall(tar, dest):
     tar.extractall(dest)
 
 
-def _app_images(cloud):
-    """Return the list of (image_type, repo) tuples for application images (excludes engine)."""
+def _app_images(cloud, release):
+    """Return the list of (image_type, repo, tag) tuples for application images (excludes engine)."""
     return [
-        ("hub", f"ziplineai/hub-{cloud}"),
-        ("eval", f"ziplineai/eval-{cloud}"),
-        ("frontend", "ziplineai/web-ui"),
-        ("fetcher", "ziplineai/chronon-fetcher"),
+        ("hub", f"ziplineai/hub-{cloud}", release),
+        ("eval", f"ziplineai/eval-{cloud}", release),
+        ("frontend", "ziplineai/web-ui", release),
+        ("fetcher", "ziplineai/chronon-fetcher", release),
+        # Flink uses a fixed tag independent of the Zipline release
+        ("flink", "ziplineai/flink", FLINK_IMAGE_TAG),
     ]
 
 
@@ -385,20 +388,20 @@ def _load_from_docker_hub(target, api_token, release, cloud, progress):
 
     results = []
     size_client = hub_client if target.is_local else target.client
-    for image_type, repo in _app_images(cloud):
+    for image_type, repo, tag in _app_images(cloud, release):
         action = "Pulling" if target.is_local else "Copying"
-        label = f"{repo}:{release}"
+        label = f"{repo}:{tag}"
 
         total_bytes, layer_sizes = None, []
         if size_client:
             try:
                 if target.is_local:
                     total_bytes, layer_sizes = size_client.get_layer_sizes(
-                        DOCKER_HUB_REGISTRY, repo, release
+                        DOCKER_HUB_REGISTRY, repo, tag
                     )
                 else:
                     total_bytes = size_client.get_total_image_size(
-                        DOCKER_HUB_REGISTRY, repo, release
+                        DOCKER_HUB_REGISTRY, repo, tag
                     )
             except RegistryError:
                 pass
@@ -409,13 +412,13 @@ def _load_from_docker_hub(target, api_token, release, cloud, progress):
         )
 
         try:
-            digest = img_target.copy_from_hub(repo, release)
+            digest = img_target.copy_from_hub(repo, tag)
             _finish_task(progress, task_id, label, ok=True)
-            results.append((image_type, target.ref(repo, release), digest, "ok"))
+            results.append((image_type, target.ref(repo, tag), digest, "ok"))
         except RegistryError as e:
             _finish_task(progress, task_id, label, ok=False)
             console.print(f"[{STYLE_ERROR}]Error loading {label}:[/]\n{traceback.format_exc()}")
-            results.append((image_type, target.ref(repo, release), "", f"FAILED: {e}"))
+            results.append((image_type, target.ref(repo, tag), "", f"FAILED: {e}"))
     return results
 
 
@@ -449,7 +452,7 @@ def _load_from_bundle(target, bundle_path, release, cloud, progress):
         with tarfile.open(bundle_path, "r:gz") as tar:
             _safe_extractall(tar, tmpdir)
 
-        for _image_type, repo in _app_images(cloud):
+        for _image_type, repo, tag in _app_images(cloud, release):
             image_name = repo.split("/")[-1]
             archive_path = os.path.join(tmpdir, f"{image_name}.tar")
             if not os.path.exists(archive_path):
@@ -459,7 +462,7 @@ def _load_from_bundle(target, bundle_path, release, cloud, progress):
                 continue
 
             action = "Pushing" if not target.is_local else "Loading"
-            label = f"{image_name}:{release}"
+            label = f"{image_name}:{tag}"
 
             try:
                 total_bytes = _get_bundle_image_size(archive_path)
@@ -470,13 +473,13 @@ def _load_from_bundle(target, bundle_path, release, cloud, progress):
             img_target = _make_target_with_progress(target, progress, task_id, f"{action} {label}")
 
             try:
-                digest = img_target.load_archive(archive_path, repo, release)
+                digest = img_target.load_archive(archive_path, repo, tag)
                 _finish_task(progress, task_id, label, ok=True)
-                results.append((image_name, target.ref(repo, release), digest, "ok"))
+                results.append((image_name, target.ref(repo, tag), digest, "ok"))
             except RegistryError as e:
                 _finish_task(progress, task_id, label, ok=False)
                 console.print(f"[{STYLE_ERROR}]Error loading {label}:[/]\n{traceback.format_exc()}")
-                results.append((image_name, target.ref(repo, release), "", f"FAILED: {e}"))
+                results.append((image_name, target.ref(repo, tag), "", f"FAILED: {e}"))
     return results
 
 
@@ -958,14 +961,15 @@ def _print_summary(results, release, cloud, registry):
         console.print("\n[bold green]All artifacts loaded successfully.[/bold green]")
         if is_local:
             console.print("\nImages available in local Docker daemon:")
-            for _image_type, repo in _app_images(cloud):
-                console.print(f"  {repo}:{release}")
+            for _image_type, repo, tag in _app_images(cloud, release):
+                console.print(f"  {repo}:{tag}")
         else:
             console.print("\nFor terraform.tfvars:")
             console.print(f'  hub_image      = "{registry}/ziplineai/hub-{cloud}:{release}"')
             console.print(f'  eval_image     = "{registry}/ziplineai/eval-{cloud}:{release}"')
             console.print(f'  frontend_image = "{registry}/ziplineai/web-ui:{release}"')
             console.print(f'  fetcher_image  = "{registry}/ziplineai/chronon-fetcher:{release}"')
+            console.print(f'  flink_image    = "{registry}/ziplineai/flink:{FLINK_IMAGE_TAG}"')
             console.print(f'  engine_image   = "{registry}/ziplineai/engine-{cloud}:{release}"')
     else:
         console.print("\n[bold red]Some artifacts failed to load. See errors above.[/bold red]")

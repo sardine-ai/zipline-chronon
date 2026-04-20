@@ -14,6 +14,7 @@ from ai.chronon.repo.admin import (
     _EKS_NAMESPACE,
     _EKS_ROLLOUT_TIMEOUT,
     _EKS_SERVICES,
+    _app_images,
     _authenticate_docker_hub,
     _base_domain,
     _creds_from_helper,
@@ -28,6 +29,7 @@ from ai.chronon.repo.admin import (
     _upload_scripts_to_store,
     admin,
 )
+from ai.chronon.repo.constants import FLINK_IMAGE_TAG
 from ai.chronon.repo.registry_client import DOCKER_HUB_REGISTRY
 
 
@@ -1206,3 +1208,32 @@ class TestUpgradeCommand:
             "--no-use-auth",
         ])
         assert result.exit_code != 0
+
+
+# --- _app_images ---
+
+
+class TestAppImages:
+    def test_cloud_specific_images_use_release(self):
+        images = dict((itype, (repo, tag)) for itype, repo, tag in _app_images("aws", "1.2.3"))
+        assert images["hub"] == ("ziplineai/hub-aws", "1.2.3")
+        assert images["eval"] == ("ziplineai/eval-aws", "1.2.3")
+
+    def test_cloud_agnostic_images_use_release(self):
+        images = dict((itype, (repo, tag)) for itype, repo, tag in _app_images("gcp", "1.2.3"))
+        assert images["frontend"] == ("ziplineai/web-ui", "1.2.3")
+        assert images["fetcher"] == ("ziplineai/chronon-fetcher", "1.2.3")
+
+    def test_flink_uses_fixed_tag(self):
+        for cloud in ("aws", "gcp", "azure"):
+            images = dict((itype, (repo, tag)) for itype, repo, tag in _app_images(cloud, "1.2.3"))
+            repo, tag = images["flink"]
+            assert repo == "ziplineai/flink"
+            assert tag == FLINK_IMAGE_TAG
+            assert tag != "1.2.3"
+
+    def test_cloud_suffix_varies_by_cloud(self):
+        for cloud in ("aws", "gcp", "azure"):
+            images = dict((itype, (repo, tag)) for itype, repo, tag in _app_images(cloud, "1.0.0"))
+            assert images["hub"][0] == f"ziplineai/hub-{cloud}"
+            assert images["eval"][0] == f"ziplineai/eval-{cloud}"
