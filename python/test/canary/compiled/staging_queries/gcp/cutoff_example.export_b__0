@@ -1,7 +1,7 @@
 {
   "engineType": 1,
   "metaData": {
-    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_data_dim_listings_with_offset_0\", \"spec\": \"data.dim_listings/ds={{ macros.ds_add(ds, 0) }}\"}]}",
+    "customJson": "{\"airflowDependencies\": [{\"name\": \"wf_demo_dim_merchants_with_offset_0\", \"spec\": \"demo.dim_merchants/ds={{ macros.ds_add(ds, 0) }}\"}]}",
     "executionInfo": {
       "clusterConf": {
         "modeClusterConfigs": {
@@ -77,7 +77,7 @@
     "team": "gcp",
     "version": "0"
   },
-  "query": "\n    SELECT *\n    FROM data.dim_listings\n    WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
+  "query": "\n    SELECT *\n    FROM demo.dim_merchants\n    WHERE ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "tableDependencies": [
     {
       "endOffset": {
@@ -94,7 +94,7 @@
           "length": 1,
           "timeUnit": 1
         },
-        "table": "data.dim_listings"
+        "table": "demo.dim_merchants"
       }
     }
   ]

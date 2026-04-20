@@ -62,7 +62,7 @@ def test_backfill_start_cutoff_enforcement(
 ):
     """TableDependency.start_cutoff is enforced end-to-end by the orchestrator.
 
-    Fixture: python/test/canary/staging_queries/gcp/cutoff_example.py
+    Fixture: python/test/canary/staging_queries/<cloud>/cutoff_example.py
       - downstream depends on export_a with plain offset=0
       - downstream depends on export_b with start_cutoff="2026-02-25"
 
@@ -77,14 +77,11 @@ def test_backfill_start_cutoff_enforcement(
     for only 3 days; the presence of partitions 2026-02-25..02-28 is the load-
     bearing assertion.
     """
-    if cloud != "gcp":
-        pytest.skip("cutoff_example fixture is GCP-only")
-
     runner = CliRunner()
     compile_configs(runner, chronon_root)
 
     start_ds, end_ds = "2026-03-01", "2026-03-03"
-    downstream_conf = confs("compiled/staging_queries/gcp/cutoff_example.downstream__0")
+    downstream_conf = confs(f"compiled/staging_queries/{cloud}/cutoff_example.downstream__0")
     workflow_id = submit_backfill(
         runner, chronon_root, hub_url, downstream_conf, start_ds, end_ds,
     )

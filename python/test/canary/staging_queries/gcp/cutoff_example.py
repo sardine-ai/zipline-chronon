@@ -34,19 +34,22 @@ def _passthrough_export(source_table: str):
 
 
 # Upstream A: rolling export — the downstream just needs today's partition.
-export_a = _passthrough_export("data.checkouts")
+# demo.* tables are refreshed daily in canary; the data.* seed tables stopped
+# refreshing mid-2025 and the 2026 dates below were unreachable.
+export_a = _passthrough_export("demo.dim_listings")
 
 # Upstream B: export whose history the downstream wants to verify in full.
-export_b = _passthrough_export("data.dim_listings")
+export_b = _passthrough_export("demo.dim_merchants")
 
 
 downstream = StagingQuery(
     query=f"""
     SELECT
         a.ds AS ds,
-        a.user_id AS user_id
+        a.listing_id AS listing_id,
+        a.merchant_id AS merchant_id
     FROM {export_a.table} a
-    JOIN {export_b.table} b USING (ds)
+    JOIN {export_b.table} b USING (ds, merchant_id)
     WHERE a.ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
     """,
     output_namespace="data",

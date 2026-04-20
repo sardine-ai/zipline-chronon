@@ -77,7 +77,7 @@
     "team": "gcp",
     "version": "0"
   },
-  "query": "\n    SELECT\n        a.ds AS ds,\n        a.user_id AS user_id\n    FROM data.gcp_cutoff_example_export_a__0 a\n    JOIN data.gcp_cutoff_example_export_b__0 b USING (ds)\n    WHERE a.ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
+  "query": "\n    SELECT\n        a.ds AS ds,\n        a.listing_id AS listing_id,\n        a.merchant_id AS merchant_id\n    FROM data.gcp_cutoff_example_export_a__0 a\n    JOIN data.gcp_cutoff_example_export_b__0 b USING (ds, merchant_id)\n    WHERE a.ds BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "tableDependencies": [
     {
       "endOffset": {
