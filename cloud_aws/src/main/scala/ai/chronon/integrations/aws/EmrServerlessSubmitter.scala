@@ -191,12 +191,6 @@ class EmrServerlessSubmitter(
     logger.info(
       s"EMR Serverless submission for $jobName: ${resolvedProps.size} jobProperties " +
         s"(${inlineProps.size} in spark-defaults, ${overflowProps.size} as --conf overflow)")
-    if (inlineProps.nonEmpty) {
-      logger.info(
-        s"spark-defaults classification for $jobName:\n  " +
-          inlineProps.toSeq.sortBy(_._1).map { case (k, v) => s"$k = $v" }.mkString("\n  "))
-    }
-    logger.info(s"sparkSubmitParameters for $jobName: $sparkSubmitParams")
 
     val jobDriverBuilder = JobDriver
       .builder()
