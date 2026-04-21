@@ -22,7 +22,7 @@ def _passthrough_export(source_table: str):
     """
     return StagingQuery(
         query=query,
-        output_namespace="data",
+        output_namespace="public",
         engine_type=EngineType.SNOWFLAKE,
         dependencies=[
             TableDependency(table=source_table, partition_column="ds", offset=0)

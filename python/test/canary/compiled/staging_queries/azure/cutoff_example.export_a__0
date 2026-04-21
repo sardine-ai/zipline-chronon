@@ -47,7 +47,7 @@
       "stepDays": 30
     },
     "name": "azure.cutoff_example.export_a__0",
-    "outputNamespace": "data",
+    "outputNamespace": "public",
     "sourceFile": "staging_queries/azure/cutoff_example.py",
     "team": "azure",
     "version": "0"
