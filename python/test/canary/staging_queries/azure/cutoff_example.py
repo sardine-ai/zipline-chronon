@@ -22,7 +22,7 @@ def _passthrough_export(source_table: str):
     """
     return StagingQuery(
         query=query,
-        output_namespace="public",
+        output_namespace="data",
         engine_type=EngineType.SNOWFLAKE,
         dependencies=[
             TableDependency(table=source_table, partition_column="ds", offset=0)
@@ -47,7 +47,11 @@ downstream = StagingQuery(
     WHERE a.ds BETWEEN {{{{ start_date }}}} AND {{{{ end_date }}}}
     """,
     output_namespace="data",
-    engine_type=EngineType.SNOWFLAKE,
+    # SPARK engine: reads + writes go through spark_catalog (Polaris/Iceberg).
+    # The Snowflake JDBC reader used by EngineType.SNOWFLAKE cannot see
+    # Polaris-registered tables, so joining export_a/export_b (which land in
+    # Polaris `data`) has to run via Spark SQL on the same catalog.
+    engine_type=EngineType.SPARK,
     dependencies=[
         TableDependency(table=export_a.table, partition_column="ds", offset=0),
         TableDependency(
