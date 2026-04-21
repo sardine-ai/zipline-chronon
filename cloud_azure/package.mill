@@ -9,7 +9,7 @@ object `package` extends Cross[CloudAzureModule](build.Constants.scalaVersions) 
 }
 
 trait CloudAzureModule extends Cross.Module[String] with build.BaseModule {
-  def moduleDeps = Seq(build.spark(crossValue), build.aggregator(crossValue), build.api(crossValue), build.online(crossValue), build.redis(crossValue))
+  def moduleDeps = Seq(build.spark(crossValue), build.aggregator(crossValue), build.api(crossValue), build.online(crossValue), build.redis(crossValue), build.cloud_k8s(crossValue))
 
   // Versions force-overridden to fix CVEs from uber-jar transitive deps.
   // Also used by patchAssemblyMetadata to write correct pom.properties.
@@ -155,8 +155,9 @@ trait CloudAzureModule extends Cross.Module[String] with build.BaseModule {
   object test extends build.BaseTestModule {
     def scalaVersion = crossValue
 
-    def moduleDeps = Seq(build.cloud_azure(crossValue), build.api(crossValue), build.online(crossValue), build.spark(crossValue).test, build.redis(crossValue).test)
+    def moduleDeps = Seq(build.cloud_azure(crossValue), build.api(crossValue), build.online(crossValue), build.spark(crossValue).test, build.redis(crossValue).test, build.cloud_k8s(crossValue))
     def mvnDeps = super.mvnDeps() ++ Seq(
+      mvn"org.mockito:mockito-core:4.11.0",
       mvn"org.testcontainers:testcontainers:2.0.2",
       // Azure Cosmos Spark Connector - only for tests, not included in assembly
       // This is a shaded JAR so we keep it out of the main module dependencies

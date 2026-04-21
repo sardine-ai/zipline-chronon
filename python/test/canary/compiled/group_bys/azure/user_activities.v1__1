@@ -409,17 +409,20 @@
           "spark.sql.catalog.spark_catalog.type": "rest",
           "spark.sql.catalog.spark_catalog.uri": "https://vejlulx-azure-oc.snowflakecomputing.com/polaris/api/catalog",
           "spark.sql.catalog.spark_catalog.warehouse": "demo-v2",
-          "spark.sql.shuffle.partitions": "10"
+          "spark.sql.shuffle.partitions": "10",
+          "taskmanager.memory.process.size": "4G"
         }
       },
       "env": {
         "common": {
           "ARTIFACT_PREFIX": "abfss://dev-zipline-artifacts@ziplineai2.dfs.core.windows.net",
           "AUTH_SCOPE": "api://dev-zipline-auth",
-          "CHRONON_ONLINE_ARGS": "-Ztasks=1",
+          "CHRONON_ONLINE_ARGS": " -Ztasks=1 -Zbootstrap=zipline-demo-events.servicebus.windows.net:9093",
           "CLOUD_PROVIDER": "azure",
           "CUSTOMER_ID": "dev",
           "EVAL_URL": "https://dev-azure.zipline.ai/services/eval",
+          "FLINK_JARS_URI": "abfss://dev-zipline-artifacts@ziplineai2.dfs.core.windows.net/spark-3.5.3/libs/",
+          "FLINK_STATE_URI": "abfss://dev-zipline-warehouse@ziplineai2.dfs.core.windows.net/flink-state",
           "FRONTEND_URL": "https://dev-azure.zipline.ai",
           "HUB_URL": "https://dev-orch-azure.zipline.ai",
           "OC_CREDENTIAL_VAULT_URI": "https://dev-zipline-secrets.vault.azure.net/secrets/oc-catalog-credential",
@@ -431,11 +434,10 @@
         }
       },
       "historicalBackfill": 0,
-      "onlineSchedule": "@daily",
       "stepDays": 30
     },
     "name": "azure.user_activities.v1__1",
-    "online": 1,
+    "online": 0,
     "outputNamespace": "data",
     "sourceFile": "group_bys/azure/user_activities.py",
     "team": "azure",
@@ -461,7 +463,7 @@
           "timeColumn": "unix_millis(TIMESTAMP(event_time_ms))"
         },
         "table": "data.azure_exports_user_activities__0",
-        "topic": "pubsub://user-activities-v2/project=canary-443022/subscription=user-activities-v2-sub/serde=pubsub_schema/schemaId=user-activities"
+        "topic": "kafka://user-activities/serde=apicurio_registry/registry_host=apicurio-registry-apicurio-registry.zipline-system.svc.cluster.local/registry_port=8080/artifact_id=user-activities-js/security.protocol=SASL_SSL/sasl.mechanism=PLAIN/sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$ConnectionString\" password=\"Endpoint=sb:////zipline-demo-events.servicebus.windows.net//;SharedAccessKeyName=canary-flink-jobs;SharedAccessKey=foo=\";"
       }
     }
   ]

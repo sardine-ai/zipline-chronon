@@ -38,7 +38,8 @@ class K8sFlinkSubmitter(
     extraJarNames: Array[String] = Array.empty,
     defaultJarsBasePath: String,
     k8sConfig: Option[Config] = None,
-    ingressBaseUrl: Option[String] = None
+    ingressBaseUrl: Option[String] = None,
+    podTemplateLabels: Map[String, String] = Map.empty
 ) {
   import K8sFlinkSubmitter._
 
@@ -135,6 +136,10 @@ class K8sFlinkSubmitter(
     // jobProperties applied last so callers can override anything.
     // All jars are available via FLINK_CLASSPATH=/opt/flink/usrlib/*,
     // which Flink surfaces as pipeline.classpaths.
+    //
+    // Strip spark.* keys from jobProperties — they come from the Spark submission path and are
+    // irrelevant to Flink. Multiline values like SNOWFLAKE_PRIVATE_KEY break the legacy YAML parser.
+    val flinkJobProperties = jobProperties.filterNot { case (k, _) => k.startsWith("spark.") }
     Map(
       "state.savepoints.dir" -> flinkCheckpointUri,
       "state.checkpoints.dir" -> flinkCheckpointUri,
@@ -145,7 +150,7 @@ class K8sFlinkSubmitter(
       "state.checkpoint-storage" -> "filesystem",
       "rest.profiling.enabled" -> "true",
       "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
-    ) ++ flinkMemoryConfig(tier) ++ extraFlinkConfig ++ jobProperties
+    ) ++ flinkMemoryConfig(tier) ++ extraFlinkConfig ++ flinkJobProperties
   }
 
   private def flinkDeploymentCrdContext: CustomResourceDefinitionContext =
@@ -442,7 +447,7 @@ class K8sFlinkSubmitter(
     logger.info(s"Created Ingress: $deploymentName in namespace: $namespace")
   }
 
-  private def buildComponentSpec(
+  private[cloud_k8s] def buildComponentSpec(
       memory: String,
       cpu: Double,
       replicas: Option[Int],
@@ -483,6 +488,11 @@ class K8sFlinkSubmitter(
         m
       }
     )
+    if (podTemplateLabels.nonEmpty) {
+      val labelsMap = new java.util.HashMap[String, String]()
+      podTemplateLabels.foreach { case (k, v) => labelsMap.put(k, v) }
+      podMeta.put("labels", labelsMap)
+    }
 
     val podTemplate = new java.util.HashMap[String, Object]()
     podTemplate.put("metadata", podMeta)

@@ -9,10 +9,23 @@ It tracks various user behaviors (views, clicks, purchases, favorites, add_to_ca
 with last_k, sum, and average aggregations over multiple time windows.
 """
 
+serde = "serde=apicurio_registry"
+registry_host = "registry_host=apicurio-registry-apicurio-registry.zipline-system.svc.cluster.local"
+registry_port = "registry_port=8080"
+artifact_id = "artifact_id=user-activities-js"
+schema_registry_kv = f"{serde}/{registry_host}/{registry_port}/{artifact_id}"
+
+security_protocol = "security.protocol=SASL_SSL"
+sasl_mechanism = "sasl.mechanism=PLAIN"
+# '/' chars in the JAAS config value are encoded as '//' per TopicInfo parsing convention.
+# TODO: replace 'foo' in SharedAccessKey with the real key until secret support is wired up.
+sasl_jaas_config = "sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$ConnectionString\" password=\"Endpoint=sb:////zipline-demo-events.servicebus.windows.net//;SharedAccessKeyName=canary-flink-jobs;SharedAccessKey=foo=\";"
+kafka_sasl_kv = f"{security_protocol}/{sasl_mechanism}/{sasl_jaas_config}"
+
 source = EventSource(
-    # This will be the BigQuery table that receives the PubSub data
+    # This is the Iceberg table that receives the EventHub data
     table=exports.user_activities.table,
-    topic="pubsub://user-activities-v2/project=canary-443022/subscription=user-activities-v2-sub/serde=pubsub_schema/schemaId=user-activities",
+    topic=f"kafka://user-activities/{schema_registry_kv}/{kafka_sasl_kv}",
     query=Query(
             selects=selects(
                 user_id="user_id",
@@ -70,13 +83,8 @@ aggregations.extend([
 v1 = GroupBy(
     sources=[source],
     keys=["user_id"],  # Aggregate by user
-    online=True,
+    online=False,
     version=1,
     aggregations=aggregations,
     step_days=30,
-    env_vars=EnvironmentVariables(
-        common={
-            "CHRONON_ONLINE_ARGS": "-Ztasks=1",
-        }
-    ),
 )

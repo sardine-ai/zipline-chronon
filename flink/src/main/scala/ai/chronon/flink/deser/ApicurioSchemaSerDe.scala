@@ -20,9 +20,9 @@ import scala.io.{Codec, Source}
   * Artifact ID defaults to the topic name. Wire format defaults to "apicurio".
   *
   * Wire format options:
-  *   - "apicurio": strip 1 magic byte + 8-byte global ID prefix (Apicurio default)
+  *   - "apicurio": strip 1 magic byte + 8-byte global ID prefix
   *   - "confluent": strip 1 magic byte + 4-byte schema ID prefix (Confluent-compatible mode)
-  *   - "none": pass bytes through as-is (also appropriate for JSON, which has no wire header)
+  *   - "none": pass bytes through as-is (also appropriate for JSON, which has no wire header - default configuration)
   */
 class ApicurioSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
   import ApicurioSchemaSerDe._
@@ -38,7 +38,7 @@ class ApicurioSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
 
   private val artifactId: String = topicInfo.params.getOrElse(ArtifactIdKey, topicInfo.name)
 
-  private val wireFormat: String = topicInfo.params.getOrElse(WireFormatKey, "apicurio")
+  private val wireFormat: Option[String] = topicInfo.params.get(WireFormatKey).map(_.toLowerCase)
 
   private val proto3DefaultAsNull: Boolean =
     topicInfo.params.getOrElse(Proto3DefaultAsNullKey, "false").toBoolean
@@ -105,9 +105,9 @@ class ApicurioSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
 
   override def fromBytes(bytes: Array[Byte]): Mutation = {
     val payload = wireFormat match {
-      case "apicurio"  => bytes.drop(9) // 1 magic byte + 8-byte global ID
-      case "confluent" => bytes.drop(5) // 1 magic byte + 4-byte schema ID
-      case _           => bytes // "none" or unrecognised value → pass through
+      case Some("apicurio")  => bytes.drop(9) // 1 magic byte + 8-byte global ID
+      case Some("confluent") => bytes.drop(5) // 1 magic byte + 4-byte schema ID
+      case _                 => bytes // "none" or unrecognised value → pass through
     }
     delegate.fromBytes(payload)
   }
