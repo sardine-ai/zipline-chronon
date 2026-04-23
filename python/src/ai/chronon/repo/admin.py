@@ -1095,13 +1095,20 @@ def hub_health(hub_url, expected_version):
 
 
 @doctor.command("streaming-health")
-def streaming_health():
-    """Check that the Flink-on-EKS streaming infrastructure is correctly configured.
+@click.option(
+    "--cloud",
+    type=click.Choice(VALID_CLOUDS, case_sensitive=False),
+    default="aws",
+    show_default=True,
+    help="Cloud provider variant.",
+)
+def streaming_health(cloud):
+    """Check that the Flink streaming infrastructure is correctly configured.
 
     Requires kubectl to be installed and configured with access to the cluster.
     """
     console.print("[bold]Running Kubernetes infrastructure checks...[/bold]")
-    results = run_infra_checks()
+    results = run_infra_checks(cloud=cloud)
     print_check_table("Zipline Streaming Infrastructure Diagnostics", results)
 
 if __name__ == "__main__":
