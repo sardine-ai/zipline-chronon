@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import java.time.Instant
 import java.util.Collections
+import scala.jdk.CollectionConverters._
 
 class K8sFlinkSubmitterTest extends AnyFlatSpec {
 
@@ -84,14 +85,12 @@ class K8sFlinkSubmitterTest extends AnyFlatSpec {
     assertEquals("5", cfg("state.checkpoints.num-retained"))
   }
 
-  it should "filter out spark.* keys from jobProperties" in {
+  it should "pass through all jobProperties keys into the Flink configuration" in {
     val cfg = config(Map(
-      "spark.driverEnv.SNOWFLAKE_PRIVATE_KEY" -> "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----",
-      "spark.executor.memory" -> "512m",
+      "custom.flink.key" -> "custom-value",
       "state.checkpoints.num-retained" -> "7"
     ))
-    assertFalse(cfg.contains("spark.driverEnv.SNOWFLAKE_PRIVATE_KEY"))
-    assertFalse(cfg.contains("spark.executor.memory"))
+    assertEquals("custom-value", cfg("custom.flink.key"))
     assertEquals("7", cfg("state.checkpoints.num-retained"))
   }
 
@@ -265,6 +264,69 @@ class K8sFlinkSubmitterTest extends AnyFlatSpec {
     val meta = podMeta(submitterWithExtra(podLabels = Map("some-label" -> "val")))
     val annotations = meta.get("annotations").asInstanceOf[java.util.Map[String, String]]
     assertEquals("true", annotations.get("prometheus.io/scrape"))
+  }
+
+  // --- flinkEnvVars injection into JM/TM containers ---
+
+  private def containerEnvVars(submitter: K8sFlinkSubmitter,
+                                envVars: java.util.List[java.util.Map[String, String]]
+                               ): java.util.List[java.util.Map[String, String]] = {
+    val componentSpec = submitter.buildComponentSpec(
+      memory = "4G",
+      cpu = 1.0,
+      replicas = Some(1),
+      Collections.emptyList(),
+      envVars,
+      Collections.emptyList(),
+      Collections.emptyList()
+    )
+    val podSpec = componentSpec.get("podTemplate")
+      .asInstanceOf[java.util.Map[String, Object]]
+      .get("spec")
+      .asInstanceOf[java.util.Map[String, Object]]
+    val containers = podSpec.get("containers")
+      .asInstanceOf[java.util.List[java.util.Map[String, Object]]]
+    containers.get(0).get("env")
+      .asInstanceOf[java.util.List[java.util.Map[String, String]]]
+  }
+
+  it should "inject flinkEnvVars as env vars on JM and TM containers with FLINK_ prefix stripped" in {
+    val submitter = submitterWithExtra()
+    // buildComponentSpec receives already-processed env var maps (FLINK_ prefix already stripped by submit()).
+    // Here we test that buildComponentSpec faithfully passes them through to the container spec.
+    val podEnvVars: java.util.List[java.util.Map[String, String]] =
+      List("SASL_JAAS_CFG" -> "sasl-value", "BOOTSTRAP_SERVERS" -> "kafka:9092").map {
+        case (key, value) =>
+          val m = new java.util.HashMap[String, String]()
+          m.put("name", key)
+          m.put("value", value)
+          m: java.util.Map[String, String]
+      }.asJava
+
+    val envs = containerEnvVars(submitter, podEnvVars)
+
+    val envMap = envs.asScala.map(e => e.get("name") -> e.get("value")).toMap
+    assertEquals("sasl-value", envMap("SASL_JAAS_CFG"))
+    assertEquals("kafka:9092", envMap("BOOTSTRAP_SERVERS"))
+  }
+
+  it should "preserve existing container env vars (e.g. FLINK_CLASSPATH) alongside injected pod env vars" in {
+    val submitter = submitterWithExtra()
+    val classpathVar = new java.util.HashMap[String, String]()
+    classpathVar.put("name", "FLINK_CLASSPATH")
+    classpathVar.put("value", "/opt/flink/usrlib/*")
+    val saslVar = new java.util.HashMap[String, String]()
+    saslVar.put("name", "SASL_JAAS_CFG")
+    saslVar.put("value", "secret-value")
+    val allVars = new java.util.ArrayList[java.util.Map[String, String]]()
+    allVars.add(classpathVar)
+    allVars.add(saslVar)
+
+    val envs = containerEnvVars(submitter, allVars)
+
+    val envMap = envs.asScala.map(e => e.get("name") -> e.get("value")).toMap
+    assertEquals("/opt/flink/usrlib/*", envMap("FLINK_CLASSPATH"))
+    assertEquals("secret-value", envMap("SASL_JAAS_CFG"))
   }
 
   // --- createFlinkIngress ---

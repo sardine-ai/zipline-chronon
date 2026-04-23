@@ -90,6 +90,7 @@
           "CUSTOMER_ID": "dev",
           "EVAL_URL": "https://dev-azure.zipline.ai/services/eval",
           "FLINK_JARS_URI": "abfss://dev-zipline-artifacts@ziplineai2.dfs.core.windows.net/spark-3.5.3/libs/",
+          "FLINK_SASL_JAAS_CONFIG_VAULT_URI": "https://eventhub-sasl-jaas.vault.azure.net/secrets/sasl-jass-config",
           "FLINK_STATE_URI": "abfss://dev-zipline-warehouse@ziplineai2.dfs.core.windows.net/flink-state",
           "FRONTEND_URL": "https://dev-azure.zipline.ai",
           "HUB_URL": "https://dev-orch-azure.zipline.ai",

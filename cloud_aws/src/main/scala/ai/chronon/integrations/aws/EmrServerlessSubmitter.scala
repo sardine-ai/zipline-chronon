@@ -1,7 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.JobStatusType
-import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
+import ai.chronon.integrations.cloud_k8s.{K8sFlinkStatusProvider, K8sFlinkSubmitter}
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{
   JobSubmitter,
@@ -19,7 +19,9 @@ import software.amazon.awssdk.services.s3.S3Client
 
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.jdk.CollectionConverters._
 
 class EmrServerlessSubmitter(
@@ -150,13 +152,11 @@ class EmrServerlessSubmitter(
             flinkCheckpointUri = flinkCheckpointPath,
             maybeSavepointUri = maybeSavepointUri,
             maybeFlinkJarsUri = submissionProperties.get(FlinkJarsUri),
-            // Don't merge Spark-prefixed env properties into Flink jobProperties — the
-            // `spark.*Env.*` shape isn't what Flink reads and the K8sFlinkSubmitter
-            // strips them anyway. Flink env var injection lives on the submitter side.
             jobProperties = jobProperties,
             args = userArgs,
             serviceAccount = serviceAccount,
-            namespace = namespace
+            namespace = namespace,
+            envVars = envVars
           )
         s"flink:$namespace:$deploymentName"
 
@@ -722,6 +722,8 @@ object EmrServerlessSubmitter {
 
     val region = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", "us-west-2"))
     val appName = sys.env.get(SparkClusterNameEnvVar).filter(_.nonEmpty).getOrElse(DefaultApplicationName)
+    val flinkStatusProvider = new K8sFlinkStatusProvider()
+    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newCachedThreadPool())
     val submitter = EmrServerlessSubmitter(
       awsRegion = region,
       executionRoleArn = sys.env.getOrElse("EMR_EXECUTION_ROLE_ARN",
@@ -733,7 +735,9 @@ object EmrServerlessSubmitter {
       eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
       ingressBaseUrl = sys.env.get("HUB_BASE_URL"),
       emrStudioId = sys.env.get("EMR_STUDIO_ID"),
-      cloudWatchLogGroupName = sys.env.get("EMR_CLOUDWATCH_LOG_GROUP")
+      cloudWatchLogGroupName = sys.env.get("EMR_CLOUDWATCH_LOG_GROUP"),
+      flinkHealthCheckFn = uri => Await.result(flinkStatusProvider.isFlinkJobHealthy(uri), 30.seconds),
+      flinkInternalJobIdFetchFn = uri => Await.result(flinkStatusProvider.getFlinkInternalJobId(uri), 30.seconds)
     )
     val resultJobId = submitter.submit(
       jobType = jobType,

@@ -1,7 +1,7 @@
 package ai.chronon.integrations.cloud_azure
 
 import ai.chronon.api.JobStatusType
-import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
+import ai.chronon.integrations.cloud_k8s.{K8sFlinkStatusProvider, K8sFlinkSubmitter}
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{
   JobSubmitter,
@@ -15,7 +15,9 @@ import ai.chronon.spark.submission.{
 import com.azure.storage.blob.BlobServiceClientBuilder
 
 import java.time.Duration
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 
 /** Unified Azure job submitter for AKS.
   *
@@ -93,7 +95,8 @@ class AzureSubmitter(
           jobProperties = jobProperties,
           args = userArgs.toSeq,
           serviceAccount = serviceAccount,
-          namespace = namespace
+          namespace = namespace,
+          envVars = envVars
         )
         s"flink:$namespace:$deploymentName"
     }
@@ -224,6 +227,8 @@ object AzureSubmitter {
       defaultJarsBasePath = flinkJarsBasePath,
       ingressBaseUrl = ingressBaseUrl
     )
+    val flinkStatusProvider = new K8sFlinkStatusProvider()
+    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newCachedThreadPool())
 
     new AzureSubmitter(
       kyuubiSubmitter = kyuubiSubmitter,
@@ -231,7 +236,9 @@ object AzureSubmitter {
       aksServiceAccount = aksServiceAccount,
       aksNamespace = aksNamespace,
       ingressBaseUrl = ingressBaseUrl,
-      storageClient = storageClient
+      storageClient = storageClient,
+      flinkHealthCheckFn = uri => Await.result(flinkStatusProvider.isFlinkJobHealthy(uri), 30.seconds),
+      flinkInternalJobIdFetchFn = uri => Await.result(flinkStatusProvider.getFlinkInternalJobId(uri), 30.seconds)
     )
   }
 }

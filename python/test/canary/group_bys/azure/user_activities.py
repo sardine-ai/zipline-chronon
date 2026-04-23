@@ -17,10 +17,8 @@ schema_registry_kv = f"{serde}/{registry_host}/{registry_port}/{artifact_id}"
 
 security_protocol = "security.protocol=SASL_SSL"
 sasl_mechanism = "sasl.mechanism=PLAIN"
-# '/' chars in the JAAS config value are encoded as '//' per TopicInfo parsing convention.
-# TODO: replace 'foo' in SharedAccessKey with the real key until secret support is wired up.
-sasl_jaas_config = "sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$ConnectionString\" password=\"Endpoint=sb:////zipline-demo-events.servicebus.windows.net//;SharedAccessKeyName=canary-flink-jobs;SharedAccessKey=foo=\";"
-kafka_sasl_kv = f"{security_protocol}/{sasl_mechanism}/{sasl_jaas_config}"
+# Note: Sasl jaas config contains secrets that are read by the Flink app after being injected via Key Vault
+kafka_sasl_kv = f"{security_protocol}/{sasl_mechanism}"
 
 source = EventSource(
     # This is the Iceberg table that receives the EventHub data

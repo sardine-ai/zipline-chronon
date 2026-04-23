@@ -17,7 +17,7 @@ import ai.chronon.spark.submission.{
 }
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
+import ai.chronon.integrations.cloud_k8s.{K8sFlinkStatusProvider, K8sFlinkSubmitter}
 import io.fabric8.kubernetes.client.Config
 import software.amazon.awssdk.core.exception.SdkException
 import software.amazon.awssdk.services.ec2.Ec2Client
@@ -27,7 +27,9 @@ import software.amazon.awssdk.services.emr.model.{Unit => _, _}
 import software.amazon.awssdk.services.s3.S3Client
 
 import java.time.Instant
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -533,13 +535,11 @@ class EmrSubmitter(customerId: String,
             flinkCheckpointUri = flinkCheckpointPath,
             maybeSavepointUri = maybeSavepointUri,
             maybeFlinkJarsUri = submissionProperties.get(FlinkJarsUri),
-            // Don't merge Spark-prefixed env properties into Flink jobProperties — the
-            // `spark.*Env.*` shape isn't what Flink reads and the K8sFlinkSubmitter
-            // strips them anyway. Flink env var injection lives on the submitter side.
             jobProperties = jobProperties,
             args = userArgs,
             serviceAccount = serviceAccount,
-            namespace = namespace
+            namespace = namespace,
+            envVars = envVars
           )
         // Encode namespace into the job ID so status/kill can target the right namespace
         s"flink:$namespace:$deploymentName"
@@ -773,7 +773,9 @@ class EmrSubmitter(customerId: String,
 object EmrSubmitter {
   private val DatabricksOAuthTokenVar = "$DATABRICKS_OAUTH_TOKEN"
 
-  def apply(k8sConfig: Option[Config] = None): EmrSubmitter = {
+  def apply(k8sConfig: Option[Config] = None,
+            flinkHealthCheckFn: Option[String] => Boolean = _ => true,
+            flinkInternalJobIdFetchFn: Option[String] => Option[String] = _ => None): EmrSubmitter = {
     val customerId = sys.env.getOrElse("CUSTOMER_ID", throw new Exception("CUSTOMER_ID not set")).toLowerCase
     val awsRegion = sys.env.getOrElse("AWS_REGION", sys.env.getOrElse("AWS_DEFAULT_REGION", ""))
     val ingressBaseUrl = sys.env.get("HUB_BASE_URL")
@@ -787,7 +789,9 @@ object EmrSubmitter {
       flinkEksServiceAccount = sys.env.get("FLINK_EKS_SERVICE_ACCOUNT"),
       flinkEksNamespace = sys.env.get("FLINK_EKS_NAMESPACE"),
       eksClusterName = sys.env.get("EKS_CLUSTER_NAME"),
-      ingressBaseUrl = ingressBaseUrl
+      ingressBaseUrl = ingressBaseUrl,
+      flinkHealthCheckFn = flinkHealthCheckFn,
+      flinkInternalJobIdFetchFn = flinkInternalJobIdFetchFn
     )
   }
 
@@ -931,7 +935,12 @@ object EmrSubmitter {
       filesArgs(0).split("=")(1).split(",")
     }
 
-    val emrSubmitter = EmrSubmitter()
+    val flinkStatusProvider = new K8sFlinkStatusProvider()
+    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newCachedThreadPool())
+    val emrSubmitter = EmrSubmitter(
+      flinkHealthCheckFn = uri => Await.result(flinkStatusProvider.isFlinkJobHealthy(uri), 30.seconds),
+      flinkInternalJobIdFetchFn = uri => Await.result(flinkStatusProvider.getFlinkInternalJobId(uri), 30.seconds)
+    )
 
     val jobType = jobTypeValue.toLowerCase match {
       case "spark" => TypeSparkJob

@@ -136,10 +136,6 @@ class K8sFlinkSubmitter(
     // jobProperties applied last so callers can override anything.
     // All jars are available via FLINK_CLASSPATH=/opt/flink/usrlib/*,
     // which Flink surfaces as pipeline.classpaths.
-    //
-    // Strip spark.* keys from jobProperties — they come from the Spark submission path and are
-    // irrelevant to Flink. Multiline values like SNOWFLAKE_PRIVATE_KEY break the legacy YAML parser.
-    val flinkJobProperties = jobProperties.filterNot { case (k, _) => k.startsWith("spark.") }
     Map(
       "state.savepoints.dir" -> flinkCheckpointUri,
       "state.checkpoints.dir" -> flinkCheckpointUri,
@@ -150,7 +146,7 @@ class K8sFlinkSubmitter(
       "state.checkpoint-storage" -> "filesystem",
       "rest.profiling.enabled" -> "true",
       "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
-    ) ++ flinkMemoryConfig(tier) ++ extraFlinkConfig ++ flinkJobProperties
+    ) ++ flinkMemoryConfig(tier) ++ extraFlinkConfig ++ jobProperties
   }
 
   private def flinkDeploymentCrdContext: CustomResourceDefinitionContext =
@@ -273,7 +269,8 @@ class K8sFlinkSubmitter(
              jobProperties: Map[String, String],
              args: Seq[String],
              serviceAccount: String,
-             namespace: String): String = {
+             namespace: String,
+             envVars: Map[String, String] = Map.empty): String = {
 
     val deploymentName = sanitizeDeploymentName(s"flink-$jobId")
     val basePath = maybeFlinkJarsUri.getOrElse(defaultJarsBasePath)
@@ -295,6 +292,25 @@ class K8sFlinkSubmitter(
     val allJars = (mainJarUri +: allJarUris).distinct
     val containerSpec = buildInitContainerSpec(allJars)
 
+    // Inject FLINK_-prefixed keys from flinkEnvVars as pod env vars on JM/TM containers,
+    // stripping the FLINK_ routing prefix so underlying libs see the name they expect
+    // (e.g. FLINK_SASL_JAAS_CONFIG -> SASL_JAAS_CONFIG).
+    // These are kept out of flinkConfiguration (and therefore out of Flink's startup config logging).
+    val podEnvVars = envVars
+      .collect {
+        case (k, v) if k.startsWith("FLINK_") =>
+          val envVarMap = new java.util.HashMap[String, String]()
+          envVarMap.put("name", k.stripPrefix("FLINK_"))
+          envVarMap.put("value", v)
+          envVarMap
+      }
+      .toList
+      .asJava
+
+    val allEnvVars = new java.util.ArrayList[java.util.Map[String, String]]()
+    allEnvVars.addAll(containerSpec.envVars)
+    allEnvVars.addAll(podEnvVars)
+
     // Pod resource memory must match what Flink is configured to use.
     // For sized tiers (64G/32G) we set it explicitly; for small tiers we use whatever jobProperties
     // supplied, falling back to a conservative 4G default so the pod request is never left unset.
@@ -307,7 +323,7 @@ class K8sFlinkSubmitter(
                          cpu = 1.0,
                          replicas = Some(1),
                          containerSpec.initContainers,
-                         containerSpec.envVars,
+                         allEnvVars,
                          containerSpec.volumeMounts,
                          containerSpec.volumes)
     )
@@ -318,7 +334,7 @@ class K8sFlinkSubmitter(
         cpu = tier.taskSlots.toDouble,
         replicas = None,
         containerSpec.initContainers,
-        containerSpec.envVars,
+        allEnvVars,
         containerSpec.volumeMounts,
         containerSpec.volumes
       )

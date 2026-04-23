@@ -168,7 +168,8 @@ class AzureSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
         jobProperties = any(),
         args = any(),
         serviceAccount = anyString(),
-        namespace = anyString()
+        namespace = anyString(),
+        envVars = any()
       )).thenReturn("flink-abc123")
 
     val result = submitter.submit(
@@ -200,7 +201,8 @@ class AzureSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
         jobProperties = any(),
         args = any(),
         serviceAccount = anyString(),
-        namespace = anyString()
+        namespace = anyString(),
+        envVars = any()
       )).thenReturn("flink-abc123")
 
     submitter.submit(
@@ -223,7 +225,8 @@ class AzureSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
       jobProperties = any(),
       args = any(),
       serviceAccount = anyString(),
-      namespace = anyString()
+      namespace = anyString(),
+      envVars = any()
     )
   }
 
@@ -243,7 +246,8 @@ class AzureSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
         jobProperties = any(),
         args = any(),
         serviceAccount = anyString(),
-        namespace = anyString()
+        namespace = anyString(),
+        envVars = any()
       )).thenReturn("flink-no-sp")
 
     val result = submitter.submit(

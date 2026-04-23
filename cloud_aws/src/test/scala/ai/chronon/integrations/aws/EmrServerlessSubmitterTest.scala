@@ -942,7 +942,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         jobProperties = org.mockito.ArgumentMatchers.any(),
         args = org.mockito.ArgumentMatchers.any(),
         serviceAccount = org.mockito.ArgumentMatchers.anyString(),
-        namespace = org.mockito.ArgumentMatchers.anyString()
+        namespace = org.mockito.ArgumentMatchers.anyString(),
+        envVars = org.mockito.ArgumentMatchers.any()
       )
     ).thenReturn("flink-abc123")
 
