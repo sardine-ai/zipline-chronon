@@ -100,7 +100,9 @@ trait Format {
           partitionMap.get(k).contains(v)
         }
       ) {
-        partitionMap.get(effectiveColumn)
+        // partitionMap values come from a Java-interop catalog, so .get can
+        // yield Some(null). Rehydrate via Option(_) to collapse that to None.
+        partitionMap.get(effectiveColumn).flatMap(Option(_))
       } else {
         None
       }
@@ -127,11 +129,7 @@ trait Format {
     // Try metadata-based partition listing first (free for Hive/Iceberg/Delta)
     val metadataResult = Try(primaryPartitions(tableName, partitionColumn, "")(sparkSession)) match {
       case Success(metadata) =>
-        metadata.flatMap(Option(_)) match {
-          // Partition metadata might not exist, if it does not then there are no partitions.
-          case parts if parts.nonEmpty => Some(parts.max)
-          case _                       => None
-        }
+        Format.pickMaxPartition(metadata)
       case Failure(ex) =>
         logger.warn(
           s"[NonFatal] Failed to check primary partitions for ${tableName}, falling back to data scan: ${ex.getMessage}");
@@ -178,10 +176,7 @@ trait Format {
       sparkSession: SparkSession): Option[String] = {
     val metadataResult = Try(primaryPartitions(tableName, partitionColumn, "")(sparkSession)) match {
       case Success(metadata) =>
-        metadata.flatMap(Option(_)) match {
-          case parts if parts.nonEmpty => Some(parts.min)
-          case _                       => None
-        }
+        Format.pickMinPartition(metadata)
       case _ => None
     }
     if (metadataResult.isDefined) return metadataResult
@@ -271,6 +266,20 @@ case class ResolvedTableName(catalog: String, namespace: String, table: String) 
 }
 
 object Format {
+
+  private val stringOrdering: Ordering[String] = Ordering.String
+
+  def sanitizePartitionValues(partitions: Iterable[String]): List[String] = partitions.iterator
+    .flatMap(Option(_))
+    .toList
+
+  def pickMinPartition(partitions: Iterable[String]): Option[String] = {
+    sanitizePartitionValues(partitions).reduceOption((x, y) => stringOrdering.min(x, y))
+  }
+
+  def pickMaxPartition(partitions: Iterable[String]): Option[String] = {
+    sanitizePartitionValues(partitions).reduceOption((x, y) => stringOrdering.max(x, y))
+  }
 
   /** Parse a (possibly multipart, possibly backticked) table identifier into its dotted segments,
     * using the session parser so any session-level parser extensions apply. Does NOT fill in a
