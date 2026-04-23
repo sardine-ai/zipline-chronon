@@ -26,6 +26,7 @@ Set the following environment variables on the frontend service:
 | `AUTH_ENABLED` | Yes | Set to `true` to enable authentication |
 | `AUTH_URL` | Yes | Base URL of the frontend (e.g., `https://zipline.example.com`). Used for OAuth redirect URIs |
 | `AUTH_SECRET` | Yes | Random secret (32+ characters) used for signing keys. Generate with `openssl rand -base64 32` |
+| `AUTH_ALLOWED_HOSTS` | No | Comma-separated list of additional allowed hosts for incoming requests (e.g., internal service names like `orchestration-ui-service`). `AUTH_URL` and `host.docker.internal:*` are always allowed |
 
 You must also configure at least one authentication provider (see below).
 

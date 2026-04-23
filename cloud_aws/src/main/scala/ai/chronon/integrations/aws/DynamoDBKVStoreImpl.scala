@@ -27,6 +27,8 @@ class DynamoDBKVStoreImpl(rawDynamoDbClient: DynamoDbAsyncClient, conf: Map[Stri
     extends KVStore {
   import DynamoDBKVStoreConstants._
 
+  protected val enableTtl: Boolean = true
+
   private val tablePrefix = conf.getOrElse(KvTablePrefixArg, "")
 
   // Wrap the client to automatically prefix all table names
@@ -61,7 +63,23 @@ class DynamoDBKVStoreImpl(rawDynamoDbClient: DynamoDbAsyncClient, conf: Map[Stri
 
   override def create(dataset: String): Unit = create(dataset, Map.empty)
 
+  private def tableExists(dataset: String): Boolean = {
+    val request = DescribeTableRequest.builder.tableName(dataset).build
+    try {
+      prefixedDynamoDbClient.describeTable(request).join()
+      true
+    } catch {
+      case _: ResourceNotFoundException                                                 => false
+      case e: CompletionException if e.getCause.isInstanceOf[ResourceNotFoundException] => false
+    }
+  }
+
   override def create(dataset: String, props: Map[String, Any]): Unit = {
+    if (tableExists(dataset)) {
+      logger.info(s"DynamoDB table $dataset already exists, skipping creation")
+      return
+    }
+
     val maybeSortKeys = props.get(isTimedSorted) match {
       case Some(value: String) if value.toLowerCase == "true" => Some(sortKeyColumn)
       case Some(value: Boolean) if value                      => Some(sortKeyColumn)
@@ -95,17 +113,18 @@ class DynamoDBKVStoreImpl(rawDynamoDbClient: DynamoDbAsyncClient, conf: Map[Stri
       val tableDescription = waiterResponse.matched().response().get().table()
       logger.info(s"Table created successfully! Details: \n${tableDescription.toString}")
 
-      // Enable TTL on the table
-      val ttlSpec = TimeToLiveSpecification.builder
-        .enabled(true)
-        .attributeName("ttl")
-        .build
-      val ttlRequest = UpdateTimeToLiveRequest.builder
-        .tableName(dataset)
-        .timeToLiveSpecification(ttlSpec)
-        .build
-      prefixedDynamoDbClient.updateTimeToLive(ttlRequest).join()
-      logger.info(s"TTL enabled on table: $dataset with attribute 'ttl'")
+      if (enableTtl) {
+        val ttlSpec = TimeToLiveSpecification.builder
+          .enabled(true)
+          .attributeName("ttl")
+          .build
+        val ttlRequest = UpdateTimeToLiveRequest.builder
+          .tableName(dataset)
+          .timeToLiveSpecification(ttlSpec)
+          .build
+        prefixedDynamoDbClient.updateTimeToLive(ttlRequest).join()
+        logger.info(s"TTL enabled on table: $dataset with attribute 'ttl'")
+      }
 
       metricsContext.increment("create.successes")
     } catch {
@@ -276,8 +295,10 @@ class DynamoDBKVStoreImpl(rawDynamoDbClient: DynamoDbAsyncClient, conf: Map[Stri
 
       val attributeMap: Map[String, AttributeValue] = buildAttributeMap(actualKeyBytes, req.valueBytes)
       val tsMap = Map(sortKeyColumn -> AttributeValue.builder.n(actualTimestamp.toString).build)
-      val ttlSeconds = (System.currentTimeMillis() / 1000).toInt + DataTTLSeconds
-      val ttlMap = Map("ttl" -> AttributeValue.builder.n(ttlSeconds.toString).build)
+      val ttlMap = if (enableTtl) {
+        val ttlSeconds = (System.currentTimeMillis() / 1000).toInt + DataTTLSeconds
+        Map("ttl" -> AttributeValue.builder.n(ttlSeconds.toString).build)
+      } else Map.empty[String, AttributeValue]
 
       val putItemReq =
         PutItemRequest.builder.tableName(req.dataset).item((attributeMap ++ tsMap ++ ttlMap).toJava).build()

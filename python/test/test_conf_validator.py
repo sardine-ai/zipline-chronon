@@ -411,29 +411,27 @@ class TestOnlineConfNotChangedInPlace:
 
 
 class TestTimePartitionedValidation:
-    def test_group_by_source_requires_partition_column_when_time_partitioned(self):
+    # timePartitioned flag is deprecated — column type is detected automatically at runtime.
+    # These tests verify that setting timePartitioned without partitionColumn no longer errors.
+    def test_group_by_source_time_partitioned_without_partition_column_no_error(self):
         group_by = _make_group_by()
         group_by.sources[0].events.query.timePartitioned = True
         group_by.sources[0].events.query.partitionColumn = None
         validator = _make_validator()
 
         errors = validator.validate_obj(group_by)
-        assert _has_time_partitioned_missing_partition_column_error(
-            errors, "group_by team.my_gb source[0]"
-        )
+        assert not _has_time_partitioned_missing_partition_column_error(errors)
 
-    def test_join_left_requires_partition_column_when_time_partitioned(self):
+    def test_join_left_time_partitioned_without_partition_column_no_error(self):
         join = _make_join()
         join.left.events.query.timePartitioned = True
         join.left.events.query.partitionColumn = None
         validator = _make_validator()
 
         errors = validator.validate_obj(join)
-        assert _has_time_partitioned_missing_partition_column_error(
-            errors, "join team.my_join left"
-        )
+        assert not _has_time_partitioned_missing_partition_column_error(errors)
 
-    def test_join_bootstrap_part_requires_partition_column_when_time_partitioned(self):
+    def test_join_bootstrap_time_partitioned_without_partition_column_no_error(self):
         join = _make_join()
         bootstrap_query = Query()
         bootstrap_query.timePartitioned = True
@@ -447,9 +445,7 @@ class TestTimePartitionedValidation:
         validator = _make_validator()
 
         errors = validator.validate_obj(join)
-        assert _has_time_partitioned_missing_partition_column_error(
-            errors, "join team.my_join bootstrapParts[0]"
-        )
+        assert not _has_time_partitioned_missing_partition_column_error(errors)
 
     def test_time_partitioned_with_partition_column_passes(self):
         group_by = _make_group_by()

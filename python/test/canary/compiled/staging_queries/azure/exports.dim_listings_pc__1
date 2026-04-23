@@ -45,11 +45,11 @@
       "offlineSchedule": "@daily",
       "stepDays": 30
     },
-    "name": "azure.exports.dim_listings_pc__0",
+    "name": "azure.exports.dim_listings_pc__1",
     "outputNamespace": "data",
     "sourceFile": "staging_queries/azure/exports.py",
     "team": "azure",
-    "version": "0"
+    "version": "1"
   },
   "query": "\n    SELECT\n        *,\n        DATE_TRUNC('DAY', datest)::DATE as ds\n    FROM dim_listings_custom_part\n    WHERE\n    datest BETWEEN {{ start_date }} AND {{ end_date }}\n    ",
   "tableDependencies": [

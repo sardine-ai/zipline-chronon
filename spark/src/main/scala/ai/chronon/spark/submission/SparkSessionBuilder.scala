@@ -88,8 +88,11 @@ object SparkSessionBuilder {
     val warehouseDir = localWarehouseLocation.map(expandUser).getOrElse(DefaultWarehouseDir.getAbsolutePath)
     println(s"Using warehouse dir: $warehouseDir")
 
+    // Read existing Spark config (e.g. from spark-submit --conf) so we don't clobber user settings.
+    val existingConf = new org.apache.spark.SparkConf()
+
     val baseConfigs = Map(
-      "spark.sql.session.timeZone" -> "UTC",
+      "spark.sql.session.timeZone" -> existingConf.get("spark.sql.session.timeZone", "UTC"),
       // needs to be uppercase until https://github.com/GoogleCloudDataproc/spark-bigquery-connector/pull/1313 is available
       "spark.sql.sources.partitionOverwriteMode" -> "DYNAMIC",
       "hive.exec.dynamic.partition" -> "true",

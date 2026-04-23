@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.emrserverless.EmrServerlessClient
 import software.amazon.awssdk.services.emrserverless.model._
 import software.amazon.awssdk.services.s3.S3Client
 
-import java.time.{Duration, Instant}
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._

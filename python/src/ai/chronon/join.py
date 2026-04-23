@@ -224,29 +224,18 @@ def ExternalPart(
 
 def Derivation(name: str, expression: str) -> api.Derivation:
     """
-    Derivation allows arbitrary SQL select clauses to be computed using columns from joinPart and externalParts,
-    and saves the result as derived columns. The results will be available both in online fetching response map,
-    and in offline Hive table.
-
-    joinPart column names are automatically constructed according to the below convention
-    `{join_part_prefix}_{group_by_name}_{input_column_name}_{aggregation_operation}_{window}_{by_bucket}`
-    prefix, window and bucket are optional. You can find the type information of columns using the analyzer tool.
-
-    externalPart column names are automatically constructed according to the below convention
-    `ext_{external_source_name}_{value_column}`.
-    Types are defined along with the schema by users for external sources.
-
-    Note that only values can be used in derivations, not keys. If you want to use a key in the derivation, you must
-    define it as a contextual field. You also must refer to a contextual field with its prefix included, for example:
-    `ext_contextual_request_id`.
-
-    If both name and expression are set to "*", then every raw column will be included along with the derived columns.
-
-    :param name: output column name of the SQL expression
-    :param expression: any valid Spark SQL select clause based on joinPart or externalPart columns
-    :return: a Derivation object representing a single derived column or a wildcard ("*") selection.
+    .. deprecated::
+        Use ``from ai.chronon.types import Derivation`` instead.
     """
-    return api.Derivation(name=name, expression=expression)
+    import warnings
+    warnings.warn(
+        "Importing Derivation from ai.chronon.join is deprecated. "
+        "Use 'from ai.chronon.types import Derivation' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    from ai.chronon.derivation import Derivation as _Derivation
+    return _Derivation(name=name, expression=expression)
 
 
 def BootstrapPart(
@@ -314,6 +303,7 @@ def Join(
     cluster_conf: common.ClusterConfigProperties = None,
     step_days: int = None,
     enable_stats_compute: bool = None,
+    modular_execution: bool = False,
 ) -> api.Join:
     """
     Construct a join object. A join can pull together data from various GroupBy's both offline and online. This is also
@@ -416,6 +406,10 @@ def Join(
         Whether to enable enhanced statistics computation and upload for this join.
         When True, stats compute and upload nodes will be added to the workflow.
     :type enable_stats_compute: bool
+    :param modular_execution:
+        When True, uses modular join planning (JoinPlanner) instead of the default
+        monolith planner (MonolithJoinPlanner).
+    :type modular_execution: bool
     """
     # Normalize row_ids
     if isinstance(row_ids, str):
@@ -474,6 +468,15 @@ def Join(
     # Set default online_schedule if online is True and online_schedule is not specified
     elif online and online_schedule is None:
         online_schedule = "@daily"
+
+    if modular_execution:
+        if conf is None:
+            conf = common.ConfigProperties(common={"modular_execution": "true"})
+        else:
+            if conf.common is None:
+                conf.common = {"modular_execution": "true"}
+            else:
+                conf.common["modular_execution"] = "true"
 
     exec_info = common.ExecutionInfo(
         offlineSchedule=offline_schedule,

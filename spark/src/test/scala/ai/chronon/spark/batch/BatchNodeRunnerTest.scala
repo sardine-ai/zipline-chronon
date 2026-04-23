@@ -439,12 +439,12 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     val statuses = runner.computeInputTablePartitionStatuses(metadata, cliRange, tableUtils)
 
     statuses.foreach { tps =>
-      // Partitions should be translated from yyyyMMdd to PartitionSpec.daily (yyyy-MM-dd)
-      assertTrue(s"Translated partitions should contain $yesterday", tps.existingPartitions.contains(yesterday))
-      assertTrue(s"Translated partitions should contain $twoDaysAgo", tps.existingPartitions.contains(twoDaysAgo))
-      assertFalse("Should NOT contain yyyyMMdd format",
-        tps.existingPartitions.exists(p => p == yesterdayAlt || p == twoDaysAgoAlt))
-      assertTrue("No partitions should be missing", tps.missingPartitions.isEmpty)
+      assertTrue("Should be ready", tps.ready)
+      assertTrue("Should have last available partition", tps.lastAvailablePartition.isDefined)
+      // Last available partition should be in yyyy-MM-dd format (translated from yyyyMMdd)
+      val lastPart = tps.lastAvailablePartition.get
+      assertFalse("Should NOT be in yyyyMMdd format",
+        lastPart == yesterdayAlt || lastPart == twoDaysAgoAlt)
     }
   }
 
@@ -492,11 +492,9 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
 
     result match {
       case Success(_) =>
-        fail("checkPartitions should have failed due to missing partitions")
+        fail("checkPartitions should have failed due to data not ready")
       case Failure(exception) =>
-        assertTrue("Exception should mention missing partitions", exception.getMessage.contains("missing partitions"))
-        assertTrue("Exception should mention table name", exception.getMessage.contains("test_db.external_table"))
-        assertTrue("Exception should mention specific partition", exception.getMessage.contains(today))
+        assertTrue("Exception should mention sensor check", exception.getMessage.contains("Sensor"))
     }
   }
 
@@ -519,10 +517,9 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
 
     result match {
       case Success(_) =>
-        fail("checkPartitions should have failed due to missing partitions")
+        fail("checkPartitions should have failed due to data not ready")
       case Failure(exception) =>
-        // Should fail with default retry count (3) and retry interval (3 minutes)
-        assertTrue("Exception should mention missing partitions", exception.getMessage.contains("missing partitions"))
+        assertTrue("Exception should mention sensor check", exception.getMessage.contains("Sensor"))
     }
   }
 
@@ -547,9 +544,9 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
 
     result match {
       case Success(_) =>
-        fail("checkPartitions should have failed due to missing partitions")
+        fail("checkPartitions should have failed due to data not ready")
       case Failure(exception) =>
-        assertTrue("Exception should mention missing partitions", exception.getMessage.contains("missing partitions"))
+        assertTrue("Exception should mention sensor check", exception.getMessage.contains("Sensor"))
         // Since we set retry interval to 0, the test should complete quickly
         assertTrue("Test should complete within reasonable time", (endTime - startTime) < 5000)
     }
@@ -601,14 +598,12 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     assertTrue("Should have status for input_table", inputTableStatus.isDefined)
 
     inputTableStatus.foreach { status =>
-      assertEquals("Should have existing partitions", 2, status.existingPartitions.size)
-      assertTrue("Should contain yesterday partition", status.existingPartitions.contains(yesterday))
-      assertTrue("Should contain twoDaysAgo partition", status.existingPartitions.contains(twoDaysAgo))
-      assertEquals("Should have no missing partitions", 0, status.missingPartitions.size)
+      assertTrue("Should be ready", status.ready)
+      assertTrue("Should have last available partition", status.lastAvailablePartition.isDefined)
     }
   }
 
-  it should "identify missing partitions correctly" in {
+  it should "identify not-ready tables correctly" in {
     val configPath = createTestConfigFile(twoDaysAgo, today)
     val node = ThriftJsonCodec.fromJsonFile[Node](configPath, check = true)
     val runner = new BatchNodeRunner(node, tableUtils, mockApi)
@@ -621,8 +616,7 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     assertTrue("Should have status for input_table", inputTableStatus.isDefined)
 
     inputTableStatus.foreach { status =>
-      assertTrue("Should have missing partitions", status.missingPartitions.nonEmpty)
-      assertTrue("Should identify today as missing", status.missingPartitions.contains(today))
+      assertFalse("Should not be ready (today's data not available)", status.ready)
     }
   }
 
@@ -684,8 +678,8 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
 
     inputTableStatuses.head match {
       case status =>
-        assertTrue("Should have existing partitions", status.existingPartitions.nonEmpty)
-        assertEquals("Should have no missing partitions", 0, status.missingPartitions.size)
+        assertTrue("Should have last available partition", status.lastAvailablePartition.isDefined)
+        assertTrue("Should be ready", status.ready)
     }
   }
 
@@ -878,10 +872,10 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
          |(2, 'b', TIMESTAMP '${today} 12:00:00')
          |""".stripMargin)
 
+    // No timePartitioned flag needed — column type is detected automatically
     val tableInfo = new TableInfo()
       .setTable("test_db.time_part_sensor")
       .setPartitionColumn("created_at")
-      .setTimePartitioned(true)
     val tableDependency = new TableDependency().setTableInfo(tableInfo)
 
     val sensorNode = new ExternalSourceSensorNode()
@@ -906,7 +900,6 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     val tableInfo = new TableInfo()
       .setTable("test_db.time_part_sensor")
       .setPartitionColumn("created_at")
-      .setTimePartitioned(true)
     val tableDependency = new TableDependency().setTableInfo(tableInfo)
 
     val sensorNode = new ExternalSourceSensorNode()
@@ -926,8 +919,8 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     result match {
       case Success(_) => fail("checkPartitions should have failed")
       case Failure(e) =>
-        assertTrue("Error should mention time-partitioned sensor",
-          e.getMessage.contains("Time-partitioned sensor") || e.getMessage.contains("Sensor timed out"))
+        assertTrue("Error should mention sensor",
+          e.getMessage.contains("Sensor"))
     }
   }
 
@@ -954,7 +947,6 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     // Create a time-partitioned table dependency
     val query = new Query()
       .setPartitionColumn("created_at")
-      .setTimePartitioned(true)
     val tableDep = TableDependencies.fromTable("test_db.tp_events", query)
 
     val sqMetaData = Builders.MetaData(namespace = "test_db", name = "tp_staging_test")
@@ -1011,7 +1003,6 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
       partitionColumn = "created_at",
       timeColumn = "UNIX_TIMESTAMP(created_at) * 1000"
     )
-    sourceQuery.setTimePartitioned(true)
 
     val source = Builders.Source.events(sourceQuery, table = "test_db.tp_events")
     val tableDep = TableDependencies.fromSource(source).get

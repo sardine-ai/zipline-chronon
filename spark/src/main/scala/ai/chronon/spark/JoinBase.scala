@@ -309,18 +309,19 @@ abstract class JoinBase(val joinConfCloned: api.Join,
 
     logger.info(s"Join range to fill $rangeToFill")
 
-    // check if left source doesn't have any partition for the requested range
-    val existingLeftRange = tableUtils.partitions(
+    // check if left source has any data covering the requested range
+    val leftSpec = joinConfCloned.left.query.partitionSpec(tableUtils.partitionSpec)
+    val leftLastPartition = tableUtils.lastAvailablePartition(
       joinConfCloned.left.table,
-      partitionRange = Option(rangeToFill),
-      tablePartitionSpec = Option(joinConfCloned.left.query.partitionSpec(tableUtils.partitionSpec))
+      tablePartitionSpec = Option(leftSpec)
+    )
+    val leftFirstPartition = tableUtils.firstAvailablePartition(
+      joinConfCloned.left.table,
+      partitionSpec = leftSpec
     )
 
-    val requested = rangeToFill.partitions
-    val fillableRanges = requested.filter(existingLeftRange.contains)
-
-    if (fillableRanges.isEmpty) {
-      logger.info(s"""No relevant input partitions present in join.left table ${joinConfCloned.left.table}
+    if (leftFirstPartition.isEmpty || leftLastPartition.isEmpty) {
+      logger.info(s"""No data present in join.left table ${joinConfCloned.left.table}
                    | for the requested range ${rangeToFill.start} - ${rangeToFill.end}. Exiting...""".stripMargin)
       return None
     }

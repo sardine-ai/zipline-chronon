@@ -36,8 +36,12 @@ case object Iceberg extends Format {
 
     Try(getIcebergPartitions(tableName, partitionColumn)) match {
       case Success(p) => p
-      case Failure(e) =>
+      case Failure(e) if Option(e.getMessage).exists(_.contains("TABLE_OR_VIEW_NOT_FOUND")) =>
         logger.warn(s"Failed to get partitions for $tableName: ${e.getMessage}")
+        List.empty
+      case Failure(e) =>
+        logger.warn(
+          s"Failed to get partitions for $tableName: ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)")}")
         List.empty
     }
   }
