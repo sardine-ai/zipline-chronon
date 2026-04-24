@@ -139,6 +139,9 @@ class EmrServerlessSubmitter(
           throw new RuntimeException(s"Missing expected $EksServiceAccount"))
         val namespace =
           submissionProperties.getOrElse(EksNamespace, throw new RuntimeException(s"Missing expected $EksNamespace"))
+        val nodeSelector = submissionProperties.get(EksNodeSelector)
+          .map(parseNodeSelector)
+          .getOrElse(Map.empty)
 
         val deploymentName = eksFlinkSubmitter
           .getOrElse(
@@ -156,7 +159,8 @@ class EmrServerlessSubmitter(
             args = userArgs,
             serviceAccount = serviceAccount,
             namespace = namespace,
-            envVars = envVars
+            envVars = envVars,
+            nodeSelector = nodeSelector
           )
         s"flink:$namespace:$deploymentName"
 
@@ -164,6 +168,14 @@ class EmrServerlessSubmitter(
         submitSparkJob(submissionProperties, jobProperties, envVars, files, labels, userArgs: _*)
     }
   }
+
+  // Parses "zipline.ai/node-type=flink,kubernetes.io/arch=amd64" into the equivalent Map
+  private[aws] def parseNodeSelector(raw: String): Map[String, String] =
+    raw.split(",").flatMap { pair =>
+      val idx = pair.indexOf('=')
+      if (idx > 0) Some(pair.substring(0, idx).trim -> pair.substring(idx + 1).trim)
+      else None
+    }.toMap
 
   private def submitSparkJob(
       submissionProperties: Map[String, String],
@@ -656,6 +668,7 @@ object EmrServerlessSubmitter {
         val maybeKinesisJarUri = JobSubmitter.getArgValue(args, FlinkKinesisJarUriArgKeyword)
         val maybeFlinkJarsUri = JobSubmitter.getArgValue(args, FlinkJarsUriArgKeyword)
         val maybeAdditionalJarsUri = JobSubmitter.getArgValue(args, AdditionalJarsUriArgKeyword)
+        val maybeNodeSelector = JobSubmitter.getArgValue(args, EksNodeSelectorArgKeyword)
 
         val baseJobProps = Map(
           JobId -> jobId,
@@ -667,7 +680,8 @@ object EmrServerlessSubmitter {
           EksNamespace -> eksNamespace
         ) ++ maybeKinesisJarUri.map(FlinkKinesisConnectorJarURI -> _) ++
           maybeFlinkJarsUri.map(FlinkJarsUri -> _) ++
-          maybeAdditionalJarsUri.map(AdditionalJars -> _)
+          maybeAdditionalJarsUri.map(AdditionalJars -> _) ++
+          maybeNodeSelector.map(EksNodeSelector -> _)
 
         val userPassedSavepoint = JobSubmitter.getArgValue(args, StreamingCustomSavepointArgKeyword)
         val maybeSavepointUri =
