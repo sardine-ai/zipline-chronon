@@ -320,7 +320,8 @@ class EmrSubmitterTest extends AnyFlatSpec with Matchers with MockitoSugar {
         args = org.mockito.ArgumentMatchers.any(),
         serviceAccount = org.mockito.ArgumentMatchers.anyString(),
         namespace = org.mockito.ArgumentMatchers.anyString(),
-        envVars = org.mockito.ArgumentMatchers.any()
+        envVars = org.mockito.ArgumentMatchers.any(),
+        nodeSelector = org.mockito.ArgumentMatchers.any()
       )
     ).thenReturn("flink-abc123")
 
