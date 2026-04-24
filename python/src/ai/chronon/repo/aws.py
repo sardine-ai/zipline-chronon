@@ -23,7 +23,6 @@ LOG = get_logger()
 
 # AWS SPECIFIC CONSTANTS
 EMR_ENTRY = "ai.chronon.integrations.aws.EmrServerlessSubmitter"
-EMR_FLINK_ENTRY = "ai.chronon.integrations.aws.EmrSubmitter"
 ZIPLINE_AWS_JAR_DEFAULT = "cloud_aws_lib_deploy.jar"
 ZIPLINE_AWS_ONLINE_CLASS_DEFAULT = "ai.chronon.integrations.aws.AwsApiImpl"
 ZIPLINE_AWS_FLINK_JAR_DEFAULT = "flink_assembly_deploy.jar"
@@ -257,7 +256,7 @@ class AwsRunner(Runner):
         flag_args_str = " ".join(key for key, value in flag_args.items() if value)
         all_args = " ".join(filter(None, [user_args_str, flag_args_str]))
 
-        return f"java -cp {self.jar_path} {EMR_FLINK_ENTRY} {all_args}"
+        return f"java -cp {self.jar_path} {EMR_ENTRY} {all_args}"
 
     def run(self):
         command_list = []
