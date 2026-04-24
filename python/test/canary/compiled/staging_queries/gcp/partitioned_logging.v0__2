@@ -79,9 +79,11 @@
   "tableDependencies": [
     {
       "endOffset": {
+        "length": 0,
         "timeUnit": 1
       },
       "startOffset": {
+        "length": 0,
         "timeUnit": 1
       },
       "tableInfo": {

@@ -1,5 +1,6 @@
 package ai.chronon.spark.catalog
 
+import ai.chronon.api.PartitionSpec
 import ai.chronon.spark.utils.SparkTestBase
 import org.apache.spark.sql.SparkSession
 import org.junit.Assert.assertEquals
@@ -59,6 +60,61 @@ class FormatTest extends SparkTestBase {
       List("2023-01-01", "2023-01-02")
   }
 
+  it should "fall back to a table scan when metadata partitions are null" in {
+    val tableName = "format_null_metadata_fallback_test"
+    spark.sql(s"""
+      CREATE OR REPLACE TEMP VIEW $tableName AS
+      SELECT * FROM VALUES
+        (1, '2024-04-01'),
+        (2, '2024-04-03'),
+        (3, '2024-04-02')
+      AS t(id, ds)
+    """)
+
+    val fmt = new Format {
+      override def supportSubPartitionsFilter = false
+      override def partitions(tableName: String, partitionFilters: String)(implicit ss: SparkSession) = Nil
+      override def primaryPartitions(tableName: String,
+                                     partitionColumn: String,
+                                     partitionFilters: String,
+                                     subPartitionsFilter: Map[String, String])(implicit
+          ss: SparkSession) = List(null)
+    }
+
+    fmt.firstAvailablePartition(tableName, "ds", PartitionSpec.daily)(spark) shouldBe Some("2024-04-01")
+    fmt.lastAvailablePartition(tableName, "ds", PartitionSpec.daily)(spark) shouldBe Some("2024-04-03")
+  }
+
+  it should "compute metadata boundaries by ignoring null partition entries" in {
+    val tableName = "format_null_metadata_boundary_test"
+    spark.sql(s"""
+      CREATE OR REPLACE TEMP VIEW $tableName AS
+      SELECT * FROM VALUES
+        (1, '2024-04-01'),
+        (2, '2024-04-03'),
+        (3, '2024-04-02')
+      AS t(id, ds)
+    """)
+
+    val fmt = new Format {
+      override def supportSubPartitionsFilter = false
+      override def partitions(tableName: String, partitionFilters: String)(implicit ss: SparkSession) = Nil
+      override def primaryPartitions(tableName: String,
+                                     partitionColumn: String,
+                                     partitionFilters: String,
+                                     subPartitionsFilter: Map[String, String])(implicit
+          ss: SparkSession) = List("2024-04-02", null, "2024-04-01")
+    }
+
+    Format.sanitizePartitionValues(List("2024-04-02", null, "2024-04-01")) shouldBe List(
+      "2024-04-02",
+      "2024-04-01")
+    Format.pickMinPartition(List("2024-04-02", null, "2024-04-01")) shouldBe Some("2024-04-01")
+    Format.pickMaxPartition(List("2024-04-02", null, "2024-04-01")) shouldBe Some("2024-04-02")
+    fmt.firstAvailablePartition(tableName, "ds", PartitionSpec.daily)(spark) shouldBe Some("2024-04-01")
+    fmt.lastAvailablePartition(tableName, "ds", PartitionSpec.daily)(spark) shouldBe Some("2024-04-02")
+  }
+
   it should "resolve table names consistently with Spark SQL" in {
     spark.sql("CREATE DATABASE IF NOT EXISTS spark_non_default_catalog.custom_test_db")
     spark.sql(
@@ -110,6 +166,34 @@ class FormatTest extends SparkTestBase {
     assertEquals(
       "ALTER TABLE spark_non_default_catalog.custom_test_db.src_table RENAME TO `spark_catalog`.`default`.`dest_table`",
       sql)
+  }
+
+  // --- parseIdentifier ---
+
+  it should "parse a 3-part unquoted identifier" in {
+    Format.parseIdentifier("catalog.schema.table") shouldBe Seq("catalog", "schema", "table")
+  }
+
+  it should "parse a 2-part identifier" in {
+    Format.parseIdentifier("schema.table") shouldBe Seq("schema", "table")
+  }
+
+  it should "parse a single-segment identifier" in {
+    Format.parseIdentifier("table") shouldBe Seq("table")
+  }
+
+  it should "strip surrounding backticks from quoted segments" in {
+    Format.parseIdentifier("workspace.`schema-with-dashes`.events") shouldBe
+      Seq("workspace", "schema-with-dashes", "events")
+  }
+
+  it should "preserve a literal dot inside a backticked segment" in {
+    Format.parseIdentifier("catalog.`schema.with.dots`.table") shouldBe
+      Seq("catalog", "schema.with.dots", "table")
+  }
+
+  it should "handle every segment quoted" in {
+    Format.parseIdentifier("`c`.`s`.`t`") shouldBe Seq("c", "s", "t")
   }
 
 }

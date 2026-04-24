@@ -239,17 +239,22 @@ azure = Team(
             "CHRONON_ONLINE_ARGS": " -Ztasks=4",
             "FRONTEND_URL": "https://dev-azure.zipline.ai",
             "HUB_URL": "https://dev-orch-azure.zipline.ai",
+            "CHRONON_ONLINE_ARGS": " -Ztasks=1 -Zbootstrap=zipline-demo-events.servicebus.windows.net:9093",
             "SNOWFLAKE_JDBC_URL": "jdbc:snowflake://VEJLULX-AZURE.snowflakecomputing.com/?user=demo_batch_service&db=Demo&schema=public&warehouse=demo_wh",
-            "SNOWFLAKE_VAULT_URI": "https://demo-service-writer-pkey.vault.azure.net/secrets/snowflake-private-key",
+            "SNOWFLAKE_PRIVATE_KEY_VAULT_URI": "https://demo-service-writer-pkey.vault.azure.net/secrets/snowflake-private-key",
+            "FLINK_SASL_JAAS_CONFIG_VAULT_URI": "https://eventhub-sasl-jaas.vault.azure.net/secrets/sasl-jass-config",
+            "OC_CREDENTIAL_VAULT_URI": "https://dev-zipline-secrets.vault.azure.net/secrets/oc-catalog-credential",
             "EVAL_URL": "https://dev-azure.zipline.ai/services/eval",
-            "AUTH_SCOPE": "api://dev-zipline-auth"
+            "AUTH_SCOPE": "api://dev-zipline-auth",
+            "FLINK_JARS_URI": "abfss://dev-zipline-artifacts@ziplineai2.dfs.core.windows.net/spark-3.5.3/libs/",
+            "FLINK_STATE_URI": "abfss://dev-zipline-warehouse@ziplineai2.dfs.core.windows.net/flink-state",
         },
     ),
     conf=ConfigProperties(
         common={
             **OpenCatalogConfiguration({
                 "spark.sql.catalog.spark_catalog.uri": "https://vejlulx-azure-oc.snowflakecomputing.com/polaris/api/catalog",
-                "spark.sql.catalog.spark_catalog.credential": "XtyCirtE0/o3pcTMdkLCh7LXVno=:i++cOG/+vHgZwU8Wnj5Qx3hIzHwvlr0rhaGJnDwIBTg=",
+                "spark.sql.catalog.spark_catalog.credential": "{OC_CREDENTIAL}",
                 "spark.sql.catalog.spark_catalog.warehouse": "demo-v2",
                 "spark.sql.catalog.spark_catalog.scope": "PRINCIPAL_ROLE:engine",
 
@@ -265,6 +270,7 @@ azure = Team(
             "spark.driver.cores": "1",
             "spark.executor.memory": "512m",
             "spark.executor.cores": "1",
+            "taskmanager.memory.process.size": "4G",
         },
     ),
 )

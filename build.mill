@@ -114,6 +114,7 @@ object Constants {
 
   val avroVersion = "1.12.1"
   val protobufVersion = "3.25.5"
+  val jettyVersion = "12.0.33"
   
   // Common JVM arguments for all test modules
   def commonTestForkArgs = Seq(

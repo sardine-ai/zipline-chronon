@@ -1,6 +1,7 @@
 package ai.chronon.integrations.aws
 
 import ai.chronon.api.JobStatusType
+import ai.chronon.integrations.cloud_k8s.K8sFlinkSubmitter
 import ai.chronon.spark.submission
 import ai.chronon.spark.submission.JobSubmitterConstants._
 import ai.chronon.spark.submission.{FlinkJob, StorageClient}
@@ -51,7 +52,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       mockClient: EmrServerlessClient,
       executionRoleArn: String = "arn:aws:iam::123456789012:role/EMRServerlessRole",
       s3LogUri: String = "s3://my-bucket/logs/",
-      eksFlinkSubmitter: Option[EksFlinkSubmitter] = None,
+      eksFlinkSubmitter: Option[K8sFlinkSubmitter] = None,
       awsRegion: String = "us-east-1",
       eksClusterName: Option[String] = None,
       ingressBaseUrl: Option[String] = None,
@@ -103,7 +104,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       Map("spark.executor.memory" -> "4g"),
       List.empty,
-      Map("team" -> "chronon")
+      Map("team" -> "chronon"),
+      Map.empty
     )
 
     assertEquals(jobRunId, submittedJobId)
@@ -135,6 +137,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       Map.empty,
       List.empty,
+      Map.empty,
       Map.empty
     )
 
@@ -164,6 +167,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         ),
         Map.empty,
         List.empty,
+        Map.empty,
         Map.empty
       )
     }
@@ -282,7 +286,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "delegate Flink status to eksFlinkSubmitter" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "my-namespace"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
@@ -295,7 +299,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "delegate Flink kill to eksFlinkSubmitter" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
 
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockFlinkSubmitter))
 
@@ -332,6 +336,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       List.empty,
       Map("team" -> "chronon"),
+      Map.empty,
       "--arg1",
       "--arg2=value"
     )
@@ -378,6 +383,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       Map.empty,
       List.empty,
+      Map.empty,
       Map.empty
     )
 
@@ -746,7 +752,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     new EmrServerlessSubmitter(mock[EmrServerlessClient],
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
-      eksFlinkSubmitter = Some(mock[EksFlinkSubmitter]))
+      eksFlinkSubmitter = Some(mock[K8sFlinkSubmitter]))
 
   "buildFlinkSubmissionProps" should "include flink jar URI, checkpoint URI, EKS service account and namespace" in {
     val submitter = createTestServerlessSubmitter()
@@ -807,7 +813,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       mock[EmrServerlessClient],
       executionRoleArn = "arn:aws:iam::123456789012:role/TestRole",
       s3LogUri = "s3://test-bucket/logs/",
-      eksFlinkSubmitter = Some(mock[EksFlinkSubmitter]),
+      eksFlinkSubmitter = Some(mock[K8sFlinkSubmitter]),
       flinkEksServiceAccount = Some("constructor-sa"),
       flinkEksNamespace = Some("constructor-ns")
     )
@@ -823,7 +829,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   "status" should "return PENDING for flink job when EKS is RUNNING but health check fails within grace period" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     // CRD was created just now — well within the 20-min grace window
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
@@ -842,7 +848,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "return FAILED for flink job when EKS is RUNNING but health check fails past grace period" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     // CRD was created 25 minutes ago — past the 20-min grace window
     val oldCreationTime = java.time.Instant.now().minus(java.time.Duration.ofMinutes(25))
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
@@ -862,7 +868,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "return PENDING for flink job when EKS is RUNNING, health check fails, and no creation time is available" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     // No creation time returned — conservatively stays PENDING (cannot determine grace window)
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, None))
@@ -881,7 +887,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "pass the flink URL derived from ingressBaseUrl to the health check fn" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.RUNNING, Some(java.time.Instant.now())))
 
@@ -901,7 +907,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "propagate non-RUNNING EKS status without invoking health check" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockFlinkSubmitter = mock[EksFlinkSubmitter]
+    val mockFlinkSubmitter = mock[K8sFlinkSubmitter]
     when(mockFlinkSubmitter.statusWithCreationTime("my-deployment", "zipline-flink"))
       .thenReturn((JobStatusType.PENDING, None))
 
@@ -923,7 +929,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   "submit" should "return flink:namespace:deploymentName for FlinkJob" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     when(
       mockEks.submit(
         jobId = org.mockito.ArgumentMatchers.anyString(),
@@ -936,7 +942,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         jobProperties = org.mockito.ArgumentMatchers.any(),
         args = org.mockito.ArgumentMatchers.any(),
         serviceAccount = org.mockito.ArgumentMatchers.anyString(),
-        namespace = org.mockito.ArgumentMatchers.anyString()
+        namespace = org.mockito.ArgumentMatchers.anyString(),
+        envVars = org.mockito.ArgumentMatchers.any()
       )
     ).thenReturn("flink-abc123")
 
@@ -954,7 +961,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       jobProperties = Map.empty,
       files = List.empty,
-      labels = Map.empty
+      labels = Map.empty,
+      envVars = Map.empty
     )
 
     jobId shouldBe "flink:zipline-flink:flink-abc123"
@@ -1041,7 +1049,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
 
   it should "throw when JobId is missing from submissionProperties for Flink" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockEks))
 
     intercept[RuntimeException] {
@@ -1057,14 +1065,15 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         ),
         jobProperties = Map.empty,
         files = List.empty,
-        labels = Map.empty
+        labels = Map.empty,
+        envVars = Map.empty
       )
     }
   }
 
   it should "throw when FlinkMainJarURI is missing from submissionProperties" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockEks))
 
     intercept[RuntimeException] {
@@ -1080,14 +1089,15 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         ),
         jobProperties = Map.empty,
         files = List.empty,
-        labels = Map.empty
+        labels = Map.empty,
+        envVars = Map.empty
       )
     }
   }
 
   it should "throw when EksServiceAccount is missing from submissionProperties" in {
     val mockClient = mock[EmrServerlessClient]
-    val mockEks = mock[EksFlinkSubmitter]
+    val mockEks = mock[K8sFlinkSubmitter]
     val submitter = createSubmitter(mockClient, eksFlinkSubmitter = Some(mockEks))
 
     intercept[RuntimeException] {
@@ -1103,7 +1113,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         ),
         jobProperties = Map.empty,
         files = List.empty,
-        labels = Map.empty
+        labels = Map.empty,
+        envVars = Map.empty
       )
     }
   }
@@ -1130,6 +1141,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       Map("spark.some.config" -> "{HOME}/data"),
       List.empty,
+      Map.empty,
       Map.empty
     )
 
@@ -1161,6 +1173,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       Map("spark.executor.memory" -> "4g", "spark.driver.cores" -> "2"),
       List.empty,
+      Map.empty,
       Map.empty
     )
 
@@ -1170,6 +1183,155 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     val props = requestCaptor.getValue.configurationOverrides().applicationConfiguration().get(0).properties()
     props.get("spark.executor.memory") shouldBe "4g"
     props.get("spark.driver.cores") shouldBe "2"
+  }
+
+  it should "keep spark-defaults at <=100 and spill the rest into --conf on sparkSubmitParameters" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-overflow-123"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-overflow-1").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    // 150 props forces overflow past the 100-prop EMR Serverless cap.
+    val props = (1 to 150).map(i => f"spark.chronon.prop.$i%03d" -> s"val$i").toMap
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-overflow",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      props,
+      List.empty,
+      Map.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val captured = requestCaptor.getValue
+    val inline = captured.configurationOverrides().applicationConfiguration().get(0).properties()
+    inline.size() shouldBe 100
+    // Deterministic alphabetic split: 001..100 inline, 101..150 overflowed as --conf
+    inline.containsKey("spark.chronon.prop.001") shouldBe true
+    inline.containsKey("spark.chronon.prop.100") shouldBe true
+    inline.containsKey("spark.chronon.prop.101") shouldBe false
+
+    val submitParams = captured.jobDriver().sparkSubmit().sparkSubmitParameters()
+    submitParams should include("--conf spark.chronon.prop.101=val101")
+    submitParams should include("--conf spark.chronon.prop.150=val150")
+    submitParams should not include "--conf spark.chronon.prop.100="
+  }
+
+  it should "not emit overflow --conf flags when props fit under the cap" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-no-overflow"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-no-overflow").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-fits",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      Map("spark.executor.memory" -> "4g", "spark.executor.cores" -> "2"),
+      List.empty,
+      Map.empty,
+      Map.empty
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+
+    val submitParams = requestCaptor.getValue.jobDriver().sparkSubmit().sparkSubmitParameters()
+    submitParams should not include "--conf"
+  }
+
+  "maybeShellQuote" should "leave simple values unquoted" in {
+    EmrServerlessSubmitter.maybeShellQuote("spark.executor.memory=4g") shouldBe "spark.executor.memory=4g"
+    EmrServerlessSubmitter.maybeShellQuote("spark.x=s3://bucket/path") shouldBe "spark.x=s3://bucket/path"
+  }
+
+  it should "single-quote values containing whitespace or shell metacharacters" in {
+    EmrServerlessSubmitter.maybeShellQuote("spark.x=hello world") shouldBe "'spark.x=hello world'"
+    EmrServerlessSubmitter.maybeShellQuote("spark.x=a$b") shouldBe "'spark.x=a$b'"
+    // Embedded single quotes use the POSIX close/escape/reopen trick
+    EmrServerlessSubmitter.maybeShellQuote("a'b") shouldBe "'a'\\''b'"
+  }
+
+  "splitForConfigCap" should "return all in the first map when size <= cap" in {
+    val props = (1 to 50).map(i => s"k$i" -> s"v$i").toMap
+    val (head, tail) = EmrServerlessSubmitter.splitForConfigCap(props)
+    head shouldBe props
+    tail shouldBe Map.empty[String, String]
+  }
+
+  it should "split deterministically at 100 when size > cap" in {
+    val props = (1 to 150).map(i => f"k$i%03d" -> s"v$i").toMap
+    val (head, tail) = EmrServerlessSubmitter.splitForConfigCap(props)
+    head.size shouldBe 100
+    tail.size shouldBe 50
+    head.contains("k001") shouldBe true
+    head.contains("k100") shouldBe true
+    tail.contains("k101") shouldBe true
+    tail.contains("k150") shouldBe true
+  }
+
+  "envVarsToSparkProperties" should "emit spark.emr-serverless.driverEnv and spark.executorEnv entries only" in {
+    val submitter = createSubmitter(mock[EmrServerlessClient])
+    val result = submitter.envVarsToSparkProperties(Map("CUSTOMER_ID" -> "canary", "AWS_REGION" -> "us-west-2"))
+    result shouldBe Map(
+      "spark.emr-serverless.driverEnv.CUSTOMER_ID" -> "canary",
+      "spark.executorEnv.CUSTOMER_ID" -> "canary",
+      "spark.emr-serverless.driverEnv.AWS_REGION" -> "us-west-2",
+      "spark.executorEnv.AWS_REGION" -> "us-west-2"
+    )
+    // Crucially, none of the legacy YARN / K8s / bogus driverEnv prefixes appear.
+    result.keys.exists(_.startsWith("spark.yarn.appMasterEnv.")) shouldBe false
+    result.keys.exists(_.startsWith("spark.kubernetes.driverEnv.")) shouldBe false
+    result.keys.exists(k => k.startsWith("spark.driverEnv.") && !k.startsWith("spark.emr-serverless.")) shouldBe false
+  }
+
+  it should "thread envVars into spark-defaults with the EMR Serverless expansion" in {
+    val mockClient = mock[EmrServerlessClient]
+    val applicationId = "app-envvars-123"
+
+    when(mockClient.startJobRun(any[StartJobRunRequest]))
+      .thenReturn(StartJobRunResponse.builder().applicationId(applicationId).jobRunId("job-envvars-1").build())
+
+    val submitter = createSubmitter(mockClient)
+
+    submitter.submit(
+      submission.SparkJob,
+      Map(
+        MainClass -> "ai.chronon.spark.Driver",
+        JarURI -> "s3://bucket/jar.jar",
+        JobId -> "test-envvars",
+        submitter.clusterIdentifierKey -> applicationId
+      ),
+      Map.empty,
+      List.empty,
+      Map.empty,
+      Map("CUSTOMER_ID" -> "canary")
+    )
+
+    val requestCaptor = ArgumentCaptor.forClass(classOf[StartJobRunRequest])
+    verify(mockClient).startJobRun(requestCaptor.capture())
+    val props = requestCaptor.getValue.configurationOverrides().applicationConfiguration().get(0).properties()
+    props.get("spark.emr-serverless.driverEnv.CUSTOMER_ID") shouldBe "canary"
+    props.get("spark.executorEnv.CUSTOMER_ID") shouldBe "canary"
+    props.containsKey("spark.yarn.appMasterEnv.CUSTOMER_ID") shouldBe false
   }
 
   it should "keep unresolvable {VAR} placeholders as-is when env var is not set" in {
@@ -1191,6 +1353,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
       ),
       Map("spark.some.token" -> "{CHRONON_NONEXISTENT_VAR_XYZ}"),
       List.empty,
+      Map.empty,
       Map.empty
     )
 
@@ -1353,6 +1516,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         "test" -> "integration",
         "framework" -> "chronon"
       ),
+      Map.empty,
       "--help"
     )
 

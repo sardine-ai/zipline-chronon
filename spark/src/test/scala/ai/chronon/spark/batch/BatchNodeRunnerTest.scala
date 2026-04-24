@@ -21,7 +21,7 @@ import ai.chronon.api._
 import ai.chronon.api.planner.{MetaDataUtils, NodeRunner, TableDependencies}
 import ai.chronon.observability.{TileSummaryKey, TileSummary}
 import ai.chronon.online.KVStore.PutRequest
-import ai.chronon.planner.{ExternalSourceSensorNode, GroupByBackfillNode, MonolithJoinNode, Node, NodeContent, StagingQueryNode}
+import ai.chronon.planner.{ExternalSourceSensorNode, GroupByBackfillNode, JoinStatsComputeNode, MonolithJoinNode, Node, NodeContent, StagingQueryNode}
 import ai.chronon.spark.other.MockKVStore
 import ai.chronon.spark.utils.{MockApi, SparkTestBase}
 import ai.chronon.spark.catalog.TableUtils
@@ -1270,6 +1270,55 @@ class BatchNodeRunnerTest extends SparkTestBase with Matchers with BeforeAndAfte
     assertTrue("Join output should have partitions", outputPartitions.nonEmpty)
     outputPartitions should contain(twoDaysAgo)
     outputPartitions should contain(yesterday)
+  }
+
+  "BatchNodeRunner.run with JoinStatsComputeNode" should "skip gracefully when join output table has no rows" in {
+    // Regression test: before the fix, AvroKvEncoder.encodeTimed would throw
+    // SparkException("Value at index 0 is null") when dataDf was empty because
+    // dataDf.agg(max(tsColumn)).collect()(0).getLong(0) returns null for empty input.
+    // Fix: BatchNodeRunner.runJoinStatsCompute returns early when joinOutputDf.isEmpty.
+    val joinOutputTable = "test_db.empty_join_output"
+    spark.sql(s"DROP TABLE IF EXISTS $joinOutputTable")
+    spark.sql(
+      s"""CREATE TABLE $joinOutputTable (
+         |  user_id INT,
+         |  feature_1 DOUBLE,
+         |  ds STRING
+         |)
+         |PARTITIONED BY (ds)""".stripMargin
+    )
+    // No rows inserted — empty for the queried date range.
+
+    val joinConf = Builders.Join(
+      metaData = Builders.MetaData(namespace = "test_db", name = "empty_stats_join"),
+      left = Builders.Source.events(Builders.Query(), table = joinOutputTable),
+      joinParts = Seq.empty
+    )
+
+    val joinStatsNode = new JoinStatsComputeNode().setJoin(joinConf)
+    val nodeContent = new NodeContent()
+    nodeContent.setJoinStatsCompute(joinStatsNode)
+
+    val tableDep = TableDependencies.fromTable(
+      joinOutputTable,
+      new Query().setPartitionColumn("ds").setPartitionFormat("yyyy-MM-dd")
+    )
+
+    implicit val partitionSpec: PartitionSpec = tableUtils.partitionSpec
+    val metadata = MetaDataUtils.layer(
+      baseMetadata = new MetaData().setOutputNamespace("test_db").setTeam("test_team"),
+      modeName = "backfill",
+      nodeName = "test_db__empty_stats_join__stats_compute",
+      tableDependencies = Seq(tableDep),
+      stepDays = Some(1),
+      outputTableOverride = Some("test_db.empty_stats_join__stats_output")
+    )
+
+    val node = new Node().setMetaData(metadata).setContent(nodeContent)
+    val runner = new BatchNodeRunner(node, tableUtils, mockApi)
+    val range = PartitionRange(twoDaysAgo, yesterday)(tableUtils.partitionSpec)
+
+    noException should be thrownBy runner.run(metadata, nodeContent, Option(range))
   }
 
   override def afterAll(): Unit = {

@@ -1,8 +1,9 @@
 import json
 import logging
 import re
+import warnings
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from sqlglot import exp, parse_one
 
@@ -52,17 +53,98 @@ class EngineType:
 
 @dataclass
 class TableDependency:
+    """
+    Declares an upstream table dependency for a StagingQuery. The orchestrator
+    resolves the required upstream partition range from the query range and the
+    offset / cutoff fields, then requires every partition in that range to be
+    Filled before the step runs.
+
+    Resolved range:
+        ``[max(query.start - start_offset, start_cutoff),
+           min(query.end - end_offset, end_cutoff)]``
+
+    :param offset:
+        DEPRECATED — prefer ``start_offset`` / ``end_offset``. When set, applies
+        to both sides unless a specific ``start_offset`` / ``end_offset`` overrides
+        that side. Emits a ``DeprecationWarning``.
+    :type offset: Optional[int]
+    :param start_offset:
+        Days subtracted from ``query.start`` to compute the upstream range start.
+        Combined with ``start_cutoff`` via ``max(query.start - start_offset,
+        start_cutoff)`` — the cutoff acts as a floor. Defaults to ``0`` when unset,
+        except when only ``start_cutoff`` is set (no ``offset``, no ``start_offset``),
+        in which case the resolved ``startOffset`` is left ``None`` so the start
+        pins at ``start_cutoff`` regardless of the query range.
+    :type start_offset: Optional[int]
+    :param end_offset:
+        Days subtracted from ``query.end`` to compute the upstream range end.
+        Combined with ``end_cutoff`` via ``min(query.end - end_offset, end_cutoff)``
+        — the cutoff acts as a ceiling. Defaults to ``0`` when unset. Always
+        non-null in the resolved thrift: when ``end_cutoff`` is also unset,
+        ``DependencyResolver.computeInputRange`` returns ``PartitionRange(_, null)``
+        and ``BatchNodeRunner.requiredEnd`` / the cumulative branch NPE downstream.
+        So ``end_cutoff`` can only clamp — it cannot pin the end the way
+        ``start_cutoff`` can pin the start.
+    :type end_offset: Optional[int]
+    :param start_cutoff:
+        Fixed floor on the resolved range start (inclusive), as a partition
+        string (e.g. ``"2024-01-01"``). Combined with ``start_offset`` as above.
+    :type start_cutoff: Optional[str]
+    :param end_cutoff:
+        Fixed ceiling on the resolved range end (inclusive), as a partition
+        string. Combined with ``end_offset`` as above.
+    :type end_cutoff: Optional[str]
+    """
+
     table: str
     partition_column: Optional[str] = None
     partition_format: Optional[str] = None
     additional_partitions: Optional[List[str]] = None
     offset: Optional[int] = None
+    start_offset: Optional[int] = None
+    end_offset: Optional[int] = None
+    start_cutoff: Optional[str] = None
+    end_cutoff: Optional[str] = None
     time_partitioned: Optional[bool] = None
 
+    def resolved_offsets(self) -> Tuple[Optional[int], int]:
+        """Resolve ``(start_offset, end_offset)`` from the dataclass fields using
+        the same precedence as ``to_thrift``. ``start`` may be ``None`` (pin at
+        ``start_cutoff``); ``end`` is always an ``int``."""
+        if self.start_offset is not None:
+            start = self.start_offset
+        elif self.offset is not None:
+            start = self.offset
+        elif self.start_cutoff is not None:
+            # Null startOffset + startCutOff pins the resolved start at the cutoff
+            # (DependencyResolver: max(null, cutoff) = cutoff).
+            start = None
+        else:
+            start = 0
+
+        if self.end_offset is not None:
+            end = self.end_offset
+        elif self.offset is not None:
+            end = self.offset
+        else:
+            # Keep endOffset non-null: with no end_cutoff either, the resolver
+            # returns PartitionRange(_, null) and BatchNodeRunner.requiredEnd /
+            # the cumulative branch NPE downstream.
+            end = 0
+
+        return start, end
+
     def to_thrift(self):
-        if self.partition_column is not None and self.offset is None:
-            raise ValueError(f"Dependency offset for table {self.table} must be specified.")
-        offset_window = common.Window(length=self.offset, timeUnit=common.TimeUnit.DAYS)
+        if self.offset is not None:
+            warnings.warn(
+                f"TableDependency `offset` is deprecated; use `start_offset` and/or `end_offset` "
+                f"(table={self.table}).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        resolved_start_offset, resolved_end_offset = self.resolved_offsets()
+
         return common.TableDependency(
             tableInfo=common.TableInfo(
                 table=self.table,
@@ -71,10 +153,14 @@ class TableDependency:
                 partitionInterval=common.Window(1, common.TimeUnit.DAYS),
                 timePartitioned=self.time_partitioned,
             ),
-            startOffset=offset_window,
-            endOffset=offset_window,
-            startCutOff=None,
-            endCutOff=None,
+            startOffset=(
+                None
+                if resolved_start_offset is None
+                else common.Window(length=resolved_start_offset, timeUnit=common.TimeUnit.DAYS)
+            ),
+            endOffset=common.Window(length=resolved_end_offset, timeUnit=common.TimeUnit.DAYS),
+            startCutOff=self.start_cutoff,
+            endCutOff=self.end_cutoff,
         )
 
 
@@ -198,12 +284,14 @@ def StagingQuery(
     if dependencies:
         for d in dependencies:
             if isinstance(d, TableDependency) and d.partition_column is not None:
-                # Create an Airflow dependency object for the table
+                _, end_offset = d.resolved_offsets()
                 airflow_dependency = airflow_helpers.create_airflow_dependency(
                     d.table,
                     d.partition_column,
                     d.additional_partitions,
-                    d.offset,
+                    offset=end_offset,
+                    end_cutoff=d.end_cutoff,
+                    partition_format=d.partition_format,
                 )
                 airflow_dependencies.append(airflow_dependency)
             elif isinstance(d, dict):
