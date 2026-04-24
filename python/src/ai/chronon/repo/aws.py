@@ -188,6 +188,14 @@ class AwsRunner(Runner):
             raise ValueError(f"Invalid job type: {job_type}")
 
     def run_eks_flink_streaming(self):
+        args = self._args.get("args")
+        if "check-if-job-is-running" in args:
+            raise ValueError("check-if-job-is-running is not yet supported for AWS streaming.")
+        if self.latest_savepoint:
+            raise ValueError("--latest-savepoint is not yet supported for AWS streaming.")
+        if self.version_check:
+            raise ValueError("--version-check is not yet supported for AWS streaming.")
+
         artifacts_bucket_prefix = os.environ.get(
             "ARTIFACT_PREFIX", f"s3://zipline-artifacts-{get_customer_id()}"
         )
@@ -222,7 +230,6 @@ class AwsRunner(Runner):
             "-ZDYNAMO_CONNECTION_TIMEOUT": os.environ.get("DYNAMO_CONNECTION_TIMEOUT", "PT5S"),
         }
 
-        args = self._args.get("args")
         if "check-if-job-is-running" in args:
             user_args["--streaming-mode"] = "check-if-job-is-running"
         elif "deploy" in args:
