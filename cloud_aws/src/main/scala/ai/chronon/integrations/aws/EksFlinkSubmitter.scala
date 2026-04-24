@@ -259,7 +259,8 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
              jobProperties: Map[String, String],
              args: Seq[String],
              serviceAccount: String,
-             namespace: String): String = {
+             namespace: String,
+             nodeSelector: Map[String, String] = Map.empty): String = {
 
     val deploymentName = sanitizeDeploymentName(s"flink-$jobId")
     val basePath = maybeFlinkJarsUri.getOrElse(DefaultS3FlinkJarsBasePath)
@@ -291,7 +292,8 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
                                 initContainers,
                                 envVars,
                                 usrlibVolumeMounts,
-                                volumes))
+                                volumes,
+                                nodeSelector = nodeSelector))
     spec.put("taskManager",
              buildComponentSpec(memory = tmPodMemory,
                                 cpu = tier.taskSlots.toDouble,
@@ -299,7 +301,8 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
                                 initContainers,
                                 envVars,
                                 usrlibVolumeMounts,
-                                volumes))
+                                volumes,
+                                nodeSelector = nodeSelector))
 
     val localJarUri = s"local:///opt/flink/usrlib/${mainJarUri.split("/").last}"
     val job = new java.util.HashMap[String, Object]()
@@ -482,7 +485,8 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
       initContainers: java.util.List[java.util.Map[String, Object]],
       envVars: java.util.List[java.util.Map[String, String]],
       volumeMounts: java.util.List[java.util.Map[String, String]],
-      volumes: java.util.List[java.util.Map[String, Object]]): java.util.Map[String, Object] = {
+      volumes: java.util.List[java.util.Map[String, Object]],
+      nodeSelector: Map[String, String] = Map.empty): java.util.Map[String, Object] = {
     val component = new java.util.HashMap[String, Object]()
 
     val resource = new java.util.HashMap[String, Object]()
@@ -505,6 +509,9 @@ class EksFlinkSubmitter(k8sConfig: Option[Config] = None, ingressBaseUrl: Option
                   list
                 })
     podSpec.put("volumes", volumes)
+    if (nodeSelector.nonEmpty) {
+      podSpec.put("nodeSelector", nodeSelector.asJava)
+    }
 
     val podMeta = new java.util.HashMap[String, Object]()
     podMeta.put(
