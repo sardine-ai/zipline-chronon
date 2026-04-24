@@ -421,6 +421,14 @@ class EmrSubmitter(customerId: String,
     * @param clusterConfigStr JSON string representing the cluster configuration
     * @return The cluster ID
     */
+  // Parses "zipline.ai/node-type=flink" into Map("zipline.ai/node-type" -> "flink")
+  private[aws] def parseNodeSelector(raw: String): Map[String, String] =
+    raw.split(",").flatMap { pair =>
+      val idx = pair.indexOf('=')
+      if (idx > 0) Some(pair.substring(0, idx).trim -> pair.substring(idx + 1).trim)
+      else None
+    }.toMap
+
   private def createEmrCluster(clusterName: String, clusterConfigStr: String): String = {
     try {
       val mapper = new ObjectMapper()
@@ -513,6 +521,9 @@ class EmrSubmitter(customerId: String,
           throw new RuntimeException(s"Missing expected $EksServiceAccount"))
         val namespace =
           submissionProperties.getOrElse(EksNamespace, throw new RuntimeException(s"Missing expected $EksNamespace"))
+        val nodeSelector = submissionProperties.get(EksNodeSelector)
+          .map(parseNodeSelector)
+          .getOrElse(Map.empty)
 
         val deploymentName = eksFlinkSubmitter
           .getOrElse(
@@ -529,7 +540,8 @@ class EmrSubmitter(customerId: String,
             jobProperties = jobProperties,
             args = userArgs,
             serviceAccount = serviceAccount,
-            namespace = namespace
+            namespace = namespace,
+            nodeSelector = nodeSelector
           )
         // Encode namespace into the job ID so status/kill can target the right namespace
         s"flink:$namespace:$deploymentName"
@@ -836,6 +848,7 @@ object EmrSubmitter {
         val maybeKinesisJarUri = JobSubmitter.getArgValue(args, FlinkKinesisJarUriArgKeyword)
         val maybeFlinkJarsUri = JobSubmitter.getArgValue(args, FlinkJarsUriArgKeyword)
         val maybeAdditionalJarsUri = JobSubmitter.getArgValue(args, AdditionalJarsUriArgKeyword)
+        val maybeNodeSelector = JobSubmitter.getArgValue(args, EksNodeSelectorArgKeyword)
 
         val baseJobProps = Map(
           JobId -> jobId,
@@ -847,7 +860,8 @@ object EmrSubmitter {
           EksNamespace -> eksNamespace
         ) ++ maybeKinesisJarUri.map(FlinkKinesisConnectorJarURI -> _) ++
           maybeFlinkJarsUri.map(FlinkJarsUri -> _) ++
-          maybeAdditionalJarsUri.map(AdditionalJars -> _)
+          maybeAdditionalJarsUri.map(AdditionalJars -> _) ++
+          maybeNodeSelector.map(EksNodeSelector -> _)
 
         val userPassedSavepoint = JobSubmitter.getArgValue(args, StreamingCustomSavepointArgKeyword)
         val maybeSavepointUri =

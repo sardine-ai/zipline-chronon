@@ -936,7 +936,8 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
         jobProperties = org.mockito.ArgumentMatchers.any(),
         args = org.mockito.ArgumentMatchers.any(),
         serviceAccount = org.mockito.ArgumentMatchers.anyString(),
-        namespace = org.mockito.ArgumentMatchers.anyString()
+        namespace = org.mockito.ArgumentMatchers.anyString(),
+        nodeSelector = org.mockito.ArgumentMatchers.any()
       )
     ).thenReturn("flink-abc123")
 
@@ -1388,6 +1389,27 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     } else {
       println("Skipping status polling (set POLL_JOB_STATUS=true to enable)")
     }
+  }
+
+  // --- parseNodeSelector ---
+  "nodeSelector" should "parse multiple comma-separated key=value pairs" in {
+    val submitter = createSubmitter(mock[EmrServerlessClient])
+    submitter.parseNodeSelector("sardine.ai/node-type=flink,kubernetes.io/arch=amd64") shouldBe Map(
+      "sardine.ai/node-type" -> "flink",
+      "kubernetes.io/arch"   -> "amd64"
+    )
+  }
+
+  "nodeSelector" should "return None when arg is absent" in {
+    val args = Array("--other-arg=value")
+    ai.chronon.spark.submission.JobSubmitter.getArgValue(args, "--eks-node-selector") shouldBe None
+  }
+
+  // regression test for the bug for values containing '='
+  "nodeSelector" should "parse a value that contains = (e.g. node selector)" in {
+    val args = Array("--eks-node-selector=sardine.ai/node-type=flink")
+    ai.chronon.spark.submission.JobSubmitter.getArgValue(args, "--eks-node-selector") shouldBe
+      Some("sardine.ai/node-type=flink")
   }
 }
 

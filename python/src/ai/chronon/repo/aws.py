@@ -197,6 +197,7 @@ class AwsRunner(Runner):
 
         eks_service_account = os.environ.get("FLINK_EKS_SERVICE_ACCOUNT")
         eks_namespace = os.environ.get("FLINK_EKS_NAMESPACE", "zipline-chronon-flink")
+        eks_node_selector = os.environ.get("FLINK_EKS_NODE_SELECTOR")
         aws_region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 
         job_id = self.conf_metadata_name.replace(".", "_")
@@ -249,6 +250,9 @@ class AwsRunner(Runner):
             kinesis_jar_uri = f"{artifacts_bucket_prefix}/release/{self.version}/jars/connectors_kinesis_deploy.jar"
         if kinesis_jar_uri:
             user_args["--flink-kinesis-jar-uri"] = kinesis_jar_uri
+
+        if eks_node_selector:
+            user_args["--eks-node-selector"] = eks_node_selector
 
         user_args_str = " ".join(f"{key}={value}" for key, value in user_args.items() if value)
         if self.online_args:

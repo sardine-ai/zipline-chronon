@@ -119,8 +119,7 @@ object JobSubmitter {
   def getArgValue(args: Array[String], argKeyword: String): Option[String] = {
     args
       .find(_.startsWith(argKeyword))
-      .map(_.split("="))
-      .map(_(1))
+      .map(arg => arg.substring(arg.indexOf('=') + 1))
   }
 
   def parseConf[T <: TBase[_, _]: Manifest: ClassTag](confPath: String): T =
@@ -258,6 +257,7 @@ object JobSubmitterConstants {
   // EKS (Flink on EKS) specific properties
   val EksServiceAccount = "eksServiceAccount"
   val EksNamespace = "eksNamespace"
+  val EksNodeSelector = "eksNodeSelector"
 
   val JarUriArgKeyword = "--jar-uri"
   val JobTypeArgKeyword = "--job-type"
@@ -291,6 +291,7 @@ object JobSubmitterConstants {
   val JobIdArgKeyword = "--job-id"
   val EksServiceAccountArgKeyword = "--eks-service-account"
   val EksNamespaceArgKeyword = "--eks-namespace"
+  val EksNodeSelectorArgKeyword = "--eks-node-selector"
 
   val SharedInternalArgs: Set[String] = Set(
     JarUriArgKeyword,
@@ -314,7 +315,8 @@ object JobSubmitterConstants {
     StreamingVersionCheckDeploy,
     JobIdArgKeyword,
     EksServiceAccountArgKeyword,
-    EksNamespaceArgKeyword
+    EksNamespaceArgKeyword,
+    EksNodeSelectorArgKeyword
   )
 
   // Generic spark cluster name environment variable - works across all cloud providers
