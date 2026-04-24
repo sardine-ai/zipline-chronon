@@ -26,7 +26,7 @@ def _passthrough_export(source_table: str):
         output_namespace="data",
         engine_type=EngineType.BIGQUERY,
         dependencies=[
-            TableDependency(table=source_table, partition_column="ds", offset=0)
+            TableDependency(table=source_table, partition_column="ds", start_offset=0, end_offset=0)
         ],
         version=0,
         step_days=30,
@@ -56,7 +56,7 @@ downstream = StagingQuery(
     engine_type=EngineType.BIGQUERY,
     dependencies=[
         # Plain daily dep on A — wait for today's A partition.
-        TableDependency(table=export_a.table, partition_column="ds", offset=0),
+        TableDependency(table=export_a.table, partition_column="ds", start_offset=0, end_offset=0),
         # start_cutoff on B — the platform orchestrator requires every B partition
         # from the cutoff through the downstream's query end to be Filled before
         # this SQ can run. Omitting `offset` signals intent of "from the cutoff

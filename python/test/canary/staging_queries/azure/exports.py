@@ -16,7 +16,7 @@ def get_select_star_export(table: str, partition_column: str = "ds"):
         output_namespace="data",
         engine_type=EngineType.SNOWFLAKE,
         dependencies=[
-            TableDependency(table=f"{table}", partition_column=partition_column, offset=0)
+            TableDependency(table=f"{table}", partition_column=partition_column, start_offset=0, end_offset=0)
         ],
         version=0,
         step_days=30,
@@ -37,7 +37,7 @@ def get_native_partition_export(table: str, partition_column: str, time_partitio
         output_namespace="data",
         engine_type=EngineType.SNOWFLAKE,
         dependencies=[
-            TableDependency(table=f"{table}", partition_column=partition_column, offset=0, time_partitioned=time_partitioned)
+            TableDependency(table=f"{table}", partition_column=partition_column, start_offset=0, end_offset=0, time_partitioned=time_partitioned)
         ],
         version=version,
         step_days=30,

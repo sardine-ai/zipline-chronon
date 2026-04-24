@@ -12,66 +12,132 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
-import pytest
+import warnings
 
 import gen_thrift.common.ttypes as common
 from ai.chronon.staging_query import TableDependency
 
 
-def test_offset_only_symmetric():
-    td = TableDependency(table="ns.upstream", partition_column="ds", offset=0).to_thrift()
-    assert td.startOffset == common.Window(length=0, timeUnit=common.TimeUnit.DAYS)
-    assert td.endOffset == common.Window(length=0, timeUnit=common.TimeUnit.DAYS)
+def _days(n):
+    return common.Window(length=n, timeUnit=common.TimeUnit.DAYS)
+
+
+def test_nothing_set_defaults_both_sides_to_zero():
+    td = TableDependency(table="ns.upstream").to_thrift()
+    assert td.startOffset == _days(0)
+    assert td.endOffset == _days(0)
     assert td.startCutOff is None
     assert td.endCutOff is None
 
 
-def test_offset_seven_days():
-    td = TableDependency(table="ns.upstream", partition_column="ds", offset=7).to_thrift()
-    assert td.startOffset == common.Window(length=7, timeUnit=common.TimeUnit.DAYS)
-    assert td.endOffset == common.Window(length=7, timeUnit=common.TimeUnit.DAYS)
+def test_partition_column_without_offsets_no_longer_raises():
+    # Previously validated; now defaults to [query.start, query.end].
+    td = TableDependency(table="ns.upstream", partition_column="ds").to_thrift()
+    assert td.startOffset == _days(0)
+    assert td.endOffset == _days(0)
 
 
-def test_start_cutoff_only_defaults_end_offset_to_zero():
+def test_start_offset_only_sets_start_and_defaults_end_to_zero():
+    td = TableDependency(table="ns.upstream", start_offset=7).to_thrift()
+    assert td.startOffset == _days(7)
+    assert td.endOffset == _days(0)
+
+
+def test_end_offset_only_sets_end_and_defaults_start_to_zero():
+    td = TableDependency(table="ns.upstream", end_offset=1).to_thrift()
+    assert td.startOffset == _days(0)
+    assert td.endOffset == _days(1)
+
+
+def test_asymmetric_start_and_end_offsets():
+    td = TableDependency(table="ns.upstream", start_offset=30, end_offset=1).to_thrift()
+    assert td.startOffset == _days(30)
+    assert td.endOffset == _days(1)
+
+
+def test_start_cutoff_alone_pins_start_and_defaults_end_to_zero():
     # startOffset is None so the planner resolves start = max(null, cutoff) = cutoff.
-    # endOffset must be non-null (0 days) so requiredEnd / expandRange see a real date.
-    td = TableDependency(
-        table="ns.upstream", partition_column="ds", start_cutoff="2024-01-01"
-    ).to_thrift()
+    td = TableDependency(table="ns.upstream", start_cutoff="2024-01-01").to_thrift()
     assert td.startOffset is None
-    assert td.endOffset == common.Window(length=0, timeUnit=common.TimeUnit.DAYS)
+    assert td.endOffset == _days(0)
     assert td.startCutOff == "2024-01-01"
     assert td.endCutOff is None
 
 
-def test_offset_and_start_cutoff_both_set():
-    td = TableDependency(
-        table="ns.upstream",
-        partition_column="ds",
-        offset=7,
-        start_cutoff="2024-01-01",
-    ).to_thrift()
-    assert td.startOffset == common.Window(length=7, timeUnit=common.TimeUnit.DAYS)
-    assert td.endOffset == common.Window(length=7, timeUnit=common.TimeUnit.DAYS)
-    assert td.startCutOff == "2024-01-01"
-
-
-def test_end_cutoff_passthrough():
-    td = TableDependency(
-        table="ns.upstream",
-        partition_column="ds",
-        offset=0,
-        end_cutoff="2024-12-31",
-    ).to_thrift()
+def test_end_cutoff_alone_clamps_end_with_zero_offset():
+    # No pin-on-end: null endOffset breaks downstream planners, so end always clamps.
+    td = TableDependency(table="ns.upstream", end_cutoff="2024-12-31").to_thrift()
+    assert td.startOffset == _days(0)
+    assert td.endOffset == _days(0)
     assert td.endCutOff == "2024-12-31"
 
 
-def test_missing_both_offset_and_cutoff_raises():
-    with pytest.raises(ValueError, match="offset or start_cutoff"):
-        TableDependency(table="ns.upstream", partition_column="ds").to_thrift()
+def test_start_offset_combines_with_start_cutoff_for_clamp_with_floor():
+    td = TableDependency(
+        table="ns.upstream", start_offset=7, start_cutoff="2024-01-01"
+    ).to_thrift()
+    assert td.startOffset == _days(7)
+    assert td.startCutOff == "2024-01-01"
 
 
-def test_no_partition_column_is_no_op():
-    # Historic behavior: deps without partition_column skip the offset requirement.
-    td = TableDependency(table="ns.upstream").to_thrift()
-    assert td.tableInfo.partitionColumn is None
+def test_end_offset_combines_with_end_cutoff():
+    td = TableDependency(
+        table="ns.upstream", end_offset=1, end_cutoff="2024-12-31"
+    ).to_thrift()
+    assert td.endOffset == _days(1)
+    assert td.endCutOff == "2024-12-31"
+
+
+def test_deprecated_offset_applies_to_both_sides():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        td = TableDependency(table="ns.upstream", offset=3).to_thrift()
+    assert td.startOffset == _days(3)
+    assert td.endOffset == _days(3)
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+
+def test_start_offset_overrides_deprecated_offset_on_start_side():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        td = TableDependency(
+            table="ns.upstream", offset=5, start_offset=1
+        ).to_thrift()
+    assert td.startOffset == _days(1)
+    assert td.endOffset == _days(5)
+
+
+def test_end_offset_overrides_deprecated_offset_on_end_side():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        td = TableDependency(
+            table="ns.upstream", offset=5, end_offset=0
+        ).to_thrift()
+    assert td.startOffset == _days(5)
+    assert td.endOffset == _days(0)
+
+
+def test_deprecated_offset_with_start_cutoff_clamps_not_pins():
+    # offset wins the start-side fallback over the cutoff-implied pin default.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        td = TableDependency(
+            table="ns.upstream", offset=7, start_cutoff="2024-01-01"
+        ).to_thrift()
+    assert td.startOffset == _days(7)
+    assert td.startCutOff == "2024-01-01"
+
+
+def test_deprecated_offset_zero_still_warns():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        TableDependency(table="ns.upstream", offset=0).to_thrift()
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+
+def test_end_cutoff_passthrough_with_zero_end_offset():
+    td = TableDependency(
+        table="ns.upstream", end_offset=0, end_cutoff="2024-12-31"
+    ).to_thrift()
+    assert td.endCutOff == "2024-12-31"
+    assert td.endOffset == _days(0)

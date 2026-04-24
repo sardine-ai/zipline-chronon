@@ -25,7 +25,7 @@ def _passthrough_export(source_table: str):
         output_namespace="data",
         engine_type=EngineType.SNOWFLAKE,
         dependencies=[
-            TableDependency(table=source_table, partition_column="ds", offset=0)
+            TableDependency(table=source_table, partition_column="ds", start_offset=0, end_offset=0)
         ],
         version=0,
         step_days=30,
@@ -53,7 +53,7 @@ downstream = StagingQuery(
     # Polaris `data`) has to run via Spark SQL on the same catalog.
     engine_type=EngineType.SPARK,
     dependencies=[
-        TableDependency(table=export_a.table, partition_column="ds", offset=0),
+        TableDependency(table=export_a.table, partition_column="ds", start_offset=0, end_offset=0),
         TableDependency(
             table=export_b.table,
             partition_column="ds",
