@@ -679,3 +679,58 @@ class ZiplineHub:
             self.handle_unauth(e, "workflow start")
             print_error(f"Error calling workflow start API: {self._get_error_details(e)}", format=self.format)
             raise e
+
+    def preview_clear_downstream(self, conf_name, branch, user, start, end):
+        url = f"{self.base_url}/workflow/v2/clear-downstream/preview"
+        start_dt = start.strftime("%Y-%m-%d") if start else None
+        end_dt = end.strftime("%Y-%m-%d") if end else None
+        clear_request = {
+            "confName": conf_name,
+            "branch": branch,
+            "user": user,
+            "start": start_dt,
+            "end": end_dt,
+        }
+        try:
+            response = requests.post(
+                url, json=clear_request, headers=self.additional_headers(self.base_url)
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            print_error(
+                f"Error calling clear-downstream preview API: Invalid JSON response\n"
+                f"Response status: {response.status_code}\n"
+                f"Response text: {response.text[:500]}",
+                format=self.format,
+            )
+            raise e
+        except requests.RequestException as e:
+            self.handle_unauth(e, "clear-downstream/preview")
+            print_error(f"Error calling clear-downstream preview API: {self._get_error_details(e)}", format=self.format)
+            raise e
+
+    def apply_clear_downstream(self, node_results, user):
+        url = f"{self.base_url}/workflow/v2/clear-downstream/apply"
+        apply_request = {
+            "nodeResults": node_results,
+            "user": user,
+        }
+        try:
+            response = requests.post(
+                url, json=apply_request, headers=self.additional_headers(self.base_url)
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            print_error(
+                f"Error calling clear-downstream apply API: Invalid JSON response\n"
+                f"Response status: {response.status_code}\n"
+                f"Response text: {response.text[:500]}",
+                format=self.format,
+            )
+            raise e
+        except requests.RequestException as e:
+            self.handle_unauth(e, "clear-downstream/apply")
+            print_error(f"Error calling clear-downstream apply API: {self._get_error_details(e)}", format=self.format)
+            raise e

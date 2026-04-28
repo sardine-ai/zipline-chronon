@@ -795,6 +795,68 @@ def cancel(workflow_id, repo, hub_url, use_auth, format, cloud, customer_id):
     print_success(f"Workflow cancelled: {workflow_id}", format=format)
 
 
+@hub.command("clear-downstream")
+@conf_argument
+@repo_option
+@hub_url_option
+@use_auth_option
+@format_option
+@jsonify_exceptions_if_json_format
+@start_ds_option
+@end_ds_option
+@handle_conf_not_found(log_error=True, callback=print_possible_confs)
+def clear_downstream(conf, repo, hub_url, use_auth, format, start_ds, end_ds, assume_yes):
+    """Clear a conf's terminal node and all downstream nodes for a date range.
+
+    CONF is the path to the compiled conf (e.g. compiled/joins/team/my_join).
+    """
+    hub_conf = get_hub_conf(conf, root_dir=repo)
+    zipline_hub = _get_zipline_hub(hub_url, hub_conf, use_auth, format)
+
+    conf_name = utils.get_metadata_name_from_conf(repo, conf)
+    branch = get_current_branch()
+    user = get_user_email()
+
+    with status_spinner("Computing downstream node ranges...", format=format):
+        preview_json = zipline_hub.preview_clear_downstream(
+            conf_name=conf_name,
+            branch=branch,
+            user=user,
+            start=start_ds,
+            end=end_ds,
+        )
+
+    results = preview_json.get("results", [])
+    total_nodes = preview_json.get("totalNodesCleared", 0)
+
+    print_key_value("Conf", conf_name, format=format)
+    start_str = start_ds.strftime("%Y-%m-%d") if hasattr(start_ds, "strftime") else str(start_ds)
+    end_str = end_ds.strftime("%Y-%m-%d") if hasattr(end_ds, "strftime") else str(end_ds)
+    print_key_value("Range", f"{start_str} to {end_str}", format=format)
+    print_key_value("Nodes to clear", total_nodes, format=format)
+    click.echo()
+    for result in results:
+        print_key_value(
+            f"  {result.get('nodeName', 'unknown')}",
+            f"{result.get('startPartition', '')} to {result.get('endPartition', '')}",
+            format=format,
+        )
+    click.echo()
+
+    if not assume_yes:
+        if not click.confirm(click.style("Proceed with clearing these nodes?", fg="yellow")):
+            click.echo("Aborted.")
+            sys.exit(0)
+
+    with status_spinner("Clearing downstream nodes...", format=format):
+        apply_json = zipline_hub.apply_clear_downstream(
+            node_results=results,
+            user=user,
+        )
+
+    print_success(f"Cleared {apply_json.get('totalNodesCleared', 0)} nodes", format=format)
+
+
 def load_json(file_path):
     with open(file_path, "r") as f:
         data = json.load(f)
