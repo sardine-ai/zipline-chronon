@@ -233,7 +233,7 @@ azure = Team(
             "CLOUD_PROVIDER": "azure",
             "CUSTOMER_ID": "dev",
             "VERSION": "latest",
-            "SPARK_CLUSTER_NAME": "http://kyuubi-dev.westus.cloudapp.azure.com:10099",
+            "SPARK_CLUSTER_NAME": "http://dev-zipline-kyuubi.westus.cloudapp.azure.com:10099",
             "ARTIFACT_PREFIX": "abfss://dev-zipline-artifacts@ziplineai2.dfs.core.windows.net",
             "WAREHOUSE_PREFIX": "abfss://dev-zipline-warehouse@ziplineai2.dfs.core.windows.net",
             "CHRONON_ONLINE_ARGS": " -Ztasks=4",
