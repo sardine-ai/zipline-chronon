@@ -34,7 +34,10 @@ import scala.jdk.CollectionConverters._
 class K8sFlinkSubmitter(
     flinkImage: String,
     buildInitContainerSpec: Array[String] => K8sFlinkSubmitter.InitContainerSpec,
-    extraFlinkConfig: Map[String, String] = Map.empty,
+    // By-name so cloud-specific config that depends on env vars (e.g. AKS workload-identity
+    // tenant/client IDs) only resolves on first Flink submission, not at hub startup. Memoized
+    // below via `resolvedExtraFlinkConfig` so the resolution still happens once per instance.
+    extraFlinkConfig: => Map[String, String] = Map.empty,
     extraJarNames: Array[String] = Array.empty,
     defaultJarsBasePath: String,
     k8sConfig: Option[Config] = None,
@@ -44,6 +47,8 @@ class K8sFlinkSubmitter(
   import K8sFlinkSubmitter._
 
   private val logger = LoggerFactory.getLogger(getClass)
+
+  private lazy val resolvedExtraFlinkConfig: Map[String, String] = extraFlinkConfig
 
   // TM memory tiers. TM sizing follows the following conventions:
   // 64G: 4 slots, tuned network/managed/metaspace settings matching prior load testing on Dataproc
@@ -146,7 +151,7 @@ class K8sFlinkSubmitter(
       "state.checkpoint-storage" -> "filesystem",
       "rest.profiling.enabled" -> "true",
       "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
-    ) ++ flinkMemoryConfig(tier) ++ extraFlinkConfig ++ jobProperties
+    ) ++ flinkMemoryConfig(tier) ++ resolvedExtraFlinkConfig ++ jobProperties
   }
 
   private def flinkDeploymentCrdContext: CustomResourceDefinitionContext =
