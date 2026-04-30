@@ -1556,8 +1556,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   }
 
   "nodeSelector" should "parse multiple comma-separated key=value pairs" in {
-    val submitter = createSubmitter(mock[EmrServerlessClient])
-    submitter.parseNodeSelector("sardine.ai/node-type=flink,kubernetes.io/arch=amd64") shouldBe Map(
+    EmrServerlessSubmitter.parseNodeSelector("sardine.ai/node-type=flink,kubernetes.io/arch=amd64") shouldBe Map(
       "sardine.ai/node-type" -> "flink",
       "kubernetes.io/arch"   -> "amd64"
     )
@@ -1576,8 +1575,7 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   }
 
   "nodeSelector" should "throw on malformed pair missing '='" in {
-    val submitter = createSubmitter(mock[EmrServerlessClient])
-    an[IllegalArgumentException] should be thrownBy submitter.parseNodeSelector("sardine.ai/node-type=flink,badtoken")
+    an[IllegalArgumentException] should be thrownBy EmrServerlessSubmitter.parseNodeSelector("sardine.ai/node-type=flink,badtoken")
   }
 }
 
