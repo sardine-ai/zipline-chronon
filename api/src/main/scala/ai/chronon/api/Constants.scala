@@ -100,4 +100,5 @@ object Constants {
   val archiveReuseTableSuffix: String = "_archive_reuse"
 
   val KvTablePrefixArg = "kv.tablePrefix"
+  val KvEnableTtlArg = "kv.enableTtl"
 }
