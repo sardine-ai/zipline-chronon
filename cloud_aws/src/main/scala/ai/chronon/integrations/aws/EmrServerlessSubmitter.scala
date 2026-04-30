@@ -171,10 +171,11 @@ class EmrServerlessSubmitter(
 
   // Parses "zipline.ai/node-type=flink,kubernetes.io/arch=amd64" into the equivalent Map
   private[aws] def parseNodeSelector(raw: String): Map[String, String] =
-    raw.split(",").flatMap { pair =>
+    raw.split(",").map(_.trim).filter(_.nonEmpty).map { pair =>
       val idx = pair.indexOf('=')
-      if (idx > 0) Some(pair.substring(0, idx).trim -> pair.substring(idx + 1).trim)
-      else None
+      if (idx <= 0)
+        throw new IllegalArgumentException(s"Malformed nodeSelector pair: '$pair' (expected key=value)")
+      pair.substring(0, idx).trim -> pair.substring(idx + 1).trim
     }.toMap
 
   private def submitSparkJob(

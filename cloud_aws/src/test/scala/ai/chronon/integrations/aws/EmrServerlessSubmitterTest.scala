@@ -1574,6 +1574,11 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
     ai.chronon.spark.submission.JobSubmitter.getArgValue(args, "--eks-node-selector") shouldBe
       Some("sardine.ai/node-type=flink")
   }
+
+  "nodeSelector" should "throw on malformed pair missing '='" in {
+    val submitter = createSubmitter(mock[EmrServerlessClient])
+    an[IllegalArgumentException] should be thrownBy submitter.parseNodeSelector("sardine.ai/node-type=flink,badtoken")
+  }
 }
 
 object IntegrationTest extends org.scalatest.Tag("Integration")
