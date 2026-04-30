@@ -1225,12 +1225,16 @@ class TestAppImages:
         assert images["fetcher"] == ("ziplineai/chronon-fetcher", "1.2.3")
 
     def test_flink_uses_fixed_tag(self):
-        for cloud in ("aws", "gcp", "azure"):
+        for cloud in ("aws", "azure"):
             images = dict((itype, (repo, tag)) for itype, repo, tag in _app_images(cloud, "1.2.3"))
             repo, tag = images["flink"]
             assert repo == "ziplineai/flink"
             assert tag == FLINK_IMAGE_TAG
             assert tag != "1.2.3"
+
+    def test_flink_excluded_for_gcp(self):
+        images = dict((itype, (repo, tag)) for itype, repo, tag in _app_images("gcp", "1.2.3"))
+        assert "flink" not in images
 
     def test_cloud_suffix_varies_by_cloud(self):
         for cloud in ("aws", "gcp", "azure"):

@@ -42,7 +42,9 @@ class AwsRunner(Runner):
             ZIPLINE_DIRECTORY, artifacts_bucket_prefix, args["version"], ZIPLINE_AWS_SERVICE_JAR
         )
         jar_path = f"{service_jar_path}:{aws_jar_path}" if args["mode"] == "fetch" else aws_jar_path
-        self.version = args.get("version") or "latest"
+
+        self.version = args.get("version", "latest")
+
         self._args = args
 
         super().__init__(args, os.path.expanduser(jar_path))
