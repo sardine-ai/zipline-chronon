@@ -57,6 +57,10 @@ object `package` extends PythonModule with RuffModule with PublishModule {
          |
          |[tool.setuptools.package-data]
          |"ai.chronon.resources" = ["*.md", "*.sh"]
+         |
+         |[tool.setuptools.packages.find]
+         |where = ["src"]
+         |namespaces = true
          |""".stripMargin
   }
 
