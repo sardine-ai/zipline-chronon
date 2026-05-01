@@ -78,7 +78,6 @@ trait JobSubmitter {
   def jarName: String = ""
   def flinkJarName: String = "flink_assembly_deploy.jar"
   def onlineClass: String = ""
-  def tablePartitionsDataset: String = ""
   def dqMetricsDataset: String = ""
 
   def resolveConfPath(stagedFileUri: String): String = stagedFileUri.split("/").last
