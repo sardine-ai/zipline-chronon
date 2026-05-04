@@ -12,7 +12,7 @@
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 import pytest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 from rich.text import Text
@@ -739,3 +739,79 @@ class TestHubRunner:
                 format=Format.JSON,
             )
         assert exc_info.value.code == 1
+
+    @patch('requests.post')
+    @patch('ai.chronon.repo.hub_runner.get_user_email')
+    @patch('ai.chronon.repo.hub_runner.get_current_branch')
+    def test_clear_downstream_preview_and_apply(
+        self,
+        mock_get_current_branch,
+        mock_get_user_email,
+        mock_post,
+        canary,
+        online_join_conf,
+    ):
+        """Test clear-downstream calls preview then apply after confirmation."""
+        mock_get_current_branch.return_value = "test-branch"
+        mock_get_user_email.return_value = "test@example.com"
+
+        preview_response = Mock()
+        preview_response.json.return_value = {
+            "results": [
+                {"nodeName": "aws.my_node.v1", "nodeHash": "h1", "semanticHash": "s1",
+                 "startPartition": "2024-01-01", "endPartition": "2024-01-05"},
+            ],
+            "affectedConfs": [
+                {"confName": "aws.my_conf.v1", "startPartition": "2024-01-01", "endPartition": "2024-01-05"},
+            ],
+            "totalNodesCleared": 1,
+            "message": "Preview: 1 confs would be cleared",
+        }
+        preview_response.raise_for_status.return_value = None
+
+        apply_response = Mock()
+        apply_response.json.return_value = {
+            "results": [
+                {"nodeName": "aws.my_node.v1", "startPartition": "2024-01-01", "endPartition": "2024-01-05"},
+            ],
+            "totalNodesCleared": 1,
+            "message": "Cleared 1 nodes",
+        }
+        apply_response.raise_for_status.return_value = None
+
+        mock_post.side_effect = [preview_response, apply_response]
+
+        runner = CliRunner()
+        result = self._run_and_print(runner, hub, [
+            'clear-downstream',
+            online_join_conf,
+            '--repo', canary,
+            '--no-use-auth',
+            '--start-ds', '2024-01-01',
+            '--end-ds', '2024-01-05',
+            '--yes',
+        ])
+
+        assert result.exit_code == 0
+        plain_output = _plain(result.output)
+        assert "aws.my_conf.v1" in plain_output
+        assert "Cleared 1 confs" in plain_output
+        assert "zipline hub backfill" in plain_output
+
+        assert mock_post.call_count == 2
+
+        preview_call = mock_post.call_args_list[0]
+        assert "/workflow/v2/clear-downstream/preview" in preview_call[0][0]
+        preview_payload = preview_call[1]['json']
+        assert preview_payload['confName'] == ".".join(online_join_conf.split("/")[-2:])
+        assert preview_payload['branch'] == "test-branch"
+        assert preview_payload['start'] == "2024-01-01"
+        assert preview_payload['end'] == "2024-01-05"
+
+        apply_call = mock_post.call_args_list[1]
+        assert "/workflow/v2/clear-downstream/apply" in apply_call[0][0]
+        apply_payload = apply_call[1]['json']
+        assert len(apply_payload['nodeResults']) == 1
+        assert apply_payload['user'] == "test@example.com"
+        assert len(apply_payload['affectedConfs']) == 1
+        assert apply_payload['affectedConfs'][0]['confName'] == "aws.my_conf.v1"

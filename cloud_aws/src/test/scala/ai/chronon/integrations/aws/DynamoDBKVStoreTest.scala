@@ -1,6 +1,8 @@
 package ai.chronon.integrations.aws
 
-import ai.chronon.api.Constants.{ContinuationKey, ListLimit}
+import ai.chronon.api.Constants.{ContinuationKey, KvEnableTtlArg, KvTablePrefixArg, ListLimit}
+import ai.chronon.api.ScalaJavaConversions._
+import java.time.LocalDate
 import ai.chronon.api.TilingUtils
 import ai.chronon.integrations.aws.DynamoDBKVStoreConstants.isTimedSorted
 import ai.chronon.online.KVStore._
@@ -8,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.utility.DockerImageName
@@ -29,7 +32,7 @@ object DDBTestUtils {
 
 }
 
-class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
+class DynamoDBKVStoreTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   import DDBTestUtils._
   import DynamoDBKVStoreConstants._
@@ -586,6 +589,152 @@ class DynamoDBKVStoreTest extends AnyFlatSpec with BeforeAndAfterAll {
     val result2 = getResults.find(_.request == getRequest2).get
     result2.values.isSuccess shouldBe true
     result2.values.get.isEmpty shouldBe true
+  }
+
+  // ===== gcOldBatchTables / enableTtl =====
+
+  it should "enable TTL on table when enableTtl=true (default)" in {
+    val dataset = "TTL_ENABLED_TABLE"
+    val kvStore = new DynamoDBKVStoreImpl(client)
+    kvStore.create(dataset)
+
+    val ttlDesc = client.describeTimeToLive(
+      software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveRequest.builder().tableName(dataset).build()
+    ).join().timeToLiveDescription()
+    ttlDesc.timeToLiveStatus() shouldBe software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus.ENABLED
+  }
+
+  it should "not enable TTL on table when enableTtl=false" in {
+    val dataset = "TTL_DISABLED_TABLE"
+    val kvStore = new DynamoDBKVStoreImpl(client, Map(KvEnableTtlArg -> "false"))
+    kvStore.create(dataset)
+
+    val ttlDesc = client.describeTimeToLive(
+      software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveRequest.builder().tableName(dataset).build()
+    ).join().timeToLiveDescription()
+    ttlDesc.timeToLiveStatus() shouldBe software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus.DISABLED
+  }
+
+  it should "gcOldBatchTables deletes tables older than the GC threshold" in {
+    val logicalName = "GC_CLEANUP_TEST"
+    val kvStore = new DynamoDBKVStoreImpl(client)
+
+    // threshold + 10 days old — should be deleted
+    val oldDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays + 10)
+    val fmt = DynamoDBKVStoreConstants.BatchTableDateFormatter
+    val oldTableName = s"${logicalName}_${oldDate.format(fmt)}_1000000"
+    kvStore.create(oldTableName)
+
+    // threshold - 10 days old — should NOT be deleted
+    val recentDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays - 10)
+    val recentTableName = s"${logicalName}_${recentDate.format(fmt)}_2000000"
+    kvStore.create(recentTableName)
+
+    kvStore.gcOldBatchTables(logicalName)
+
+    val tables = client.listTables().join().tableNames()
+    tables.contains(oldTableName) shouldBe false
+    tables.contains(recentTableName) shouldBe true
+  }
+
+  it should "gcOldBatchTables respects the BatchTableGCMaxDelete limit" in {
+    val logicalName = "GC_LIMIT_TEST"
+    val kvStore = new DynamoDBKVStoreImpl(client)
+    val fmt = DynamoDBKVStoreConstants.BatchTableDateFormatter
+
+    // Create BatchTableGCMaxDelete + 5 tables all older than the GC threshold (threshold + 5 days)
+    val total = DynamoDBKVStoreConstants.BatchTableGCMaxDelete + 5
+    val oldDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays + 5)
+    (1 to total).foreach { i =>
+      kvStore.create(s"${logicalName}_${oldDate.format(fmt)}_${i}000000")
+    }
+
+    kvStore.gcOldBatchTables(logicalName)
+
+    val remaining = client.listTables().join().tableNames().toScala.filter(_.startsWith(logicalName))
+    // At most BatchTableGCMaxDelete deleted, so at least 5 remain
+    remaining.length should be >= (total - DynamoDBKVStoreConstants.BatchTableGCMaxDelete)
+    remaining.length should be <= total
+  }
+
+  it should "gcOldBatchTables does not delete tables with malformed date in name" in {
+    val logicalName = "GC_MALFORMED_TEST"
+    val kvStore = new DynamoDBKVStoreImpl(client)
+
+    // Table with unparseable date segment — should be left alone
+    val malformedName = s"${logicalName}_NOTADATE_12345"
+    kvStore.create(malformedName)
+
+    kvStore.gcOldBatchTables(logicalName)
+
+    val tables = client.listTables().join().tableNames()
+    tables.contains(malformedName) shouldBe true
+  }
+
+  it should "gcOldBatchTables does not delete tables belonging to a different logical dataset" in {
+    val logicalName = "GC_ISOLATION_A"
+    val otherLogicalName = "GC_ISOLATION_B"
+    val kvStore = new DynamoDBKVStoreImpl(client)
+    val fmt = DynamoDBKVStoreConstants.BatchTableDateFormatter
+
+    val oldDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays + 10)
+    val tableA = s"${logicalName}_${oldDate.format(fmt)}_1000000"
+    val tableB = s"${otherLogicalName}_${oldDate.format(fmt)}_1000000"
+    kvStore.create(tableA)
+    kvStore.create(tableB)
+
+    kvStore.gcOldBatchTables(logicalName)
+
+    val tables = client.listTables().join().tableNames()
+    tables.contains(tableA) shouldBe false  // GC'd
+    tables.contains(tableB) shouldBe true   // different dataset, untouched
+  }
+
+  it should "gcOldBatchTables swallows errors and does not throw" in {
+    // Use a dataset name for which there are no matching tables — GC should complete silently
+    val kvStore = new DynamoDBKVStoreImpl(client)
+    kvStore.gcOldBatchTables("NONEXISTENT_DATASET_XYZ")
+  }
+
+  it should "gcOldBatchTables works correctly when a table prefix is configured" in {
+    val tablePrefix = "MY_PREFIX_"
+    val logicalName = "GC_PREFIX_TEST"
+    val kvStore = new DynamoDBKVStoreImpl(client, Map(KvTablePrefixArg -> tablePrefix))
+    val fmt = DynamoDBKVStoreConstants.BatchTableDateFormatter
+
+    // threshold + 10 days old — should be deleted
+    val oldDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays + 10)
+    val oldTableName = s"${logicalName}_${oldDate.format(fmt)}_1000000"
+    kvStore.create(oldTableName)
+
+    // threshold - 10 days old — should NOT be deleted
+    val recentDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays - 10)
+    val recentTableName = s"${logicalName}_${recentDate.format(fmt)}_2000000"
+    kvStore.create(recentTableName)
+
+    kvStore.gcOldBatchTables(logicalName)
+
+    // Verify via the raw client (which sees physical prefixed names)
+    val physicalTables = client.listTables().join().tableNames()
+    physicalTables.contains(tablePrefix + oldTableName) shouldBe false
+    physicalTables.contains(tablePrefix + recentTableName) shouldBe true
+  }
+
+  it should "gcOldBatchTables does not run when enableTtl=false" in {
+    val logicalName = "GC_DISABLED_TTL_TEST"
+    val kvStore = new DynamoDBKVStoreImpl(client, Map(KvEnableTtlArg -> "false"))
+    val fmt = DynamoDBKVStoreConstants.BatchTableDateFormatter
+
+    // threshold + 10 days old — would be deleted if GC ran
+    val oldDate = LocalDate.now().minusDays(DynamoDBKVStoreConstants.BatchTableGCAgeDays + 10)
+    val oldTableName = s"${logicalName}_${oldDate.format(fmt)}_1000000"
+    kvStore.create(oldTableName)
+
+    kvStore.gcOldBatchTables(logicalName)
+
+    // Table must still exist — GC is skipped when TTL is disabled
+    val tables = client.listTables().join().tableNames()
+    tables.contains(oldTableName) shouldBe true
   }
 
   private def buildModelPutRequest(model: Model, dataset: String): PutRequest = {

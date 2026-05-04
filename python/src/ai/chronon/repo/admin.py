@@ -65,14 +65,17 @@ def _safe_extractall(tar, dest):
 
 def _app_images(cloud, release):
     """Return the list of (image_type, repo, tag) tuples for application images (excludes engine)."""
-    return [
+    images = [
         ("hub", f"ziplineai/hub-{cloud}", release),
         ("eval", f"ziplineai/eval-{cloud}", release),
         ("frontend", "ziplineai/web-ui", release),
         ("fetcher", "ziplineai/chronon-fetcher", release),
-        # Flink uses a fixed tag independent of the Zipline release
-        ("flink", "ziplineai/flink", FLINK_IMAGE_TAG),
     ]
+    # GCP submits jobs to Dataproc, so no custom Flink image is needed
+    if cloud != "gcp":
+        # Flink uses a fixed tag independent of the Zipline release
+        images.append(("flink", "ziplineai/flink", FLINK_IMAGE_TAG))
+    return images
 
 
 # EKS service → (deployment_name, container_name, image_repo_template)
@@ -969,7 +972,8 @@ def _print_summary(results, release, cloud, registry):
             console.print(f'  eval_image     = "{registry}/ziplineai/eval-{cloud}:{release}"')
             console.print(f'  frontend_image = "{registry}/ziplineai/web-ui:{release}"')
             console.print(f'  fetcher_image  = "{registry}/ziplineai/chronon-fetcher:{release}"')
-            console.print(f'  flink_image    = "{registry}/ziplineai/flink:{FLINK_IMAGE_TAG}"')
+            if cloud != "gcp":
+                console.print(f'  flink_image    = "{registry}/ziplineai/flink:{FLINK_IMAGE_TAG}"')
             console.print(f'  engine_image   = "{registry}/ziplineai/engine-{cloud}:{release}"')
     else:
         console.print("\n[bold red]Some artifacts failed to load. See errors above.[/bold red]")

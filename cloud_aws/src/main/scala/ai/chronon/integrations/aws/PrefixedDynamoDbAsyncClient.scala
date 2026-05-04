@@ -20,6 +20,10 @@ class PrefixedDynamoDbAsyncClient(delegate: DynamoDbAsyncClient, tablePrefix: St
     else tablePrefix + tableName
   }
 
+  private def isTablePrefixed(tableName: String): Boolean = {
+    tablePrefix.nonEmpty && tableName.startsWith(tablePrefix)
+  }
+
   // ========== Supported Read Operations ==========
 
   def getItem(request: GetItemRequest): CompletableFuture[GetItemResponse] = {
@@ -75,6 +79,33 @@ class PrefixedDynamoDbAsyncClient(delegate: DynamoDbAsyncClient, tablePrefix: St
     logger.debug(s"createTable: original table name='$originalTableName' -> prefixed table name='$prefixedTableName'")
     val prefixedRequest = request.toBuilder.tableName(prefixedTableName).build()
     delegate.createTable(prefixedRequest)
+  }
+
+  /** Lists tables whose names start with the given prefix (after applying the client table prefix).
+    * The response table names have the client prefix stripped so callers see logical names.
+    */
+  def listTables(request: ListTablesRequest): CompletableFuture[ListTablesResponse] = {
+    // Prefix the exclusiveStartTableName if present
+    val prefixedRequest = if (request.exclusiveStartTableName() != null) {
+      request.toBuilder.exclusiveStartTableName(prefixTableName(request.exclusiveStartTableName())).build()
+    } else {
+      request
+    }
+    delegate.listTables(prefixedRequest).thenApply { response =>
+      // Strip the client prefix from returned table names so callers see logical names
+      val strippedNames = response.tableNames().toArray(new Array[String](0)).map { name =>
+        if (isTablePrefixed(name)) name.substring(tablePrefix.length)
+        else name
+      }
+      val builder = response.toBuilder.tableNames(strippedNames: _*)
+      // Strip prefix from lastEvaluatedTableName if present
+      val lastEval = response.lastEvaluatedTableName()
+      if (lastEval != null && tablePrefix.nonEmpty && lastEval.startsWith(tablePrefix)) {
+        builder.lastEvaluatedTableName(lastEval.substring(tablePrefix.length)).build()
+      } else {
+        builder.build()
+      }
+    }
   }
 
   def deleteTable(request: DeleteTableRequest): CompletableFuture[DeleteTableResponse] = {
