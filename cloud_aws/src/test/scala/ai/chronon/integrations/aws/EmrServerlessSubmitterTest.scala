@@ -1577,6 +1577,11 @@ class EmrServerlessSubmitterTest extends AnyFlatSpec with Matchers with MockitoS
   "nodeSelector" should "throw on malformed pair missing '='" in {
     an[IllegalArgumentException] should be thrownBy EmrServerlessSubmitter.parseNodeSelector("sardine.ai/node-type=flink,badtoken")
   }
+
+  "nodeSelector" should "throw on blank input" in {
+    an[IllegalArgumentException] should be thrownBy EmrServerlessSubmitter.parseNodeSelector("")
+    an[IllegalArgumentException] should be thrownBy EmrServerlessSubmitter.parseNodeSelector("   ")
+  }
 }
 
 object IntegrationTest extends org.scalatest.Tag("Integration")
