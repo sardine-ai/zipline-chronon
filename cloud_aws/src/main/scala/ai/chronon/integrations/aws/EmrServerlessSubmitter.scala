@@ -525,13 +525,16 @@ object EmrServerlessSubmitter {
   val DefaultApplicationName = "chronon-serverless-app"
 
   // Parses "zipline.ai/node-type=flink,kubernetes.io/arch=amd64" into the equivalent Map
-  private[aws] def parseNodeSelector(raw: String): Map[String, String] =
+  private[aws] def parseNodeSelector(raw: String): Map[String, String] = {
+    if (raw.trim.isEmpty)
+      throw new IllegalArgumentException("nodeSelector value must not be blank")
     raw.split(",").map(_.trim).filter(_.nonEmpty).map { pair =>
       val idx = pair.indexOf('=')
       if (idx <= 0)
         throw new IllegalArgumentException(s"Malformed nodeSelector pair: '$pair' (expected key=value)")
       pair.substring(0, idx).trim -> pair.substring(idx + 1).trim
     }.toMap
+  }
 
   // EMR Serverless StartJobRun API rejects any applicationConfiguration entry whose
   // properties map has more than 100 keys (service-side validation).
