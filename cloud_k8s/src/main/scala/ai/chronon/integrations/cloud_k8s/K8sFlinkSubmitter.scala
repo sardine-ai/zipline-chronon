@@ -325,14 +325,16 @@ class K8sFlinkSubmitter(
 
     spec.put(
       "jobManager",
-      buildComponentSpec(memory = jmPodMemory,
-                         cpu = 1.0,
-                         replicas = Some(1),
-                         containerSpec.initContainers,
-                         allEnvVars,
-                         containerSpec.volumeMounts,
-                         containerSpec.volumes,
-                         nodeSelector = nodeSelector)
+      buildComponentSpec(
+        memory = jmPodMemory,
+        cpu = 1.0,
+        replicas = Some(1),
+        containerSpec.initContainers,
+        allEnvVars,
+        containerSpec.volumeMounts,
+        containerSpec.volumes,
+        nodeSelector = nodeSelector
+      )
     )
     spec.put(
       "taskManager",

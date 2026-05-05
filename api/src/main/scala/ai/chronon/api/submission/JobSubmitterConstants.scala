@@ -117,7 +117,6 @@ object JobSubmitterConstants {
   // Deprecated: Use ClusterNameEnvVar instead
   val EmrClusterNameEnvVar = "EMR_CLUSTER_NAME"
 
-  val TablePartitionsDatasetNameArgKeyword = "--table-partitions-dataset"
   val TableStatsDatasetNameArgKeyword = "--table-stats-dataset"
 
   val CheckIfJobIsRunning = "check-if-job-is-running"

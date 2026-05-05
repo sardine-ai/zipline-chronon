@@ -30,7 +30,6 @@ class EmrServerlessSubmitter(
     s3LogUri: String,
     eksFlinkSubmitter: Option[K8sFlinkSubmitter] = None,
     awsRegion: String = "",
-    override val tablePartitionsDataset: String = "",
     override val dqMetricsDataset: String = "",
     override val kvStoreApiProperties: Map[String, String] = Map.empty,
     flinkEksServiceAccount: Option[String] = None,
@@ -139,7 +138,8 @@ class EmrServerlessSubmitter(
           throw new RuntimeException(s"Missing expected $EksServiceAccount"))
         val namespace =
           submissionProperties.getOrElse(EksNamespace, throw new RuntimeException(s"Missing expected $EksNamespace"))
-        val nodeSelector = submissionProperties.get(EksNodeSelector)
+        val nodeSelector = submissionProperties
+          .get(EksNodeSelector)
           .map(EmrServerlessSubmitter.parseNodeSelector)
           .getOrElse(Map.empty)
 
@@ -528,12 +528,17 @@ object EmrServerlessSubmitter {
   private[aws] def parseNodeSelector(raw: String): Map[String, String] = {
     if (raw.trim.isEmpty)
       throw new IllegalArgumentException("nodeSelector value must not be blank")
-    raw.split(",").map(_.trim).filter(_.nonEmpty).map { pair =>
-      val idx = pair.indexOf('=')
-      if (idx <= 0)
-        throw new IllegalArgumentException(s"Malformed nodeSelector pair: '$pair' (expected key=value)")
-      pair.substring(0, idx).trim -> pair.substring(idx + 1).trim
-    }.toMap
+    raw
+      .split(",")
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map { pair =>
+        val idx = pair.indexOf('=')
+        if (idx <= 0)
+          throw new IllegalArgumentException(s"Malformed nodeSelector pair: '$pair' (expected key=value)")
+        pair.substring(0, idx).trim -> pair.substring(idx + 1).trim
+      }
+      .toMap
   }
 
   // EMR Serverless StartJobRun API rejects any applicationConfiguration entry whose
@@ -594,7 +599,6 @@ object EmrServerlessSubmitter {
       awsRegion: String,
       executionRoleArn: String,
       s3LogUri: String,
-      tablePartitionsDataset: String = "",
       dqMetricsDataset: String = "",
       flinkEksServiceAccount: Option[String] = None,
       flinkEksNamespace: Option[String] = None,
@@ -620,7 +624,6 @@ object EmrServerlessSubmitter {
       s3LogUri,
       eksFlinkSubmitter = Some(EksFlinkSubmitter(k8sConfig, ingressBaseUrl = ingressBaseUrl)),
       awsRegion = awsRegion,
-      tablePartitionsDataset = tablePartitionsDataset,
       dqMetricsDataset = dqMetricsDataset,
       flinkEksServiceAccount = flinkEksServiceAccount,
       flinkEksNamespace = flinkEksNamespace,
