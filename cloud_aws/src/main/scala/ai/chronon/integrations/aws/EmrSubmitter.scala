@@ -521,7 +521,8 @@ class EmrSubmitter(customerId: String,
           throw new RuntimeException(s"Missing expected $EksServiceAccount"))
         val namespace =
           submissionProperties.getOrElse(EksNamespace, throw new RuntimeException(s"Missing expected $EksNamespace"))
-        val nodeSelector = submissionProperties.get(EksNodeSelector)
+        val nodeSelector = submissionProperties
+          .get(EksNodeSelector)
           .map(EmrServerlessSubmitter.parseNodeSelector)
           .getOrElse(Map.empty)
 
