@@ -5,7 +5,7 @@ import ai.chronon.online.TopicInfo
 import com.google.api.gax.rpc.{NotFoundException, StatusCode}
 import com.google.cloud.pubsub.v1.SchemaServiceClient
 import com.google.protobuf.DynamicMessage
-import com.google.pubsub.v1.{Schema, SchemaName}
+import com.google.pubsub.v1.{ListSchemaRevisionsRequest, Schema, SchemaName}
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema
 import org.mockito.Mockito.when
 import org.mockito.ArgumentMatchers.any
@@ -161,6 +161,51 @@ class PubSubSchemaSerDeSpec extends AnyFlatSpec {
     val mutationWithoutNull = serDeWithoutNull.fromBytes(emptyMessage.toByteArray)
     assert(mutationWithoutNull.after(0) == "")
     assert(mutationWithoutNull.after(1) == 0)
+  }
+
+  // ============== Schema Revision Tests ==============
+
+  it should "succeed when fetching a specific AVRO schema revision" in {
+    val avroSchemaStr =
+      """{ "type": "record", "name": "test1", "fields": [ { "type": "string", "name": "field1" } ]}"""
+    val revisionId = "abc123"
+    val topicInfo = TopicInfo("test-topic", "pubsub",
+      Map(
+        PubSubSchemaSerDe.ProjectKey -> "test-project",
+        PubSubSchemaSerDe.SchemaIdKey -> "test-schema",
+        PubSubSchemaSerDe.SchemaRevisionIdKey -> revisionId
+      ))
+    val schema = Schema.newBuilder()
+      .setName("test-schema")
+      .setRevisionId(revisionId)
+      .setType(Schema.Type.AVRO)
+      .setDefinition(avroSchemaStr)
+      .build()
+    val mockedSchemaClient = org.mockito.Mockito.mock(classOf[SchemaServiceClient], org.mockito.Mockito.RETURNS_DEEP_STUBS)
+    when(mockedSchemaClient.listSchemaRevisions(any[ListSchemaRevisionsRequest]())
+      .iteratePages().iterator().next().getValues())
+      .thenReturn(java.util.Collections.singletonList(schema))
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+    assert(serDe.schema != null)
+  }
+
+  it should "fail when the specified AVRO schema revision is not found" in {
+    val topicInfo = TopicInfo("test-topic", "pubsub",
+      Map(
+        PubSubSchemaSerDe.ProjectKey -> "test-project",
+        PubSubSchemaSerDe.SchemaIdKey -> "test-schema",
+        PubSubSchemaSerDe.SchemaRevisionIdKey -> "nonexistent-revision"
+      ))
+    val statusCode = mock[StatusCode]
+    val mockedSchemaClient = org.mockito.Mockito.mock(classOf[SchemaServiceClient], org.mockito.Mockito.RETURNS_DEEP_STUBS)
+    when(mockedSchemaClient.listSchemaRevisions(any[ListSchemaRevisionsRequest]()))
+      .thenThrow(new NotFoundException(new IllegalArgumentException(), statusCode, true))
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+    assertThrows[IllegalArgumentException] {
+      serDe.schema
+    }
   }
 
   // ============== Proto2 Tests ==============
