@@ -137,19 +137,6 @@ class K8sFlinkSubmitter(
   def buildFlinkConfiguration(flinkCheckpointUri: String, jobProperties: Map[String, String]): Map[String, String] = {
     val tier = parseTmMemoryTier(jobProperties)
 
-    // K8s HA opt-in: when callers supply `high-availability.storageDir` via jobProperties,
-    // enable Flink Kubernetes HA so JM restarts (node disruption, AMI rolls, EKS upgrades)
-    // reuse BlobKey identity from persistent storage instead of generating new random nonces
-    // — which is the root cause of `IllegalStateException: The library registration
-    // references a different set of library BLOBs` after a JM is rescheduled mid-job.
-    // Without storageDir, no HA keys are injected and existing behavior is preserved exactly.
-    // The companion `kubernetes.cluster-id` is set in `submit()` (where deploymentName exists).
-    val haConfig: Map[String, String] =
-      if (jobProperties.contains("high-availability.storageDir"))
-        Map("high-availability.type" -> "kubernetes")
-      else
-        Map.empty
-
     // extraFlinkConfig (cloud-specific, e.g. IRSA credentials) merged after base;
     // jobProperties applied last so callers can override anything.
     // All jars are available via FLINK_CLASSPATH=/opt/flink/usrlib/*,
@@ -164,7 +151,7 @@ class K8sFlinkSubmitter(
       "state.checkpoint-storage" -> "filesystem",
       "rest.profiling.enabled" -> "true",
       "state.checkpoints.num-retained" -> MaxRetainedCheckpoints
-    ) ++ flinkMemoryConfig(tier) ++ resolvedExtraFlinkConfig ++ haConfig ++ jobProperties
+    ) ++ flinkMemoryConfig(tier) ++ resolvedExtraFlinkConfig ++ jobProperties
   }
 
   private def flinkDeploymentCrdContext: CustomResourceDefinitionContext =
@@ -378,17 +365,10 @@ class K8sFlinkSubmitter(
     // Operator validates parallelism > 0; actual job-level parallelism is set inside the Flink job itself
     job.put("parallelism", Integer.valueOf(1))
     job.put("state", "running")
-    val haEnabled = flinkConfiguration.contains("high-availability.storageDir")
     maybeSavepointUri match {
       case Some(savepointUri) =>
         job.put("upgradeMode", "savepoint")
         job.put("initialSavepointPath", savepointUri)
-      case None if haEnabled =>
-        // HA: last-state resumes from the latest completed checkpoint via the HA
-        // ConfigMaps, preserving BlobKey identity across JM restarts. Survives node
-        // disruptions cleanly — no more "library registration references a different
-        // set of library BLOBs" failures on rescheduled pods.
-        job.put("upgradeMode", "last-state")
       case None =>
         // stateless allows cold restarts without HA; last-state requires HA to be enabled
         job.put("upgradeMode", "stateless")
