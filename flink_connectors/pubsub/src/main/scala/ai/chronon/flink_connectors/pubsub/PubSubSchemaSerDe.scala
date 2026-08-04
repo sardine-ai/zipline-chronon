@@ -84,7 +84,7 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe {
       .newBuilder()
       .setName(schemaName.toString())
       .setView(SchemaView.FULL)
-      .setPageSize(2)
+      .setPageSize(10)
       .build();
     val response = schemaClient.listSchemaRevisions(request)
     val revisions = response.iteratePages().iterator().next().getValues().asScala
