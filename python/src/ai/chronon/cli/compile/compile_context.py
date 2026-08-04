@@ -6,6 +6,7 @@ import ai.chronon.cli.compile.parse_teams as teams
 from ai.chronon.cli.compile.conf_validator import ConfValidator
 from ai.chronon.cli.compile.display.compile_status import CompileStatus
 from ai.chronon.cli.compile.display.compiled_obj import CompiledObj
+from ai.chronon.cli.compile.parse_teams import PROD_ENV, PROD_TEAMS_FILE
 from ai.chronon.cli.compile.serializer import file2thrift
 from ai.chronon.cli.formatter import Format
 from ai.chronon.cli.logger import get_logger, require
@@ -33,24 +34,28 @@ class ConfigInfo:
 # Canonical enumeration of chronon conf types. Drives compile discovery,
 # output layout, and validator wiring. Keep this as a module-level constant
 # so tests and tooling can derive folder names from the same source of truth.
+# With the id()-based dedup in `parse_configs`,
+# this guarantees that a config imported from another file is recorded at
+# its canonical location (the file that defines it) rather than at the
+# first importer the scanner happens to visit.
 CONFIG_INFOS: List[ConfigInfo] = [
-    ConfigInfo(folder_name="joins", cls=Join, config_type=ConfType.JOIN),
-    ConfigInfo(
-        folder_name="group_bys",
-        cls=GroupBy,
-        config_type=ConfType.GROUP_BY,
-    ),
     ConfigInfo(
         folder_name="staging_queries",
         cls=StagingQuery,
         config_type=ConfType.STAGING_QUERY,
     ),
     ConfigInfo(
+        folder_name="group_bys",
+        cls=GroupBy,
+        config_type=ConfType.GROUP_BY,
+    ),
+    ConfigInfo(folder_name="joins", cls=Join, config_type=ConfType.JOIN),
+    ConfigInfo(folder_name="models", cls=Model, config_type=ConfType.MODEL),
+    ConfigInfo(
         folder_name="model_transforms",
         cls=ModelTransforms,
         config_type=ConfType.MODEL_TRANSFORMS,
     ),
-    ConfigInfo(folder_name="models", cls=Model, config_type=ConfType.MODEL),
     ConfigInfo(
         folder_name="teams_metadata", cls=MetaData, config_type=None
     ),  # only for team metadata
@@ -60,18 +65,35 @@ CONFIG_INFOS: List[ConfigInfo] = [
 @dataclass
 class CompileContext:
     def __init__(
-        self, ignore_python_errors: bool = False, format: Format = Format.TEXT, force: bool = False
+        self,
+        ignore_python_errors: bool = False,
+        format: Format = Format.TEXT,
+        force: bool = False,
+        env: str = PROD_ENV,
+        teams_file_name: str = PROD_TEAMS_FILE,
     ):
         self.chronon_root: str = os.getenv("CHRONON_ROOT", os.getcwd())
+        self.env: str = env
+        self.teams_file_name: str = teams_file_name
         self.teams_dict: Dict[str, Team] = teams.load_teams(
-            self.chronon_root, print=format != Format.JSON
+            self.chronon_root, teams_file_name=teams_file_name, print=format != Format.JSON
         )
-        self.compile_dir: str = "compiled"
+        # Env picks the output folder. Each env's pass owns its own folder so prod
+        # and any per-env compiles (canary, staging, …) never trample each other.
+        self.compile_dir: str = "compiled" if env == PROD_ENV else f"compiled_{env}"
         self.ignore_python_errors: bool = ignore_python_errors
         self.format: Format = format
         self.force: bool = force
 
         self.config_infos: List[ConfigInfo] = CONFIG_INFOS
+
+        # Identity dedup across the whole compile run. `parse_configs.from_file`
+        # adds an object's id() the first time it's encountered and skips any
+        # later sightings, so a config imported from another module gets
+        # compiled exactly once at its canonical location instead of being
+        # re-compiled (and reported as a duplicate) in every file that imports
+        # it.
+        self.seen_obj_ids: set = set()
 
         self.compile_status = CompileStatus(use_live=False, format=format)
 
