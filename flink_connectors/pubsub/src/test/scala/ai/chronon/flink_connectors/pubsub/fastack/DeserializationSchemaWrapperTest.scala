@@ -1,5 +1,8 @@
 package ai.chronon.flink_connectors.pubsub.fastack
 
+import ai.chronon.api.StructType
+import ai.chronon.flink.deser.ChrononDeserializationSchema
+import ai.chronon.online.serde.{Mutation, RequiresMessageAttribute, SerDe}
 import com.google.protobuf.ByteString
 import com.google.pubsub.v1.PubsubMessage
 import org.apache.flink.api.common.serialization.DeserializationSchema
@@ -12,6 +15,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.must.Matchers.be
 import org.scalatest.matchers.should.Matchers.{an, convertToAnyShouldWrapper}
 
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import scala.collection.mutable.ListBuffer
 
 class DeserializationSchemaWrapperTest extends AnyFlatSpec with MockitoSugar {
@@ -23,6 +28,31 @@ class DeserializationSchemaWrapperTest extends AnyFlatSpec with MockitoSugar {
     
     override def collect(record: T): Unit = results += record
     override def close(): Unit = {}
+  }
+
+  class FakeSerDe extends SerDe {
+    override def schema: StructType = null
+    override def fromBytes(bytes: Array[Byte]): Mutation = null
+  }
+
+  class FakeAttributeSerDe(key: Option[String]) extends FakeSerDe with RequiresMessageAttribute {
+    override def attributeKey: Option[String] = key
+  }
+
+  private def lengthPrefixed(attributeValue: String, payload: Array[Byte]): Array[Byte] = {
+    val attrBytes = attributeValue.getBytes(StandardCharsets.UTF_8)
+    val buf = ByteBuffer.allocate(4 + attrBytes.length + payload.length)
+    buf.putInt(attrBytes.length)
+    buf.put(attrBytes)
+    buf.put(payload)
+    buf.array()
+  }
+
+  private def sentinelPrefixed(payload: Array[Byte]): Array[Byte] = {
+    val buf = ByteBuffer.allocate(4 + payload.length)
+    buf.putInt(-1)
+    buf.put(payload)
+    buf.array()
   }
 
   "DeserializationSchemaWrapper" should "delegate open to underlying schema" in {
@@ -96,5 +126,67 @@ class DeserializationSchemaWrapperTest extends AnyFlatSpec with MockitoSugar {
     wrapper.deserialize(pubsubMessage, collector)
 
     verify(mockSchema).deserialize(Array.empty[Byte], collector)
+  }
+
+  // ============== RequiresMessageAttribute encoding ==============
+
+  it should "prepend the length-framed attribute value when the delegate SerDe requires it and the message carries it" in {
+    val mockChrononSchema = mock[ChrononDeserializationSchema[TestData]]
+    when(mockChrononSchema.serDe).thenReturn(new FakeAttributeSerDe(Some("revision-id-key")))
+
+    val wrapper = new DeserializationSchemaWrapper[TestData](mockChrononSchema)
+    val collector = new TestCollector[TestData]()
+    val payload = "payload-bytes".getBytes
+    val pubsubMessage = PubsubMessage
+      .newBuilder()
+      .setData(ByteString.copyFrom(payload))
+      .putAttributes("revision-id-key", "abc123")
+      .build()
+
+    wrapper.deserialize(pubsubMessage, collector)
+
+    verify(mockChrononSchema).deserialize(lengthPrefixed("abc123", payload), collector)
+  }
+
+  it should "prepend a -1 sentinel when the delegate SerDe requires the attribute but the message doesn't carry it" in {
+    val mockChrononSchema = mock[ChrononDeserializationSchema[TestData]]
+    when(mockChrononSchema.serDe).thenReturn(new FakeAttributeSerDe(Some("revision-id-key")))
+
+    val wrapper = new DeserializationSchemaWrapper[TestData](mockChrononSchema)
+    val collector = new TestCollector[TestData]()
+    val payload = "payload-bytes".getBytes
+    val pubsubMessage = PubsubMessage.newBuilder().setData(ByteString.copyFrom(payload)).build()
+
+    wrapper.deserialize(pubsubMessage, collector)
+
+    verify(mockChrononSchema).deserialize(sentinelPrefixed(payload), collector)
+  }
+
+  it should "pass the payload through unchanged when the delegate SerDe's attributeKey is None" in {
+    val mockChrononSchema = mock[ChrononDeserializationSchema[TestData]]
+    when(mockChrononSchema.serDe).thenReturn(new FakeAttributeSerDe(None))
+
+    val wrapper = new DeserializationSchemaWrapper[TestData](mockChrononSchema)
+    val collector = new TestCollector[TestData]()
+    val payload = "payload-bytes".getBytes
+    val pubsubMessage = PubsubMessage.newBuilder().setData(ByteString.copyFrom(payload)).build()
+
+    wrapper.deserialize(pubsubMessage, collector)
+
+    verify(mockChrononSchema).deserialize(payload, collector)
+  }
+
+  it should "pass the payload through unchanged when the delegate SerDe doesn't implement RequiresMessageAttribute" in {
+    val mockChrononSchema = mock[ChrononDeserializationSchema[TestData]]
+    when(mockChrononSchema.serDe).thenReturn(new FakeSerDe)
+
+    val wrapper = new DeserializationSchemaWrapper[TestData](mockChrononSchema)
+    val collector = new TestCollector[TestData]()
+    val payload = "payload-bytes".getBytes
+    val pubsubMessage = PubsubMessage.newBuilder().setData(ByteString.copyFrom(payload)).build()
+
+    wrapper.deserialize(pubsubMessage, collector)
+
+    verify(mockChrononSchema).deserialize(payload, collector)
   }
 }
