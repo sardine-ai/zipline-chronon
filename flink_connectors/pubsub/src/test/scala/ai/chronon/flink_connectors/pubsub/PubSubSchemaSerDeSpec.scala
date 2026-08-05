@@ -241,6 +241,8 @@ class PubSubSchemaSerDeSpec extends AnyFlatSpec {
     writerRecord.put("field1", "hello")
     val payload = ai.chronon.online.serde.AvroCodec.of(writerSchemaStr).encodeBinary(writerRecord)
 
+    org.mockito.Mockito.clearInvocations(mockedSchemaClient)
+
     val mutation = serDe.fromBytes(lengthPrefixed(revisionId, payload))
     assert(mutation.after != null)
     assert(mutation.after(0) == "hello")
