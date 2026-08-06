@@ -40,11 +40,10 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe with RequiresMessage
   private val proto3DefaultAsNull: Boolean =
     topicInfo.params.getOrElse(Proto3DefaultAsNullKey, "false").toBoolean
 
-  @transient private val projectName: String =
+  private val projectName: String =
     topicInfo.params.getOrElse(ProjectKey, throw new IllegalArgumentException(s"$ProjectKey not set"))
-  @transient private val schemaId: String =
+  private val schemaId: String =
     topicInfo.params.getOrElse(SchemaIdKey, throw new IllegalArgumentException(s"$SchemaIdKey not set"))
-  @transient private val schemaName: SchemaName = SchemaName.of(projectName, schemaId)
 
   protected[flink_connectors] def buildPubsubSchemaClient(): SchemaServiceClient = {
     SchemaServiceClient.create()
@@ -73,7 +72,7 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe with RequiresMessage
   private def buildSerDe(): SerDe = {
     val schema =
       try {
-        withSchemaClient(_.getSchema(schemaName))
+        withSchemaClient(_.getSchema(SchemaName.of(projectName, schemaId)))
       } catch {
         case e: NotFoundException =>
           throw new IllegalArgumentException(s"Schema not found - project: $projectName, schemaId: $schemaId", e)
@@ -99,7 +98,7 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe with RequiresMessage
                                   revisionId: String): com.google.pubsub.v1.Schema = {
     val request = ListSchemaRevisionsRequest
       .newBuilder()
-      .setName(schemaName.toString())
+      .setName(SchemaName.of(projectName, schemaId).toString())
       .setView(SchemaView.FULL)
       .setPageSize(10)
       .build();
