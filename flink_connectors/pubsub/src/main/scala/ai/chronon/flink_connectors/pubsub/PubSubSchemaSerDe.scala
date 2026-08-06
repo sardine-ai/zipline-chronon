@@ -40,11 +40,11 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe with RequiresMessage
   private val proto3DefaultAsNull: Boolean =
     topicInfo.params.getOrElse(Proto3DefaultAsNullKey, "false").toBoolean
 
-  private val projectName: String =
+  @transient private val projectName: String =
     topicInfo.params.getOrElse(ProjectKey, throw new IllegalArgumentException(s"$ProjectKey not set"))
-  private val schemaId: String =
+  @transient private val schemaId: String =
     topicInfo.params.getOrElse(SchemaIdKey, throw new IllegalArgumentException(s"$SchemaIdKey not set"))
-  private val schemaName: SchemaName = SchemaName.of(projectName, schemaId)
+  @transient private val schemaName: SchemaName = SchemaName.of(projectName, schemaId)
 
   protected[flink_connectors] def buildPubsubSchemaClient(): SchemaServiceClient = {
     SchemaServiceClient.create()
@@ -95,7 +95,8 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe with RequiresMessage
     }
   }
 
-  private def fetchSchemaRevision(schemaClient: SchemaServiceClient, revisionId: String): com.google.pubsub.v1.Schema = {
+  private def fetchSchemaRevision(schemaClient: SchemaServiceClient,
+                                  revisionId: String): com.google.pubsub.v1.Schema = {
     val request = ListSchemaRevisionsRequest
       .newBuilder()
       .setName(schemaName.toString())
