@@ -136,14 +136,15 @@ class PubSubSchemaSerDe(topicInfo: TopicInfo) extends SerDe with RequiresMessage
   override def fromBytes(bytes: Array[Byte]): Mutation = delegate match {
     case avroSerDe: AvroSerDe =>
       // attributeKey is Some only for this (Avro) branch, so the connector always prefixes these bytes
-      // with the length-framed revision id - see DeserializationSchemaWrapper.
-      val attributeLength = ByteBuffer.wrap(bytes).getInt
+      // with [1-byte magic][4-byte length][revision id] - see DeserializationSchemaWrapper. The magic byte
+      // mirrors Confluent's wire format so the two are byte-for-byte comparable at offset 0.
+      val attributeLength = ByteBuffer.wrap(bytes, 1, 4).getInt
       if (attributeLength < 0) {
         // no revision id attribute on this message (e.g. older client) - fall back to the latest schema
-        avroSerDe.fromBytes(bytes.slice(4, bytes.length))
+        avroSerDe.fromBytes(bytes.slice(5, bytes.length))
       } else {
-        val revisionId = new String(bytes, 4, attributeLength, StandardCharsets.UTF_8)
-        val payload = bytes.slice(4 + attributeLength, bytes.length)
+        val revisionId = new String(bytes, 5, attributeLength, StandardCharsets.UTF_8)
+        val payload = bytes.slice(5 + attributeLength, bytes.length)
         avroSerDe.fromBytes(payload, writerAvroSchema(revisionId))
       }
     case _ =>

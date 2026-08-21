@@ -1,6 +1,7 @@
 package ai.chronon.flink_connectors.pubsub
 
 import ai.chronon.api.{IntType, StringType}
+import ai.chronon.flink_connectors.pubsub.fastack.DeserializationSchemaWrapper
 import ai.chronon.online.TopicInfo
 import com.google.api.gax.rpc.{NotFoundException, StatusCode}
 import com.google.cloud.pubsub.v1.SchemaServiceClient
@@ -167,7 +168,8 @@ class PubSubSchemaSerDeSpec extends AnyFlatSpec {
 
   private def lengthPrefixed(revisionId: String, payload: Array[Byte]): Array[Byte] = {
     val idBytes = revisionId.getBytes("UTF-8")
-    val buf = java.nio.ByteBuffer.allocate(4 + idBytes.length + payload.length)
+    val buf = java.nio.ByteBuffer.allocate(1 + 4 + idBytes.length + payload.length)
+    buf.put(DeserializationSchemaWrapper.MagicByte)
     buf.putInt(idBytes.length)
     buf.put(idBytes)
     buf.put(payload)
@@ -209,7 +211,12 @@ class PubSubSchemaSerDeSpec extends AnyFlatSpec {
     val payload = ai.chronon.online.serde.AvroCodec.of(avroSchemaStr).encodeBinary(record)
 
     // -1 sentinel: no attribute present on this message
-    val framed = java.nio.ByteBuffer.allocate(4 + payload.length).putInt(-1).put(payload).array()
+    val framed = java.nio.ByteBuffer
+      .allocate(1 + 4 + payload.length)
+      .put(DeserializationSchemaWrapper.MagicByte)
+      .putInt(-1)
+      .put(payload)
+      .array()
 
     val mutation = serDe.fromBytes(framed)
     assert(mutation.after != null)

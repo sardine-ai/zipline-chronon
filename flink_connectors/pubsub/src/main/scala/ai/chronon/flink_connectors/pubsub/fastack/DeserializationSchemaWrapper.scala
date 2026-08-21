@@ -35,9 +35,13 @@ class DeserializationSchemaWrapper[T](deserializationSchema: DeserializationSche
 
 object DeserializationSchemaWrapper {
 
+  // Mirrors Confluent's wire-format magic byte (reserved for future version bumps) so the two formats are
+  // byte-for-byte comparable at offset 0.
+  val MagicByte: Byte = 0x00
+
   // Only the payload bytes for delegates that don't ask for message attributes - the vast majority of SerDes.
-  // Delegates opting in via RequiresMessageAttribute get [4-byte length][UTF-8 attribute value][payload], with
-  // length == -1 signaling the attribute was absent on this particular message.
+  // Delegates opting in via RequiresMessageAttribute get [1-byte magic][4-byte length][UTF-8 attribute value][payload],
+  // with length == -1 signaling the attribute was absent on this particular message.
   private[fastack] def encodeBytes[T](message: PubsubMessage, deserializationSchema: DeserializationSchema[T]): Array[Byte] = {
     val payload = message.getData.toByteArray
     deserializationSchema match {
@@ -56,7 +60,8 @@ object DeserializationSchemaWrapper {
 
   private def encodeWithAttribute(payload: Array[Byte], message: PubsubMessage, attributeKey: String): Array[Byte] = {
     val attrBytes = Option(message.getAttributesMap.get(attributeKey)).map(_.getBytes(StandardCharsets.UTF_8))
-    val buf = ByteBuffer.allocate(4 + attrBytes.map(_.length).getOrElse(0) + payload.length)
+    val buf = ByteBuffer.allocate(1 + 4 + attrBytes.map(_.length).getOrElse(0) + payload.length)
+    buf.put(MagicByte)
     buf.putInt(attrBytes.map(_.length).getOrElse(-1))
     attrBytes.foreach(buf.put)
     buf.put(payload)

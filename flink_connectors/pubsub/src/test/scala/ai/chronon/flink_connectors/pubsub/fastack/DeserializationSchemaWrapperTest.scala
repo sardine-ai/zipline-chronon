@@ -41,7 +41,8 @@ class DeserializationSchemaWrapperTest extends AnyFlatSpec with MockitoSugar {
 
   private def lengthPrefixed(attributeValue: String, payload: Array[Byte]): Array[Byte] = {
     val attrBytes = attributeValue.getBytes(StandardCharsets.UTF_8)
-    val buf = ByteBuffer.allocate(4 + attrBytes.length + payload.length)
+    val buf = ByteBuffer.allocate(1 + 4 + attrBytes.length + payload.length)
+    buf.put(DeserializationSchemaWrapper.MagicByte)
     buf.putInt(attrBytes.length)
     buf.put(attrBytes)
     buf.put(payload)
@@ -49,7 +50,8 @@ class DeserializationSchemaWrapperTest extends AnyFlatSpec with MockitoSugar {
   }
 
   private def sentinelPrefixed(payload: Array[Byte]): Array[Byte] = {
-    val buf = ByteBuffer.allocate(4 + payload.length)
+    val buf = ByteBuffer.allocate(1 + 4 + payload.length)
+    buf.put(DeserializationSchemaWrapper.MagicByte)
     buf.putInt(-1)
     buf.put(payload)
     buf.array()
