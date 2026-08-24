@@ -17,6 +17,19 @@ abstract class SerDe extends Serializable {
   }
 }
 
+/** Mixed into a SerDe that may need a message attribute/header (not present in the payload bytes) to
+  * deserialize correctly - e.g. Pub/Sub's `googclient_schemarevisionid`. Connectors that surface such
+  * attributes out-of-band encode the attribute's value ahead of the payload bytes - [1-byte magic][4-byte
+  * length][UTF-8 attribute value] - mirroring Confluent's wire-format layout (magic byte + fixed header)
+  * before calling the ordinary fromBytes(bytes); the SerDe is responsible for stripping it back out.
+  *
+  * attributeKey returns None when this particular instance doesn't need the attribute (e.g. a
+  * Protobuf schema, which is self-describing), so callers can skip the encoding overhead entirely.
+  */
+trait RequiresMessageAttribute { self: SerDe =>
+  def attributeKey: Option[String]
+}
+
 /** ==== MUTATION vs. EVENT ====
   * Mutation is the general case of an Event
   * Imagine a user impression/view stream - impressions/views are immutable events

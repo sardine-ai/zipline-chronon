@@ -19,6 +19,8 @@ abstract class ChrononDeserializationSchema[T] extends AbstractDeserializationSc
   def sourceProjectionEnabled: Boolean
 
   def sourceEventEncoder: Encoder[Row]
+
+  def serDe: SerDe
 }
 
 /** Trait that is mixed in with DeserializationSchemas that support projection pushdown. This trait provides the projected
