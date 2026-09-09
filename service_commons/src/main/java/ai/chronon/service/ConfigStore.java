@@ -39,6 +39,8 @@ public class ConfigStore {
     // TTL cache configuration
     private static final String JOIN_CONF_TTL_MILLIS = "ai.chronon.join.conf.ttl.millis";
     private static final String JOIN_CODEC_TTL_MILLIS = "ai.chronon.join.codec.ttl.millis";
+    private static final String FETCHER_TIMEOUT_MILLIS = "ai.chronon.fetcher.timeout.millis";
+    private static final long DEFAULT_FETCHER_TIMEOUT_MILLIS = 1000L;
 
     private volatile JsonObject jsonConfig;
     private final Object lock = new Object();
@@ -179,6 +181,10 @@ public class ConfigStore {
 
     public long getJoinCodecTtlMillis() {
         return jsonConfig.getLong(JOIN_CODEC_TTL_MILLIS, TTLCache.DefaultTtlMillis());
+    }
+
+    public long getFetcherTimeoutMillis() {
+        return jsonConfig.getLong(FETCHER_TIMEOUT_MILLIS, DEFAULT_FETCHER_TIMEOUT_MILLIS);
     }
 
     public String encodeConfig() {

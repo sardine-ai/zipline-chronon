@@ -59,11 +59,12 @@ class TestApi extends Api(Map.empty) with Serializable {
 
   override def genKvStore: KVStore = new TestKVStore()
 
-  override def buildFetcher(debug: Boolean = false,
-                             callerName: String = null,
-                             disableErrorThrows: Boolean = false,
-                             joinConfTtlMillis: Long = TTLCache.DefaultTtlMillis,
-                             joinCodecTtlMillis: Long = TTLCache.DefaultTtlMillis): Fetcher = {
+  override def buildFetcher(debug: Boolean,
+                            callerName: String,
+                            disableErrorThrows: Boolean,
+                            joinConfTtlMillis: Long,
+                            joinCodecTtlMillis: Long,
+                            timeoutMillis: Long): Fetcher = {
     new TestFetcher(genKvStore)
   }
 }
