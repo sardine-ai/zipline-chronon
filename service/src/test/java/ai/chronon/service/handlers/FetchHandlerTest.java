@@ -5,6 +5,7 @@ import ai.chronon.online.JavaFetcher;
 import ai.chronon.online.JavaRequest;
 import ai.chronon.online.JavaResponse;
 import ai.chronon.service.model.GetFeaturesResponse;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
@@ -27,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import static ai.chronon.service.model.GetFeaturesResponse.Result.Status.Failure;
 import static ai.chronon.service.model.GetFeaturesResponse.Result.Status.Success;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,6 +65,37 @@ public class FetchHandlerTest {
         when(response.setStatusCode(anyInt())).thenReturn(response);
         when(routingContext.body()).thenReturn(requestBody);
         when(routingContext.pathParam("name")).thenReturn(TEST_GROUP_BY);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testAbandonedRequestSkipsResponseWork(TestContext context) {
+        Async async = context.async();
+
+        String validRequestBody = "[{\"user_id\":\"123\"}]";
+        when(requestBody.asString()).thenReturn(validRequestBody);
+
+        Map<String, Object> keys = Collections.singletonMap("user_id", "123");
+        JavaRequest request = new JavaRequest(TEST_GROUP_BY, keys);
+        JavaResponse mockResponse = new JavaResponse(request, JTry.success(Map.of("feature_1", 12)));
+
+        // Still in flight when the caller hangs up -- the 499 case.
+        CompletableFuture<List<JavaResponse>> pending = new CompletableFuture<>();
+        when(mockFetcher.fetchJoin(anyList())).thenReturn(pending);
+
+        ArgumentCaptor<Handler<Void>> closeCaptor = ArgumentCaptor.forClass(Handler.class);
+
+        handler.handle(routingContext);
+
+        verify(response).closeHandler(closeCaptor.capture());
+        closeCaptor.getValue().handle(null);
+        pending.complete(Collections.singletonList(mockResponse));
+
+        vertx.setTimer(1000, id -> {
+            verify(response, never()).end(anyString());
+            verify(response, never()).setStatusCode(200);
+            async.complete();
+        });
     }
 
     @Test

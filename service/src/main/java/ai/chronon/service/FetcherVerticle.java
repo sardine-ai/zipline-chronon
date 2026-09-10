@@ -37,10 +37,11 @@ public class FetcherVerticle extends AbstractVerticle {
 
         long joinConfTtl = cfgStore.getJoinConfTtlMillis();
         long joinCodecTtl = cfgStore.getJoinCodecTtlMillis();
-        logger.info("Join conf TTL: {}ms, Join codec TTL: {}ms", joinConfTtl, joinCodecTtl);
+        long fetcherTimeout = cfgStore.getFetcherTimeoutMillis();
+        logger.info("Join conf TTL: {}ms, Join codec TTL: {}ms, fetcher timeout: {}ms", joinConfTtl, joinCodecTtl, fetcherTimeout);
 
         // Execute the blocking Bigtable initialization in a separate worker thread
-        vertx.executeBlocking(() -> api.buildJavaFetcher("feature-service", false, joinConfTtl, joinCodecTtl))
+        vertx.executeBlocking(() -> api.buildJavaFetcher("feature-service", false, joinConfTtl, joinCodecTtl, fetcherTimeout))
         .onSuccess(fetcher -> {
             try {
                 // This code runs back on the event loop when the blocking operation completes

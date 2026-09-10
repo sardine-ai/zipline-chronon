@@ -216,6 +216,12 @@ trait ExternalSourceHandler extends Serializable {
 
 // the implementer of this class should take a single argument, a scala map of string to string
 // chronon framework will construct this object with user conf supplied via CLI
+object Api {
+  // Bounds the blocking metadata reads in Api.getString. Batch and streaming callers can afford
+  // to wait; request-serving callers must override this to sit under their caller's deadline.
+  val DefaultTimeoutMillis: Long = 10000
+}
+
 abstract class Api(userConf: Map[String, String]) extends Serializable {
   lazy val fetcher: Fetcher = {
     if (fetcherObj == null)
@@ -234,13 +240,9 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
 
   def externalRegistry: ExternalSourceRegistry
 
-  private var timeoutMillis: Long = 10000
-
   var flagStore: FlagStore = null
 
   def setFlagStore(customFlagStore: FlagStore): Unit = { flagStore = customFlagStore }
-
-  def setTimeout(millis: Long): Unit = { timeoutMillis = millis }
 
   // kafka has built-in support - but one can add support to other types using this method.
   def generateStreamBuilder(streamType: String): StreamBuilder = null
@@ -270,7 +272,8 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
                    callerName: String = null,
                    disableErrorThrows: Boolean = false,
                    joinConfTtlMillis: Long = TTLCache.DefaultTtlMillis,
-                   joinCodecTtlMillis: Long = TTLCache.DefaultTtlMillis): Fetcher =
+                   joinCodecTtlMillis: Long = TTLCache.DefaultTtlMillis,
+                   timeoutMillis: Long = Api.DefaultTimeoutMillis): Fetcher =
     new Fetcher(
       genKvStore,
       MetadataDataset,
@@ -289,7 +292,8 @@ abstract class Api(userConf: Map[String, String]) extends Serializable {
   final def buildJavaFetcher(callerName: String = null,
                              disableErrorThrows: Boolean = false,
                              joinConfTtlMillis: Long = TTLCache.DefaultTtlMillis,
-                             joinCodecTtlMillis: Long = TTLCache.DefaultTtlMillis): JavaFetcher = {
+                             joinCodecTtlMillis: Long = TTLCache.DefaultTtlMillis,
+                             timeoutMillis: Long = Api.DefaultTimeoutMillis): JavaFetcher = {
     new JavaFetcher.Builder(
       genKvStore,
       MetadataDataset,

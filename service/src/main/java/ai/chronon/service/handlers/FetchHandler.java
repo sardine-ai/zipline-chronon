@@ -4,6 +4,7 @@ import ai.chronon.online.JTry;
 import ai.chronon.online.JavaFetcher;
 import ai.chronon.online.JavaRequest;
 import ai.chronon.online.JavaResponse;
+import ai.chronon.online.metrics.Metrics;
 import ai.chronon.service.model.GetFeaturesResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,10 @@ public class FetchHandler implements Handler<RoutingContext> {
 
     private static final Logger logger = LoggerFactory.getLogger(FetchHandler.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    // Scala default args aren't available from Java, hence the explicit nulls.
+    private static final Metrics.Context metricsContext =
+            new Metrics.Context("fetcher", null, null, null, false, null, null, null, null, null, null, null);
+    private static final String AbandonedMetric = "abandoned_request.count";
 
     private final JavaFetcher fetcher;
     private final BiFunction<JavaFetcher, List<JavaRequest>, CompletableFuture<List<JavaResponse>>> fetchFunction;
@@ -75,6 +81,11 @@ public class FetchHandler implements Handler<RoutingContext> {
         }
 
         List<JavaRequest> requests = maybeRequest.getValue();
+
+        // Skip work when the client cancels the request (i.e. 499)
+        AtomicBoolean clientGone = new AtomicBoolean(false);
+        ctx.response().closeHandler(v -> clientGone.set(true));
+
         CompletableFuture<List<JavaResponse>> resultsJavaFuture = fetchFunction.apply(fetcher, requests);
 
         // wrap the Java future we get in a Vert.x Future to not block the worker thread
@@ -87,6 +98,10 @@ public class FetchHandler implements Handler<RoutingContext> {
 
         maybeFeatureResponses.onSuccess(
                 resultList -> {
+                    if (clientGone.get()) {
+                        metricsContext.increment(AbandonedMetric);
+                        return;
+                    }
                     // as this is a bulkGet request, we might have some successful and some failed responses
                     // we return the responses in the same order as they come in and mark them as successful / failed based
                     // on the lookups
@@ -101,6 +116,10 @@ public class FetchHandler implements Handler<RoutingContext> {
 
         maybeFeatureResponses.onFailure(
                 err -> {
+                    if (clientGone.get()) {
+                        metricsContext.increment(AbandonedMetric);
+                        return;
+                    }
 
                     List<String> failureMessages = Collections.singletonList(err.getMessage());
 
