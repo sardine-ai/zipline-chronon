@@ -26,6 +26,8 @@ abstract class BaseDeserializationSchema[T](deserSchemaProvider: SerDe,
 
   override def sourceProjectionEnabled: Boolean = false
 
+  override def serDe: SerDe = deserSchemaProvider
+
   override def sourceEventEncoder: Encoder[Row] =
     Encoders.row(SparkConversions.fromChrononSchema(deserSchemaProvider.schema))
 

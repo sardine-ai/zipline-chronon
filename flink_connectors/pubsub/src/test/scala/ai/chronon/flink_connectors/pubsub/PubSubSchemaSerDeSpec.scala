@@ -1,11 +1,12 @@
 package ai.chronon.flink_connectors.pubsub
 
 import ai.chronon.api.{IntType, StringType}
+import ai.chronon.flink_connectors.pubsub.fastack.DeserializationSchemaWrapper
 import ai.chronon.online.TopicInfo
 import com.google.api.gax.rpc.{NotFoundException, StatusCode}
 import com.google.cloud.pubsub.v1.SchemaServiceClient
 import com.google.protobuf.DynamicMessage
-import com.google.pubsub.v1.{Schema, SchemaName}
+import com.google.pubsub.v1.{ListSchemaRevisionsRequest, Schema, SchemaName}
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema
 import org.mockito.Mockito.when
 import org.mockito.ArgumentMatchers.any
@@ -161,6 +162,180 @@ class PubSubSchemaSerDeSpec extends AnyFlatSpec {
     val mutationWithoutNull = serDeWithoutNull.fromBytes(emptyMessage.toByteArray)
     assert(mutationWithoutNull.after(0) == "")
     assert(mutationWithoutNull.after(1) == 0)
+  }
+
+  // ============== Avro Schema Evolution Tests ==============
+
+  private def lengthPrefixed(revisionId: String, payload: Array[Byte]): Array[Byte] = {
+    val idBytes = revisionId.getBytes("UTF-8")
+    val buf = java.nio.ByteBuffer.allocate(1 + 4 + idBytes.length + payload.length)
+    buf.put(DeserializationSchemaWrapper.MagicByte)
+    buf.putInt(idBytes.length)
+    buf.put(idBytes)
+    buf.put(payload)
+    buf.array()
+  }
+
+  it should "advertise the revision id attribute key for AVRO schemas" in {
+    val avroSchemaStr = """{ "type": "record", "name": "test1", "fields": [ { "type": "string", "name": "field1" } ]}"""
+    val topicInfo = TopicInfo("test-topic", "pubsub", Map(PubSubSchemaSerDe.ProjectKey -> "test-project", PubSubSchemaSerDe.SchemaIdKey -> "test-schema"))
+    val mockedSchemaClient = mock[SchemaServiceClient]
+    val schema = Schema.newBuilder().setName("test-schema").setType(Schema.Type.AVRO).setDefinition(avroSchemaStr).build()
+    when(mockedSchemaClient.getSchema(any[SchemaName]())).thenReturn(schema)
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+    assert(serDe.attributeKey.contains(PubSubSchemaSerDe.RevisionIdAttributeKey))
+  }
+
+  it should "not advertise an attribute key for PROTOCOL_BUFFER schemas" in {
+    val proto3SchemaStr = """syntax = "proto3"; message TestProto3 { string name = 1; }"""
+    val topicInfo = TopicInfo("test-topic", "pubsub", Map(PubSubSchemaSerDe.ProjectKey -> "test-project", PubSubSchemaSerDe.SchemaIdKey -> "test-schema"))
+    val mockedSchemaClient = mock[SchemaServiceClient]
+    val schema = Schema.newBuilder().setName("test-schema").setType(Schema.Type.PROTOCOL_BUFFER).setDefinition(proto3SchemaStr).build()
+    when(mockedSchemaClient.getSchema(any[SchemaName]())).thenReturn(schema)
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+    assert(serDe.attributeKey.isEmpty)
+  }
+
+  it should "decode using the latest schema when the message carries no revision id" in {
+    val avroSchemaStr = """{ "type": "record", "name": "test1", "fields": [ { "type": "string", "name": "field1" } ]}"""
+    val topicInfo = TopicInfo("test-topic", "pubsub", Map(PubSubSchemaSerDe.ProjectKey -> "test-project", PubSubSchemaSerDe.SchemaIdKey -> "test-schema"))
+    val mockedSchemaClient = mock[SchemaServiceClient]
+    val schema = Schema.newBuilder().setName("test-schema").setType(Schema.Type.AVRO).setDefinition(avroSchemaStr).build()
+    when(mockedSchemaClient.getSchema(any[SchemaName]())).thenReturn(schema)
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+    val record = new org.apache.avro.generic.GenericData.Record(new org.apache.avro.Schema.Parser().parse(avroSchemaStr))
+    record.put("field1", "hello")
+    val payload = ai.chronon.online.serde.AvroCodec.of(avroSchemaStr).encodeBinary(record)
+
+    // -1 sentinel: no attribute present on this message
+    val framed = java.nio.ByteBuffer
+      .allocate(1 + 4 + payload.length)
+      .put(DeserializationSchemaWrapper.MagicByte)
+      .putInt(-1)
+      .put(payload)
+      .array()
+
+    val mutation = serDe.fromBytes(framed)
+    assert(mutation.after != null)
+    assert(mutation.after(0) == "hello")
+  }
+
+  it should "resolve and cache a message's writer schema from its revision id attribute for AVRO schema evolution" in {
+    val latestSchemaStr =
+      """{ "type": "record", "name": "test1", "fields": [
+        |  { "type": "string", "name": "field1" },
+        |  { "type": "string", "name": "field2", "default": "unset" }
+        |]}""".stripMargin
+    val writerSchemaStr = """{ "type": "record", "name": "test1", "fields": [ { "type": "string", "name": "field1" } ]}"""
+    val revisionId = "abc123"
+
+    val topicInfo = TopicInfo("test-topic", "pubsub", Map(PubSubSchemaSerDe.ProjectKey -> "test-project", PubSubSchemaSerDe.SchemaIdKey -> "test-schema"))
+    val latestSchema = Schema.newBuilder().setName("test-schema").setType(Schema.Type.AVRO).setDefinition(latestSchemaStr).build()
+    val writerSchema = Schema.newBuilder().setName("test-schema").setRevisionId(revisionId).setType(Schema.Type.AVRO).setDefinition(writerSchemaStr).build()
+
+    val mockedSchemaClient = org.mockito.Mockito.mock(classOf[SchemaServiceClient], org.mockito.Mockito.RETURNS_DEEP_STUBS)
+    when(mockedSchemaClient.getSchema(any[SchemaName]())).thenReturn(latestSchema)
+    when(mockedSchemaClient.listSchemaRevisions(any[ListSchemaRevisionsRequest]())
+      .iteratePages().iterator().next().getValues())
+      .thenReturn(java.util.Collections.singletonList(writerSchema))
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+
+    val writerRecord = new org.apache.avro.generic.GenericData.Record(new org.apache.avro.Schema.Parser().parse(writerSchemaStr))
+    writerRecord.put("field1", "hello")
+    val payload = ai.chronon.online.serde.AvroCodec.of(writerSchemaStr).encodeBinary(writerRecord)
+
+    org.mockito.Mockito.clearInvocations(mockedSchemaClient)
+
+    val mutation = serDe.fromBytes(lengthPrefixed(revisionId, payload))
+    assert(mutation.after != null)
+    assert(mutation.after(0) == "hello")
+    assert(mutation.after(1) == "unset") // reader default applied for the field the writer didn't have
+
+    // a second message on the same revision should hit the cache, not fetch schema revisions again
+    serDe.fromBytes(lengthPrefixed(revisionId, payload))
+    org.mockito.Mockito.verify(mockedSchemaClient, org.mockito.Mockito.times(1)).listSchemaRevisions(any[ListSchemaRevisionsRequest]())
+  }
+
+  it should "fail when a message's revision id attribute cannot be resolved to a schema revision" in {
+    val latestSchemaStr = """{ "type": "record", "name": "test1", "fields": [ { "type": "string", "name": "field1" } ]}"""
+    val topicInfo = TopicInfo("test-topic", "pubsub", Map(PubSubSchemaSerDe.ProjectKey -> "test-project", PubSubSchemaSerDe.SchemaIdKey -> "test-schema"))
+    val latestSchema = Schema.newBuilder().setName("test-schema").setType(Schema.Type.AVRO).setDefinition(latestSchemaStr).build()
+
+    val statusCode = mock[StatusCode]
+    val mockedSchemaClient = org.mockito.Mockito.mock(classOf[SchemaServiceClient], org.mockito.Mockito.RETURNS_DEEP_STUBS)
+    when(mockedSchemaClient.getSchema(any[SchemaName]())).thenReturn(latestSchema)
+    when(mockedSchemaClient.listSchemaRevisions(any[ListSchemaRevisionsRequest]()))
+      .thenThrow(new NotFoundException(new IllegalArgumentException(), statusCode, true))
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+
+    val record = new org.apache.avro.generic.GenericData.Record(new org.apache.avro.Schema.Parser().parse(latestSchemaStr))
+    record.put("field1", "hello")
+    val payload = ai.chronon.online.serde.AvroCodec.of(latestSchemaStr).encodeBinary(record)
+
+    assertThrows[IllegalArgumentException] {
+      serDe.fromBytes(lengthPrefixed("nonexistent-revision", payload))
+    }
+  }
+
+  it should "resolve and cache each distinct revision independently for AVRO schema evolution" in {
+    val latestSchemaStr =
+      """{ "type": "record", "name": "test1", "fields": [
+        |  { "type": "string", "name": "field1" },
+        |  { "type": "string", "name": "field2", "default": "unset" }
+        |]}""".stripMargin
+    val revisionAId = "revision-a"
+    val revisionASchemaStr = """{ "type": "record", "name": "test1", "fields": [ { "type": "string", "name": "field1" } ]}"""
+    val revisionBId = "revision-b"
+    val revisionBSchemaStr =
+      """{ "type": "record", "name": "test1", "fields": [
+        |  { "type": "string", "name": "field1" },
+        |  { "type": "string", "name": "field2" }
+        |]}""".stripMargin
+
+    val topicInfo = TopicInfo("test-topic", "pubsub", Map(PubSubSchemaSerDe.ProjectKey -> "test-project", PubSubSchemaSerDe.SchemaIdKey -> "test-schema"))
+    val latestSchema = Schema.newBuilder().setName("test-schema").setType(Schema.Type.AVRO).setDefinition(latestSchemaStr).build()
+    val revisionASchema = Schema.newBuilder().setName("test-schema").setRevisionId(revisionAId).setType(Schema.Type.AVRO).setDefinition(revisionASchemaStr).build()
+    val revisionBSchema = Schema.newBuilder().setName("test-schema").setRevisionId(revisionBId).setType(Schema.Type.AVRO).setDefinition(revisionBSchemaStr).build()
+
+    val mockedSchemaClient = org.mockito.Mockito.mock(classOf[SchemaServiceClient], org.mockito.Mockito.RETURNS_DEEP_STUBS)
+    when(mockedSchemaClient.getSchema(any[SchemaName]())).thenReturn(latestSchema)
+    when(mockedSchemaClient.listSchemaRevisions(any[ListSchemaRevisionsRequest]())
+      .iteratePages().iterator().next().getValues())
+      .thenReturn(java.util.Arrays.asList(revisionASchema, revisionBSchema))
+
+    val serDe = new MockPubSubSchemaSerDe(topicInfo, mockedSchemaClient)
+
+    val recordA = new org.apache.avro.generic.GenericData.Record(new org.apache.avro.Schema.Parser().parse(revisionASchemaStr))
+    recordA.put("field1", "from-a")
+    val payloadA = ai.chronon.online.serde.AvroCodec.of(revisionASchemaStr).encodeBinary(recordA)
+
+    val recordB = new org.apache.avro.generic.GenericData.Record(new org.apache.avro.Schema.Parser().parse(revisionBSchemaStr))
+    recordB.put("field1", "from-b")
+    recordB.put("field2", "explicit")
+    val payloadB = ai.chronon.online.serde.AvroCodec.of(revisionBSchemaStr).encodeBinary(recordB)
+
+    org.mockito.Mockito.clearInvocations(mockedSchemaClient)
+
+    val mutationA = serDe.fromBytes(lengthPrefixed(revisionAId, payloadA))
+    assert(mutationA.after(0) == "from-a")
+    assert(mutationA.after(1) == "unset") // revision-a's writer schema didn't have field2 - reader default applied
+
+    val mutationB = serDe.fromBytes(lengthPrefixed(revisionBId, payloadB))
+    assert(mutationB.after(0) == "from-b")
+    assert(mutationB.after(1) == "explicit")
+
+    // each distinct revision triggers its own schema-service lookup
+    org.mockito.Mockito.verify(mockedSchemaClient, org.mockito.Mockito.times(2)).listSchemaRevisions(any[ListSchemaRevisionsRequest]())
+
+    // repeating either revision should hit the cache, not fetch again
+    serDe.fromBytes(lengthPrefixed(revisionAId, payloadA))
+    serDe.fromBytes(lengthPrefixed(revisionBId, payloadB))
+    org.mockito.Mockito.verify(mockedSchemaClient, org.mockito.Mockito.times(2)).listSchemaRevisions(any[ListSchemaRevisionsRequest]())
   }
 
   // ============== Proto2 Tests ==============
