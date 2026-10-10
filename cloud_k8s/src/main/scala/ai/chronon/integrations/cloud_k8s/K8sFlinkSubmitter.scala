@@ -323,6 +323,13 @@ class K8sFlinkSubmitter(
     val tmPodMemory = flinkConfiguration.getOrElse("taskmanager.memory.process.size", "4G")
     val jmPodMemory = flinkConfiguration.getOrElse("jobmanager.memory.process.size", "4G")
 
+    val effectiveTaskSlots = flinkConfiguration
+      .get("taskmanager.numberOfTaskSlots")
+      .map(_.toInt)
+      .getOrElse(tier.taskSlots)
+    val cpuPerSlot: Double = 1.0
+    val tmPodCpu = effectiveTaskSlots * cpuPerSlot
+
     spec.put(
       "jobManager",
       buildComponentSpec(
@@ -340,7 +347,7 @@ class K8sFlinkSubmitter(
       "taskManager",
       buildComponentSpec(
         memory = tmPodMemory,
-        cpu = tier.taskSlots.toDouble,
+        cpu = tmPodCpu,
         replicas = None,
         containerSpec.initContainers,
         allEnvVars,
