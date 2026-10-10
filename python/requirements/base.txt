@@ -10,11 +10,11 @@ azure-core==1.39.0
     #   azure-identity
     #   azure-storage-blob
 azure-identity==1.25.3
-    # via -r requirements/base.in
+    # via -r base.in
 azure-storage-blob==12.28.0
-    # via -r requirements/base.in
+    # via -r base.in
 boto3==1.42.96
-    # via -r requirements/base.in
+    # via -r base.in
 botocore==1.42.96
     # via
     #   boto3
@@ -26,11 +26,11 @@ cffi==2.0.0
 charset-normalizer==3.4.7
     # via requests
 click==8.3.3
-    # via -r requirements/base.in
+    # via -r base.in
 crcmod==1.7
-    # via -r requirements/base.in
+    # via -r base.in
 croniter==6.2.2
-    # via -r requirements/base.in
+    # via -r base.in
 cryptography==47.0.0
     # via
     #   azure-identity
@@ -40,7 +40,7 @@ cryptography==47.0.0
     #   pyjwt
 google-api-core[grpc]==2.27.0
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-iam
@@ -53,13 +53,13 @@ google-auth==2.49.2
     #   google-cloud-iam
     #   google-cloud-storage
 google-cloud-bigquery-storage==2.37.0
-    # via -r requirements/base.in
+    # via -r base.in
 google-cloud-core==2.5.1
     # via google-cloud-storage
 google-cloud-iam==2.22.0
-    # via -r requirements/base.in
+    # via -r base.in
 google-cloud-storage==2.19.0
-    # via -r requirements/base.in
+    # via -r base.in
 google-crc32c==1.8.0
     # via
     #   google-cloud-storage
@@ -83,10 +83,10 @@ grpcio==1.80.0
     #   grpcio-status
 grpcio-status==1.80.0
     # via google-api-core
-idna==3.13
+idna==3.15
     # via requests
 importlib-resources==6.5.2
-    # via -r requirements/base.in
+    # via -r base.in
 isodate==0.7.2
     # via azure-storage-blob
 jmespath==1.1.0
@@ -128,9 +128,11 @@ pycparser==3.0
 pygments==2.20.0
     # via rich
 pyjwt[crypto]==2.12.1
-    # via msal
+    # via
+    #   msal
+    #   pyjwt
 pyspark==3.5.4
-    # via -r requirements/base.in
+    # via -r base.in
 python-dateutil==2.9.0.post0
     # via
     #   botocore
@@ -142,7 +144,7 @@ requests==2.33.1
     #   google-cloud-storage
     #   msal
 rich==15.0.0
-    # via -r requirements/base.in
+    # via -r base.in
 s3transfer==0.16.1
     # via boto3
 six==1.17.0
@@ -150,9 +152,9 @@ six==1.17.0
     #   python-dateutil
     #   thrift
 sqlglot==30.6.0
-    # via -r requirements/base.in
+    # via -r base.in
 thrift==0.21.0
-    # via -r requirements/base.in
+    # via -r base.in
 typing-extensions==4.15.0
     # via
     #   azure-core
@@ -161,6 +163,6 @@ typing-extensions==4.15.0
     #   grpcio
 urllib3==2.6.3
     # via
-    #   -r requirements/base.in
+    #   -r base.in
     #   botocore
     #   requests
