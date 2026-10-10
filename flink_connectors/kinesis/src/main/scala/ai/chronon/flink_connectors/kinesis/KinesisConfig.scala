@@ -55,8 +55,18 @@ object KinesisConfig {
     // - ASSUME_ROLE: When a cross-account role ARN is provided. Uses the default credential chain
     //                to assume the specified role (e.g., for reading Kinesis in another account)
     // - BASIC: When explicit credentials provided via -Z flags
-    // - AUTO: When no -Z credentials provided.
-    //         Uses AWS credential chain (env vars → system props → web identity → IAM roles)
+    // - WEB_IDENTITY_TOKEN: On EKS with IRSA (AWS_WEB_IDENTITY_TOKEN_FILE + AWS_ROLE_ARN set).
+    //                       Preferred over AUTO to avoid a shaded AWS SDK v2 lifecycle bug where
+    //                       DefaultCredentialsProvider discovers WebIdentityTokenFileCredentialsProvider
+    //                       through StsWebIdentityCredentialsProviderFactory (ServiceLoader). That
+    //                       factory-created StsClient gets its HTTP pool shut down when the previous
+    //                       task's KinesisClient is closed; the ServiceLoader path then reuses the
+    //                       same closed instance on every restart, causing "Connection pool shut down"
+    //                       on every EFO consumer registration attempt.
+    //                       WEB_IDENTITY_TOKEN bypasses the ServiceLoader path — Flink creates
+    //                       StsWebIdentityTokenFileCredentialsProvider with its own independent StsClient
+    //                       that is not tied to the KinesisClient lifecycle.
+    // - AUTO: Fallback when none of the above conditions are met.
     maybeAssumeRoleArn match {
       case Some(roleArn) =>
         properties.setProperty(AWSConfigConstants.AWS_CREDENTIALS_PROVIDER, "ASSUME_ROLE")
@@ -69,7 +79,20 @@ object KinesisConfig {
             properties.setProperty(AWSConfigConstants.AWS_ACCESS_KEY_ID, accessKeyId)
             properties.setProperty(AWSConfigConstants.AWS_SECRET_ACCESS_KEY, secretAccessKey)
           case (None, None) =>
-            properties.setProperty(AWSConfigConstants.AWS_CREDENTIALS_PROVIDER, "AUTO")
+            // On EKS with IRSA, the pod's service account controller injects both env vars.
+            val maybeWebIdentityFile = Option(System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"))
+            val maybeIrsaRoleArn     = Option(System.getenv("AWS_ROLE_ARN"))
+            (maybeWebIdentityFile, maybeIrsaRoleArn) match {
+              case (Some(tokenFile), Some(irsaRoleArn)) =>
+                properties.setProperty(AWSConfigConstants.AWS_CREDENTIALS_PROVIDER, "WEB_IDENTITY_TOKEN")
+                properties.setProperty(AWSConfigConstants.AWS_ROLE_ARN, irsaRoleArn)
+                properties.setProperty(AWSConfigConstants.AWS_ROLE_SESSION_NAME, "chronon-kinesis-session")
+                // Explicit token file path so Flink's CredentialProviderUtil doesn't have to
+                // rediscover it from the environment (defensive; SDK also reads it from env).
+                properties.setProperty("aws.credentials.webIdentityTokenFile", tokenFile)
+              case _ =>
+                properties.setProperty(AWSConfigConstants.AWS_CREDENTIALS_PROVIDER, "AUTO")
+            }
           case _ =>
             throw new IllegalArgumentException(
               s"Both ${Keys.AwsAccessKeyId} and ${Keys.AwsSecretAccessKey} must be provided together, or neither for IAM role-based auth"
